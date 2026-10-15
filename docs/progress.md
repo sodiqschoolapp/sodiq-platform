@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 15 October 2026: task 3.3b Return and graduate restore into a class
+
+- Built: migration 0052 (the class row causes `return` and `restore`); a return names its class (`classId`) and is placed from the return date, a graduate restore names its class and takes its grade; the class rules are checked again by `planPlacement` under the student, class and group locks, all or none; the groups by `coverClassRows`, with the group the leaving cut offered first on a return into the class left (`preferred`).
+- A class left in another language asks a confirmation (`return_language_differs`); a date outside the class's year is `return_outside_year`; the refusals answer at `classId` or `from`. The record names `classLeft` for the return form.
+- The return and restore forms: a class select of the year of the date (the class left first, its fewest free seats under it, switched off with a line when no class fits); the panel says how many groups were placed for review.
+- Left out: the journal side of a return (8.6, a line added); a cancel or undo of a return or a restore (the spec names none).
+- Plan tests not written (unreachable, `docs/decisions.md`, 3.3b): a cut group no longer drawing from the class, the guard's `class_memberships_full` by a race, a restore refused by `students_grade_class`.
+
+The next sessions must know:
+
+- `planClassGroups` takes `preferredOf` (a group to try first per student and subject); every choice still goes through the seat book and the offered groups.
+- The browser seed has a `returns` account (Academic Vice Principal of a branch with 7 Oxford in Uzbek, 7 Yale in Russian and a student in 7 Oxford).
+- The next task is 3.3c.
+
 ## 14 October 2026: task 3.3a Class and group transfers, History tab
 
 - Built: migrations 0050 (`student_moves`, the move links of both membership tables, the replaced checks and triggers) and 0051 (the ends a move writes); class transfers (`classes` `edit`) and group transfers (`group_transfers`, the Head Teachers for own subjects) with an effective date, scheduled moves with change and cancel, the undo of a move begun; a leaving cancels the scheduled moves it comes before.

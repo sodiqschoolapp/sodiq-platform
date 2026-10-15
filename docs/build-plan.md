@@ -372,7 +372,7 @@ How to read the task lines:
   - From 3.2b (pull request #92, decision 8), built here: a class transfer ends the group rows of the dates the class rows lose, in the same transaction, named in the audit entry; a group transfer moves the row the placement refuses; the Head Teachers' moves between groups of own subjects under a permission of their own.
   - From 3.2c (pull request #93, decision 12), built here for the class transfer: the student is placed into the groups of the new class (`coverClassRows`).
 
-- [ ] **3.3b Return and graduate restore into a class** (3.3 split in four, pull request #95, decision 1)
+- [x] **3.3b Return and graduate restore into a class** (3.3 split in four, pull request #95, decision 1)
   - Read: `04` (Movements), `edge/students-classes-groups`, the plan of pull request #95.
   - Build: a return places the student in a class from the return date (`04`, Movements: "is placed in a class from the return date"), the Super Admin's restore of a graduated student with a class (`edge`: "restores the student to active with a class and a reason"), each placing the groups of the class and re-checking the class rules.
   - Done when: a return and a graduate restore write a class row and its group rows, refused all or none, with allow and refuse tests.
@@ -624,6 +624,7 @@ How to read the task lines:
   - Build: what a journal shows and counts when a student changes class or group, joins late, leaves or returns; results that follow the student; the "result at leaving".
   - Done when: a transfer made at the same moment as a cell save is tested.
   - From 3.3a (pull request #95, decisions 4 and 10): a move dated today is allowed only if the student has no entries today in the old journals (`edge`: the "11:00" row); a move recorded late lists the entries of the old journals on or after the date, moved past or voided with a reason, and opens the new journal's held lessons as optional cells for 7 days (the "a week late" row); the undo of a move is refused once the new journals hold entries of the student (the "a mistake" row).
+  - From 3.3b (pull request #96, decision 2): the journal side of a return (`edge`, "A student returns"): "In the same quarter and class: one row, with the gap closed. Into another class: handled like a transfer. In a later year: nothing is carried into the journals". The return writes no `student_moves` row; its class row has the cause `return`, and a return into the class left gives back the group the leaving cut.
 
 - [ ] **8.7 Lesson status, reminders and the discipline report**
   - Read: `07` (Lesson status, Reminders).

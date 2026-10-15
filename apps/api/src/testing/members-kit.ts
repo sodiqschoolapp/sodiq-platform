@@ -14,7 +14,7 @@ export interface MemberRow {
   from: string;
   until?: string;
   ownUntil?: string;
-  cause?: 'placement' | 'create' | 'cancel' | 'undo' | 'transfer';
+  cause?: 'placement' | 'create' | 'cancel' | 'undo' | 'transfer' | 'return' | 'restore';
   endedBy?: 'leaving' | 'transfer' | 'undone' | null;
   leavingId?: string | null;
   /** Task 3.3a: the move that wrote the row, and the one that ended it. */
@@ -236,11 +236,19 @@ export class MembersKit {
       .executeTakeFirstOrThrow();
   }
 
-  /** The stored dates of a membership row. */
+  /** The stored dates and cause of a membership row. */
   rowOf(id: string) {
     return this.migrator
       .selectFrom('class_memberships')
-      .select(['valid_from', 'valid_until', 'own_until', 'ended_by', 'leaving_id', 'branch_id'])
+      .select([
+        'valid_from',
+        'valid_until',
+        'own_until',
+        'ended_by',
+        'leaving_id',
+        'branch_id',
+        'cause',
+      ])
       .where('id', '=', id)
       .executeTakeFirstOrThrow();
   }

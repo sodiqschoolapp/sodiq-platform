@@ -6,12 +6,15 @@ import {
   studentNameKey,
   studentNameSchema,
   studentRecordSchema,
+  studentRestoreSchema,
+  studentReturnSchema,
   studentUidCorrectionSchema,
   uidOutsideSet,
   uidSetFor,
   uidSetOf,
   uidYearOf,
 } from './students.js';
+import { errorCodeSchema } from './errors.js';
 
 const record = {
   firstName: 'Oʻtkir',
@@ -224,5 +227,43 @@ describe('uidYearOf and uidSetFor (task 2.7b-1, decision 7)', () => {
   it('names the set of the grade in that year', () => {
     expect(uidSetFor(5, { startDate: '2026-09-01' })).toBe('2605');
     expect(uidSetFor(6, { startDate: '2027-09-01' })).toBe('2605');
+  });
+});
+
+describe('the return and the restore name a class (task 3.3b, decision 13)', () => {
+  const classId = '0192e0a4-0000-7000-8000-000000000001';
+  const returning = {
+    from: '2026-10-08',
+    grade: 7,
+    classId,
+    contract: { number: 'SQ-2026/100', signedOn: '2026-10-08' },
+    reason: null,
+    version: 3,
+  };
+
+  it('needs the class of a return, with an optional confirmation of the language', () => {
+    expect(studentReturnSchema.parse(returning)).toEqual(returning);
+    expect(studentReturnSchema.parse({ ...returning, confirmLanguage: true }).confirmLanguage).toBe(
+      true,
+    );
+    expect(studentReturnSchema.safeParse({ ...returning, classId: undefined }).success).toBe(false);
+    expect(studentReturnSchema.safeParse({ ...returning, classId: 'oxford' }).success).toBe(false);
+    expect(studentReturnSchema.safeParse({ ...returning, confirmLanguage: 'yes' }).success).toBe(
+      false,
+    );
+  });
+
+  it('needs the class of a restore and takes no grade', () => {
+    const restoring = { from: '2026-10-01', classId, reason: 'Graduated by mistake.', version: 3 };
+    expect(studentRestoreSchema.parse(restoring)).toEqual(restoring);
+    expect(studentRestoreSchema.safeParse({ ...restoring, classId: undefined }).success).toBe(
+      false,
+    );
+    expect(studentRestoreSchema.safeParse({ ...restoring, grade: 8 }).success).toBe(false);
+  });
+
+  it('has the codes of its two refusals', () => {
+    expect(errorCodeSchema.parse('return_language_differs')).toBe('return_language_differs');
+    expect(errorCodeSchema.parse('return_outside_year')).toBe('return_outside_year');
   });
 });

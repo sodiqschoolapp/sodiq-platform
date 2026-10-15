@@ -33,8 +33,18 @@ import {
   CLASS_GROUP_REFUSALS,
   coverClassRows,
   lockClassGroups,
+  lockPlacementGroups,
   type GroupRowWritten,
 } from '../classes/class-groups.js';
+import {
+  lockPlacementStudents,
+  planPlacement,
+  readPlacementClass,
+  writePlacement,
+  type PlacementClass,
+} from '../classes/class-placement.js';
+import { notFound } from '../setup/setup-refusals.js';
+import { atClassFields, classLeft, groupsLeavingCut } from './return-class.js';
 import {
   holdsData,
   planCancelLeaving,
@@ -96,6 +106,24 @@ function branchOf(access: Access): string {
   return access.branchId;
 }
 
+/** The class read by `before`; `also` runs only after it. */
+function placedBy(placement: PlacementClass | undefined): PlacementClass {
+  if (placement === undefined) {
+    throw new Error('The class of the change is read before the change.');
+  }
+  return placement;
+}
+
+/** The leaving a return ends: the inactive row it cuts and its first inactive day. */
+function leavingEnded(context: {
+  rows: readonly StoredStudentStatus[];
+  outcome: StudentStatusPlan;
+}): { id: string; from: string } | null {
+  const cut = context.outcome.cuts[0];
+  const row = cut === undefined ? undefined : context.rows.find((one) => one.id === cut.id);
+  return row === undefined ? null : { id: row.id, from: row.validFrom };
+}
+
 /** What a status route adds to the plan: the audit entry, and any other write of the change. */
 interface StatusChange {
   action: AuditAction;
@@ -103,8 +131,23 @@ interface StatusChange {
   plan: (rows: readonly StoredStudentStatus[], today: string) => StudentStatusOutcome;
   newValue: Record<string, unknown>;
   reason: string | null;
-  /** Writes of the change besides the status rows (the contract and grade of a return). */
-  also?: (transaction: Transaction) => Promise<void>;
+  /** Read before the student is locked and before any write (the class of a return, task 3.3b). */
+  before?: (transaction: Transaction) => Promise<void>;
+  /**
+   * Writes of the change besides the status rows (the contract, grade and
+   * class of a return), after them; what it answers joins the audit entry
+   * and the answer.
+   */
+  also?: (
+    transaction: Transaction,
+    context: { rows: readonly StoredStudentStatus[]; outcome: StudentStatusPlan },
+  ) => Promise<ChangeAlso | undefined>;
+}
+
+/** What the class of a return or a restore adds to the audit entry and to the answer. */
+interface ChangeAlso {
+  newValue: Record<string, unknown>;
+  groupsPlaced: { studentId: string; groupId: string; subjectId: string }[];
 }
 
 /**
@@ -177,8 +220,9 @@ export class StudentStatuses {
 
   /**
    * Coming back from the Inactive list with a new contract, into the grade
-   * the student returns to (decision 7); the UID and every earlier row and
-   * contract stay.
+   * the student returns to (decision 7) and into a class from the return date
+   * (task 3.3b: `04`, Movements, "is placed in a class from the return
+   * date"); the UID and every earlier row and contract stay.
    */
   returnStudent(
     access: Access,
@@ -187,52 +231,241 @@ export class StudentStatuses {
     requestId: string,
   ): Promise<StudentDetail> {
     const branchId = branchOf(access);
-    return this.students.refusingTaken(access, () =>
-      this.change(access, id, requestId, {
-        action: 'student.return',
-        version: input.version,
-        plan: (rows, today) => planReturn(rows, input.from, input.reason, today),
-        newValue: { from: input.from, grade: input.grade, contract: input.contract },
-        reason: input.reason,
-        also: async (transaction) => {
-          // The grade of a return is part of the return (`04`, Movements), under
-          // `archive`; the Super Admin and the Academic Vice Principal hold both
-          // `archive` and `edit` of `students`, and a test pins it.
-          await transaction
-            .updateTable('students')
-            .set({ grade: input.grade })
-            .where('id', '=', id)
-            .execute();
-          await this.students.inserting({ 'contract.number': input.contract.number }, () =>
-            transaction
-              .insertInto('student_contracts')
-              .values({
-                student_id: id,
-                branch_id: branchId,
-                number: input.contract.number,
-                signed_on: input.contract.signedOn,
-              })
-              .execute(),
-          );
-        },
-      }),
+    let placement: PlacementClass | undefined;
+    return atClassFields(() =>
+      this.students.refusingTaken(access, () =>
+        this.change(access, id, requestId, {
+          action: 'student.return',
+          version: input.version,
+          before: async (transaction) => {
+            placement = await this.classOfBody(transaction, branchId, input.classId);
+          },
+          plan: (rows, today) => planReturn(rows, input.from, input.reason, today),
+          newValue: {
+            from: input.from,
+            grade: input.grade,
+            contract: input.contract,
+            classId: input.classId,
+          },
+          reason: input.reason,
+          also: async (transaction, context) => {
+            // The grade of a return is part of the return (`04`, Movements), under
+            // `archive`; the Super Admin and the Academic Vice Principal hold both
+            // `archive` and `edit` of `students`, and a test pins it.
+            await transaction
+              .updateTable('students')
+              .set({ grade: input.grade })
+              .where('id', '=', id)
+              .execute();
+            await this.students.inserting({ 'contract.number': input.contract.number }, () =>
+              transaction
+                .insertInto('student_contracts')
+                .values({
+                  student_id: id,
+                  branch_id: branchId,
+                  number: input.contract.number,
+                  signed_on: input.contract.signedOn,
+                })
+                .execute(),
+            );
+            return this.placeBack(transaction, access, requestId, id, placedBy(placement), {
+              from: input.from,
+              cause: 'return',
+              leaving: leavingEnded(context),
+              confirmLanguage: input.confirmLanguage === true,
+            });
+          },
+        }),
+      ),
     );
   }
 
-  /** The Super Admin's restore of a graduated student, with a reason. */
+  /**
+   * The Super Admin's restore of a graduated student, with a reason, into a
+   * class (edge: "restores the student to active with a class and a reason";
+   * task 3.3b): the student takes the class's grade (decision 6). No
+   * confirmation of the language is asked (correction to decision 2).
+   */
   restore(
     access: Access,
     id: string,
     input: StudentRestore,
     requestId: string,
   ): Promise<StudentDetail> {
-    return this.change(access, id, requestId, {
-      action: 'student.graduate_restored',
-      version: input.version,
-      plan: (rows, today) => planRestore(rows, input.from, input.reason, today),
-      newValue: { from: input.from },
-      reason: input.reason,
-    });
+    const branchId = branchOf(access);
+    let placement: PlacementClass | undefined;
+    return atClassFields(() =>
+      this.change(access, id, requestId, {
+        action: 'student.graduate_restored',
+        version: input.version,
+        before: async (transaction) => {
+          placement = await this.classOfBody(transaction, branchId, input.classId);
+        },
+        plan: (rows, today) => planRestore(rows, input.from, input.reason, today),
+        newValue: { from: input.from, classId: input.classId },
+        reason: input.reason,
+        also: async (transaction) => {
+          const named = placedBy(placement);
+          // The grade of the class (decision 6), under `student_graduates`
+          // `edit`; the Super Admin also holds `students` `edit`, and a test
+          // pins it. `students_grade_class` (0045) checks it.
+          await transaction
+            .updateTable('students')
+            .set({ grade: named.grade })
+            .where('id', '=', id)
+            .execute();
+          const placed = await this.placeBack(transaction, access, requestId, id, named, {
+            from: input.from,
+            cause: 'restore',
+            leaving: null,
+            confirmLanguage: false,
+          });
+          return { ...placed, newValue: { grade: named.grade, ...placed.newValue } };
+        },
+      }),
+    );
+  }
+
+  /**
+   * The class named in the body of a return or a restore, read before the
+   * student is locked and before any write: another branch's or an unknown
+   * one is 404, also for the Super Admin (`.claude/rules/api.md`).
+   */
+  private async classOfBody(
+    transaction: Transaction,
+    branchId: string,
+    classId: string,
+  ): Promise<PlacementClass> {
+    const found = await readPlacementClass(transaction, classId);
+    if (found === undefined || found.branchId.toLowerCase() !== branchId.toLowerCase()) {
+      throw notFound();
+    }
+    return found;
+  }
+
+  /**
+   * The class row of a return or a restore and its groups (task 3.3b), after
+   * the status rows, grade and contract are written: the class FOR UPDATE and
+   * read again after the lock (decision 9), every class rule checked again
+   * by the placement plan of "Put into a class" for the one student, the
+   * language of the class left confirmed (a return, decision 2), the groups
+   * FOR UPDATE, the class row written with its cause and every split or
+   * group subject covered, the group the leaving cut first on a return into
+   * the class left (decision 5 with correction 1), all or none. Lock order:
+   * the student, the class, the groups.
+   */
+  private async placeBack(
+    transaction: Transaction,
+    access: Access,
+    requestId: string,
+    id: string,
+    named: PlacementClass,
+    input: {
+      from: string;
+      cause: 'return' | 'restore';
+      /** The leaving the return ends: its row and first inactive day. */
+      leaving: { id: string; from: string } | null;
+      confirmLanguage: boolean;
+    },
+  ): Promise<ChangeAlso> {
+    await classesInService(transaction, [named.id]);
+    const placement = await readPlacementClass(transaction, named.id);
+    if (placement === undefined) {
+      throw notFound();
+    }
+    const student = (await lockPlacementStudents(transaction, [id])).get(id);
+    if (student === undefined) {
+      throw notFound();
+    }
+    const rows = await planPlacement(
+      transaction,
+      placement,
+      [{ student, version: null }],
+      input.from,
+    );
+    const left =
+      input.leaving === null
+        ? undefined
+        : classLeft(
+            student.memberships,
+            input.leaving.from,
+            cancelledOf(await movesOf(transaction, id)),
+          );
+    let languageConfirmed = false;
+    if (left !== undefined) {
+      const languages = await transaction
+        .selectFrom('classes')
+        .select(['id', 'language'])
+        .where('id', 'in', [left.classId, placement.id])
+        .execute();
+      const languageOf = (classId: string) =>
+        languages.find((one) => one.id.toLowerCase() === classId.toLowerCase())?.language;
+      if (languageOf(left.classId) !== languageOf(placement.id)) {
+        if (!input.confirmLanguage) {
+          throw new ApiException('return_language_differs', 409);
+        }
+        languageConfirmed = true;
+      }
+    }
+    const groups = await lockPlacementGroups(transaction, [placement.id], [id]);
+    const [membershipId] = await writePlacement(
+      transaction,
+      this.audit,
+      access,
+      placement,
+      rows,
+      input.cause,
+      requestId,
+    );
+    const intoLeft =
+      input.leaving !== null &&
+      left !== undefined &&
+      left.classId.toLowerCase() === placement.id.toLowerCase();
+    const covered = await coverClassRows(
+      transaction,
+      this.audit,
+      access,
+      {
+        classRows: rows.map((row) => ({
+          index: 0,
+          row: {
+            studentId: row.studentId,
+            classId: placement.id,
+            from: row.from,
+            until: row.until,
+            ownUntil: placement.ownUntil,
+            leavingId: row.leavingId,
+          },
+        })),
+        giveBack: null,
+        groups,
+        pathOf: () => 'classId',
+        ...(intoLeft && input.leaving !== null
+          ? {
+              // Keyed by the stored id, as `planClassGroups` reads it (spec review, should-fix 6).
+              preferred: new Map([
+                [
+                  student.id,
+                  groupsLeavingCut(await groupMembershipsOf(transaction, id), input.leaving.id),
+                ],
+              ]),
+            }
+          : {}),
+      },
+      requestId,
+    );
+    return {
+      newValue: {
+        classMembershipId: membershipId ?? null,
+        ...(input.cause === 'return' ? { languageConfirmed } : {}),
+        groupsPlaced: covered.automatic.length,
+      },
+      groupsPlaced: covered.automatic.map((row) => ({
+        studentId: row.studentId,
+        groupId: row.groupId,
+        subjectId: row.subjectId,
+      })),
+    };
   }
 
   /**
@@ -339,6 +572,7 @@ export class StudentStatuses {
     const branchId = branchOf(access);
     return guarded(() =>
       this.transactions.run(access.branchIds, async (transaction) => {
+        await change.before?.(transaction);
         const student = await this.students.lockStudent(transaction, id);
         const rows = (await this.students.statusRowsOf(transaction, id)).get(id) ?? [];
         const memberships = await membershipsOf(transaction, id);
@@ -363,7 +597,7 @@ export class StudentStatuses {
           written,
           change.action === 'student.leave_undone' ? 'undo' : 'cancel',
         );
-        await change.also?.(transaction);
+        const also = await change.also?.(transaction, { rows, outcome });
         await this.audit.record(transaction, {
           branchId,
           actorId: access.accountId,
@@ -374,6 +608,7 @@ export class StudentStatuses {
           oldValue: asJson({ statuses: rows, grade: student.grade }),
           newValue: asJson({
             ...change.newValue,
+            ...also?.newValue,
             cuts: outcome.cuts,
             writes: outcome.writes,
             ...(classes === null
@@ -390,6 +625,9 @@ export class StudentStatuses {
           requestId,
         });
         const detail = await this.students.readDetail(transaction, access, id);
+        if (also !== undefined) {
+          return { ...detail, groupsPlaced: also.groupsPlaced };
+        }
         return classes === null || classes.notRestored.length === 0
           ? detail
           : { ...detail, classesNotRestored: classes.notRestored };

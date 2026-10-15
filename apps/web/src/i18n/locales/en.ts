@@ -247,7 +247,7 @@ export const en = {
     class_grade_differs:
       "The class is of another grade than the student. Choose a class of the student's grade.",
     class_full:
-      'The class does not have enough free seats on some day from that date. Raise its maximum size or choose fewer students.',
+      'The class does not have enough free seats on some day from that date. Raise its maximum size, or choose another class or fewer students.',
     membership_outside_year:
       'The date is outside the academic year of the class. Choose a date within the year.',
     membership_before_start:
@@ -338,6 +338,10 @@ export const en = {
       'The student is already in that class or group on that date. Choose another one.',
     class_language_differs:
       'The two classes teach in different languages. Confirm the move to go on.',
+    return_language_differs:
+      'The class the student left teaches in another language than this class. Confirm to go on.',
+    return_outside_year:
+      'The date is not in the academic year of this class. A return or a restore is dated today or earlier, on a day of the class’s year: choose a class of the current year.',
     group_transfer_subject: 'That group is of another subject. Choose a group of the same subject.',
     request_refused: 'The request was refused. Try again or ask an administrator.',
     already_exists: 'A record of this name already exists here. Choose another name.',
@@ -1427,6 +1431,12 @@ export const en = {
       restoreFrom: 'Active from',
       returnConfirmTitle: 'Bring this student back?',
       returnConfirmText: 'The new contract is kept for good, and its number is never given again.',
+      returnNoClass: 'No class of this grade is in an academic year on that date.',
+      restoreNoClass: 'No class is in an academic year on that date.',
+      restoreClassNote: 'The student takes the grade of the class.',
+      returnLanguageTitle: 'Another language of instruction',
+      returnLanguageText:
+        'The class the student left teaches in another language than the class chosen. Return the student into it anyway?',
       restoreConfirmTitle: 'Restore this graduated student to active?',
       restoreConfirmText: 'The student is active again from the date chosen.',
       deleteTitle: 'Delete a student created twice',

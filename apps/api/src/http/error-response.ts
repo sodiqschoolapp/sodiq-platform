@@ -237,6 +237,10 @@ const MESSAGE: Record<ErrorCode, string> = {
   move_no_membership: 'The student is in no class or group of the subject on that date.',
   move_same_target: 'The student is already in that class or group on that date.',
   class_language_differs: 'The two classes differ in language of instruction.',
+  return_language_differs:
+    'The class left differs in language of instruction from the class of the return.',
+  return_outside_year:
+    'The date of the return or restore is outside the academic year of the class.',
   group_transfer_subject: 'The group is of another subject.',
   request_refused: 'The request was refused.',
   internal_error: 'Something went wrong on the server.',

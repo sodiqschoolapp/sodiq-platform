@@ -534,6 +534,20 @@ export const studentDetailSchema = studentListItemSchema.extend({
    * meanwhile, or in a closed year (decision 1). Answered by those changes only.
    */
   classesNotRestored: z.array(classNotRestoredSchema).optional(),
+  /**
+   * The class the student left, which the return form offers first (task
+   * 3.3b): answered to a reader who may return the student, while the
+   * student is inactive; `null` when no class was left.
+   */
+  classLeft: studentClassSchema.nullable().optional(),
+  /**
+   * The groups a return or a graduate restore placed automatically, tagged
+   * for review (task 3.3b): the notice of "Put into a class". Answered by those
+   * changes only.
+   */
+  groupsPlaced: z
+    .array(z.object({ studentId: z.uuid(), groupId: z.uuid(), subjectId: z.uuid() }))
+    .optional(),
   /** Edit and UID correction: the Super Admin and the Academic Vice Principal. */
   canEdit: z.boolean(),
   /** Leave, cancel, undo, return and delete (task 2.4b-1). */
@@ -648,8 +662,12 @@ export type StudentUndoLeaving = z.infer<typeof studentUndoLeavingSchema>;
 export const studentReturnSchema = z.strictObject({
   from: schoolDateSchema,
   grade: studentGradeSchema,
+  /** The class the student comes back to, from `from` (task 3.3b, decision 13). */
+  classId: z.uuid(),
   contract: studentContractSchema,
   reason: statusReasonSchema.nullable(),
+  /** The class left teaches in another language: the return is confirmed (task 3.3b, decision 2). */
+  confirmLanguage: z.boolean().optional(),
   version: versionSchema,
 });
 
@@ -658,6 +676,8 @@ export type StudentReturn = z.infer<typeof studentReturnSchema>;
 /** Edge: "A student is graduated by mistake. The Super Admin restores the student to active ... and a reason." */
 export const studentRestoreSchema = z.strictObject({
   from: schoolDateSchema,
+  /** The class the student is restored into; the student takes its grade (task 3.3b, decision 6). */
+  classId: z.uuid(),
   reason: statusReasonSchema,
   version: versionSchema,
 });

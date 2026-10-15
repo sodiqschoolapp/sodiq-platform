@@ -1001,6 +1001,8 @@ describe('close relatives', () => {
       const back = await t.post(`/api/people/students/${created.id}/return`, t.north, {
         from: '2026-10-05',
         grade: 8,
+        // Task 3.3b: a return names its class.
+        classId: await t.classOf(t.north, 8, '2026-10-05'),
         contract: { number: `RL-BACK/${String(count)}`, signedOn: '2026-10-05' },
         reason: null,
         version: studentDetailSchema.parse(left.body).version,

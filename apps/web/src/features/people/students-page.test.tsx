@@ -202,6 +202,35 @@ const CLASSES: SchoolClass[] = [
   schoolClass(52, { name: 'Yale', archived: true }),
 ];
 
+/** The year of the classes (task 3.1b). */
+const YEARS = {
+  years: [
+    {
+      id: uid(60),
+      name: '2026–2027',
+      startDate: '2026-09-01',
+      endDate: '2027-05-31',
+      status: 'current',
+      quarters: [],
+    },
+  ],
+};
+
+/**
+ * What a return or a restore form reads (task 3.3b): the classes, the year
+ * and the Students tab of a class chosen, with its fewest free seats.
+ */
+const CLASS_CHOICE: Record<string, (body: unknown) => Response> = {
+  'GET /api/classes': () => json({ classes: CLASSES }),
+  'GET /api/setup/academic-years': () => json(YEARS),
+  ...Object.fromEntries(
+    CLASSES.map((one) => [
+      `GET /api/classes/${one.id}/members`,
+      () => json({ members: [], freeToday: 3, freeLeast: 2, today: '2026-10-10' }),
+    ]),
+  ),
+};
+
 function openList(
   role: Role,
   extra: Record<string, (body: unknown) => Response> = {},
@@ -1105,8 +1134,9 @@ describe('leaving, return and delete', () => {
     expect(rowsDrawn()[0]?.[6]).toContain(ru.people.students.inactiveFrom.split(' ')[0] ?? '');
   });
 
-  it('brings an inactive student back with a new contract', async () => {
+  it('brings an inactive student back with a new contract and a class', async () => {
     const calls = fakeApi({
+      ...CLASS_CHOICE,
       'GET /api/auth/session': () => json(sessionAs('academic_vice_principal')),
       'GET /api/people/students': () =>
         json({
@@ -1159,15 +1189,19 @@ describe('leaving, return and delete', () => {
     };
     type(en.people.students.returnFrom, '2026-10-05');
     type(en.people.students.grade, '8');
+    // Task 3.3b: the class of grade 8 in the year of the date.
+    await within(form).findByRole('option', { name: '8 Princeton' });
+    type(en.people.students.class, uid(51));
     type(en.people.students.contractNumber, 'SQ-2026/120');
     type(en.people.students.contractSignedOn, '2026-10-05');
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
-    // A return cannot be undone: it asks first, naming the student.
+    // A return cannot be undone: it asks first, naming the student and the class.
     const dialog = await screen.findByRole('alertdialog', {
       name: en.people.students.returnConfirmTitle,
     });
     expect(calls.some((call) => call.route.endsWith('/return'))).toBe(false);
     expect(within(dialog).getByText('Lola Karimova')).toBeDefined();
+    expect(within(dialog).getByText('8 Princeton')).toBeDefined();
     fireEvent.click(within(dialog).getByRole('button', { name: en.people.students.returnTitle }));
     await waitFor(() => {
       expect(calls.some((call) => call.route.endsWith('/return'))).toBe(true);
@@ -1175,6 +1209,7 @@ describe('leaving, return and delete', () => {
     expect(calls.find((call) => call.route.endsWith('/return'))?.body).toEqual({
       from: '2026-10-05',
       grade: 8,
+      classId: uid(51),
       contract: { number: 'SQ-2026/120', signedOn: '2026-10-05' },
       reason: null,
       version: 2,
@@ -1620,6 +1655,7 @@ describe('the Status section', () => {
       GRADUATED,
       graduatedDetail({ canRestoreGraduated: true }),
       {
+        ...CLASS_CHOICE,
         [`POST /api/people/students/${GRADUATED.id}/restore`]: () =>
           json(detailOf({ ...GRADUATED, status: 'active', version: 3 })),
       },
@@ -1635,6 +1671,14 @@ describe('the Status section', () => {
     expect(
       within(form).getByLabelText<HTMLInputElement>(en.people.students.restoreFrom).value,
     ).toBe('2026-06-01');
+    // Task 3.3b: in the summer no class is in a year; a day of the year offers every grade.
+    fireEvent.change(within(form).getByLabelText(en.people.students.restoreFrom), {
+      target: { value: '2026-10-01' },
+    });
+    await within(form).findByRole('option', { name: '7 Oxford' });
+    fireEvent.change(within(form).getByLabelText(en.people.students.class), {
+      target: { value: uid(51) },
+    });
     fireEvent.change(within(form).getByLabelText(en.people.students.reason), {
       target: { value: 'Graduated by mistake' },
     });
@@ -1649,7 +1693,8 @@ describe('the Status section', () => {
       expect(calls.some((call) => call.route.endsWith('/restore'))).toBe(true);
     });
     expect(calls.find((call) => call.route.endsWith('/restore'))?.body).toEqual({
-      from: '2026-06-01',
+      from: '2026-10-01',
+      classId: uid(51),
       reason: 'Graduated by mistake',
       version: 2,
     });
@@ -2491,5 +2536,324 @@ describe('the student list of a Tutor', () => {
       await screen.findByText('1 row is not in the file, because it is outside your classes.'),
     ).toBeDefined();
     vi.restoreAllMocks();
+  });
+});
+
+// Task 3.3b, pull request #96: the class of a return and of a graduate
+// restore (04, Movements: "is placed in a class from the return date"; edge:
+// "restores the student to active with a class and a reason").
+describe('the class of a return and of a restore', () => {
+  const OXFORD_LEFT = {
+    id: uid(50),
+    grade: 7,
+    name: 'Oxford',
+    language: 'uz' as const,
+    from: '2026-09-02',
+    until: '2026-10-01',
+  };
+  const inactive = (fields: Partial<StudentDetail> = {}) =>
+    detailOf(LOLA, {
+      canArchive: true,
+      statuses: [
+        { status: 'active', from: '2026-09-02', until: '2026-10-01', cause: 'start', reason: null },
+        { status: 'inactive', from: '2026-10-01', until: null, cause: 'leaving', reason: 'Moved' },
+      ],
+      classLeft: OXFORD_LEFT,
+      ...fields,
+    });
+  const CLASSES_OF_TWO = [
+    ...CLASSES,
+    // A second class of grade 7, in Russian.
+    schoolClass(53, { name: 'Harvard', language: 'ru' }),
+  ];
+
+  function openReturn(
+    extra: Record<string, (body: unknown) => Response> = {},
+    detail: StudentDetail = inactive(),
+    language: 'en' | 'ru' = 'en',
+  ) {
+    return fakeApi({
+      ...CLASS_CHOICE,
+      'GET /api/classes': () => json({ classes: CLASSES_OF_TWO }),
+      [`GET /api/classes/${uid(53)}/members`]: () =>
+        json({ members: [], freeToday: 1, freeLeast: 0, today: '2026-10-10' }),
+      'GET /api/auth/session': () => json(sessionAs('academic_vice_principal', language)),
+      'GET /api/people/students': () =>
+        json({
+          students: [LOLA],
+          canArchive: true,
+          exportGroups: [],
+          readsFinancial: false,
+          today: '2026-10-10',
+        }),
+      [`GET /api/people/students/${LOLA.id}`]: () => json(detail),
+      ...extra,
+    });
+  }
+
+  async function returnForm(language: 'en' | 'ru' = 'en') {
+    const texts = language === 'en' ? en : ru;
+    renderApp(`${PATH}?open=${LOLA.id}`, language);
+    const panel = await screen.findByRole('complementary', { name: 'Lola Karimova' });
+    await within(panel).findByRole('heading', { name: texts.people.students.statusTitle });
+    const form = await edit(
+      panel,
+      texts.people.students.returnTitle,
+      texts.people.students.returnTitle,
+    );
+    const field = (label: string) => within(form).getByLabelText<HTMLSelectElement>(label);
+    const type = (label: string, value: string) => {
+      fireEvent.change(field(label), { target: { value } });
+    };
+    return { panel, form, field, type };
+  }
+
+  /** The options of a select, by their text, without the "choose" line. */
+  const optionsOf = (select: HTMLSelectElement) =>
+    [...select.options].filter((one) => one.value !== '').map((one) => one.textContent);
+
+  it('offers only the active classes of the chosen grade, the class left first, and clears a class that no longer fits', async () => {
+    openReturn();
+    const { form, field, type } = await returnForm();
+    type(en.people.students.returnFrom, '2026-10-05');
+    await waitFor(() => {
+      expect(field(en.people.students.class).value).toBe(uid(50));
+    });
+    // 7 Oxford and 7 Harvard; not the archived 7 Yale, not 8 Princeton.
+    expect(optionsOf(field(en.people.students.class))).toEqual(['7 Harvard', '7 Oxford']);
+    expect(await within(form).findByText(en.classes.freeLeast.replace('{{n}}', '2'))).toBeDefined();
+    type(en.people.students.class, uid(53));
+    type(en.people.students.grade, '8');
+    await waitFor(() => {
+      expect(field(en.people.students.class).value).toBe('');
+    });
+    expect(optionsOf(field(en.people.students.class))).toEqual(['8 Princeton']);
+  });
+
+  it('switches the field off with its line when no class is in a year on the date', async () => {
+    openReturn();
+    const { form, field, type } = await returnForm();
+    type(en.people.students.returnFrom, '2026-08-20');
+    await waitFor(() => {
+      expect(field(en.people.students.class).disabled).toBe(true);
+    });
+    expect(within(form).getByText(en.people.students.returnNoClass)).toBeDefined();
+  });
+
+  it('asks to confirm another language than the class left, naming both, then sends the confirmation', async () => {
+    const bodies: unknown[] = [];
+    openReturn({
+      [`POST /api/people/students/${LOLA.id}/return`]: (body) => {
+        bodies.push(body);
+        return bodies.length === 1
+          ? json(
+              {
+                error: {
+                  code: 'return_language_differs',
+                  message: 'Differs.',
+                  requestId: 'r',
+                  details: [{ path: 'classId', code: 'return_language_differs', message: 'x' }],
+                },
+              },
+              409,
+            )
+          : json(detailOf({ ...LOLA, status: 'active', version: 4 }, { canArchive: true }));
+      },
+    });
+    const { form, type } = await returnForm();
+    type(en.people.students.returnFrom, '2026-10-05');
+    await within(form).findByRole('option', { name: '7 Harvard' });
+    type(en.people.students.class, uid(53));
+    type(en.people.students.contractNumber, 'SQ-2026/130');
+    type(en.people.students.contractSignedOn, '2026-10-05');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    fireEvent.click(
+      within(
+        await screen.findByRole('alertdialog', { name: en.people.students.returnConfirmTitle }),
+      ).getByRole('button', { name: en.people.students.returnTitle }),
+    );
+    const asked = await screen.findByRole('alertdialog', {
+      name: en.people.students.returnLanguageTitle,
+    });
+    expect(within(asked).getByText('7 Oxford')).toBeDefined();
+    expect(within(asked).getByText('7 Harvard')).toBeDefined();
+    fireEvent.click(within(asked).getByRole('button', { name: en.people.students.returnTitle }));
+    await waitFor(() => {
+      expect(bodies).toHaveLength(2);
+    });
+    expect(bodies[0]).not.toHaveProperty('confirmLanguage');
+    expect(bodies[1]).toMatchObject({ classId: uid(53), confirmLanguage: true });
+  });
+
+  it('sends nothing more and keeps the form when the language question is declined', async () => {
+    const bodies: unknown[] = [];
+    openReturn({
+      [`POST /api/people/students/${LOLA.id}/return`]: (body) => {
+        bodies.push(body);
+        return json(
+          {
+            error: {
+              code: 'return_language_differs',
+              message: 'Differs.',
+              requestId: 'r',
+              details: [{ path: 'classId', code: 'return_language_differs', message: 'x' }],
+            },
+          },
+          409,
+        );
+      },
+    });
+    const { form, type } = await returnForm();
+    type(en.people.students.returnFrom, '2026-10-05');
+    await within(form).findByRole('option', { name: '7 Harvard' });
+    type(en.people.students.class, uid(53));
+    type(en.people.students.contractNumber, 'SQ-2026/133');
+    type(en.people.students.contractSignedOn, '2026-10-05');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    fireEvent.click(
+      within(
+        await screen.findByRole('alertdialog', { name: en.people.students.returnConfirmTitle }),
+      ).getByRole('button', { name: en.people.students.returnTitle }),
+    );
+    const asked = await screen.findByRole('alertdialog', {
+      name: en.people.students.returnLanguageTitle,
+    });
+    fireEvent.click(within(asked).getByRole('button', { name: en.confirm.cancel }));
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    });
+    expect(bodies).toHaveLength(1);
+    expect(within(form).getByRole('button', { name: en.form.save })).toBeDefined();
+    expect(form.isConnected).toBe(true);
+  });
+
+  it('shows a full class on the class field', async () => {
+    openReturn({
+      [`POST /api/people/students/${LOLA.id}/return`]: () =>
+        json(
+          {
+            error: {
+              code: 'class_full',
+              message: 'Full.',
+              requestId: 'r',
+              details: [{ path: 'classId', code: 'class_full', message: 'x', freeSeats: 0 }],
+            },
+          },
+          409,
+        ),
+    });
+    const { form, field, type } = await returnForm();
+    type(en.people.students.returnFrom, '2026-10-05');
+    await waitFor(() => {
+      expect(field(en.people.students.class).value).toBe(uid(50));
+    });
+    type(en.people.students.contractNumber, 'SQ-2026/131');
+    type(en.people.students.contractSignedOn, '2026-10-05');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    fireEvent.click(
+      within(
+        await screen.findByRole('alertdialog', { name: en.people.students.returnConfirmTitle }),
+      ).getByRole('button', { name: en.people.students.returnTitle }),
+    );
+    await waitFor(() => {
+      expect(field(en.people.students.class).getAttribute('aria-invalid')).toBe('true');
+    });
+    const described = field(en.people.students.class).getAttribute('aria-describedby') ?? '';
+    expect(
+      described
+        .split(' ')
+        .map((id) => document.getElementById(id)?.textContent)
+        .join(' '),
+    ).toContain(en.errors.class_full);
+  });
+
+  it('says how many groups the return placed for review', async () => {
+    openReturn({
+      [`POST /api/people/students/${LOLA.id}/return`]: () =>
+        json({
+          ...detailOf({ ...LOLA, status: 'active', version: 4 }, { canArchive: true }),
+          groupsPlaced: [{ studentId: LOLA.id, groupId: uid(70), subjectId: uid(71) }],
+        }),
+    });
+    const { panel, form, field, type } = await returnForm();
+    type(en.people.students.returnFrom, '2026-10-05');
+    await waitFor(() => {
+      expect(field(en.people.students.class).value).toBe(uid(50));
+    });
+    type(en.people.students.contractNumber, 'SQ-2026/132');
+    type(en.people.students.contractSignedOn, '2026-10-05');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    fireEvent.click(
+      within(
+        await screen.findByRole('alertdialog', { name: en.people.students.returnConfirmTitle }),
+      ).getByRole('button', { name: en.people.students.returnTitle }),
+    );
+    const notice = await within(panel).findByRole('status', {
+      name: (_name, element) => element.textContent?.includes(en.classes.reviewGroups) === true,
+    });
+    expect(notice.textContent).toContain(en.classes.groupsPlaced_one.replace('{{n}}', '1'));
+  });
+
+  it('offers every grade to the restore, with the line that the student takes its grade', async () => {
+    fakeApi({
+      ...CLASS_CHOICE,
+      'GET /api/auth/session': () => json(sessionAs('super_admin')),
+      'GET /api/people/students': () =>
+        json({
+          students: [LOLA],
+          canArchive: true,
+          exportGroups: [],
+          readsFinancial: false,
+          today: '2026-10-10',
+        }),
+      [`GET /api/people/students/${LOLA.id}`]: () =>
+        json(
+          detailOf(
+            { ...LOLA, status: 'graduated' },
+            {
+              canRestoreGraduated: true,
+              statuses: [
+                {
+                  status: 'active',
+                  from: '2026-09-02',
+                  until: '2026-10-01',
+                  cause: 'start',
+                  reason: null,
+                },
+                {
+                  status: 'graduated',
+                  from: '2026-10-01',
+                  until: null,
+                  cause: 'graduation',
+                  reason: null,
+                },
+              ],
+            },
+          ),
+        ),
+    });
+    renderApp(`${PATH}?open=${LOLA.id}`);
+    const panel = await screen.findByRole('complementary', { name: 'Lola Karimova' });
+    await within(panel).findByRole('heading', { name: en.people.students.statusTitle });
+    const form = await edit(
+      panel,
+      en.people.students.restoreTitle,
+      en.people.students.restoreTitle,
+    );
+    const select = within(form).getByLabelText<HTMLSelectElement>(en.people.students.class);
+    await waitFor(() => {
+      expect(optionsOf(select)).toEqual(['7 Oxford', '8 Princeton']);
+    });
+    expect(within(form).getByText(en.people.students.restoreClassNote)).toBeDefined();
+  });
+
+  it('says in Russian that no class is in a year on the date', async () => {
+    openReturn({}, inactive(), 'ru');
+    const { form, field, type } = await returnForm('ru');
+    type(ru.people.students.returnFrom, '2026-08-20');
+    await waitFor(() => {
+      expect(field(ru.people.students.class).disabled).toBe(true);
+    });
+    expect(within(form).getByText(ru.people.students.returnNoClass)).toBeDefined();
   });
 });

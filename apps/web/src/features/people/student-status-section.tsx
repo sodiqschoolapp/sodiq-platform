@@ -1,4 +1,5 @@
 import {
+  classDisplayName,
   previousDay,
   studentDeleteSchema,
   studentLeavingSchema,
@@ -12,10 +13,12 @@ import {
   type StudentReturn,
   type StudentUndoLeaving,
 } from '@sodiq/shared';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { answerOf, ApiFailure } from '@/api/failure';
+import { failureText } from '@/api/failure-text';
 import { useConfirm } from '@/components/confirm-dialog';
 import { DateField, Field, SelectField } from '@/components/field';
 import { RecordForm } from '@/components/form/record-form';
@@ -26,6 +29,11 @@ import { takenOf, takenText } from './student-form';
 import { schoolDateText } from '@/lib/dates';
 import { SECTION_TITLE } from '@/components/ui/control';
 import type { PanelEditing } from '@/components/list/use-panel-editing';
+import { ErrorState } from '@/components/states';
+import { useView } from '@/features/access/use-view';
+import { GroupSeatRefusal } from '@/features/classes/class-members';
+import { classesQuery, classMembersQuery } from '@/features/classes/classes-api';
+import { yearsQuery } from '@/features/setup/setup-api';
 
 /** Every path of an issue is the field of the same name; a contract is two fields. */
 const fieldOf = (path: readonly PropertyKey[]): PropertyKey[] => {
@@ -277,9 +285,98 @@ export function UndoForm({ student, onChanged, onStale, onCancel }: ChangeFormPr
   );
 }
 
-type ReturnField = 'from' | 'grade' | 'contractNumber' | 'contractSignedOn' | 'reason';
+/**
+ * The text of a refusal that the server named on a field (task 3.3b,
+ * decision 11: the class rules answer at `classId` or `from`).
+ */
+function refusalOn(t: Parameters<typeof failureText>[0], failure: unknown, field: string) {
+  return failure instanceof ApiFailure && failure.details?.some((one) => one.path === field)
+    ? failureText(t, failure)
+    : undefined;
+}
 
-/** Coming back from the Inactive list: the first day back, the grade and a new contract. */
+/**
+ * The classes a return or a restore can name (task 3.3b): active, in the
+ * year that holds the date, of the grade when one is given; the choice kept
+ * follows them (`.claude/rules/web.md`): a class no longer offered falls back
+ * to `preferred` when that is offered, else to none. The note under the field
+ * is the fewest free seats of the class chosen from today on, or why nothing
+ * is offered.
+ */
+function useClassChoice(input: {
+  from: string;
+  grade: number | null;
+  preferred: string | null;
+  chosen: string;
+  choose: (value: string) => void;
+}) {
+  const { t } = useTranslation();
+  const { branchId } = useView();
+  const classes = useQuery({ ...classesQuery(branchId), enabled: branchId !== null });
+  const years = useQuery({ ...yearsQuery(branchId), enabled: branchId !== null });
+  const year = years.data?.years.find(
+    (one) => one.startDate <= input.from && input.from <= one.endDate,
+  );
+  const offered = (classes.data?.classes ?? [])
+    .filter(
+      (one) =>
+        input.from !== '' &&
+        !one.archived &&
+        one.yearStatus !== 'closed' &&
+        (input.grade === null || one.grade === input.grade) &&
+        one.academicYearId === year?.id,
+    )
+    .sort((a, b) => a.grade - b.grade || a.name.localeCompare(b.name));
+  const preferred =
+    input.preferred !== null && offered.some((one) => one.id === input.preferred)
+      ? input.preferred
+      : '';
+  const kept = input.chosen !== '' && offered.some((one) => one.id === input.chosen);
+  const { choose } = input;
+  const ready = classes.data !== undefined && years.data !== undefined;
+  useEffect(() => {
+    if (ready && !kept && input.chosen !== preferred) {
+      choose(preferred);
+    }
+  }, [ready, kept, input.chosen, preferred, choose]);
+  const members = useQuery({
+    ...classMembersQuery(branchId, input.chosen),
+    enabled: branchId !== null && kept,
+  });
+  const none = ready && input.from !== '' && offered.length === 0;
+  const note = none
+    ? t(input.grade === null ? 'people.students.restoreNoClass' : 'people.students.returnNoClass')
+    : kept && members.data !== undefined
+      ? t('classes.freeLeast', { n: members.data.freeLeast })
+      : undefined;
+  return {
+    offered,
+    none,
+    note,
+    /** The classes or the years could not be read: the field cannot be drawn. */
+    failed: classes.isError || years.isError,
+    error: classes.error ?? years.error,
+    retry: () => {
+      void classes.refetch();
+      void years.refetch();
+    },
+    /** The seats of the class chosen could not be read: said under the field, with a retry. */
+    seats: members,
+    nameOf: (id: string) => {
+      const found = offered.find((one) => one.id === id);
+      return found === undefined ? undefined : classDisplayName(found.grade, found.name);
+    },
+  };
+}
+
+type ReturnField = 'from' | 'grade' | 'classId' | 'contractNumber' | 'contractSignedOn' | 'reason';
+
+/**
+ * Coming back from the Inactive list: the first day back, the grade, the
+ * class from that day (task 3.3b: `04`, Movements, "is placed in a class from
+ * the return date"; the class left first) and a new contract. A class of
+ * another language than the class left is confirmed (decision 2).
+ */
 export function ReturnForm({
   student,
   label,
@@ -290,11 +387,13 @@ export function ReturnForm({
 }: ChangeFormProps & { holderText: (id: string) => string | null }) {
   const { t } = useTranslation();
   const confirm = useConfirm();
+  const left = student.classLeft ?? null;
   const form = useRecordForm<ReturnField, StudentReturn>({
     schema: RETURN_SCHEMA,
     initial: {
       from: '',
       grade: String(student.grade),
+      classId: '',
       contractNumber: '',
       contractSignedOn: '',
       reason: '',
@@ -302,50 +401,119 @@ export function ReturnForm({
     read: (typed) => ({
       from: typed.from,
       grade: Number(typed.grade),
+      classId: typed.classId,
       contract: { number: typed.contractNumber, signedOn: typed.contractSignedOn },
       reason: typed.reason.trim() === '' ? null : typed.reason,
       version: student.version,
     }),
     save: async (input) => {
+      const chosen = choice.nameOf(input.classId);
       const go = await confirm({
         title: t('people.students.returnConfirmTitle'),
         text: t('people.students.returnConfirmText'),
-        names: [label],
+        names: chosen === undefined ? [label] : [label, chosen],
         action: t('people.students.returnTitle'),
         destructive: false,
       });
       if (!go) {
         throw new SaveCancelled();
       }
+      const send = (confirmLanguage: boolean) =>
+        answerOf(
+          api.POST('/api/people/students/{id}/return', {
+            params: { header: branchHeader(), path: { id: student.id } },
+            body: { ...input, ...(confirmLanguage ? { confirmLanguage } : {}) },
+          }),
+        );
       await onChanged(
-        await sending(
-          () =>
-            answerOf(
-              api.POST('/api/people/students/{id}/return', {
-                params: { header: branchHeader(), path: { id: student.id } },
-                body: input,
-              }),
-            ),
-          onStale,
-        ),
+        await sending(async () => {
+          try {
+            return await send(false);
+          } catch (error) {
+            if (!(error instanceof ApiFailure) || error.code !== 'return_language_differs') {
+              throw error;
+            }
+            const sure = await confirm({
+              title: t('people.students.returnLanguageTitle'),
+              text: t('people.students.returnLanguageText'),
+              names: [
+                ...(left === null ? [] : [classDisplayName(left.grade, left.name)]),
+                ...(chosen === undefined ? [] : [chosen]),
+              ],
+              action: t('people.students.returnTitle'),
+              destructive: false,
+            });
+            if (!sure) {
+              throw new SaveCancelled();
+            }
+            return send(true);
+          }
+        }, onStale),
       );
     },
   });
   const taken = takenOf(form.failure);
   const contractNumber = form.bind('contractNumber');
+  const from = form.bind('from');
+  const grade = form.bind('grade');
+  const classId = form.bind('classId');
+  const { onChange: chooseClass } = classId;
+  const choice = useClassChoice({
+    from: from.value,
+    grade: Number(grade.value),
+    preferred: left?.id ?? null,
+    chosen: classId.value,
+    choose: useCallback(
+      (value: string) => {
+        chooseClass({ target: { value } });
+      },
+      [chooseClass],
+    ),
+  });
   return (
     <section className="grid gap-3">
       <h3 className={SECTION_TITLE}>{t('people.students.returnTitle')}</h3>
       <RecordForm form={form} label={t('people.students.returnTitle')} onCancel={onCancel}>
-        <DateField label={t('people.students.returnFrom')} {...form.bind('from')} />
+        <DateField
+          label={t('people.students.returnFrom')}
+          {...from}
+          error={from.error ?? refusalOn(t, form.failure, 'from')}
+        />
         <SelectField
           label={t('people.students.grade')}
           options={Array.from({ length: 11 }, (_unused, index) => ({
             value: String(index + 1),
             label: t('setup.subjects.grade', { grade: index + 1 }),
           }))}
-          {...form.bind('grade')}
+          {...grade}
         />
+        {choice.failed ? (
+          <ErrorState error={choice.error} onRetry={choice.retry} />
+        ) : (
+          <SelectField
+            label={t('people.students.class')}
+            options={[
+              { value: '', label: t('people.students.choose') },
+              ...choice.offered.map((one) => ({
+                value: one.id,
+                label: classDisplayName(one.grade, one.name),
+              })),
+            ]}
+            disabled={choice.none}
+            note={choice.note}
+            {...classId}
+            error={classId.error ?? refusalOn(t, form.failure, 'classId')}
+          />
+        )}
+        {choice.seats.isError && (
+          <ErrorState
+            error={choice.seats.error}
+            onRetry={() => {
+              void choice.seats.refetch();
+            }}
+          />
+        )}
+        <GroupSeatRefusal error={form.failure} />
         <Field
           label={t('people.students.contractNumber')}
           autoComplete="off"
@@ -365,19 +533,26 @@ export function ReturnForm({
   );
 }
 
-/** The Super Admin's restore of a graduated student, from a date with a reason. */
+type RestoreField = 'from' | 'classId' | 'reason';
+
+/**
+ * The Super Admin's restore of a graduated student, from a date into a class
+ * with a reason (edge: "restores the student to active with a class and a
+ * reason"); the student takes the grade of the class (task 3.3b, decision 6).
+ */
 export function RestoreForm({ student, label, onChanged, onStale, onCancel }: ChangeFormProps) {
   const { t } = useTranslation();
   const confirm = useConfirm();
-  const form = useRecordForm<'from' | 'reason', StudentRestore>({
+  const form = useRecordForm<RestoreField, StudentRestore>({
     schema: RESTORE_SCHEMA,
-    initial: { from: student.statuses.at(-1)?.from ?? '', reason: '' },
+    initial: { from: student.statuses.at(-1)?.from ?? '', classId: '', reason: '' },
     read: (typed) => ({ ...typed, version: student.version }),
     save: async (input) => {
+      const chosen = choice.nameOf(input.classId);
       const go = await confirm({
         title: t('people.students.restoreConfirmTitle'),
         text: t('people.students.restoreConfirmText'),
-        names: [label],
+        names: chosen === undefined ? [label] : [label, chosen],
         action: t('people.students.restoreTitle'),
         destructive: false,
       });
@@ -398,11 +573,59 @@ export function RestoreForm({ student, label, onChanged, onStale, onCancel }: Ch
       );
     },
   });
+  const from = form.bind('from');
+  const classId = form.bind('classId');
+  const { onChange: chooseClass } = classId;
+  const choice = useClassChoice({
+    from: from.value,
+    grade: null,
+    preferred: null,
+    chosen: classId.value,
+    choose: useCallback(
+      (value: string) => {
+        chooseClass({ target: { value } });
+      },
+      [chooseClass],
+    ),
+  });
   return (
     <section className="grid gap-3">
       <h3 className={SECTION_TITLE}>{t('people.students.restoreTitle')}</h3>
       <RecordForm form={form} label={t('people.students.restoreTitle')} onCancel={onCancel}>
-        <DateField label={t('people.students.restoreFrom')} {...form.bind('from')} />
+        <DateField
+          label={t('people.students.restoreFrom')}
+          {...from}
+          error={from.error ?? refusalOn(t, form.failure, 'from')}
+        />
+        {choice.failed ? (
+          <ErrorState error={choice.error} onRetry={choice.retry} />
+        ) : (
+          <SelectField
+            label={t('people.students.class')}
+            options={[
+              { value: '', label: t('people.students.choose') },
+              ...choice.offered.map((one) => ({
+                value: one.id,
+                label: classDisplayName(one.grade, one.name),
+              })),
+            ]}
+            disabled={choice.none}
+            note={
+              choice.none ? choice.note : (choice.note ?? t('people.students.restoreClassNote'))
+            }
+            {...classId}
+            error={classId.error ?? refusalOn(t, form.failure, 'classId')}
+          />
+        )}
+        {choice.seats.isError && (
+          <ErrorState
+            error={choice.seats.error}
+            onRetry={() => {
+              void choice.seats.refetch();
+            }}
+          />
+        )}
+        <GroupSeatRefusal error={form.failure} />
         <Field label={t('people.students.reason')} {...form.bind('reason')} />
       </RecordForm>
     </section>

@@ -36,6 +36,7 @@ import { useView } from '@/features/access/use-view';
 import { asFormSchema } from './form-schema';
 import { invalidateStudents, studentDetailQuery, studentRelativesQuery } from './people-api';
 import { StudentForm, takenOf, takenText } from './student-form';
+import { GroupsPlacedNotice } from '@/features/classes/class-members';
 import { StudentPhotoSection } from './student-photo-section';
 import { StudentRelativesTab } from './student-relatives';
 import {
@@ -107,6 +108,8 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
   // A status form closed because the student changed under it: its refusal stays in the bottom row.
   const [staleClosed, setStaleClosed] = useState(false);
   const [notRestored, setNotRestored] = useState<readonly ClassNotRestored[]>([]);
+  // A return or a restore names the groups it placed automatically (task 3.3b).
+  const [groupsPlaced, setGroupsPlaced] = useState(0);
   // The move a History line's "Undo the move" opened (task 3.3a).
   const [undoing, setUndoing] = useState<StudentMove | null>(null);
   const relatives = useQuery({
@@ -181,6 +184,9 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
     // A cancel or an undo names the classes it could not give back (task 3.1b, decision 1).
     const read = studentDetailSchema.safeParse(answer);
     setNotRestored(read.success ? (read.data.classesNotRestored ?? []) : []);
+    setGroupsPlaced(
+      read.success ? new Set((read.data.groupsPlaced ?? []).map((one) => one.studentId)).size : 0,
+    );
     await refresh(answer);
   };
   const cancelLeaving = useCancelLeaving(
@@ -528,6 +534,7 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
                   })}
                 </p>
               )}
+              <GroupsPlacedNotice count={groupsPlaced} />
               <StatusSection student={student} panel={shown} />
             </>
           ) : shownTab === 'relatives' ? (

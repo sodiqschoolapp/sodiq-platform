@@ -1716,6 +1716,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -2237,6 +2239,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -3039,6 +3043,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -3481,6 +3487,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -3933,6 +3941,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -4472,6 +4482,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -4945,6 +4957,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -5375,6 +5389,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -5811,6 +5827,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -6235,6 +6253,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -6683,6 +6703,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -7111,6 +7133,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -7539,6 +7563,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -7958,6 +7984,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -8377,6 +8405,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -8776,6 +8806,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -9175,6 +9207,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -9620,6 +9654,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -10114,6 +10150,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -10541,6 +10579,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -11047,6 +11087,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -11545,6 +11587,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -12034,6 +12078,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -12458,6 +12504,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -12960,6 +13008,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -13422,6 +13472,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -13884,6 +13936,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -14330,6 +14384,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -14776,6 +14832,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -15182,6 +15240,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -15588,6 +15648,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -16029,6 +16091,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -16482,6 +16546,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -16947,6 +17013,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -17386,6 +17454,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -17866,6 +17936,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -18338,6 +18410,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -18784,6 +18858,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -19244,6 +19320,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -19702,6 +19780,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -20166,6 +20246,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -20604,6 +20686,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -21042,6 +21126,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -21467,6 +21553,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -21997,6 +22085,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -22513,6 +22603,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -23037,6 +23129,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -23579,6 +23673,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -24085,6 +24181,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -24591,6 +24689,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -25072,6 +25172,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -25631,6 +25733,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -26124,6 +26228,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -26659,6 +26765,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -27667,6 +27775,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -28171,6 +28281,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -28773,6 +28885,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -29752,6 +29866,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -30366,6 +30482,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -30862,6 +30980,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -31358,6 +31478,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -31892,6 +32014,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -32288,6 +32412,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -32704,6 +32830,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -33138,6 +33266,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -33585,6 +33715,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -34025,6 +34157,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -34439,6 +34573,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -34834,6 +34970,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -35253,6 +35391,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -35775,6 +35915,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -36404,6 +36546,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -36833,6 +36977,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -37474,6 +37620,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -38022,6 +38170,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -38538,6 +38688,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -39054,6 +39206,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -39532,6 +39686,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -40049,6 +40205,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -40537,6 +40695,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -41108,6 +41268,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -41970,6 +42132,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -42400,6 +42564,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -43140,6 +43306,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -44012,6 +44180,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -44483,6 +44653,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -45277,6 +45449,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -46047,6 +46221,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -46848,6 +47024,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -47235,6 +47413,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -47837,6 +48017,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -48253,6 +48435,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -48636,6 +48820,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -49238,6 +49424,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -49891,6 +50079,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -50523,6 +50713,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -51165,6 +51357,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -51526,6 +51720,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -51903,6 +52099,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -52432,6 +52630,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -52981,6 +53181,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -53510,6 +53712,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -53908,6 +54112,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -54306,6 +54512,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -54727,6 +54935,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -55215,6 +55425,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -55972,6 +56184,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -56334,6 +56548,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -56710,6 +56926,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -57419,6 +57637,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -58116,6 +58336,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -58576,6 +58798,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -59141,6 +59365,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -59568,6 +59794,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -60065,6 +60293,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -60640,6 +60870,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -61137,6 +61369,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -61634,6 +61868,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -61998,6 +62234,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -62694,6 +62932,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -63765,6 +64005,80 @@
                         "additionalProperties": false
                       }
                     },
+                    "classLeft": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "grade": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 11
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "language": {
+                          "type": "string",
+                          "enum": [
+                            "uz",
+                            "ru"
+                          ]
+                        },
+                        "from": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "until": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "grade",
+                        "name",
+                        "language",
+                        "from",
+                        "until"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "groupsPlaced": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "studentId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "groupId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "subjectId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          }
+                        },
+                        "required": [
+                          "studentId",
+                          "groupId",
+                          "subjectId"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "canEdit": {
                       "type": "boolean"
                     },
@@ -64366,6 +64680,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -64738,6 +65054,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -65189,6 +65507,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -65635,6 +65955,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -66292,6 +66614,80 @@
                         "additionalProperties": false
                       }
                     },
+                    "classLeft": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "grade": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 11
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "language": {
+                          "type": "string",
+                          "enum": [
+                            "uz",
+                            "ru"
+                          ]
+                        },
+                        "from": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "until": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "grade",
+                        "name",
+                        "language",
+                        "from",
+                        "until"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "groupsPlaced": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "studentId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "groupId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "subjectId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          }
+                        },
+                        "required": [
+                          "studentId",
+                          "groupId",
+                          "subjectId"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "canEdit": {
                       "type": "boolean"
                     },
@@ -66893,6 +67289,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -67724,6 +68122,80 @@
                         "additionalProperties": false
                       }
                     },
+                    "classLeft": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "grade": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 11
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "language": {
+                          "type": "string",
+                          "enum": [
+                            "uz",
+                            "ru"
+                          ]
+                        },
+                        "from": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "until": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "grade",
+                        "name",
+                        "language",
+                        "from",
+                        "until"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "groupsPlaced": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "studentId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "groupId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "subjectId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          }
+                        },
+                        "required": [
+                          "studentId",
+                          "groupId",
+                          "subjectId"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "canEdit": {
                       "type": "boolean"
                     },
@@ -68325,6 +68797,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -69012,6 +69486,80 @@
                         "additionalProperties": false
                       }
                     },
+                    "classLeft": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "grade": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 11
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "language": {
+                          "type": "string",
+                          "enum": [
+                            "uz",
+                            "ru"
+                          ]
+                        },
+                        "from": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "until": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "grade",
+                        "name",
+                        "language",
+                        "from",
+                        "until"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "groupsPlaced": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "studentId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "groupId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "subjectId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          }
+                        },
+                        "required": [
+                          "studentId",
+                          "groupId",
+                          "subjectId"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "canEdit": {
                       "type": "boolean"
                     },
@@ -69613,6 +70161,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -70042,6 +70592,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -70732,6 +71284,80 @@
                         "additionalProperties": false
                       }
                     },
+                    "classLeft": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "grade": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 11
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "language": {
+                          "type": "string",
+                          "enum": [
+                            "uz",
+                            "ru"
+                          ]
+                        },
+                        "from": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "until": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "grade",
+                        "name",
+                        "language",
+                        "from",
+                        "until"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "groupsPlaced": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "studentId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "groupId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "subjectId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          }
+                        },
+                        "required": [
+                          "studentId",
+                          "groupId",
+                          "subjectId"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "canEdit": {
                       "type": "boolean"
                     },
@@ -71333,6 +71959,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -72011,6 +72639,80 @@
                         "additionalProperties": false
                       }
                     },
+                    "classLeft": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "grade": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 11
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "language": {
+                          "type": "string",
+                          "enum": [
+                            "uz",
+                            "ru"
+                          ]
+                        },
+                        "from": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "until": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "grade",
+                        "name",
+                        "language",
+                        "from",
+                        "until"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "groupsPlaced": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "studentId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "groupId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "subjectId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          }
+                        },
+                        "required": [
+                          "studentId",
+                          "groupId",
+                          "subjectId"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "canEdit": {
                       "type": "boolean"
                     },
@@ -72612,6 +73314,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -73296,6 +74000,80 @@
                         "additionalProperties": false
                       }
                     },
+                    "classLeft": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "grade": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 11
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "language": {
+                          "type": "string",
+                          "enum": [
+                            "uz",
+                            "ru"
+                          ]
+                        },
+                        "from": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "until": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "grade",
+                        "name",
+                        "language",
+                        "from",
+                        "until"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "groupsPlaced": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "studentId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "groupId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "subjectId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          }
+                        },
+                        "required": [
+                          "studentId",
+                          "groupId",
+                          "subjectId"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "canEdit": {
                       "type": "boolean"
                     },
@@ -73897,6 +74675,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -74045,6 +74825,11 @@
                     "minimum": 1,
                     "maximum": 11
                   },
+                  "classId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
                   "contract": {
                     "type": "object",
                     "properties": {
@@ -74068,6 +74853,9 @@
                     "minLength": 1,
                     "maxLength": 500
                   },
+                  "confirmLanguage": {
+                    "type": "boolean"
+                  },
                   "version": {
                     "type": "integer",
                     "minimum": 0,
@@ -74077,6 +74865,7 @@
                 "required": [
                   "from",
                   "grade",
+                  "classId",
                   "contract",
                   "reason",
                   "version"
@@ -74612,6 +75401,80 @@
                         "additionalProperties": false
                       }
                     },
+                    "classLeft": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "grade": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 11
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "language": {
+                          "type": "string",
+                          "enum": [
+                            "uz",
+                            "ru"
+                          ]
+                        },
+                        "from": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "until": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "grade",
+                        "name",
+                        "language",
+                        "from",
+                        "until"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "groupsPlaced": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "studentId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "groupId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "subjectId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          }
+                        },
+                        "required": [
+                          "studentId",
+                          "groupId",
+                          "subjectId"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "canEdit": {
                       "type": "boolean"
                     },
@@ -75213,6 +76076,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -75356,6 +76221,11 @@
                     "format": "date",
                     "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
                   },
+                  "classId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
                   "reason": {
                     "type": "string",
                     "minLength": 1,
@@ -75369,6 +76239,7 @@
                 },
                 "required": [
                   "from",
+                  "classId",
                   "reason",
                   "version"
                 ],
@@ -75903,6 +76774,80 @@
                         "additionalProperties": false
                       }
                     },
+                    "classLeft": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "grade": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 11
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "language": {
+                          "type": "string",
+                          "enum": [
+                            "uz",
+                            "ru"
+                          ]
+                        },
+                        "from": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "until": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "grade",
+                        "name",
+                        "language",
+                        "from",
+                        "until"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "groupsPlaced": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "studentId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "groupId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "subjectId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          }
+                        },
+                        "required": [
+                          "studentId",
+                          "groupId",
+                          "subjectId"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "canEdit": {
                       "type": "boolean"
                     },
@@ -76504,6 +77449,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -76895,6 +77842,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -77584,6 +78533,80 @@
                         "additionalProperties": false
                       }
                     },
+                    "classLeft": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "grade": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 11
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "language": {
+                          "type": "string",
+                          "enum": [
+                            "uz",
+                            "ru"
+                          ]
+                        },
+                        "from": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "until": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "grade",
+                        "name",
+                        "language",
+                        "from",
+                        "until"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "groupsPlaced": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "studentId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "groupId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "subjectId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          }
+                        },
+                        "required": [
+                          "studentId",
+                          "groupId",
+                          "subjectId"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "canEdit": {
                       "type": "boolean"
                     },
@@ -78185,6 +79208,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -78878,6 +79903,80 @@
                         "additionalProperties": false
                       }
                     },
+                    "classLeft": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "grade": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 11
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "language": {
+                          "type": "string",
+                          "enum": [
+                            "uz",
+                            "ru"
+                          ]
+                        },
+                        "from": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "until": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "grade",
+                        "name",
+                        "language",
+                        "from",
+                        "until"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "groupsPlaced": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "studentId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "groupId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "subjectId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          }
+                        },
+                        "required": [
+                          "studentId",
+                          "groupId",
+                          "subjectId"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "canEdit": {
                       "type": "boolean"
                     },
@@ -79479,6 +80578,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -80157,6 +81258,80 @@
                         "additionalProperties": false
                       }
                     },
+                    "classLeft": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "grade": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 11
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "language": {
+                          "type": "string",
+                          "enum": [
+                            "uz",
+                            "ru"
+                          ]
+                        },
+                        "from": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "until": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "grade",
+                        "name",
+                        "language",
+                        "from",
+                        "until"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "groupsPlaced": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "studentId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "groupId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "subjectId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          }
+                        },
+                        "required": [
+                          "studentId",
+                          "groupId",
+                          "subjectId"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "canEdit": {
                       "type": "boolean"
                     },
@@ -80758,6 +81933,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -81442,6 +82619,80 @@
                         "additionalProperties": false
                       }
                     },
+                    "classLeft": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "grade": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 11
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "language": {
+                          "type": "string",
+                          "enum": [
+                            "uz",
+                            "ru"
+                          ]
+                        },
+                        "from": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "until": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "grade",
+                        "name",
+                        "language",
+                        "from",
+                        "until"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "groupsPlaced": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "studentId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "groupId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "subjectId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          }
+                        },
+                        "required": [
+                          "studentId",
+                          "groupId",
+                          "subjectId"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "canEdit": {
                       "type": "boolean"
                     },
@@ -82043,6 +83294,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -82729,6 +83982,80 @@
                         "additionalProperties": false
                       }
                     },
+                    "classLeft": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "grade": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 11
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "language": {
+                          "type": "string",
+                          "enum": [
+                            "uz",
+                            "ru"
+                          ]
+                        },
+                        "from": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "until": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "grade",
+                        "name",
+                        "language",
+                        "from",
+                        "until"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "groupsPlaced": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "studentId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "groupId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "subjectId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          }
+                        },
+                        "required": [
+                          "studentId",
+                          "groupId",
+                          "subjectId"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "canEdit": {
                       "type": "boolean"
                     },
@@ -83330,6 +84657,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -84014,6 +85343,80 @@
                         "additionalProperties": false
                       }
                     },
+                    "classLeft": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "grade": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 11
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "language": {
+                          "type": "string",
+                          "enum": [
+                            "uz",
+                            "ru"
+                          ]
+                        },
+                        "from": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "until": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "grade",
+                        "name",
+                        "language",
+                        "from",
+                        "until"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "groupsPlaced": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "studentId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "groupId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "subjectId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          }
+                        },
+                        "required": [
+                          "studentId",
+                          "groupId",
+                          "subjectId"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "canEdit": {
                       "type": "boolean"
                     },
@@ -84615,6 +86018,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -85284,6 +86689,80 @@
                         "additionalProperties": false
                       }
                     },
+                    "classLeft": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "grade": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 11
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "language": {
+                          "type": "string",
+                          "enum": [
+                            "uz",
+                            "ru"
+                          ]
+                        },
+                        "from": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "until": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "grade",
+                        "name",
+                        "language",
+                        "from",
+                        "until"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "groupsPlaced": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "studentId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "groupId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "subjectId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          }
+                        },
+                        "required": [
+                          "studentId",
+                          "groupId",
+                          "subjectId"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "canEdit": {
                       "type": "boolean"
                     },
@@ -85885,6 +87364,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -86563,6 +88044,80 @@
                         "additionalProperties": false
                       }
                     },
+                    "classLeft": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "grade": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 11
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "language": {
+                          "type": "string",
+                          "enum": [
+                            "uz",
+                            "ru"
+                          ]
+                        },
+                        "from": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "until": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "grade",
+                        "name",
+                        "language",
+                        "from",
+                        "until"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "groupsPlaced": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "studentId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "groupId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "subjectId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          }
+                        },
+                        "required": [
+                          "studentId",
+                          "groupId",
+                          "subjectId"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "canEdit": {
                       "type": "boolean"
                     },
@@ -87164,6 +88719,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -87869,6 +89426,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -88250,6 +89809,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -88612,6 +90173,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -88988,6 +90551,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -89478,6 +91043,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -89850,6 +91417,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -90262,6 +91831,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -90777,6 +92348,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -91352,6 +92925,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -91914,6 +93489,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -92450,6 +94027,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -92812,6 +94391,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -93198,6 +94779,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -93662,6 +95245,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -94354,6 +95939,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -94871,6 +96458,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -95367,6 +96956,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -96397,6 +97988,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -97525,6 +99118,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -98306,6 +99901,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -98752,6 +100349,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -99173,6 +100772,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -99819,6 +101420,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -100600,6 +102203,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -101069,6 +102674,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -101497,6 +103104,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -102236,6 +103845,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -103031,6 +104642,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -103770,6 +105383,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -104509,6 +106124,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -105289,6 +106906,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -106058,6 +107677,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -106508,6 +108129,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -107033,6 +108656,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -107493,6 +109118,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -108027,6 +109654,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -108700,6 +110329,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -109165,6 +110796,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -109703,6 +111336,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -110131,6 +111766,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -110558,6 +112195,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -111180,6 +112819,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -111857,6 +113498,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -112479,6 +114122,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -113117,6 +114762,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -113602,6 +115249,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -114126,6 +115775,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -114621,6 +116272,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -115116,6 +116769,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -115529,6 +117184,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -115957,6 +117614,8 @@
                             "move_no_membership",
                             "move_same_target",
                             "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
                             "group_transfer_subject",
                             "request_refused",
                             "internal_error"
@@ -116349,6 +118008,8 @@
                   "move_no_membership",
                   "move_same_target",
                   "class_language_differs",
+                  "return_language_differs",
+                  "return_outside_year",
                   "group_transfer_subject",
                   "request_refused",
                   "internal_error"
