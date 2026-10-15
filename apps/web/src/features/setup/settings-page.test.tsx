@@ -1,3 +1,4 @@
+import { GRADE_BANDS } from '@sodiq/calc';
 import type { AttendanceValuesList, BranchSettings, Role, TravelTimeList } from '@sodiq/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
@@ -141,19 +142,32 @@ describe('the settings page', () => {
     ).toEqual(['Uzbek', 'Russian']);
   });
 
-  // Correction 3 of the review: the grade bands of `03` are the same in every language.
+  // Build plan 4.2 (from 1.6, decision 5): the page draws the bands of packages/calc, the same
+  // in every language (task 4.2, decision 7).
   it.each([
     ['en', en],
     ['ru', ru],
     ['uz', uz],
-  ] as const)('shows the four grade bands of the spec in %s', (_language, locale) => {
-    const bands = locale.setup.settings.gradeBands;
-    expect([bands.two, bands.three, bands.four, bands.five]).toEqual([
-      { scores: '0–49', grade: '2' },
-      { scores: '50–66', grade: '3' },
-      { scores: '67–83', grade: '4' },
-      { scores: '84–100', grade: '5' },
-    ]);
+  ] as const)('draws the grade bands of packages/calc in %s', async (language, locale) => {
+    fakeApi({
+      'GET /api/auth/session': () =>
+        json(
+          sessionOf({
+            assignments: [{ role: 'principal', branchId: NORTH.id }],
+            branches: [NORTH],
+            language,
+          }),
+        ),
+      'GET /api/setup/settings': () => json(SETTINGS),
+      'GET /api/setup/attendance-values': () => json(VALUES),
+    });
+    renderApp('/setup/settings', language);
+    const table = await screen.findByRole('table', { name: locale.setup.settings.gradeBandsTitle });
+    expect(
+      [...table.querySelectorAll('tbody tr')].map((row) =>
+        [...row.querySelectorAll('td')].map((cell) => cell.textContent),
+      ),
+    ).toEqual(GRADE_BANDS.map(({ from, to, grade }) => [`${from}–${to}`, String(grade)]));
   });
 
   it.each([

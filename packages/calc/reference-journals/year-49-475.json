@@ -1,0 +1,9 @@
+{
+  "title": "The year result is the mean of the exact quarter results: 49.475, grade 2",
+  "source": "docs/spec/edge-cases/calculation.md, \"The year result when quarters show 50, 50, 49, 50\"",
+  "status": "sample",
+  "year": {
+    "quarters": ["49.5", "49.5", "49.4", "49.5"],
+    "expected": { "result": "49.475", "shown": 49, "grade": 2, "basedOn": 4 }
+  }
+}

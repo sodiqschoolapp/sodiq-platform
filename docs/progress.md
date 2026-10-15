@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 15 October 2026: task 4.2 Quarter and year results
+
+- Built in `packages/calc`: `quarterResult` (attendance, classwork and homework averages with each work once, the rating exam, the result over the parts with data, `leftOut`, `provisional`), `quarterAttendanceAverage` for attendance-only subjects, `GRADE_BANDS` and `gradeOf`, `yearResult` (mean of four exact quarter results, "based on n of 4").
+- `packages/calc/reference-journals/`: the JSON format (README) and three samples from the spec, run by `reference-journals.test.ts` with exact comparison. The Settings page draws the grade bands from `GRADE_BANDS`.
+- Left out: the "Exempt" and "Not assessed" outcomes, the few-lessons and attendance-only flags, start-quarter counting, the stored inputs and module version (4.3); the month and "current work" figures (8.x, 9.4a); class averages and ranking (8.x, 9.x); every caller (8.x, 9.x).
+
+The next sessions must know:
+
+- `quarterResult` takes the lessons with their works, never ready averages; the caller passes the held, not cancelled lessons of every journal of the quarter on dates the student was a member, and `quarterClosed`.
+- All lessons exempt gives a non-number today (`no_result`); 4.3 turns it into "Exempt", and the test asserts only "not a number".
+- The next task is 4.3.
+
 ## 15 October 2026: task 4.1 Exact fractions and daily results
 
 - Built in `packages/calc`: `Fraction` (BigInt, reduced, immutable, `roundHalfUp` once at the end), `workPercent` and `shownPercent`, `attendanceValue` with the quarter's late and skipped values, `lessonScore` (the AVG of `07` rule 3) with empty parts left out and the weights scaled; `CalcInputError` with a code for every refused input.

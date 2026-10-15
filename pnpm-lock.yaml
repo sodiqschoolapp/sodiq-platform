@@ -317,6 +317,9 @@ importers:
       '@sentry/browser':
         specifier: 11.5.0
         version: 11.5.0
+      '@sodiq/calc':
+        specifier: workspace:*
+        version: link:../../packages/calc
       '@sodiq/shared':
         specifier: workspace:*
         version: link:../../packages/shared

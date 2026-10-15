@@ -1,0 +1,55 @@
+{
+  "title": "A result exactly on the boundary: weights 10 · 50 · 40 give 49.5, grade 3",
+  "source": "docs/spec/edge-cases/calculation.md, \"A result lands exactly on a boundary\"",
+  "status": "sample",
+  "weights": { "attendance": 10, "classwork": 50, "homework": 40, "ratingExam": null },
+  "attendanceValues": { "lateValue": 50, "skippedValue": 0 },
+  "quarterClosed": true,
+  "students": [
+    {
+      "name": "Jasur Rahimov",
+      "lessons": [
+        {
+          "mark": 1,
+          "classworks": [
+            [10, 30],
+            [10, 30],
+            [25, 30]
+          ],
+          "homeworks": [[29, 80]]
+        }
+      ],
+      "ratingExam": null,
+      "expected": {
+        "attendance": "100",
+        "classwork": "50",
+        "homework": "36.25",
+        "ratingExam": null,
+        "result": "49.5",
+        "shown": 50,
+        "grade": 3,
+        "leftOut": [],
+        "provisional": false
+      }
+    },
+    {
+      "name": "Malika Tosheva",
+      "lessons": [
+        { "mark": 2, "classworks": [[20, 30]], "homeworks": [] },
+        { "mark": null, "classworks": [[null, 30]], "homeworks": [] }
+      ],
+      "ratingExam": null,
+      "expected": {
+        "attendance": "50",
+        "classwork": "200/3",
+        "homework": null,
+        "ratingExam": null,
+        "result": "575/9",
+        "shown": 64,
+        "grade": 3,
+        "leftOut": [{ "part": "homework", "reason": "no_data" }],
+        "provisional": false
+      }
+    }
+  ]
+}

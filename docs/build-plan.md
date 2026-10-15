@@ -424,7 +424,7 @@ How to read the task lines:
   - Done when: the worked examples in the spec pass as tests and property tests show no floating point is used.
   - From 1.6 (pull request #49): the attendance values of late and skipped are stored per quarter (`quarters.late_value`, `quarters.skipped_value`, 50 and 0 by default); the calculation takes the values of the lesson's quarter as input.
 
-- [ ] **4.2 Quarter and year results**
+- [x] **4.2 Quarter and year results** (pull request #103)
   - Read: `07` (Calculation rules), `08` (Student results), `14` (Journal), `edge/calculation`.
   - Build: quarter averages; quarter result from the quarterly distribution; rating exam handling; provisional results; grade bands; year result as the mean of exact quarter results; rounding once at the end; the folder and format for the reference journals of the quality plan, which the owner fills with hand-checked cases.
   - Done when: the boundary examples in the spec pass (for example 49.5, and the year case of 49.475) and the reference-journal test runs on at least one sample.

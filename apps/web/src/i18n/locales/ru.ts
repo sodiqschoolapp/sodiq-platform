@@ -1020,12 +1020,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       gradeBandsTitle: 'Шкала оценок',
       bandScore: 'Результат',
       bandGrade: 'Оценка',
-      gradeBands: {
-        two: { scores: '0–49', grade: '2' },
-        three: { scores: '50–66', grade: '3' },
-        four: { scores: '67–83', grade: '4' },
-        five: { scores: '84–100', grade: '5' },
-      },
+      bandRange: '{{from}}–{{to}}',
     },
     subjects: {
       emptyTitle: 'Предметов пока нет',

@@ -29,7 +29,16 @@ const FORBIDDEN: readonly [string, RegExp][] = [
 describe('packages/calc source', () => {
   it('has source files to check', () => {
     expect(sources).toEqual(
-      expect.arrayContaining(['index.ts', 'fraction.ts', 'work.ts', 'attendance.ts', 'daily.ts']),
+      expect.arrayContaining([
+        'index.ts',
+        'fraction.ts',
+        'work.ts',
+        'attendance.ts',
+        'daily.ts',
+        'grade.ts',
+        'quarter.ts',
+        'year.ts',
+      ]),
     );
   });
 

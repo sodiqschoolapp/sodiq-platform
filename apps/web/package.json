@@ -20,6 +20,7 @@
     "@fontsource-variable/golos-text": "5.3.0",
     "@material-symbols/svg-500": "0.48.0",
     "@sentry/browser": "11.5.0",
+    "@sodiq/calc": "workspace:*",
     "@sodiq/shared": "workspace:*",
     "@sodiq/timetable-rules": "workspace:*",
     "@tanstack/react-query": "^5.104.1",
