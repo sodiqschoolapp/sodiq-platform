@@ -23,7 +23,7 @@
  * The caller passes the student's held, not cancelled lessons of the subject in
  * the quarter, from every journal the student belonged to, on the dates the
  * student was a member (07, Transfers; decisions 9 and 10). The "Exempt" and
- * "Not assessed" outcomes and the flags are task 4.3.
+ * "Not assessed" outcomes and the flags are `studentQuarterOutcome` (outcome.ts, task 4.3).
  */
 import {
   attendanceValue,
