@@ -72,6 +72,7 @@ describe('the pattern of a timetable version in the database', () => {
   let north: string;
   let south: string;
   let year: string;
+  let southYear: string;
   let subject: string;
   let version: string;
 
@@ -185,6 +186,7 @@ describe('the pattern of a timetable version in the database', () => {
     north = await insertBranch(database.migrator, 'North');
     south = await insertBranch(database.migrator, 'South');
     year = (await kit.year(north)).year;
+    southYear = (await kit.year(south)).year;
     subject = await kit.load.classes.subject({ grades: [7, 9, 10] });
   });
 
@@ -364,6 +366,36 @@ describe('the pattern of a timetable version in the database', () => {
     });
   });
 
+  describe('two branches (decision 18)', () => {
+    it('passes one teacher at the same time in the patterns of two branches, each written with its own branch only', async () => {
+      // 06, Two drafts at once: "The first to publish stands": the dated
+      // claims refuse the second publish, not the pattern.
+      const southVersion = await kit.load.version(south, southYear);
+      const smith = (
+        await kit.load.teacher(north, {
+          subjects: [{ subject, grades: [7, 9, 10] }],
+          further: [south],
+        })
+      ).staffId;
+      await place({ start: 540, end: 585 }, [
+        { row: await row({ classId: await schoolClass() }, { teacher: smith }) },
+      ]);
+      const southRow = await kit.load.row({
+        branch_id: south,
+        version_id: southVersion,
+        class_id: await kit.load.classes.schoolClass(south, southYear, { grade: 7 }),
+        subject_id: subject,
+        teacher_id: smith,
+      });
+      await place(
+        { start: 540, end: 585 },
+        [{ row: { id: southRow, teacher: smith } }],
+        southVersion,
+        south,
+      );
+    });
+  });
+
   describe('the keys of an entry', () => {
     it('refuses a load row of another version', async () => {
       const other = await kit.load.version(north, year);
@@ -384,7 +416,6 @@ describe('the pattern of a timetable version in the database', () => {
     });
 
     it('refuses a block of a version of another branch', async () => {
-      const southYear = (await kit.year(south)).year;
       const southVersion = await kit.load.version(south, southYear);
       expect(await refusal(place({ start: 540, end: 585 }, [], southVersion, north))).toMatchObject(
         { code: FOREIGN_KEY_VIOLATION, constraint: 'pattern_blocks_version_fkey' },
