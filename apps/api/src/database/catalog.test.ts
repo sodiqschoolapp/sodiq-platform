@@ -252,6 +252,8 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
     'The kind of one record by id, or null when it does not exist, so that a check never depends on what the membership filter shows; no row data.',
   'staff_subject_in_use(uuid,smallint[],uuid,timestamp with time zone)':
     "How many people of other branches a change of a subject's department or grades would leave outside it.",
+  'department_move_loads(uuid,uuid,uuid,uuid,date)':
+    'The teaching load rows a department move of a teacher or a subject would leave with a teacher outside the subject\'s department, by id and version for the branch of the request named by the caller and one count per other branch, never a row, a name or a subject of another branch, so that "those loads are listed for reassignment first" (edge/people-roles-accounts, row 15; task 3.4c, decision 3 of pull request #101, Look first).',
   'teacher_load_elsewhere(uuid,uuid[],date)':
     'The lessons per week each teacher or vacancy linked to a branch of the transaction has in the version running in every other branch, counts and branch ids only, so that "the teacher\'s total across branches is shown to both" (06, Weekly load; task 3.4b, decision 8 of pull request #100, Look first).',
   'vacancy_load_rows(uuid)':

@@ -598,6 +598,10 @@ const NOT_IDENTITY_KEYS = new Set([
   'divisions',
   'divisionId',
   'departmentId',
+  // the start date of a department move (task 3.4c, pull request #101)
+  'departmentStartsOn',
+  'departmentSince',
+  'department_since',
   'department',
   'main',
   'isMain',

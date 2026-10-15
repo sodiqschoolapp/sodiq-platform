@@ -44,7 +44,11 @@ export type StaffField =
   | 'mainDivision'
   | 'mainDepartment'
   | 'furtherDivisions'
-  | 'furtherDepartment';
+  | 'furtherDepartment'
+  | 'departmentStartsOn';
+
+/** The fields that say the department of the Academic division. */
+type AcademicField = 'mainDivision' | 'mainDepartment' | 'furtherDivisions' | 'furtherDepartment';
 
 /** The field of the form an issue of the record names: the divisions are the main division's field. */
 function fieldOf(path: readonly PropertyKey[]): PropertyKey[] {
@@ -111,6 +115,27 @@ export function StaffForm({
   const main = staff?.divisions.find((division) => division.main);
   const further = staff?.divisions.filter((division) => !division.main) ?? [];
   const furtherAcademic = further.find((division) => division.divisionId === academic?.id);
+  // The department of the Academic division as stored, `undefined` without it.
+  const storedAcademic = staff?.divisions.find(
+    (division) => division.divisionId === academic?.id,
+  )?.departmentId;
+  /**
+   * Whether the form moves the person to another department (task 3.4c,
+   * decision 5): the Academic division's department changes or the division
+   * is removed; adding it is not a move.
+   */
+  const moves = (typed: Pick<Record<StaffField, string>, AcademicField>): boolean => {
+    if (staff === null || academic === undefined || storedAcademic === undefined) {
+      return false;
+    }
+    const typedAcademic =
+      typed.mainDivision === academic.id
+        ? orNull(typed.mainDepartment)
+        : listValues(typed.furtherDivisions).includes(academic.id)
+          ? orNull(typed.furtherDepartment)
+          : undefined;
+    return typedAcademic !== storedAcademic;
+  };
   const form = useRecordForm<StaffField, StaffRecord>({
     schema: FORM_SCHEMA,
     initial: {
@@ -135,8 +160,11 @@ export function StaffForm({
       mainDepartment: main?.departmentId ?? '',
       furtherDivisions: listValue(further.map((division) => division.divisionId)),
       furtherDepartment: furtherAcademic?.departmentId ?? '',
+      departmentStartsOn: '',
     },
     read: (typed) => ({
+      // A move of the Academic department carries a start date (task 3.4c).
+      ...(moves(typed) ? { departmentStartsOn: orNull(typed.departmentStartsOn) } : {}),
       firstName: typed.firstName,
       lastName: typed.lastName,
       fatherName: typed.fatherName,
@@ -274,6 +302,14 @@ export function StaffForm({
             {...bind('furtherDepartment')}
           />
         )}
+      {moves({
+        mainDivision: form.bind('mainDivision').value,
+        mainDepartment: form.bind('mainDepartment').value,
+        furtherDivisions: form.bind('furtherDivisions').value,
+        furtherDepartment: form.bind('furtherDepartment').value,
+      }) && (
+        <DateField label={t('people.staff.departmentStartsOn')} {...bind('departmentStartsOn')} />
+      )}
     </RecordForm>
   );
 }

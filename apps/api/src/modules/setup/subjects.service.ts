@@ -31,6 +31,12 @@ import {
   type SchoolNames,
 } from '../audit/export-list.js';
 import { refuseGroupsOfSubject } from '../classes/group-side.js';
+import {
+  checkMoveStart,
+  lockDepartmentMoves,
+  moveStartsOn,
+  refuseMoveLoads,
+} from '../people/department-moves.js';
 import { refuseTeachersOutside } from '../people/subject-teachers.js';
 import { changesOf, notFound, refusingConstraints, refusingDuplicates } from './setup-refusals.js';
 
@@ -59,6 +65,7 @@ const SUBJECT_COLUMNS = [
   'name_ru',
   'name_en',
   'department_id',
+  'department_since',
   'grades',
   'colour',
   'journal_type',
@@ -77,6 +84,8 @@ interface SubjectRow {
   name_ru: string;
   name_en: string;
   department_id: string;
+  /** The start date of the last department move (task 3.4c, decision 8). */
+  department_since: Date | string | null;
   grades: number[];
   colour: string;
   journal_type: string;
@@ -177,6 +186,14 @@ const fits = (row: QuarterWeightsRow, ratingExam: boolean): boolean =>
   (row.rating_exam !== null) === ratingExam;
 
 const refused = (code: ErrorCode): ApiException => new ApiException(code, 409);
+
+/** A `date` column as `YYYY-MM-DD`, whichever way the driver gave it. */
+const dateOrNull = (value: Date | string | null): string | null =>
+  value === null
+    ? null
+    : typeof value === 'string'
+      ? value.slice(0, 10)
+      : value.toISOString().slice(0, 10);
 
 /** A route bound to a branch always has one; the guard sets it. */
 function branchOf(access: Access): string {
@@ -283,6 +300,7 @@ export class Subjects {
         if (record.journalType === 'graded' && record.daily === null) {
           throw refused('daily_weights_required');
         }
+        moveStartsOn(false, record.departmentStartsOn);
         await this.checkDepartment(transaction, record.departmentId);
         const fields = recordFields(record);
         const row = await transaction
@@ -317,12 +335,32 @@ export class Subjects {
     const branchId = branchOf(access);
     return this.refusing(() =>
       this.transactions.run(access.branchIds, async (transaction) => {
+        // Task 3.4c, decision 6: a move takes the lock of department moves
+        // before any row lock, decided from the department read without one;
+        // the locked read must agree (decision 9). Only a Super Admin moves,
+        // so nobody else takes the lock (permission review, nit 5).
+        const mayMove = superAdminOf(access) !== undefined;
+        const unlocked = await transaction
+          .selectFrom('subjects')
+          .select('department_id')
+          .where('id', '=', id)
+          .executeTakeFirst();
+        const lockedForMove =
+          mayMove && unlocked !== undefined && unlocked.department_id !== record.departmentId;
+        if (lockedForMove) {
+          await lockDepartmentMoves(transaction);
+        }
         const row = await this.lockActive(transaction, id);
         const before = fieldsOf(row);
         const after = recordFields(record);
+        const moving = after.departmentId !== before.departmentId;
+        if (mayMove && moving !== lockedForMove) {
+          throw refused('subject_changed');
+        }
         // The assignment the audit entry names: for a move, the Super Admin one.
         let assignmentId = access.assignmentId;
-        if (after.departmentId !== before.departmentId) {
+        let startsOn: string | null = null;
+        if (moving) {
           // `edge/people-roles-accounts`: "A teacher moves to another department,
           // or a subject is moved, mid-year. Both changes ... are made by the
           // Super Admin." (Decision 17 of pull request #52.)
@@ -331,7 +369,21 @@ export class Subjects {
             throw new ApiException('subject_move_super_admin', 403);
           }
           assignmentId = superAdmin;
+          startsOn = moveStartsOn(true, record.departmentStartsOn);
+          if (startsOn === null) {
+            throw new Error('moveStartsOn gives a date for a move.');
+          }
+          await checkMoveStart(transaction, branchId, startsOn);
           await this.checkDepartment(transaction, after.departmentId);
+          // Task 3.4c: the loads first, listed for reassignment (row 15),
+          // then the profiles (task 2.2a).
+          await refuseMoveLoads(transaction, branchId, {
+            subjectId: id,
+            departmentId: after.departmentId,
+            startsOn,
+          });
+        } else {
+          moveStartsOn(false, record.departmentStartsOn);
         }
         // Task 2.2a, decision 13: a department move or a removed grade is
         // refused while a teacher who has not left has the subject outside them.
@@ -370,7 +422,12 @@ export class Subjects {
         if (changes !== null) {
           await transaction
             .updateTable('subjects')
-            .set({ ...columnsOf(after), weights_round: round, rating_round: ratingRound })
+            .set({
+              ...columnsOf(after),
+              weights_round: round,
+              rating_round: ratingRound,
+              ...(startsOn === null ? {} : { department_since: startsOn }),
+            })
             .where('id', '=', id)
             .execute();
           await this.audit.record(transaction, {
@@ -380,7 +437,10 @@ export class Subjects {
             action: 'subject.edit',
             record: { type: 'subject', id },
             oldValue: changes.oldValue,
-            newValue: changes.newValue,
+            newValue:
+              startsOn === null
+                ? changes.newValue
+                : { ...changes.newValue, departmentStartsOn: startsOn },
             // A new round: the weights of every branch from before no longer count.
             ...roundDetails(row, round, ratingRound),
             requestId,
@@ -914,6 +974,7 @@ export class Subjects {
       return {
         id: row.id,
         ...fieldsOf(row),
+        departmentSince: dateOrNull(row.department_since),
         archivedAt: row.archived_at === null ? null : row.archived_at.toISOString(),
         daily: !graded || own === undefined ? null : dailyOf(own),
         quarterWeightsMissing: graded && quarters.length > 0 ? quarters.length - fitting : null,

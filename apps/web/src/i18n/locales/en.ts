@@ -445,6 +445,14 @@ export const en = {
       'Your staff record is inactive or you have left the school, so you cannot sign in. Ask the Super Admin if this is wrong.',
     subject_has_teachers:
       'Teachers who have not left, or open vacancies, have this subject with these grades in this department. Change their subjects first, then the subject.',
+    department_move_loads:
+      "Teaching loads would have a teacher outside the subject's department. Reassign the loads listed first, then move.",
+    department_move_start_outside:
+      "The start date is before today or after the end of the branch's last academic year. Choose another date.",
+    staff_changed:
+      'Someone changed this staff record while you had it open. Open it again and repeat the change.',
+    subject_changed:
+      'Someone changed this subject while you had it open. Open it again and repeat the change.',
     department_has_staff:
       'Staff members who have not left, or open vacancies, are in this department. Move them to another department or close the vacancies first.',
     photo_invalid: 'Choose a JPEG or PNG photo, up to 5 MB.',
@@ -986,6 +994,8 @@ export const en = {
       nameTaken: 'Another active subject has this name. Choose another.',
       department: 'Department',
       departmentLocked: 'Only the Super Admin moves a subject to another department.',
+      departmentStartsOn: 'Moves on',
+      departmentSince: '{{name}}, since {{date}}',
       chooseDepartment: 'Choose a department',
       grades: 'Grades',
       grade: 'Grade {{grade}}',
@@ -1306,6 +1316,15 @@ export const en = {
     },
   },
   people: {
+    moveLoads: {
+      title: 'Teaching loads to reassign first',
+      rest: ' · {{parts}}',
+      separator: ' · ',
+      version: 'Version {{number}} from {{date}}',
+      vacancy: 'Vacancy: {{name}}',
+      elsewhere_one: 'In other branches: {{n}} more row.',
+      elsewhere_other: 'In other branches: {{n}} more rows.',
+    },
     report: {
       link: 'Personal data report',
       title: 'Personal data report',
@@ -1995,6 +2014,8 @@ export const en = {
       noDepartment: 'No department',
       furtherDivisions: 'Further divisions',
       academicDepartment: 'Department in Academic',
+      departmentStartsOn: 'Moves to the department on',
+      departmentSince: '{{name}}, since {{date}}',
       recordTitle: 'Record',
       teachingTitle: 'Subjects and languages',
       none: 'None',

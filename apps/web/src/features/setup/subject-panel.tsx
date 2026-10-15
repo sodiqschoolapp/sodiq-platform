@@ -19,6 +19,7 @@ import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
 import { groupsQuery } from '@/features/classes/groups-api';
+import { MoveLoads } from '@/features/people/move-loads';
 import { staffQuery, vacanciesQuery } from '@/features/people/people-api';
 import { nameOf, yearsQuery } from './setup-api';
 import { SubjectChip } from './subject-colour';
@@ -144,6 +145,7 @@ export function SubjectPanel({
               panel.stop();
             }}
           />
+          <MoveLoads error={edit.error} />
           <TeachersOutside error={edit.error} />
           <GroupsOutside error={edit.error} />
         </div>
@@ -159,7 +161,15 @@ export function SubjectPanel({
                 [t('setup.subjects.nameUz'), subject.names.uz],
                 [t('setup.subjects.nameRu'), subject.names.ru],
                 [t('setup.subjects.nameEn'), subject.names.en],
-                [t('setup.subjects.department'), departmentName],
+                [
+                  t('setup.subjects.department'),
+                  subject.departmentSince === null
+                    ? departmentName
+                    : t('setup.subjects.departmentSince', {
+                        name: departmentName,
+                        date: schoolDateText(subject.departmentSince, language),
+                      }),
+                ],
                 [t('setup.subjects.grades'), gradeRanges(subject.grades)],
                 [
                   t('setup.subjects.journalType'),

@@ -731,6 +731,7 @@ describe('the students of a class', () => {
   // when the list does not hold it.
   it('names the subject without a group seat, and falls back without the name, in Russian too', async () => {
     const maths: Subject = {
+      departmentSince: null,
       id: uid(201),
       names: { uz: 'Matematika', ru: 'Математика', en: 'Mathematics' },
       departmentId: uid(9),

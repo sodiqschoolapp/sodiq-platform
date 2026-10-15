@@ -189,6 +189,12 @@ export const staffRecordSchema = z.object({
   weeklyLessons: z.int().min(1).max(WEEKLY_LESSONS_MAX).nullable(),
   dailyLessons: z.int().min(1).max(DAILY_LESSONS_MAX).nullable(),
   divisions: staffDivisionsSchema,
+  /**
+   * The start date of a department move of the record (a change of the department of its Academic division) (`edge/people-roles-accounts`,
+   * row 15; task 3.4c, decision 2): sent with a move only, today or later in
+   * the branch's time zone and no later than the end of its latest year.
+   */
+  departmentStartsOn: schoolDateSchema.nullable().optional(),
 });
 
 export type StaffRecord = z.infer<typeof staffRecordSchema>;
@@ -303,7 +309,13 @@ export const staffListItemSchema = z.object({
   categories: z.array(roleSchema),
   branches: z.array(z.object({ branchId: z.uuid(), name: z.string(), main: z.boolean() })),
   divisions: z.array(
-    z.object({ divisionId: z.uuid(), departmentId: z.uuid().nullable(), main: z.boolean() }),
+    z.object({
+      divisionId: z.uuid(),
+      departmentId: z.uuid().nullable(),
+      main: z.boolean(),
+      /** The start date of the department's last move (task 3.4c, decision 8); `null` if never moved. */
+      departmentSince: schoolDateSchema.nullable(),
+    }),
   ),
   subjects: z.array(z.object({ subjectId: z.uuid(), grades: z.array(z.int()) })),
   languages: z.array(instructionLanguageSchema),

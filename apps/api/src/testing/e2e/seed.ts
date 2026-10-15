@@ -2885,6 +2885,119 @@ try {
   });
   seeded.teachingBlocks = { login: blocksVice.login, password: blocksVice.firstPassword };
 
+  // The department move (task 3.4c): a branch of its own with a year around
+  // today, 7 Oxford, the attendance-only subject Cosmology of STEAM and a
+  // draft whose row of it names a STEAM teacher who no longer has it in the
+  // profile, so that only the load keeps the move. The seed holds no fourth
+  // Super Admin: the years test's Super Admin moves it at the end of its
+  // session.
+  const moveBranch = await insertBranch(migrator, 'Department move browser test branch');
+  await migrator.transaction().execute(async (transaction) => {
+    const year = await transaction
+      .insertInto('academic_years')
+      .values({
+        branch_id: moveBranch,
+        start_date: startDate,
+        end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('quarters')
+      .values(
+        [1, 2, 3, 4].map((number) => ({
+          branch_id: moveBranch,
+          academic_year_id: year.id,
+          number,
+        })),
+      )
+      .execute();
+    const oxford = await transaction
+      .insertInto('classes')
+      .values({
+        branch_id: moveBranch,
+        academic_year_id: year.id,
+        grade: 7,
+        name: 'Oxford',
+        language: 'uz',
+        max_size: 25,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    const cosmology = await transaction
+      .insertInto('subjects')
+      .values({
+        name_uz: 'Kosmologiya',
+        name_ru: 'Космология',
+        name_en: 'Cosmology',
+        department_id: steam.id,
+        grades: [7],
+        colour: 'indigo',
+        journal_type: 'attendance_only',
+        rating_exam: false,
+        language_rule: true,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    const person = await transaction
+      .insertInto('staff')
+      .values({
+        kind: 'person',
+        staff_id: 'S-269321',
+        first_name: 'Malika',
+        last_name: 'Qodirova',
+        sex: 'female',
+        birth_date: '1987-11-02',
+        phone: '+998935557321',
+        admission_date: '2026-09-01',
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('staff_branches')
+      .values({ staff_id: person.id, branch_id: moveBranch, is_main: true })
+      .execute();
+    await transaction
+      .insertInto('staff_divisions')
+      .values({
+        staff_id: person.id,
+        division_id: academic.id,
+        department_id: steam.id,
+        is_main: true,
+      })
+      .execute();
+    await transaction
+      .insertInto('staff_languages')
+      .values({ staff_id: person.id, language: 'uz' })
+      .execute();
+    await transaction
+      .insertInto('staff_subjects')
+      .values({ staff_id: person.id, subject_id: cosmology.id, grades: [7] })
+      .execute();
+    await transaction
+      .insertInto('staff_statuses')
+      .values({ staff_id: person.id, status: 'active', valid_from: '2026-09-01' })
+      .execute();
+    const version = await transaction
+      .insertInto('timetable_versions')
+      .values({ branch_id: moveBranch, academic_year_id: year.id, number: 1, starts_on: startDate })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('teaching_load_rows')
+      .values({
+        branch_id: moveBranch,
+        version_id: version.id,
+        class_id: oxford.id,
+        subject_id: cosmology.id,
+        teacher_id: person.id,
+        lessons_per_week: 1,
+      })
+      .execute();
+    // The profile row goes; the load row stays (3.4a decision 3).
+    await transaction.deleteFrom('staff_subjects').where('staff_id', '=', person.id).execute();
+  });
+
   for (const branch of classBranches) {
     const years = await migrator
       .selectFrom('academic_years')

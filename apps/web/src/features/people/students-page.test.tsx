@@ -831,6 +831,7 @@ describe('adding a student', () => {
               id: maths,
               names: { uz: 'Matematika', ru: 'Математика', en: 'Mathematics' },
               departmentId: uid(9),
+              departmentSince: null,
               grades: [7, 8],
               colour: 'blue',
               journalType: 'graded',

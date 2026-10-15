@@ -45,6 +45,7 @@ const ACADEMIC: Division = {
 };
 
 const MATHEMATICS: Subject = {
+  departmentSince: null,
   id: uid(21),
   names: { uz: 'Matematika', ru: 'Математика', en: 'Mathematics' },
   departmentId: uid(11),
@@ -73,7 +74,9 @@ const AKMAL: StaffListItem = {
     { branchId: NORTH.id, name: 'North', main: true },
     { branchId: SOUTH.id, name: 'South', main: false },
   ],
-  divisions: [{ divisionId: ACADEMIC.id, departmentId: uid(11), main: true }],
+  divisions: [
+    { divisionId: ACADEMIC.id, departmentId: uid(11), main: true, departmentSince: null },
+  ],
   subjects: [{ subjectId: MATHEMATICS.id, grades: [5, 6] }],
   languages: ['uz'],
   phone: '+998901234567',

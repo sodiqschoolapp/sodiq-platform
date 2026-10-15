@@ -410,7 +410,7 @@ How to read the task lines:
   - From 3.2a (pull request #91, decisions 9 and 15; here the group teacher and card, the refusal is built in 3.4a): the load step refuses a group of two grades when no school weekday has a lesson slot with the same start and end in both grades' templates (`edge/timetable`, Structure; `sharedLessonSlots` and `twoGradeSlots` of `packages/timetable-rules`, which the group's save only shows), or when the subject is not taught in both grades; the teacher (or the vacancy) of a group is the teacher of its load row, and the group card and panel show it in place of "—".
   - From 3.2c (pull request #91, decision 18): the load becomes the source of the split and group subjects of a class (`05`: "Whether a class is split for a subject is set in the teaching load"), and a load row of a group or split is valid only when `group_placement_gaps` is empty.
 
-- [ ] **3.4c The department move against the load** (3.4 split in three, pull request #99, decision 1)
+- [x] **3.4c The department move against the load** (3.4 split in three, pull request #99, decision 1; pull request #101)
   - Read: `edge/people-roles-accounts` (row 15), `03` (Divisions), the plan of pull request #99.
   - Build: the department move of a teacher or a subject with a start date, by the Super Admin, refused while a load would have a teacher outside the subject's department, the loads listed for reassignment. Decides whether a draft's row counts as "a teaching load" for the refusal (decision 3 of pull request #99).
   - Done when: the move is refused with the loads listed, with allow and refuse tests.
@@ -456,6 +456,7 @@ How to read the task lines:
   - Done when: a draft cannot move to generation while a readiness check fails.
   - From 3.4a (pull request #99, decision 15 and correction 6): draft versions exist with their start date ("next Monday by default") and the load; this task adds the rest of step 1, the first day of a coming quarter as a shortcut, the readiness of the load step (the problems of each row, `loadRowProblems`), and the load step's list of a Tutor of two classes whose pinned lessons fall at the same time.
   - From 3.4b (pull request #100, decisions 4, 5 and 7): the readiness of steps 2 and 3 reads the weekly totals (`totals.ts` of `packages/timetable-rules`: each class's lessons against the lesson slots of its week, each teacher's lessons against the free slots in the branch) and blocks on `load_group_gaps` (students not placed) and the block problems (`load_block_lessons`, `load_block_teacher`, `load_block_mixed`, `load_mixed_not_split`, `load_split_and_whole`), which the load page only shows.
+  - From 3.4c (pull request #101, spec review nit 8): the row trigger of 0055 reads the class Tutor of a Tutor subject on the version's start date only, while `department_move_loads` (0057) reads it on the later of the start date, the move's start and today; for a draft whose start date has passed the two differ, and readiness settles one reading for the row checks.
 
 - [ ] **5.4a Grid: board and drag**
   - Read: `06` (Editing in the grid), `12`.
@@ -479,6 +480,7 @@ How to read the task lines:
   - Done when: two publishes at the same moment are tested.
   - From 2.1 (pull request #52, decisions 2, 3 and 14): the publish check of `edge/academic-year`, "Publishing is blocked unless the year has four dated quarters and every subject in the load has its journal type and, if it is graded, its daily distribution and its quarterly distribution for each quarter the version touches. Attendance-only subjects need no weights." The distributions are the branch's (`subject_daily_weights`, `subject_quarter_weights`); a row counts only in the subject's current `weights_round` and, for a quarter, when its rating exam part fits the subject's switch (as `quarterWeightsMissing` in `apps/api/src/modules/setup/subjects.service.ts` counts).
   - From 3.4b (pull request #100, decisions 1 and 4, Look first): publish blocks on every problem of a load row (`loadRowProblems`), the six of 3.4b included (`load_group_gaps` among them), and from the published version in force on a date `class_group_subjects` (0049) reads the subjects of its group rows whose groups draw from the class, in place of the active groups, so that the load is the source of the split and group subjects of a class (`05`, Group).
+  - From 3.4c (pull request #101, decision 2, Look first): `department_move_loads` (0057) counts every version of a year that is not closed and ends on or after the start date of a department move; once a published version has a run of its own, a published version whose run ends before the start date no longer counts.
 
 - [ ] **5.5b Publish: dated lessons**
   - Read: `06` (What a change does to existing data, How surprises are prevented), `edge/timetable` (Versions and drafts), `edge/time-dates-calendar`.
@@ -631,6 +633,7 @@ How to read the task lines:
   - Build: the lock at 23:59 branch time on the lesson date plus the edit days, worked out on each request from stored moments; unlock requests routed to the Head Teacher of the subject, the Senior Head Teacher or the Academic Vice Principal; nobody approves their own; corrections by the Academic Vice Principal with a reason; branch-wide extension of the edit period.
   - Done when: tests at 23:59 and 00:00 pass with the injected clock.
   - From 1.6 (pull request #49, decision 1): the edit days are `branch_settings.edit_days`, a plain value audited on change. The lock moment is stored per lesson; a change of the edit days re-stores the lock moments of the lessons dated after the change, in the same transaction (`edge/00-definitions`, Lock moment).
+  - From 3.4c (pull request #101, decision 10): `edge/people-roles-accounts`, row 15, "Open requests move to the new Head Teacher": a department move of a teacher or a subject (`PUT /api/people/staff/:id`, `PUT /api/setup/subjects/:id`) moves the open unlock requests of the moved teacher or subject to the Head Teacher who holds the post after the move; with no holder they go as row 16 says.
 
 - [ ] **8.5 Exemptions**
   - Read: `07` (Exemptions), `edge/exemptions`.

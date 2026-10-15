@@ -449,6 +449,14 @@ export const uz: Texts<'one' | 'other'> = {
       'Xodim kartochkangiz faol emas yoki ishdan ketgansiz, shuning uchun kira olmaysiz. Xato boʻlsa, super administratorga murojaat qiling.',
     subject_has_teachers:
       'Ishdan ketmagan oʻqituvchilarda yoki ochiq vakansiyalarda bu fan shu sinflar bilan shu kafedrada bor. Avval ularning fanlarini, keyin fanni oʻzgartiring.',
+    department_move_loads:
+      'Dars yuklamasida fan kafedrasidan tashqaridagi oʻqituvchi qoladi. Avval koʻrsatilgan yuklamalarni qayta taqsimlang, keyin oʻtkazing.',
+    department_move_start_outside:
+      'Boshlanish sanasi bugundan oldin yoki filialning oxirgi oʻquv yili tugaganidan keyin. Boshqa sanani tanlang.',
+    staff_changed:
+      'Siz ochib turganingizda kimdir bu xodim kartasini oʻzgartirdi. Uni qayta oching va oʻzgarishni takrorlang.',
+    subject_changed:
+      'Siz ochib turganingizda kimdir bu fanni oʻzgartirdi. Uni qayta oching va oʻzgarishni takrorlang.',
     department_has_staff:
       'Bu kafedrada ishdan ketmagan xodimlar yoki ochiq vakansiyalar bor. Avval ularni boshqa kafedraga oʻtkazing yoki vakansiyalarni yoping.',
     photo_invalid: 'JPEG yoki PNG formatidagi, 5 MB gacha boʻlgan surat tanlang.',
@@ -995,6 +1003,8 @@ export const uz: Texts<'one' | 'other'> = {
       nameTaken: 'Bu nom boshqa faol fanda bor. Boshqa nom tanlang.',
       department: 'Kafedra',
       departmentLocked: 'Fanni boshqa kafedraga faqat Super administrator oʻtkazadi.',
+      departmentStartsOn: 'Oʻtish sanasi',
+      departmentSince: '{{name}}, {{date}} sanadan',
       chooseDepartment: 'Kafedrani tanlang',
       grades: 'Sinflar',
       grade: '{{grade}}-sinf',
@@ -1317,6 +1327,15 @@ export const uz: Texts<'one' | 'other'> = {
     },
   },
   people: {
+    moveLoads: {
+      title: 'Avval qayta taqsimlanadigan yuklamalar',
+      rest: ' · {{parts}}',
+      separator: ' · ',
+      version: '{{number}}-versiya, {{date}} sanadan',
+      vacancy: 'Vakansiya: {{name}}',
+      elsewhere_one: 'Boshqa filiallarda: yana {{n}} qator.',
+      elsewhere_other: 'Boshqa filiallarda: yana {{n}} qator.',
+    },
     report: {
       link: 'Shaxsiy maʼlumotlar hisoboti',
       title: 'Shaxsiy maʼlumotlar hisoboti',
@@ -2011,6 +2030,8 @@ export const uz: Texts<'one' | 'other'> = {
       noDepartment: 'Kafedrasiz',
       furtherDivisions: 'Qoʻshimcha boʻlimlar',
       academicDepartment: 'Oʻquv boʻlimidagi kafedra',
+      departmentStartsOn: 'Kafedraga oʻtish sanasi',
+      departmentSince: '{{name}}, {{date}} sanadan',
       recordTitle: 'Kartochka',
       teachingTitle: 'Fanlar va tillar',
       none: 'Yoʻq',

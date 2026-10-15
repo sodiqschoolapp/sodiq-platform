@@ -12,6 +12,7 @@ import {
   signIn,
 } from './steps';
 import { codeNow } from './totp';
+import { moveSubjectDepartment } from './department-move';
 import { mergeRecords } from './merges';
 
 /**
@@ -671,7 +672,7 @@ async function linkOwnRecord(page: Page): Promise<void> {
 test('the Super Admin adds a year, dates its quarters, sets the go-live date and starts the year; the top bar shows it', async ({
   page,
 }) => {
-  test.setTimeout(150_000);
+  test.setTimeout(210_000);
   await signInAsSuperAdmin(page, 'years');
   await page
     .getByRole('combobox', { name: en.switcher.branch, exact: true })
@@ -743,6 +744,8 @@ test('the Super Admin adds a year, dates its quarters, sets the go-live date and
 
   await test.step('creates their own staff record and links it to the account; the menu shows the name', () =>
     linkOwnRecord(page));
+  await test.step('moves a subject to another department once the load row listed is gone', () =>
+    moveSubjectDepartment(page));
 });
 
 // docs/spec/03-school-setup.md, Slot types and day templates: "A day template

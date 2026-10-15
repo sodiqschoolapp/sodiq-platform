@@ -70,6 +70,27 @@ import { isWithdrawn } from '../setup/dated-rows.js';
 
 const refused = (code: ErrorCode): ApiException => new ApiException(code, 409);
 
+/**
+ * The subjects of rows about to be written FOR KEY SHARE in the order of their
+ * id, in a statement before the write (task 3.4c, decision 6 of pull request
+ * #101): a department move of a subject (FOR UPDATE) waits for the write or is
+ * waited for, so a Tutor row never slips in while its subject leaves the
+ * Tutors department.
+ */
+async function lockSubjects(transaction: Transaction, ids: readonly string[]): Promise<void> {
+  const sorted = [...new Set(ids.map((id) => id.toLowerCase()))].sort();
+  if (sorted.length === 0) {
+    return;
+  }
+  await transaction
+    .selectFrom('subjects')
+    .select('id')
+    .where('id', 'in', sorted)
+    .orderBy('id')
+    .forKeyShare()
+    .execute();
+}
+
 /** A row a copy left on the draft (decision 10), as stored in `left_rows`. */
 const leftRowSchema = z.object({
   sourceRowId: z.uuid(),
@@ -330,6 +351,10 @@ export class Timetable {
                 .forKeyShare()
                 .execute();
             }
+            await lockSubjects(
+              transaction,
+              rows.map((row) => row.subject_id),
+            );
             const facts = await LoadFacts.of(transaction, context, rows);
             const leave = (row: StoredLoadRow, problems: readonly LoadProblem[]) => {
               left.push({
@@ -737,6 +762,7 @@ export class Timetable {
           const version = await this.lockDraft(transaction, branchId, id);
           const context = await this.contextOf(transaction, version);
           const unit = await this.unitOf(transaction, context, input.classId, input.groupId);
+          await lockSubjects(transaction, [input.subjectId]);
           const subject = (await readSubjectFacts(transaction, [input.subjectId])).get(
             input.subjectId,
           );
@@ -843,6 +869,9 @@ export class Timetable {
             return this.rowAnswer(transaction, context, id, before);
           }
           const unit = await this.unitOf(transaction, context, before.class_id, before.group_id);
+          if (after.teacher_id !== before.teacher_id) {
+            await lockSubjects(transaction, [before.subject_id]);
+          }
           const subject = (await readSubjectFacts(transaction, [before.subject_id])).get(
             before.subject_id,
           );
