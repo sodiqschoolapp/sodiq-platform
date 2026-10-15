@@ -17,6 +17,7 @@ const DEFAULTS = {
   resultDrop: 15,
   attendancePercent: 80,
   absencesInRow: 3,
+  classDailyLessons: null,
 };
 
 const THRESHOLDS = { lowResult: 45, resultDrop: 20, attendancePercent: 75, absencesInRow: 4 };
@@ -147,7 +148,7 @@ describe('the settings of a branch', () => {
       const branch = await t.newBranch();
       const response = await put('/api/setup/settings/early-warning', branch, THRESHOLDS);
       expect(response.status).toBe(200);
-      expect(response.body).toEqual({ ...THRESHOLDS, editDays: 7 });
+      expect(response.body).toEqual({ ...THRESHOLDS, editDays: 7, classDailyLessons: null });
       const entries = await t.entries('settings.early_warning', branch);
       expect(entries).toHaveLength(1);
       expect(entries[0]).toMatchObject({
@@ -213,6 +214,76 @@ describe('the settings of a branch', () => {
           .status,
       ).toBe(403);
       expect(await settingsRow(t.south)).toEqual(before);
+    });
+  });
+
+  // Task 5.2, decision 2: 06, Rules, "the daily maximum in settings".
+  describe('the most lessons per day of a class', () => {
+    const path = '/api/setup/settings/class-daily-lessons';
+
+    it('is not set at first, takes a number from the Academic Vice Principal and is cleared again, audited', async () => {
+      const branch = await t.newBranch();
+      expect((await t.get('/api/setup/settings', branch)).body).toMatchObject({
+        classDailyLessons: null,
+      });
+      const set = await put(path, branch, { classDailyLessons: 7 });
+      expect(set.status).toBe(200);
+      expect(set.body).toEqual({ ...DEFAULTS, classDailyLessons: 7 });
+      const vice = await put(path, t.north, { classDailyLessons: 6 }, t.vicePrincipal);
+      expect(vice.status).toBe(200);
+      expect((await settingsRow(t.north)).class_daily_lessons).toBe(6);
+      const cleared = await put(path, t.north, { classDailyLessons: null }, t.vicePrincipal);
+      expect(cleared.body).toMatchObject({ classDailyLessons: null });
+      expect((await settingsRow(t.north)).class_daily_lessons).toBeNull();
+      const entries = await t.entries('settings.class_daily_lessons', t.north);
+      expect(entries).toHaveLength(2);
+      expect(entries[0]).toMatchObject({
+        branch_id: t.north,
+        record_type: 'branch_settings',
+        assignment_id: t.viceAssignment,
+        old_value: { classDailyLessons: null },
+        new_value: { classDailyLessons: 6 },
+        request_id: vice.headers['x-request-id'],
+      });
+      expect(entries[1]).toMatchObject({
+        old_value: { classDailyLessons: 6 },
+        new_value: { classDailyLessons: null },
+      });
+    });
+
+    it('writes nothing for a save that changes nothing', async () => {
+      const branch = await t.newBranch();
+      const before = await t.auditCount();
+      expect((await put(path, branch, { classDailyLessons: null })).status).toBe(200);
+      expect(await t.auditCount()).toBe(before);
+    });
+
+    it('refuses values outside 1 to 12 and a missing field', async () => {
+      for (const body of [
+        { classDailyLessons: 0 },
+        { classDailyLessons: 13 },
+        { classDailyLessons: 6.5 },
+        {},
+      ]) {
+        const response = await put(path, t.north, body);
+        expect(response.status, JSON.stringify(body)).toBe(400);
+        expect(errorCode(response)).toBe('validation_failed');
+      }
+    });
+
+    it('refuses the Principal, a Teacher and the Academic Vice Principal of another branch, and changes nothing', async () => {
+      const north = await settingsRow(t.north);
+      const south = await settingsRow(t.south);
+      const count = await t.auditCount();
+      for (const cookie of [t.principal, t.teacher]) {
+        expect((await put(path, t.north, { classDailyLessons: 9 }, cookie)).status).toBe(403);
+      }
+      expect((await put(path, t.south, { classDailyLessons: 9 }, t.vicePrincipal)).status).toBe(
+        403,
+      );
+      expect(await settingsRow(t.north)).toEqual(north);
+      expect(await settingsRow(t.south)).toEqual(south);
+      expect(await t.auditCount()).toBe(count);
     });
   });
 

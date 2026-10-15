@@ -96,6 +96,7 @@ export const AUDIT_ACTION_GROUPS = {
     'day_template_assignment.end',
     'settings.edit_days',
     'settings.early_warning',
+    'settings.class_daily_lessons',
     'subject.create',
     'subject.edit',
     'subject.archive',

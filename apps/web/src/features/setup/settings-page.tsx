@@ -1,5 +1,8 @@
 import {
   attendanceValuesRecordSchema,
+  CLASS_DAILY_LESSONS_MAX,
+  CLASS_DAILY_LESSONS_MIN,
+  classDailyLessonsRecordSchema,
   EARLY_WARNING_BOUNDS,
   earlyWarningRecordSchema,
   EDIT_DAYS_MAX,
@@ -10,6 +13,7 @@ import {
   permits,
   type AttendanceValuesRecord,
   type BranchSettings,
+  type ClassDailyLessonsRecord,
   type EarlyWarningRecord,
   type EditDaysRecord,
   type QuarterAttendanceValues,
@@ -96,6 +100,58 @@ function EditDaysSection({
         </RecordForm>
       ) : (
         <Values rows={[[t('setup.settings.editDays'), number.format(settings.editDays)]]} />
+      )}
+    </Section>
+  );
+}
+
+/**
+ * `06`, Rules: "A class has more lessons in a day than the daily maximum in
+ * settings" (task 5.2, decision 2); empty is not set, and no class is marked.
+ */
+function ClassDailySection({
+  settings,
+  canEdit,
+  onSave,
+}: {
+  settings: BranchSettings;
+  canEdit: boolean;
+  onSave: (record: ClassDailyLessonsRecord) => Promise<void>;
+}) {
+  const { t, i18n } = useTranslation();
+  const number = new Intl.NumberFormat(i18n.language);
+  const stored = settings.classDailyLessons;
+  const form = useRecordForm({
+    schema: classDailyLessonsRecordSchema,
+    initial: { classDailyLessons: stored === null ? '' : String(stored) },
+    read: (typed) => ({
+      classDailyLessons:
+        typed.classDailyLessons.trim() === '' ? null : wholeNumber(typed.classDailyLessons),
+    }),
+    save: onSave,
+  });
+  return (
+    <Section title={t('setup.settings.classDailyTitle')}>
+      {canEdit ? (
+        <RecordForm form={form} label={t('setup.settings.classDailyTitle')}>
+          <NumberField
+            label={t('setup.settings.classDaily')}
+            note={t('setup.settings.classDailyNote', {
+              min: number.format(CLASS_DAILY_LESSONS_MIN),
+              max: number.format(CLASS_DAILY_LESSONS_MAX),
+            })}
+            {...form.bind('classDailyLessons')}
+          />
+        </RecordForm>
+      ) : (
+        <Values
+          rows={[
+            [
+              t('setup.settings.classDaily'),
+              stored === null ? t('setup.settings.classDailyNotSet') : number.format(stored),
+            ],
+          ]}
+        />
       )}
     </Section>
   );
@@ -342,6 +398,16 @@ export function SettingsPage() {
       ),
     onSuccess: saved,
   });
+  const saveClassDaily = useMutation({
+    mutationFn: (record: ClassDailyLessonsRecord) =>
+      answerOf(
+        api.PUT('/api/setup/settings/class-daily-lessons', {
+          params: { header: branchHeader() },
+          body: record,
+        }),
+      ),
+    onSuccess: saved,
+  });
   const saveEarlyWarning = useMutation({
     mutationFn: (record: EarlyWarningRecord) =>
       answerOf(
@@ -373,6 +439,14 @@ export function SettingsPage() {
           canEdit={canEdit}
           onSave={async (record) => {
             await saveEarlyWarning.mutateAsync(record);
+          }}
+        />
+        <ClassDailySection
+          key={`class-daily-${branchId}`}
+          settings={settings.data}
+          canEdit={canEdit}
+          onSave={async (record) => {
+            await saveClassDaily.mutateAsync(record);
           }}
         />
         <AttendanceValuesSection key={branchId} branchId={branchId} canEdit={canEdit} />

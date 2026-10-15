@@ -131,6 +131,7 @@ export interface BranchSettings {
   absences_in_row: Generated<number>;
   attendance_percent: Generated<number>;
   branch_id: string;
+  class_daily_lessons: number | null;
   created_at: Generated<Timestamp>;
   edit_days: Generated<number>;
   low_result: Generated<number>;

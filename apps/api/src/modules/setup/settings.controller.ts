@@ -3,6 +3,7 @@ import {
   attendanceValuesListSchema,
   attendanceValuesRecordSchema,
   branchSettingsSchema,
+  classDailyLessonsRecordSchema,
   earlyWarningRecordSchema,
   editDaysRecordSchema,
   quarterAttendanceValuesSchema,
@@ -11,6 +12,7 @@ import {
   type AttendanceValuesList,
   type AttendanceValuesRecord,
   type BranchSettings,
+  type ClassDailyLessonsRecord,
   type EarlyWarningRecord,
   type EditDaysRecord,
   type QuarterAttendanceValues,
@@ -60,6 +62,17 @@ export class SettingsController {
     @RequestId() requestId: string,
   ): Promise<BranchSettings> {
     return this.settings.setEarlyWarning(access, branchOf(access), record, requestId);
+  }
+
+  @Put('settings/class-daily-lessons')
+  @Requires('settings', 'edit')
+  @Returns(branchSettingsSchema)
+  setClassDailyLessons(
+    @CurrentAccess() access: Access,
+    @ValidBody(classDailyLessonsRecordSchema) record: ClassDailyLessonsRecord,
+    @RequestId() requestId: string,
+  ): Promise<BranchSettings> {
+    return this.settings.setClassDailyLessons(access, branchOf(access), record, requestId);
   }
 
   @Get('attendance-values')

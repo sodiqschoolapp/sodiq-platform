@@ -1,6 +1,8 @@
 import {
   ATTENDANCE_VALUE_MAX,
   ATTENDANCE_VALUE_MIN,
+  CLASS_DAILY_LESSONS_MAX,
+  CLASS_DAILY_LESSONS_MIN,
   EARLY_WARNING_BOUNDS,
   EDIT_DAYS_DEFAULT,
   EDIT_DAYS_MAX,
@@ -91,6 +93,8 @@ describe('the settings in the database', () => {
         result_drop: EARLY_WARNING_BOUNDS.resultDrop.default,
         attendance_percent: EARLY_WARNING_BOUNDS.attendancePercent.default,
         absences_in_row: EARLY_WARNING_BOUNDS.absencesInRow.default,
+        // Task 5.2, decision 2: not set until the branch sets it.
+        class_daily_lessons: null,
       });
     });
 
@@ -111,6 +115,7 @@ describe('the settings in the database', () => {
         result_drop: EARLY_WARNING_BOUNDS.resultDrop,
         attendance_percent: EARLY_WARNING_BOUNDS.attendancePercent,
         absences_in_row: EARLY_WARNING_BOUNDS.absencesInRow,
+        class_daily_lessons: { min: CLASS_DAILY_LESSONS_MIN, max: CLASS_DAILY_LESSONS_MAX },
       };
       for (const [column, bounds] of Object.entries(columns)) {
         expect(await set({ [column]: bounds.min }), column).toEqual(ACCEPTED);

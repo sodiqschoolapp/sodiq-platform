@@ -148,6 +148,7 @@ describe('the record of a branch', () => {
             resultDrop: 15,
             attendancePercent: 80,
             absencesInRow: 3,
+            classDailyLessons: null,
           },
         },
         request_id: response.headers['x-request-id'],

@@ -32,6 +32,14 @@ export const ATTENDANCE_VALUE_MAX = 100;
 export const LATE_VALUE_DEFAULT = 50;
 export const SKIPPED_VALUE_DEFAULT = 0;
 
+/**
+ * `06`, Rules: "A class has more lessons in a day than the daily maximum in
+ * settings" (task 5.2, decision 2): one value per branch, `null` while not set;
+ * the bounds of a teacher's most lessons per day (`DAILY_LESSONS_MAX`).
+ */
+export const CLASS_DAILY_LESSONS_MIN = 1;
+export const CLASS_DAILY_LESSONS_MAX = 12;
+
 /** Answer 21: "0 to 180 minutes". */
 export const TRAVEL_MINUTES_MAX = 180;
 
@@ -64,6 +72,12 @@ export const earlyWarningRecordSchema = z.object({
 
 export type EarlyWarningRecord = z.infer<typeof earlyWarningRecordSchema>;
 
+export const classDailyLessonsRecordSchema = z.object({
+  classDailyLessons: z.int().min(CLASS_DAILY_LESSONS_MIN).max(CLASS_DAILY_LESSONS_MAX).nullable(),
+});
+
+export type ClassDailyLessonsRecord = z.infer<typeof classDailyLessonsRecordSchema>;
+
 const attendanceValueSchema = z.int().min(ATTENDANCE_VALUE_MIN).max(ATTENDANCE_VALUE_MAX);
 
 export const attendanceValuesRecordSchema = z.object({
@@ -84,7 +98,9 @@ export type TravelTimeRecord = z.infer<typeof travelTimeRecordSchema>;
 // What the routes answer.
 
 /** The settings of the branch of the request. */
-export const branchSettingsSchema = earlyWarningRecordSchema.extend(editDaysRecordSchema.shape);
+export const branchSettingsSchema = earlyWarningRecordSchema
+  .extend(editDaysRecordSchema.shape)
+  .extend(classDailyLessonsRecordSchema.shape);
 
 export type BranchSettings = z.infer<typeof branchSettingsSchema>;
 

@@ -963,6 +963,11 @@ export const uz: Texts<'one' | 'other'> = {
       editDays: 'Dars necha kun tahrir uchun ochiq',
       editDaysNote:
         'Darsdan keyingi kalendar kunlari, {{min}} dan {{max}} gacha. Oʻzgarishdan keyingi sanadagi darslarga taalluqli.',
+      classDailyTitle: 'Sinfning kunlik darslari',
+      classDaily: 'Bir kundagi eng koʻp darslar',
+      classDailyNote:
+        '{{min}} dan {{max}} gacha yoki cheklovsiz boʻlsa boʻsh. Kunida bundan koʻp darsi bor sinf dars jadvalida belgilanadi.',
+      classDailyNotSet: 'Belgilanmagan',
       earlyWarningTitle: 'Erta ogohlantirish roʻyxati',
       thresholds: {
         lowResult: 'Chorak natijasi quyidagidan past',
@@ -2388,6 +2393,7 @@ export const uz: Texts<'one' | 'other'> = {
       settings: {
         edit_days: 'Tahrirlash kunlari oʻzgartirildi',
         early_warning: 'Erta ogohlantirish sozlamalari oʻzgartirildi',
+        class_daily_lessons: 'Sinfning kunlik eng koʻp darslari oʻzgartirildi',
       },
       subject: {
         create: 'Fan yaratildi',
