@@ -341,7 +341,7 @@ export const en = {
     return_language_differs:
       'The class the student left teaches in another language than this class. Confirm to go on.',
     return_outside_year:
-      "The return date is not in the academic year of this class. A return or restore is recorded on a day of the class's year: choose a class of the current year, or record it on the first day of the class's year.",
+      'The date is not in the academic year of this class. A return or a restore is dated today or earlier, on a day of the class’s year: choose a class of the current year.',
     group_transfer_subject: 'That group is of another subject. Choose a group of the same subject.',
     request_refused: 'The request was refused. Try again or ask an administrator.',
     already_exists: 'A record of this name already exists here. Choose another name.',

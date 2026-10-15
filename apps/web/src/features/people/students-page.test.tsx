@@ -2685,6 +2685,48 @@ describe('the class of a return and of a restore', () => {
     expect(bodies[1]).toMatchObject({ classId: uid(53), confirmLanguage: true });
   });
 
+  it('sends nothing more and keeps the form when the language question is declined', async () => {
+    const bodies: unknown[] = [];
+    openReturn({
+      [`POST /api/people/students/${LOLA.id}/return`]: (body) => {
+        bodies.push(body);
+        return json(
+          {
+            error: {
+              code: 'return_language_differs',
+              message: 'Differs.',
+              requestId: 'r',
+              details: [{ path: 'classId', code: 'return_language_differs', message: 'x' }],
+            },
+          },
+          409,
+        );
+      },
+    });
+    const { form, type } = await returnForm();
+    type(en.people.students.returnFrom, '2026-10-05');
+    await within(form).findByRole('option', { name: '7 Harvard' });
+    type(en.people.students.class, uid(53));
+    type(en.people.students.contractNumber, 'SQ-2026/133');
+    type(en.people.students.contractSignedOn, '2026-10-05');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    fireEvent.click(
+      within(
+        await screen.findByRole('alertdialog', { name: en.people.students.returnConfirmTitle }),
+      ).getByRole('button', { name: en.people.students.returnTitle }),
+    );
+    const asked = await screen.findByRole('alertdialog', {
+      name: en.people.students.returnLanguageTitle,
+    });
+    fireEvent.click(within(asked).getByRole('button', { name: en.confirm.cancel }));
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    });
+    expect(bodies).toHaveLength(1);
+    expect(within(form).getByRole('button', { name: en.form.save })).toBeDefined();
+    expect(form.isConnected).toBe(true);
+  });
+
   it('shows a full class on the class field', async () => {
     openReturn({
       [`POST /api/people/students/${LOLA.id}/return`]: () =>

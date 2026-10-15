@@ -442,8 +442,12 @@ export class StudentStatuses {
         pathOf: () => 'classId',
         ...(intoLeft && input.leaving !== null
           ? {
+              // Keyed by the stored id, as `planClassGroups` reads it (spec review, should-fix 6).
               preferred: new Map([
-                [id, groupsLeavingCut(await groupMembershipsOf(transaction, id), input.leaving.id)],
+                [
+                  student.id,
+                  groupsLeavingCut(await groupMembershipsOf(transaction, id), input.leaving.id),
+                ],
               ]),
             }
           : {}),

@@ -213,6 +213,26 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 15 October 2026: return and graduate restore into a class (task 3.3b)
+
+Plan approved on pull request #96 with correction 1; decisions 1 to 6 and 10 marked Look first and confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** The 2.4b-1 return tests, and those of the relatives and the student export, send a class; the restore tests send one too; nothing is weakened | Decision 1; `04`, Movements: "is placed in a class from the return date" |
+| **Look first.** "Into another class: handled like a transfer" is the language confirmation of `05` (`return_language_differs`, asked against the class left) and the journal side of 8.6 (a line added); no `student_moves` row; the restore asks no confirmation | Decision 2 with the review's addition |
+| **Look first.** `class_memberships_cause_check` replaced in 0052 with `return` and `restore` added, nothing taken away | Decision 3 |
+| **Look first.** `classMembershipId`, `languageConfirmed` and `groupsPlaced` join `NOT_IDENTITY_KEYS` | Decision 4 |
+| **Look first.** A return into the class left offers each subject the group the leaving cut first, inside `planClassGroups` (`preferredOf`), with the same seat book and offered groups; otherwise the smallest suitable group; every row automatic and tagged | Decision 5 with correction 1 |
+| **Look first.** The restore takes the grade of the class it names | Decision 6 |
+| **Look first.** A return or a restore dated outside the class's year is `return_outside_year` (path `from`); a graduate restored by mistake in the summer waits for the next year's first day | Decision 10 |
+| No permission change; a pin test that the returners and the restorer edit classes and groups, and the restorer students | Decision 7 |
+| The class rules are checked again by `planPlacement` after the status rows, under the student and class locks, the class re-read after its lock; lock order student, class, groups | Decision 9 |
+| The refusals of the class rules answer at `classId` or `from` (`atClassFields`) | Decision 11 |
+| The record answers `classLeft` (the class the inactive student left, by the service's own rule) to a reader who may return the student; the return form offers it first | Build: the form needs it; nothing new is readable |
+| The class select shows the fewest free seats of the class chosen under the field, not a count on each option | Build: one read of the Students tab for the class chosen, not one per class |
+| Plan tests not written: a cut group "no longer drawing from the class" (`group_classes_members` keeps the class while the cut row exists); the guard's `class_memberships_full` reached by a race (the class lock comes before the count, a unit test of `atClassFields` instead); a restore refused by `students_grade_class` (a graduate holds no class row after today) | Build; accepted by the spec review of the build |
+
 ## 14 October 2026: class and group transfers, the History tab (task 3.3a)
 
 Plan approved on pull request #95 with corrections 1 to 4; decisions 1, 2, 9 and 12 marked Look first and confirmed there. Flagged on issue #42.

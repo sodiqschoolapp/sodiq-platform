@@ -1,4 +1,9 @@
-import { apiErrorSchema, studentDetailSchema, type StudentDetail } from '@sodiq/shared';
+import {
+  apiErrorSchema,
+  studentDetailSchema,
+  studentHistorySchema,
+  type StudentDetail,
+} from '@sodiq/shared';
 import { sql } from 'kysely';
 import { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -187,6 +192,17 @@ describe('the class of a return and of a graduate restore', () => {
       .orderBy('id')
       .execute();
 
+  /** The class lines of the History tab, by class and first day. */
+  async function classLines(id: string): Promise<{ classId: string; from: string }[]> {
+    const history = await get(`/api/people/students/${id}/history`);
+    expect(history.status, JSON.stringify(history.body)).toBe(200);
+    return studentHistorySchema
+      .parse(history.body)
+      .lines.flatMap((line) =>
+        line.kind === 'class' ? [{ classId: line.class.id, from: line.from }] : [],
+      );
+  }
+
   /** The group rows with days from the date on. */
   const groupRows = (id: string, from = '2026-10-06') =>
     t.database.migrator
@@ -350,23 +366,32 @@ describe('the class of a return and of a graduate restore', () => {
         ),
       ).toHaveLength(2);
       // The History tab shows the class joined by the return.
-      const history = await get(`/api/people/students/${student.id}/history`);
-      expect(history.status, JSON.stringify(history.body)).toBe(200);
-      expect(JSON.stringify(history.body)).toContain('"from":"2026-10-08"');
+      expect(await classLines(student.id)).toContainEqual({ classId: oxford, from: '2026-10-08' });
     });
 
     it('names the class left only to a reader who may return the student (permission review)', async () => {
       const oxford = await schoolClass();
       const student = await leftFrom(oxford);
       expect((await fresh(student.id)).classLeft?.id).toBe(oxford);
-      for (const cookie of [t.principal, t.teacher]) {
-        const read = await get(`/api/people/students/${student.id}`, cookie);
-        if (read.status === 200) {
-          expect(studentDetailSchema.parse(read.body).classLeft).toBeUndefined();
-        } else {
-          expect(read.status).toBe(403);
-        }
-      }
+      // The Principal reads the record and "Changes nothing" (02).
+      const read = await get(`/api/people/students/${student.id}`, t.principal);
+      expect(read.status, JSON.stringify(read.body)).toBe(200);
+      expect(studentDetailSchema.parse(read.body).classLeft).toBeUndefined();
+    });
+
+    it('asks no confirmation when the student left no class (decision 2)', async () => {
+      // A student whose class row is gone before the leaving (migrator): no class left.
+      const student = await pupil(await schoolClass({ language: 'uz' }));
+      await t.database.migrator
+        .deleteFrom('class_memberships')
+        .where('student_id', '=', student.id)
+        .execute();
+      await leave(student.id);
+      expect((await fresh(student.id)).classLeft).toBeNull();
+      const russian = await schoolClass({ language: 'ru' });
+      accepted(await giveBack(student.id, russian));
+      const [entry] = await t.entries('student.return', student.id);
+      expect(entry).toMatchObject({ new_value: { classId: russian, languageConfirmed: false } });
     });
 
     it('places the class and the groups from yesterday for a backdated return', async () => {
@@ -413,12 +438,40 @@ describe('the class of a return and of a graduate restore', () => {
       // The last class joined: the first is of the create, before the graduation.
       const joined = (await t.entries('student.class_joined', student.id)).at(-1);
       expect(joined).toMatchObject({ new_value: { classId: eighth, cause: 'restore' } });
+      expect(await classLines(student.id)).toContainEqual({ classId: eighth, from: '2026-10-01' });
     });
 
-    it('asks no confirmation of the language (the review: decision 2)', async () => {
-      const student = await graduated();
+    it('asks no confirmation of the language, though the class before the graduation was Uzbek (the review: decision 2)', async () => {
+      // A graduate whose class row of 7 Oxford (Uzbek) ended before the
+      // graduation: a leaving cut it, and a graduation follows the leaving (migrator).
+      const oxford = await schoolClass({ language: 'uz' });
+      const student = await pupil(oxford);
+      await leave(student.id, '2026-09-30');
+      await t.database.migrator
+        .updateTable('student_statuses')
+        .set({ valid_until: '2026-10-02' })
+        .where('student_id', '=', student.id)
+        .where('valid_until', 'is', null)
+        .execute();
+      await t.database.migrator
+        .insertInto('student_statuses')
+        .values({
+          student_id: student.id,
+          branch_id: t.north,
+          status: 'graduated',
+          valid_from: '2026-10-02',
+          cause: 'graduation',
+        })
+        .execute();
+      expect(await classRows(student.id)).toEqual([
+        expect.objectContaining({ class_id: oxford, valid_until: '2026-10-01' }),
+      ]);
       const russian = await schoolClass({ language: 'ru' });
-      accepted(await restoreInto(student.id, russian));
+      accepted(await restoreInto(student.id, russian, '2026-10-02'));
+      expect((await classRows(student.id)).at(-1)).toMatchObject({
+        class_id: russian,
+        cause: 'restore',
+      });
     });
   });
 
@@ -516,12 +569,11 @@ describe('the class of a return and of a graduate restore', () => {
 
     it('takes no group of the class left on a return into another class', async () => {
       const yale = await schoolClass();
-      const { maths, student, cut } = await cutAndSmall({ alsoDrawsFrom: yale });
+      const { maths, student } = await cutAndSmall({ alsoDrawsFrom: yale });
       const yaleOnly = await group(maths, [yale], 20, 'Z');
       // `cut` draws from Yale too and is first by name, but holds one student.
       accepted(await giveBack(student.id, yale));
       expect((await groupRows(student.id)).map((row) => row.group_id)).toEqual([yaleOnly]);
-      expect(yaleOnly).not.toBe(cut);
     });
   });
 
@@ -739,6 +791,7 @@ describe('the class of a return and of a graduate restore', () => {
           expect(errorCode(second)).toBe('class_group_no_seat');
           expect((await fresh(student.id)).status).toBe('inactive');
         } else {
+          expect(errorCode(second)).toBe('group_full');
           expect((await groupRows(student.id)).map((row) => row.group_id)).toEqual([last]);
         }
       }

@@ -8,6 +8,7 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 - A class left in another language asks a confirmation (`return_language_differs`); a date outside the class's year is `return_outside_year`; the refusals answer at `classId` or `from`. The record names `classLeft` for the return form.
 - The return and restore forms: a class select of the year of the date (the class left first, its fewest free seats under it, switched off with a line when no class fits); the panel says how many groups were placed for review.
 - Left out: the journal side of a return (8.6, a line added); a cancel or undo of a return or a restore (the spec names none).
+- Plan tests not written (unreachable, `docs/decisions.md`, 3.3b): a cut group no longer drawing from the class, the guard's `class_memberships_full` by a race, a restore refused by `students_grade_class`.
 
 The next sessions must know:
 

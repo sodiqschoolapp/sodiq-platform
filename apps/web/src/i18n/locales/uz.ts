@@ -346,7 +346,7 @@ export const uz: Texts<'one' | 'other'> = {
     return_language_differs:
       'Oʻquvchi ketgan sinfda taʼlim tili bu sinfnikidan boshqa. Davom etish uchun tasdiqlang.',
     return_outside_year:
-      'Qaytish sanasi bu sinfning oʻquv yilida emas. Qaytish yoki tiklash sinf oʻquv yilining biror kuniga yoziladi: joriy yilning sinfini tanlang yoki uni sinf oʻquv yilining birinchi kuniga yozing.',
+      'Sana bu sinfning oʻquv yilida emas. Qaytish yoki tiklash bugungi yoki oldingi kunga, sinf oʻquv yilining biror kuniga yoziladi: joriy yilning sinfini tanlang.',
     group_transfer_subject: 'Bu guruh boshqa fanga tegishli. Shu fanning guruhini tanlang.',
     request_refused:
       'Soʻrov rad etildi. Qayta urinib koʻring yoki administratorga murojaat qiling.',
