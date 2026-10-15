@@ -32,7 +32,7 @@ const EXEMPTIONS: readonly Row[] = [
   },
   {
     case: 'Slots 5–7 on Friday are exempted, then Friday becomes a shortened day and a lesson moves into slot 6.',
-    rule: '9bcd6e51a09389b1',
+    rule: 'bfd4541d84af7707',
     tests: [],
     tasks: ['8.5'],
   },
