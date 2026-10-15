@@ -541,7 +541,7 @@ describe('the department move against the load', () => {
   });
 
   describe('who may move', () => {
-    it('refuses the Academic Vice Principal and a Teacher, and answers 404 for another branch', async () => {
+    it('refuses the Academic Vice Principal, the Principal and a Teacher, and answers 404 for another branch', async () => {
       const { teacher } = await steamRow();
       const body = staffBody(await detail(teacher), {
         divisions: toDepartment(national),
@@ -553,7 +553,13 @@ describe('the department move against the load', () => {
         403,
         'permission_denied',
       );
-      expect((await put(`/api/people/staff/${teacher}`, body, t.teacher)).status).toBe(403);
+      for (const cookie of [t.principal, t.teacher]) {
+        refusedWith(
+          await put(`/api/people/staff/${teacher}`, body, cookie),
+          403,
+          'permission_denied',
+        );
+      }
       const elsewhere = await put(`/api/people/staff/${teacher}`, body, t.admin, t.south);
       expect(elsewhere.status).toBe(404);
       expect((await put(`/api/people/staff/${UNKNOWN}`, body)).status).toBe(404);
@@ -694,6 +700,64 @@ describe('the department move against the load', () => {
         403,
         'subject_move_super_admin',
       );
+    });
+
+    it('refuses the Academic Vice Principal, the Principal and a Teacher, and nothing is written', async () => {
+      const { subject } = await steamRow();
+      const body = subjectBody(await subjectAnswer(subject), {
+        departmentId: national,
+        departmentStartsOn: MOVE_ON,
+      });
+      const before = await rowsOf();
+      refusedWith(
+        await put(`/api/setup/subjects/${subject}`, body, t.vicePrincipal),
+        403,
+        'subject_move_super_admin',
+      );
+      for (const cookie of [t.principal, t.teacher]) {
+        refusedWith(
+          await put(`/api/setup/subjects/${subject}`, body, cookie),
+          403,
+          'permission_denied',
+        );
+      }
+      expect(await rowsOf()).toEqual(before);
+    });
+
+    // Permission review, should-fix 4: a row whose teacher this branch no
+    // longer sees is still listed, without the name.
+    it('lists a row whose teacher is no longer linked to the branch, without the name', async () => {
+      const { row, teacher, subject } = await steamRow({ further: [t.south] });
+      // The person's main link moves to the South, and the North link goes.
+      await t.database.migrator.transaction().execute(async (transaction) => {
+        await transaction
+          .deleteFrom('staff_branches')
+          .where('staff_id', '=', teacher)
+          .where('branch_id', '=', t.north)
+          .execute();
+        await transaction
+          .updateTable('staff_branches')
+          .set({ is_main: true })
+          .where('staff_id', '=', teacher)
+          .where('branch_id', '=', t.south)
+          .execute();
+      });
+      const refused = await put(
+        `/api/setup/subjects/${subject}`,
+        subjectBody(await subjectAnswer(subject), {
+          departmentId: national,
+          departmentStartsOn: MOVE_ON,
+        }),
+      );
+      refusedWith(refused, 409, 'department_move_loads');
+      expect(detailsOf(refused)).toEqual([
+        expect.objectContaining({
+          path: `load.${row}`,
+          load: expect.objectContaining({
+            teacher: { id: teacher, name: null, vacancy: false },
+          }) as unknown,
+        }),
+      ]);
     });
   });
 

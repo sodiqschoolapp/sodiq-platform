@@ -608,7 +608,8 @@ export const errorDetailSchema = z.object({
       versionStartsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
       unit: z.object({ kind: z.enum(['class', 'group']), id: z.uuid(), name: z.string() }),
       subjectId: z.uuid(),
-      teacher: z.object({ id: z.uuid(), name: z.string(), vacancy: z.boolean() }),
+      /** `name` is `null` for a teacher this branch no longer sees. */
+      teacher: z.object({ id: z.uuid(), name: z.string().nullable(), vacancy: z.boolean() }),
     })
     .optional(),
 });

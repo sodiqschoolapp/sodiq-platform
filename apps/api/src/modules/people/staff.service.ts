@@ -457,18 +457,21 @@ export class Staff {
       this.transactions.run(access.branchIds, async (transaction) => {
         // Task 3.4c, decision 6: a teacher move takes the lock of department
         // moves before any row lock, decided from the department read without
-        // one; the locked read must agree (decision 9).
+        // one; the locked read must agree (decision 9). Only a Super Admin
+        // moves, so nobody else takes the lock (permission review, nit 5); the
+        // read sees no record of another branch, which the lock answers 404.
+        const mayMove = superAdminOf(access) !== undefined;
         const academicId = await this.academicDivisionId(transaction);
         const asked = academicDepartmentOf(record.divisions, academicId);
         const unlocked = academicDepartmentOf(await this.divisionsOf(transaction, id), academicId);
-        const lockedForMove = isMove(unlocked, asked);
+        const lockedForMove = mayMove && isMove(unlocked, asked);
         if (lockedForMove) {
           await lockDepartmentMoves(transaction);
         }
         const row = await this.lockPerson(transaction, id);
         const divisions = await this.divisionsOf(transaction, id);
         const moving = isMove(academicDepartmentOf(divisions, academicId), asked);
-        if (moving !== lockedForMove) {
+        if (mayMove && moving !== lockedForMove) {
           throw new ApiException('staff_changed', 409);
         }
         const before = fieldsOf(row, sortDivisions(divisions));

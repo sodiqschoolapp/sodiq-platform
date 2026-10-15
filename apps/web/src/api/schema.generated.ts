@@ -3167,7 +3167,7 @@ export interface components {
                         teacher: {
                             /** Format: uuid */
                             id: string;
-                            name: string;
+                            name: string | null;
                             vacancy: boolean;
                         };
                     };
@@ -3925,7 +3925,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -4045,7 +4045,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -4277,7 +4277,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -4379,7 +4379,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -4473,7 +4473,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -4577,7 +4577,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -4678,7 +4678,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -4777,7 +4777,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -4880,7 +4880,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -4976,7 +4976,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -5081,7 +5081,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -5180,7 +5180,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -5279,7 +5279,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -5377,7 +5377,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -5475,7 +5475,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -5567,7 +5567,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -5659,7 +5659,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -5761,7 +5761,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -5876,7 +5876,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -5972,7 +5972,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -6089,7 +6089,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -6201,7 +6201,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -6314,7 +6314,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -6410,7 +6410,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -6525,7 +6525,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -6630,7 +6630,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -6735,7 +6735,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -6838,7 +6838,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -6941,7 +6941,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -7034,7 +7034,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -7127,7 +7127,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -7229,7 +7229,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -7338,7 +7338,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -7449,7 +7449,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -7551,7 +7551,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -7664,7 +7664,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -7773,7 +7773,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -7876,7 +7876,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -7984,7 +7984,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -8091,7 +8091,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -8200,7 +8200,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -8301,7 +8301,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -8402,7 +8402,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -8499,7 +8499,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -8620,7 +8620,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -8737,7 +8737,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -8858,7 +8858,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -8982,7 +8982,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -9097,7 +9097,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -9212,7 +9212,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -9313,7 +9313,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -9424,7 +9424,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -9530,7 +9530,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -9631,7 +9631,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -9801,7 +9801,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -9908,7 +9908,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -10030,7 +10030,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -10218,7 +10218,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -10342,7 +10342,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -10447,7 +10447,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -10552,7 +10552,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -10664,7 +10664,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -10753,7 +10753,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -10848,7 +10848,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -10946,7 +10946,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -11048,7 +11048,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -11150,7 +11150,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -11241,7 +11241,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -11331,7 +11331,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -11429,7 +11429,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -11545,7 +11545,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -11686,7 +11686,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -11782,7 +11782,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -11925,7 +11925,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -12048,7 +12048,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -12163,7 +12163,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -12278,7 +12278,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -12386,7 +12386,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -12502,7 +12502,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -12615,7 +12615,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -12742,7 +12742,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -12941,7 +12941,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -13037,7 +13037,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -13204,7 +13204,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -13405,7 +13405,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -13516,7 +13516,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -13694,7 +13694,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -13869,7 +13869,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -14053,7 +14053,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -14142,7 +14142,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -14279,7 +14279,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -14377,7 +14377,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -14464,7 +14464,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -14601,7 +14601,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -14750,7 +14750,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -14895,7 +14895,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -15041,7 +15041,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -15124,7 +15124,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -15211,7 +15211,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -15333,7 +15333,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -15461,7 +15461,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -15583,7 +15583,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -15675,7 +15675,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -15767,7 +15767,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -15865,7 +15865,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -15978,7 +15978,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -16064,7 +16064,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -16236,7 +16236,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -16319,7 +16319,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -16526,7 +16526,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -16659,7 +16659,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -16762,7 +16762,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -16889,7 +16889,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -16985,7 +16985,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -17098,7 +17098,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -17227,7 +17227,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -17340,7 +17340,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -17453,7 +17453,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -17536,7 +17536,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -17700,7 +17700,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -18143,7 +18143,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -18228,7 +18228,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -18324,7 +18324,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -18429,7 +18429,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -18782,7 +18782,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -19173,7 +19173,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -19534,7 +19534,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -19629,7 +19629,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -19991,7 +19991,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -20350,7 +20350,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -20710,7 +20710,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -21081,7 +21081,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -21445,7 +21445,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -21535,7 +21535,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -21899,7 +21899,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -22263,7 +22263,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -22622,7 +22622,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -22982,7 +22982,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -23346,7 +23346,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -23708,7 +23708,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -24065,7 +24065,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -24424,7 +24424,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -24625,7 +24625,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -24988,7 +24988,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -25345,7 +25345,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -25434,7 +25434,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -25539,7 +25539,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -25640,7 +25640,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -26007,7 +26007,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -26120,7 +26120,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -26290,7 +26290,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -26658,7 +26658,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -26744,7 +26744,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -26832,7 +26832,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -26915,7 +26915,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -27023,7 +27023,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -27108,7 +27108,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -27204,7 +27204,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -27320,7 +27320,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -27451,7 +27451,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -27580,7 +27580,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -27703,7 +27703,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -27786,7 +27786,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -27874,7 +27874,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -27977,7 +27977,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -28128,7 +28128,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -28242,7 +28242,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -28353,7 +28353,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -28597,7 +28597,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -28851,7 +28851,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -29032,7 +29032,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -29133,7 +29133,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -29229,7 +29229,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -29381,7 +29381,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -29569,7 +29569,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -29676,7 +29676,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -29772,7 +29772,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -29948,7 +29948,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -30139,7 +30139,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -30315,7 +30315,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -30491,7 +30491,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -30680,7 +30680,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -30864,7 +30864,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -30969,7 +30969,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -31094,7 +31094,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -31200,7 +31200,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -31330,7 +31330,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -31488,7 +31488,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -31588,7 +31588,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -31709,7 +31709,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -31809,7 +31809,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -31905,7 +31905,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -32049,7 +32049,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -32206,7 +32206,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -32350,7 +32350,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -32501,7 +32501,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -32614,7 +32614,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -32738,7 +32738,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -32852,7 +32852,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -32966,7 +32966,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -33060,7 +33060,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -33158,7 +33158,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -33265,7 +33265,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -33382,7 +33382,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -33496,7 +33496,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -33699,7 +33699,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -33852,7 +33852,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -33963,7 +33963,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -34063,7 +34063,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -34147,7 +34147,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };
@@ -34294,7 +34294,7 @@ export interface operations {
                                     teacher: {
                                         /** Format: uuid */
                                         id: string;
-                                        name: string;
+                                        name: string | null;
                                         vacancy: boolean;
                                     };
                                 };

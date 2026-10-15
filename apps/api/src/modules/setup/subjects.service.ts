@@ -337,14 +337,16 @@ export class Subjects {
       this.transactions.run(access.branchIds, async (transaction) => {
         // Task 3.4c, decision 6: a move takes the lock of department moves
         // before any row lock, decided from the department read without one;
-        // the locked read must agree (decision 9).
+        // the locked read must agree (decision 9). Only a Super Admin moves,
+        // so nobody else takes the lock (permission review, nit 5).
+        const mayMove = superAdminOf(access) !== undefined;
         const unlocked = await transaction
           .selectFrom('subjects')
           .select('department_id')
           .where('id', '=', id)
           .executeTakeFirst();
         const lockedForMove =
-          unlocked !== undefined && unlocked.department_id !== record.departmentId;
+          mayMove && unlocked !== undefined && unlocked.department_id !== record.departmentId;
         if (lockedForMove) {
           await lockDepartmentMoves(transaction);
         }
@@ -352,7 +354,7 @@ export class Subjects {
         const before = fieldsOf(row);
         const after = recordFields(record);
         const moving = after.departmentId !== before.departmentId;
-        if (moving !== lockedForMove) {
+        if (mayMove && moving !== lockedForMove) {
           throw refused('subject_changed');
         }
         // The assignment the audit entry names: for a move, the Super Admin one.

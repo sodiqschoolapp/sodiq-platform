@@ -55,9 +55,13 @@ export function MoveLoads({ error }: { error: unknown }) {
             const parts = [
               line.unit.name,
               ...(subject === undefined ? [] : [nameOf(subject.names, i18n.language)]),
-              line.teacher.vacancy
-                ? t('people.moveLoads.vacancy', { name: line.teacher.name })
-                : line.teacher.name,
+              ...(line.teacher.name === null
+                ? []
+                : [
+                    line.teacher.vacancy
+                      ? t('people.moveLoads.vacancy', { name: line.teacher.name })
+                      : line.teacher.name,
+                  ]),
             ];
             return (
               <li key={`${line.versionId}-${line.unit.id}-${line.subjectId}`}>

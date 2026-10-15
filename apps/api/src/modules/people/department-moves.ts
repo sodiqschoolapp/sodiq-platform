@@ -130,7 +130,10 @@ async function readLoadLines(
     .innerJoin('timetable_versions as v', 'v.id', 'r.version_id')
     .leftJoin('classes as c', 'c.id', 'r.class_id')
     .leftJoin('groups as g', 'g.id', 'r.group_id')
-    .innerJoin('staff as s', 's.id', 'r.teacher_id')
+    // A teacher no longer linked to the branch is hidden by the membership
+    // filter: the row is still listed, without the name (permission review,
+    // should-fix 4).
+    .leftJoin('staff as s', 's.id', 'r.teacher_id')
     .select([
       'r.id',
       'r.version_id',
@@ -168,9 +171,12 @@ async function readLoadLines(
         subjectId: row.subject_id,
         teacher: {
           id: row.teacher_id,
-          name: vacancy
-            ? (row.vacancy_name ?? '')
-            : `${row.last_name ?? ''} ${row.first_name ?? ''}`.trim(),
+          name:
+            row.kind === null
+              ? null
+              : vacancy
+                ? (row.vacancy_name ?? '')
+                : `${row.last_name ?? ''} ${row.first_name ?? ''}`.trim(),
           vacancy,
         },
       },
