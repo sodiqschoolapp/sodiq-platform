@@ -1,6 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
+import { en } from '../src/i18n/locales/en';
 import { ru } from '../src/i18n/locales/ru';
 import { uz } from '../src/i18n/locales/uz';
 import { accountOf, type AccountKey } from './accounts';
@@ -47,6 +48,30 @@ const cut = (page: Page, selector: string) =>
   page.evaluate<boolean[]>(
     `(() => [...document.querySelectorAll(${JSON.stringify(selector)})].map((element) => element.scrollWidth > element.clientWidth + 1))()`,
   );
+
+/**
+ * H16: every short label of the phone tab bar, of every menu item (so of
+ * every role's bar) and in the three languages, drawn at 360 px in a tab of
+ * the bar with its own font and size: none is cut.
+ */
+async function shortLabelsFit(page: Page): Promise<void> {
+  await page.setViewportSize({ width: 360, height: 780 });
+  await page.goto('/');
+  await expect(page.getByRole('navigation', { name: uz.menu.tabs })).toBeVisible();
+  const labels = [en, uz, ru].flatMap((texts) => Object.values(texts.menu.short));
+  const cutLabels = await page.evaluate<string[]>(`(() => {
+    const tab = document.querySelector(${JSON.stringify(`nav[aria-label="${uz.menu.tabs}"] a span`)});
+    if (tab === null) return ['no tab bar'];
+    const original = tab.textContent;
+    const cut = ${JSON.stringify(labels)}.filter((label) => {
+      tab.textContent = label;
+      return tab.scrollWidth > tab.clientWidth + 1;
+    });
+    tab.textContent = original;
+    return cut;
+  })()`);
+  expect(cutLabels).toEqual([]);
+}
 
 async function signedIn(page: Page, key: AccountKey, t: PageTexts, language: 'uz' | 'ru') {
   const account = accountOf(key);
@@ -148,6 +173,7 @@ async function walk(page: Page, t: PageTexts, language: 'uz' | 'ru'): Promise<vo
 test('the hand test pages of task 3.5a in Uzbek at 375 and 1440 px', async ({ page }) => {
   test.setTimeout(180_000);
   await signedIn(page, 'handTestUz', uz, 'uz');
+  await shortLabelsFit(page);
   // H11b: the role switch is shown only with several roles; this account has one.
   await walk(page, uz, 'uz');
 });

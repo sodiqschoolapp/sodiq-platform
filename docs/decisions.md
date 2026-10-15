@@ -254,6 +254,10 @@ Plan approved on pull request #113 with corrections 1 and 2; decisions 1 to 13 c
 | The department move refusal's lines carry the class's grade (`unit.grade`, null for a group), sorted by grade then name | H8 |
 | The changed behaviours are handed to task 3.7 with a "From 3.5a" line of `docs/build-plan.md`; `docs/handbook/02-school-setup.md` has nothing to change | Correction 1 (decision 10 changed) |
 | H20: nothing in the source hides the refusal list; only the modal "Leave without saving?" hides it while open, which is right | Plan, H20; browser test |
+| Built beyond the plan: the phone tab labels that are cut at 360 px are shorter: School setup is "Maktab" / "Школа" (not "Sozlamalar" / "Настройки"), and the Russian Timetable "Уроки"; a browser test draws every short label of every item in the three languages at 360 px | H16; the issue's labels were examples ("e.g.") |
+| Built beyond the plan: the right group of a list's toolbar (columns, "Also export", "Export") wraps, because in Uzbek it pushed the Students page 4 px sideways at 375 px | `12`, Devices; the task's Done when (no sideways scroll at 375 px) |
+| Built beyond the plan: the export writes the date of "From <date>" as "19.10.2026" (a text cell; the school's files write dates so), the rest of the text as the screen's key | Decision 5; `export-texts.test.ts` ties the texts |
+| The merge preview reads a side's status as the list does: active before the start date, so a later start reads "From <date>" | H13; permission review of the build |
 
 ## 15 October 2026: the rule engine (task 5.2)
 

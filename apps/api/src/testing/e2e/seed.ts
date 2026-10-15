@@ -3036,7 +3036,7 @@ try {
         })),
       )
       .execute();
-    const [oxford] = await transaction
+    const written = await transaction
       .insertInto('classes')
       .values([
         {
@@ -3056,8 +3056,10 @@ try {
           max_size: 24,
         },
       ])
-      .returning('id')
+      .returning(['id', 'name'])
       .execute();
+    // Picked by name: the order of the rows an insert returns is not relied on.
+    const oxford = written.find((one) => one.name === 'Oxford');
     if (oxford === undefined) {
       throw new Error('7 Oxford was not written.');
     }

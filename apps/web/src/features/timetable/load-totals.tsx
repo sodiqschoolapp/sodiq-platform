@@ -194,14 +194,9 @@ export function LoadTotalsSection({ versionId }: { versionId: string }) {
               </TableHeader>
               <TableBody>
                 {totals.data.teachers.map((one) => {
-                  const name = one.name ?? t('timetable.load.gone');
                   return (
                     <TableRow key={one.id}>
-                      <TableCell>
-                        {one.kind === 'vacancy'
-                          ? t('timetable.load.vacancyOption', { name })
-                          : name}
-                      </TableCell>
+                      <TableCell>{teacherName(one)}</TableCell>
                       <TableCell className="text-right tabular-nums">
                         {count(one.lessons)}
                         {over(one.lessons, one.freeSlots)}
@@ -211,24 +206,7 @@ export function LoadTotalsSection({ versionId }: { versionId: string }) {
                           ? t('timetable.load.totals.noHours')
                           : count(one.freeSlots)}
                       </TableCell>
-                      <TableCell>
-                        {one.elsewhere.length === 0
-                          ? t('timetable.load.blockNone')
-                          : one.elsewhere
-                              .map((other) =>
-                                t(
-                                  other.draft
-                                    ? 'timetable.load.totals.elsewhereDraft'
-                                    : 'timetable.load.totals.elsewhereItem',
-                                  {
-                                    branch: other.branchName,
-                                    count: other.lessons,
-                                    n: count(other.lessons),
-                                  },
-                                ),
-                              )
-                              .join(', ')}
-                      </TableCell>
+                      <TableCell>{elsewhereText(one)}</TableCell>
                       <TableCell className="text-right tabular-nums">
                         {count(totalOf(one))}
                         {over(totalOf(one), one.contract)}

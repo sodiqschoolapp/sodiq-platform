@@ -234,15 +234,15 @@ export const uz: Texts<'one' | 'other'> = {
     tutor_language_held:
       'Bu shaxs shu tildagi sinfning tyutori. Avval oʻsha sinfga boshqa tyutor tayinlang, soʻng tilni olib tashlang.',
     class_tutor_taken:
-      'Sinfda shu vaqtda bu turdagi tyutor allaqachon bor. Avval uni yakunlang yoki keyingi sanani tanlang.',
+      'Sinfda shu vaqtda bu turdagi tyutor allaqachon bor. Avval uning tyutorligini tugating yoki keyingi sanani tanlang.',
     tutor_not_tutor: 'Bu shaxsda bu filialda tyutor roli yoʻq. Tyutorni tanlang.',
     tutor_outside_role:
       'Bu shaxsning tyutor roli bu sanalarni qamramaydi. Rol doirasidagi sanalarni tanlang.',
     tutor_date_past: 'Sana oʻtib ketgan. Bugungi yoki keyingi sanani tanlang.',
-    tutor_ended: 'Bu tyutor allaqachon yakunlangan. Sinfni qayta yuklang.',
-    tutor_ends_by_then: 'Bu tyutor shu sanada yoki undan oldin yakunlanadi. Hech narsa oʻzgarmadi.',
+    tutor_ended: 'Bu tyutorlik allaqachon tugatilgan. Sinfni qayta yuklang.',
+    tutor_ends_by_then: 'Bu tyutorlik shu sanada yoki undan oldin tugaydi. Hech narsa oʻzgarmadi.',
     class_language_tutor:
-      'Bu sinf tyutori shu tilda dars bermaydi. Avval uni yakunlang yoki sinfga boshqa tyutor tayinlang.',
+      'Bu sinf tyutori shu tilda dars bermaydi. Avval uning tyutorligini tugating yoki sinfga boshqa tyutor tayinlang.',
     role_tutor_taken:
       'Bu shaxsni shu vaqtda boshqa tyutori bor sinfning tyutori sifatida qaytaradi. Avval oʻquv ishlari boʻyicha direktor oʻrinbosaridan oʻsha sinf tyutorlarini oʻzgartirishni soʻrang.',
     role_tutor_language:

@@ -9,6 +9,7 @@ import {
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
+import { createI18n } from '@/i18n/i18n';
 import { ru } from '@/i18n/locales/ru';
 import { uz } from '@/i18n/locales/uz';
 import { schoolDateText } from '@/lib/dates';
@@ -621,9 +622,56 @@ describe('the branch name in the texts of a move', () => {
     const history = await within(panel).findByRole('region', {
       name: uz.people.students.moves.historyLabel,
     });
-    const line = history.querySelector('li')?.textContent ?? '';
-    expect(line).toContain(`Boshqa filialga oʻtdi: ${NORTH.name} → Sinov filiali, 7 Yale sinfiga`);
+    // The line itself, whole: its date is the span before it.
+    const line = history.querySelector('li')?.querySelectorAll('span')[1]?.textContent ?? '';
+    expect(line).toBe(
+      `Boshqa filialga oʻtdi: ${NORTH.name} → Sinov filiali, 7 Yale sinfiga · ${uz.people.students.branchMoves.states.accepted}`,
+    );
     expect(line).not.toMatch(/filiali filial/);
+  });
+
+  it('stands alone after a label in the Russian accept question', async () => {
+    const move = sent.moves[0];
+    if (move === undefined) {
+      throw new Error('The fixture holds a release.');
+    }
+    open(
+      detailOf(),
+      {
+        [`GET /api/people/branch-moves/${move.id}/groups`]: () =>
+          json({ subjects: [], freeSeats: 4 }),
+      },
+      { incoming: sent, language: 'ru' },
+    );
+    renderApp(PATH, 'ru');
+    const rtexts = ru.people.students.branchMoves;
+    const row = await screen.findByRole('listitem', { name: 'Karimova Malika' });
+    fireEvent.click(within(row).getByRole('button', { name: rtexts.accept }));
+    fireEvent.change(await within(row).findByLabelText(rtexts.class), {
+      target: { value: YALE.id },
+    });
+    fireEvent.click(await within(row).findByRole('button', { name: ru.form.save }));
+    const sure = await screen.findByRole('alertdialog', { name: rtexts.acceptConfirmTitle });
+    expect(
+      within(sure).getByText(
+        'Ученик уходит из Sinov filiali и зачисляется в 7 Yale. Приём нельзя отменить.',
+      ),
+    ).toBeDefined();
+  });
+
+  it('is written once in the Russian texts of a merge', () => {
+    const i18n = createI18n('ru');
+    expect(i18n.t('people.students.merge.branchAfter', { branch: 'Sinov filiali' })).toBe(
+      'После объединения филиал ученика: Sinov filiali.',
+    );
+    expect(
+      i18n.t('people.students.merge.leftBranch', {
+        name: 'Karimova Malika',
+        branch: 'Sinov filiali',
+      }),
+    ).toBe(
+      'Karimova Malika теперь ученик другого филиала (филиал: Sinov filiali). Перейдите в этот филиал, чтобы открыть запись.',
+    );
   });
 });
 
