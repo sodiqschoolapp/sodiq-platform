@@ -178,17 +178,20 @@ export function digestOf(state: unknown): string {
  * checks, a closed year met by a cut, and the faults of the service.
  */
 export const MERGE_REFUSALS: Readonly<Record<string, ErrorCode>> = {
-  student_merges_merged_uid_idx: 'student_merge_not_found',
-  student_merges_merged_idx: 'student_merge_not_found',
-  student_statuses_closed_year: 'year_closed',
-  class_year_closed: 'year_closed',
+  // Two merges of one record: the second waits on the locks and reads again,
+  // so these answer only a race past them.
+  student_merges_merged_uid_idx: 'student_changed',
+  student_merges_merged_idx: 'student_changed',
+  student_statuses_closed_year: 'student_merge_year_closed',
+  class_year_closed: 'student_merge_year_closed',
   student_statuses_no_overlap: 'student_merge_overlap',
   class_memberships_no_overlap: 'student_merge_overlap',
   group_memberships_no_overlap: 'student_merge_overlap',
   class_memberships_active: 'student_merge_overlap',
   group_memberships_in_class: 'student_merge_overlap',
-  students_grade_class: 'student_grade_class',
-  student_branch_moves_open_idx: 'branch_move_open',
+  students_grade_class: 'student_merge_grade',
+  student_branch_moves_open_idx: 'student_merge_release_open',
+  students_merge_archive: 'request_refused',
   // Faults of the service.
   student_merges_state: 'request_refused',
   students_starts_on: 'request_refused',

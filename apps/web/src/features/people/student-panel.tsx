@@ -108,9 +108,11 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
   const navigate = useNavigate();
   // After the delete of a student created twice the panel says so and reads nothing more (task 2.4b-1).
   const [deleted, setDeleted] = useState(false);
+  // After a merge whose kept record left this branch (task 3.3d, correction 1): nothing more is read.
+  const [movedTo, setMovedTo] = useState<{ name: string; branch: string } | null>(null);
   const detail = useQuery({
     ...studentDetailQuery(branchId, id),
-    enabled: branchId !== null && !deleted,
+    enabled: branchId !== null && !deleted && movedTo === null,
   });
   // Unchosen, a student with no relative opens on the Relatives tab (task 2.5a, decision 11).
   const [tab, setTab] = useState<Tab | null>(null);
@@ -235,7 +237,6 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
    * nothing more.
    */
   const [keptId, setKeptId] = useState<string | null>(null);
-  const [movedTo, setMovedTo] = useState<{ name: string; branch: string } | null>(null);
   const merged = async (result: StudentMergeResult) => {
     panel.stop({ saved: true, key: 'merge' });
     if (result.branch.id !== branchId) {

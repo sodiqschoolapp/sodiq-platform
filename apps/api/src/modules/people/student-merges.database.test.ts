@@ -4,7 +4,7 @@ import { Transactions, type Transaction } from '../../database/transactions.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { ClassesKit } from '../../testing/classes-kit.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
-import { MembersKit } from '../../testing/members-kit.js';
+import { MembersKit, moveStudentBranch } from '../../testing/members-kit.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
 
 /** Wednesday 14 October 2026, 10:00 in Tashkent. */
@@ -75,6 +75,22 @@ describe('student merges in the database', () => {
       }
       return found;
     };
+    // Every row the merged record holds now, archived as the service does.
+    const tables = [
+      'student_statuses',
+      'class_memberships',
+      'group_memberships',
+      'student_moves',
+      'student_relatives',
+      'student_accounts',
+    ];
+    const archive: Record<string, unknown[]> = {};
+    for (const table of tables) {
+      const found = await sql<{ row: unknown }>`
+        select to_jsonb(r) as row from ${sql.table(table)} r where r.student_id = ${merged}::uuid
+      `.execute(transaction);
+      archive[table] = found.rows.map((one) => one.row);
+    }
     const row = await transaction
       .insertInto('student_merges')
       .values({
@@ -86,7 +102,7 @@ describe('student merges in the database', () => {
         merged_uid: of(merged).uid,
         merged_uids: [of(merged).uid],
         merged_record: JSON.stringify({ id: merged }),
-        left_rows: JSON.stringify({}),
+        left_rows: JSON.stringify(archive),
         reason: 'Created twice by mistake',
         merged_by: account,
         merged_at: new Date(NOW),
@@ -94,6 +110,24 @@ describe('student merges in the database', () => {
       .returning('id')
       .executeTakeFirstOrThrow();
     return row.id;
+  }
+
+  /**
+   * The removal of the merged record as the service does it last: its
+   * contracts carried to the kept record (never left behind), then the delete.
+   */
+  async function removeMerged(transaction: Transaction, kept: string, merged: string) {
+    const keptBranch = await transaction
+      .selectFrom('students')
+      .select('branch_id')
+      .where('id', '=', kept)
+      .executeTakeFirstOrThrow();
+    await transaction
+      .updateTable('student_contracts')
+      .set({ student_id: kept, branch_id: keptBranch.branch_id })
+      .where('student_id', '=', merged)
+      .execute();
+    await transaction.deleteFrom('students').where('id', '=', merged).execute();
   }
 
   const rowCount = async (table: string, column: string, value: string): Promise<number> => {
@@ -427,9 +461,41 @@ describe('student merges in the database', () => {
           }),
         ),
       ).toMatchObject({ constraint: 'students_starts_on' });
-      await everywhere(async (transaction) => {
+      // Only to the first day of the joined life: the kept record's rows once
+      // the merged record's are carried (its row cut where the kept one starts).
+      const carry = async (transaction: Transaction) => {
         await mergeRow(transaction, kept, merged);
+        await transaction
+          .updateTable('student_statuses')
+          .set({ valid_until: '2026-09-15' })
+          .where('student_id', '=', merged)
+          .execute();
+        await transaction
+          .updateTable('student_statuses')
+          .set({ student_id: kept })
+          .where('student_id', '=', merged)
+          .execute();
+      };
+      expect(
+        await refusal(
+          everywhere(async (transaction) => {
+            await carry(transaction);
+            await start(transaction, kept, '2026-09-05');
+          }),
+        ),
+      ).toMatchObject({ constraint: 'students_starts_on' });
+      expect(
+        await refusal(
+          everywhere(async (transaction) => {
+            await mergeRow(transaction, kept, merged);
+            await start(transaction, kept);
+          }),
+        ),
+      ).toMatchObject({ constraint: 'students_starts_on' });
+      await everywhere(async (transaction) => {
+        await carry(transaction);
         await start(transaction, kept);
+        await removeMerged(transaction, kept, merged);
       });
       const stored = await database.migrator
         .selectFrom('students')
@@ -437,6 +503,139 @@ describe('student merges in the database', () => {
         .where('id', '=', kept)
         .executeTakeFirstOrThrow();
       expect(stored.starts_on).toBe('2026-09-01');
+    });
+
+    it('refuses the end `merge` on a row with an end, or naming a leaving or a move, even with a merge of its student', async () => {
+      const facts = await pair();
+      // The leaving and its cuts in one transaction (the deferred checks).
+      const leaving = await database.migrator.transaction().execute(async (transaction) => {
+        const id = await members.leaving(transaction, north, facts.merged, '2026-10-01');
+        await transaction
+          .updateTable('class_memberships')
+          .set({ valid_until: '2026-10-01', ended_by: 'leaving', leaving_id: id })
+          .where('id', '=', facts.row)
+          .execute();
+        await transaction
+          .updateTable('group_memberships')
+          .set({ valid_until: '2026-10-01', ended_by: 'leaving', leaving_id: id })
+          .where('id', '=', facts.groupRow)
+          .execute();
+        return id;
+      });
+      for (const [table, id] of [
+        ['class_memberships', facts.row],
+        ['group_memberships', facts.groupRow],
+      ] as const) {
+        // A row ended by the leaving is not ended again by a merge.
+        expect(
+          await refusal(
+            everywhere(async (transaction) => {
+              await mergeRow(transaction, facts.kept, facts.merged);
+              await transaction
+                .updateTable(table)
+                .set({ valid_until: '2026-09-20', ended_by: 'merge', leaving_id: null })
+                .where('id', '=', id)
+                .execute();
+            }),
+          ),
+        ).toMatchObject({ constraint: 'memberships_merge' });
+      }
+      const other = await pair();
+      // An end `merge` on a row with no end that names a leaving.
+      expect(
+        await refusal(
+          everywhere(async (transaction) => {
+            await mergeRow(transaction, other.kept, other.merged);
+            await transaction
+              .updateTable('class_memberships')
+              .set({ valid_until: '2026-10-01', ended_by: 'merge', leaving_id: leaving })
+              .where('id', '=', other.row)
+              .execute();
+          }),
+        ),
+      ).toMatchObject({ constraint: 'memberships_merge' });
+    });
+
+    it('lets a merge cut a status row before an accepted branch move, and nothing else', async () => {
+      const kept = await members.student(north, { startsOn: '2026-09-01' });
+      const merged = await members.student(south, { startsOn: '2026-09-01' });
+      const other = await members.student(north);
+      const otherMerged = await members.student(north);
+      // The kept record moved to the South branch on 14 October.
+      await moveStudentBranch(database.migrator, kept, north, south);
+      const cut = (transaction: Transaction) =>
+        transaction
+          .updateTable('student_statuses')
+          .set({ valid_until: '2026-10-01' })
+          .where('student_id', '=', kept)
+          .execute();
+      expect(await refusal(everywhere(cut))).toMatchObject({
+        constraint: 'student_statuses_before_branch_move',
+      });
+      expect(
+        await refusal(
+          everywhere(async (transaction) => {
+            await mergeRow(transaction, other, otherMerged);
+            await cut(transaction);
+          }),
+        ),
+      ).toMatchObject({ constraint: 'student_statuses_before_branch_move' });
+      expect(
+        await refusal(
+          everywhere(async (transaction) => {
+            await mergeRow(transaction, kept, merged);
+            await cut(transaction);
+            throw new Error('cut');
+          }),
+        ),
+      ).toMatchObject({ message: 'cut' });
+    });
+
+    it('lets the kept record’s own branch move follow it into the merged record’s branch, and nothing else', async () => {
+      const kept = await members.student(north, { startsOn: '2026-09-01' });
+      const merged = await members.student(north, { startsOn: '2026-09-01' });
+      const other = await members.student(south);
+      const otherMerged = await members.student(south);
+      await moveStudentBranch(database.migrator, kept, north, south);
+      const move = await database.migrator
+        .selectFrom('student_branch_moves')
+        .select('id')
+        .where('student_id', '=', kept)
+        .executeTakeFirstOrThrow();
+      // The move row itself to the North branch: a merge of another pair does not open it.
+      expect(
+        await refusal(
+          everywhere(async (transaction) => {
+            await mergeRow(transaction, other, otherMerged);
+            await transaction
+              .updateTable('student_branch_moves')
+              .set({ branch_id: north })
+              .where('id', '=', move.id)
+              .execute();
+          }),
+        ),
+      ).toMatchObject({ constraint: 'student_branch_moves_state' });
+      // The kept record of the pair goes to the merged record's branch; its
+      // branch move follows by the cascade.
+      expect(
+        await refusal(
+          everywhere(async (transaction) => {
+            await mergeRow(transaction, kept, merged);
+            await transaction
+              .updateTable('students')
+              .set({ branch_id: north })
+              .where('id', '=', kept)
+              .execute();
+            const followed = await transaction
+              .selectFrom('student_branch_moves')
+              .select('branch_id')
+              .where('id', '=', move.id)
+              .executeTakeFirstOrThrow();
+            expect(followed.branch_id).toBe(north);
+            throw new Error('followed');
+          }),
+        ),
+      ).toMatchObject({ message: 'followed' });
     });
 
     it('ends a class or group row by a merge only from no end, and never at its insert', async () => {
@@ -549,9 +748,47 @@ describe('student merges in the database', () => {
       ).uid;
       // `student_relatives_guard` skips the removed record (0036); the kept
       // record still has its main contact.
+      // A row the archive does not name refuses the removal.
+      expect(
+        await refusal(
+          everywhere(async (transaction) => {
+            await mergeRow(transaction, kept, merged);
+            await removeMerged(transaction, kept, merged);
+            throw new Error('removed');
+          }).then(() => undefined),
+        ),
+      ).toMatchObject({ message: 'removed' });
+      expect(
+        await refusal(
+          everywhere(async (transaction) => {
+            await mergeRow(transaction, kept, merged);
+            await transaction
+              .insertInto('student_statuses')
+              .values({
+                student_id: merged,
+                branch_id: north,
+                status: 'inactive',
+                valid_from: '2027-01-01',
+                valid_until: '2027-01-01',
+                cause: 'start',
+              })
+              .execute();
+            await removeMerged(transaction, kept, merged);
+          }),
+        ),
+      ).toMatchObject({ constraint: 'students_merge_archive' });
+      // A contract left on it refuses too: contracts are always carried.
+      expect(
+        await refusal(
+          everywhere(async (transaction) => {
+            await mergeRow(transaction, kept, merged);
+            await remove(transaction, merged);
+          }),
+        ),
+      ).toMatchObject({ constraint: 'students_merge_archive' });
       await everywhere(async (transaction) => {
         await mergeRow(transaction, kept, merged);
-        await remove(transaction, merged);
+        await removeMerged(transaction, kept, merged);
       });
       const held = await database.migrator
         .selectFrom('student_uids')
@@ -589,7 +826,7 @@ describe('student merges in the database', () => {
               .set({ unlinked_at: new Date(NOW) })
               .where('student_id', '=', kept)
               .execute();
-            await transaction.deleteFrom('students').where('id', '=', merged).execute();
+            await removeMerged(transaction, kept, merged);
           }),
         ),
       ).toMatchObject({ constraint: 'student_needs_relative' });
@@ -609,7 +846,7 @@ describe('student merges in the database', () => {
       ).uid;
       await everywhere(async (transaction) => {
         await mergeRow(transaction, kept, merged);
-        await transaction.deleteFrom('students').where('id', '=', merged).execute();
+        await removeMerged(transaction, kept, merged);
       });
       const holder = (branches: string[], branch: string) =>
         inBranches(branches, async (transaction) => {

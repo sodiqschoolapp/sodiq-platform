@@ -357,6 +357,14 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu UID hech bir oʻquvchida yoʻq: raqamni tekshiring. Yozuv allaqachon birlashtirilgan boʻlishi mumkin.',
     student_merge_overlap:
       'Ikki yozuv bir xil kunlarni birlashtirib boʻlmaydigan tarzda egallagan. Avval yozuvlarni tuzating (ketish yoki sana), soʻng birlashtiring.',
+    student_merge_release_open:
+      'Ikki yozuvdan birida boshqa filialga ochiq chiqarish bor. Avval uni bekor qiling yoki rad eting, soʻng birlashtiring.',
+    student_merge_move_scheduled:
+      'Ikki yozuvdan birida bugundan keyingi sinf yoki guruh koʻchirilishi bor. Avval uni bekor qiling, soʻng birlashtiring.',
+    student_merge_year_closed:
+      'Birlashtirish yopilgan oʻquv yilining qatorini oʻzgartiradi, u esa oʻzgarmaydi. Bu yozuvlarni birlashtirib boʻlmaydi.',
+    student_merge_grade:
+      'Birlashtirishdan soʻng oʻquvchi bugundan boshlab boshqa sinf darajasidagi sinfda boʻlib qoladi. Avval oʻquvchini toʻgʻri darajadagi sinfga koʻchiring, soʻng birlashtiring.',
     before_branch_move:
       'Bu sana oʻquvchi shu filialga oʻtishidan oldin. Oʻtish kuni yoki undan keyingi sanani tanlang.',
     move_scheduled:
@@ -1604,10 +1612,12 @@ export const uz: Texts<'one' | 'other'> = {
         rows: 'Oʻzgaradigan qatorlar',
         rowCut: '{{name}} ({{from}}): {{cutAt}} da tugaydi',
         rowLeft: '{{name}} ({{from}}): qoldiriladi',
-        carried_one: 'Boshqa yozuvning {{count}} ta qatori toʻliq oʻtkaziladi.',
-        carried_other: 'Boshqa yozuvning {{count}} ta qatori toʻliq oʻtkaziladi.',
-        filled: 'Boshqa yozuvdan toʻldiriladi',
-        differing: 'Boshqa yozuvda farq qiladi (shu yozuvdagi qiymat qoladi)',
+        carried_one:
+          'Qoʻshiladigan yozuvning {{count}} ta qatori qoladigan yozuvga toʻliq oʻtkaziladi.',
+        carried_other:
+          'Qoʻshiladigan yozuvning {{count}} ta qatori qoladigan yozuvga toʻliq oʻtkaziladi.',
+        filled: 'Qoʻshiladigan yozuvdan toʻldiriladi',
+        differing: 'Qoʻshiladigan yozuvda farq qiladi (qoladigan yozuvdagi qiymat saqlanadi)',
         differs: '{{field}}: {{merged}}',
         refused: 'Bu yozuvlarni birlashtirib boʻlmaydi.',
         refusedDay: 'Tegishli birinchi kun: {{date}}',

@@ -471,6 +471,14 @@ export const ERROR_CODES = [
   'student_merge_not_found',
   /** A row of the two records would lose days at its start or in its middle; `details` names the first such day (task 3.3d, decision 4). */
   'student_merge_overlap',
+  /** One of the two records has an open release to another branch: it is cancelled, declined or accepted first (task 3.3d, decision 11). */
+  'student_merge_release_open',
+  /** One of the two records has a class or group move scheduled or begun after today: it is cancelled first (task 3.3d, decision 11). */
+  'student_merge_move_scheduled',
+  /** A row the merge would cut ends in a closed academic year (task 3.3d, decision 4). */
+  'student_merge_year_closed',
+  /** A class row in force after today is of another grade than the grade the merged student would have (task 3.3d). */
+  'student_merge_grade',
   /** The group is of another subject than the group the student leaves (task 3.3a). */
   'group_transfer_subject',
   /** Any other refusal that has no code of its own yet. */

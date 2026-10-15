@@ -352,6 +352,14 @@ export const en = {
       'No student holds that UID: check the number. The record may have been merged already.',
     student_merge_overlap:
       'The two records hold the same days in a way a merge cannot join. Correct the records first (a leaving or a date), then merge.',
+    student_merge_release_open:
+      'One of the two records has an open release to another branch. Cancel or decline it first, then merge.',
+    student_merge_move_scheduled:
+      'One of the two records has a class or group move after today. Cancel that move first, then merge.',
+    student_merge_year_closed:
+      'The merge would change a row of a closed academic year, which nothing changes. These records cannot be merged.',
+    student_merge_grade:
+      'After the merge the student would be in a class of another grade from today on. Move the student to a class of the right grade first, then merge.',
     before_branch_move:
       'That date is before the student moved to this branch. Choose a date on or after the move.',
     move_scheduled:
@@ -1591,10 +1599,12 @@ export const en = {
         rows: 'Rows that change',
         rowCut: '{{name}} ({{from}}): ends on {{cutAt}}',
         rowLeft: '{{name}} ({{from}}): left behind',
-        carried_one: '{{count}} row of the other record is carried whole.',
-        carried_other: '{{count}} rows of the other record are carried whole.',
-        filled: 'Filled from the other record',
-        differing: 'Different on the other record (this record’s value stays)',
+        carried_one:
+          '{{count}} row of the merged record is carried whole to the record that stays.',
+        carried_other:
+          '{{count}} rows of the merged record are carried whole to the record that stays.',
+        filled: 'Filled from the merged record',
+        differing: 'Different on the merged record (the value of the record that stays is kept)',
         differs: '{{field}}: {{merged}}',
         refused: 'These records cannot be merged.',
         refusedDay: 'First day concerned: {{date}}',

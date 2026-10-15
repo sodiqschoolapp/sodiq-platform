@@ -135,6 +135,8 @@ interface BranchMoveRow {
   id: string;
   side: Side;
   open: boolean;
+  accepted: boolean;
+  effectiveOn: SchoolDate;
   cancelledByLeavingId: string | null;
 }
 
@@ -325,6 +327,11 @@ export class StudentMerges {
       .orderBy('id')
       .forUpdate()
       .execute();
+    // The record of the path removed meanwhile (merged into another) is
+    // gone: 404; the record of the UID removed: no student holds it now.
+    if (!found.some((one) => same(one.id, pair[0]))) {
+      throw notFound();
+    }
     if (found.length !== 2) {
       throw uidRefusal('student_merge_not_found');
     }
@@ -439,6 +446,8 @@ export class StudentMerges {
         id: String(row.id),
         side: sideOf(String(row.student_id)),
         open: row.cancelled_at === null && row.declined_at === null && row.accepted_at === null,
+        accepted: row.accepted_at !== null,
+        effectiveOn: String(row.effective_on),
         cancelledByLeavingId: scalarText(row.cancelled_by_leaving_id),
       }),
     );
@@ -486,19 +495,26 @@ export class StudentMerges {
       };
     });
 
+    const later: Side = life.at(-1)?.side ?? 'kept';
     const refusal =
       this.refusalOf({
         kept,
         merged,
+        life,
         statusFates,
         classFates,
         groupFates,
         moveFates,
         branchMoves,
         leftIds,
-      }) ?? (await this.pendingOf(transaction, moves, branchMoves));
+      }) ??
+      (await this.pendingOf(transaction, moves, branchMoves)) ??
+      (await this.gradeRefusal(
+        transaction,
+        classFates,
+        later === 'merged' ? merged.grade : kept.grade,
+      ));
 
-    const later: Side = life.at(-1)?.side ?? 'kept';
     const startsOn = life[0]?.from ?? null;
     const filled: StudentMergeField[] = [];
     const differing: MergePlan['differing'] = [];
@@ -550,6 +566,7 @@ export class StudentMerges {
   private refusalOf(facts: {
     kept: Record_;
     merged: Record_;
+    life: readonly Stretch[];
     statusFates: { row: StatusRow; fate: Fate }[];
     classFates: { row: MemberRow; fate: Fate }[];
     groupFates: { row: MemberRow; fate: Fate }[];
@@ -592,6 +609,21 @@ export class StudentMerges {
       if (day !== undefined) {
         days.push(day);
       }
+      // An accepted move of the merged record into a branch on a day its
+      // life loses to the kept record's (spec review of the build, should-fix
+      // 9): the move would name a life the record no longer has.
+      if (
+        move.side === 'merged' &&
+        move.accepted &&
+        facts.life.some(
+          (stretch) =>
+            stretch.side === 'kept' &&
+            stretch.from <= move.effectiveOn &&
+            (stretch.until === null || move.effectiveOn < stretch.until),
+        )
+      ) {
+        days.push(move.effectiveOn);
+      }
     }
     const first = days.sort()[0];
     return first === undefined ? null : overlap(first);
@@ -608,14 +640,55 @@ export class StudentMerges {
     branchMoves: readonly BranchMoveRow[],
   ): Promise<ApiException | null> {
     if (branchMoves.some((move) => move.open)) {
-      return new ApiException('branch_move_open', 409);
+      return new ApiException('student_merge_release_open', 409);
     }
     for (const move of moves) {
       if (!move.cancelled && !move.undone) {
         const today = await this.students.todayIn(transaction, move.branchId);
         if (move.effectiveOn > today) {
-          return new ApiException('move_scheduled', 409);
+          return new ApiException('student_merge_move_scheduled', 409);
         }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * The grade after the merge is the later life's (decision 7): a class row
+   * that stays on the kept record (carried, or cut and still holding days)
+   * and is in force after today in its branch must be of that grade, as
+   * `students_grade_class` asks of a grade change (spec review of the build,
+   * should-fix 8). A row of the past keeps its grade.
+   */
+  private async gradeRefusal(
+    transaction: Transaction,
+    classFates: readonly { row: MemberRow; fate: Fate }[],
+    grade: number,
+  ): Promise<ApiException | null> {
+    const staying = classFates.filter(
+      ({ row, fate }) => fate.action !== 'left' && row.from < row.until,
+    );
+    if (staying.length === 0) {
+      return null;
+    }
+    const grades = new Map(
+      (
+        await transaction
+          .selectFrom('classes')
+          .select(['id', 'grade'])
+          .where(
+            'id',
+            'in',
+            staying.map(({ row }) => row.ownerId),
+          )
+          .execute()
+      ).map((one) => [one.id.toLowerCase(), one.grade]),
+    );
+    for (const { row, fate } of staying) {
+      const until = fate.action === 'cut' ? fate.at : row.until;
+      const today = await this.students.todayIn(transaction, row.branchId);
+      if (until > today && grades.get(row.ownerId.toLowerCase()) !== grade) {
+        return new ApiException('student_merge_grade', 409);
       }
     }
     return null;
@@ -981,6 +1054,7 @@ export class StudentMerges {
       .where('kept_id', '=', merged.id)
       .returning('id')
       .execute();
+    chained.sort((a, b) => a.id.localeCompare(b.id));
 
     // The merged record removed; its UIDs stay reserved, released (0033).
     await transaction.deleteFrom('students').where('id', '=', merged.id).execute();

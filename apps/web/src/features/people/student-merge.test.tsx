@@ -288,13 +288,45 @@ describe('the merge of two student records', () => {
         texts.leftBranch.replace('{{name}}', 'Oʻtkir Rahimov').replace('{{branch}}', SOUTH.name),
       ),
     ).toBeDefined();
-    const reads = calls.filter(
-      (call) => call.route === `GET /api/people/students/${STUDENT.id}`,
-    ).length;
+    // Nothing is read after the merge: not the record (404 in this branch now).
     await new Promise((resolve) => setTimeout(resolve, 50));
+    const posted = calls.findIndex((call) => call.route.startsWith('POST'));
     expect(
-      calls.filter((call) => call.route === `GET /api/people/students/${STUDENT.id}`).length,
-    ).toBe(reads);
+      calls.slice(posted).some((call) => call.route === `GET /api/people/students/${STUDENT.id}`),
+    ).toBe(false);
+  });
+
+  it('keeps the refusal when the student changed after the preview, and reads both again', async () => {
+    const calls = open(detailOf(), {
+      [`POST /api/people/students/${STUDENT.id}/merge`]: () =>
+        json(
+          {
+            error: {
+              code: 'student_changed',
+              message: 'The student changed.',
+              requestId: 'r-1',
+            },
+          },
+          409,
+        ),
+    });
+    renderApp(`${PATH}?open=${STUDENT.id}`);
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    const form = await previewed(panel);
+    const previews = () =>
+      calls.filter((call) => call.route === `GET /api/people/students/${STUDENT.id}/merge`).length;
+    const details = () =>
+      calls.filter((call) => call.route === `GET /api/people/students/${STUDENT.id}`).length;
+    const before = { previews: previews(), details: details() };
+    fireEvent.change(within(form).getByLabelText(texts.reason), { target: { value: 'Twice' } });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    const dialog = await screen.findByRole('alertdialog', { name: texts.confirmTitle });
+    fireEvent.click(within(dialog).getByRole('button', { name: texts.submit }));
+    expect(await within(form).findByText(en.errors.student_changed)).toBeDefined();
+    await waitFor(() => {
+      expect(previews()).toBeGreaterThan(before.previews);
+      expect(details()).toBeGreaterThan(before.details);
+    });
   });
 
   it('draws the merge on the History tab, in Russian too', async () => {

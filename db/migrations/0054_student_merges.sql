@@ -192,7 +192,9 @@ $$;
 
 -- The start of a student's life (0032 fixes it at the create, where the
 -- first status row starts) changes only for the kept record of a merge
--- written in this transaction: to the first day of the joined life.
+-- written in this transaction, and only to the first day of the joined
+-- life: the first day of the record's status rows that hold days, once the
+-- merged record's rows are carried.
 create function students_starts_on() returns trigger
 language plpgsql
 set search_path = pg_catalog, public
@@ -201,6 +203,10 @@ begin
   if not exists (
     select 1 from student_merges m
     where m.merged_xact = pg_current_xact_id() and m.kept_id = old.id
+  ) or new.starts_on is distinct from (
+    select min(ss.valid_from) from student_statuses ss
+    where ss.student_id = old.id
+      and ss.valid_from < coalesce(ss.valid_until, 'infinity'::date)
   ) then
     raise exception 'students_starts_on'
       using errcode = 'check_violation', constraint = 'students_starts_on';
@@ -218,16 +224,54 @@ create trigger students_starts_on
 grant update (starts_on) on students to sodiq_app;
 
 -- The delete guard of 0033 with one path added: the merged record of a merge
--- written in this transaction is removed whatever it holds, its rows carried
--- or archived on the merge row.
+-- written in this transaction is removed, once every row it still holds is
+-- archived on the merge row (`left_rows`, by table and id): no contract and
+-- no branch move is left on it (they are always carried), and each status
+-- row, class row, group row, move, link and account it holds is named there.
 create or replace function students_delete_guard() returns trigger
 language plpgsql
 as $$
+declare
+  archive jsonb;
+  named boolean;
 begin
-  if exists (
-    select 1 from student_merges m
-    where m.merged_xact = pg_current_xact_id() and m.merged_id = old.id
-  ) then
+  select m.left_rows into archive from student_merges m
+    where m.merged_xact = pg_current_xact_id() and m.merged_id = old.id;
+  if found then
+    named := not exists (
+        select 1 from student_contracts c where c.student_id = old.id
+      )
+      and not exists (
+        select 1 from student_branch_moves b where b.student_id = old.id
+      )
+      and not exists (
+        select 1 from student_statuses r where r.student_id = old.id
+          and not coalesce(archive->'student_statuses', '[]') @> jsonb_build_array(jsonb_build_object('id', r.id))
+      )
+      and not exists (
+        select 1 from class_memberships r where r.student_id = old.id
+          and not coalesce(archive->'class_memberships', '[]') @> jsonb_build_array(jsonb_build_object('id', r.id))
+      )
+      and not exists (
+        select 1 from group_memberships r where r.student_id = old.id
+          and not coalesce(archive->'group_memberships', '[]') @> jsonb_build_array(jsonb_build_object('id', r.id))
+      )
+      and not exists (
+        select 1 from student_moves r where r.student_id = old.id
+          and not coalesce(archive->'student_moves', '[]') @> jsonb_build_array(jsonb_build_object('id', r.id))
+      )
+      and not exists (
+        select 1 from student_relatives r where r.student_id = old.id
+          and not coalesce(archive->'student_relatives', '[]') @> jsonb_build_array(jsonb_build_object('id', r.id))
+      )
+      and not exists (
+        select 1 from student_accounts r where r.student_id = old.id
+          and not coalesce(archive->'student_accounts', '[]') @> jsonb_build_array(jsonb_build_object('student_id', r.student_id))
+      );
+    if not named then
+      raise exception 'students_merge_archive'
+        using errcode = 'check_violation', constraint = 'students_merge_archive';
+    end if;
     return old;
   end if;
   if old.scholarship_type <> 'none'

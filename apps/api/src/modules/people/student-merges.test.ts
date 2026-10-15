@@ -79,11 +79,16 @@ describe('the merge of two student records', () => {
    * the one before (decision 3).
    */
   async function pupil(
-    input: { branch?: string; from?: string; fields?: Record<string, unknown> } = {},
+    input: {
+      branch?: string;
+      from?: string;
+      fields?: Record<string, unknown>;
+      classId?: string;
+    } = {},
   ): Promise<StudentDetail> {
     const branch = input.branch ?? t.north;
     const year = branch === t.north ? northYear : southYear;
-    const own = await classes.schoolClass(branch, year, { grade: 7 });
+    const own = input.classId ?? (await classes.schoolClass(branch, year, { grade: 7 }));
     const response = await t.post(
       '/api/people/students',
       branch,
@@ -426,6 +431,159 @@ describe('the merge of two student records', () => {
     });
   });
 
+  describe('where each row goes (decision 4; spec review of the build, must-fix 2)', () => {
+    /** A class move begun on the date given (a past date: the Super Admin's). */
+    async function transfer(student: StudentDetail, toClassId: string, from: string) {
+      const response = await t.post('/api/classes/transfers', t.north, {
+        studentId: student.id,
+        version: (await fresh(student.id)).version,
+        toClassId,
+        from,
+      });
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+    }
+
+    it('carries a begun move whose rows are carried, and cuts the group row with its class row', async () => {
+      const subject = await classes.subject({ grades: [7] });
+      const oxford = await classes.schoolClass(t.north, northYear, { grade: 7 });
+      const yale = await classes.schoolClass(t.north, northYear, { grade: 7 });
+      const harvard = await classes.schoolClass(t.north, northYear, { grade: 7 });
+      await classes.group(t.north, northYear, subject, [oxford, yale, harvard]);
+      const kept = await pupil({ from: '2026-09-10', classId: harvard });
+      const earlier = await pupil({ from: '2026-09-02', classId: oxford });
+      await transfer(earlier, yale, '2026-09-05');
+      const moves = await t.database.migrator
+        .selectFrom('student_moves')
+        .select('id')
+        .where('student_id', '=', earlier.id)
+        .execute();
+      expect(moves).toHaveLength(1);
+      const groups = await t.database.migrator
+        .selectFrom('group_memberships')
+        .select(['id', 'valid_from', 'valid_until', 'ended_by'])
+        .where('student_id', '=', earlier.id)
+        .orderBy('valid_from')
+        .execute();
+      expect(groups.length).toBeGreaterThan(0);
+      merged(await merge(earlier.id, kept.uid));
+      const move = await t.database.migrator
+        .selectFrom('student_moves')
+        .select('student_id')
+        .where('id', '=', moves[0]?.id ?? '')
+        .executeTakeFirstOrThrow();
+      expect(move.student_id).toBe(kept.id);
+      const after = await t.database.migrator
+        .selectFrom('group_memberships')
+        .select(['id', 'student_id', 'valid_until', 'ended_by'])
+        .where(
+          'id',
+          'in',
+          groups.map((one) => one.id),
+        )
+        .orderBy('valid_from')
+        .execute();
+      // Every group row of the merged record is on the kept record; the one
+      // in force on the kept record's first day ends there (`merge`).
+      expect(after.every((one) => one.student_id === kept.id)).toBe(true);
+      expect(after.at(-1)).toMatchObject({ valid_until: '2026-09-10', ended_by: 'merge' });
+    });
+
+    it('leaves behind a move whose every row is left behind, on the merge', async () => {
+      const oxford = await classes.schoolClass(t.north, northYear, { grade: 7 });
+      const yale = await classes.schoolClass(t.north, northYear, { grade: 7 });
+      const kept = await pupil({ from: '2026-09-02' });
+      const later = await pupil({ from: '2026-09-12', classId: oxford });
+      await transfer(later, yale, '2026-09-15');
+      const move = await t.database.migrator
+        .selectFrom('student_moves')
+        .select('id')
+        .where('student_id', '=', later.id)
+        .executeTakeFirstOrThrow();
+      merged(await merge(kept.id, later.uid));
+      expect(
+        await t.database.migrator
+          .selectFrom('student_moves')
+          .select('id')
+          .where('id', '=', move.id)
+          .executeTakeFirst(),
+      ).toBeUndefined();
+      const stored = await t.database.migrator
+        .selectFrom('student_merges')
+        .select('left_rows')
+        .where('kept_id', '=', kept.id)
+        .executeTakeFirstOrThrow();
+      const left = stored.left_rows as Record<string, { id: string }[]>;
+      expect(left.student_moves?.map((one) => one.id)).toEqual([move.id]);
+      expect(left.class_memberships).toHaveLength(2);
+    });
+
+    it('refuses an accepted branch move of the merged record dated on a day the kept record holds', async () => {
+      const kept = await pupil({ from: '2026-09-02' });
+      const twice = await pupil({ from: '2026-09-05' });
+      await moveStudentBranch(
+        t.database.migrator,
+        twice.id,
+        t.north,
+        t.south,
+        '2026-10-10T18:55:00Z',
+      );
+      const seen = await previewOf(kept.id, twice.uid);
+      expect(seen.refusal).toEqual({ code: 'student_merge_overlap', day: '2026-10-10' });
+    });
+
+    it('refuses a carried row that names a row left behind (a leaving), with its day', async () => {
+      const kept = await pupil({ from: '2026-10-01' });
+      const earlier = await pupil({ from: '2026-09-02' });
+      await leave(earlier.id, '2026-09-30');
+      const seen = await previewOf(kept.id, earlier.uid);
+      expect(seen.refusal).toEqual({ code: 'student_merge_overlap', day: '2026-10-01' });
+      const before = await rowsOf();
+      refusedWith(
+        await post(kept.id, { uid: earlier.uid, reason: 'Twice', digest: seen.digest }),
+        409,
+        'student_merge_overlap',
+      );
+      expect(await rowsOf()).toEqual(before);
+    });
+
+    it('refuses a class row of another grade in force after today (`student_merge_grade`)', async () => {
+      const eighth = await classes.schoolClass(t.north, northYear, { grade: 8 });
+      const kept = await pupil({ from: '2026-09-10' });
+      const response = await t.post('/api/people/students', t.north, {
+        ...body(eighth, '2026-09-02'),
+        grade: 8,
+      });
+      expect(response.status, JSON.stringify(response.body)).toBe(201);
+      t.clock.advance(1000);
+      const other = studentDetailSchema.parse(response.body);
+      // The kept record started later and keeps the 7th grade; the other
+      // record's 8th grade class row is cut at its first day and stays in
+      // the past, so this pair merges.
+      const seen = await previewOf(kept.id, other.uid);
+      expect(seen.refusal).toBeNull();
+      // A kept record that starts after today: the other record's 8th grade
+      // row stays in force until then, in another grade than the 7th.
+      const future = await pupil({ from: '2026-11-02' });
+      const eighthAgain = await classes.schoolClass(t.north, northYear, { grade: 8 });
+      const eighthPupil = await t.post('/api/people/students', t.north, {
+        ...body(eighthAgain, '2026-09-02'),
+        grade: 8,
+      });
+      expect(eighthPupil.status, JSON.stringify(eighthPupil.body)).toBe(201);
+      t.clock.advance(1000);
+      const record = studentDetailSchema.parse(eighthPupil.body);
+      const refused = await previewOf(future.id, record.uid);
+      const before = await rowsOf();
+      refusedWith(
+        await post(future.id, { uid: record.uid, reason: 'Twice', digest: refused.digest }),
+        409,
+        'student_merge_grade',
+      );
+      expect(await rowsOf()).toEqual(before);
+      expect(refused.refusal?.code).toBe('student_merge_grade');
+    });
+  });
+
   describe('two branches (decision 5, correction 1)', () => {
     it('gives the kept record the later life’s branch, keeps the earlier branch’s rows readable there, and logs in both', async () => {
       const old = await pupil({ from: '2026-09-02', fields: { phone: '+998901110001' } });
@@ -518,7 +676,7 @@ describe('the merge of two student records', () => {
     ]);
   });
 
-  it('refuses a cut in a closed year (`year_closed`)', async () => {
+  it('refuses a cut in a closed year (`student_merge_year_closed`)', async () => {
     // The rows of the closed year are written as they stood before it was
     // closed: its guard is off for the fixture alone (this file's database).
     const guard = (state: 'enable' | 'disable') =>
@@ -538,7 +696,7 @@ describe('the merge of two student records', () => {
     refusedWith(
       await post(old, { uid, reason: 'Created again', digest: seen.digest }),
       409,
-      'year_closed',
+      'student_merge_year_closed',
     );
     expect(await rowsOf()).toEqual(before);
   });
@@ -562,11 +720,11 @@ describe('the merge of two student records', () => {
           .execute();
       });
       const seen = await previewOf(kept.id, other.uid);
-      expect(seen.refusal).toEqual({ code: 'branch_move_open', day: null });
+      expect(seen.refusal).toEqual({ code: 'student_merge_release_open', day: null });
       refusedWith(
         await post(kept.id, { uid: other.uid, reason: 'Twice', digest: seen.digest }),
         409,
-        'branch_move_open',
+        'student_merge_release_open',
       );
     });
 
@@ -582,11 +740,11 @@ describe('the merge of two student records', () => {
         toClassId: to,
       });
       const seen = await previewOf(other.id, kept.uid);
-      expect(seen.refusal?.code).toBe('move_scheduled');
+      expect(seen.refusal?.code).toBe('student_merge_move_scheduled');
       refusedWith(
         await post(other.id, { uid: kept.uid, reason: 'Twice', digest: seen.digest }),
         409,
-        'move_scheduled',
+        'student_merge_move_scheduled',
       );
     });
   });
