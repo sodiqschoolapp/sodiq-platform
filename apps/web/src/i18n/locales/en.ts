@@ -656,7 +656,8 @@ export const en = {
     edit: 'Edit',
     cancel: 'Cancel',
     // The branch phone (task 2.7b-1; "Decided ahead for tasks 2.2d and 2.7", item 10).
-    phoneFormat: 'Enter the phone as +998 71 123 45 67.',
+    phoneFormat: 'Phone: +998 and 9 digits, for example +998 71 123 45 67.',
+    phoneFormatAny: 'Phone: +998 and 9 digits, for example +998 90 123 45 67. A number of another country starts with +.',
     add: 'Add',
     addChoice: 'Choose what to add to {{label}}',
     moveUp: 'Move {{name}} (place {{place}}) up',

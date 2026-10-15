@@ -16,7 +16,7 @@ import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { answerOf } from '@/api/failure';
-import { CheckboxGroupField, DateField, Field, listValue, listValues } from '@/components/field';
+import { CheckboxGroupField, DateField, Field, listValue, PhoneField, listValues } from '@/components/field';
 import { RecordForm } from '@/components/form/record-form';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { PageHeader } from '@/components/page-header';
@@ -66,8 +66,6 @@ export function BranchForm({ branch, label, onSave }: BranchFormProps) {
       workingWeekdays: listValues(typed.workingWeekdays).map((day) => Number(day)),
     }),
     save: onSave,
-    // A phone not in the format says the format (item 10).
-    message: (field) => (field === 'phone' ? t('form.phoneFormat') : undefined),
     // Finding 21: the weekdays say what is missing on Save, not as they are ticked.
     checkedOnSave: ['workingWeekdays'],
   });
@@ -76,12 +74,7 @@ export function BranchForm({ branch, label, onSave }: BranchFormProps) {
     <RecordForm form={form} label={label}>
       <Field label={t('setup.branch.name')} autoComplete="off" {...form.bind('name')} />
       <Field label={t('setup.branch.address')} autoComplete="off" {...form.bind('address')} />
-      <Field
-        label={t('setup.branch.phone')}
-        type="tel"
-        autoComplete="off"
-        {...form.bind('phone')}
-      />
+      <PhoneField label={t('setup.branch.phone')} uzbekOnly {...form.bind('phone')} />
       <Field
         label={t('setup.branch.email')}
         type="email"

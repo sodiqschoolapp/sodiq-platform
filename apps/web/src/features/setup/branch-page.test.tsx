@@ -209,13 +209,14 @@ describe('the branch page', () => {
     await screen.findByRole('form', { name: 'North' });
 
     const phone = field(form(), en.setup.branch.phone);
-    type(phone, '71 123 45 67');
+    // Nine digits alone are an Uzbek number since task 3.5b (H25, decision 7): eight are refused.
+    type(phone, '71 123 45');
     fireEvent.click(within(form()).getByRole('button', { name: en.form.save }));
     expect(phone.getAttribute('aria-invalid')).toBe('true');
     expect(within(form()).getByText(en.form.phoneFormat)).toBeDefined();
     expect(calls.some((call) => call.route === 'PUT /api/setup/branch')).toBe(false);
 
-    type(phone, '+998 71 123 45 67');
+    type(phone, '71 123 45 67');
     fireEvent.click(within(form()).getByRole('button', { name: en.form.save }));
     await within(form()).findByText(en.form.saved);
     expect(calls.find((call) => call.route === 'PUT /api/setup/branch')?.body).toMatchObject({

@@ -9,7 +9,7 @@ import type { Language } from '@/i18n/languages';
 import { ThemeStore } from '@/theme/theme';
 
 /** Answers one route of the API; it is given the JSON body of the request, if any. */
-export type Handler = (body: unknown) => Response;
+export type Handler = (body: unknown) => Response | Promise<Response>;
 
 export interface ApiCall {
   /** For example `POST /api/auth/sign-in`. */

@@ -666,7 +666,8 @@ export const uz: Texts<'one' | 'other'> = {
     edit: 'Tahrirlash',
     cancel: 'Bekor qilish',
     // The branch phone (task 2.7b-1; "Decided ahead for tasks 2.2d and 2.7", item 10).
-    phoneFormat: 'Telefonni +998 71 123 45 67 koʻrinishida kiriting.',
+    phoneFormat: 'Telefon: +998 va 9 raqam, masalan +998 71 123 45 67.',
+    phoneFormatAny: 'Telefon: +998 va 9 raqam, masalan +998 90 123 45 67. Boshqa davlat raqami + bilan boshlanadi.',
     add: 'Qoʻshish',
     addChoice: '«{{label}}»ga nima qoʻshishni tanlang',
     moveUp: '{{name}}ni ({{place}}-oʻrin) yuqoriga surish',

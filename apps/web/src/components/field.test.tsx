@@ -5,7 +5,13 @@ import { describe, expect, it } from 'vitest';
 import { createI18n } from '@/i18n/i18n';
 import { en } from '@/i18n/locales/en';
 import { CHECKBOX_TARGET } from '@/components/ui/control';
-import { CheckboxField, CheckboxGroupField, listValues, OrderedListField } from './field';
+import {
+  CheckboxField,
+  CheckboxGroupField,
+  listValues,
+  OrderedListField,
+  PhoneField,
+} from './field';
 
 const LABEL = 'Slots in order';
 
@@ -129,5 +135,56 @@ describe('the checkboxes of a form', () => {
       fireEvent.click(screen.getByText(name));
       expect(box.checked).toBe(true);
     }
+  });
+});
+
+// Task 3.5b, H25 of issue #105: one phone field for every phone of the app.
+describe('a phone field', () => {
+  function Phone({ error, uzbekOnly = false }: { error?: string; uzbekOnly?: boolean }) {
+    const [value, setValue] = useState('+998 ');
+    return (
+      <I18nextProvider i18n={createI18n('en')}>
+        <PhoneField
+          label="Phone"
+          name="phone"
+          value={value}
+          error={error}
+          uzbekOnly={uzbekOnly}
+          onChange={(event) => {
+            setValue(event.target.value);
+          }}
+        />
+      </I18nextProvider>
+    );
+  }
+  const field = () => screen.getByLabelText<HTMLInputElement>('Phone');
+
+  it('groups a number pasted after the prefilled +998 when the field is left', () => {
+    render(<Phone />);
+    fireEvent.change(field(), { target: { value: '+998 +998901234501' } });
+    fireEvent.blur(field());
+    expect(field().value).toBe('+998 90 123 45 01');
+  });
+
+  it('groups nine digits, and leaves a number it cannot read as typed', () => {
+    render(<Phone />);
+    fireEvent.change(field(), { target: { value: '(90) 123-45-01' } });
+    fireEvent.blur(field());
+    expect(field().value).toBe('+998 90 123 45 01');
+    fireEvent.change(field(), { target: { value: '+998 90 12' } });
+    fireEvent.blur(field());
+    expect(field().value).toBe('+998 90 12');
+  });
+
+  it('says the format for a wrong number, the Uzbek one for the branch phone, and "fill in" at the bare prefix', () => {
+    const { unmount } = render(<Phone error="x" />);
+    fireEvent.change(field(), { target: { value: '+998 90 12' } });
+    expect(screen.getByText(en.form.phoneFormatAny)).toBeDefined();
+    fireEvent.change(field(), { target: { value: '+998 ' } });
+    expect(screen.getByText(en.form.required)).toBeDefined();
+    unmount();
+    render(<Phone error="x" uzbekOnly />);
+    fireEvent.change(field(), { target: { value: '+998 90 12' } });
+    expect(screen.getByText(en.form.phoneFormat)).toBeDefined();
   });
 });

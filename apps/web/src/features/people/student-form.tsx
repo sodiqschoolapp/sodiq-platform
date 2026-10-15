@@ -27,6 +27,7 @@ import {
   Field,
   NumberField,
   SelectField,
+  PhoneField,
 } from '@/components/field';
 import { wholeNumber } from '@/components/form/form-messages';
 import { RecordForm } from '@/components/form/record-form';
@@ -50,6 +51,8 @@ import {
   SAME_PERSON,
   smsWarning,
   type ExtraPhoneFields,
+  linkingFound,
+  usePhoneLookup,
 } from './relative-form';
 
 /** The fields of the form: one per input. */
@@ -263,6 +266,7 @@ export function StudentForm({
   const { branchId } = useView();
   const creating = student === null;
   const [match, setMatch] = useState<Match | null>(null);
+  const lookup = usePhoneLookup(onPhoneMatch);
   // The classes a new student can join (task 3.1b): active, in an open year.
   const classes = useQuery({ ...classesQuery(branchId), enabled: branchId !== null && creating });
   const years = useQuery({ ...yearsQuery(branchId), enabled: branchId !== null && creating });
@@ -407,8 +411,12 @@ export function StudentForm({
         relatives: [relative],
       };
     },
-    save: async (values) => {
-      if ('uid' in values) {
+    save: async (typedValues) => {
+      if ('uid' in typedValues) {
+        // H26: a relative's phone typed but not yet looked up (Save pressed
+        // before the lookup answered): Save waits for it and links the person
+        // found, with the default "same person" (decision 2).
+        const values = await withHolderFound(typedValues);
         try {
           await onCreate?.(values);
         } catch (error) {
@@ -430,10 +438,23 @@ export function StudentForm({
           throw error;
         }
       } else {
-        await onEdit?.(values);
+        await onEdit?.(typedValues);
       }
     },
   });
+
+  async function withHolderFound(values: StudentCreate): Promise<StudentCreate> {
+    const sent = values.relatives[0];
+    if (sent?.kind !== 'new' || sent.relative.phone === null) {
+      return values;
+    }
+    const phone = sent.relative.phone;
+    const holder = await lookup(phone);
+    if (holder !== null && holder.id !== null) {
+      setMatch({ phone, holder });
+    }
+    return { ...values, relatives: [linkingFound(sent, holder), ...values.relatives.slice(1)] };
+  }
 
   const taken = takenOf(form.failure);
   const refusal = taken === null ? null : t(...takenText(taken, holderText));
@@ -561,12 +582,7 @@ export function StudentForm({
           {...bind('documentNumber')}
         />
         <Field label={t('people.students.jshshir')} inputMode="numeric" {...bind('jshshir')} />
-        <Field
-          label={t('people.students.phone')}
-          type="tel"
-          autoComplete="off"
-          {...bind('phone')}
-        />
+        <PhoneField label={t('people.students.phone')} {...bind('phone')} />
         <Field
           label={t('people.students.email')}
           type="email"
@@ -635,7 +651,7 @@ export function StudentForm({
               if (phone === null || onPhoneMatch === undefined || phone === match?.phone) {
                 return;
               }
-              void onPhoneMatch(phone)
+              void lookup(phone)
                 .then((holder) => {
                   setMatch(holder === null || holder.id === null ? null : { phone, holder });
                 })
@@ -699,12 +715,15 @@ function RelativeStep({
         note={noPhone ? t('people.relatives.noPhoneMain') : undefined}
       />
       {!noPhone && (
-        <Field
+        <PhoneField
           label={t('people.relatives.phone')}
-          type="tel"
-          autoComplete="off"
           {...phone}
           note={smsWarning(phone.value) ? t('people.relatives.noSms') : undefined}
+          // The lookup starts once a whole number is typed (H26), and again on leaving.
+          onChange={(event) => {
+            phone.onChange(event);
+            onPhoneDone(event.target.value);
+          }}
           onBlur={() => {
             onPhoneDone(phone.value);
           }}

@@ -19,7 +19,7 @@ import { api, branchHeader } from '@/api/client';
 import { answerOf, ApiFailure } from '@/api/failure';
 import { useConfirm } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
-import { CHECKED, CheckboxField, Field, SelectField } from '@/components/field';
+import { CHECKED, CheckboxField, Field, PhoneField, SelectField } from '@/components/field';
 import { searchKey } from '@/components/list/list-state';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { useRecordForm, type RecordFormState } from '@/components/form/use-record-form';
@@ -472,10 +472,8 @@ function NewOwnerForm({
         {...owner.bind('previousUnknown')}
       />
       {owner.bind('previousUnknown').value !== CHECKED && (
-        <Field
+        <PhoneField
           label={t('people.relatives.previousPhone', { name: holderName })}
-          type="tel"
-          autoComplete="off"
           {...owner.bind('previousPhone')}
         />
       )}

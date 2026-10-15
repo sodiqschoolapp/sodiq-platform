@@ -671,7 +671,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     edit: 'Изменить',
     cancel: 'Отмена',
     // The branch phone (task 2.7b-1; "Decided ahead for tasks 2.2d and 2.7", item 10).
-    phoneFormat: 'Введите телефон в виде +998 71 123 45 67.',
+    phoneFormat: 'Телефон: +998 и 9 цифр, например +998 71 123 45 67.',
+    phoneFormatAny: 'Телефон: +998 и 9 цифр, например +998 90 123 45 67. Номер другой страны начинается с +.',
     add: 'Добавить',
     addChoice: 'Выберите, что добавить в «{{label}}»',
     moveUp: 'Переместить {{name}} (место {{place}}) вверх',

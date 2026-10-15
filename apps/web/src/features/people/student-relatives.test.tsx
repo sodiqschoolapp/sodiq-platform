@@ -510,6 +510,53 @@ describe('the extra phones of a relative', () => {
     expect(valueIn('Anvar Rahimov')).toBeUndefined();
   });
 
+  // Task 3.5b, H26 of issue #105: Save pressed before the lookup answered.
+  it('waits for the phone lookup on Save and links the person it finds', async () => {
+    let answer: (response: Response) => void = () => undefined;
+    const late = new Promise<Response>((resolve) => {
+      answer = resolve;
+    });
+    const calls = openList(TWO, {
+      'POST /api/people/relatives/phone-match': () => late,
+      [`POST /api/people/students/${OTKIR.id}/relatives`]: () => json(TWO),
+    });
+    renderApp(PATH);
+    const panel = await openPanel();
+    fireEvent.click(tabOf(panel, en.people.students.tabs.relatives));
+    fireEvent.click(await within(panel).findByRole('button', { name: en.people.relatives.add }));
+    const form = await within(panel).findByRole('form', {
+      name: en.people.relatives.formLabel.replace('{{name}}', 'Oʻtkir Rahimov'),
+    });
+    const type = (label: string, value: string) => {
+      fireEvent.change(within(form).getByLabelText(label), { target: { value } });
+    };
+    type(en.people.relatives.phone, '+998 +998907778899');
+    type(en.people.relatives.fullNameField, 'Nodira Rasulova');
+    type(en.people.relatives.relationship, 'grandmother');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(calls.some((call) => call.route === 'POST /api/people/relatives/phone-match')).toBe(
+        true,
+      );
+    });
+    const added = () =>
+      calls.filter((call) => call.route === `POST /api/people/students/${OTKIR.id}/relatives`);
+    expect(added()).toHaveLength(0);
+    answer(json({ holder: { id: uid(80), fullName: 'Rasulova Nodira', students: 2 } }));
+    await waitFor(() => {
+      expect(added()).toHaveLength(1);
+    });
+    expect(added()[0]?.body).toEqual({
+      kind: 'existing',
+      relativeId: uid(80),
+      phone: '+998907778899',
+      relationship: 'grandmother',
+      mainContact: false,
+      portalAccess: true,
+      receivesNotices: true,
+    });
+  });
+
   it('adds a relative with extra phones: added and removed, at most three, sent in the body', async () => {
     const calls = openList(TWO, {
       'POST /api/people/relatives/phone-match': () => json({ holder: null }),

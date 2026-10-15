@@ -235,14 +235,17 @@ describe('the branch phone ("Decided ahead for tasks 2.2d and 2.7", item 10)', (
     expect(phoneOf('+998 (71) 123-45-67').data?.phone).toBe('+998711234567');
   });
 
-  it('keeps an empty phone as none', () => {
+  it('keeps an empty phone, or the prefilled +998 alone, as none', () => {
     expect(phoneOf('').data?.phone).toBeNull();
+    expect(phoneOf('+998 ').data?.phone).toBeNull();
+    expect(phoneOf('71 123 45 67').data?.phone).toBe('+998711234567');
     expect(phoneOf('   ').data?.phone).toBeNull();
   });
 
   it('refuses any other text on phone', () => {
+    // Nine digits alone ("71 123 45 67") are an Uzbek number since task 3.5b (H25, decision 7).
     for (const phone of [
-      '71 123 45 67',
+      '71 123 45',
       '+99871123456',
       '+9987112345678',
       '+7 495 123 45 67',
