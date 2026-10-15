@@ -657,7 +657,8 @@ export const en = {
     cancel: 'Cancel',
     // The branch phone (task 2.7b-1; "Decided ahead for tasks 2.2d and 2.7", item 10).
     phoneFormat: 'Phone: +998 and 9 digits, for example +998 71 123 45 67.',
-    phoneFormatAny: 'Phone: +998 and 9 digits, for example +998 90 123 45 67. A number of another country starts with +.',
+    phoneFormatAny:
+      'Phone: +998 and 9 digits, for example +998 90 123 45 67. A number of another country starts with +.',
     add: 'Add',
     addChoice: 'Choose what to add to {{label}}',
     moveUp: 'Move {{name}} (place {{place}}) up',
@@ -2558,6 +2559,9 @@ export const en = {
     archiveClass: 'Archive class',
     restoreClass: 'Restore class',
     archiveTitle: 'Archive this class?',
+    archiveHasStudents_one:
+      'The class has {{count}} student. Move the student to another class first.',
+    archiveHasStudents_other: 'The class has {{count}} students. Move them to another class first.',
     archiveText:
       'Its Tutors end now and the planned ones are withdrawn. A restore gives none back.',
     restoreTitle: 'Restore this class?',
@@ -2571,7 +2575,9 @@ export const en = {
     setActing: 'Set acting Tutor',
     person: 'Person',
     choosePerson: 'Choose a person',
-    noCandidates: 'Nobody holds the Tutor role in this branch.',
+    noCandidates:
+      'First give a staff member the Tutor role (the Super Admin gives roles): People → Staff → the staff member → Account and roles.',
+    openStaff: 'Open Staff',
     from: 'From',
     until: 'Until',
     endOn: 'Ends on',
@@ -2686,6 +2692,9 @@ export const en = {
     archiveGroup: 'Archive group',
     restoreGroup: 'Restore group',
     archiveTitle: 'Archive this group?',
+    archiveHasStudents_one:
+      'The group has {{count}} student. Move the student to another group first.',
+    archiveHasStudents_other: 'The group has {{count}} students. Move them to another group first.',
     archiveText: 'It stays in the history and can be restored.',
     restoreTitle: 'Restore this group?',
     restoreText: 'It is checked again against its classes and subject.',

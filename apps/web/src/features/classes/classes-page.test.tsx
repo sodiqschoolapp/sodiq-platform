@@ -614,6 +614,57 @@ describe('a class in the side panel', () => {
     });
   });
 
+  // Task 3.5b, H22 of issue #105.
+  it('says what to do when nobody holds the Tutor role, with a link to Staff and no Save', async () => {
+    await openList({
+      extra: { 'GET /api/classes/tutor-candidates': () => json({ candidates: [] }) },
+    });
+    fireEvent.click(rowButton('7 Oxford'));
+    const panel = await screen.findByRole('complementary', { name: '7 Oxford' });
+    fireEvent.click(await within(panel).findByRole('button', { name: en.classes.setActing }));
+    expect(await within(panel).findByText(en.classes.noCandidates)).toBeDefined();
+    expect(
+      within(panel).getByRole('link', { name: en.classes.openStaff }).getAttribute('href'),
+    ).toBe('/people/staff');
+    expect(within(panel).queryByRole('button', { name: en.form.save })).toBeNull();
+    expect(within(panel).queryByLabelText(en.classes.from)).toBeNull();
+  });
+
+  // Task 3.5b, H23 of issue #105: the refusal up front.
+  it('switches Archive off with the reason while the class has a student in force or planned', async () => {
+    const member = (n: number, state: 'current' | 'planned') => ({
+      id: uid(820 + n),
+      studentId: uid(920 + n),
+      uid: `26070${String(n)}`,
+      firstName: 'Malika',
+      lastName: 'Karimova',
+      from: '2026-09-02',
+      until: '2027-06-01',
+      state,
+    });
+    for (const members of [[member(1, 'current'), member(2, 'planned')], [member(3, 'planned')]]) {
+      await openList({
+        extra: {
+          [`GET /api/classes/${OXFORD.id}/members`]: () =>
+            json({ members, freeToday: 20, freeLeast: 19, today: TODAY }),
+        },
+      });
+      fireEvent.click(rowButton('7 Oxford'));
+      const panel = await screen.findByRole('complementary', { name: '7 Oxford' });
+      const text = (
+        members.length === 1
+          ? en.classes.archiveHasStudents_one
+          : en.classes.archiveHasStudents_other
+      ).replace('{{count}}', String(members.length));
+      expect(await within(panel).findByText(text)).toBeDefined();
+      expect(
+        within(panel).getByRole<HTMLButtonElement>('button', { name: en.classes.archiveClass })
+          .disabled,
+      ).toBe(true);
+      cleanup();
+    }
+  });
+
   it('shows the Principal the classes read only', async () => {
     const calls = await openList({ session: principal() });
     expect(screen.queryByRole('button', { name: en.classes.add })).toBeNull();

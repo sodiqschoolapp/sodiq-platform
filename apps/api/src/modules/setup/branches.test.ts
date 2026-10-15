@@ -201,7 +201,7 @@ describe('the record of a branch', () => {
         [{ ...RECORD, name: 'A3', email: 'east' }, 'email'],
         [{ ...RECORD, name: '' }, 'name'],
         // "+998" and nine digits only (item 10 of "Decided ahead for tasks 2.2d and 2.7").
-        [{ ...RECORD, name: 'A4', phone: '71 200 00 00' }, 'phone'],
+        [{ ...RECORD, name: 'A4', phone: '71 200 00' }, 'phone'], // nine digits alone are Uzbek since task 3.5b (H25, decision 7)
         [{ ...RECORD, name: 'A5', phone: '+7 495 123 45 67' }, 'phone'],
         [{ ...RECORD, name: 'A6', phone: 'call the office' }, 'phone'],
       ] as const) {

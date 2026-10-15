@@ -672,7 +672,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     cancel: 'Отмена',
     // The branch phone (task 2.7b-1; "Decided ahead for tasks 2.2d and 2.7", item 10).
     phoneFormat: 'Телефон: +998 и 9 цифр, например +998 71 123 45 67.',
-    phoneFormatAny: 'Телефон: +998 и 9 цифр, например +998 90 123 45 67. Номер другой страны начинается с +.',
+    phoneFormatAny:
+      'Телефон: +998 и 9 цифр, например +998 90 123 45 67. Номер другой страны начинается с +.',
     add: 'Добавить',
     addChoice: 'Выберите, что добавить в «{{label}}»',
     moveUp: 'Переместить {{name}} (место {{place}}) вверх',
@@ -2667,6 +2668,10 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     archiveClass: 'В архив',
     restoreClass: 'Восстановить класс',
     archiveTitle: 'Отправить класс в архив?',
+    archiveHasStudents_one: 'В классе {{count}} ученик. Сначала переведите его в другой класс.',
+    archiveHasStudents_few: 'В классе {{count}} ученика. Сначала переведите их в другой класс.',
+    archiveHasStudents_many: 'В классе {{count}} учеников. Сначала переведите их в другой класс.',
+    archiveHasStudents_other: 'В классе {{count}} ученика. Сначала переведите их в другой класс.',
     archiveText:
       'Его тьюторы завершаются сейчас, запланированные отменяются. Восстановление их не вернёт.',
     restoreTitle: 'Восстановить класс?',
@@ -2680,7 +2685,9 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     setActing: 'Назначить временного тьютора',
     person: 'Человек',
     choosePerson: 'Выберите человека',
-    noCandidates: 'В этом филиале ни у кого нет роли тьютора.',
+    noCandidates:
+      'Сначала дайте сотруднику роль тьютора (роли даёт суперадминистратор): Люди → Сотрудники → сотрудник → Учётная запись и роли.',
+    openStaff: 'Открыть сотрудников',
     from: 'С',
     until: 'До',
     endOn: 'Завершить с',
@@ -2799,6 +2806,10 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     archiveGroup: 'В архив',
     restoreGroup: 'Восстановить группу',
     archiveTitle: 'Отправить группу в архив?',
+    archiveHasStudents_one: 'В группе {{count}} ученик. Сначала переведите его в другую группу.',
+    archiveHasStudents_few: 'В группе {{count}} ученика. Сначала переведите их в другую группу.',
+    archiveHasStudents_many: 'В группе {{count}} учеников. Сначала переведите их в другую группу.',
+    archiveHasStudents_other: 'В группе {{count}} ученика. Сначала переведите их в другую группу.',
     archiveText: 'Она останется в истории, её можно восстановить.',
     restoreTitle: 'Восстановить группу?',
     restoreText: 'Её классы и предмет будут проверены снова.',

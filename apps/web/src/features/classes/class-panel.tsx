@@ -26,6 +26,7 @@ import { ClassTutors, tutorName } from './class-tutors';
 import {
   archiveClass,
   classQuery,
+  classMembersQuery,
   editClass,
   endTutor,
   giveTutor,
@@ -76,6 +77,17 @@ export function ClassPanel({ row, columns, years, rooms, canEdit, canArchive }: 
       }
     },
   });
+  // H23 of issue #105: the students in force or planned, the rows the archive
+  // guard of the database counts, say up front why Archive is off. While the
+  // answer is missing the button works and the server's refusal stays.
+  const members = useQuery({
+    ...classMembersQuery(branchId, row.id),
+    enabled: branchId !== null && canArchive,
+  });
+  const holding =
+    members.data === undefined
+      ? 0
+      : new Set(members.data.members.map((member) => member.studentId)).size;
   const archive = useMutation({
     mutationFn: (restore: boolean) => archiveClass(row.id, restore),
     onSuccess: refresh,
@@ -255,7 +267,7 @@ export function ClassPanel({ row, columns, years, rooms, canEdit, canArchive }: 
               !schoolClass.archived && (
                 <Button
                   variant="destructive"
-                  disabled={archive.isPending}
+                  disabled={archive.isPending || holding > 0}
                   onClick={() => {
                     void askArchive();
                   }}
@@ -263,6 +275,12 @@ export function ClassPanel({ row, columns, years, rooms, canEdit, canArchive }: 
                   {t('classes.archiveClass')}
                 </Button>
               )
+            }
+            note={
+              canArchive &&
+              !schoolClass.archived &&
+              holding > 0 &&
+              t('classes.archiveHasStudents', { count: holding })
             }
             error={archive.error ?? changed}
             saved={panel.saved}

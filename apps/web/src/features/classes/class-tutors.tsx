@@ -1,5 +1,7 @@
 import {
   classTutorEndSchema,
+  PERMISSIONS,
+  permits,
   classTutorGiveSchema,
   listName,
   type ClassDetail,
@@ -10,6 +12,7 @@ import {
   type TutorCandidate,
 } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { useConfirm } from '@/components/confirm-dialog';
@@ -181,7 +184,7 @@ function GiveForm({
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
-  const { branchId } = useView();
+  const { branchId, role } = useView();
   const candidates = useQuery(tutorCandidatesQuery(branchId, true));
   const form = useRecordForm({
     schema: asFormSchema<ClassTutorGive>(classTutorGiveSchema, (path) => [...path]),
@@ -208,6 +211,27 @@ function GiveForm({
   if (candidates.data === undefined) {
     return <LoadingOutline lines={2} />;
   }
+  if (candidates.data.candidates.length === 0) {
+    // H22 of issue #105: what to do, and where, instead of a form nothing can be saved in.
+    return (
+      <div className="grid gap-3">
+        <p className="text-sm">{t('classes.noCandidates')}</p>
+        <div className="flex flex-wrap gap-2">
+          {role !== null && permits(PERMISSIONS, role, 'staff', 'view') && (
+            <Link
+              to="/people/staff"
+              className="self-center font-semibold text-link underline-offset-4 hover:underline"
+            >
+              {t('classes.openStaff')}
+            </Link>
+          )}
+          <Button variant="secondary" onClick={onCancel}>
+            {t('form.cancel')}
+          </Button>
+        </div>
+      </div>
+    );
+  }
   const language = t(`people.staff.languages.${schoolClass.language}`);
   const option = (candidate: TutorCandidate) => {
     const name = tutorName(t, candidate);
@@ -225,18 +249,14 @@ function GiveForm({
   };
   return (
     <RecordForm form={form} label={label} onCancel={onCancel}>
-      {candidates.data.candidates.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t('classes.noCandidates')}</p>
-      ) : (
-        <SelectField
-          label={t('classes.person')}
-          options={[
-            { value: '', label: t('classes.choosePerson') },
-            ...candidates.data.candidates.map(option),
-          ]}
-          {...form.bind('assignmentId')}
-        />
-      )}
+      <SelectField
+        label={t('classes.person')}
+        options={[
+          { value: '', label: t('classes.choosePerson') },
+          ...candidates.data.candidates.map(option),
+        ]}
+        {...form.bind('assignmentId')}
+      />
       <DateField label={t('classes.from')} min={schoolClass.today} {...form.bind('from')} />
       <DateField label={t('classes.until')} min={schoolClass.today} {...form.bind('until')} />
     </RecordForm>

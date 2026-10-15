@@ -667,7 +667,8 @@ export const uz: Texts<'one' | 'other'> = {
     cancel: 'Bekor qilish',
     // The branch phone (task 2.7b-1; "Decided ahead for tasks 2.2d and 2.7", item 10).
     phoneFormat: 'Telefon: +998 va 9 raqam, masalan +998 71 123 45 67.',
-    phoneFormatAny: 'Telefon: +998 va 9 raqam, masalan +998 90 123 45 67. Boshqa davlat raqami + bilan boshlanadi.',
+    phoneFormatAny:
+      'Telefon: +998 va 9 raqam, masalan +998 90 123 45 67. Boshqa davlat raqami + bilan boshlanadi.',
     add: 'Qoʻshish',
     addChoice: '«{{label}}»ga nima qoʻshishni tanlang',
     moveUp: '{{name}}ni ({{place}}-oʻrin) yuqoriga surish',
@@ -2574,6 +2575,9 @@ export const uz: Texts<'one' | 'other'> = {
     archiveClass: 'Arxivlash',
     restoreClass: 'Sinfni tiklash',
     archiveTitle: 'Bu sinf arxivlansinmi?',
+    archiveHasStudents_one: 'Sinfda {{count}} ta oʻquvchi bor. Avval uni boshqa sinfga koʻchiring.',
+    archiveHasStudents_other:
+      'Sinfda {{count}} ta oʻquvchi bor. Avval ularni boshqa sinfga koʻchiring.',
     archiveText:
       'Uning tyutorlari hozir yakunlanadi, rejalashtirilganlari bekor qilinadi. Tiklash ularni qaytarmaydi.',
     restoreTitle: 'Bu sinf tiklansinmi?',
@@ -2587,7 +2591,9 @@ export const uz: Texts<'one' | 'other'> = {
     setActing: 'Vaqtinchalik tyutor tayinlash',
     person: 'Shaxs',
     choosePerson: 'Shaxsni tanlang',
-    noCandidates: 'Bu filialda hech kimda tyutor roli yoʻq.',
+    noCandidates:
+      'Avval xodimga Tyutor rolini bering (rollarni Super Admin beradi): Odamlar → Xodimlar → xodim → Hisob va rollar.',
+    openStaff: 'Xodimlarni ochish',
     from: 'Dan',
     until: 'Gacha',
     endOn: 'Yakunlash sanasi',
@@ -2702,6 +2708,10 @@ export const uz: Texts<'one' | 'other'> = {
     archiveGroup: 'Arxivlash',
     restoreGroup: 'Guruhni tiklash',
     archiveTitle: 'Bu guruh arxivlansinmi?',
+    archiveHasStudents_one:
+      'Guruhda {{count}} ta oʻquvchi bor. Avval uni boshqa guruhga koʻchiring.',
+    archiveHasStudents_other:
+      'Guruhda {{count}} ta oʻquvchi bor. Avval ularni boshqa guruhga koʻchiring.',
     archiveText: 'U tarixda qoladi va uni tiklash mumkin.',
     restoreTitle: 'Bu guruh tiklansinmi?',
     restoreText: 'Uning sinflari va fani qayta tekshiriladi.',
