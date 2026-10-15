@@ -58,6 +58,7 @@ import {
 } from './student-status.js';
 import { cancelledOf, MOVE_REFUSALS, movesOf } from '../classes/student-moves.js';
 import { linkValueOf, RelativeWrites } from './relative-writes.js';
+import { BRANCH_MOVE_REFUSALS, branchMovesOf } from './branch-moves.js';
 import { Students } from './students.service.js';
 
 const CHECK_VIOLATION = '23514';
@@ -75,6 +76,9 @@ const GUARDS: Readonly<Record<string, ErrorCode>> = {
   ...CLASS_GROUP_REFUSALS,
   // Task 3.3a: a leaving cancels the scheduled moves it comes before.
   ...MOVE_REFUSALS,
+  // Task 3.3c: a leaving cancels an open release; no status of the new
+  // branch is dated before the move (decision 12).
+  ...BRANCH_MOVE_REFUSALS,
 };
 
 /** Runs work; a guard of 0033 that refused becomes its 409. */
@@ -386,10 +390,12 @@ export class StudentStatuses {
     const left =
       input.leaving === null
         ? undefined
-        : classLeft(
-            student.memberships,
+        : // The rows of this branch only (task 3.3c, permission review): the
+          // Super Admin's transaction also sees a branch the student left.
+          classLeft(
+            await membershipsOf(transaction, id, branchOf(access)),
             input.leaving.from,
-            cancelledOf(await movesOf(transaction, id)),
+            cancelledOf(await movesOf(transaction, id, branchOf(access))),
           );
     let languageConfirmed = false;
     if (left !== undefined) {
@@ -489,6 +495,8 @@ export class StudentStatuses {
         const groupMemberships = await groupMembershipsOf(transaction, id);
         // Task 3.3a: so do the moves (should-fix 4 of the plan review).
         const moves = await movesOf(transaction, id);
+        // Task 3.3c: and the releases to another branch.
+        const branchMoves = await branchMovesOf(transaction, id, branchId);
         const contracts = await transaction
           .selectFrom('student_contracts')
           .select(['id', 'number', 'signed_on'])
@@ -538,6 +546,7 @@ export class StudentStatuses {
             memberships,
             groupMemberships,
             moves,
+            branchMoves,
             uids: uids.map((uid) => uid.uid),
             relatives: links.map((link) => ({
               relativeId: link.relative_id,
@@ -619,6 +628,9 @@ export class StudentStatuses {
                   ...(classes.movesCancelled.length === 0
                     ? {}
                     : { movesCancelled: classes.movesCancelled }),
+                  ...(classes.branchMoveCancelled === null
+                    ? {}
+                    : { branchMoveCancelled: classes.branchMoveCancelled }),
                 }),
           }),
           reason: change.reason ?? undefined,
@@ -663,6 +675,8 @@ export class StudentStatuses {
     };
     notRestored: ClassNotRestored[];
     movesCancelled: string[];
+    /** The open release to another branch the leaving cancelled (task 3.3c, decision 10). */
+    branchMoveCancelled: string | null;
   } | null> {
     const takenBack = outcome.cuts
       .map((cut) => ({ cut, row: rows.find((row) => row.id === cut.id) }))
@@ -708,6 +722,26 @@ export class StudentStatuses {
           cancelled_by_leaving_id: leavingId,
         })
         .where('id', 'in', movesCancelled)
+        .execute();
+    }
+    // Task 3.3c, decision 10: a leaving cancels an open release of the
+    // student to another branch, whatever its date, under the student's lock
+    // taken first (the lock order of the branch moves).
+    const openRelease =
+      leaving === undefined || leavingId === null
+        ? undefined
+        : (await branchMovesOf(transaction, id, branchOf(access))).find(
+            (move) =>
+              move.cancelledAt === null && move.declinedAt === null && move.acceptedAt === null,
+          );
+    if (openRelease !== undefined && leavingId !== null) {
+      await transaction
+        .updateTable('student_branch_moves')
+        .set({
+          cancelled_at: await transactionMoment(transaction),
+          cancelled_by_leaving_id: leavingId,
+        })
+        .where('id', '=', openRelease.id)
         .execute();
     }
     const cancelledMoves = new Set([...cancelledOf(moves), ...movesCancelled]);
@@ -811,6 +845,7 @@ export class StudentStatuses {
       },
       notRestored: named.map((one) => ({ classId: one.id, grade: one.grade, name: one.name })),
       movesCancelled,
+      branchMoveCancelled: openRelease?.id ?? null,
     };
   }
 

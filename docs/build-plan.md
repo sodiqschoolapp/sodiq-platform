@@ -380,7 +380,7 @@ How to read the task lines:
   - From 2.4b-1 (pull request #68): a return places the student in a class from the return date (`04`, Movements) and the Super Admin's restore of a graduated student with a class (`edge`: "restores the student to active with a class and a reason"), each re-checking the class rules then (`.claude/rules/database.md`, a row back in service is checked again).
   - From 3.3a (pull request #95): a return into another class than the one left is "handled like a transfer" (`edge`: "A student returns ... Into another class: handled like a transfer").
 
-- [ ] **3.3c Move to another branch** (3.3 split in four, pull request #95, decision 1)
+- [x] **3.3c Move to another branch** (3.3 split in four, pull request #95, decision 1; built in pull request #97)
   - Read: `04` (Movements), `edge/students-classes-groups` ("A student moves to another branch"), `edge/exemptions`, the plan of pull request #95.
   - Build: released by the sending Academic Vice Principal, accepted by the receiving one choosing class and groups, both by the Super Admin; the record, UID, relatives and history stay the same and are readable in the new branch.
   - Done when: a release and an accept move a student with their class and group rows cut at the move date, with allow and refuse tests in both branches.
@@ -393,6 +393,7 @@ How to read the task lines:
   - Build: the Super Admin's merge of two student records, the older UID kept; every row of the other record (statuses, contracts, class and group rows, moves, relatives) carried over or kept in the audit entry.
   - Done when: a merge keeps the older UID and every row, refused for any role but the Super Admin, with allow and refuse tests.
   - From 2.4a (pull request #67): the Super Admin's merge of two student records, the older UID kept (`edge`: "The Super Admin can merge two records").
+  - From 3.3c (pull request #97): the releases to another branch (`student_branch_moves`) are rows of the record too, and the two records may be of two branches (the class and group rows of an earlier branch keep their branch; `student_rows_elsewhere` reads them).
 
 - [ ] **3.4 Teaching load**
   - Read: `05`, `04` (Teacher and staff record), `06` (Building a timetable, Rules), `edge/timetable` (Structure, After publishing).
@@ -618,12 +619,14 @@ How to read the task lines:
   - Build: exemptions entered by the Academic Vice Principal or Super Admin (temporary or full, all or chosen subjects, whole days or chosen slots); cells shown as exempt; the late-entry preview; end and void; notices to the Tutor and teachers.
   - Done when: every row of the "Problem cases" table has a test.
   - From 2.4b-1 (pull request #68): a leaving ends the student's open exemptions on the date (`edge/students-classes-groups`: "Open exemptions end"); the exemption table references `students` with no action, as the line of 6.1 says.
+  - From 3.3c (pull request #97, decision 19): `edge/exemptions`, "On a branch move it goes to the new branch's Academic Vice Principal to confirm or drop": an exemption in force on the date of an accepted move to another branch (`student_branch_moves`) is offered to the receiving branch's Academic Vice Principal, who confirms or drops it; the exemption rows are a branch table and go with the student (a key with the branch `on update cascade`, as 0032), or are named in `KEPT` of `student-branch-moves.database.test.ts`.
 
 - [ ] **8.6 Transfers and leaving inside the journal**
   - Read: `07` (Transfers), `edge/students-classes-groups`, `edge/calculation`.
   - Build: what a journal shows and counts when a student changes class or group, joins late, leaves or returns; results that follow the student; the "result at leaving".
   - Done when: a transfer made at the same moment as a cell save is tested.
   - From 3.3a (pull request #95, decisions 4 and 10): a move dated today is allowed only if the student has no entries today in the old journals (`edge`: the "11:00" row); a move recorded late lists the entries of the old journals on or after the date, moved past or voided with a reason, and opens the new journal's held lessons as optional cells for 7 days (the "a week late" row); the undo of a move is refused once the new journals hold entries of the student (the "a mistake" row).
+  - From 3.3c (pull request #97, decisions 6 and 19): a move to another branch is accepted from its date on, and a late accept cuts the old branch's class and group rows back to the date: the entries of the old journals on or after the date are listed as for a late transfer (moved past or voided with a reason); the old branch's journals keep naming a former member who moved away (the student's row is of the new branch: read past the row filter, names only).
   - From 3.3b (pull request #96, decision 2): the journal side of a return (`edge`, "A student returns"): "In the same quarter and class: one row, with the gap closed. Into another class: handled like a transfer. In a later year: nothing is carried into the journals". The return writes no `student_moves` row; its class row has the cause `return`, and a return into the class left gives back the group the leaving cut.
 
 - [ ] **8.7 Lesson status, reminders and the discipline report**
@@ -664,6 +667,7 @@ How to read the task lines:
   - From 1.6 (pull request #49, decision 3): a closed quarter refuses a change of its late and skipped values, in the database as `quarters_closed_year_guard` does for a closed year, also after a reopening (`edge/calculation`: "A closed quarter keeps the values it was closed with, also when reopened").
   - From 2.1 (pull request #52, decision 12): `05`, "Weights of a quarter can change until the quarter is closed." A closed quarter refuses a write of `subject_quarter_weights`, in the database as `subject_quarter_weights_closed_year_guard` does for a closed year.
   - From 3.3a (pull request #95, decision 4): a class or group move dated in a closed quarter is refused (`edge`: "Backdating is for the Academic Vice Principal, in an open quarter").
+  - From 3.3c (pull request #97, decision 9): a release to another branch dated in a closed quarter is refused, and so is its accept.
   - From 2.4b-1 (pull request #68): a leaving, an undo, a return or a graduated restore dated in a closed quarter is refused (`edge/students-classes-groups`: "A date in a closed quarter is refused"), in the database as `student_statuses_closed_year_guard` (0033) does for a closed year.
 
 - [ ] **9.2c Reopening and the nightly check**

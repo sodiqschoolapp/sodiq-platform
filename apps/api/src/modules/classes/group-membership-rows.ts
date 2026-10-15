@@ -53,10 +53,11 @@ export interface StoredGroupMembership {
   endedByMoveId: string | null;
 }
 
-/** The group rows of one student the transaction sees, by start. */
+/** The group rows of one student the transaction sees, by start; of one branch when `branchId` is given (task 3.3c). */
 export async function groupMembershipsOf(
   transaction: Transaction,
   studentId: string,
+  branchId?: string,
 ): Promise<StoredGroupMembership[]> {
   const rows = await transaction
     .selectFrom('group_memberships')
@@ -74,6 +75,7 @@ export async function groupMembershipsOf(
       'ended_by_move_id',
     ])
     .where('student_id', '=', studentId)
+    .$if(branchId !== undefined, (query) => query.where('branch_id', '=', branchId ?? ''))
     .orderBy('valid_from')
     .orderBy('id')
     .execute();

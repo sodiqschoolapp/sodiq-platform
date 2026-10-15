@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Database } from '../../database/database.js';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
+import { moveStudentBranch } from '../../testing/members-kit.js';
 import { linkRelative } from '../../testing/relatives-kit.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
@@ -312,13 +313,10 @@ describe('leaving, return and delete in the database', () => {
       await inBranch(sending, (transaction) => leave(transaction, sending, id, '2026-03-01'));
       await setYear(closed ?? '', 'current');
       await setYear(closed ?? '', 'closed');
+      // Task 3.3c: the branch changes only with an accepted move (0053).
       await expect(
-        database.migrator
-          .updateTable('students')
-          .set({ branch_id: receiving })
-          .where('id', '=', id)
-          .execute(),
-      ).resolves.toBeDefined();
+        moveStudentBranch(database.migrator, id, sending, receiving),
+      ).resolves.toBeUndefined();
       const rows = await database.migrator
         .selectFrom('student_statuses')
         .select(['branch_id', 'valid_from', 'valid_until'])

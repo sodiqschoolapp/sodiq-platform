@@ -101,6 +101,13 @@ const GROUP_MOVERS: readonly Role[] = [
   'senior_head_teacher',
   'head_teacher',
 ];
+// Task 3.3c (pull request #97): the area `branch_moves` (decision 8 as changed by correction 3).
+const BRANCH_MOVERS: readonly Role[] = ['super_admin', 'academic_vice_principal'];
+const BRANCH_MOVE_READERS: readonly Role[] = [
+  'super_admin',
+  'principal',
+  'academic_vice_principal',
+];
 const HISTORY_READERS: readonly Role[] = [
   'super_admin',
   'principal',
@@ -451,6 +458,16 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'POST /api/groups/transfers/:id/cancel': { branch: 'request', roles: GROUP_MOVERS },
   'POST /api/groups/transfers/:id/undo': { branch: 'request', roles: GROUP_MOVERS },
   'GET /api/people/students/:id/history': { branch: 'request', roles: HISTORY_READERS },
+  // Task 3.3c (pull request #97): the move to another branch under the new area
+  // `branch_moves`; the side of each route (sending or receiving branch) is
+  // checked in the route (people/branch-moves.test.ts).
+  'POST /api/people/students/:id/branch-move': { branch: 'request', roles: BRANCH_MOVERS },
+  'POST /api/people/branch-moves/:id/cancel': { branch: 'request', roles: BRANCH_MOVERS },
+  'GET /api/people/branch-moves/targets': { branch: 'request', roles: BRANCH_MOVERS },
+  'GET /api/people/branch-moves/incoming': { branch: 'request', roles: BRANCH_MOVE_READERS },
+  'GET /api/people/branch-moves/:id/groups': { branch: 'request', roles: BRANCH_MOVE_READERS },
+  'POST /api/people/branch-moves/:id/accept': { branch: 'request', roles: BRANCH_MOVERS },
+  'POST /api/people/branch-moves/:id/decline': { branch: 'request', roles: BRANCH_MOVERS },
 };
 
 /** The same for the sample routes: the roles `SAMPLE_PERMISSIONS` gives each action, written again by hand. */

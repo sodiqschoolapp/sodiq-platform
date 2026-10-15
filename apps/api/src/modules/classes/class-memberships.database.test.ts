@@ -5,7 +5,12 @@ import { Transactions, type Transaction } from '../../database/transactions.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { ClassesKit } from '../../testing/classes-kit.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
-import { MembersKit, memberValues, type MemberRow } from '../../testing/members-kit.js';
+import {
+  MembersKit,
+  memberValues,
+  moveStudentBranch,
+  type MemberRow,
+} from '../../testing/members-kit.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
 
 const INSUFFICIENT_PRIVILEGE = '42501';
@@ -168,11 +173,8 @@ describe('class membership in the database', () => {
       await place({ branch: north, classId: oxford, studentId: student, from: '2026-09-01' });
       // The student moves to the south with the row left uncut (3.3 cuts it):
       // the south does not see the row, and the constraint still refuses.
-      await database.migrator
-        .updateTable('students')
-        .set({ branch_id: south })
-        .where('id', '=', student)
-        .execute();
+      // Task 3.3c: the branch changes only with an accepted move (0053).
+      await moveStudentBranch(database.migrator, student, north, south);
       const southClass = await schoolClass(south, southYear);
       const refused = await refusal(
         place({ branch: south, classId: southClass, studentId: student, from: '2026-10-14' }),
@@ -888,11 +890,8 @@ describe('class membership in the database', () => {
           transaction,
         );
       });
-      await database.migrator
-        .updateTable('students')
-        .set({ branch_id: south })
-        .where('id', '=', student)
-        .execute();
+      // Task 3.3c: the branch changes only with an accepted move (0053).
+      await moveStudentBranch(database.migrator, student, north, south);
       expect(await members.rowOf(id)).toMatchObject({ branch_id: north });
     });
 

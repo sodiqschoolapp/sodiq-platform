@@ -54,7 +54,8 @@ export type AccountKey =
   | 'tutorScope'
   | 'recordSearch'
   | 'moves'
-  | 'returns';
+  | 'returns'
+  | 'branchMoves';
 
 /** Invented for the tests. */
 export const NEW_PASSWORD = 'a-new-password-73';

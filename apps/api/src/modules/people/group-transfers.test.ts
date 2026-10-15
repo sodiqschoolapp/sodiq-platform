@@ -666,7 +666,9 @@ describe('group transfers and the History tab', () => {
         history.lines.map((line) =>
           line.kind === 'move'
             ? [line.kind, line.move.kind, line.move.from, line.move.state]
-            : [line.kind, line.from],
+            : line.kind === 'branch_move'
+              ? [line.kind, line.move.from]
+              : [line.kind, line.from],
         ),
       ).toEqual([
         ['move', 'class', '2026-10-19', 'scheduled'],

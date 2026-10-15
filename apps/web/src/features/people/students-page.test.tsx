@@ -140,6 +140,9 @@ const detailOf = (row: StudentListItem, fields: Partial<StudentDetail> = {}): St
   groupMoveSubjects: [],
   canMoveInPast: false,
   readsHistory: false,
+  branchMove: null,
+  lastBranchMove: null,
+  canMoveBranch: false,
   today: '2026-10-10',
   ...fields,
 });

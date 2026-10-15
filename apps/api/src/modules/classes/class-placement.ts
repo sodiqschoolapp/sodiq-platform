@@ -218,7 +218,7 @@ export async function writePlacement(
   access: Access,
   placement: PlacementClass,
   rows: readonly PlacedRow[],
-  cause: 'placement' | 'create' | 'return' | 'restore',
+  cause: 'placement' | 'create' | 'return' | 'restore' | 'branch_move',
   requestId: string,
 ): Promise<string[]> {
   const ids: string[] = [];
