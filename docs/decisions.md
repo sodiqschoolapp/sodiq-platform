@@ -233,6 +233,9 @@ Plan approved on pull request #109 with corrections 1 to 5; decisions 1 to 18 co
 | `noSubjectTeacherFree` turns `teacher_subject`, `teacher_grade`, `teacher_unavailable` into warnings; `substitute_language` warns, `substitute_vacancy` blocks | Decision 17, correction 3 |
 | A day in no quarter is `vacation`, outside the year `outside_year`; a room under repair warns, a closed one blocks | Corrections 1 and 4 |
 | `fast-check` 4.10.2 as a devDependency of `packages/timetable-rules` for the property test of the sweep | Decision 14; the version the workspace already pins |
+| `noSubjectTeacherFree` relaxes only a substitute's own lesson in a dated call | Spec review of the build, must-fix 2; `edge/timetable`: "For a one-day change only" |
+| All parts of a block in one slot: parts at other times are `split_apart`; travel time compares a lesson with the one that ends last before it | Spec review of the build, must-fix 1 and should-fix 2 |
+| A placement whose teacher, unit, subject or room is missing from the facts throws: a caller's fault, never a free slot | Spec review of the build, should-fix 1 |
 | The setting has its own route, `PUT /api/setup/settings/class-daily-lessons`, area `settings`, as each settings section has | Found in the build: the settings controller has one PUT route per section |
 
 ## 15 October 2026: exams and later changes against the claims (task 5.1b)

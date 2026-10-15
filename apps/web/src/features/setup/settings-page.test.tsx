@@ -119,7 +119,6 @@ describe('the settings page', () => {
     });
   });
 
-  // Answer 24: the Principal views.
   // Task 5.2, decision 2: one value per branch; empty is not set.
   it('sets and clears the most lessons per day of a class', async () => {
     const calls = settingsApi('academic_vice_principal', {
@@ -171,6 +170,7 @@ describe('the settings page', () => {
     );
   });
 
+  // Answer 24: the Principal views.
   it('shows the values read only to the Principal', async () => {
     settingsApi('principal');
     renderApp('/setup/settings');

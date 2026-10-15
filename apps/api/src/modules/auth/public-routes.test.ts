@@ -282,6 +282,7 @@ describe('the routes that work without sign-in', () => {
       'PUT /api/setup/floors/:id',
       'PUT /api/setup/quarters/:id/attendance-values',
       'PUT /api/setup/rooms/:id',
+      'PUT /api/setup/settings/class-daily-lessons',
       'PUT /api/setup/settings/early-warning',
       'PUT /api/setup/settings/edit-days',
       'PUT /api/setup/subjects/:id',

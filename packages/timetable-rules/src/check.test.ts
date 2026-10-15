@@ -430,6 +430,36 @@ describe('one place at a time', () => {
     expect(only(results, 'student_double').map((one) => one.lessonIds)).toEqual([['a', 'b']]);
   });
 
+  it('refuses a split whose parts sit in different slots (06, Rules: "in the same slot")', () => {
+    const results = checkTimetable(
+      [
+        place({
+          id: 'a',
+          classId: null,
+          groupId: '7m1',
+          classIds: ['7a', '7b'],
+          studentIds: ['s1', 's2', 's5'],
+          blockId: 'blk',
+        }),
+        place({
+          id: 'b',
+          classId: null,
+          groupId: '7m2',
+          classIds: ['7a', '7b'],
+          studentIds: ['s3', 's4', 's6'],
+          blockId: 'blk',
+          teacherIds: ['t2'],
+          roomId: 'r2',
+          ...L3,
+        }),
+      ],
+      facts(),
+    );
+    expect(only(results, 'split_apart')).toEqual([
+      expect.objectContaining({ severity: 'blocked', lessonIds: ['a', 'b'] }),
+    ]);
+  });
+
   it('refuses a split whose parts are not all in the slot', () => {
     const results = checkTimetable(
       [
@@ -687,7 +717,7 @@ describe('the teacher, the subject and the room', () => {
     ).toEqual([expect.objectContaining({ rule: 'substitute_language', severity: 'warning' })]);
   });
 
-  it('turns subject, grade and availability into warnings when no teacher of the subject is free; double booking stays blocked', () => {
+  it('turns subject, grade and availability of a substitute into warnings when no teacher of the subject is free; double booking and other lessons stay blocked', () => {
     const narrow = teacher('t9', {
       subjects: [{ subjectId: 'english', grades: [5] }],
       availability: [
@@ -701,35 +731,58 @@ describe('the teacher, the subject and the room', () => {
         ['t1', teacher('t1')],
       ]),
     });
+    const day = '2026-11-10';
     const placements = [
-      place({ id: 'a', day: '2026-11-10', teacherIds: ['t9'], substitute: true }),
+      // A substitute without the subject, before the teacher's hours.
+      place({ id: 'a', day, teacherIds: ['t9'], substitute: true }),
+      // A substitute with the subject in other grades, before the teacher's hours.
       place({
-        id: 'b',
-        day: '2026-11-10',
+        id: 'c',
+        day,
         teacherIds: ['t9'],
         classId: '9a',
         roomId: 'r2',
         subjectId: 'english',
+        substitute: true,
+        ...L3,
+      }),
+      // The teacher's own lesson at the substitute's time: not a one-day change.
+      place({
+        id: 'b',
+        day,
+        teacherIds: ['t9'],
+        classId: '10a',
+        roomId: 'small',
+        subjectId: 'english',
       }),
     ];
-    const strict = checkTimetable(placements, f);
-    expect(strict.filter((one) => one.severity === 'blocked').map((one) => one.rule)).toEqual([
-      'teacher_double',
-      'teacher_subject',
-      'teacher_grade',
-      'teacher_unavailable',
-      'teacher_unavailable',
+    const view = (results: RuleResult[]) =>
+      results.map((one) => `${one.severity} ${one.rule} ${one.lessonIds.join('+')}`);
+    expect(view(checkTimetable(placements, f))).toEqual([
+      'blocked teacher_double a+b',
+      'blocked teacher_subject a',
+      'blocked teacher_grade b',
+      'blocked teacher_grade c',
+      'blocked teacher_unavailable a',
+      'blocked teacher_unavailable b',
+      'blocked teacher_unavailable c',
     ]);
-    const relaxed = checkTimetable(placements, f, { noSubjectTeacherFree: true });
-    expect(relaxed.filter((one) => one.severity === 'blocked').map((one) => one.rule)).toEqual([
-      'teacher_double',
+    expect(view(checkTimetable(placements, f, { noSubjectTeacherFree: true }))).toEqual([
+      'blocked teacher_double a+b',
+      'warning teacher_subject a',
+      'blocked teacher_grade b',
+      'warning teacher_grade c',
+      'warning teacher_unavailable a',
+      'blocked teacher_unavailable b',
+      'warning teacher_unavailable c',
     ]);
-    expect(relaxed.filter((one) => one.severity === 'warning').map((one) => one.rule)).toEqual([
-      'teacher_subject',
-      'teacher_grade',
-      'teacher_unavailable',
-      'teacher_unavailable',
-    ]);
+    // A pattern has no one-day change: nothing is relaxed there.
+    const pattern = placements.map((one) => ({ ...one, day: '2' }));
+    expect(
+      checkTimetable(pattern, { ...f, mode: 'pattern' }, { noSubjectTeacherFree: true }).every(
+        (one) => one.severity === 'blocked',
+      ),
+    ).toBe(true);
   });
 
   it('reads availability in force on the start date of a pattern, and lists later entries by date', () => {
@@ -864,6 +917,20 @@ describe('travel time', () => {
       facts({ travelMinutes: () => 90 }),
     );
     expect(only(results, 'travel_time').map((one) => one.lessonIds)).toEqual([['b', 'c']]);
+  });
+
+  it('compares the next lesson with the one that ends last before it, not only the one that starts last', () => {
+    // An exam in branch A until 10:40 holds a lesson of A inside it; the lesson
+    // in branch B at 10:45 is 5 minutes after the exam, not 70 after the lesson.
+    const results = checkTimetable(
+      [
+        exam({ id: 'x', teacherIds: ['t1'], start: L1.start, end: L3.end }),
+        place({ id: 'a', classId: '9a', roomId: 'small', ...L2 }),
+        place({ id: 'b', branchId: B, classId: '10a', start: L4.start, end: L4.end }),
+      ],
+      facts({ travelMinutes: () => 30 }),
+    );
+    expect(only(results, 'travel_time').map((one) => one.lessonIds)).toEqual([['x', 'b']]);
   });
 
   it('counts an invigilation and a busy-elsewhere lesson (decision 15)', () => {
@@ -1027,6 +1094,18 @@ describe('warnings', () => {
     expect(
       codes(checkTimetable([place({ id: 'a', ...L3 })], facts({ otherDrafts: [other] }))),
     ).toEqual([]);
+  });
+});
+
+describe('missing facts', () => {
+  // A caller that leaves out a fact gets a fault, never a free slot (spec review should-fix 1).
+  it.each([
+    ['teacher', { teacherIds: ['nobody'] }],
+    ['class or group', { classId: 'nowhere', classIds: ['nowhere'] }],
+    ['subject', { subjectId: 'nothing' }],
+    ['room', { roomId: 'nowhere' }],
+  ] as const)('throws for an unknown %s', (kind, extra) => {
+    expect(() => checkTimetable([place(extra)], facts())).toThrow(`no ${kind}`);
   });
 });
 

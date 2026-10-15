@@ -534,7 +534,7 @@ How to read the task lines:
   - Read: `06` (Changes after publishing), `edge/timetable` (After publishing).
   - Build: the one Substitution action, started from a lesson or from an absent teacher; suggestions ordered by subject, department and language; the substitution record; the substitute's rights on that lesson.
   - Done when: the exception "no teacher of the subject is free" works as the edge case says.
-  - From 5.2 (pull request #109, decision 17, correction 3): a substitute is a placement with `substitute: true`; `substitute_language` is a warning that needs a confirmation, `substitute_vacancy` blocks, and the option `noSubjectTeacherFree` of `checkTimetable` turns `teacher_subject`, `teacher_grade` and `teacher_unavailable` into warnings with a tick, double booking staying blocked.
+  - From 5.2 (pull request #109, decision 17, correction 3): a substitute is a placement with `substitute: true`; `substitute_language` is a warning that needs a confirmation, `substitute_vacancy` blocks, and the option `noSubjectTeacherFree` of `checkTimetable` turns `teacher_subject`, `teacher_grade` and `teacher_unavailable` of the substitute's own lesson (`substitute: true`, `mode: 'dated'`) into warnings with a tick; every other lesson keeps them blocked, and double booking stays blocked.
 
 - [ ] **5.7c Free now board**
   - Read: `06` (Free now board), `edge/timetable` (After publishing).

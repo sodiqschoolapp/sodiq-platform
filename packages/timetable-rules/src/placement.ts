@@ -164,7 +164,11 @@ export interface Facts {
   readonly subjects: ReadonlyMap<string, EngineSubject>;
   readonly rooms: ReadonlyMap<string, EngineRoom>;
   readonly units: ReadonlyMap<string, EngineUnit>;
-  /** The expected students of a class on the day (for a block's completeness). */
+  /**
+   * The expected students of a class on the day, for a block's completeness:
+   * for a pattern, the members on the later of the start date and today; for a
+   * dated lesson, on its date.
+   */
   readonly classStudents: (classId: string, day: string) => readonly string[];
   /** What a grade of a branch has on the day. */
   readonly dayOf: (branchId: string, grade: number, day: string) => EngineDay;
@@ -180,7 +184,11 @@ export interface Facts {
   readonly otherDrafts: readonly Placement[];
 }
 
-/** A one-day change when no teacher of the subject is free (review correction 3). */
+/**
+ * A one-day change when no teacher of the subject is free (review correction
+ * 3): relaxes only the substitute's own lesson (`substitute: true`) of a dated
+ * call; every other lesson of the call keeps its blocked rules.
+ */
 export interface CheckOptions {
   readonly noSubjectTeacherFree?: boolean;
 }

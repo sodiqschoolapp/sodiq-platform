@@ -16,3 +16,5 @@ Before changing anything here, read `docs/spec/06-timetable.md`, `docs/spec/edge
 - The database constraints in `docs/spec/edge-cases/developer-rules.md` stay in force. Application checks come on top of them, not instead.
 - Publishing never changes a lesson dated today or earlier. The live timetable is never edited in place.
 - The solver never publishes. Its output is a draft that the rule engine re-checks.
+- An exception that relaxes a rule (a one-day change when no teacher of the subject is free) applies to the lesson it is for only, never to every lesson checked in the same call, and a test keeps another lesson of the call blocked (found by the spec review of task 5.2).
+- A rule over a set of placements that must sit together (the parts of a block, a double pair) checks their times as well as their members; a test places one part in another slot (found by the spec review of task 5.2).

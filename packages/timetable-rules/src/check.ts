@@ -39,6 +39,7 @@ class Results {
   constructor(
     private readonly options: CheckOptions,
     private readonly fixed: ReadonlySet<string>,
+    private readonly mode: Facts['mode'],
   ) {}
 
   add(
@@ -58,8 +59,15 @@ class Results {
     if (this.seen.has(key)) {
       return;
     }
+    // Only a substitute's own lesson in a one-day change, never a pattern or
+    // another lesson of the call (edge/timetable, After publishing, "No
+    // teacher of the subject is free": "For a one-day change only").
     const relaxed =
-      this.options.noSubjectTeacherFree === true && RELAXED_WHEN_NO_TEACHER_FREE.includes(rule);
+      this.options.noSubjectTeacherFree === true &&
+      this.mode === 'dated' &&
+      RELAXED_WHEN_NO_TEACHER_FREE.includes(rule) &&
+      placements.length === 1 &&
+      placements.every((one) => one.substitute);
     const severity = WARNINGS.includes(rule) || relaxed ? 'warning' : 'blocked';
     this.seen.set(key, {
       rule,
@@ -127,6 +135,19 @@ export function overlappingPairs(
   return pairs;
 }
 
+/**
+ * A fact the caller must give: a placement whose teacher, unit, subject or
+ * room is missing from the facts is a fault of the caller, never a free slot
+ * (CLAUDE.md, What matters most, 1).
+ */
+function need<T>(map: ReadonlyMap<string, T>, id: string, kind: string): T {
+  const found = map.get(id);
+  if (found === undefined) {
+    throw new Error(`The facts of the rule engine have no ${kind} ${id}.`);
+  }
+  return found;
+}
+
 const teachersOf = (one: Placement) => one.teacherIds;
 
 const roomsOf = (one: Placement): string[] =>
@@ -154,11 +175,11 @@ const weekOf = (facts: Facts, day: string) =>
 function gradesOf(facts: Facts, placement: Placement): number[] {
   const unitId = placement.classId ?? placement.groupId;
   if (unitId !== null) {
-    return [...(facts.units.get(unitId)?.grades ?? [])];
+    return [...need(facts.units, unitId, 'class or group').grades];
   }
   const grades = new Set<number>();
   for (const classId of placement.classIds) {
-    for (const grade of facts.units.get(classId)?.grades ?? []) {
+    for (const grade of need(facts.units, classId, 'class').grades) {
       grades.add(grade);
     }
   }
@@ -171,7 +192,7 @@ function checkClashes(placements: readonly Placement[], facts: Facts, results: R
   for (const [a, b] of overlappingPairs(placements, teachersOf)) {
     results.add('teacher_double', a.day, [a, b]);
   }
-  const sharedRoom = (roomId: string) => facts.rooms.get(roomId)?.shared === true;
+  const sharedRoom = (roomId: string) => need(facts.rooms, roomId, 'room').shared;
   for (const [a, b] of overlappingPairs(placements, (one) =>
     roomsOf(one).filter((roomId) => !sharedRoom(roomId)),
   )) {
@@ -241,6 +262,12 @@ function checkBlocks(placements: readonly Placement[], facts: Facts, results: Re
   for (const block of blocks.values()) {
     const first = block[0];
     if (first === undefined) continue;
+    if (block.some((one) => one.start !== first.start || one.end !== first.end)) {
+      results.add('split_apart', first.day, block, {
+        slots: new Set(block.map((one) => one.start)).size,
+      });
+      continue;
+    }
     const exempt = new Set(block.flatMap((one) => one.exemptStudentIds));
     const placed = new Set(block.flatMap((one) => one.studentIds));
     const classIds = new Set(block.flatMap((one) => one.classIds));
@@ -280,10 +307,11 @@ function checkDay(placement: Placement, facts: Facts, results: Results): void {
     grade,
     day: facts.dayOf(placement.branchId, grade, placement.day),
   }));
-  const closed = days.find((one) => !one.day.lessons);
-  if (closed !== undefined && !closed.day.lessons) {
-    results.add(closed.day.reason, placement.day, [placement], { grade: closed.grade });
-    return;
+  for (const one of days) {
+    if (!one.day.lessons) {
+      results.add(one.day.reason, placement.day, [placement], { grade: one.grade });
+      return;
+    }
   }
   const open = days.flatMap((one) => (one.day.lessons ? [{ grade: one.grade, day: one.day }] : []));
   if (
@@ -439,9 +467,9 @@ function checkTeacherOfLesson(
   results: Results,
 ): void {
   const unitId = placement.classId ?? placement.groupId;
-  const unit = unitId === null ? undefined : facts.units.get(unitId);
+  const unit = unitId === null ? undefined : need(facts.units, unitId, 'class or group');
   const subject =
-    placement.subjectId === null ? undefined : facts.subjects.get(placement.subjectId);
+    placement.subjectId === null ? undefined : need(facts.subjects, placement.subjectId, 'subject');
   if (unit !== undefined && subject !== undefined) {
     const problems = teacherProblems(
       loadUnitOf(unit),
@@ -518,8 +546,7 @@ function checkInvigilator(
 
 function checkResources(placement: Placement, facts: Facts, results: Results): void {
   for (const teacherId of placement.teacherIds) {
-    const teacher = facts.teachers.get(teacherId);
-    if (teacher === undefined) continue;
+    const teacher = need(facts.teachers, teacherId, 'teacher');
     if (placement.kind === 'lesson') {
       checkTeacherOfLesson(placement, teacher, facts, results);
     } else {
@@ -532,8 +559,7 @@ function checkResources(placement: Placement, facts: Facts, results: Results): v
     }
   }
   for (const roomId of roomsOf(placement)) {
-    const room = facts.rooms.get(roomId);
-    if (room === undefined) continue;
+    const room = need(facts.rooms, roomId, 'room');
     if (room.status === 'closed') {
       results.add('room_inactive', placement.day, [placement], { roomId });
     } else if (room.status === 'under_repair') {
@@ -574,20 +600,23 @@ function checkResources(placement: Placement, facts: Facts, results: Results): v
 function checkTravel(placements: readonly Placement[], facts: Facts, results: Results): void {
   const groups = groupBy(placements, (one) => one.teacherIds.map((id) => `${one.day}|${id}`));
   for (const group of groups.values()) {
-    const ordered = [...group].sort(byStart);
-    for (let index = 1; index < ordered.length; index += 1) {
-      const before = ordered[index - 1];
-      const after = ordered[index];
-      if (before === undefined || after === undefined) continue;
-      if (before.branchId === after.branchId) continue;
-      const gap = after.start - before.end;
+    // The lesson before the next one is the one that ends last among those
+    // that start earlier: a long exam may hold a shorter lesson inside it.
+    let before: Placement | undefined;
+    for (const after of [...group].sort(byStart)) {
+      const previous = before;
+      if (before === undefined || after.end > before.end) {
+        before = after;
+      }
+      if (previous === undefined || previous.branchId === after.branchId) continue;
+      const gap = after.start - previous.end;
       // An overlap is `teacher_double`.
       if (gap < 0) continue;
-      const minutes = facts.travelMinutes(before.branchId, after.branchId);
+      const minutes = facts.travelMinutes(previous.branchId, after.branchId);
       if (minutes === null) {
-        results.add('travel_time_not_set', after.day, [before, after]);
+        results.add('travel_time_not_set', after.day, [previous, after]);
       } else if (gap < minutes) {
-        results.add('travel_time', after.day, [before, after], { minutes, gap });
+        results.add('travel_time', after.day, [previous, after], { minutes, gap });
       }
     }
   }
@@ -725,6 +754,7 @@ export function checkTimetable(
   const results = new Results(
     options,
     new Set(placements.filter((one) => one.fixed).map((one) => one.id)),
+    facts.mode,
   );
   checkClashes(placements, facts, results);
   checkBlocks(placements, facts, results);
