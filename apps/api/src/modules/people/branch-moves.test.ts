@@ -829,9 +829,9 @@ describe('the move of a student to another branch', () => {
       const fullRefusal = await accept(moveId, { classId: full });
       refusedWith(fullRefusal, 409, 'class_full');
       // Task 3.5b, H24: the refusal names the class and its first day without a seat.
-      expect(apiErrorSchema.parse(fullRefusal.body).error.details).toEqual([
-        expect.objectContaining({ classId: full, students: 1, fullFrom: expect.any(String) }),
-      ]);
+      const [fullDetail] = apiErrorSchema.parse(fullRefusal.body).error.details ?? [];
+      expect(fullDetail).toMatchObject({ classId: full, students: 1 });
+      expect(fullDetail?.fullFrom).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       refusedWith(await accept(moveId, { classId: eighth }), 409, 'class_grade_differs');
       refusedWith(
         await accept(moveId, {
