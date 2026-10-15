@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 15 October 2026: task 3.3c Move to another branch
+
+- Built: migration 0053 (`student_branch_moves`, the guarded `students.branch_id`, the end `branch_move` of class and group rows, the status guard, three readers past the filter); the release and its cancel in the sending branch, the incoming list, the groups offered, the accept and the decline in the receiving one (`branch_moves`), each checked against the branch of the request.
+- The accept joins the sending branch to its transaction (`Transactions.joinSendingBranch`), cuts the old rows at the date, changes the branch (the keys carry the record) and places the class and groups; the History tab reads the old branch's lines (`student_rows_elsewhere`).
+- The web app: "Move to another branch" and its badge and cancel on the student panel, "Released to this branch" above the student list with Accept and Decline, the History and Academic lines.
+- Left out: the exemptions on a branch move (8.5), the journal side (8.6), the closed quarter (9.2b), the merge (3.3d): lines added.
+
+The next sessions must know:
+
+- A test that moves a student to another branch uses `moveStudentBranch` of `members-kit.ts`; a bare update of `students.branch_id` is refused (`students_branch_move`).
+- A table that references `students` is named in `CARRIED` or `KEPT` of `student-branch-moves.database.test.ts`.
+- The browser seed has a `branchMoves` account (Academic Vice Principal of a sending and a receiving branch).
+- The next task is 3.3d.
+
 ## 15 October 2026: task 3.3b Return and graduate restore into a class
 
 - Built: migration 0052 (the class row causes `return` and `restore`); a return names its class (`classId`) and is placed from the return date, a graduate restore names its class and takes its grade; the class rules are checked again by `planPlacement` under the student, class and group locks, all or none; the groups by `coverClassRows`, with the group the leaving cut offered first on a return into the class left (`preferred`).

@@ -213,6 +213,34 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 15 October 2026: the move to another branch (task 3.3c)
+
+Plan approved on pull request #97 with corrections 1 to 3; decisions 1 to 6 marked Look first and confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** Three `SECURITY DEFINER` functions on the allow-list (`branch_moves_incoming`, `branch_move_sending`, `student_rows_elsewhere`), each given the branch of the request; the accept and the decline add the sending branch to their own transaction (`Transactions.joinSendingBranch`), once, after `branch_move_sending` found an open release to the request's branch | Decision 1; the receiving side cuts the old branch's rows and writes its entry; the `enterCreatedBranch` precedent |
+| **Look first.** The receiving branch's readers of `branch_moves` see the UID, name and grade of a student released to it before the accept, nothing else | Decision 2; `edge`: "the receiving one accepts, choosing class and groups" |
+| **Look first.** The History tab of the new branch reads the old branch's class rows, group rows and moves past the filter (names, dates, causes, ids); the Academic block names the branch and date of the latest move into the branch | Decision 3; `edge`: "history stay[s] ... readable in the new branch" |
+| **Look first.** `students.branch_id` has an update grant, guarded by `students_branch_move`: it changes only with a move accepted in the same transaction; the 2.4a, 2.5a and 3.1b database tests that moved a branch by hand use `moveStudentBranch` of `members-kit.ts` and the two that pinned "no right" pin the guard (`students_branch_move`) instead, nothing weakened | Decision 4; decision 15 of pull request #67 |
+| **Look first.** Replaced in 0053, a value or path added and none taken away: the `ended_by` and `cause` checks of both membership tables, `group_memberships_withdrawn_check`, both `only_shrink` triggers; new beside them: `memberships_branch_move` (ends and new rows only by a move accepted in the transaction) and `student_statuses_branch_move` (no status dated before an accepted move) | Decision 5, correction 1 |
+| **Look first.** The accept from the move's date on, never before; a late accept cuts back to the date; the receiving class's seat is not held before the date | Decision 6 |
+| The release row is a branch table of the student's branch, carried by the cascade (`on update cascade`) | Decision 7 |
+| A new area `branch_moves`: `view` and `edit` for the Super Admin and the Academic Vice Principal, `view` for the Principal | Decision 8, correction 3 |
+| The state trigger checks the side: an accept or a decline only by a transaction whose filter holds the receiving branch, a cancel only by one that holds the sending branch | Correction 2 |
+| The date: tomorrow offered, today allowed, a past date in an open year; the closed quarter with 9.2b | Decision 9 |
+| A leaving cancels an open release (`cancelled_by_leaving_id`), named in its entry (`branchMoveCancelled`); its cancel or undo does not bring it back | Decision 10 |
+| A release is refused while a move is scheduled or begun on or after its date, or a status change is scheduled after it (`status_scheduled`), checked again at the accept; class and group transfers are refused while a release is open (`branch_move_open`) and before the arrival in the branch (`before_branch_move`) | Decisions 11 and 12 |
+| The accept names the class and may name a group per subject (`branch_move_group` when not offered); the others get the smallest suitable group, tagged | Decision 13 |
+| The receiving branch declines with a reason (logged in both branches); no undo of an accepted move | Decision 14 |
+| The language of the class left is confirmed (`branch_move_language_differs`) | Decision 15 |
+| No notice; the incoming list sits above the student list | Decision 16 |
+| The old branch's audit entries stay in its log | Decision 17 |
+| A route of its own lists the other branches for the release form (`GET people/branch-moves/targets`, `branch_moves` `edit`): the list of branches is the Super Admin's | Build: the Academic Vice Principal has no list of branches |
+| The accept form sits in the incoming list's row, not in the side panel; the class is chosen first, then a group per subject | Build: the record is not of the branch before the accept |
+| The record is read after the accept in a new transaction of the request's branches alone | Build: the joined filter would count the old branch's rows into the `version` |
+| The History route of a student checks the branch explicitly: the Super Admin's transaction sees every branch | Build; `.claude/rules/api.md`, the Super Admin's 404 |
+
 ## 15 October 2026: return and graduate restore into a class (task 3.3b)
 
 Plan approved on pull request #96 with correction 1; decisions 1 to 6 and 10 marked Look first and confirmed there. Flagged on issue #42.
