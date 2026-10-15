@@ -134,7 +134,7 @@ describe('leaving, return and delete of a student', () => {
       cookie,
     );
 
-  /** Every row of the student tables and the audit count, in both branches. */
+  /** Every row of the tables the routes write and the audit count, in both branches. */
   async function snapshot(): Promise<Record<string, unknown>> {
     const rows: Record<string, unknown> = { audit: await t.auditCount() };
     for (const table of [
@@ -143,6 +143,9 @@ describe('leaving, return and delete of a student', () => {
       'student_contracts',
       'student_statuses',
       'student_accounts',
+      // Task 3.3b: the return and the restore write class and group rows (permission review).
+      'class_memberships',
+      'group_memberships',
     ] as const) {
       rows[table] = (
         await sql`select * from ${sql.table(table)} order by 1, 2`.execute(t.database.migrator)

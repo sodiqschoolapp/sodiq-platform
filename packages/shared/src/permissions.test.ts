@@ -231,6 +231,11 @@ describe('a frozen permission table', () => {
   // class row and its groups, and the restore writes the grade; no role does
   // more than before.
   it('gives the returners and the restorers the edit of classes and groups, and the restorers the edit of students', () => {
+    // The pin never passes empty: 02 names who returns and who restores.
+    expect(ROLES.filter((role) => permits(PERMISSIONS, role, 'students', 'archive'))).toEqual(
+      expect.arrayContaining(['super_admin', 'academic_vice_principal']),
+    );
+    expect(permits(PERMISSIONS, 'super_admin', 'student_graduates', 'edit')).toBe(true);
     for (const role of ROLES) {
       const returns = permits(PERMISSIONS, role, 'students', 'archive');
       const restores = permits(PERMISSIONS, role, 'student_graduates', 'edit');

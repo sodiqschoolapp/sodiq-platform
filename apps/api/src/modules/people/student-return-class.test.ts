@@ -355,6 +355,20 @@ describe('the class of a return and of a graduate restore', () => {
       expect(JSON.stringify(history.body)).toContain('"from":"2026-10-08"');
     });
 
+    it('names the class left only to a reader who may return the student (permission review)', async () => {
+      const oxford = await schoolClass();
+      const student = await leftFrom(oxford);
+      expect((await fresh(student.id)).classLeft?.id).toBe(oxford);
+      for (const cookie of [t.principal, t.teacher]) {
+        const read = await get(`/api/people/students/${student.id}`, cookie);
+        if (read.status === 200) {
+          expect(studentDetailSchema.parse(read.body).classLeft).toBeUndefined();
+        } else {
+          expect(read.status).toBe(403);
+        }
+      }
+    });
+
     it('places the class and the groups from yesterday for a backdated return', async () => {
       const maths = await subject();
       const oxford = await schoolClass();
