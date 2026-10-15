@@ -430,7 +430,7 @@ How to read the task lines:
   - Done when: the boundary examples in the spec pass (for example 49.5, and the year case of 49.475) and the reference-journal test runs on at least one sample.
   - From 1.6 (pull request #49, decision 5): the Settings page shows the grade bands as text of the three locale files (`setup.settings.gradeBands`); once the bands are in `packages/calc`, the page reads them from there and a test compares.
 
-- [ ] **4.3 Exemptions, flags and special outcomes**
+- [x] **4.3 Exemptions, flags and special outcomes** (pull request #104)
   - Read: `07` (Exemptions), `edge/exemptions`, `edge/calculation`.
   - Build: exempt lessons left out; the "Exempt" and "Not assessed" outcomes; the few-lessons flag; the attendance-only flag; start-quarter counting from the go-live date; the stored inputs and module version that go with each final result.
   - Done when: every row of the two edge-case tables has a test.
