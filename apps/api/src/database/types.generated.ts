@@ -589,6 +589,25 @@ export interface StudentContracts {
   student_id: string;
 }
 
+export interface StudentMerges {
+  assignment_id: string | null;
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  kept_id: string;
+  kept_uid: string;
+  left_rows: Json;
+  merged_at: Timestamp;
+  merged_branch_id: string;
+  merged_by: string;
+  merged_id: string;
+  merged_record: Json;
+  merged_uid: string;
+  merged_uids: string[];
+  merged_xact: Generated<string>;
+  reason: string;
+}
+
 export interface StudentMoves {
   branch_id: string;
   cancelled_at: Timestamp | null;
@@ -772,6 +791,7 @@ export interface DB {
   student_accounts: StudentAccounts;
   student_branch_moves: StudentBranchMoves;
   student_contracts: StudentContracts;
+  student_merges: StudentMerges;
   student_moves: StudentMoves;
   student_relatives: StudentRelatives;
   student_statuses: StudentStatuses;

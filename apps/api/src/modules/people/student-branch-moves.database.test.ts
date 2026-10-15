@@ -36,6 +36,12 @@ const CARRIED = [
   'student_uids',
 ];
 const KEPT = ['class_memberships', 'group_memberships', 'student_moves'];
+/**
+ * The tables whose key names the student under another column follow the
+ * record by that key: the merges kept on the record (`kept_id`, task 3.3d,
+ * pull request #98).
+ */
+const FOLLOWING = ['student_merges'];
 
 // The rules of the move to another branch that the database itself keeps
 // (db/migrations/0053, task 3.3c, pull request #97): the release record and
@@ -222,7 +228,9 @@ describe('branch moves in the database', () => {
         where c.contype = 'f' and c.confrelid = 'public.students'::regclass
         order by 1
       `.execute(database.migrator);
-      expect(found.rows.map((row) => row.table)).toEqual([...CARRIED, ...KEPT].sort());
+      expect(found.rows.map((row) => row.table)).toEqual(
+        [...CARRIED, ...KEPT, ...FOLLOWING].sort(),
+      );
     });
 
     it('commits through every deferred check for the receiving branch joined to the sending one', async () => {
