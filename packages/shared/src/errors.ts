@@ -513,6 +513,8 @@ export const errorDetailSchema = z.object({
    * the grade on a `uid_set_mismatch` (task 2.7b-1, decision 7).
    */
   expected: z.string().optional(),
+  /** The first day a row would lose on a `student_merge_overlap` (task 3.3d, decision 4). */
+  day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   /** The fewest free seats of a class or group on any date of the placement, on a `class_full` (task 3.1b) or a `group_full` (task 3.2b). */
   freeSeats: z.int().optional(),
   /** The subject without a group with a free seat, on a `class_group_no_seat` (task 3.2c). */

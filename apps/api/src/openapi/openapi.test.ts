@@ -142,6 +142,7 @@ describe('OpenAPI document', () => {
         '/api/people/students/{id}/leaving',
         '/api/people/students/{id}/leaving/cancel',
         '/api/people/students/{id}/leaving/undo',
+        '/api/people/students/{id}/merge',
         '/api/people/students/{id}/photo',
         '/api/people/students/{id}/relatives',
         '/api/people/students/{id}/relatives/{relativeId}',

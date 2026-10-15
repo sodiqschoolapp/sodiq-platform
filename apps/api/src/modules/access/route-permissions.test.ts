@@ -468,6 +468,10 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'GET /api/people/branch-moves/:id/groups': { branch: 'request', roles: BRANCH_MOVE_READERS },
   'POST /api/people/branch-moves/:id/accept': { branch: 'request', roles: BRANCH_MOVERS },
   'POST /api/people/branch-moves/:id/decline': { branch: 'request', roles: BRANCH_MOVERS },
+  // Task 3.3d (pull request #98, decision 10): the merge of two student
+  // records under the new area `student_merges`, the Super Admin alone.
+  'GET /api/people/students/:id/merge': { branch: 'request', roles: ['super_admin'] },
+  'POST /api/people/students/:id/merge': { branch: 'request', roles: ['super_admin'] },
 };
 
 /** The same for the sample routes: the roles `SAMPLE_PERMISSIONS` gives each action, written again by hand. */

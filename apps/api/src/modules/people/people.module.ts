@@ -38,6 +38,8 @@ import {
   StudentHistoryController,
 } from './student-moves.controller.js';
 import { StudentHistories } from './student-history.service.js';
+import { StudentMergesController } from './student-merges.controller.js';
+import { StudentMerges } from './student-merges.service.js';
 import { StudentMoves } from './student-moves.service.js';
 import { StudentStatuses } from './student-statuses.service.js';
 import { StudentsController } from './students.controller.js';
@@ -51,7 +53,7 @@ import { Vacancies } from './vacancies.service.js';
  * the account section of a record (task 2.3a), the Head Teacher appointments
  * (task 2.3b-1), the sign-in access of an account (task 2.3c-1), student
  * records (task 2.4a), their leaving, return and delete (task 2.4b-1), their
- * export and photos (task 2.4b-2), their close relatives (task 2.5a), the personal data report (task 2.6b), Ctrl+K over students and staff (task 3.2d), class and group transfers and the History tab (task 3.3a), the move to another branch (task 3.3c).
+ * export and photos (task 2.4b-2), their close relatives (task 2.5a), the personal data report (task 2.6b), Ctrl+K over students and staff (task 3.2d), class and group transfers and the History tab (task 3.3a), the move to another branch (task 3.3c), the merge of two student records (task 3.3d).
  */
 @Module({
   imports: [AccessModule, AuthModule, NotificationsModule],
@@ -70,6 +72,7 @@ import { Vacancies } from './vacancies.service.js';
     GroupTransfersController,
     StudentHistoryController,
     BranchMovesController,
+    StudentMergesController,
     StudentPhotosController,
     RelativesController,
     PersonalDataController,
@@ -77,6 +80,7 @@ import { Vacancies } from './vacancies.service.js';
   ],
   providers: [
     BranchMoves,
+    StudentMerges,
     PersonalData,
     Staff,
     StaffAccounts,

@@ -1127,8 +1127,32 @@ export class Students {
       ...(await this.movesOfDetail(transaction, access, id, today, scope)),
       ...(await this.branchMovesOfDetail(transaction, access, id)),
       ...(await this.classLeftOfDetail(transaction, canArchive, id, rows, today, branchId)),
+      mergedUids: await this.mergedUidsOf(transaction, id),
+      canMerge:
+        decide(
+          { area: 'student_merges', action: 'edit', branch: 'request' },
+          access.assignments,
+          access.branchId,
+          PERMISSIONS,
+        ) !== undefined,
       today,
     };
+  }
+
+  /**
+   * The UIDs of the records merged into this one (task 3.3d, the System
+   * block's "Also UID ..."), by the moment of each merge; the merges of a
+   * chain name the latest kept record (0054).
+   */
+  async mergedUidsOf(transaction: Transaction, id: string): Promise<string[]> {
+    const rows = await transaction
+      .selectFrom('student_merges')
+      .select('merged_uids')
+      .where('kept_id', '=', id)
+      .orderBy('merged_at')
+      .orderBy('id')
+      .execute();
+    return rows.flatMap((row) => row.merged_uids);
   }
 
   /**
