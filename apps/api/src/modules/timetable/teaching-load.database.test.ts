@@ -711,6 +711,25 @@ describe('teaching load in the database', () => {
       },
     );
 
+    // Spec review of the build, should-fix 3: a draft whose start date has
+    // passed reads a status on today (the moment of the transaction).
+    it('reads the status on today when the start date has passed', async () => {
+      const classId = await kit.classes.schoolClass(north, northYear);
+      const version = await kit.version(north, northYear, { startsOn: '2026-10-05' });
+      const vacancy = await kit.vacancy(north, { subjects: [{ subject, grades: [7] }] });
+      await kit.status(vacancy, 'closed', '2026-10-14');
+      const refused = await refusal(
+        insertRow({
+          branch_id: north,
+          version_id: version,
+          class_id: classId,
+          subject_id: subject,
+          teacher_id: vacancy,
+        }),
+      );
+      expect(refused.constraint).toBe('load_teacher_status');
+    });
+
     it('needs the subject and the grade in the profile', async () => {
       const own = await fitting();
       const other = await kit.classes.subject({ grades: [7, 8] });

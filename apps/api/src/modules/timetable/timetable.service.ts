@@ -223,15 +223,31 @@ export class Timetable {
             branchId,
             yearId: input.academicYearId,
             startsOn: input.startsOn,
+            // The start date is on or after today (decision 5).
+            statusOn: input.startsOn,
             timeZone: year.time_zone,
           };
           const copied: StoredLoadRow[] = [];
           const left: LeftRow[] = [];
           if (source !== undefined) {
             const rows = await this.rowsOf(transaction, source.id);
+            // The teachers FOR KEY SHARE in the order of their id before their
+            // statuses are read, as a row write does, so a vacancy close at the
+            // same moment leaves its row in `left_rows` rather than failing
+            // the copy (spec review of the build, should-fix 6).
+            const teacherIds = [...new Set(rows.map((row) => row.teacher_id))].sort();
+            if (teacherIds.length > 0) {
+              await transaction
+                .selectFrom('staff')
+                .select('id')
+                .where('id', 'in', teacherIds)
+                .orderBy('id')
+                .forKeyShare()
+                .execute();
+            }
             const facts = await LoadFacts.of(transaction, context, rows);
             for (const row of rows) {
-              const problems = facts.problemsOf(row) ?? ['load_teacher_branch'];
+              const problems = facts.problemsOf(row);
               if (problems.length === 0) {
                 copied.push(row);
               } else {
@@ -366,16 +382,14 @@ export class Timetable {
     const branchId = branchOf(access);
     return this.transactions.run(access.branchIds, async (transaction) => {
       const version = await this.findVersion(transaction, branchId, id);
-      const context = this.contextOf(version);
+      const context = await this.contextOf(transaction, version);
       const rows = await this.rowsOf(transaction, id);
       const left = leftRowsOf(version.left_rows).map(storedOfLeft);
       const facts = await LoadFacts.of(transaction, context, [...rows, ...left]);
       const stored = leftRowsOf(version.left_rows);
       return {
         version: await this.answerOf(transaction, id),
-        rows: this.sorted(
-          rows.map((row) => facts.answerOf(row, facts.problemsOf(row) ?? ['load_teacher_branch'])),
-        ),
+        rows: this.sorted(rows.map((row) => facts.answerOf(row, facts.problemsOf(row)))),
         leftRows: left.map((row, index) => facts.answerOf(row, stored[index]?.problems ?? [])),
       };
     });
@@ -391,7 +405,7 @@ export class Timetable {
     const branchId = branchOf(access);
     return this.transactions.run(access.branchIds, async (transaction) => {
       const version = await this.findVersion(transaction, branchId, id);
-      const context = this.contextOf(version);
+      const context = await this.contextOf(transaction, version);
       const unit = await this.unitOf(
         transaction,
         context,
@@ -439,7 +453,7 @@ export class Timetable {
       () =>
         this.transactions.run(access.branchIds, async (transaction) => {
           const version = await this.lockDraft(transaction, branchId, id);
-          const context = this.contextOf(version);
+          const context = await this.contextOf(transaction, version);
           const unit = await this.unitOf(transaction, context, input.classId, input.groupId);
           const subject = (await readSubjectFacts(transaction, [input.subjectId])).get(
             input.subjectId,
@@ -508,7 +522,7 @@ export class Timetable {
       () =>
         this.transactions.run(access.branchIds, async (transaction) => {
           const version = await this.lockDraft(transaction, branchId, id);
-          const context = this.contextOf(version);
+          const context = await this.contextOf(transaction, version);
           const before = await this.rowOf(transaction, id, rowId);
           const after: StoredLoadRow = {
             ...before,
@@ -723,7 +737,7 @@ export class Timetable {
     row: StoredLoadRow,
   ): Promise<LoadRow> {
     const facts = await LoadFacts.of(transaction, context, [row]);
-    return facts.answerOf(row, facts.problemsOf(row) ?? ['load_teacher_branch']);
+    return facts.answerOf(row, facts.problemsOf(row));
   }
 
   /** The rows by unit (grade, then name) and subject, as the page lists them. */
@@ -820,11 +834,13 @@ export class Timetable {
       .executeTakeFirstOrThrow();
   }
 
-  private contextOf(version: VersionRow): VersionContext {
+  private async contextOf(transaction: Transaction, version: VersionRow): Promise<VersionContext> {
+    const today = await this.todayIn(transaction, version.branch_id);
     return {
       branchId: version.branch_id,
       yearId: version.academic_year_id,
       startsOn: version.starts_on,
+      statusOn: version.starts_on > today ? version.starts_on : today,
       timeZone: version.time_zone,
     };
   }

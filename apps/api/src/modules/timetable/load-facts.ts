@@ -47,8 +47,13 @@ export const LOAD_REFUSALS: Readonly<Record<string, ErrorCode>> = {
 export interface VersionContext {
   readonly branchId: string;
   readonly yearId: string;
-  /** The intended start date: the day the profiles, statuses and Tutors are read on. */
+  /** The intended start date: the day the Tutors are read on. */
   readonly startsOn: string;
+  /**
+   * The day a status is read on (decision 11): the start date, or today in the
+   * branch's time zone when the start date has passed, as the trigger reads it.
+   */
+  readonly statusOn: string;
   readonly timeZone: string;
 }
 
@@ -273,11 +278,11 @@ export async function readTeacherFacts(
       .selectFrom('staff_statuses')
       .select(['staff_id', 'status'])
       .where('staff_id', 'in', wanted)
-      .where('valid_from', '<=', context.startsOn)
+      .where('valid_from', '<=', context.statusOn)
       .where((builder) =>
         builder.or([
           builder('valid_until', 'is', null),
-          builder('valid_until', '>', context.startsOn),
+          builder('valid_until', '>', context.statusOn),
         ]),
       )
       .execute(),
@@ -445,10 +450,14 @@ export class LoadFacts {
     );
   }
 
-  /** The problems of a row today, in the engine's order; `null` when a record it names is not readable. */
+  /**
+   * The problems of a row today, in the engine's order. Every record a row
+   * names is of the branch or answered by `readTeacherFacts`; one that is not
+   * is a fault (spec review of the build, should-fix 6).
+   */
   problemsOf(
     row: Omit<StoredLoadRow, 'id' | 'lessons_per_week' | 'room_type' | 'double_lessons'>,
-  ): LoadProblem[] | null {
+  ): LoadProblem[] {
     const unitId = row.class_id ?? row.group_id;
     const unit = unitId === null ? undefined : this.units.get(unitId);
     const subject = this.subjects.get(row.subject_id);
@@ -460,7 +469,7 @@ export class LoadFacts {
       teacher === undefined ||
       room === undefined
     ) {
-      return null;
+      throw new Error('A record of a load row of the branch could not be read.');
     }
     return loadRowProblems({
       versionYearId: this.context.yearId,

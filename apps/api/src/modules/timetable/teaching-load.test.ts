@@ -443,6 +443,52 @@ describe('draft versions and the teaching load', () => {
       );
     });
 
+    // The plan's tests: the roles without the area, refused on every route
+    // with the rows and the audit log unchanged.
+    it('refuses every route to the roles of the branch without the area', async () => {
+      const version = await draft();
+      const own = await fitting();
+      const row = rowOf(
+        await createRow(version.id, { classId: own.classId, teacherId: own.teacher }),
+      );
+      const roles = [
+        'tutor',
+        'head_teacher',
+        'senior_head_teacher',
+        'spiritual_vice_principal',
+        'head_tutor',
+      ] as const;
+      for (const role of roles) {
+        const browser = await t.kit.completeSession('Malika', `Qodirova${'a'.repeat(role.length)}`);
+        await t.kit.giveRole(browser.account.id, {
+          role,
+          ...(role === 'senior_head_teacher' ? {} : { branchId: t.north }),
+        });
+        const cookie = browser.cookie;
+        const before = await rowsOf();
+        for (const response of [
+          await get('/api/timetable/versions', cookie),
+          await get(`/api/timetable/versions/${version.id}/load`, cookie),
+          await get(
+            `/api/timetable/versions/${version.id}/load/teachers?classId=${own.classId}&subjectId=${subject}`,
+            cookie,
+          ),
+          await post('/api/timetable/versions', { academicYearId: year, startsOn: MONDAY }, cookie),
+          await patch(`/api/timetable/versions/${version.id}`, { startsOn: '2026-10-19' }, cookie),
+          await createRow(version.id, { classId: own.classId, teacherId: own.teacher }, cookie),
+          await patch(
+            `/api/timetable/versions/${version.id}/load/${row.id}`,
+            rowBody({ teacherId: own.teacher }),
+            cookie,
+          ),
+          await remove(`/api/timetable/versions/${version.id}/load/${row.id}`, cookie),
+        ]) {
+          refusedWith(response, 403, 'permission_denied');
+        }
+        expect(await rowsOf()).toEqual(before);
+      }
+    });
+
     it("answers another branch's and an unknown version, row, class, group, subject, teacher and room 404, changing nothing", async () => {
       const version = await draft();
       const own = await fitting();
@@ -616,6 +662,97 @@ describe('draft versions and the teaching load', () => {
       }
     });
 
+    // Spec review of the build, must-fix 1: the unit and subject cases at the route.
+    it('refuses a unit of another year, an archived unit, another subject of a group and a subject outside the grade', async () => {
+      const version = await draft();
+      const own = await fitting();
+      const later = await load.classes.year(t.north, 'planned', '2029-09-01', '2030-05-31');
+      const elsewhere = await load.classes.schoolClass(t.north, later);
+      const archived = await load.classes.schoolClass(t.north, year);
+      await t.database.migrator
+        .updateTable('classes')
+        .set({ archived_at: new Date('2026-10-01T09:00:00+05:00') })
+        .where('id', '=', archived)
+        .execute();
+      const other = await load.classes.subject({ grades: [7] });
+      await load.profile(own.teacher, [{ subject: other, grades: [7] }]);
+      const group = await load.classes.group(t.north, year, subject, [own.classId]);
+      const ninth = await load.classes.schoolClass(t.north, year, { grade: 9 });
+      const seventhOnly = await load.classes.subject({ grades: [7] });
+      await load.profile(own.teacher, [{ subject: seventhOnly, grades: [7] }]);
+      const cases: [object, string][] = [
+        [{ classId: elsewhere, teacherId: own.teacher }, 'load_unit_year'],
+        [{ classId: archived, teacherId: own.teacher }, 'load_unit_archived'],
+        [
+          { classId: null, groupId: group, teacherId: own.teacher, subjectId: other },
+          'load_group_subject',
+        ],
+        [{ classId: ninth, teacherId: own.teacher, subjectId: seventhOnly }, 'load_subject_grade'],
+      ];
+      for (const [fields, code] of cases) {
+        const before = await rowsOf();
+        refusedWith(await createRow(version.id, fields), 409, code);
+        expect(await rowsOf()).toEqual(before);
+      }
+    });
+
+    it('refuses a row in a version that is not a draft and in a closed year', async () => {
+      const own = await fitting();
+      const published = await draft();
+      await load.setVersion(published.id, 'published');
+      refusedWith(
+        await createRow(published.id, { classId: own.classId, teacherId: own.teacher }),
+        409,
+        'version_not_draft',
+      );
+      const branch = await t.newBranch();
+      const closedYear = await load.classes.year(branch);
+      const classId = await load.classes.schoolClass(branch, closedYear);
+      const teacher = await load.teacher(branch, { subjects: [{ subject, grades: [7] }] });
+      const version = versionOf(
+        await post(
+          '/api/timetable/versions',
+          { academicYearId: closedYear, startsOn: MONDAY },
+          t.admin,
+          branch,
+        ),
+      );
+      await load.classes.setYear(closedYear, 'closed');
+      const before = await rowsOf();
+      refusedWith(
+        await post(
+          `/api/timetable/versions/${version.id}/load`,
+          rowBody({ classId, teacherId: teacher.staffId }),
+          t.admin,
+          branch,
+        ),
+        409,
+        'timetable_year_closed',
+      );
+      expect(await rowsOf()).toEqual(before);
+    });
+
+    // Spec review of the build, should-fix 3: a draft whose start date has
+    // passed reads a status on today, so a vacancy closed since cannot be named.
+    it('refuses a vacancy closed today on a draft whose start date has passed', async () => {
+      const version = await draft();
+      await t.database.migrator
+        .updateTable('timetable_versions')
+        .set({ starts_on: '2026-10-05' })
+        .where('id', '=', version.id)
+        .execute();
+      const own = await fitting();
+      const vacancy = await load.vacancy(t.north, { subjects: [{ subject, grades: [7] }] });
+      await load.status(vacancy, 'closed', '2026-10-10');
+      const before = await rowsOf();
+      refusedWith(
+        await createRow(version.id, { classId: own.classId, teacherId: vacancy }),
+        409,
+        'load_teacher_status',
+      );
+      expect(await rowsOf()).toEqual(before);
+    });
+
     it('lets any teacher of the subject take any class when the language rule is off (05)', async () => {
       const version = await draft();
       const free = await load.classes.subject({ grades: [7], languageRule: false });
@@ -772,6 +909,41 @@ describe('draft versions and the teaching load', () => {
       ]);
     });
 
+    // Spec review of the build, must-fix 1: every teacher rule on a teacher change.
+    it('refuses a teacher change to one without the subject, out, or without the language', async () => {
+      const version = await draft();
+      const own = await fitting();
+      const row = rowOf(
+        await createRow(version.id, { classId: own.classId, teacherId: own.teacher }),
+      );
+      const other = await load.classes.subject({ grades: [7] });
+      const noSubject = await load.teacher(t.north, {
+        subjects: [{ subject: other, grades: [7] }],
+      });
+      const out = await load.teacher(t.north, { subjects: [{ subject, grades: [7] }] });
+      await load.status(out.staffId, 'left', '2026-10-11');
+      const noLanguage = await load.teacher(t.north, {
+        languages: ['ru'],
+        subjects: [{ subject, grades: [7] }],
+      });
+      for (const [teacherId, code] of [
+        [noSubject.staffId, 'load_teacher_subject'],
+        [out.staffId, 'load_teacher_status'],
+        [noLanguage.staffId, 'load_teacher_language'],
+      ] as const) {
+        const before = await rowsOf();
+        refusedWith(
+          await patch(
+            `/api/timetable/versions/${version.id}/load/${row.id}`,
+            rowBody({ teacherId }),
+          ),
+          409,
+          code,
+        );
+        expect(await rowsOf()).toEqual(before);
+      }
+    });
+
     it('checks the teacher rules when the teacher changes, and the room when the room changes', async () => {
       const version = await draft();
       const own = await fitting();
@@ -838,7 +1010,7 @@ describe('draft versions and the teaching load', () => {
   });
 
   describe('the teachers a row may take (decision 2, correction 1)', () => {
-    it('offers exactly the teachers the create accepts (one rule engine)', async () => {
+    it('offers exactly the teachers a teacher change accepts (one rule engine)', async () => {
       const version = await draft();
       const own = await fitting();
       await load.teacher(t.north, { subjects: [{ subject, grades: [8] }] });

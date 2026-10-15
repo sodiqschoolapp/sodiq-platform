@@ -33,6 +33,8 @@ If the request gives you a plan instead of a branch, skip step 1 and step 4 and 
    - a branch of a database guard (insert and update, each refused case) without a test that reaches it with nothing before it that refuses first (found by the code review of task 2.4b-1);
    - a test that a guard lets a case through without the data that the guard would refuse if it were wrong (found by the code review of task 2.4b-1);
    - a unique mark or claim on a record (a unique column, a held phone, a link to another record) that a route can no longer reach once the record is archived: every path that archives the record clears the mark in the same transaction, with its entry, or a route can still remove it (found by the code review of task 2.5b-2);
+   - a "done when" that names a layer for each case (at the route and in the database, on insert and on update) with a case tested at one layer only: count the codes of the refusals in each test file (found by the spec review of task 3.4a);
+   - a rule read "on a date" that a write may meet after the date has passed (a draft whose start date is behind it): the rule reads the later of that date and today, the same in the database and in the code (found by the spec review of task 3.4a);
 4. Run `pnpm test:changed` if it has not been run and report failures; the full suite runs in CI on the pull request (`docs/decisions.md`, 11 October 2026, decision 5).
 
 Report in this form:

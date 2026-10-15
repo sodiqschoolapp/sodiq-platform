@@ -242,6 +242,7 @@ declare
   zone text;
   day_start timestamptz;
   teacher_state text;
+  status_on date;
   teacher_kind text;
   teacher_change boolean;
 begin
@@ -355,12 +356,21 @@ begin
     end if;
     select s.kind into teacher_kind from staff s where s.id = new.teacher_id;
 
-    -- Decision 11: the status row in force on the start date; none counts as in.
+    -- Decision 11: the status row in force on the start date, or today in the
+    -- branch's time zone when the start date has passed (spec review of the
+    -- build, should-fix 3: a draft that started still takes writes, and may
+    -- not name a teacher out today); none counts as in. Today is the moment
+    -- of the transaction (`app.now`), the same as the API reads.
+    select b.time_zone into zone from branches b where b.id = new.branch_id;
+    status_on := greatest(
+      version_start,
+      coalesce((class_tutors_moment() at time zone zone)::date, version_start)
+    );
     select st.status into teacher_state
       from staff_statuses st
       where st.staff_id = new.teacher_id
-        and st.valid_from <= version_start
-        and (st.valid_until is null or st.valid_until > version_start);
+        and st.valid_from <= status_on
+        and (st.valid_until is null or st.valid_until > status_on);
     if teacher_state in ('inactive', 'left', 'closed') then
       raise exception 'load_teacher_status'
         using errcode = 'check_violation', constraint = 'load_teacher_status';
@@ -370,7 +380,6 @@ begin
     -- taken by a Tutor of that class whose row overlaps the start date (from
     -- 00:00 of that day to 00:00 of the next in the branch's time zone),
     -- found through the assignment's account; a vacancy has no account.
-    select b.time_zone into zone from branches b where b.id = new.branch_id;
     day_start := version_start::timestamp at time zone zone;
     if not (
       subject_tutors and new.class_id is not null and teacher_kind = 'person'

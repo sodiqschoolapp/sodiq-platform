@@ -283,6 +283,47 @@ describe('the teaching load page', () => {
     ]);
   });
 
+  // Spec review of the build, should-fix 1: what the field shows is what is sent.
+  it('sends no copy once the year chosen has no version to copy', async () => {
+    const planned: AcademicYear = {
+      ...YEAR,
+      id: uid(2),
+      name: '2027–2028',
+      startDate: '2027-09-01',
+      endDate: '2028-05-31',
+      status: 'planned',
+    };
+    const calls = await openPage({
+      versions: [version(1)],
+      extra: {
+        'GET /api/setup/academic-years': () => json({ years: [YEAR, planned] }),
+        'POST /api/timetable/versions': () => json(version(2), 201),
+      },
+    });
+    await waitFor(() => {
+      expect(
+        screen.getByRole<HTMLButtonElement>('button', { name: en.timetable.load.newDraft })
+          .disabled,
+      ).toBe(false);
+    });
+    fireEvent.click(screen.getByRole('button', { name: en.timetable.load.newDraft }));
+    const form = await screen.findByRole('form', { name: en.timetable.load.newDraftTitle });
+    type(within(form).getByLabelText(en.timetable.load.copyFrom), version(1).id);
+    type(within(form).getByLabelText(en.timetable.load.year), planned.id);
+    type(within(form).getByLabelText(en.timetable.load.startsOn), '2027-09-06');
+    expect(within(form).getByLabelText<HTMLSelectElement>(en.timetable.load.copyFrom).value).toBe(
+      '',
+    );
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(calls.find((call) => call.route === 'POST /api/timetable/versions')?.body).toEqual({
+        academicYearId: planned.id,
+        startsOn: '2027-09-06',
+        copyFrom: null,
+      });
+    });
+  });
+
   it('adds a row with a teacher the server offers', async () => {
     const calls = await openPage({
       teachers: () => ({ teachers: [{ ...TEACHER, tutor: false }], defaultTeacherId: null }),

@@ -50,7 +50,14 @@ export function NewDraftForm({ years, versions, today, onSave, onCancel }: NewDr
     read: (typed) => ({
       academicYearId: typed.academicYearId,
       startsOn: typed.startsOn,
-      copyFrom: typed.copyFrom === '' ? null : typed.copyFrom,
+      // A copy no longer offered for the year chosen is not sent: the field
+      // shows "Empty" then (spec review of the build, should-fix 1).
+      copyFrom: versions.some(
+        (version) =>
+          version.id === typed.copyFrom && version.academicYearId === typed.academicYearId,
+      )
+        ? typed.copyFrom
+        : null,
     }),
     save: onSave,
   });

@@ -1,12 +1,4 @@
-import {
-  HOME_KIND,
-  MENU,
-  MENU_ITEMS,
-  PERMISSIONS,
-  ROLES,
-  visibleMenu,
-  type Role,
-} from '@sodiq/shared';
+import { HOME_KIND, MENU, ROLES, type Role } from '@sodiq/shared';
 import { MutationObserver } from '@tanstack/react-query';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
@@ -50,6 +42,16 @@ vi.mock('./menu-pages', async (importOriginal) => {
   return { ...actual, BUILT_PAGES: pages, BUILT_ITEMS: new Set(MENU_ITEMS) };
 });
 
+/** The roles whose menu row has "Timetable" without the area (task 3.4a, decision 4). */
+const WITHOUT_TIMETABLE: ReadonlySet<Role> = new Set([
+  'spiritual_vice_principal',
+  'head_tutor',
+  'tutor',
+  'senior_head_teacher',
+  'head_teacher',
+  'teacher',
+]);
+
 const heading = (name: string) => screen.findByRole('heading', { name });
 const side = () => within(screen.getByRole('navigation', { name: en.layout.menu }));
 
@@ -75,11 +77,13 @@ describe('the menu and the home page of each role', () => {
 
     await heading(en.home.title);
     const links = side().getAllByRole('link');
-    // The row of the table, less an item whose area the role may not view:
-    // "Timetable" is the area `timetable` (task 3.4a, decision 4), whose
-    // scoped views of lessons for the Tutors and Head Teachers come with 5.9.
+    // The row of the table, less "Timetable" for the six roles whose views of
+    // lessons come with 5.9: the area `timetable` (task 3.4a, decision 4) is
+    // the Super Admin's, the Principal's and the Academic Vice Principal's.
     expect(links.map((link) => link.textContent)).toEqual(
-      visibleMenu(role, new Set(MENU_ITEMS), PERMISSIONS).map((item) => en.menu[item]),
+      MENU[role]
+        .filter((item) => item !== 'timetable' || !WITHOUT_TIMETABLE.has(role))
+        .map((item) => en.menu[item]),
     );
     // The current page is marked for a screen reader as well as by its fill
     // (docs/design-system.md, Layout shell, Menu; pull request #61, decision 9).
