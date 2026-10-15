@@ -1149,6 +1149,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         subjects: 'Предметы и веса',
         classes: 'Классы',
         groups: 'Группы',
+        teachingLoad: 'Учебная нагрузка',
       },
       calendarCount_one: '{{count}} запись',
       calendarCount_few: '{{count}} записи',

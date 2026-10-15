@@ -8,6 +8,7 @@ import {
   UNKNOWN,
   type DayTemplatesKit,
 } from '../../testing/day-templates-kit.js';
+import { LoadKit } from '../../testing/load-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 
 const DEFAULTS = {
@@ -520,6 +521,8 @@ describe('the settings of a branch', () => {
         'classes',
         // Task 3.2a, decision 14.
         'groups',
+        // Task 3.4a, decision 14.
+        'teachingLoad',
       ]);
       expect(items.map((item) => item.done)).toEqual([
         true,
@@ -535,6 +538,8 @@ describe('the settings of a branch', () => {
         // No class yet (task 3.1a, decision 12).
         false,
         // No group yet (task 3.2a, decision 14).
+        false,
+        // No load row yet (task 3.4a, decision 14).
         false,
       ]);
       expect(items.find((item) => item.key === 'calendar')?.count).toBe(0);
@@ -714,6 +719,25 @@ describe('the settings of a branch', () => {
         .where('id', '=', group.id)
         .execute();
       expect(await groupsItem()).toBe(true);
+
+      // Task 3.4a, decision 14: a version of a planned or current year with a
+      // load row; an empty draft does not count.
+      const loadItem = async () =>
+        (await stateOf(branch)).find((item) => item.key === 'teachingLoad')?.done;
+      const load = new LoadKit(migrator);
+      const version = await load.version(branch, year.id);
+      expect(await loadItem()).toBe(false);
+      const teacher = await load.teacher(branch, {
+        subjects: [{ subject: subject.id, grades: [7] }],
+      });
+      await load.row({
+        branch_id: branch,
+        version_id: version,
+        class_id: schoolClass.id,
+        subject_id: subject.id,
+        teacher_id: teacher.staffId,
+      });
+      expect(await loadItem()).toBe(true);
     });
 
     // Decision 6: a default setting in force today or starting later; a row

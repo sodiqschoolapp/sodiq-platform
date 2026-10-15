@@ -1090,6 +1090,7 @@ export const en = {
         subjects: 'Subjects and weights',
         classes: 'Classes',
         groups: 'Groups',
+        teachingLoad: 'Teaching load',
       },
       calendarCount_one: '{{count}} entry',
       calendarCount_other: '{{count}} entries',

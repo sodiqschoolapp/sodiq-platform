@@ -1099,6 +1099,7 @@ export const uz: Texts<'one' | 'other'> = {
         subjects: 'Fanlar va vaznlar',
         classes: 'Sinflar',
         groups: 'Guruhlar',
+        teachingLoad: 'Oʻquv yuklamasi',
       },
       calendarCount_one: '{{count}} ta yozuv',
       calendarCount_other: '{{count}} ta yozuv',
