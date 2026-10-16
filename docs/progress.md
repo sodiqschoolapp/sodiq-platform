@@ -8,7 +8,7 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 - The year edit takes the branch row, reads the year, locks the rows that run to its last day (`lockFollowingRows`), then the year row; refuses `year_cut_holds` with at most 50 lines and the count of the rest; the audit entry carries `rowsFollowed`.
 - A return and the Super Admin's restore may be dated the first day of the branch's next planned year; `POST /api/people/students/:id/return/cancel` takes it back until its date (the cancel of a restore needs the Super Admin); the planners read a row and its `cancel` row as one stay; the History tab joins them.
 - Screens: the refusal list under the year form; "First day of next year (<date>)" in the return and restore forms; "Cancel the return" on the record. Browser test `e2e/return-august.spec.ts` (seeded "August return browser test branch").
-- Left out: lessons, exams, marks and attendance in the days cut off (5.6b, 8.1 lines); the handbook pages (3.7, its "From 3.6b-2" line). A cancelled return keeps the grade and the contract the return wrote (they are history, the record can be edited).
+- Left out: lessons, exams, marks and attendance in the days cut off (5.6b, 8.1 lines); the handbook pages (3.7, its "From 3.6b-2" line). A cancelled return gives the grade back and keeps the contract row (no delete right); the next return with the same contract number adds none. A row emptied by a leaving and planned past a shortened year can still regain days past it if the leaving is cancelled (spec review, optional; to be settled with 5.6b/9.5b).
 
 The next sessions must know:
 

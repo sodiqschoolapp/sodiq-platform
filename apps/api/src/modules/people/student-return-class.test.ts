@@ -938,6 +938,31 @@ describe('the class of a return and of a graduate restore', () => {
       expect(accepted(undone).status).toBe('active');
     });
 
+    it('gives the grade back on a cancel, and takes the same contract number again on the next return', async () => {
+      const student = await leftFrom(await schoolClass());
+      const eighth = await classes.schoolClass(t.north, nextYear, { grade: 8 });
+      const contract = { number: 'RC-SAME/1', signedOn: '2026-10-08' };
+      const back = async () =>
+        post(`/api/people/students/${student.id}/return`, {
+          from: AUGUST,
+          grade: 8,
+          classId: eighth,
+          contract,
+          reason: null,
+          version: (await fresh(student.id)).version,
+        });
+      expect(accepted(await back()).grade).toBe(8);
+      expect(accepted(await cancelReturn(student.id)).grade).toBe(7);
+      // The same paper contract again: the row stands, nothing is added twice.
+      expect(accepted(await back()).grade).toBe(8);
+      const contracts = await t.database.migrator
+        .selectFrom('student_contracts')
+        .select('number')
+        .where('student_id', '=', student.id)
+        .execute();
+      expect(contracts.filter((one) => one.number === contract.number)).toHaveLength(1);
+    });
+
     it('refuses to cancel a return in force and when nothing is scheduled', async () => {
       const oxford = await schoolClass();
       const student = await leftFrom(oxford);
@@ -956,6 +981,11 @@ describe('the class of a return and of a graduate restore', () => {
       refusedWith(await cancelReturn(student.id, t.vicePrincipal), 403, 'permission_denied');
       expect((await fresh(student.id)).status).toBe('graduated');
       const cancelled = accepted(await cancelReturn(student.id));
+      const [entry] = await t.entries('student.return_cancelled', student.id);
+      expect(entry?.assignment_id).toBe(t.adminAssignment);
+      expect(await classRows(student.id)).toContainEqual(
+        expect.objectContaining({ class_id: eighth, valid_from: AUGUST, ended_by: 'withdrawn' }),
+      );
       expect(cancelled.status).toBe('graduated');
       // The restore can be written again after a cancel.
       accepted(await restoreInto(student.id, eighth, AUGUST));

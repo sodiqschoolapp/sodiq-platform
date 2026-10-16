@@ -15,7 +15,7 @@ import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { ClassesKit } from '../../testing/classes-kit.js';
-import { MembersKit } from '../../testing/members-kit.js';
+import { MembersKit, moveStudentBranch } from '../../testing/members-kit.js';
 import { dayTemplatesKit, UNKNOWN, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { relativesInput } from '../../testing/relatives-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
@@ -642,6 +642,30 @@ describe('class membership', () => {
           ended_by: 'withdrawn',
         }),
       ]);
+    });
+
+    it('names a student now in another branch without the name when a shorter year is refused', async () => {
+      const branch = await t.newBranch();
+      const year = await classes.year(branch, 'planned');
+      const oxford = await schoolClass({ branch, year });
+      const one = await student({ startsOn: '2026-09-02', classId: oxford }, branch);
+      await moveStudentBranch(t.database.migrator, one.id, branch, t.south);
+      for (const cookie of [t.admin]) {
+        const refused = await t.put(
+          `/api/setup/academic-years/${year}`,
+          branch,
+          { startDate: '2026-09-08', endDate: '2027-05-31' },
+          cookie,
+        );
+        refusedWith(refused, 409, 'year_cut_holds');
+        const messages = (apiErrorSchema.parse(refused.body).error.details ?? []).map(
+          (one) => one.message,
+        );
+        expect(messages).toHaveLength(1);
+        expect(messages[0]).toContain('a student of another branch');
+        expect(messages[0]).not.toContain(one.firstName);
+        expect(messages[0]).not.toContain(one.lastName);
+      }
     });
 
     it('refuses a shorter year that waited for a placement into the days it cuts', async () => {

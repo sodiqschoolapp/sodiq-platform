@@ -28,6 +28,7 @@ export async function lockFollowingRows(
   transaction: Transaction,
   yearId: string,
   endDate: string,
+  lock = true,
 ): Promise<FollowedRow[]> {
   const found: FollowedRow[] = [];
   for (const [table, holders, key] of [
@@ -41,7 +42,7 @@ export async function lockFollowingRows(
       where h.academic_year_id = ${yearId}
         and m.own_until = ${endDate}::date + 1
       order by m.id
-      for update of m
+      ${lock ? sql`for update of m` : sql``}
     `.execute(transaction);
     found.push(
       ...rows.rows.map((row) => ({

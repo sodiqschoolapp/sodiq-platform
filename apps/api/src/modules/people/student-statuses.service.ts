@@ -116,11 +116,6 @@ function branchOf(access: Access): string {
   return access.branchId;
 }
 
-/** Whether any current assignment may restore a graduate: `student_graduates` `edit`, the Super Admin. */
-function mayRestore(access: Access): boolean {
-  return access.assignments.some((assignment) => assignment.role === 'super_admin');
-}
-
 /** The class read by `before`; `also` runs only after it. */
 function placedBy(placement: PlacementClass | undefined): PlacementClass {
   if (placement === undefined) {
@@ -146,6 +141,8 @@ interface StatusChange {
   plan: (rows: readonly StoredStudentStatus[], today: string) => StudentStatusOutcome;
   newValue: Record<string, unknown>;
   reason: string | null;
+  /** The assignment that allowed a part of the change, when it is not the first that permits the route. */
+  allowedBy?: { id?: string };
   /** Read before the student is locked and before any write (the class of a return, task 3.3b). */
   before?: (transaction: Transaction) => Promise<void>;
   /**
@@ -274,17 +271,27 @@ export class StudentStatuses {
               .set({ grade: input.grade })
               .where('id', '=', id)
               .execute();
-            await this.students.inserting({ 'contract.number': input.contract.number }, () =>
-              transaction
-                .insertInto('student_contracts')
-                .values({
-                  student_id: id,
-                  branch_id: branchId,
-                  number: input.contract.number,
-                  signed_on: input.contract.signedOn,
-                })
-                .execute(),
-            );
+            // A return cancelled and made again names the same paper contract: the
+            // student's own row stands, nothing is added twice.
+            const held = await transaction
+              .selectFrom('student_contracts')
+              .select('id')
+              .where('student_id', '=', id)
+              .where(sql`upper(number)`, '=', input.contract.number.toUpperCase())
+              .executeTakeFirst();
+            if (held === undefined) {
+              await this.students.inserting({ 'contract.number': input.contract.number }, () =>
+                transaction
+                  .insertInto('student_contracts')
+                  .values({
+                    student_id: id,
+                    branch_id: branchId,
+                    number: input.contract.number,
+                    signed_on: input.contract.signedOn,
+                  })
+                  .execute(),
+              );
+            }
             return this.placeBack(transaction, access, requestId, id, placedBy(placement), {
               from: input.from,
               cause: 'return',
@@ -381,13 +388,20 @@ export class StudentStatuses {
     requestId: string,
   ): Promise<StudentDetail> {
     const branchId = branchOf(access);
+    const allowedBy: { id?: string } = {};
     return this.change(access, id, requestId, {
       action: 'student.return_cancelled',
+      allowedBy,
       version: input.version,
       plan: (rows, today) => {
         const outcome = planCancelReturn(rows, today);
-        if (!('refusal' in outcome) && outcome.cause === 'restore' && !mayRestore(access)) {
-          throw new ApiException('permission_denied', 403);
+        if (!('refusal' in outcome) && outcome.cause === 'restore') {
+          const holder = access.assignments.find((one) => one.role === 'super_admin');
+          if (holder === undefined) {
+            throw new ApiException('permission_denied', 403);
+          }
+          // The entry names the assignment that allowed the restore's cancel.
+          allowedBy.id = holder.id;
         }
         return outcome;
       },
@@ -425,8 +439,29 @@ export class StudentStatuses {
             )),
           );
         }
+        // The grade the return or restore wrote is given back: the grade it
+        // replaced is in its audit entry (the class rows are withdrawn first, so
+        // `students_grade_class` has nothing to refuse).
+        const written = await transaction
+          .selectFrom('audit_log')
+          .select('old_value')
+          .where('record_id', '=', id)
+          .where('action', 'in', ['student.return', 'student.graduate_restored'])
+          .orderBy('occurred_at', 'desc')
+          .orderBy('id', 'desc')
+          .limit(1)
+          .executeTakeFirst();
+        const before: unknown = written?.old_value;
+        const grade =
+          typeof before === 'object' && before !== null && 'grade' in before
+            ? (before as { grade: unknown }).grade
+            : undefined;
+        if (typeof grade === 'number') {
+          await transaction.updateTable('students').set({ grade }).where('id', '=', id).execute();
+        }
         return {
           newValue: {
+            ...(typeof grade === 'number' ? { gradeRestored: grade } : {}),
             membershipsWithdrawn: planned.map((row) => row.id),
             ...(groupsWithdrawn.length === 0 ? {} : { groupMemberships: groupsWithdrawn }),
           },
@@ -717,7 +752,7 @@ export class StudentStatuses {
         await this.audit.record(transaction, {
           branchId,
           actorId: access.accountId,
-          assignmentId: access.assignmentId,
+          assignmentId: change.allowedBy?.id ?? access.assignmentId,
           action: change.action,
           record: { type: 'student', id },
           // The grade too: a return writes it (permission review of the build).

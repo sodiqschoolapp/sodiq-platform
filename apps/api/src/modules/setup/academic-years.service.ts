@@ -219,8 +219,11 @@ export class AcademicYears {
         // that run to its last day are locked before the year row, the order
         // a leaving or a move takes (3.6b-2, correction 1 of the review).
         const read = await this.readYear(transaction, id);
-        const following = await lockFollowingRows(transaction, id, read.endDate);
+        await lockFollowingRows(transaction, id, read.endDate);
         const before = await this.lockedYear(transaction, id);
+        // A row inserted between the first read and the year lock is read now
+        // (no lock: the year lock keeps new rows out), for the audit entry.
+        const following = await lockFollowingRows(transaction, id, read.endDate, false);
         if (before.status === 'closed') {
           throw refused('year_closed');
         }
