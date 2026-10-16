@@ -122,6 +122,23 @@ as $$
   end
 $$;
 
+-- Whether a leaving stands from `day`: its inactive row begins that day and
+-- holds days. A row given back up to a leaving ends at one that stands (a
+-- scheduled leaving still in force, or the new one of a replace), never at
+-- one taken back.
+create function membership_leaving_stands(leaving uuid, day date) returns boolean
+language sql
+stable
+set search_path = pg_catalog, public
+as $$
+  select exists (
+    select 1 from student_statuses s
+    where s.id = leaving
+      and s.valid_from = day
+      and (s.valid_until is null or s.valid_until > s.valid_from)
+  )
+$$;
+
 -- ---------------------------------------------------------------------------
 -- 2. The shrink rule of 0054 with two paths added (decision 1 of 3.5c); none
 -- taken away.
@@ -194,7 +211,8 @@ begin
       or not membership_cut_taken_back(
         old.ended_by, old.leaving_id, old.ended_by_move_id, old.valid_until, new.valid_until
       )
-      or (new.ended_by is not null and new.ended_by not in ('leaving', 'transfer')) then
+      or (new.ended_by is not null and new.ended_by not in ('leaving', 'transfer'))
+      or (new.ended_by = 'leaving' and not membership_leaving_stands(new.leaving_id, new.valid_until)) then
       raise exception 'class_memberships_only_shrink'
         using errcode = 'check_violation', constraint = 'class_memberships_only_shrink';
     end if;
@@ -290,7 +308,8 @@ begin
       or not membership_cut_taken_back(
         old.ended_by, old.leaving_id, old.ended_by_move_id, old.valid_until, new.valid_until
       )
-      or (new.ended_by is not null and new.ended_by not in ('leaving', 'transfer')) then
+      or (new.ended_by is not null and new.ended_by not in ('leaving', 'transfer'))
+      or (new.ended_by = 'leaving' and not membership_leaving_stands(new.leaving_id, new.valid_until)) then
       raise exception 'group_memberships_only_shrink'
         using errcode = 'check_violation', constraint = 'group_memberships_only_shrink';
     end if;
@@ -926,6 +945,10 @@ select
   'One stay per class and group (task 3.5c)'
 from one_stay_joined j
 group by j.student_id, j.branch_id;
+
+-- The checks the joins above deferred to the commit run now, so that the
+-- tables have no pending trigger events when the constraints below are added.
+set constraints all immediate;
 
 -- ---------------------------------------------------------------------------
 -- 8. No two adjoining rows of one student in one class, or in one group

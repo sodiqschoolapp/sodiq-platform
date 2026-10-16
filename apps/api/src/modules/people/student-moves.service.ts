@@ -183,6 +183,7 @@ export class StudentMoves {
               // H27 of issue #105: the question was answered when this move
               // was saved, for these two classes; it is not asked again.
               answeredFor: { fromClassId: move.fromClassId, toClassId: move.toClassId },
+              replacesMoveId: move.id,
             },
             requestId,
           );
@@ -284,7 +285,13 @@ export class StudentMoves {
             access,
             student,
             today,
-            { row, toGroupId: input.toGroupId, from: input.from, seen: false },
+            {
+              row,
+              toGroupId: input.toGroupId,
+              from: input.from,
+              seen: false,
+              replacesMoveId: move.id,
+            },
           );
           await this.record(transaction, access, studentId, 'student.group_transfer_changed', {
             oldValue: cancelled,
@@ -392,6 +399,8 @@ export class StudentMoves {
       confirmLanguage?: boolean | undefined;
       /** The two classes of the saved move a change replaces (H27). */
       answeredFor?: { fromClassId: string | null; toClassId: string | null };
+      /** The cancelled move a change replaces (task 3.5c, H34). */
+      replacesMoveId?: string;
     },
     requestId: string,
   ): Promise<Moved> {
@@ -465,6 +474,7 @@ export class StudentMoves {
       from_class_id: held.classId,
       to_class_id: target.id,
       effective_on: from,
+      replaces_move_id: input.replacesMoveId ?? null,
     });
     // Every class row of the year with days from `from` on ends there.
     const cut = student.memberships.filter(
@@ -880,7 +890,14 @@ export class StudentMoves {
     access: Access,
     student: PlacementStudent,
     today: SchoolDate,
-    input: { row: StoredGroupMembership; toGroupId: string; from: SchoolDate; seen: boolean },
+    input: {
+      row: StoredGroupMembership;
+      toGroupId: string;
+      from: SchoolDate;
+      seen: boolean;
+      /** The cancelled move a change replaces (task 3.5c, H34). */
+      replacesMoveId?: string;
+    },
   ): Promise<Moved & { assignmentId: string }> {
     const branchId = branchOf(access);
     const { row, from } = input;
@@ -943,6 +960,7 @@ export class StudentMoves {
       from_group_id: source.id,
       to_group_id: target.id,
       effective_on: from,
+      replaces_move_id: input.replacesMoveId ?? null,
     });
     await this.cutGroupRow(transaction, row, from, moveId);
     const written = await transaction
@@ -1141,6 +1159,7 @@ export class StudentMoves {
       from_group_id?: string;
       to_group_id?: string;
       effective_on: SchoolDate;
+      replaces_move_id?: string | null;
     },
   ): Promise<string> {
     const row = await transaction
