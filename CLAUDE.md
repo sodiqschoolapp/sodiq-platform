@@ -104,7 +104,6 @@ The whole loop, the review routine and the cloud environment are described in `d
 - The audit log records the new kinds of change.
 - `docs/build-plan.md` is ticked in the same pull request, `docs/progress.md` has a dated entry, and anything left undone is written there.
 - Every decision made without the owner is in the report and on issue #42.
-- What a person can see or do that the task added or changed is described in `docs/handbook/`, as its README says, in the same pull request (owner, 15 October 2026).
 
 Before task 0.8c some of these do not exist yet (permission guard, languages); skip only those.
 

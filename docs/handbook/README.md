@@ -52,6 +52,10 @@ The pages above are the reference: every rule and case once, by feature. On top 
 
 The guides are written once, by task 9.6, when the features are finished; until then the reference alone is kept.
 
+## Paused
+
+On 16 October 2026 the owner paused the handbook until the release: tasks do not update it, and the pages are written after 25 October 2026 from the finished platform (tasks 3.7 and 9.6, now under "Deferred until after 25 October 2026" in `docs/build-plan.md`). The rest of this file describes how it will be written.
+
 ## How it stays true
 
 Every task that adds or changes what a person can see or do updates the handbook pages of that behaviour in its own pull request (`CLAUDE.md`, Definition of done). The spec reviewer checks the pages against the diff. A behaviour without its page, or a page that says something the platform does not do, is a finding like a missing test.
