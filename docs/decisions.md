@@ -24,6 +24,16 @@ Decided once, valid for every task. A session reads this section at its start (`
 | The module and feature names are `auth`, `access`, `audit`, `notifications`, `setup`, `people`, `classes`, `timetable`, `journal`, `plans`, `results`, `feedback` | `CLAUDE.md`, Repository layout; `feedback` was added for task 0.8b-3. |
 | At most 3 Super Admins (`MAX_SUPER_ADMINS` in `packages/shared/src/roles.ts`); changing it means the constant, its test and the spec row together | Decided by the owner in 0.7a. |
 
+## 16 October 2026: a lighter loop until the release
+
+Decided by the owner on 16 October 2026, to save usage before 25 October (the account's weekly limit was reached and paid usage costs about $20 an hour while the loop runs).
+
+| Decision | Reason |
+| --- | --- |
+| **One spec review of the code, not two**: `finish-task` step 3 asks only the `permission-reviewer` (when routes changed); the review routine does the spec review of the code. The `spec-reviewer` still checks the plan | The builder's spec review and the routine's review checked the same diff; the builder's two subagents were about 30% of a builder session |
+| **The handbook is paused until the release**: no task updates `docs/handbook/`; the definition-of-done line, the `finish-task` step, the reviewer check line and the light handbook review are removed; tasks 3.7 and 9.6 are deferred | Written once from the finished platform, it costs one pass instead of a page in every task |
+| **Deferred until after 25 October**: 3.7, 5.7c (Free now board), 8.3b (live updates), 8.3c (offline entry), 9.3b (analytics), 9.5a, 9.5b, 9.5c (closing the year, rollover, a new year, the full-year simulation), 9.6, in a section after Phase 10 | Not needed for the release on the test site; year-end work is needed in June 2027 |
+
 ## 15 October 2026: balanced reviews and a test at the real size
 
 Decided by the owner on 15 October 2026, after reading Anthropic's "Redesigning source control" (its lessons: adversarial AI review over-engineers; review can be tiered by kind of change; agents can watch a live system; heavy testing is cheap now).
