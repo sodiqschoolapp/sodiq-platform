@@ -49,6 +49,14 @@ import {
   moveStartsOn,
   refuseMoveLoads,
 } from './department-moves.js';
+import {
+  changesBetween,
+  lockPhones,
+  marksOf,
+  recordMarkChanges,
+  relativesOfStaff,
+  staffMarkDetail,
+} from './same-person.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { PasswordResets } from '../auth/password-resets.service.js';
@@ -358,11 +366,11 @@ export class Staff {
       const matches = (filter: 'name' | 'phone') => {
         let query = transaction
           .selectFrom('staff')
-          .select(['id', 'staff_id', 'first_name', 'last_name'])
-          .where('kind', '=', 'person');
+          .select(['id', 'staff_id', 'first_name', 'last_name']);
         query =
           filter === 'name'
             ? query
+                .where('kind', '=', 'person')
                 .where(sql<boolean>`lower(first_name) = lower(${input.firstName})`)
                 .where(sql<boolean>`lower(last_name) = lower(${input.lastName})`)
                 .where('birth_date', '=', input.birthDate)
@@ -388,12 +396,111 @@ export class Staff {
           ${input.firstName}, ${input.lastName}, ${input.birthDate}::date, ${input.phone}
         ) as found
       `.execute(transaction);
+      // A phone of another staff record is refused on Save (task 3.6b-1):
+      // named in the branch, told for another branch (as the UID refusal).
+      const samePhone = (await matches('phone'))[0];
+      const phoneElsewhere =
+        samePhone === undefined && (await this.phoneElsewhere(transaction, input.phone));
+      const relative = await this.relativeOfPhone(transaction, access, input.phone);
       return {
         sameNameAndBirth: (await matches('name')).map(toMatch),
-        samePhone: (await matches('phone')).map(toMatch),
         elsewhere: elsewhere.rows[0]?.found === true,
+        phoneTaken:
+          samePhone !== undefined
+            ? { match: toMatch(samePhone) }
+            : phoneElsewhere
+              ? { match: null }
+              : null,
+        relative: relative.here ?? null,
+        relativeElsewhere: relative.here === undefined && relative.exists,
       };
     });
+  }
+
+  /** Whether a staff record not linked to a branch of the transaction holds the phone (0063). */
+  private async phoneElsewhere(transaction: Transaction, phone: string): Promise<boolean> {
+    const found = await sql<{ found: boolean }>`
+      select staff_phone_elsewhere(${phone}) as found
+    `.execute(transaction);
+    return found.rows[0]?.found === true;
+  }
+
+  /**
+   * The relative whose main phone this is (task 3.6b-1): named with its email
+   * when it is linked live in the branch of the request; otherwise only
+   * whether one exists, by `relative_by_phone` of 0036 (archived included).
+   */
+  private async relativeOfPhone(
+    transaction: Transaction,
+    access: Access,
+    phone: string,
+  ): Promise<{ here?: { fullName: string; email: string | null }; exists: boolean }> {
+    const here = await transaction
+      .selectFrom('relatives')
+      .select(['full_name', 'email'])
+      .where('phone', '=', phone)
+      .where((eb) =>
+        eb.exists(
+          eb
+            .selectFrom('student_relatives as l')
+            .select('l.id')
+            .whereRef('l.relative_id', '=', 'relatives.id')
+            .where('l.branch_id', '=', branchOf(access))
+            .where('l.unlinked_at', 'is', null),
+        ),
+      )
+      .executeTakeFirst();
+    if (here !== undefined) {
+      return { here: { fullName: here.full_name, email: here.email }, exists: true };
+    }
+    const held = await sql<{ id: string }>`select id from relative_by_phone(${phone})`.execute(
+      transaction,
+    );
+    return { exists: held.rows.length > 0 };
+  }
+
+  /**
+   * A phone of another staff record, archived and left included, is refused
+   * (`edge/people-roles-accounts`, re-hire row: "A phone that belongs to
+   * another staff record is refused and that record is shown"; task 3.6b-1).
+   * Read under the phone's lock, which every staff phone write takes;
+   * `staff_phone_idx` stays the guard.
+   */
+  private async refusePhoneTaken(
+    transaction: Transaction,
+    phone: string | null,
+    self: string | null,
+  ): Promise<void> {
+    if (phone === null) {
+      return;
+    }
+    let query = transaction
+      .selectFrom('staff')
+      .select(['id', 'first_name', 'last_name'])
+      .where('phone', '=', phone);
+    if (self !== null) {
+      query = query.where('id', '<>', self);
+    }
+    const here = await query.executeTakeFirst();
+    if (here === undefined && !(await this.phoneElsewhere(transaction, phone))) {
+      return;
+    }
+    throw new ApiException('staff_phone_taken', 409, undefined, [
+      {
+        path: 'phone',
+        code: 'staff_phone_taken',
+        message: 'The phone belongs to another staff record.',
+        ...(here === undefined
+          ? {}
+          : {
+              recordId: here.id,
+              staffName: listName({
+                firstName: here.first_name ?? '',
+                lastName: here.last_name ?? '',
+              }).trim(),
+            }),
+      },
+    ]);
   }
 
   /**
@@ -403,12 +510,27 @@ export class Staff {
    * from the admission date (decision 4). The record is inserted before its
    * link and read back after it (owner's answer 2).
    */
-  create(access: Access, record: StaffRecord, requestId: string): Promise<StaffDetail> {
+  create(access: Access, typed: StaffRecord, requestId: string): Promise<StaffDetail> {
     const branchId = branchOf(access);
     return this.refusing(() =>
       this.transactions.run(access.branchIds, async (transaction) => {
+        let record = typed;
         moveStartsOn(false, record.departmentStartsOn);
         await this.checkDivisions(transaction, record.divisions);
+        // The phone's lock before any read of it (task 3.6b-1): a refusal of
+        // a taken phone, the relative's email, and the mark's entries.
+        await lockPhones(transaction, [record.phone]);
+        await this.refusePhoneTaken(transaction, record.phone, null);
+        // A relative's main phone makes the new staff member the same person;
+        // the relative's email is taken when none is typed, the names are
+        // typed (decision 6, Look first).
+        const relative =
+          record.phone === null
+            ? undefined
+            : (await this.relativeOfPhone(transaction, access, record.phone)).here;
+        if (record.email === null && relative !== undefined && relative.email !== null) {
+          record = { ...record, email: relative.email };
+        }
         const year = Number(record.admissionDate.slice(0, 4));
         const staffId = staffIdOf(year, await takeStaffNumber(transaction, year));
         const found = await sql<{ id: string }>`select uuidv7() as id`.execute(transaction);
@@ -429,6 +551,11 @@ export class Staff {
           .insertInto('staff_statuses')
           .values({ staff_id: id, status: 'active', valid_from: record.admissionDate })
           .execute();
+        // A new record held no mark before its insert.
+        const marks = changesBetween(
+          { byRelative: new Map() },
+          await marksOf(transaction, { staffIds: [id] }),
+        );
         await this.audit.record(transaction, {
           branchId,
           actorId: access.accountId,
@@ -437,8 +564,10 @@ export class Staff {
           action: 'staff.create',
           record: { type: 'staff', id },
           newValue: { staffId, ...fieldsOf(this.rowOf(record), sortDivisions(record.divisions)) },
+          ...(marks.length === 0 ? {} : { details: staffMarkDetail(marks, id) }),
           requestId,
         });
+        await recordMarkChanges(transaction, this.audit, access, marks, 'staff_created', requestId);
         return this.readDetail(transaction, access, id);
       }),
     );
@@ -506,6 +635,14 @@ export class Staff {
             ),
         );
         await this.checkDivisions(transaction, added);
+        // A changed phone (task 3.6b-1): its lock for the old and the new
+        // phone, the refusal of a taken one, and the mark before the write.
+        const phoneChanged = 'phone' in changes.newValue;
+        if (phoneChanged) {
+          await lockPhones(transaction, [row.phone, record.phone]);
+          await this.refusePhoneTaken(transaction, record.phone, id);
+        }
+        const marksBefore = phoneChanged ? await marksOf(transaction, { staffIds: [id] }) : null;
         // `edge/people-roles-accounts`, row 15 (task 3.4c): a move carries a
         // start date and is refused while a load would have the teacher outside
         // the subject's department; the profile's own check comes at the commit.
@@ -523,6 +660,12 @@ export class Staff {
           .where('id', '=', id)
           .execute();
         await this.writeDivisions(transaction, id, divisions, record.divisions);
+        // An edit that makes the phone a relative's changes the mark only
+        // (decision 7).
+        const marks =
+          marksBefore === null
+            ? []
+            : changesBetween(marksBefore, await marksOf(transaction, { staffIds: [id] }));
         if (startsOn !== null && asked !== undefined) {
           await transaction
             .updateTable('staff_divisions')
@@ -552,8 +695,18 @@ export class Staff {
             startsOn === null
               ? changes.newValue
               : { ...changes.newValue, departmentStartsOn: startsOn },
+          ...(marks.length === 0 ? {} : { details: staffMarkDetail(marks, id) }),
           requestId,
         });
+        await recordMarkChanges(
+          transaction,
+          this.audit,
+          access,
+          marks,
+          'staff_phone',
+          requestId,
+          assignmentId,
+        );
         return this.readDetail(transaction, access, id);
       }),
     );
@@ -1558,9 +1711,10 @@ export class Staff {
   }
 
   /**
-   * The relative marked as the same person (`edge/close-relatives`, row 8;
-   * task 2.5b-2, decision 6): for a reader holding `relatives` view in the
-   * branch of the request, when that relative is linked live in the branch.
+   * The relative that is the same person (`edge/close-relatives`, row 8),
+   * read from the phones (task 3.6b-1, decision 3): for a reader holding
+   * `relatives` view in the branch of the request, when that relative is
+   * linked live in the branch (task 2.5b-2, decision 6).
    */
   private async sameAsRelative(
     transaction: Transaction,
@@ -1578,10 +1732,14 @@ export class Staff {
       return null;
     }
     const branchId = branchOf(access);
+    const relativeId = (await relativesOfStaff(transaction, [id])).get(id);
+    if (relativeId === undefined) {
+      return null;
+    }
     const row = await transaction
       .selectFrom('relatives')
       .select(['id', 'full_name'])
-      .where('staff_id', '=', id)
+      .where('id', '=', relativeId)
       .where((eb) =>
         eb.exists(
           eb

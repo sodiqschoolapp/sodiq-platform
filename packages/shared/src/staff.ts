@@ -285,8 +285,22 @@ const staffMatchSchema = z.object({
  */
 export const staffCheckResultSchema = z.object({
   sameNameAndBirth: z.array(staffMatchSchema),
-  samePhone: z.array(staffMatchSchema),
   elsewhere: z.boolean(),
+  /**
+   * The phone is another staff record's, archived and left included: refused
+   * on Save (`edge/people-roles-accounts`, re-hire row; task 3.6b-1). The
+   * record is named when it is of the branch of the request, `match: null`
+   * for one of another branch. `null` when the phone is free.
+   */
+  phoneTaken: z.object({ match: staffMatchSchema.nullable() }).nullable(),
+  /**
+   * The relative whose main phone this is (task 3.6b-1): the two records
+   * will be the same person, and the email is taken when none is typed
+   * (decision 6, Look first). Named when linked live in the branch.
+   */
+  relative: z.object({ fullName: z.string(), email: z.string().nullable() }).nullable(),
+  /** A relative not linked in the branch has the phone: marked, nothing of it told. */
+  relativeElsewhere: z.boolean(),
 });
 
 export type StaffCheckResult = z.infer<typeof staffCheckResultSchema>;

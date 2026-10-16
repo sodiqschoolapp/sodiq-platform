@@ -525,15 +525,11 @@ export class StudentStatuses {
         );
         const archived: string[] = [];
         for (const link of links) {
-          const relative = await this.relatives.lockRelative(
-            transaction,
-            branchId,
-            link.relative_id,
-          );
+          await this.relatives.lockRelative(transaction, branchId, link.relative_id);
+          // An archived relative keeps its phone, and with it its mark "same
+          // person" (task 3.6b-1, correction 1).
           if ((await this.relatives.liveLinks(transaction, link.relative_id)) === 1) {
             archived.push(link.relative_id);
-            // Its mark "same person" goes before the archive (`unmarkArchived`).
-            await this.relatives.unmarkArchived(transaction, access, relative, requestId);
           }
         }
         await this.audit.record(transaction, {

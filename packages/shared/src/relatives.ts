@@ -213,8 +213,25 @@ export const relativeHolderSchema = z.object({
 
 export type RelativeHolder = z.infer<typeof relativeHolderSchema>;
 
+/**
+ * The staff member whose phone is typed (`edge/close-relatives`, "A teacher
+ * is also a parent"; task 3.6b-1): the new relative will be the same person
+ * and takes these details, when the staff member is of the branch of the
+ * request (decision 2, Look first).
+ */
+export const relativeStaffMatchSchema = z.object({
+  fullName: z.string(),
+  email: z.string().nullable(),
+});
+
+export type RelativeStaffMatch = z.infer<typeof relativeStaffMatchSchema>;
+
 export const relativePhoneMatchResultSchema = z.object({
   holder: relativeHolderSchema.nullable(),
+  /** A staff member of the branch of the request has the phone. */
+  staff: relativeStaffMatchSchema.nullable(),
+  /** A staff member of another branch has the phone: marked, nothing of it told (decision 2). */
+  staffElsewhere: z.boolean(),
 });
 
 export type RelativePhoneMatchResult = z.infer<typeof relativePhoneMatchResultSchema>;
@@ -285,9 +302,9 @@ export const relativeIdentitySchema = z.object({
 export type RelativeIdentity = z.infer<typeof relativeIdentitySchema>;
 
 /**
- * The staff record marked as the same person (`edge/close-relatives`, row 8;
- * task 2.5b-2, decision 4): shown only when that staff record is visible in
- * the branch of the request (decision 9).
+ * The staff record that is the same person (`edge/close-relatives`, row 8),
+ * read from the phones (task 3.6b-1, decision 3): named only when that staff
+ * record is of the branch of the request (task 2.5b-2, decision 9).
  */
 export const samePersonSchema = z.object({
   staffId: z.uuid(),
@@ -303,8 +320,8 @@ export const relativeDetailSchema = relativeListItemSchema.extend({
   extraPhones: z.array(z.string()),
   samePerson: samePersonSchema.nullable(),
   /**
-   * A mark to a staff member not of the branch exists: told to the Super
-   * Admin only, who may remove or change it (correction 1 of the review).
+   * The relative is the same person as a staff member not of the branch:
+   * told, never named (task 3.6b-1, decision 2, Look first).
    */
   samePersonElsewhere: z.boolean(),
   /** `null` for a reader who sees it hidden (the Principal, with a logged show). */
@@ -398,14 +415,6 @@ export const relativeUnlinkSchema = z.strictObject({
 });
 
 export type RelativeUnlink = z.infer<typeof relativeUnlinkSchema>;
-
-/**
- * The mark "same person" (`edge/close-relatives`, row 8; task 2.5b-2): the
- * staff record the relative is the same person as.
- */
-export const relativeSamePersonSchema = z.strictObject({ staffId: z.uuid() });
-
-export type RelativeSamePerson = z.infer<typeof relativeSamePersonSchema>;
 
 export const relativeParamsSchema = z.strictObject({ id: z.uuid() });
 
