@@ -17,7 +17,7 @@ import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
-import { answerOf } from '@/api/failure';
+import { answerOf, ApiFailure } from '@/api/failure';
 import { useConfirm } from '@/components/confirm-dialog';
 import { SaveCancelled } from '@/components/form/save-cancelled';
 import { ListPage } from '@/components/list/list-page';
@@ -118,9 +118,20 @@ export function StaffPage() {
           }),
         ),
       );
-      const names = [...found.sameNameAndBirth, ...found.samePhone].map(
-        (match) => `${fullName(match)} (${match.staffId})`,
-      );
+      // A phone of another staff record is refused before Save, the record
+      // named in the branch (task 3.6b-1), as the server refuses it.
+      if (found.phoneTaken !== null) {
+        const match = found.phoneTaken.match;
+        throw new ApiFailure('staff_phone_taken', undefined, [
+          {
+            path: 'phone',
+            code: 'staff_phone_taken',
+            message: '',
+            ...(match === null ? {} : { recordId: match.id, staffName: fullName(match) }),
+          },
+        ]);
+      }
+      const names = found.sameNameAndBirth.map((match) => `${fullName(match)} (${match.staffId})`);
       if (names.length > 0 || found.elsewhere) {
         const go = await confirm({
           title: t('people.staff.duplicateTitle'),
@@ -129,6 +140,23 @@ export function StaffPage() {
             : t('people.staff.duplicateHere'),
           names: [...new Set(names)],
           action: t('people.staff.saveAnyway'),
+          destructive: false,
+        });
+        if (!go) {
+          throw new SaveCancelled();
+        }
+      }
+      // A parent's main phone: the two records will be the same person
+      // (task 3.6b-1), and the parent's email is taken when none is typed.
+      if (found.relative !== null || found.relativeElsewhere) {
+        const go = await confirm({
+          title: t('people.staff.sameAsParentTitle'),
+          text:
+            found.relative === null
+              ? t('people.staff.sameAsParentElsewhere')
+              : t('people.staff.sameAsParent'),
+          names: found.relative === null ? [] : [found.relative.fullName],
+          action: t('people.staff.saveSamePerson'),
           destructive: false,
         });
         if (!go) {

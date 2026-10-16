@@ -1,9 +1,9 @@
 import { type RelativeDetail, type RelativeListItem, type Role } from '@sodiq/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
-import { fakeApi, json, NORTH, refusal, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
+import { fakeApi, json, NORTH, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
 import {
   actionsAreLast,
   edit,
@@ -386,7 +386,11 @@ describe('the page of a relative', () => {
       const calls = openList('academic_vice_principal', {
         [`PATCH /api/people/relatives/${DILFUZA.id}`]: takenAnswer(true),
         'POST /api/people/relatives/phone-match': () =>
-          json({ holder: { id: uid(3), fullName: 'Shoira Nazarova', students: 2 } }),
+          json({
+            staff: null,
+            staffElsewhere: false,
+            holder: { id: uid(3), fullName: 'Shoira Nazarova', students: 2 },
+          }),
         [`POST /api/people/relatives/${DILFUZA.id}/merge`]: () => json(detailOf(DILFUZA)),
       });
       renderApp(PATH);
@@ -427,7 +431,11 @@ describe('the page of a relative', () => {
           return patches === 1 ? takenAnswer(true)() : json(detailOf(DILFUZA));
         },
         'POST /api/people/relatives/phone-match': () =>
-          json({ holder: { id: uid(3), fullName: 'Shoira Nazarova', students: 2 } }),
+          json({
+            staff: null,
+            staffElsewhere: false,
+            holder: { id: uid(3), fullName: 'Shoira Nazarova', students: 2 },
+          }),
       });
       renderApp(PATH);
       const choices = await refuse();
@@ -475,7 +483,11 @@ describe('the page of a relative', () => {
       openList('academic_vice_principal', {
         [`PATCH /api/people/relatives/${DILFUZA.id}`]: takenAnswer(true),
         'POST /api/people/relatives/phone-match': () =>
-          json({ holder: { id: uid(3), fullName: 'Shoira Nazarova', students: 2 } }),
+          json({
+            staff: null,
+            staffElsewhere: false,
+            holder: { id: uid(3), fullName: 'Shoira Nazarova', students: 2 },
+          }),
         [`POST /api/people/relatives/${DILFUZA.id}/merge`]: () => {
           mergedNow = true;
           return json(detailOf(shoira));
@@ -512,7 +524,11 @@ describe('the page of a relative', () => {
       const calls = openList('academic_vice_principal', {
         [`PATCH /api/people/relatives/${DILFUZA.id}`]: takenAnswer(false),
         'POST /api/people/relatives/phone-match': () =>
-          json({ holder: { id: uid(3), fullName: 'Shoira Nazarova', students: 2 } }),
+          json({
+            staff: null,
+            staffElsewhere: false,
+            holder: { id: uid(3), fullName: 'Shoira Nazarova', students: 2 },
+          }),
       });
       renderApp(PATH);
       const choices = await refuse();
@@ -549,7 +565,11 @@ describe('the page of a relative', () => {
       const routes = () => ({
         [`PATCH /api/people/relatives/${DILFUZA.id}`]: takenAnswer(true),
         'POST /api/people/relatives/phone-match': () =>
-          json({ holder: { id: uid(3), fullName: 'Shoira Nazarova', students: 2 } }),
+          json({
+            staff: null,
+            staffElsewhere: false,
+            holder: { id: uid(3), fullName: 'Shoira Nazarova', students: 2 },
+          }),
       });
       const cancel = (choices: HTMLElement) => {
         fireEvent.click(
@@ -665,14 +685,6 @@ describe('the extra phones and the same person of a relative', () => {
     status: 'active' as const,
     planned: null,
     photoId: null,
-  };
-  const MALIKA = {
-    ...BAHODIR,
-    id: uid(61),
-    staffId: 'S-260013',
-    firstName: 'Malika',
-    lastName: 'Yusupova',
-    phone: '+998907770012',
   };
   const SAME = { staffId: BAHODIR.id, name: 'Karimov Bahodir', staffNumber: 'S-260012' };
 
@@ -812,236 +824,37 @@ describe('the extra phones and the same person of a relative', () => {
     expect(shell.router.state.location.search).toMatchObject({ open: BAHODIR.id });
   });
 
-  it('marks the relative as a staff member found by name', async () => {
-    const calls = openList('academic_vice_principal', {
-      'GET /api/people/staff': () => json({ staff: [MALIKA, BAHODIR], today: '2026-10-10' }),
-      [`PUT /api/people/relatives/${DILFUZA.id}/same-person`]: () =>
-        json(detailOf(DILFUZA, { samePerson: SAME })),
-    });
-    renderApp(PATH);
-    const panel = await openPanel();
-    const section = await within(panel).findByRole('region', {
-      name: en.people.relatives.sameTitle,
-    });
-    expect(within(section).getByText(en.people.relatives.sameNone)).toBeDefined();
-    fireEvent.click(within(section).getByRole('button', { name: en.people.relatives.markStaff }));
-    const picker = await within(section).findByRole('form', {
-      name: en.people.relatives.markStaff,
-    });
-    fireEvent.change(within(picker).getByLabelText(en.people.relatives.staffSearch), {
-      target: { value: 'карим' },
-    });
-    const choice = await within(picker).findByLabelText(en.people.relatives.staffChoice);
-    expect([...choice.querySelectorAll('option')].map((option) => option.textContent)).toEqual([
-      en.people.relatives.choose,
-      'Karimov Bahodir (S-260012)',
-    ]);
-    fireEvent.change(choice, { target: { value: BAHODIR.id } });
-    fireEvent.click(within(picker).getByRole('button', { name: en.people.relatives.markSave }));
-    await waitFor(() => {
-      expect(calls.find((call) => call.route.endsWith('/same-person'))?.body).toEqual({
-        staffId: BAHODIR.id,
+  // Task 3.6b-1 (decision 3): the mark is read from the phones; nobody sets
+  // or removes it, so the section has no action for any reader.
+  it.each(['academic_vice_principal', 'principal'] as const)(
+    'shows the mark with no action to the %s, read from the phone',
+    async (role) => {
+      openList(role, {}, 'en', { samePerson: SAME, canEdit: role === 'academic_vice_principal' });
+      renderApp(PATH);
+      const panel = await openPanel();
+      const section = await within(panel).findByRole('region', {
+        name: en.people.relatives.sameTitle,
       });
-    });
-    expect(calls.find((call) => call.route.endsWith('/same-person'))?.route).toBe(
-      `PUT /api/people/relatives/${DILFUZA.id}/same-person`,
-    );
-    expect(await within(section).findByRole('link', { name: 'Karimov Bahodir' })).toBeDefined();
-    // The picker closes with "Saved." in the bottom row (task 2.7c-2b-2b).
-    await savedInPanel(panel);
-    expect(within(section).queryByRole('form')).toBeNull();
-  });
+      expect(within(section).getByRole('link', { name: 'Karimov Bahodir' })).toBeDefined();
+      expect(within(section).getByText(en.people.relatives.sameFromPhone)).toBeDefined();
+      expect(within(section).queryAllByRole('button')).toEqual([]);
+    },
+  );
 
-  it('opens the picker through the panel with the search field focused; Remove gives way and Cancel closes it', async () => {
-    openList(
-      'academic_vice_principal',
-      { 'GET /api/people/staff': () => json({ staff: [MALIKA, BAHODIR], today: '2026-10-10' }) },
-      'en',
-      { samePerson: SAME },
-    );
+  it('says "a staff member of another branch" with no name and no link', async () => {
+    openList('academic_vice_principal', {}, 'en', { samePerson: null, samePersonElsewhere: true });
     renderApp(PATH);
     const panel = await openPanel();
     const section = await within(panel).findByRole('region', {
       name: en.people.relatives.sameTitle,
     });
-    const change = within(section).getByRole('button', { name: en.people.relatives.changeStaff });
-    fireEvent.click(change);
-    const picker = await within(section).findByRole('form', {
-      name: en.people.relatives.markStaff,
-    });
-    await waitFor(() => {
-      expect(document.activeElement).toBe(
-        within(picker).getByLabelText(en.people.relatives.staffSearch),
-      );
-    });
-    expect(
-      within(section).queryByRole('button', { name: en.people.relatives.removeMark }),
-    ).toBeNull();
-    expect(panelActions(panel)).toBeNull();
-    const cancel = within(picker).getByRole('button', { name: en.people.relatives.markCancel });
-    expect(cancel.getAttribute('data-variant')).toBe('ghost');
-    fireEvent.click(cancel);
-    await waitFor(() => {
-      expect(within(section).queryByRole('form')).toBeNull();
-    });
-    await waitFor(() => {
-      expect(document.activeElement).toBe(
-        within(section).getByRole('button', { name: en.people.relatives.changeStaff }),
-      );
-    });
-    expect(
-      within(section).getByRole('button', { name: en.people.relatives.removeMark }),
-    ).toBeDefined();
-  });
-
-  it('says why a mark is refused', async () => {
-    openList('academic_vice_principal', {
-      'GET /api/people/staff': () => json({ staff: [BAHODIR], today: '2026-10-10' }),
-      [`PUT /api/people/relatives/${DILFUZA.id}/same-person`]: () =>
-        refusal('same_person_taken', 409),
-    });
-    renderApp(PATH);
-    const panel = await openPanel();
-    const section = await within(panel).findByRole('region', {
-      name: en.people.relatives.sameTitle,
-    });
-    fireEvent.click(within(section).getByRole('button', { name: en.people.relatives.markStaff }));
-    const choice = await within(section).findByLabelText(en.people.relatives.staffChoice);
-    fireEvent.change(choice, { target: { value: BAHODIR.id } });
-    fireEvent.click(within(section).getByRole('button', { name: en.people.relatives.markSave }));
-    expect(await within(section).findByText(en.errors.same_person_taken)).toBeDefined();
-  });
-
-  it('removes the mark after a question naming both people', async () => {
-    let marked = true;
-    const calls = openList('academic_vice_principal', {
-      [`GET /api/people/relatives/${DILFUZA.id}`]: () =>
-        json(detailOf(DILFUZA, { samePerson: marked ? SAME : null })),
-      [`DELETE /api/people/relatives/${DILFUZA.id}/same-person`]: () => {
-        marked = false;
-        return new Response(null, { status: 204 });
-      },
-    });
-    renderApp(PATH);
-    const panel = await openPanel();
-    const section = await within(panel).findByRole('region', {
-      name: en.people.relatives.sameTitle,
-    });
-    fireEvent.click(
-      await within(section).findByRole('button', { name: en.people.relatives.removeMark }),
-    );
-    const dialog = await screen.findByRole('alertdialog', {
-      name: en.people.relatives.removeMarkTitle,
-    });
-    expect(within(dialog).getByText('Dilfuza Rahimova')).toBeDefined();
-    expect(within(dialog).getByText('Karimov Bahodir')).toBeDefined();
-    fireEvent.click(within(dialog).getByRole('button', { name: en.people.relatives.removeMark }));
-    await waitFor(() => {
-      expect(calls.some((call) => call.route.startsWith('DELETE'))).toBe(true);
-    });
-    expect(await within(section).findByText(en.people.relatives.sameNone)).toBeDefined();
+    expect(within(section).getByText(en.people.relatives.sameElsewhere)).toBeDefined();
     expect(within(section).queryByRole('link')).toBeNull();
-    // Its button is gone: "Saved." and the focus on "Mark as staff member" (task 2.7c-2b-2b).
-    await savedInPanel(panel);
-    await waitFor(() => {
-      expect(document.activeElement).toBe(
-        within(section).getByRole('button', { name: en.people.relatives.markStaff }),
-      );
-    });
+    expect(within(section).queryAllByRole('button')).toEqual([]);
   });
 
-  it("keeps the search field of the picker while the staff list waits, and shows its failure with a retry in the choice's place", async () => {
-    openList('academic_vice_principal', {
-      'GET /api/people/staff': () => refusal('request_refused', 500),
-    });
-    // The staff list is held until the test lets it answer.
-    let answer: (() => void) | undefined;
-    const original = globalThis.fetch;
-    vi.stubGlobal(
-      'fetch',
-      vi.fn<typeof fetch>((input) =>
-        input instanceof Request &&
-        input.method === 'GET' &&
-        new URL(input.url).pathname === '/api/people/staff'
-          ? new Promise<Response>((resolve) => {
-              answer = () => {
-                resolve(original(input));
-              };
-            })
-          : original(input),
-      ),
-    );
-    renderApp(PATH);
-    const panel = await openPanel();
-    const section = await within(panel).findByRole('region', {
-      name: en.people.relatives.sameTitle,
-    });
-    fireEvent.click(within(section).getByRole('button', { name: en.people.relatives.markStaff }));
-    const picker = await within(section).findByRole('form', {
-      name: en.people.relatives.markStaff,
-    });
-    // The list is still on its way: the field is there and has the focus.
-    await waitFor(() => {
-      expect(document.activeElement).toBe(
-        within(picker).getByLabelText(en.people.relatives.staffSearch),
-      );
-    });
-    expect(within(picker).queryByLabelText(en.people.relatives.staffChoice)).toBeNull();
-    await waitFor(() => {
-      expect(answer).toBeDefined();
-    });
-    answer?.();
-    expect(await within(picker).findByRole('button', { name: en.problems.retry })).toBeDefined();
-    expect(within(picker).getByLabelText(en.people.relatives.staffSearch)).toBeDefined();
-  });
-
-  it('lets the Super Admin remove a mark to a staff member of another branch, unnamed', async () => {
-    let marked = true;
-    const calls = openList('super_admin', {
-      [`GET /api/people/relatives/${DILFUZA.id}`]: () =>
-        json(detailOf(DILFUZA, { samePerson: null, samePersonElsewhere: marked })),
-      [`DELETE /api/people/relatives/${DILFUZA.id}/same-person`]: () => {
-        marked = false;
-        return new Response(null, { status: 204 });
-      },
-    });
-    renderApp(PATH);
-    const panel = await openPanel();
-    const section = await within(panel).findByRole('region', {
-      name: en.people.relatives.sameTitle,
-    });
-    expect(await within(section).findByText(en.people.relatives.sameElsewhere)).toBeDefined();
-    expect(within(section).queryByRole('link')).toBeNull();
-    fireEvent.click(within(section).getByRole('button', { name: en.people.relatives.removeMark }));
-    const dialog = await screen.findByRole('alertdialog', {
-      name: en.people.relatives.removeMarkTitle,
-    });
-    fireEvent.click(within(dialog).getByRole('button', { name: en.people.relatives.removeMark }));
-    await waitFor(() => {
-      expect(calls.some((call) => call.route.startsWith('DELETE'))).toBe(true);
-    });
-    expect(await within(section).findByText(en.people.relatives.sameNone)).toBeDefined();
-  });
-
-  it('shows the mark without actions to a reader who may not edit', async () => {
-    openList('principal', {}, 'en', { samePerson: SAME, canEdit: false });
-    renderApp(PATH);
-    const panel = await openPanel();
-    const section = await within(panel).findByRole('region', {
-      name: en.people.relatives.sameTitle,
-    });
-    expect(within(section).getByRole('link', { name: 'Karimov Bahodir' })).toBeDefined();
-    for (const name of [
-      en.people.relatives.markStaff,
-      en.people.relatives.changeStaff,
-      en.people.relatives.removeMark,
-    ]) {
-      expect(within(section).queryByRole('button', { name })).toBeNull();
-    }
-  });
-
-  it('leaves the section out for a reader who may not edit a relative marked as nobody', async () => {
-    openList('principal', {}, 'en', { canEdit: false });
+  it('leaves the section out for a relative who is no staff member, also for an editor', async () => {
+    openList('academic_vice_principal', {}, 'en', {});
     renderApp(PATH);
     const panel = await openPanel();
     await within(panel).findByText(en.people.relatives.phone, { selector: 'dt' });
@@ -1061,9 +874,7 @@ describe('the extra phones and the same person of a relative', () => {
     expect(
       within(section).getByText(ru.people.relatives.staffIdOf.replace('{{staffId}}', 'S-260012')),
     ).toBeDefined();
-    expect(
-      within(section).getByRole('button', { name: ru.people.relatives.changeStaff }),
-    ).toBeDefined();
+    expect(within(section).getByText(ru.people.relatives.sameFromPhone)).toBeDefined();
     expect(await valueOf(panel, ru.people.relatives.extraPhones)).toBe('+998 93 555 66 77');
     const form = await edit(
       panel,

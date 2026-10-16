@@ -215,9 +215,9 @@ export class Relatives {
       const elsewhere =
         staff === undefined
           ? (
-              await sql<{ found: boolean }>`select staff_phone_elsewhere(${phone}) as found`.execute(
-                transaction,
-              )
+              await sql<{
+                found: boolean;
+              }>`select staff_phone_elsewhere(${phone}) as found`.execute(transaction)
             ).rows[0]?.found === true
           : false;
       return {
@@ -421,15 +421,7 @@ export class Relatives {
         // Read again after the locks, each in a statement of its own.
         const rows = await transaction
           .selectFrom('relatives')
-          .select([
-            'id',
-            'full_name',
-            'phone',
-            'workplace',
-            'email',
-            'extra_phones',
-            'merged_into',
-          ])
+          .select(['id', 'full_name', 'phone', 'workplace', 'email', 'extra_phones', 'merged_into'])
           .where('id', 'in', ids)
           .execute();
         const links = await liveLinks();
@@ -467,7 +459,8 @@ export class Relatives {
         // the kept record keeps its phone and its mark (task 3.6b-1).
         await lockPhones(transaction, [merged.phone]);
         const marksBefore = await marksOf(transaction, { relativeIds: [kept.id, merged.id] });
-        const assignmentId = elsewhere && superAdmin !== undefined ? superAdmin : access.assignmentId;
+        const assignmentId =
+          elsewhere && superAdmin !== undefined ? superAdmin : access.assignmentId;
         // The other branches of both records, while both are still linked.
         const told = [
           ...(await this.writes.noticeAccounts(transaction, kept.id, branchId)),

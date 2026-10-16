@@ -672,7 +672,8 @@ describe('adding a student', () => {
   it('takes a whole number pasted after the prefilled +998 in the relative and the own phone', async () => {
     const calls = openList('academic_vice_principal', {
       'POST /api/people/students/check': () => json({ sameNameAndBirth: [], elsewhere: false }),
-      'POST /api/people/relatives/phone-match': () => json({ holder: null }),
+      'POST /api/people/relatives/phone-match': () =>
+        json({ staff: null, staffElsewhere: false, holder: null }),
       'POST /api/people/students': () => json(detailOf({ ...OTKIR, id: uid(9) }), 201),
       [`GET /api/people/students/${uid(9)}`]: () => json(detailOf({ ...OTKIR, id: uid(9) })),
     });
@@ -723,7 +724,13 @@ describe('adding a student', () => {
       );
     });
     expect(calls.some((call) => call.route === 'POST /api/people/students')).toBe(false);
-    answer(json({ holder: { id: uid(70), fullName: 'Rahimova Dilfuza', students: 1 } }));
+    answer(
+      json({
+        staff: null,
+        staffElsewhere: false,
+        holder: { id: uid(70), fullName: 'Rahimova Dilfuza', students: 1 },
+      }),
+    );
     await waitFor(() => {
       expect(calls.some((call) => call.route === 'POST /api/people/students')).toBe(true);
     });
@@ -851,7 +858,8 @@ describe('adding a student', () => {
   it('names the full class and its first day without a seat in the refusal', async () => {
     openList('academic_vice_principal', {
       'POST /api/people/students/check': () => json({ sameNameAndBirth: [], elsewhere: false }),
-      'POST /api/people/relatives/phone-match': () => json({ holder: null }),
+      'POST /api/people/relatives/phone-match': () =>
+        json({ staff: null, staffElsewhere: false, holder: null }),
       'POST /api/people/students': () =>
         Response.json(
           {
@@ -910,7 +918,8 @@ describe('adding a student', () => {
   it('says the full class without its name when the list does not hold it, and reads the list again', async () => {
     const calls = openList('academic_vice_principal', {
       'POST /api/people/students/check': () => json({ sameNameAndBirth: [], elsewhere: false }),
-      'POST /api/people/relatives/phone-match': () => json({ holder: null }),
+      'POST /api/people/relatives/phone-match': () =>
+        json({ staff: null, staffElsewhere: false, holder: null }),
       'POST /api/people/students': fullRefusal(uid(99), 1),
     });
     renderApp(PATH);
@@ -926,7 +935,8 @@ describe('adding a student', () => {
   it('says how many students a full class lacks seats for', async () => {
     openList('academic_vice_principal', {
       'POST /api/people/students/check': () => json({ sameNameAndBirth: [], elsewhere: false }),
-      'POST /api/people/relatives/phone-match': () => json({ holder: null }),
+      'POST /api/people/relatives/phone-match': () =>
+        json({ staff: null, staffElsewhere: false, holder: null }),
       'POST /api/people/students': fullRefusal(uid(50), 3),
     });
     renderApp(PATH);

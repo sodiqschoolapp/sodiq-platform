@@ -126,9 +126,7 @@ export interface LinkRow {
 }
 
 /** The record fields of a relative as the audit entries compare them. */
-export const recordOf = (
-  row: Omit<RelativeRow, 'phone_invalid_since'>,
-): RelativeRecord => ({
+export const recordOf = (row: Omit<RelativeRow, 'phone_invalid_since'>): RelativeRecord => ({
   fullName: row.full_name,
   phone: row.phone,
   workplace: row.workplace,
@@ -255,7 +253,7 @@ export class RelativeWrites {
         {
           path,
           code: 'phone_is_staff',
-          message: 'The phone is a staff member\'s phone: correct the staff record first.',
+          message: "The phone is a staff member's phone: correct the staff record first.",
           ...(staff === undefined ? {} : { recordId: staff.id, staffName: staff.fullName }),
         },
       ]);
@@ -295,7 +293,13 @@ export class RelativeWrites {
     const row = await transaction
       .selectFrom('staff')
       .innerJoin('staff_branches as b', 'b.staff_id', 'staff.id')
-      .select(['staff.id', 'staff.first_name', 'staff.last_name', 'staff.father_name', 'staff.email'])
+      .select([
+        'staff.id',
+        'staff.first_name',
+        'staff.last_name',
+        'staff.father_name',
+        'staff.email',
+      ])
       .where('id' in by ? 'staff.id' : 'staff.phone', '=', 'id' in by ? by.id : by.phone)
       .where('b.branch_id', '=', branchOf(access))
       .where('staff.kind', '=', 'person')

@@ -20,7 +20,7 @@ import {
   vacancyListSchema,
   type PersonalDataKind,
   type PersonalDataReport,
-  type RelativeHolder,
+  type RelativePhoneMatchResult,
   studentHistorySchema,
 } from '@sodiq/shared';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
@@ -469,8 +469,8 @@ export const invalidateRelatives = (queryClient: QueryClient): Promise<unknown> 
   ]);
 
 /** The phone typed first (`04`, Adding a relative): the holder of that phone, or none. */
-export async function phoneMatch(phone: string): Promise<RelativeHolder | null> {
-  const answer = relativePhoneMatchResultSchema.parse(
+export async function phoneMatch(phone: string): Promise<RelativePhoneMatchResult> {
+  return relativePhoneMatchResultSchema.parse(
     await answerOf(
       api.POST('/api/people/relatives/phone-match', {
         params: { header: branchHeader() },
@@ -478,7 +478,6 @@ export async function phoneMatch(phone: string): Promise<RelativeHolder | null> 
       }),
     ),
   );
-  return answer.holder;
 }
 
 /**

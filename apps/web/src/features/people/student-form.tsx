@@ -14,6 +14,7 @@ import {
   type StudentCreate,
   type StudentDetail,
   type RelativeHolder,
+  type RelativePhoneMatchResult,
   type StudentRecord,
 } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
@@ -54,6 +55,10 @@ import {
   type ExtraPhoneFields,
   linkingFound,
   usePhoneLookup,
+  fromStaff,
+  staffMatchOf,
+  StaffPhoneNote,
+  type StaffMatch,
 } from './relative-form';
 
 /** The fields of the form: one per input. */
@@ -235,7 +240,7 @@ interface StudentFormProps {
   /** Opens a student of this branch in the side panel. */
   onOpenHolder?: (id: string) => void;
   /** The phone typed first (`04`, Adding a relative): the holder of a phone, or none. */
-  onPhoneMatch?: (phone: string) => Promise<RelativeHolder | null>;
+  onPhoneMatch?: (phone: string) => Promise<RelativePhoneMatchResult>;
   /** Closes the form of a student in the side panel without a change (task 2.7c-2b-2b). */
   onCancel?: () => void;
 }
@@ -267,6 +272,7 @@ export function StudentForm({
   const { branchId } = useView();
   const creating = student === null;
   const [match, setMatch] = useState<Match | null>(null);
+  const [staffMatch, setStaffMatch] = useState<StaffMatch | null>(null);
   const lookup = usePhoneLookup(onPhoneMatch);
   // The classes a new student can join (task 3.1b): active, in an open year.
   const classes = useQuery({ ...classesQuery(branchId), enabled: branchId !== null && creating });
@@ -449,7 +455,7 @@ export function StudentForm({
       return values;
     }
     const phone = sent.relative.phone;
-    const holder = await lookup(phone);
+    const holder = (await lookup(phone)).holder;
     if (holder !== null && holder.id !== null) {
       setMatch({ phone, holder });
     }
@@ -682,18 +688,28 @@ export function StudentForm({
                 ? match.holder
                 : null;
             })()}
+            staff={(() => {
+              const typedPhone = form.bind('relativePhone').value;
+              const noPhone = form.bind('relativeNoPhone').value === CHECKED;
+              return !noPhone && staffMatch !== null && storedPhone(typedPhone) === staffMatch.phone
+                ? staffMatch
+                : null;
+            })()}
             onPhoneDone={(typed) => {
               const phone = storedPhone(typed);
               if (phone === null || onPhoneMatch === undefined || phone === match?.phone) {
                 return;
               }
               void lookup(phone)
-                .then((holder) => {
+                .then((answer) => {
+                  const holder = answer.holder;
                   setMatch(holder === null || holder.id === null ? null : { phone, holder });
+                  setStaffMatch(staffMatchOf(phone, answer));
                 })
                 .catch(() => {
                   // No match is shown; the save answers a held phone with its holder.
                   setMatch(null);
+                  setStaffMatch(null);
                 });
             }}
           />
@@ -732,12 +748,16 @@ type Bind = (field: StudentField) => {
 function RelativeStep({
   bind,
   found,
+  staff,
   onPhoneDone,
 }: {
   bind: Bind;
   found: RelativeHolder | null;
+  /** The staff member the typed phone belongs to (task 3.6b-1). */
+  staff: StaffMatch | null;
   onPhoneDone: (typed: string) => void;
 }) {
+  const staffHere = found === null ? (staff?.staff ?? null) : null;
   const { t } = useTranslation();
   const noPhone = bind('relativeNoPhone').value === CHECKED;
   const phone = bind('relativePhone');
@@ -765,20 +785,24 @@ function RelativeStep({
           }}
         />
       )}
+      {staff !== null && found === null && <StaffPhoneNote match={staff} />}
       {found !== null && (
         <OwnerChoice
           found={found}
           owner={bind('relativeOwner')}
           previousPhone={bind('relativePreviousPhone')}
           previousUnknown={bind('relativePreviousUnknown')}
+          staffPhone={staff !== null}
         />
       )}
-      {(found === null || bind('relativeOwner').value === NEW_OWNER) && (
+      {(found === null || (staff === null && bind('relativeOwner').value === NEW_OWNER)) && (
         <>
           <Field
             label={t('people.relatives.fullNameField')}
             autoComplete="off"
-            {...bind('relativeName')}
+            {...(staffHere === null
+              ? bind('relativeName')
+              : fromStaff(bind('relativeName'), staffHere.fullName))}
           />
           <ExtraPhonesField
             count={bind(RELATIVE_EXTRA_FIELDS.count)}
@@ -793,7 +817,9 @@ function RelativeStep({
             label={t('people.relatives.email')}
             type="email"
             autoComplete="off"
-            {...bind('relativeEmail')}
+            {...(staffHere === null
+              ? bind('relativeEmail')
+              : fromStaff(bind('relativeEmail'), staffHere.email ?? ''))}
           />
         </>
       )}

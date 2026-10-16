@@ -11,6 +11,7 @@ import {
   type StaffRecord,
 } from '@sodiq/shared';
 import { useTranslation } from 'react-i18next';
+import { ApiFailure } from '@/api/failure';
 import {
   CheckboxGroupField,
   DateField,
@@ -205,6 +206,7 @@ export function StaffForm({
   const locked = (field: StaffField) =>
     contactOnly && !(STAFF_CONTACT_FIELDS as readonly string[]).includes(field);
   const bind = (field: StaffField) => ({ ...form.bind(field), disabled: locked(field) });
+  const phoneTaken = staffPhoneTakenOf(form.failure);
   const emailLocked = staff !== null && !staff.rights.email;
   const mainDivision = divisions.divisions.find(
     (division) => division.id === form.bind('mainDivision').value,
@@ -248,7 +250,17 @@ export function StaffForm({
         ]}
         {...bind('educationLevel')}
       />
-      <PhoneField label={t('people.staff.phone')} {...bind('phone')} />
+      <PhoneField
+        label={t('people.staff.phone')}
+        {...bind('phone')}
+        otherError={
+          phoneTaken === null
+            ? undefined
+            : phoneTaken.name === null
+              ? t('people.staff.phoneTakenElsewhere')
+              : t('people.staff.phoneTaken', { name: phoneTaken.name })
+        }
+      />
       <Field
         label={t('people.staff.email')}
         type="email"
@@ -313,4 +325,16 @@ export function StaffForm({
       )}
     </RecordForm>
   );
+}
+
+/**
+ * A phone refused as another staff record's (`edge/people-roles-accounts`,
+ * re-hire row: "that record is shown"; task 3.6b-1): the record's name when
+ * it is of the branch, `null` for one of another branch.
+ */
+export function staffPhoneTakenOf(failure: unknown): { name: string | null } | null {
+  if (!(failure instanceof ApiFailure) || failure.code !== 'staff_phone_taken') {
+    return null;
+  }
+  return { name: failure.details?.[0]?.staffName ?? null };
 }

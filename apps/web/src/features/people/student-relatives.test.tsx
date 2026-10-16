@@ -139,7 +139,11 @@ describe('the relative step of a new student', () => {
     const calls = openList(TWO, {
       'POST /api/people/students/check': () => json({ sameNameAndBirth: [], elsewhere: false }),
       'POST /api/people/relatives/phone-match': () =>
-        json({ holder: { id: uid(50), fullName: 'Shoira Nazarova', students: 2 } }),
+        json({
+          staff: null,
+          staffElsewhere: false,
+          holder: { id: uid(50), fullName: 'Shoira Nazarova', students: 2 },
+        }),
       'POST /api/people/students': () => json(DETAIL, 201),
     });
     renderApp(PATH);
@@ -196,7 +200,11 @@ describe('the new owner of a typed phone (task 2.5b-1; edge/close-relatives, row
     const calls = openList(TWO, {
       'POST /api/people/students/check': () => json({ sameNameAndBirth: [], elsewhere: false }),
       'POST /api/people/relatives/phone-match': () =>
-        json({ holder: { id: uid(50), fullName: 'Shoira Nazarova', students: 1 } }),
+        json({
+          staff: null,
+          staffElsewhere: false,
+          holder: { id: uid(50), fullName: 'Shoira Nazarova', students: 1 },
+        }),
       'POST /api/people/students': () => json(DETAIL, 201),
     });
     renderApp(PATH);
@@ -548,7 +556,13 @@ describe('the extra phones of a relative', () => {
     const added = () =>
       calls.filter((call) => call.route === `POST /api/people/students/${OTKIR.id}/relatives`);
     expect(added()).toHaveLength(0);
-    answer(json({ holder: { id: uid(80), fullName: 'Rasulova Nodira', students: 2 } }));
+    answer(
+      json({
+        staff: null,
+        staffElsewhere: false,
+        holder: { id: uid(80), fullName: 'Rasulova Nodira', students: 2 },
+      }),
+    );
     await waitFor(() => {
       expect(added()).toHaveLength(1);
     });
@@ -565,7 +579,8 @@ describe('the extra phones of a relative', () => {
 
   it('adds a relative with extra phones: added and removed, at most three, sent in the body', async () => {
     const calls = openList(TWO, {
-      'POST /api/people/relatives/phone-match': () => json({ holder: null }),
+      'POST /api/people/relatives/phone-match': () =>
+        json({ staff: null, staffElsewhere: false, holder: null }),
       [`POST /api/people/students/${OTKIR.id}/relatives`]: () => json(TWO),
     });
     renderApp(PATH);
@@ -634,7 +649,8 @@ describe('the extra phones of a relative', () => {
   it('gives a new student’s relative extra phones in the relative step', async () => {
     const calls = openList(TWO, {
       'POST /api/people/students/check': () => json({ sameNameAndBirth: [], elsewhere: false }),
-      'POST /api/people/relatives/phone-match': () => json({ holder: null }),
+      'POST /api/people/relatives/phone-match': () =>
+        json({ staff: null, staffElsewhere: false, holder: null }),
       'POST /api/people/students': () => json(DETAIL, 201),
     });
     renderApp(PATH);
@@ -671,5 +687,63 @@ describe('the extra phones of a relative', () => {
       email: null,
       extraPhones: ['+998931112233'],
     });
+  });
+});
+
+// Task 3.6b-1 (pull request #119): a typed phone that is a staff member's.
+describe('a typed phone of a staff member (edge/close-relatives, "A teacher is also a parent")', () => {
+  const startStudent = async (match: Record<string, unknown>) => {
+    const calls = openList(TWO, {
+      'POST /api/people/students/check': () => json({ sameNameAndBirth: [], elsewhere: false }),
+      'POST /api/people/relatives/phone-match': () => json(match),
+      'POST /api/people/students': () => json(DETAIL, 201),
+    });
+    renderApp(PATH);
+    fireEvent.click(await screen.findByRole('button', { name: en.people.students.add }));
+    const form = await screen.findByRole('form', { name: en.people.students.newTitle });
+    const phone = within(form).getByLabelText(en.people.relatives.phone);
+    fireEvent.change(phone, { target: { value: '+998 90 777 88 99' } });
+    fireEvent.blur(phone);
+    return { calls, form };
+  };
+
+  it('says the parent will be the staff member, with the name and email of the staff record locked', async () => {
+    const { form } = await startStudent({
+      holder: null,
+      staff: { fullName: 'Karimov Bahodir Akmalovich', email: 'b.karimov@example.uz' },
+      staffElsewhere: false,
+    });
+    expect(
+      await within(form).findByText(
+        en.people.relatives.phoneIsStaff.replace('{{name}}', 'Karimov Bahodir Akmalovich'),
+      ),
+    ).toBeDefined();
+    const name = within(form).getByLabelText<HTMLInputElement>(en.people.relatives.fullNameField);
+    expect([name.value, name.disabled]).toEqual(['Karimov Bahodir Akmalovich', true]);
+    const step = within(form).getByRole('group', { name: en.people.relatives.stepTitle });
+    const email = within(step).getByLabelText<HTMLInputElement>(en.people.relatives.email);
+    expect([email.value, email.disabled]).toEqual(['b.karimov@example.uz', true]);
+  });
+
+  it('says so for a staff member of another branch, with the name typed', async () => {
+    const { form } = await startStudent({ holder: null, staff: null, staffElsewhere: true });
+    expect(await within(form).findByText(en.people.relatives.phoneIsStaffElsewhere)).toBeDefined();
+    const name = within(form).getByLabelText<HTMLInputElement>(en.people.relatives.fullNameField);
+    expect(name.disabled).toBe(false);
+  });
+
+  it('does not offer "a different person" for a parent whose phone is a staff phone', async () => {
+    const { form } = await startStudent({
+      holder: { id: uid(50), fullName: 'Shoira Nazarova', students: 1 },
+      staff: null,
+      staffElsewhere: true,
+    });
+    expect(await within(form).findByText(en.people.relatives.newOwnerStaff)).toBeDefined();
+    expect(
+      within(form).queryByLabelText(
+        en.people.relatives.ownerChoice.replace('{{name}}', 'Shoira Nazarova'),
+      ),
+    ).toBeNull();
+    expect(within(form).queryByLabelText(en.people.relatives.fullNameField)).toBeNull();
   });
 });

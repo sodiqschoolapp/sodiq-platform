@@ -787,7 +787,10 @@ describe('the mark "same person" read from the phones', () => {
         for (const response of [created, linked, edited]) {
           const [detail] = detailsOf(response);
           if (staff === teacher) {
-            expect(detail).toMatchObject({ recordId: teacher.id, staffName: expect.any(String) as unknown });
+            expect(detail).toMatchObject({
+              recordId: teacher.id,
+              staffName: expect.any(String) as unknown,
+            });
           } else {
             expect(detail?.recordId).toBeUndefined();
             expect(detail?.staffName).toBeUndefined();
