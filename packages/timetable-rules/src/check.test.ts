@@ -1,6 +1,6 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { checkCandidate, checkTimetable, overlappingPairs } from './check.js';
+import { checkCandidate, checkTeacherTime, checkTimetable, overlappingPairs } from './check.js';
 import { dayTimes, type DaySlotInput } from './day.js';
 import type {
   EngineDay,
@@ -1326,5 +1326,50 @@ describe('the sweep against all pairs (plan finding 10)', () => {
       }),
       { numRuns: 300 },
     );
+  });
+});
+
+// Task 3.6c-2, decision 4: a Tutor lesson that follows a change of Tutor is
+// checked by time alone, with the Tutor's other lessons and exams as fixed.
+describe('checkTeacherTime', () => {
+  const tutorLesson = (extra: Partial<Placement> = {}) =>
+    place({ id: 'tutor-lesson', day: '2026-10-20', ...L2, ...extra });
+  const busy = (extra: Partial<Placement> = {}) =>
+    place({ id: 'busy', day: '2026-10-20', classId: '8a', fixed: true, ...extra });
+
+  it('passes a free teacher', () => {
+    expect(checkTeacherTime([busy({ ...L1 })], tutorLesson(), () => 0)).toEqual([]);
+  });
+
+  it('finds a lesson or an exam at the same time, in any branch', () => {
+    expect(codes(checkTeacherTime([busy({ ...L2 })], tutorLesson(), () => 0))).toEqual([
+      'teacher_double',
+    ]);
+    expect(
+      codes(
+        checkTeacherTime([busy({ kind: 'exam', start: 500, end: 640 })], tutorLesson(), () => 0),
+      ),
+    ).toEqual(['teacher_double']);
+    expect(codes(checkTeacherTime([busy({ ...L2, branchId: B })], tutorLesson(), () => 0))).toEqual(
+      ['teacher_double'],
+    );
+  });
+
+  it('finds the travel time between branches not kept, and an unset pair', () => {
+    expect(
+      codes(checkTeacherTime([busy({ ...L1, branchId: B })], tutorLesson(), () => 30)),
+    ).toEqual(['travel_time']);
+    expect(codes(checkTeacherTime([busy({ ...L1, branchId: B })], tutorLesson(), () => 5))).toEqual(
+      [],
+    );
+    expect(
+      codes(checkTeacherTime([busy({ ...L1, branchId: B })], tutorLesson(), () => null)),
+    ).toEqual(['travel_time_not_set']);
+  });
+
+  it('reads no availability, profile or room', () => {
+    expect(
+      checkTeacherTime([], tutorLesson({ teacherIds: ['nobody'], roomId: 'closed' }), () => 0),
+    ).toEqual([]);
   });
 });

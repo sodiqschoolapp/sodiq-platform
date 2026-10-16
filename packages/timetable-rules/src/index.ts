@@ -105,4 +105,4 @@ export type {
   Placement,
 } from './placement.js';
 export { tutorAt, type TutorRow } from './tutors.js';
-export { checkCandidate, checkTimetable, overlappingPairs } from './check.js';
+export { checkCandidate, checkTeacherTime, checkTimetable, overlappingPairs } from './check.js';
