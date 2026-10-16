@@ -322,6 +322,8 @@ export const en = {
       'No group of a split or group subject of the class has a free seat on every day the student would be in the class, so nothing was saved. Raise the maximum size of a group or add a group, then try again.',
     class_group_missing:
       'The student would be in a class without a group of one of its group subjects. Nothing was saved. Reload and try again.',
+    stay_continues:
+      'The student is already in this class or group on the day before, so this would only continue that stay. Cancel or undo the earlier change instead.',
     move_in_past:
       'Only the Academic Vice Principal or the Super Admin records a move with a date before today. Choose today or a later date.',
     move_not_scheduled:
@@ -1608,8 +1610,19 @@ export const en = {
         lastMove: 'From {{class}}, {{date}}',
         classMove: 'Moved from {{from}} to {{to}}',
         groupMove: 'Moved from group {{from}} to group {{to}}',
-        classJoin: 'Joined {{class}}',
-        groupJoin: 'Joined group {{group}}',
+        classMovePlanned: 'Moves from {{from}} to {{to}}',
+        groupMovePlanned: 'Moves from group {{from}} to group {{to}}',
+        classMoveCancelled: 'A move from {{from}} to {{to}} was planned',
+        groupMoveCancelled: 'A move from group {{from}} to group {{to}} was planned',
+        dateChanged: 'Date changed: {{from}} → {{to}}',
+        classChanged: 'Class changed: {{from}} → {{to}}',
+        groupChanged: 'Group changed: {{from}} → {{to}}',
+        classStay: 'In {{class}} until {{until}}',
+        classStayNow: 'In {{class}} until now',
+        classStayFrom: 'In {{class}} from {{from}}',
+        groupStay: 'In group {{group}} until {{until}}',
+        groupStayNow: 'In group {{group}} until now',
+        groupStayFrom: 'In group {{group}} from {{from}}',
         states: {
           scheduled: 'Scheduled',
           done: 'Done',
@@ -2493,6 +2506,7 @@ export const en = {
         branch_left: 'Left for another branch',
         branch_moved: 'Moved in from another branch',
         merged: 'Merged with another record',
+        stays_joined: 'Stays in a class or group joined into one',
         delete: 'Student created twice deleted',
         export: 'Students exported',
         identity_shown: 'Hidden fields of a student record shown',

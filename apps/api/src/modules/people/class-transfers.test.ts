@@ -316,8 +316,7 @@ describe('class transfers', () => {
         },
       ]);
       expect(await held(one.id)).toEqual([
-        [oxford, '2026-09-02', TOMORROW],
-        [oxford, TOMORROW, '2026-10-19'],
+        [oxford, '2026-09-02', '2026-10-19'],
         [harvard, '2026-10-19', '2027-06-01'],
       ]);
       const entries = await t.entries('student.class_transfer_changed', one.id);
@@ -336,10 +335,7 @@ describe('class transfers', () => {
       const detail = ok(await cancelMove(one.id, move));
       expect(detail.scheduledMoves).toEqual([]);
       expect(detail.plannedClass).toBeNull();
-      expect(await held(one.id)).toEqual([
-        [oxford, '2026-09-02', TOMORROW],
-        [oxford, TOMORROW, '2027-06-01'],
-      ]);
+      expect(await held(one.id)).toEqual([[oxford, '2026-09-02', '2027-06-01']]);
       expect(await t.entries('student.class_transfer_cancelled', one.id)).toHaveLength(1);
       refusedWith(await cancelMove(one.id, move), 409, 'move_not_scheduled');
       // A move dated today has begun: it is undone, not cancelled.
@@ -503,10 +499,7 @@ describe('class transfers', () => {
       expect(automatic.written_by_move_id).toBe(move);
       // The cancel gives the old group back and withdraws the automatic row.
       ok(await cancelMove(one.id, move));
-      expect(await heldGroups(one.id)).toEqual([
-        [ofOxford, TOMORROW, '2026-10-19'],
-        [ofOxford, '2026-10-19', '2027-06-01'],
-      ]);
+      expect(await heldGroups(one.id)).toEqual([[ofOxford, TOMORROW, '2027-06-01']]);
     });
 
     it('refuses all of it when a group subject of the new class has no free seat', async () => {
@@ -546,10 +539,7 @@ describe('class transfers', () => {
       const detail = ok(response);
       expect(detail.class?.id).toBe(oxford);
       expect(detail.lastClassMove).toBeNull();
-      expect(await held(one.id)).toEqual([
-        [oxford, '2026-09-02', TODAY],
-        [oxford, TODAY, '2027-06-01'],
-      ]);
+      expect(await held(one.id)).toEqual([[oxford, '2026-09-02', '2027-06-01']]);
       expect(await heldGroups(one.id)).toEqual([[ofOxford, TODAY, '2027-06-01']]);
       expect((await groupRows(one.id)).find((row) => row.group_id === ofYale)).toMatchObject({
         ended_by: 'undone',
@@ -592,8 +582,7 @@ describe('class transfers', () => {
       expect(detail.class?.id).toBe(yale);
       expect(await held(one.id)).toEqual([
         [oxford, '2026-09-02', '2026-10-05'],
-        [yale, '2026-10-05', TODAY],
-        [yale, TODAY, '2027-06-01'],
+        [yale, '2026-10-05', '2027-06-01'],
       ]);
     });
   });
@@ -625,10 +614,7 @@ describe('class transfers', () => {
       );
       expect(detail.class?.id).toBe(oxford);
       expect(detail.plannedClass).toBeNull();
-      expect(await held(one.id)).toEqual([
-        [oxford, '2026-09-02', '2026-10-16'],
-        [oxford, '2026-10-16', '2027-06-01'],
-      ]);
+      expect(await held(one.id)).toEqual([[oxford, '2026-09-02', '2027-06-01']]);
       expect((await heldGroups(one.id)).some(([groupId]) => groupId === ofYale)).toBe(false);
       // The same with an undo of a leaving in force.
       const two = await pupil(oxford);
@@ -641,10 +627,7 @@ describe('class transfers', () => {
         }),
       );
       expect(undone.class?.id).toBe(oxford);
-      expect(await held(two.id)).toEqual([
-        [oxford, '2026-09-02', '2026-10-10'],
-        [oxford, '2026-10-10', '2027-06-01'],
-      ]);
+      expect(await held(two.id)).toEqual([[oxford, '2026-09-02', '2027-06-01']]);
       expect((await fresh(two.id)).scheduledMoves.some((one) => one.id === later)).toBe(false);
     });
 
@@ -679,8 +662,7 @@ describe('class transfers', () => {
       );
       expect(await held(one.id)).toEqual([
         [oxford, '2026-09-02', '2026-10-19'],
-        [yale, '2026-10-19', '2027-01-01'],
-        [yale, '2027-01-01', '2027-06-01'],
+        [yale, '2026-10-19', '2027-06-01'],
       ]);
     });
   });
@@ -1003,14 +985,8 @@ describe('class transfers', () => {
           version: (await fresh(one.id)).version,
         }),
       );
-      expect(await held(one.id)).toEqual([
-        [oxford, '2026-09-02', '2026-10-19'],
-        [oxford, '2026-10-19', '2027-06-01'],
-      ]);
-      expect(await heldGroups(one.id)).toEqual([
-        [ofOxford, TOMORROW, '2026-10-19'],
-        [ofOxford, '2026-10-19', '2027-06-01'],
-      ]);
+      expect(await held(one.id)).toEqual([[oxford, '2026-09-02', '2027-06-01']]);
+      expect(await heldGroups(one.id)).toEqual([[ofOxford, TOMORROW, '2027-06-01']]);
     });
 
     it('refuses the cancel of a class move while a group move inside it is scheduled', async () => {

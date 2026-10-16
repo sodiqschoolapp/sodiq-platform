@@ -438,6 +438,8 @@ export const ERROR_CODES = [
   'class_group_no_seat',
   /** A class row would be saved without a group of a split or group subject of its class (task 3.2c, decision 1): a fault of the path, never a choice of the person. */
   'class_group_missing',
+  /** The change would put the student in the same class or group on the day after a stay there ends, which is one stay (task 3.5c, decision 11: `*_one_stay`); the earlier change is cancelled or undone instead. */
+  'stay_continues',
   /** A move dated before today is for the Super Admin and the Academic Vice Principal (`edge/students-classes-groups`: "Backdating is for the Academic Vice Principal"; task 3.3a, decision 4). */
   'move_in_past',
   /** The move has begun, or was cancelled or undone: only a scheduled move is changed or cancelled (edge: "It can be changed or cancelled until the date"; task 3.3a). */

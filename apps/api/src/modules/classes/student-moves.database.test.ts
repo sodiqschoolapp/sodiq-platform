@@ -477,6 +477,19 @@ describe('moves in the database', () => {
           ),
         ),
       ).toMatchObject({ constraint: 'memberships_move_end' });
+      // A row a live move cut never gets its days back (task 3.5c: only
+      // once what cut it is taken back).
+      expect(
+        await refusal(
+          inBranch(north, (transaction) =>
+            transaction
+              .updateTable('class_memberships')
+              .set({ valid_until: '2027-06-01', ended_by: null, ended_by_move_id: null })
+              .where('id', '=', row)
+              .execute(),
+          ),
+        ),
+      ).toMatchObject({ constraint: 'class_memberships_only_shrink' });
       await inBranch(north, async (transaction) => {
         // 0051: the move is undone before its row.
         await transaction
@@ -489,30 +502,26 @@ describe('moves in the database', () => {
           .set({ valid_until: '2026-10-07', ended_by: 'undone', ended_by_move_id: move })
           .where('id', '=', target)
           .execute();
-        await members.member(
-          {
-            branch: north,
-            classId: oxford,
-            studentId: student,
-            from: '2026-10-07',
-            cause: 'undo',
-            writtenByMoveId: move,
-          },
-          transaction,
-        );
+        // Task 3.5c, decision 1: the row the move cut grows back.
+        await transaction
+          .updateTable('class_memberships')
+          .set({ valid_until: '2027-06-01', ended_by: null, ended_by_move_id: null })
+          .where('id', '=', row)
+          .execute();
       });
       expect(await members.rowOf(target)).toMatchObject({
         valid_from: '2026-10-07',
         valid_until: '2026-10-07',
         ended_by: 'undone',
       });
-      // An undone row is final, and a row a move cut never gets its end back.
+      expect(await members.rowOf(row)).toMatchObject({ valid_until: '2027-06-01', ended_by: null });
+      // An undone row is final.
       expect(
         await refusal(
           database.migrator
             .updateTable('class_memberships')
-            .set({ valid_until: '2027-06-01', ended_by: null, ended_by_move_id: null })
-            .where('id', '=', row)
+            .set({ valid_until: '2026-12-01', ended_by: 'withdrawn', ended_by_move_id: null })
+            .where('id', '=', target)
             .execute(),
         ),
       ).toMatchObject({ constraint: 'class_memberships_only_shrink' });

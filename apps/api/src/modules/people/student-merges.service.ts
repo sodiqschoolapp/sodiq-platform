@@ -21,7 +21,11 @@ import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { lockClassGroups } from '../classes/class-groups.js';
-import { classesInService, studentClassesOn } from '../classes/class-membership-rows.js';
+import {
+  classesInService,
+  joinAdjoiningRows,
+  studentClassesOn,
+} from '../classes/class-membership-rows.js';
 import { notFound, refusingConstraints } from '../setup/setup-refusals.js';
 import { branchNames } from './branch-moves.js';
 import {
@@ -1042,6 +1046,10 @@ export class StudentMerges {
     await carry('student_moves', leftMoves, false);
     await carry('student_branch_moves', new Set(), true);
     await carry('student_contracts', new Set(), true);
+    // Task 3.5c (decision 2): a stay of one record in a class or a group that
+    // the other record's row continues is one stay: the rows are joined
+    // (`class_memberships_one_stay`, checked at the commit).
+    const joined = await joinAdjoiningRows(transaction, kept.id);
     if (plan.startsOn !== null && plan.startsOn !== String(kept.whole.starts_on)) {
       await transaction
         .updateTable('students')
@@ -1147,6 +1155,7 @@ export class StudentMerges {
       rows: {
         carried,
         cut: cuts,
+        joined,
         left: Object.fromEntries(
           Object.entries(leftRows).map(([table, rows]) => [
             table,

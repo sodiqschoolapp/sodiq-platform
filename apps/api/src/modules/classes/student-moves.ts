@@ -27,6 +27,7 @@ export const MOVE_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   student_moves_student_branch: 'request_refused',
   group_memberships_move: 'request_refused',
   memberships_move_end: 'request_refused',
+  student_moves_replaces: 'request_refused',
 };
 
 /** A move as it is stored. */
@@ -45,6 +46,8 @@ export interface StoredMove {
   cancelledAt: Date | null;
   undoneAt: Date | null;
   cancelledByLeavingId: string | null;
+  /** The cancelled move this one replaced by a change (task 3.5c, H34), if any. */
+  replacesMoveId: string | null;
 }
 
 function movesIn(transaction: Transaction) {
@@ -65,6 +68,7 @@ function movesIn(transaction: Transaction) {
       'cancelled_at',
       'undone_at',
       'cancelled_by_leaving_id',
+      'replaces_move_id',
     ]);
 }
 
@@ -86,6 +90,7 @@ const storedOf = (row: MoveRow): StoredMove => ({
   cancelledAt: row.cancelled_at,
   undoneAt: row.undone_at,
   cancelledByLeavingId: row.cancelled_by_leaving_id,
+  replacesMoveId: row.replaces_move_id,
 });
 
 /**

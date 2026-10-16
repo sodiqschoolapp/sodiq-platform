@@ -32,6 +32,10 @@ export const MEMBERSHIP_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   class_memberships_insert_ended: 'request_refused',
   class_memberships_withdraw_planned: 'membership_in_force',
   class_memberships_move: 'request_refused',
+  class_memberships_join: 'request_refused',
+  // Task 3.5c, decision 11: two adjoining rows of one class (a move back on
+  // the day of the move).
+  class_memberships_one_stay: 'stay_continues',
 };
 
 /**
@@ -79,23 +83,45 @@ export async function membershipsOf(
 }
 
 /**
- * The number of class rows of one student, or of every student the
- * transaction sees (`id` null): with the status rows it is the `version` of
- * the student (decision 17).
+ * The part of the `version` of a student (decision 17 of 3.1b; task 3.5c,
+ * decision 7) beside the status rows, of one student or of every student the
+ * transaction sees (`id` null): the class rows, and the class moves taken
+ * back (cancelled or undone), since a take-back now grows the rows it gives
+ * back and writes no row. Every reader and checker of the version adds the
+ * number of status rows to it (`studentVersion`).
  */
-export async function membershipCounts(
+export async function versionCounts(
   transaction: Transaction,
   id: string | null,
 ): Promise<Map<string, number>> {
-  let query = transaction
+  const found = new Map<string, number>();
+  let rows = transaction
     .selectFrom('class_memberships')
     .select(['student_id', (eb) => eb.fn.countAll<string>().as('count')])
     .groupBy('student_id');
+  let moves = transaction
+    .selectFrom('student_moves')
+    .select(['student_id', (eb) => eb.fn.countAll<string>().as('count')])
+    .where('kind', '=', 'class')
+    .where((eb) => eb.or([eb('cancelled_at', 'is not', null), eb('undone_at', 'is not', null)]))
+    .groupBy('student_id');
   if (id !== null) {
-    query = query.where('student_id', '=', id);
+    rows = rows.where('student_id', '=', id);
+    moves = moves.where('student_id', '=', id);
   }
-  const rows = await query.execute();
-  return new Map(rows.map((row) => [row.student_id, Number(row.count)]));
+  for (const row of [...(await rows.execute()), ...(await moves.execute())]) {
+    found.set(row.student_id, (found.get(row.student_id) ?? 0) + Number(row.count));
+  }
+  return found;
+}
+
+/** The `version` of a student: the status rows and `versionCounts` (task 3.5c, decision 7). */
+export function studentVersion(
+  statusRows: number,
+  counts: ReadonlyMap<string, number>,
+  id: string,
+): number {
+  return statusRows + (counts.get(id) ?? 0);
 }
 
 /**
@@ -141,10 +167,11 @@ export interface MembershipWritten {
 }
 
 /**
- * Writes a plan of `planMemberships`: the cuts first, then the new rows, so
- * that a new row never overlaps a row not yet cut. A new row passes every
- * check of `class_memberships_guard` again (a row back in service is checked
- * again). `leavingId` is the inactive row of the new leaving, if any.
+ * Writes a plan of `planMemberships`: the cuts first, then the rows given
+ * back, each grown again (task 3.5c, decision 1), so that a row never grows
+ * over a row not yet cut. The days a row gets back pass every check of an
+ * insert at the commit (`class_memberships_regained`, 0062). `leavingId` is
+ * the inactive row of the new leaving, if any.
  */
 export async function applyMembershipPlan(
   transaction: Transaction,
@@ -152,10 +179,9 @@ export async function applyMembershipPlan(
   rows: readonly StoredMembership[],
   plan: MembershipPlan,
   leavingId: string | null,
-  cause: 'cancel' | 'undo',
-): Promise<{ cut: MembershipWritten[]; written: MembershipWritten[] }> {
+): Promise<{ cut: MembershipWritten[]; given: MembershipWritten[] }> {
   const cut: MembershipWritten[] = [];
-  const written: MembershipWritten[] = [];
+  const given: MembershipWritten[] = [];
   for (const one of plan.cuts) {
     const before = rows.find((row) => row.id === one.id);
     if (before === undefined || leavingId === null) {
@@ -181,30 +207,24 @@ export async function applyMembershipPlan(
       until: one.validUntil,
     });
   }
-  for (const one of plan.inserts) {
-    const branch = await transaction
-      .selectFrom('classes')
-      .select('branch_id')
-      .where('id', '=', one.classId)
-      .executeTakeFirstOrThrow();
-    const row = await transaction
-      .insertInto('class_memberships')
-      .values({
-        branch_id: branch.branch_id,
-        student_id: studentId,
-        class_id: one.classId,
-        valid_from: one.validFrom,
+  for (const one of plan.grows) {
+    if (one.endedBy === 'leaving' && leavingId === null) {
+      throw new Error('A row grown to a leaving names the new leaving.');
+    }
+    await transaction
+      .updateTable('class_memberships')
+      .set({
         valid_until: one.validUntil,
-        own_until: one.ownUntil,
-        cause,
-        ended_by: one.cut ? 'leaving' : null,
-        leaving_id: one.cut ? leavingId : null,
+        ended_by: one.endedBy,
+        leaving_id: one.endedBy === 'leaving' ? leavingId : null,
+        ended_by_move_id: one.endedByMoveId,
       })
-      .returning('id')
-      .executeTakeFirstOrThrow();
-    written.push({ id: row.id, classId: one.classId, from: one.validFrom, until: one.validUntil });
+      .where('id', '=', one.id)
+      .where('student_id', '=', studentId)
+      .execute();
+    given.push({ id: one.id, classId: one.classId, from: one.from, until: one.validUntil });
   }
-  return { cut, written };
+  return { cut, given };
 }
 
 /** The class of a student on a day and the next one planned, as the list and the record show them. */
@@ -255,19 +275,11 @@ export async function studentClassesOn(
       from: row.valid_from,
       until: row.valid_until,
     };
-    const continued = own.planned ?? own.current;
+    // One stay in a class is one row (task 3.5c, `class_memberships_one_stay`):
+    // a row that begins later is another class.
     if (row.valid_from <= today) {
       own.current = named;
       own.mainRoom = row.room_name;
-    } else if (
-      continued !== null &&
-      continued.id === row.id &&
-      continued.until === row.valid_from
-    ) {
-      // A row of the same class that starts where the one shown ends (a
-      // cancel of a leaving or of a move gave it back) continues it: no
-      // planned class (task 3.3a).
-      continued.until = row.valid_until;
     } else if (own.planned === null) {
       own.planned = named;
       if (own.current === null) {
@@ -374,4 +386,86 @@ export async function fullFrom(
     limit 1
   `.execute(transaction);
   return found.rows[0]?.day ?? null;
+}
+
+/** A row joined into the earlier row of the same class or group (task 3.5c, decision 2). */
+export interface RowJoined {
+  table: 'class_memberships' | 'group_memberships';
+  keptId: string;
+  joinedId: string;
+  from: SchoolDate;
+  until: SchoolDate;
+}
+
+/**
+ * Joins the adjoining rows of one student in one class, and in one group,
+ * into one row each (task 3.5c, decision 2; the merge of two records, whose
+ * carry can bring two such rows together): the later row is emptied
+ * `joined` into the earlier one, which then takes its end and own end
+ * (0062, the join path). Pair by pair from the first row of a chain; class
+ * rows, then group rows. The caller has locked the classes and groups.
+ */
+export async function joinAdjoiningRows(
+  transaction: Transaction,
+  studentId: string,
+): Promise<RowJoined[]> {
+  const joined: RowJoined[] = [];
+  for (const table of ['class_memberships', 'group_memberships'] as const) {
+    const unit = table === 'class_memberships' ? 'class_id' : 'group_id';
+    for (;;) {
+      const found = await sql<{
+        kept_id: string;
+        joined_id: string;
+        valid_from: SchoolDate;
+        valid_until: SchoolDate;
+        own_until: SchoolDate;
+        ended_by: string | null;
+        leaving_id: string | null;
+        ended_by_move_id: string | null;
+        ended_by_branch_move_id: string | null;
+      }>`
+        select a.id as kept_id, b.id as joined_id, b.valid_from::text as valid_from,
+          b.valid_until::text as valid_until, b.own_until::text as own_until, b.ended_by,
+          b.leaving_id, b.ended_by_move_id, b.ended_by_branch_move_id
+        from ${sql.table(table)} a
+        join ${sql.table(table)} b
+          on b.student_id = a.student_id
+          and b.${sql.ref(unit)} = a.${sql.ref(unit)}
+          and b.valid_from = a.valid_until
+          and b.id <> a.id
+        where a.student_id = ${studentId}::uuid
+          and a.valid_from < a.valid_until
+          and b.valid_from < b.valid_until
+        order by a.valid_from, a.id
+        limit 1
+      `.execute(transaction);
+      const pair = found.rows[0];
+      if (pair === undefined) {
+        break;
+      }
+      await sql`
+        update ${sql.table(table)}
+        set valid_until = valid_from, ended_by = 'joined', joined_into_id = ${pair.kept_id}::uuid,
+          joined_xact = pg_current_xact_id(), leaving_id = null, ended_by_move_id = null,
+          ended_by_branch_move_id = null
+        where id = ${pair.joined_id}::uuid
+      `.execute(transaction);
+      await sql`
+        update ${sql.table(table)}
+        set valid_until = ${pair.valid_until}::date, own_until = ${pair.own_until}::date,
+          ended_by = ${pair.ended_by}, leaving_id = ${pair.leaving_id}::uuid,
+          ended_by_move_id = ${pair.ended_by_move_id}::uuid,
+          ended_by_branch_move_id = ${pair.ended_by_branch_move_id}::uuid
+        where id = ${pair.kept_id}::uuid
+      `.execute(transaction);
+      joined.push({
+        table,
+        keptId: pair.kept_id,
+        joinedId: pair.joined_id,
+        from: pair.valid_from,
+        until: pair.valid_until,
+      });
+    }
+  }
+  return joined;
 }

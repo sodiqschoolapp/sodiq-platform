@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 16 October 2026: task 3.5c Hand test of Phase 3: one stay in a class, and the History tab
+
+- Built issue #105, Part D (H34 to H36): a cancel or an undo of a leaving or of a move grows the row it cut back (migration 0062: the grow-back and join paths of the shrink triggers, the days given back checked at the commit, `class_memberships_one_stay` and `group_memberships_one_stay`, the end `joined`, `student_moves.replaces_move_id`); the merge joins the stays it brings together; the migration joined the rows already split and linked the changed moves.
+- History: one line per stay in a class and a group ("until now", "from <date>", the last day), a changed move as one line with its changes, "moved" only of a move that happened.
+- Left out: the handbook pages (3.7, its "From 3.5c" line); the journal side of a stay (8.6).
+
+The next sessions must know:
+
+- A take-back updates the cut row (`applyMembershipPlan` `grows`, `CoverRow.growId`); never write a continuation row of the same class or group: the database refuses two adjoining rows at the commit (`stay_continues` on a route).
+- The student's `version` is `studentVersion` (`class-membership-rows.ts`): status rows, class rows and the class moves taken back.
+- `joinAdjoiningRows` joins two adjoining rows; a join takes the later row's end and changes no day.
+- The next task is 3.6a.
+
 ## 15 October 2026: task 3.5b Hand test of Phase 3: forms, refusals and messages
 
 - Built every item H22 to H33 of issue #105 (Part C): Give Tutor says who gives roles and links to Staff; Archive off while a class or group holds students; a full class marked in the Add student choice and named with its first full day in every seat refusal (the class move now checks seats before its write); one phone parser (`storedPhone`, `PHONE_FORMAT`) for every phone field and schema; Save waits for the relative lookup; the language question once per move; the panel stays on History; the merge preview lists the values that differ; the reasons no teacher can take a load row; the vacancy Subjects field with its line; a branch switch closes the old branch's record; Parents and children by phone in Ctrl+K.

@@ -121,7 +121,11 @@ const sessionAs = (role: Role, language: 'en' | 'ru' = 'en') => ({
 
 const HISTORY: StudentHistory = {
   lines: [
-    { kind: 'move', move: { ...MOVE, from: '2026-10-05', state: 'done', undoable: true } },
+    {
+      kind: 'move',
+      move: { ...MOVE, from: '2026-10-05', state: 'done', undoable: true },
+      changes: [],
+    },
     { kind: 'class', class: OXFORD, from: '2026-09-02', until: '2026-10-05' },
     { kind: 'status', status: 'active', cause: 'start', from: '2026-09-02', until: null },
   ],
@@ -301,7 +305,12 @@ describe('class and group transfers in the side panel', () => {
         .replace('{{to}}', '7 Yale'),
     );
     expect(lines[0]).toContain(en.people.students.moves.states.done);
-    expect(lines[1]).toContain(en.people.students.moves.classJoin.replace('{{class}}', '7 Oxford'));
+    // Task 3.5c, H35: a stay with its last day (the day before `until`).
+    expect(lines[1]).toContain(
+      en.people.students.moves.classStay
+        .replace('{{class}}', '7 Oxford')
+        .replace('{{until}}', schoolDateText('2026-10-04', 'en')),
+    );
     fireEvent.click(within(history).getByRole('button', { name: en.people.students.moves.undo }));
     const form = await within(panel).findByRole('form', {
       name: en.people.students.moves.undoTitle.replace('{{target}}', '7 Yale'),
@@ -371,5 +380,118 @@ describe('class and group transfers in the side panel', () => {
     expect(
       within(panel).queryByRole('radio', { name: ru.people.students.tabs.history }),
     ).toBeNull();
+  });
+});
+
+// Task 3.5c (pull request #117), issue #105: H34, "one move with its changes
+// ('Sana oʻzgartirildi: 16-oktabr → 23-oktabr'), and the word 'koʻchirildi'
+// only for a move that happened; a cancelled one reads 'Koʻchirish
+// rejalashtirilgan edi · Bekor qilingan'"; H35, "one line per stay in a class,
+// from its first to its last day (or 'hozirgacha')"; correction 4 of the
+// review: a stay that begins after today reads "from <date>".
+describe('the History tab of one stay', () => {
+  const PRINCETON = { id: uid(53), grade: 7, name: 'Princeton' };
+  const linesOf = async (history: StudentHistory, language: 'en' | 'ru' = 'en') => {
+    open(
+      detailOf(),
+      {
+        [`GET /api/people/students/${STUDENT.id}/history`]: () => json(history),
+      },
+      language,
+    );
+    renderApp(`${PATH}?open=${STUDENT.id}`, language);
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    fireEvent.click(
+      await within(panel).findByRole('radio', {
+        name: (language === 'en' ? en : ru).people.students.tabs.history,
+      }),
+    );
+    const region = await within(panel).findByRole('region', {
+      name: (language === 'en' ? en : ru).people.students.moves.historyLabel,
+    });
+    return [...region.querySelectorAll('li')].map((line) => line.textContent ?? '');
+  };
+
+  it('reads a stay in force "until now" and a stay ahead "from" its first day', async () => {
+    const lines = await linesOf({
+      lines: [
+        { kind: 'class', class: YALE, from: '2026-10-23', until: null },
+        { kind: 'class', class: OXFORD, from: '2026-09-02', until: null },
+      ],
+      today: '2026-10-10',
+    });
+    expect(lines[0]).toContain(
+      en.people.students.moves.classStayFrom
+        .replace('{{class}}', '7 Yale')
+        .replace('{{from}}', schoolDateText('2026-10-23', 'en')),
+    );
+    expect(lines[0]).not.toContain(
+      en.people.students.moves.classStayNow.replace('{{class}}', '7 Yale'),
+    );
+    expect(lines[1]).toContain(
+      en.people.students.moves.classStayNow.replace('{{class}}', '7 Oxford'),
+    );
+  });
+
+  it('draws a changed move as one line with its changes, and a cancelled one as planned', async () => {
+    const lines = await linesOf({
+      lines: [
+        {
+          kind: 'move',
+          move: { ...MOVE, from: '2026-10-23', toClass: PRINCETON, state: 'cancelled' },
+          changes: [
+            { from: '2026-10-16', toClass: YALE, toGroup: null },
+            { from: '2026-10-23', toClass: YALE, toGroup: null },
+          ],
+        },
+      ],
+      today: '2026-10-10',
+    });
+    expect(lines).toHaveLength(1);
+    const [line] = lines;
+    expect(line).toContain(
+      `${en.people.students.moves.classMoveCancelled
+        .replace('{{from}}', '7 Oxford')
+        .replace('{{to}}', '7 Princeton')} · ${en.people.students.moves.states.cancelled}`,
+    );
+    // "Moved" only of a move that happened.
+    expect(line).not.toContain(
+      en.people.students.moves.classMove
+        .replace('{{from}}', '7 Oxford')
+        .replace('{{to}}', '7 Princeton'),
+    );
+    expect(line).toContain(
+      en.people.students.moves.dateChanged
+        .replace('{{from}}', schoolDateText('2026-10-16', 'en'))
+        .replace('{{to}}', schoolDateText('2026-10-23', 'en')),
+    );
+    expect(line).toContain(
+      en.people.students.moves.classChanged
+        .replace('{{from}}', '7 Yale')
+        .replace('{{to}}', '7 Princeton'),
+    );
+  });
+
+  it('reads a scheduled move as one to come, in Russian', async () => {
+    const lines = await linesOf(
+      {
+        lines: [
+          { kind: 'move', move: { ...MOVE, from: '2026-10-23', state: 'scheduled' }, changes: [] },
+          { kind: 'class', class: OXFORD, from: '2026-09-02', until: '2026-10-23' },
+        ],
+        today: '2026-10-10',
+      },
+      'ru',
+    );
+    expect(lines[0]).toContain(
+      ru.people.students.moves.classMovePlanned
+        .replace('{{from}}', '7 Oxford')
+        .replace('{{to}}', '7 Yale'),
+    );
+    expect(lines[1]).toContain(
+      ru.people.students.moves.classStay
+        .replace('{{class}}', '7 Oxford')
+        .replace('{{until}}', schoolDateText('2026-10-22', 'ru')),
+    );
   });
 });

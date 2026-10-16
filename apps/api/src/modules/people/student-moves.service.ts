@@ -18,7 +18,12 @@ import { ApiException } from '../../http/api-exception.js';
 import { inGroupScope } from '../access/group-scope.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
-import { CLASS_GROUP_REFUSALS, coverClassRows, lockClassGroups } from '../classes/class-groups.js';
+import {
+  CLASS_GROUP_REFUSALS,
+  coverClassRows,
+  lockClassGroups,
+  type ClassRowToCover,
+} from '../classes/class-groups.js';
 import {
   MEMBERSHIP_REFUSALS,
   classesInService,
@@ -38,7 +43,12 @@ import {
   type StoredGroupMembership,
 } from '../classes/group-membership-rows.js';
 import { classesOfGroups } from '../classes/group-rows.js';
-import { holdsDays, placementEnd, type StoredMembership } from '../classes/membership-plan.js';
+import {
+  continuesStay,
+  holdsDays,
+  placementEnd,
+  type StoredMembership,
+} from '../classes/membership-plan.js';
 import {
   lockMove,
   MOVE_REFUSALS,
@@ -178,6 +188,7 @@ export class StudentMoves {
               // H27 of issue #105: the question was answered when this move
               // was saved, for these two classes; it is not asked again.
               answeredFor: { fromClassId: move.fromClassId, toClassId: move.toClassId },
+              replacesMoveId: move.id,
             },
             requestId,
           );
@@ -279,7 +290,13 @@ export class StudentMoves {
             access,
             student,
             today,
-            { row, toGroupId: input.toGroupId, from: input.from, seen: false },
+            {
+              row,
+              toGroupId: input.toGroupId,
+              from: input.from,
+              seen: false,
+              replacesMoveId: move.id,
+            },
           );
           await this.record(transaction, access, studentId, 'student.group_transfer_changed', {
             oldValue: cancelled,
@@ -387,6 +404,8 @@ export class StudentMoves {
       confirmLanguage?: boolean | undefined;
       /** The two classes of the saved move a change replaces (H27). */
       answeredFor?: { fromClassId: string | null; toClassId: string | null };
+      /** The cancelled move a change replaces (task 3.5c, H34). */
+      replacesMoveId?: string;
     },
     requestId: string,
   ): Promise<Moved> {
@@ -460,6 +479,7 @@ export class StudentMoves {
       from_class_id: held.classId,
       to_class_id: target.id,
       effective_on: from,
+      replaces_move_id: input.replacesMoveId ?? null,
     });
     // Every class row of the year with days from `from` on ends there.
     const cut = student.memberships.filter(
@@ -731,27 +751,32 @@ export class StudentMoves {
         emptied.push({ id: row.id, groupId: row.groupId, was: row.validUntil });
       }
     }
-    // The rows the move cut come back from its date, each to its own end or
-    // to the start of the next one given back (`.claude/rules/database.md`).
+    // The rows the move cut grow back from its date (task 3.5c, decision 1),
+    // each to its own end or to the start of the next one given back, which
+    // a later move wrote (`.claude/rules/database.md`); cut at a scheduled
+    // leaving.
     const given = cut
       .map((row) => ({ row, start: later(from, row.validFrom) }))
       .filter(({ row, start }) => start < row.ownUntil);
-    const classRows: {
-      index: number;
-      row: {
-        studentId: string;
-        classId: string;
-        from: SchoolDate;
-        until: SchoolDate;
-        ownUntil: SchoolDate;
-        leavingId: string | null;
-      };
-    }[] = [];
+    const classRows: { index: number; row: ClassRowToCover }[] = [];
     const written: { id: string; classId: string; from: SchoolDate; until: SchoolDate }[] = [];
     let leave: { from: SchoolDate; leavingId: string } | null = null;
-    for (const [index, { row, start }] of given.entries()) {
-      const next = given[index + 1];
-      const ownEnd = next !== undefined && next.start < row.ownUntil ? next.start : row.ownUntil;
+    for (let index = 0; index < given.length; index += 1) {
+      const one = given[index];
+      if (one === undefined) {
+        break;
+      }
+      const { row, start } = one;
+      // A continuation of the same stay written before 0062 stays emptied;
+      // this row grows over its days (spec review of the build, must-fix 2).
+      let after = index + 1;
+      while (given[after] !== undefined && continuesStay(row, given[after]?.row)) {
+        after += 1;
+      }
+      index = after - 1;
+      const next = given[after];
+      const stopsAtMove = next !== undefined && next.start < row.ownUntil;
+      const ownEnd = stopsAtMove ? next.start : row.ownUntil;
       const end = placementEnd(student.statuses, student.startsOn, start, ownEnd);
       if ('refusal' in end) {
         throw new ApiException(end.refusal, 409);
@@ -759,27 +784,21 @@ export class StudentMoves {
       if (end.leavingId !== null) {
         leave = { from: end.until, leavingId: end.leavingId };
       }
-      const branch = await readPlacementClass(transaction, row.classId);
-      if (branch === undefined) {
-        throw notFound();
+      const byMove = end.leavingId === null && stopsAtMove ? next.row.writtenByMoveId : null;
+      if (end.leavingId === null && stopsAtMove && byMove === null) {
+        throw new Error('A row given back meets the next one only at a move.');
       }
-      const inserted = await transaction
-        .insertInto('class_memberships')
-        .values({
-          branch_id: branch.branchId,
-          student_id: student.id,
-          class_id: row.classId,
-          valid_from: start,
+      await transaction
+        .updateTable('class_memberships')
+        .set({
           valid_until: end.until,
-          own_until: ownEnd,
-          cause,
-          ended_by: end.leavingId === null ? null : 'leaving',
+          ended_by: end.leavingId !== null ? 'leaving' : byMove !== null ? 'transfer' : null,
           leaving_id: end.leavingId,
-          written_by_move_id: move.id,
+          ended_by_move_id: byMove,
         })
-        .returning('id')
-        .executeTakeFirstOrThrow();
-      written.push({ id: inserted.id, classId: row.classId, from: start, until: end.until });
+        .where('id', '=', row.id)
+        .execute();
+      written.push({ id: row.id, classId: row.classId, from: start, until: end.until });
       classRows.push({
         index: 0,
         row: {
@@ -787,8 +806,9 @@ export class StudentMoves {
           classId: row.classId,
           from: start,
           until: end.until,
-          ownUntil: ownEnd,
+          ownUntil: row.ownUntil,
           leavingId: end.leavingId,
+          endedByMoveId: byMove,
         },
       });
     }
@@ -816,7 +836,7 @@ export class StudentMoves {
       toClassId,
       memberships: {
         emptied: emptied.filter((one) => one.classId !== undefined),
-        written,
+        given: written,
       },
       groupMemberships: {
         emptied: emptied.filter((one) => one.groupId !== undefined),
@@ -887,7 +907,14 @@ export class StudentMoves {
     access: Access,
     student: PlacementStudent,
     today: SchoolDate,
-    input: { row: StoredGroupMembership; toGroupId: string; from: SchoolDate; seen: boolean },
+    input: {
+      row: StoredGroupMembership;
+      toGroupId: string;
+      from: SchoolDate;
+      seen: boolean;
+      /** The cancelled move a change replaces (task 3.5c, H34). */
+      replacesMoveId?: string;
+    },
   ): Promise<Moved & { assignmentId: string }> {
     const branchId = branchOf(access);
     const { row, from } = input;
@@ -950,6 +977,7 @@ export class StudentMoves {
       from_group_id: source.id,
       to_group_id: target.id,
       effective_on: from,
+      replaces_move_id: input.replacesMoveId ?? null,
     });
     await this.cutGroupRow(transaction, row, from, moveId);
     const written = await transaction
@@ -1095,25 +1123,24 @@ export class StudentMoves {
       )
       .where('id', '=', target.id)
       .execute();
-    const given = holdsDays(target)
-      ? await transaction
-          .insertInto('group_memberships')
-          .values({
-            branch_id: move.branchId,
-            student_id: student.id,
-            group_id: fromGroupId,
-            subject_id: move.subjectId,
-            valid_from: target.validFrom,
-            valid_until: target.validUntil,
-            own_until: target.ownUntil,
-            cause,
-            review: false,
-            ...endOf(target),
-            written_by_move_id: move.id,
-          })
-          .returning('id')
-          .executeTakeFirstOrThrow()
-      : null;
+    // Task 3.5c (decision 1): the row the move cut grows back over the days
+    // the target held, ended as the target was (H36: "a cancel or an undo
+    // gives the stay back as it was before").
+    const old = rows.find(
+      (row) =>
+        row.endedBy === 'transfer' && row.endedByMoveId === move.id && row.groupId === fromGroupId,
+    );
+    const given =
+      holdsDays(target) && old !== undefined && old.validUntil === target.validFrom
+        ? old
+        : undefined;
+    if (given !== undefined) {
+      await transaction
+        .updateTable('group_memberships')
+        .set({ valid_until: target.validUntil, ...endOf(target) })
+        .where('id', '=', given.id)
+        .execute();
+    }
     return {
       moveId: move.id,
       from: move.effectiveOn,
@@ -1122,8 +1149,16 @@ export class StudentMoves {
       toGroupId,
       groupMemberships: {
         emptied: [{ id: target.id, groupId: toGroupId, was: target.validUntil }],
-        written:
-          given === null
+        // The days the target held that no row came back over (the row the
+        // move cut no longer ends where the target begins): named, as every
+        // path that cannot give rows back names them (spec review of the
+        // build, should-fix 3).
+        notGiven:
+          given === undefined && holdsDays(target)
+            ? [{ groupId: fromGroupId, from: target.validFrom, until: target.validUntil }]
+            : [],
+        given:
+          given === undefined
             ? []
             : [
                 {
@@ -1131,7 +1166,6 @@ export class StudentMoves {
                   groupId: fromGroupId,
                   from: target.validFrom,
                   until: target.validUntil,
-                  cause,
                 },
               ],
       },
@@ -1150,6 +1184,7 @@ export class StudentMoves {
       from_group_id?: string;
       to_group_id?: string;
       effective_on: SchoolDate;
+      replaces_move_id?: string | null;
     },
   ): Promise<string> {
     const row = await transaction

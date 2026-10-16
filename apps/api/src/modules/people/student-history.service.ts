@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { schoolDateOf } from '@sodiq/shared';
 import type {
+  MoveChangeLine,
   MoveState,
   SchoolDate,
   StudentHistory,
@@ -14,7 +15,7 @@ import { studentClasses, studentReaderOf } from '../access/class-scope.js';
 import type { Access } from '../access/permission.guard.js';
 import { membershipsOf } from '../classes/class-membership-rows.js';
 import { groupMembershipsOf } from '../classes/group-membership-rows.js';
-import { moveSummaries } from '../classes/student-moves.js';
+import { moveSummaries, movesOf } from '../classes/student-moves.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { historyLines } from './student-status.js';
 import { branchMovesOf, branchNames, summaryOf } from './branch-moves.js';
@@ -37,8 +38,10 @@ interface Ordered {
 /**
  * The History tab of a student (docs/spec/04-people.md, Profile tabs;
  * Movements: "The profile History tab shows each move with dates"; task
- * 3.3a, pull request #95): every move, every class or group joined outside a
- * move, and every stretch of status, newest first. `student_history` `view`;
+ * 3.3a, pull request #95): every move, a scheduled move that was changed as
+ * one move with its changes (task 3.5c, H34), every stay in a class or a
+ * group from its first day to its last or "until now" (task 3.5c, H35), and
+ * every stretch of status, newest first. `student_history` `view`;
  * a Tutor reads the students of own classes (decision 9 as changed by
  * correction 3). 404 for an unknown or another branch's student first, then
  * 403 outside the scope.
@@ -72,22 +75,31 @@ export class StudentHistories {
       // The rows of this branch here; those of the branches the student was
       // in before a move to another branch below, read past the filter
       // (task 3.3c, decision 3), so that every reader gets the same lines.
-      for (const move of await moveSummaries(transaction, id, today, branchId)) {
-        lines.push({ date: move.from, id: move.id, line: { kind: 'move', move } });
-      }
+      const here = await moveSummaries(transaction, id, today, branchId);
+      const replacing = new Map(
+        (await movesOf(transaction, id, branchId)).map((move) => [move.id, move.replacesMoveId]),
+      );
       const elsewhere = await rowsElsewhere(transaction, id, branchId);
       for (const move of elsewhere.moves) {
-        lines.push({ date: move.from, id: move.id, line: { kind: 'move', move } });
+        replacing.set(move.id, elsewhere.replaces.get(move.id) ?? null);
+      }
+      for (const { move, changes } of movesWithChanges([...here, ...elsewhere.moves], replacing)) {
+        lines.push({ date: move.from, id: move.id, line: { kind: 'move', move, changes } });
       }
       lines.push(...(await this.branchMoveLines(transaction, id, branchId, elsewhere.classRows)));
-      for (const row of elsewhere.classRows.filter((one) => joinedOutsideMove(one))) {
+      for (const row of elsewhere.classRows.filter(holdsDays)) {
         lines.push({
           date: row.validFrom,
           id: row.id,
-          line: { kind: 'class', class: row.class, from: row.validFrom, until: row.validUntil },
+          line: {
+            kind: 'class',
+            class: row.class,
+            from: row.validFrom,
+            until: stayUntil(row, today),
+          },
         });
       }
-      for (const row of elsewhere.groupRows.filter((one) => groupOutsideMove(one))) {
+      for (const row of elsewhere.groupRows.filter(holdsDays)) {
         lines.push({
           date: row.validFrom,
           id: row.id,
@@ -96,20 +108,15 @@ export class StudentHistories {
             group: row.group,
             subjectId: row.subjectId,
             from: row.validFrom,
-            until: row.validUntil,
+            until: stayUntil(row, today),
           },
         });
       }
-      // A class or a group joined outside a move: a placement, the create,
-      // "Place automatically", a return and a graduate restore (task 3.3b).
-      // The rows a move, a cancel or an undo wrote are the move's line; a row
-      // that holds no day is no line.
-      const classRows = (await membershipsOf(transaction, id, branchId)).filter((row) =>
-        joinedOutsideMove(row),
-      );
-      const groupRows = (await groupMembershipsOf(transaction, id, branchId)).filter((row) =>
-        groupOutsideMove(row),
-      );
+      // One line per stay in a class or a group (task 3.5c, H35), whatever
+      // wrote the row: one stay is one row (`*_one_stay`, 0062). A row that
+      // holds no day is no line.
+      const classRows = (await membershipsOf(transaction, id, branchId)).filter(holdsDays);
+      const groupRows = (await groupMembershipsOf(transaction, id, branchId)).filter(holdsDays);
       const classNames = await this.classNames(
         transaction,
         classRows.map((row) => row.classId),
@@ -124,7 +131,12 @@ export class StudentHistories {
           lines.push({
             date: row.validFrom,
             id: row.id,
-            line: { kind: 'class', class: named, from: row.validFrom, until: row.validUntil },
+            line: {
+              kind: 'class',
+              class: named,
+              from: row.validFrom,
+              until: stayUntil(row, today),
+            },
           });
         }
       }
@@ -139,7 +151,7 @@ export class StudentHistories {
               group: named,
               subjectId: row.subjectId,
               from: row.validFrom,
-              until: row.validUntil,
+              until: stayUntil(row, today),
             },
           });
         }
@@ -268,33 +280,55 @@ export class StudentHistories {
   }
 }
 
-/** A class row joined outside a move: a placement, the create, a return, a restore; one with days. */
-function joinedOutsideMove(row: { cause: string; validFrom: SchoolDate; validUntil: SchoolDate }) {
-  return (
-    row.validFrom < row.validUntil &&
-    (row.cause === 'placement' ||
-      row.cause === 'create' ||
-      row.cause === 'return' ||
-      row.cause === 'restore')
-  );
+/** A row that holds days. */
+function holdsDays(row: { validFrom: SchoolDate; validUntil: SchoolDate }): boolean {
+  return row.validFrom < row.validUntil;
 }
 
 /**
- * A group row joined outside a move: a placement, "Place automatically", the
- * group chosen by the accept of a move to another branch (task 3.3c); one
- * with days.
+ * The end of a stay as History shows it (task 3.5c, decision 8 as changed by
+ * the review): the first day after; `null` ("until now", or "from <date>"
+ * for a stay that begins after today) while the row has no end and reaches
+ * past today. A cut (a leaving, a move, a merge, a move to another branch)
+ * gives its date, a stay of a past year the year's end.
  */
-function groupOutsideMove(row: {
-  cause: string;
-  writtenByMoveId: string | null;
-  validFrom: SchoolDate;
-  validUntil: SchoolDate;
-}) {
-  return (
-    row.validFrom < row.validUntil &&
-    row.writtenByMoveId === null &&
-    (row.cause === 'placement' || row.cause === 'automatic' || row.cause === 'branch_move')
+export function stayUntil(
+  row: { validUntil: SchoolDate; endedBy: string | null },
+  today: SchoolDate,
+): SchoolDate | null {
+  return row.endedBy === null && row.validUntil > today ? null : row.validUntil;
+}
+
+/**
+ * The moves as History lines (task 3.5c, H34: "one move with its changes"): a
+ * move a change replaced is no line of its own; it is a change of the move
+ * that replaced it, with its date and target, oldest first.
+ */
+export function movesWithChanges(
+  moves: readonly StudentMove[],
+  replacing: ReadonlyMap<string, string | null>,
+): { move: StudentMove; changes: MoveChangeLine[] }[] {
+  const byId = new Map(moves.map((move) => [move.id, move]));
+  const replaced = new Set(
+    [...replacing.values()].filter((one): one is string => one !== null && byId.has(one)),
   );
+  return moves
+    .filter((move) => !replaced.has(move.id))
+    .map((move) => {
+      const changes: MoveChangeLine[] = [];
+      const seen = new Set<string>([move.id]);
+      let earlier = replacing.get(move.id) ?? null;
+      while (earlier !== null && !seen.has(earlier)) {
+        const one = byId.get(earlier);
+        if (one === undefined) {
+          break;
+        }
+        seen.add(earlier);
+        changes.unshift({ from: one.from, toClass: one.toClass, toGroup: one.toGroup });
+        earlier = replacing.get(earlier) ?? null;
+      }
+      return { move, changes };
+    });
 }
 
 interface ElsewhereClassRow {
@@ -304,6 +338,7 @@ interface ElsewhereClassRow {
   validFrom: SchoolDate;
   validUntil: SchoolDate;
   cause: string;
+  endedBy: string | null;
 }
 
 /**
@@ -325,9 +360,12 @@ async function rowsElsewhere(
     validFrom: SchoolDate;
     validUntil: SchoolDate;
     cause: string;
+    endedBy: string | null;
     writtenByMoveId: string | null;
   }[];
   moves: StudentMove[];
+  /** The move each move replaced by a change (task 3.5c), by id. */
+  replaces: Map<string, string | null>;
 }> {
   const found = await sql<{ kind: string; data: Record<string, unknown> }>`
     select kind, data from student_rows_elsewhere(${studentId}::uuid, ${branchId}::uuid)
@@ -347,6 +385,7 @@ async function rowsElsewhere(
   const classRows: ElsewhereClassRow[] = [];
   const groupRows = [];
   const moves: StudentMove[] = [];
+  const replaces = new Map<string, string | null>();
   for (const { kind, data } of found.rows) {
     if (kind === 'class') {
       classRows.push({
@@ -356,6 +395,7 @@ async function rowsElsewhere(
         validFrom: text(data.validFrom),
         validUntil: text(data.validUntil),
         cause: text(data.cause),
+        endedBy: orNull(data.endedBy),
       });
     } else if (kind === 'group') {
       groupRows.push({
@@ -365,6 +405,7 @@ async function rowsElsewhere(
         validFrom: text(data.validFrom),
         validUntil: text(data.validUntil),
         cause: text(data.cause),
+        endedBy: orNull(data.endedBy),
         writtenByMoveId: orNull(data.writtenByMoveId),
       });
     } else {
@@ -383,7 +424,8 @@ async function rowsElsewhere(
         cancelledByLeaving: data.cancelledByLeaving === true,
         undoable: false,
       });
+      replaces.set(text(data.id), orNull(data.replacesMoveId));
     }
   }
-  return { classRows, groupRows, moves };
+  return { classRows, groupRows, moves, replaces };
 }

@@ -697,19 +697,19 @@ describe('class membership', () => {
         version: left.version,
       });
       expect(cancelled.status, JSON.stringify(cancelled.body)).toBe(200);
+      // One stay (task 3.5c, H36): the cut row grows back to its own end.
       expect(await rowsOfStudent(one.id)).toEqual([
-        expect.objectContaining({ valid_until: '2026-11-01', ended_by: 'leaving' }),
         expect.objectContaining({
-          valid_from: '2026-11-01',
+          valid_from: '2026-09-02',
           valid_until: '2027-06-01',
-          cause: 'cancel',
+          cause: 'create',
           ended_by: null,
         }),
       ]);
       expect(studentDetailSchema.parse(cancelled.body).class).toMatchObject({ id: oxford });
     });
 
-    it('gives a withdrawn planned row back on its planned date (correction 1)', async () => {
+    it('gives an emptied planned row back on its planned date (correction 1)', async () => {
       const oxford = await schoolClass();
       const one = await student({ startsOn: '2026-10-12', classId: null });
       placed(await place(oxford, [one], '2026-11-02'));
@@ -727,11 +727,14 @@ describe('class membership', () => {
         version: left.version,
       });
       expect(cancelled.status, JSON.stringify(cancelled.body)).toBe(200);
-      expect((await rowsOfStudent(one.id)).at(-1)).toMatchObject({
-        valid_from: '2026-11-02',
-        valid_until: '2027-06-01',
-        cause: 'cancel',
-      });
+      expect(await rowsOfStudent(one.id)).toEqual([
+        expect.objectContaining({
+          valid_from: '2026-11-02',
+          valid_until: '2027-06-01',
+          cause: 'placement',
+          ended_by: null,
+        }),
+      ]);
     });
 
     it('moves the class with the replace of a scheduled leaving, earlier and later', async () => {
@@ -745,9 +748,8 @@ describe('class membership', () => {
       const later = await leave(earlier, '2026-12-31');
       expect(later.status, JSON.stringify(later.body)).toBe(200);
       expect(await rowsOfStudent(one.id)).toEqual([
-        expect.objectContaining({ valid_from: '2026-09-02', valid_until: '2026-11-01' }),
         expect.objectContaining({
-          valid_from: '2026-11-01',
+          valid_from: '2026-09-02',
           valid_until: '2027-01-01',
           own_until: '2027-06-01',
           ended_by: 'leaving',
@@ -764,10 +766,13 @@ describe('class membership', () => {
         version: gone.version,
       });
       expect(undone.status, JSON.stringify(undone.body)).toBe(200);
-      expect((await rowsOfStudent(one.id)).at(-1)).toMatchObject({
-        valid_from: '2026-10-06',
-        cause: 'undo',
-      });
+      expect(await rowsOfStudent(one.id)).toEqual([
+        expect.objectContaining({
+          valid_from: '2026-09-02',
+          valid_until: '2027-06-01',
+          ended_by: null,
+        }),
+      ]);
 
       // The seat of a scheduled leaver is taken from the leaving day: the cancel finds the class full.
       const leaver = await student({
@@ -810,9 +815,7 @@ describe('class membership', () => {
       expect(studentDetailSchema.parse(undone.body).class).toMatchObject({ id: oxford });
       const live = (await rowsOfStudent(one.id)).filter((row) => row.valid_from < row.valid_until);
       expect(live.map((row) => [row.valid_from, row.valid_until, row.cause])).toEqual([
-        ['2026-09-02', '2026-10-02', 'create'],
-        ['2026-10-02', '2026-10-21', 'undo'],
-        ['2026-10-21', '2027-06-01', 'undo'],
+        ['2026-09-02', '2027-06-01', 'create'],
       ]);
     });
 

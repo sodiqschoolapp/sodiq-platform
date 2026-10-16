@@ -614,26 +614,47 @@ export const studentDetailSchema = studentListItemSchema.extend({
 export type StudentDetail = z.infer<typeof studentDetailSchema>;
 
 /**
+ * An earlier date and target of a scheduled move that was changed (task 3.5c,
+ * H34 of issue #105): one move with its changes, oldest first.
+ */
+export const moveChangeLineSchema = z.object({
+  from: schoolDateSchema,
+  toClass: moveClassSchema.nullable(),
+  toGroup: moveGroupSchema.nullable(),
+});
+
+export type MoveChangeLine = z.infer<typeof moveChangeLineSchema>;
+
+/**
  * One line of the History tab (`04`, Profile tabs; Movements: "The profile
- * History tab shows each move with dates"; task 3.3a): a move; a class or a
- * group joined outside a move (a placement, the create); a stretch of one
- * status, two adjacent active rows of a cancel or an undo drawn as one.
+ * History tab shows each move with dates"; task 3.3a): a move, with the
+ * earlier dates and targets of a scheduled move changed into it (task 3.5c,
+ * H34); one stay in a class or a group, from its first day (task 3.5c, H35:
+ * "one line per stay in a class, from its first to its last day (or
+ * 'hozirgacha')"); a stretch of one status, two adjacent active rows of a
+ * cancel or an undo drawn as one. `until` is the first day after on every
+ * line; on a stay `null` while it has no end and reaches past today ("until
+ * now", or "from <date>" for a stay that begins after today).
  */
 export const studentHistoryLineSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('move'), move: studentMoveSchema }),
+  z.object({
+    kind: z.literal('move'),
+    move: studentMoveSchema,
+    changes: z.array(moveChangeLineSchema),
+  }),
   branchMoveLineSchema,
   z.object({
     kind: z.literal('class'),
     class: moveClassSchema,
     from: schoolDateSchema,
-    until: schoolDateSchema,
+    until: schoolDateSchema.nullable(),
   }),
   z.object({
     kind: z.literal('group'),
     group: moveGroupSchema,
     subjectId: z.uuid(),
     from: schoolDateSchema,
-    until: schoolDateSchema,
+    until: schoolDateSchema.nullable(),
   }),
   z.object({
     kind: z.literal('status'),

@@ -42,7 +42,8 @@ import {
 } from '../classes/class-groups.js';
 import {
   classesInService,
-  membershipCounts,
+  studentVersion,
+  versionCounts,
   membershipsOf,
   MEMBERSHIP_REFUSALS,
   studentClassesOn,
@@ -353,7 +354,7 @@ export class Students {
       .orderBy('students.uid')
       .execute();
     const statuses = await this.statusRowsOf(transaction, null);
-    const counts = await membershipCounts(transaction, null);
+    const counts = await versionCounts(transaction, null);
     const classes = await studentClassesOn(transaction, today, null);
     const tutors = await tutorsInForce(transaction);
     const groups = await studentGroupsOn(transaction, today, null);
@@ -388,7 +389,7 @@ export class Students {
         // A Tutor reads the groups of own classes' students only (decision 4
         // of pull request #92): the rows the reader opens.
         groups: opens ? (groups.get(row.id) ?? []) : [],
-        version: own.length + (counts.get(row.id) ?? 0),
+        version: studentVersion(own.length, counts, row.id),
         opens,
       };
     });
@@ -1072,7 +1073,7 @@ export class Students {
       ).map((status) => [status.id, status.reason]),
     );
     const statuses = rows.filter((status) => status.validFrom !== status.validUntil);
-    const memberships = (await membershipCounts(transaction, id)).get(id) ?? 0;
+    const counts = await versionCounts(transaction, id);
     const held = (await studentClassesOn(transaction, today, id)).get(id);
     const current = held?.current ?? null;
     const tutor = current === null ? undefined : (await tutorsInForce(transaction)).get(current.id);
@@ -1147,7 +1148,7 @@ export class Students {
       mainRoom: held?.mainRoom ?? null,
       // The Academic block's groups (task 3.2b): the record is answered only to a reader who opens it.
       groups: (await studentGroupsOn(transaction, today, id)).get(id) ?? [],
-      version: rows.length + memberships,
+      version: studentVersion(rows.length, counts, id),
       opens: readerOf(access, 'students', scope) !== undefined,
       canEdit:
         decide(

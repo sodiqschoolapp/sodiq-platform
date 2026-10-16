@@ -441,25 +441,23 @@ describe('groups on every class membership path', () => {
       await leave(one.id, '2026-10-31');
       const response = await cancel(one.id);
       expect(response.status, JSON.stringify(response.body)).toBe(200);
+      // One stay (task 3.5c, H36): the row the leaving cut grows back.
       expect(await rowsOfStudent(one.id)).toEqual([
         expect.objectContaining({
           group_id: maths1,
           valid_from: '2026-09-02',
-          valid_until: '2026-11-01',
-          ended_by: 'leaving',
-          cause: 'automatic',
-          review: true,
-        }),
-        expect.objectContaining({
-          group_id: maths1,
-          valid_from: '2026-11-01',
           valid_until: '2027-06-01',
           own_until: '2027-06-01',
           ended_by: null,
-          cause: 'cancel',
+          cause: 'automatic',
           review: true,
         }),
       ]);
+      const row = await t.database.migrator
+        .selectFrom('group_memberships')
+        .select('id')
+        .where('student_id', '=', one.id)
+        .executeTakeFirstOrThrow();
       const [entry] = await t.entries('student.leave_cancelled', one.id);
       expect(entry).toMatchObject({
         assignment_id: t.viceAssignment,
@@ -468,6 +466,7 @@ describe('groups on every class membership path', () => {
           groupMemberships: {
             written: [
               {
+                id: row.id,
                 groupId: maths1,
                 from: '2026-11-01',
                 until: '2027-06-01',
@@ -492,12 +491,13 @@ describe('groups on every class membership path', () => {
       await leave(one.id, '2026-10-05');
       const response = await undo(one.id);
       expect(response.status, JSON.stringify(response.body)).toBe(200);
-      expect((await rowsOfStudent(one.id)).slice(1)).toEqual([
+      expect(await rowsOfStudent(one.id)).toEqual([
         expect.objectContaining({
           group_id: maths1,
-          valid_from: '2026-10-06',
+          valid_from: '2026-09-02',
           valid_until: '2027-06-01',
-          cause: 'undo',
+          ended_by: null,
+          cause: 'placement',
           review: false,
         }),
       ]);
@@ -567,7 +567,7 @@ describe('groups on every class membership path', () => {
       ]);
     });
 
-    it('fills the days before a planned group row the leaving emptied, stopping where it begins', async () => {
+    it('fills the days before a planned group row the leaving emptied with one row of its group', async () => {
       const maths = await subject();
       const oxford = await schoolClass();
       const one = await pupil(oxford);
@@ -578,20 +578,17 @@ describe('groups on every class membership path', () => {
       expect(
         (await rowsOfStudent(one.id)).filter((row) => row.valid_from < row.valid_until),
       ).toEqual([
+        // One stay in the group (task 3.5c, `joinCoverRows`): the automatic
+        // row from the first day taken back runs on through the planned
+        // row's days, which stays as the leaving left it.
         expect.objectContaining({
           group_id: maths1,
           valid_from: '2026-11-01',
-          valid_until: '2026-11-16',
-          own_until: '2026-11-16',
+          valid_until: '2027-06-01',
+          own_until: '2027-06-01',
           ended_by: null,
           cause: 'automatic',
-        }),
-        expect.objectContaining({
-          group_id: maths1,
-          valid_from: '2026-11-16',
-          valid_until: '2027-06-01',
-          cause: 'cancel',
-          review: false,
+          review: true,
         }),
       ]);
     });
@@ -603,14 +600,14 @@ describe('groups on every class membership path', () => {
       const one = await pupil(oxford);
       await leave(one.id, '2026-10-31');
       await leave(one.id, '2026-11-30');
-      expect((await rowsOfStudent(one.id)).slice(1)).toEqual([
+      expect(await rowsOfStudent(one.id)).toEqual([
         expect.objectContaining({
           group_id: maths1,
-          valid_from: '2026-11-01',
+          valid_from: '2026-09-02',
           valid_until: '2026-12-01',
           own_until: '2027-06-01',
           ended_by: 'leaving',
-          cause: 'cancel',
+          cause: 'automatic',
           review: true,
         }),
       ]);
@@ -627,9 +624,7 @@ describe('groups on every class membership path', () => {
       expect((await cancel(one.id)).status).toBe(200);
       const held = (await rowsOfStudent(one.id)).filter((row) => row.valid_from < row.valid_until);
       expect(held.map((row) => [row.valid_from, row.valid_until])).toEqual([
-        ['2026-09-02', '2026-11-01'],
-        ['2026-11-01', '2026-12-01'],
-        ['2026-12-01', '2027-06-01'],
+        ['2026-09-02', '2027-06-01'],
       ]);
     });
 

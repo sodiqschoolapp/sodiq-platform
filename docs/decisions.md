@@ -236,6 +236,34 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 16 October 2026: one stay in a class and the History tab (task 3.5c)
+
+Plan approved on pull request #117 with corrections 1 to 7; decisions 1 to 5 marked Look first and confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** 3.1b decision 8 is reversed: a take-back (the cancel or undo of a leaving, the cancel, change or undo of a class or group move) grows the row it cut back, to its own end, to a leaving that stands, or to the move that wrote the next row given back; both `only_shrink` triggers and the end triggers of 0051, 0053, 0054 are replaced with paths added, none taken away; the days given back pass every check of an insert at the commit (`*_regained`) | Issue #105, H36: "a cancel or an undo gives the stay back as it was before, not as a new planned stay" |
+| **Look first.** `class_memberships_one_stay` and `group_memberships_one_stay`: two adjoining rows of one student in one class or group cannot be stored (deferred exclusion on closed ranges); the end `joined` with `joined_into_id` and `joined_xact`; a row emptied `joined` is held by the row it names at the commit (correction 3) | The done-when; H36, "one stay everywhere" |
+| **Look first.** The tests that pinned split rows (`class-transfers`, `group-transfers`, `class-groups`, `class-members`, `group-members`, `student-statuses`, `student-merges`, `membership-plan`, `student-moves.database`) now assert the one row; the grants tests read `own_until` as refused by the shrink rule (it has an update grant for the join) | The requirement changed with H36 |
+| **Look first.** Migration 0062 joined the rows already split on the test site, pair by pair, with an entry `student.stays_joined` per student and branch, and filled `replaces_move_id` from the entries of the changes | H36, "the stays already split on the test site are joined" |
+| **Look first.** A join changes no day: it passes in a closed year and an archived class and runs no seat check | The merge and the migration join rows of past years |
+| A changed move is a cancel plus a new move naming it (`replaces_move_id`, insert only for the application); History draws the chain as one move with its changes | H34; `effective_on` is never updated |
+| A return after a gap of a day or more is a new stay | `return_too_early` keeps the gap; the journal's "one row" is 8.6's |
+| `studentVersion` (one function, five readers and checkers) also counts the class moves taken back | "Student changed, reload" now that a cancel writes no class row (correction 1) |
+| History: `until` is the first day after on every line; a stay is `null` while it has no end and reaches past today; a stay that begins after today reads "from <date>" | H35; correction 4 |
+| Group stays are History lines, one per stay | H36, "the same for group stays" |
+| `stay_continues` answers a same-day move back into the class or group left | Every constraint maps to a code |
+| Status rows keep their shape | H34 to H36 name class and group stays |
+| (Build) A grown row ends at a leaving only while that leaving stands (`membership_leaving_stands`) | A grow must not name a leaving taken back |
+| **Look first.** (Build) An automatic group row that ends where a row given back of the same group begins takes that row's days (`joinCoverRows`): the days before a planned group row a leaving emptied and that row are one stay. Its consequence: a planned placement by a person (no review tag) comes back inside an automatic row tagged "placed automatically, review", and the placement row stays emptied | `group_memberships_one_stay`; the 3.2c fill met the planned row; spec review of the build, should-fix 2 |
+| (Build) The carry of a merge moves a row ended `withdrawn`, `undone` or `joined` to the kept record too, nothing else of it changing | A merge of a record with an emptied row was refused by the shrink rule |
+| (Build) 0062 runs `set constraints all immediate` before it adds the two constraints | The joins left deferred checks pending; found by the migration test |
+| (Spec review of the build, must-fix 1) A join holds the row it grows to exactly the joined rows' days: at the commit the row ends where the joined row ended, with its end and own end, or where a further row joined into it in this transaction ends (a chain); the commit check of the days given back skips only the update of the join itself | A join waived every check while some row was joined into it in the transaction, so the row could take any end |
+| (Spec review of the build, must-fix 2) A row of the same class or group that a cancel or an undo wrote before 0062 (cause `cancel` or `undo`) continues the stay: a take-back grows the row before it over its days and leaves it as it is (`continuesStay`); 0062 joins only rows that hold days, so such an emptied row stays | Code before 0062 left such rows emptied by a later leaving or move; their take-back answered 500 |
+| (Spec review of the build, must-fix 4) The commit check of the days given back keeps the student's branch check of the insert guard although no legal path reaches it (status rows cannot change before a move to another branch, and the rows a move cut are final); the leaving a row names is checked by the shrink rule before the write, so the commit check no longer repeats it | A check no path reaches has no test; one the shrink rule makes first is dead code |
+| (Spec review of the build, should-fix 3) A group move taken back whose cut row no longer ends where the target began names the days not given back (`notGiven`) in its audit entry | Every path that cannot give rows back names them |
+| (Permission review of the build) `student_moves_replaces_idx` is on `(branch_id, replaces_move_id)`; `student_rows_elsewhere` answers no `ownUntil`; its keys are pinned by a test | `.claude/rules/database.md`, unique constraints on a branch table; nothing answered that History does not read |
+
 ## 15 October 2026: the hand-test fixes of forms, refusals and messages (task 3.5b)
 
 Plan approved on pull request #116 with correction 1; decisions 1 to 11 confirmed there. Flagged on issue #42.

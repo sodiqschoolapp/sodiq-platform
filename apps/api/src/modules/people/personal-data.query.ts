@@ -138,6 +138,7 @@ export const ENTRY_ABOUT: Readonly<Record<PeopleAction, readonly About[]>> = {
   'student.branch_moved': ['record'],
   // Task 3.3d: the kept record; the merged one is removed, its values kept on the merge.
   'student.merged': ['record'],
+  'student.stays_joined': ['record'],
   'student.identity_shown': ['record'],
   'student.export': ['none'],
   'student.personal_data_report': ['record', 'person'],

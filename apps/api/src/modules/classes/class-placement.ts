@@ -4,7 +4,13 @@ import type { Transaction } from '../../database/transactions.js';
 import type { Access } from '../access/permission.guard.js';
 import type { Audit } from '../audit/audit.service.js';
 import { notFound } from '../setup/setup-refusals.js';
-import { fullFrom, membersPeak, membershipsOf } from './class-membership-rows.js';
+import {
+  fullFrom,
+  membersPeak,
+  membershipsOf,
+  studentVersion,
+  versionCounts,
+} from './class-membership-rows.js';
 import {
   holdsDays,
   placementEnd,
@@ -121,7 +127,7 @@ export async function lockPlacementStudents(
         cause: status.cause,
       })),
       memberships,
-      version: statuses.length + memberships.length,
+      version: studentVersion(statuses.length, await versionCounts(transaction, row.id), row.id),
     });
   }
   return found;

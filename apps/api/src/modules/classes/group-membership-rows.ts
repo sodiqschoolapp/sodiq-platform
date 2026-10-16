@@ -24,6 +24,10 @@ export const GROUP_MEMBERSHIP_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   group_class_has_members: 'group_class_has_members',
   group_has_members: 'group_has_members',
   group_size_below_members: 'group_size_below_members',
+  // Task 3.5c, decision 11: two adjoining rows of one group (a move back on
+  // the day of the move).
+  group_memberships_one_stay: 'stay_continues',
+  group_memberships_join: 'request_refused',
 };
 
 /**

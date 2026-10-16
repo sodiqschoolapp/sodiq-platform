@@ -30,9 +30,10 @@ const row = (
 const always = () => true;
 
 // The class rows of a student through a leaving, its cancel, undo and
-// replace (task 3.1b, decision 1 with correction 1 of the plan review).
+// replace (task 3.1b, decision 1 with correction 1 of the plan review; task
+// 3.5c, decision 1: a take-back grows the row it cut).
 describe('the class rows through a change of a leaving', () => {
-  it('cuts the rows in force at the first inactive day and withdraws the planned ones', () => {
+  it('cuts the rows in force at the first inactive day and empties the planned ones', () => {
     const plan = planMemberships(
       [
         row('now', '2026-09-01'),
@@ -46,42 +47,51 @@ describe('the class rows through a change of a leaving', () => {
       { id: 'now', validUntil: '2026-11-02' },
       { id: 'later', validUntil: '2027-01-04' },
     ]);
-    expect(plan.inserts).toEqual([]);
+    expect(plan.grows).toEqual([]);
   });
 
-  it('gives back the rows a cancelled leaving cut, from its first inactive day to their own end', () => {
-    // The row in force ends where the planned one begins (its own end).
-    const cut = row('now', '2026-09-01', '2026-11-02', {
-      endedBy: 'leaving',
-      leavingId: 'L0',
-      ownUntil: '2027-01-04',
-    });
-    const withdrawn = row('later', '2027-01-04', '2027-01-04', {
-      endedBy: 'leaving',
-      leavingId: 'L0',
-    });
+  it('grows back the row a cancelled leaving cut, from its first inactive day to its own end', () => {
+    const cut = row('now', '2026-09-01', '2026-11-02', { endedBy: 'leaving', leavingId: 'L0' });
     const other = row('other', '2026-09-01', '2026-10-01', { endedBy: 'leaving', leavingId: 'X' });
     const plan = planMemberships(
-      [cut, withdrawn, other],
+      [cut, other],
       { takeBack: { leavingId: 'L0', from: '2026-11-02' }, leave: null },
       always,
     );
     expect(plan.cuts).toEqual([]);
-    // Correction 1: the withdrawn planned row comes back on its planned date.
-    expect(plan.inserts).toEqual([
+    // H36 of issue #105: the same row, not a new planned one.
+    expect(plan.grows).toEqual([
       {
+        id: 'now',
         classId: 'oxford',
-        validFrom: '2026-11-02',
-        validUntil: '2027-01-04',
-        ownUntil: '2027-01-04',
-        cut: false,
-      },
-      {
-        classId: 'oxford',
-        validFrom: '2027-01-04',
+        from: '2026-11-02',
         validUntil: YEAR_END,
         ownUntil: YEAR_END,
-        cut: false,
+        endedBy: null,
+        endedByMoveId: null,
+      },
+    ]);
+  });
+
+  it('grows back a planned row the leaving emptied from its own first day', () => {
+    const emptied = row('later', '2027-01-04', '2027-01-04', {
+      endedBy: 'leaving',
+      leavingId: 'L0',
+    });
+    const plan = planMemberships(
+      [emptied],
+      { takeBack: { leavingId: 'L0', from: '2026-11-02' }, leave: null },
+      always,
+    );
+    expect(plan.grows).toEqual([
+      {
+        id: 'later',
+        classId: 'oxford',
+        from: '2027-01-04',
+        validUntil: YEAR_END,
+        ownUntil: YEAR_END,
+        endedBy: null,
+        endedByMoveId: null,
       },
     ]);
   });
@@ -93,18 +103,18 @@ describe('the class rows through a change of a leaving', () => {
       { takeBack: { leavingId: 'L0', from: '2026-11-02' }, leave: null },
       () => false,
     );
-    expect(plan.inserts).toEqual([]);
+    expect(plan.grows).toEqual([]);
     expect(plan.notRestored).toEqual([cut]);
   });
 
-  it('replaces a scheduled leaving by an earlier date: the cut rows are cut again, the withdrawn ones taken over', () => {
+  it('replaces a scheduled leaving by an earlier date: the cut rows are cut again, the emptied ones taken over', () => {
     const cut = row('now', '2026-09-01', '2026-12-01', { endedBy: 'leaving', leavingId: 'L0' });
-    const withdrawn = row('later', '2027-01-04', '2027-01-04', {
+    const emptied = row('later', '2027-01-04', '2027-01-04', {
       endedBy: 'leaving',
       leavingId: 'L0',
     });
     const plan = planMemberships(
-      [cut, withdrawn],
+      [cut, emptied],
       { takeBack: { leavingId: 'L0', from: '2026-12-01' }, leave: { from: '2026-11-02' } },
       always,
     );
@@ -112,75 +122,76 @@ describe('the class rows through a change of a leaving', () => {
       { id: 'now', validUntil: '2026-11-02' },
       { id: 'later', validUntil: '2027-01-04' },
     ]);
-    expect(plan.inserts).toEqual([]);
+    expect(plan.grows).toEqual([]);
   });
 
-  it('replaces a scheduled leaving by a later date: the rows come back up to the new date', () => {
-    // Three rows one after another, each to the start of the next.
-    const cut = row('now', '2026-09-01', '2026-11-02', {
-      endedBy: 'leaving',
-      leavingId: 'L0',
-      ownUntil: '2026-12-01',
-    });
-    const before = row('dec', '2026-12-01', '2026-12-01', {
-      endedBy: 'leaving',
-      leavingId: 'L0',
-      ownUntil: '2027-02-01',
-    });
-    const after = row('feb', '2027-02-01', '2027-02-01', { endedBy: 'leaving', leavingId: 'L0' });
+  it('replaces a scheduled leaving by a later date: the row grows up to the new date, cut by it', () => {
+    const cut = row('now', '2026-09-01', '2026-11-02', { endedBy: 'leaving', leavingId: 'L0' });
     const plan = planMemberships(
-      [cut, before, after],
+      [cut],
       { takeBack: { leavingId: 'L0', from: '2026-11-02' }, leave: { from: '2027-01-04' } },
       always,
     );
-    expect(plan.cuts).toEqual([{ id: 'feb', validUntil: '2027-02-01' }]);
-    expect(plan.inserts).toEqual([
+    expect(plan.cuts).toEqual([]);
+    expect(plan.grows).toEqual([
       {
+        id: 'now',
         classId: 'oxford',
-        validFrom: '2026-11-02',
-        validUntil: '2026-12-01',
-        ownUntil: '2026-12-01',
-        cut: false,
-      },
-      {
-        classId: 'oxford',
-        validFrom: '2026-12-01',
+        from: '2026-11-02',
         validUntil: '2027-01-04',
-        ownUntil: '2027-02-01',
-        cut: true,
+        ownUntil: YEAR_END,
+        endedBy: 'leaving',
+        endedByMoveId: null,
       },
     ]);
   });
 
-  it('gives back a row and the row a cancel wrote after it without an overlap', () => {
-    // A leaving, its cancel, then an earlier leaving in force: it cut the first
-    // row and emptied the one the cancel wrote back; both keep the year as their own end.
-    const first = row('first', '2026-09-02', '2026-10-01', { endedBy: 'leaving', leavingId: 'L2' });
+  it('refuses two rows given back that meet without a move between them', () => {
+    // A placement or a return never begins inside a row of the student, so
+    // only a move writes the later of two rows a leaving cut.
+    const first = row('first', '2026-09-02', '2026-10-01', {
+      endedBy: 'leaving',
+      leavingId: 'L2',
+    });
     const back = row('back', '2026-10-11', '2026-10-11', { endedBy: 'leaving', leavingId: 'L2' });
+    expect(() =>
+      planMemberships(
+        [first, back],
+        { takeBack: { leavingId: 'L2', from: '2026-10-01' }, leave: null },
+        always,
+      ),
+    ).toThrow('A row given back meets the next one only at a move.');
+  });
+
+  it('grows a row over a continuation a cancel wrote before 0062, which stays as it is', () => {
+    // Spec review of the build, must-fix 2: a leaving and its cancel before
+    // 0062 wrote the second row; an earlier leaving cut the first and emptied
+    // the second. Its undo gives the stay back as one row.
+    const first = row('first', '2026-09-02', '2026-10-02', { endedBy: 'leaving', leavingId: 'L2' });
+    const back = row('back', '2026-10-21', '2026-10-21', {
+      endedBy: 'leaving',
+      leavingId: 'L2',
+      cause: 'cancel',
+    });
     const plan = planMemberships(
       [first, back],
-      { takeBack: { leavingId: 'L2', from: '2026-10-01' }, leave: null },
+      { takeBack: { leavingId: 'L2', from: '2026-10-02' }, leave: null },
       always,
     );
-    expect(plan.inserts).toEqual([
+    expect(plan.grows).toEqual([
       {
+        id: 'first',
         classId: 'oxford',
-        validFrom: '2026-10-01',
-        validUntil: '2026-10-11',
-        ownUntil: '2026-10-11',
-        cut: false,
-      },
-      {
-        classId: 'oxford',
-        validFrom: '2026-10-11',
+        from: '2026-10-02',
         validUntil: YEAR_END,
         ownUntil: YEAR_END,
-        cut: false,
+        endedBy: null,
+        endedByMoveId: null,
       },
     ]);
   });
 
-  it('replaces a scheduled leaving by the same date without writing an empty row', () => {
+  it('replaces a scheduled leaving by the same date and changes no day', () => {
     const cut = row('now', '2026-09-01', '2026-11-02', { endedBy: 'leaving', leavingId: 'L0' });
     const plan = planMemberships(
       [cut],
@@ -190,7 +201,7 @@ describe('the class rows through a change of a leaving', () => {
     // The new leaving names the row; a later cancel gives it back from 2 November.
     expect(plan).toEqual({
       cuts: [{ id: 'now', validUntil: '2026-11-02' }],
-      inserts: [],
+      grows: [],
       notRestored: [],
     });
   });
@@ -199,7 +210,7 @@ describe('the class rows through a change of a leaving', () => {
     const withdrawn = row('w', '2026-12-01', '2026-12-01', { endedBy: 'withdrawn' });
     expect(
       planMemberships([withdrawn], { takeBack: null, leave: { from: '2026-11-02' } }, always),
-    ).toEqual({ cuts: [], inserts: [], notRestored: [] });
+    ).toEqual({ cuts: [], grows: [], notRestored: [] });
   });
 });
 
@@ -317,26 +328,31 @@ describe('the class rows of a move cancelled by a leaving', () => {
       always,
       new Set(['M']),
     );
-    expect(plan.inserts).toEqual([
+    // Task 3.3a, decision 8: the row a cancelled move wrote is not given back.
+    expect(plan.grows).toEqual([
       {
+        id: 'oxford',
         classId: 'oxford',
-        validFrom: '2026-11-02',
+        from: '2026-11-02',
         validUntil: YEAR_END,
         ownUntil: YEAR_END,
-        cut: false,
+        endedBy: null,
+        endedByMoveId: null,
       },
     ]);
   });
 
-  it('gives back both rows of a move that was not cancelled, each to the next', () => {
+  it('gives back both rows of a move that was not cancelled, the first ending at the move', () => {
     const plan = planMemberships(
       [cut, target],
       { takeBack: { leavingId: 'L', from: '2026-11-02' }, leave: null },
       always,
     );
-    expect(plan.inserts.map((one) => [one.classId, one.validFrom, one.validUntil])).toEqual([
-      ['oxford', '2026-11-02', '2026-11-16'],
-      ['yale', '2026-11-16', YEAR_END],
+    expect(
+      plan.grows.map((one) => [one.id, one.from, one.validUntil, one.endedBy, one.endedByMoveId]),
+    ).toEqual([
+      ['oxford', '2026-11-02', '2026-11-16', 'transfer', 'M'],
+      ['yale', '2026-11-16', YEAR_END, null, null],
     ]);
   });
 });

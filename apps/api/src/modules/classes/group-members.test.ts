@@ -967,11 +967,12 @@ describe('group membership', () => {
           row.cause,
         ]),
       ).toEqual([
-        [maths1, '2026-10-10', '2026-11-01', 'placement'],
-        [maths1, '2026-11-01', '2027-06-01', 'cancel'],
-        [englishGroup, '2026-11-01', '2026-11-16', 'automatic'],
+        // One stay per group (task 3.5c, H36): the maths row grows back; the
+        // English days from the first day taken back are one automatic row
+        // that runs on through the planned row's days, which stays emptied.
+        [maths1, '2026-10-10', '2027-06-01', 'placement'],
+        [englishGroup, '2026-11-01', '2027-06-01', 'automatic'],
         [englishGroup, '2026-11-16', '2026-11-16', 'placement'],
-        [englishGroup, '2026-11-16', '2027-06-01', 'cancel'],
       ]);
     });
 

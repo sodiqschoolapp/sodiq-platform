@@ -3296,6 +3296,67 @@ try {
   seeded.handTest35bSwitch = { login: handSwitch.login, password: handSwitch.firstPassword };
   seeded.handTest35bSearch = { login: handSearch.login, password: handSearch.firstPassword };
 
+  // Task 3.5c (issue #105, Part D, H36): one Academic Vice Principal, a
+  // student of 7 Oxford and 7 Princeton beside it, in a branch of their own.
+  // All names and phones are invented.
+  const staysBranch = await insertBranch(migrator, 'Hand test 3.5c branch');
+  const handStays = await create('Dilshod', 'Ergashev');
+  await transactions.run([staysBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: handStays.id,
+      role: 'academic_vice_principal',
+      branchId: staysBranch,
+      givenBy: null,
+    }),
+  );
+  await migrator.transaction().execute(async (transaction) => {
+    const year = await transaction
+      .insertInto('academic_years')
+      .values({
+        branch_id: staysBranch,
+        start_date: startDate,
+        end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('quarters')
+      .values(
+        [1, 2, 3, 4].map((number) => ({
+          branch_id: staysBranch,
+          academic_year_id: year.id,
+          number,
+        })),
+      )
+      .execute();
+    const classIds = new Map<string, string>();
+    for (const name of ['Oxford', 'Princeton']) {
+      const written = await transaction
+        .insertInto('classes')
+        .values({
+          branch_id: staysBranch,
+          academic_year_id: year.id,
+          grade: 7,
+          name,
+          language: 'uz',
+          max_size: 24,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      classIds.set(name, written.id);
+    }
+    await studentInClass(transaction, {
+      branch: staysBranch,
+      classId: classIds.get('Oxford') ?? null,
+      uid: '9999821',
+      first: 'Sardor',
+      last: 'Usmonov',
+      createdBy: handStays.id,
+      phone: '+998935553321',
+    });
+  });
+  seeded.handTest35cStays = { login: handStays.login, password: handStays.firstPassword };
+
   for (const branch of classBranches) {
     const years = await migrator
       .selectFrom('academic_years')
