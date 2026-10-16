@@ -33,6 +33,29 @@ import { invalidateYears } from './setup-api';
 import { monthsText, schoolDateText } from '@/lib/dates';
 import { SECTION_TITLE } from '@/components/ui/control';
 
+/**
+ * The stays that stand in the days a change of the dates would cut off
+ * (`year_cut_holds`, task 3.6b-2, L128): one line each, then "and N more".
+ */
+function CutHoldsList({ failure }: { failure: unknown }) {
+  const { t } = useTranslation();
+  if (!(failure instanceof ApiFailure) || failure.code !== 'year_cut_holds') {
+    return null;
+  }
+  const details = failure.details ?? [];
+  const more = Number(details.find((one) => one.path === 'more')?.message ?? 0);
+  return (
+    <ul className="grid list-disc gap-1 pl-5 text-sm" aria-label={t('setup.years.cutHoldsList')}>
+      {details
+        .filter((one) => one.path !== 'more')
+        .map((one) => (
+          <li key={one.path}>{one.message}</li>
+        ))}
+      {more > 0 && <li>{t('setup.years.cutHoldsMore', { count: more })}</li>}
+    </ul>
+  );
+}
+
 /** The reason a custom issue of a shared schema names (`params.reason`), if any. */
 function reasonOf(issue: FormIssue): string | undefined {
   const params = (issue as { params?: { reason?: unknown } }).params;
@@ -67,6 +90,7 @@ export function YearForm({ year, label, onSave, onCancel }: YearFormProps) {
     <RecordForm form={form} label={label} onCancel={onCancel}>
       <DateField label={t('setup.years.startDate')} {...form.bind('startDate')} />
       <DateField label={t('setup.years.endDate')} {...form.bind('endDate')} />
+      <CutHoldsList failure={form.failure} />
     </RecordForm>
   );
 }

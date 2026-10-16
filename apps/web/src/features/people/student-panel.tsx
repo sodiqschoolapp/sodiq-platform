@@ -51,6 +51,7 @@ import {
   statusActions,
   UndoForm,
   useCancelLeaving,
+  useCancelReturn,
   type StatusForm,
 } from './student-status-section';
 import {
@@ -214,6 +215,15 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
     },
     reread,
   );
+  const cancelReturn = useCancelReturn(
+    student,
+    name,
+    async (answer) => {
+      await statusChanged(answer);
+      panel.point(focusAfter());
+    },
+    reread,
+  );
   // Task 3.3a: the cancel of a scheduled move, as the cancel of a leaving.
   const cancelMove = useCancelMove(
     student,
@@ -323,6 +333,7 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
     panel.start(key, () => {
       setStaleClosed(false);
       cancelLeaving.reset();
+      cancelReturn.reset();
       cancelMove.reset();
       cancelRelease.reset();
     });
@@ -386,6 +397,26 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
         }}
       >
         {t('people.students.cancelLeaving')}
+      </Button>
+    ),
+    allowed.cancelReturn && (
+      <Button
+        key="cancel-return"
+        variant="secondary"
+        disabled={cancelReturn.isPending}
+        onClick={() => {
+          setStaleClosed(false);
+          cancelReturn.mutate(undefined, {
+            onSuccess: (answer) => {
+              // The return kept: nothing was saved, so nothing says so.
+              if (answer === null) {
+                cancelReturn.reset();
+              }
+            },
+          });
+        }}
+      >
+        {t('people.students.cancelReturn')}
       </Button>
     ),
     allowed.undo && opens('undo', t('people.students.undoTitle'), 'secondary'),
@@ -677,14 +708,20 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
           danger={danger.length === 0 ? undefined : danger}
           error={
             cancelLeaving.error ??
+            cancelReturn.error ??
             cancelMove.error ??
             cancelRelease.error ??
             (staleClosed ? new ApiFailure('student_changed') : null)
           }
           // After a save of a form, or "Cancel the leaving" until another action starts.
           saved={
-            (panel.saved && cancelLeaving.isIdle && cancelMove.isIdle && cancelRelease.isIdle) ||
+            (panel.saved &&
+              cancelLeaving.isIdle &&
+              cancelReturn.isIdle &&
+              cancelMove.isIdle &&
+              cancelRelease.isIdle) ||
             cancelLeaving.isSuccess ||
+            cancelReturn.isSuccess ||
             cancelMove.isSuccess ||
             cancelRelease.isSuccess
           }

@@ -303,6 +303,37 @@ describe('the academic years page', () => {
     ).toEqual({ startDate: '2027-09-02', endDate: '2028-05-30' });
   });
 
+  // Task 3.6b-2, L128: the stays that stand in the days a change would cut off.
+  it('lists the stays in the way when the dates would cut them off, with the count of the rest', async () => {
+    await openList('super_admin', [PLANNED], {
+      [`PUT /api/setup/academic-years/${PLANNED.id}`]: () =>
+        refusalWith('year_cut_holds', [
+          {
+            path: 'rows.0',
+            code: 'year_cut_holds',
+            message: 'Lola Karimova · Oxford · 2028-05-26 – 2028-06-01',
+          },
+          {
+            path: 'rows.1',
+            code: 'year_cut_holds',
+            message: 'a student of another branch · Oxford · 2028-05-26 – 2028-06-01',
+          },
+          { path: 'more', code: 'year_cut_holds', message: '3' },
+        ]),
+    });
+    const panel = await openYear('2027–2028');
+    const form = await edit(panel, '2027–2028');
+    type(within(form).getByLabelText(en.setup.years.endDate), '2028-05-20');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    const list = await within(form).findByRole('list', { name: en.setup.years.cutHoldsList });
+    expect(within(list).getAllByRole('listitem').map((one) => one.textContent)).toEqual([
+      'Lola Karimova · Oxford · 2028-05-26 – 2028-06-01',
+      'a student of another branch · Oxford · 2028-05-26 – 2028-06-01',
+      'and 3 more',
+    ]);
+    expect(within(form).getByText(en.errors.year_cut_holds)).toBeDefined();
+  });
+
   it('says what to fix in the quarters before anything is sent, and shows a quarter outside the year beside its field', async () => {
     const calls = await openList('super_admin', [CURRENT], {
       [`PUT /api/setup/academic-years/${CURRENT.id}/quarters`]: () =>
