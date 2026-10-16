@@ -1637,7 +1637,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       cancelReturn: 'Отменить возвращение',
       keepReturn: 'Оставить возвращение',
       cancelReturnConfirmTitle: 'Отменить запланированное возвращение?',
-      cancelReturnConfirmText: 'Ученик остаётся в прежнем состоянии. Место в классе на следующий год освобождается.',
+      cancelReturnConfirmText:
+        'Ученик остаётся в прежнем состоянии. Место в классе на следующий год освобождается.',
       nextYearStart: 'Первый день следующего года ({{date}})',
       undoTitle: 'Отменить выбытие',
       returnTitle: 'Возвращение в школу',

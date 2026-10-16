@@ -1559,7 +1559,8 @@ export const uz: Texts<'one' | 'other'> = {
       cancelReturn: 'Qaytishni bekor qilish',
       keepReturn: 'Qaytishni qoldirish',
       cancelReturnConfirmTitle: 'Rejalashtirilgan qaytish bekor qilinsinmi?',
-      cancelReturnConfirmText: 'Oʻquvchi qaytishdan oldingi holatida qoladi. Kelgusi yilga band qilingan oʻrin boʻshatiladi.',
+      cancelReturnConfirmText:
+        'Oʻquvchi qaytishdan oldingi holatida qoladi. Kelgusi yilga band qilingan oʻrin boʻshatiladi.',
       nextYearStart: 'Kelgusi yilning birinchi kuni ({{date}})',
       undoTitle: 'Ketishni bekor qilish',
       returnTitle: 'Maktabga qaytish',

@@ -45,7 +45,13 @@ function applied(rows: readonly StoredStudentStatus[], plan: StudentStatusPlan, 
   return [
     ...cut,
     ...plan.writes.map((write, index) =>
-      row(`${prefix}${String(index + 1)}`, write.status, write.validFrom, write.validUntil, write.cause),
+      row(
+        `${prefix}${String(index + 1)}`,
+        write.status,
+        write.validFrom,
+        write.validUntil,
+        write.cause,
+      ),
     ),
   ];
 }

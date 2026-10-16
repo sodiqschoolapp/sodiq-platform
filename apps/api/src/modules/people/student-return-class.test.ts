@@ -928,7 +928,9 @@ describe('the class of a return and of a graduate restore', () => {
       const history = studentHistorySchema.parse(
         (await get(`/api/people/students/${student.id}/history`)).body,
       );
-      expect(history.lines.filter((line) => line.kind === 'status' && line.status === 'inactive')).toHaveLength(1);
+      expect(
+        history.lines.filter((line) => line.kind === 'status' && line.status === 'inactive'),
+      ).toHaveLength(1);
       const undone = await post(`/api/people/students/${student.id}/leaving/undo`, {
         reason: 'Entered by mistake.',
         version: (await fresh(student.id)).version,
@@ -972,7 +974,12 @@ describe('the class of a return and of a graduate restore', () => {
         refusedWith(response, 404, 'not_found');
       }
       refusedWith(
-        await t.post(`/api/people/students/${UNKNOWN}/return/cancel`, t.north, { version: 1 }, t.admin),
+        await t.post(
+          `/api/people/students/${UNKNOWN}/return/cancel`,
+          t.north,
+          { version: 1 },
+          t.admin,
+        ),
         404,
         'not_found',
       );

@@ -1548,7 +1548,8 @@ export const en = {
       cancelReturn: 'Cancel the return',
       keepReturn: 'Keep the return',
       cancelReturnConfirmTitle: 'Cancel the scheduled return?',
-      cancelReturnConfirmText: 'The student stays as before the return. The class booked for next year is released.',
+      cancelReturnConfirmText:
+        'The student stays as before the return. The class booked for next year is released.',
       nextYearStart: 'First day of next year ({{date}})',
       undoTitle: 'Undo leaving',
       returnTitle: 'Return to school',

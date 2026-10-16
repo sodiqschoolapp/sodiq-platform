@@ -68,7 +68,11 @@ export async function endsOf(
     }
     const now = await transaction
       .selectFrom(table)
-      .select(['id', sql<string>`own_until::text`.as('own_until'), sql<string>`valid_until::text`.as('valid_until')])
+      .select([
+        'id',
+        sql<string>`own_until::text`.as('own_until'),
+        sql<string>`valid_until::text`.as('valid_until'),
+      ])
       .where('id', 'in', ids)
       .orderBy('id')
       .execute();
@@ -121,7 +125,9 @@ export async function refuseCutHolds(
     path: `rows.${String(index)}`,
     code: 'year_cut_holds',
     message: `${
-      row.first_name === null ? 'a student of another branch' : `${row.first_name} ${row.last_name ?? ''}`.trim()
+      row.first_name === null
+        ? 'a student of another branch'
+        : `${row.first_name} ${row.last_name ?? ''}`.trim()
     } · ${row.holder_name ?? ''} · ${row.valid_from} – ${row.valid_until}`,
   }));
   if (found.rows.length > CUT_HOLDS_LISTED) {

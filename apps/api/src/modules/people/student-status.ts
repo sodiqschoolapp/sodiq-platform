@@ -275,7 +275,13 @@ export function planUndoLeaving(
   return {
     cuts: cutStay(stay.rows, stay.first.validFrom),
     writes: [
-      { status: 'active', validFrom: stay.first.validFrom, validUntil: null, cause: 'undo', reason },
+      {
+        status: 'active',
+        validFrom: stay.first.validFrom,
+        validUntil: null,
+        cause: 'undo',
+        reason,
+      },
     ],
   };
 }

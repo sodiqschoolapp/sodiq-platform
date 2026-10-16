@@ -137,7 +137,12 @@ describe('the dates of a year and its stays in the database', () => {
     const otherYear = await classes.year(branch, 'planned', '2027-09-01', '2028-05-31');
     const other = await classes.schoolClass(branch, otherYear, { name: 'Yale', grade: 7 });
     const student = await members.student(branch);
-    const planned = await members.member({ branch, classId: oxford, studentId: student, from: '2026-12-01' });
+    const planned = await members.member({
+      branch,
+      classId: oxford,
+      studentId: student,
+      from: '2026-12-01',
+    });
     await inBranch(branch, (transaction) =>
       transaction
         .updateTable('class_memberships')
@@ -218,7 +223,12 @@ describe('the dates of a year and its stays in the database', () => {
   it('does not count an empty row among the stays in the way', async () => {
     const { branch, year, oxford } = await setting();
     const student = await members.student(branch);
-    const planned = await members.member({ branch, classId: oxford, studentId: student, from: '2027-05-25' });
+    const planned = await members.member({
+      branch,
+      classId: oxford,
+      studentId: student,
+      from: '2027-05-25',
+    });
     await inBranch(branch, (transaction) =>
       transaction
         .updateTable('class_memberships')
@@ -233,19 +243,32 @@ describe('the dates of a year and its stays in the database', () => {
   it('refuses a later start with a stay from the old start, and lets an earlier start change nothing', async () => {
     const { branch, year, oxford } = await setting();
     const student = await members.student(branch);
-    const row = await members.member({ branch, classId: oxford, studentId: student, from: '2026-09-01' });
+    const row = await members.member({
+      branch,
+      classId: oxford,
+      studentId: student,
+      from: '2026-09-01',
+    });
     expect(await outcome(setDates(branch, year, '2026-09-08', '2027-05-31'))).toBe(
       'academic_years_cut_holds',
     );
     await setDates(branch, year, '2026-08-25', '2027-05-31');
-    expect(await members.rowOf(row)).toMatchObject({ valid_from: '2026-09-01', own_until: '2027-06-01' });
+    expect(await members.rowOf(row)).toMatchObject({
+      valid_from: '2026-09-01',
+      own_until: '2027-06-01',
+    });
   });
 
   it('counts the stay of a student now in another branch', async () => {
     const { branch, year, oxford } = await setting();
     const other = await insertBranch(database.migrator, 'Elsewhere');
     const student = await members.student(branch);
-    const row = await members.member({ branch, classId: oxford, studentId: student, from: '2026-09-01' });
+    const row = await members.member({
+      branch,
+      classId: oxford,
+      studentId: student,
+      from: '2026-09-01',
+    });
     await moveStudentBranch(database.migrator, student, branch, other);
     expect(await outcome(setDates(branch, year, '2026-09-08', '2027-05-31'))).toBe(
       'academic_years_cut_holds',

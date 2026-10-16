@@ -326,7 +326,11 @@ describe('the academic years page', () => {
     type(within(form).getByLabelText(en.setup.years.endDate), '2028-05-20');
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
     const list = await within(form).findByRole('list', { name: en.setup.years.cutHoldsList });
-    expect(within(list).getAllByRole('listitem').map((one) => one.textContent)).toEqual([
+    expect(
+      within(list)
+        .getAllByRole('listitem')
+        .map((one) => one.textContent),
+    ).toEqual([
       'Lola Karimova · Oxford · 2028-05-26 – 2028-06-01',
       'a student of another branch · Oxford · 2028-05-26 – 2028-06-01',
       'and 3 more',

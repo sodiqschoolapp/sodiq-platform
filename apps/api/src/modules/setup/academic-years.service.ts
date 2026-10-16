@@ -272,7 +272,8 @@ export class AcademicYears {
           .set({ start_date: record.startDate, end_date: record.endDate })
           .where('id', '=', id)
           .execute();
-        const followed = before.endDate === record.endDate ? [] : await endsOf(transaction, following);
+        const followed =
+          before.endDate === record.endDate ? [] : await endsOf(transaction, following);
         await this.audit.record(transaction, {
           branchId,
           actorId: access.accountId,
@@ -287,8 +288,11 @@ export class AcademicYears {
               ? {}
               : {
                   rowsFollowed: followed.flatMap((row) => {
-                    const was = following.find((one) => one.table === row.table && one.id === row.id);
-                    return was === undefined || (was.ownUntil === row.ownUntil && was.validUntil === row.validUntil)
+                    const was = following.find(
+                      (one) => one.table === row.table && one.id === row.id,
+                    );
+                    return was === undefined ||
+                      (was.ownUntil === row.ownUntil && was.validUntil === row.validUntil)
                       ? []
                       : [
                           {

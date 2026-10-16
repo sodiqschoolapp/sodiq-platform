@@ -2089,7 +2089,13 @@ describe('the Status section', () => {
       version: 4,
       statuses: [
         { status: 'active', from: '2026-09-02', until: '2026-10-01', cause: 'start', reason: null },
-        { status: 'inactive', from: '2026-10-01', until: '2027-09-01', cause: 'leaving', reason: 'Moved' },
+        {
+          status: 'inactive',
+          from: '2026-10-01',
+          until: '2027-09-01',
+          cause: 'leaving',
+          reason: 'Moved',
+        },
         { status: 'active', from: '2027-09-01', until: null, cause: 'return', reason: null },
       ],
     });
@@ -2150,7 +2156,10 @@ describe('the Status section', () => {
     await within(panel).findByRole('heading', { name: en.people.students.statusTitle });
     const form = await edit(panel, en.people.students.returnTitle, en.people.students.returnTitle);
     const pick = await within(form).findByRole('button', {
-      name: en.people.students.nextYearStart.replace('{{date}}', schoolDateText('2027-09-01', 'en')),
+      name: en.people.students.nextYearStart.replace(
+        '{{date}}',
+        schoolDateText('2027-09-01', 'en'),
+      ),
     });
     fireEvent.click(pick);
     expect(
