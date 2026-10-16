@@ -180,9 +180,11 @@ export const en = {
     student_not_inactive:
       'This student is not inactive now. Reload the page to see the current status.',
     undo_not_leaving: 'This status did not come from a leaving, so it cannot be undone here.',
+    return_not_planned: 'No return is scheduled for this student. Reload the page.',
+    return_in_force: 'This return has already taken effect.',
     return_too_early:
       'The return must be after the first day away. To erase a leaving entered by mistake, use "Undo leaving".',
-    status_date_future: 'Choose today or an earlier date.',
+    status_date_future: 'Choose today, an earlier date, or the first day of next year.',
     student_not_graduated:
       'This student is not graduated now. Reload the page to see the current status.',
     restore_before_graduation: 'Choose a date on or after the day the student graduated.',
@@ -2485,6 +2487,7 @@ export const en = {
         leave_undone: 'Leaving undone',
         return: 'Student returned',
         graduate_restored: 'Graduate restored',
+        return_cancelled: 'Return cancelled',
         class_joined: 'Placed in a class',
         class_withdrawn: 'Placement in a class withdrawn',
         group_joined: 'Placed in a group',

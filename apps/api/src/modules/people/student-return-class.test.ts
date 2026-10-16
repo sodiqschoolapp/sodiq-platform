@@ -835,4 +835,149 @@ describe('the class of a return and of a graduate restore', () => {
       refusedWith(second, 409, 'student_changed');
     });
   });
+
+  // Task 3.6b-2, owner's answer L170: a return, and the Super Admin's restore,
+  // may be dated the first day of the next planned year (here 1 September
+  // 2027, the only planned year of north); the student stays inactive
+  // (graduated) until then, and it can be cancelled until its date.
+  describe('a return or a restore dated the first day of next year (L170)', () => {
+    const AUGUST = '2027-09-01';
+
+    const cancelReturn = async (id: string, cookie = t.admin, version?: number) =>
+      post(
+        `/api/people/students/${id}/return/cancel`,
+        { version: version ?? (await fresh(id)).version },
+        cookie,
+      );
+
+    it('writes the return with the class of next year, keeps the student inactive, and refuses any other future date', async () => {
+      const oxford = await schoolClass();
+      const student = await leftFrom(oxford);
+      const coming = await classes.schoolClass(t.north, nextYear, { grade: 7 });
+      const returned = accepted(await giveBack(student.id, coming, { from: AUGUST }));
+      expect(returned.status).toBe('inactive');
+      expect(returned.statuses.map((row) => [row.status, row.from, row.until, row.cause])).toEqual([
+        ['active', '2026-09-02', '2026-10-06', 'start'],
+        ['inactive', '2026-10-06', AUGUST, 'leaving'],
+        ['active', AUGUST, null, 'return'],
+      ]);
+      expect(await classRows(student.id)).toContainEqual(
+        expect.objectContaining({
+          class_id: coming,
+          valid_from: AUGUST,
+          own_until: '2028-06-01',
+          cause: 'return',
+        }),
+      );
+      // Any other day after today, and the day after the first, are refused.
+      const another = await leftFrom(await schoolClass());
+      for (const from of ['2027-09-02', '2026-11-01']) {
+        refusedWith(await giveBack(another.id, coming, { from }), 409, 'status_date_future');
+      }
+      // The class must be of the year that holds the date.
+      const outside = await giveBack(another.id, await schoolClass(), { from: AUGUST });
+      refusedWith(outside, 409, 'return_outside_year');
+      expect(detailsOf(outside)[0]).toMatchObject({ path: 'from', code: 'return_outside_year' });
+    });
+
+    it('refuses a future date when the branch has no planned year', async () => {
+      const southClass = await classes.schoolClass(t.south, southYear, { grade: 7 });
+      const created = await pupil(southClass, t.south);
+      const left = await t.post(`/api/people/students/${created.id}/leaving`, t.south, {
+        lastDay: '2026-10-05',
+        reason: 'The family moved.',
+        version: created.version,
+      });
+      const gone = studentDetailSchema.parse(left.body);
+      const response = await t.post(`/api/people/students/${created.id}/return`, t.south, {
+        from: AUGUST,
+        grade: 7,
+        classId: southClass,
+        contract: { number: 'RC-SOUTH/1', signedOn: '2026-10-08' },
+        reason: null,
+        version: gone.version,
+      });
+      refusedWith(response, 409, 'status_date_future');
+    });
+
+    it('cancels the return before its date, then returns again and undoes the leaving', async () => {
+      const oxford = await schoolClass();
+      const student = await leftFrom(oxford);
+      const coming = await classes.schoolClass(t.north, nextYear, { grade: 7 });
+      accepted(await giveBack(student.id, coming, { from: AUGUST }));
+      const stale = (await fresh(student.id)).version;
+      const cancelled = accepted(await cancelReturn(student.id));
+      expect(cancelled.status).toBe('inactive');
+      expect(await classRows(student.id)).toContainEqual(
+        expect.objectContaining({
+          class_id: coming,
+          valid_from: AUGUST,
+          valid_until: AUGUST,
+          ended_by: 'withdrawn',
+        }),
+      );
+      const [entry] = await t.entries('student.return_cancelled', student.id);
+      expect(entry).toMatchObject({ assignment_id: expect.any(String) });
+      // The same version cannot be used twice.
+      refusedWith(await cancelReturn(student.id, t.admin, stale), 409, 'student_changed');
+      refusedWith(await cancelReturn(student.id), 409, 'return_not_planned');
+      // The student is still inactive since the leaving: returned again, then cancelled again.
+      accepted(await giveBack(student.id, coming, { from: AUGUST }));
+      accepted(await cancelReturn(student.id));
+      // The history shows one inactive line from the leaving, and the leaving can be undone.
+      const history = studentHistorySchema.parse(
+        (await get(`/api/people/students/${student.id}/history`)).body,
+      );
+      expect(history.lines.filter((line) => line.kind === 'status' && line.status === 'inactive')).toHaveLength(1);
+      const undone = await post(`/api/people/students/${student.id}/leaving/undo`, {
+        reason: 'Entered by mistake.',
+        version: (await fresh(student.id)).version,
+      });
+      expect(accepted(undone).status).toBe('active');
+    });
+
+    it('refuses to cancel a return in force and when nothing is scheduled', async () => {
+      const oxford = await schoolClass();
+      const student = await leftFrom(oxford);
+      refusedWith(await cancelReturn(student.id), 409, 'return_not_planned');
+      accepted(await giveBack(student.id, oxford, { from: '2026-10-08' }));
+      refusedWith(await cancelReturn(student.id), 409, 'return_in_force');
+      const never = await pupil(await schoolClass());
+      refusedWith(await cancelReturn(never.id), 409, 'return_not_planned');
+    });
+
+    it('restores a graduate on the first day of next year, and only the Super Admin cancels it', async () => {
+      const student = await graduated();
+      const eighth = await classes.schoolClass(t.north, nextYear, { grade: 8 });
+      const restored = accepted(await restoreInto(student.id, eighth, AUGUST));
+      expect(restored.status).toBe('graduated');
+      refusedWith(await cancelReturn(student.id, t.vicePrincipal), 403, 'permission_denied');
+      expect((await fresh(student.id)).status).toBe('graduated');
+      const cancelled = accepted(await cancelReturn(student.id));
+      expect(cancelled.status).toBe('graduated');
+      // The restore can be written again after a cancel.
+      accepted(await restoreInto(student.id, eighth, AUGUST));
+    });
+
+    it('lets the Academic Vice Principal cancel a return, and answers 404 for another branch and an unknown student', async () => {
+      const oxford = await schoolClass();
+      const student = await leftFrom(oxford);
+      const coming = await classes.schoolClass(t.north, nextYear, { grade: 7 });
+      accepted(await giveBack(student.id, coming, { from: AUGUST }));
+      const before = await classRows(student.id);
+      for (const id of [UNKNOWN, student.id]) {
+        const response = await t.post(`/api/people/students/${id}/return/cancel`, t.south, {
+          version: 1,
+        });
+        refusedWith(response, 404, 'not_found');
+      }
+      refusedWith(
+        await t.post(`/api/people/students/${UNKNOWN}/return/cancel`, t.north, { version: 1 }, t.admin),
+        404,
+        'not_found',
+      );
+      expect(await classRows(student.id)).toEqual(before);
+      accepted(await cancelReturn(student.id, t.vicePrincipal));
+    });
+  });
 });

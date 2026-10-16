@@ -187,9 +187,11 @@ export const uz: Texts<'one' | 'other'> = {
       'Ketish allaqachon kuchga kirgan. Sabab bilan «Ketishni bekor qilish»dan foydalaning.',
     student_not_inactive: 'Oʻquvchi hozir faol. Joriy holatni koʻrish uchun sahifani yangilang.',
     undo_not_leaving: 'Bu holat ketishdan kelib chiqmagan, uni bu yerda bekor qilib boʻlmaydi.',
+    return_not_planned: 'Bu oʻquvchining rejalashtirilgan qaytishi yoʻq. Sahifani yangilang.',
+    return_in_force: 'Qaytish allaqachon kuchga kirgan.',
     return_too_early:
       'Qaytish kuni yoʻq boʻlgan birinchi kundan keyin boʻlishi kerak. Xato kiritilgan ketishni olib tashlash uchun «Ketishni bekor qilish»dan foydalaning.',
-    status_date_future: 'Bugungi yoki oldingi kunni tanlang.',
+    status_date_future: 'Bugungi yoki oldingi kunni, yoki kelgusi yilning birinchi kunini tanlang.',
     student_not_graduated:
       'Oʻquvchi hozir bitiruvchi emas. Joriy holatni koʻrish uchun sahifani yangilang.',
     restore_before_graduation: 'Bitirgan kun yoki undan keyingi kunni tanlang.',
@@ -2501,6 +2503,7 @@ export const uz: Texts<'one' | 'other'> = {
         leave_undone: 'Ketish qaytarildi',
         return: 'Oʻquvchi qaytdi',
         graduate_restored: 'Bitiruvchi tiklandi',
+        return_cancelled: 'Qaytish bekor qilindi',
         class_joined: 'Sinfga joylashtirildi',
         class_withdrawn: 'Sinfga joylashtirish bekor qilindi',
         group_joined: 'Guruhga joylashtirildi',

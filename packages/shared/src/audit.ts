@@ -127,6 +127,7 @@ export const AUDIT_ACTION_GROUPS = {
     'student.leave_undone',
     'student.return',
     'student.graduate_restored',
+    'student.return_cancelled',
     'student.delete',
     'student.class_joined',
     'student.class_withdrawn',

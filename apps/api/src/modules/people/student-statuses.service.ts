@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
+import { sql } from 'kysely';
 import type {
   AuditAction,
   ClassNotRestored,
   ErrorCode,
   StudentCancelLeaving,
+  StudentCancelReturn,
   StudentDelete,
   StudentDetail,
   StudentLeaving,
@@ -28,6 +30,7 @@ import {
   CLASS_PATH_GROUP_REFUSALS,
   cutGroupRows,
   groupMembershipsOf,
+  withdrawGroupRows,
   type GroupRowEnded,
 } from '../classes/group-membership-rows.js';
 import { planMemberships, type StoredMembership } from '../classes/membership-plan.js';
@@ -50,6 +53,7 @@ import { atClassFields, classLeft, groupsLeavingCut } from './return-class.js';
 import {
   holdsData,
   planCancelLeaving,
+  planCancelReturn,
   planLeaving,
   planRestore,
   planReturn,
@@ -110,6 +114,11 @@ function branchOf(access: Access): string {
     throw new Error('A student route works for the branch of the request.');
   }
   return access.branchId;
+}
+
+/** Whether any current assignment may restore a graduate: `student_graduates` `edit`, the Super Admin. */
+function mayRestore(access: Access): boolean {
+  return access.assignments.some((assignment) => assignment.role === 'super_admin');
 }
 
 /** The class read by `before`; `also` runs only after it. */
@@ -238,6 +247,7 @@ export class StudentStatuses {
   ): Promise<StudentDetail> {
     const branchId = branchOf(access);
     let placement: PlacementClass | undefined;
+    let nextYear: string | null = null;
     return atClassFields(() =>
       this.students.refusingTaken(access, () =>
         this.change(access, id, requestId, {
@@ -245,8 +255,9 @@ export class StudentStatuses {
           version: input.version,
           before: async (transaction) => {
             placement = await this.classOfBody(transaction, branchId, input.classId);
+            nextYear = await this.nextYearStart(transaction, branchId);
           },
-          plan: (rows, today) => planReturn(rows, input.from, input.reason, today),
+          plan: (rows, today) => planReturn(rows, input.from, input.reason, today, nextYear),
           newValue: {
             from: input.from,
             grade: input.grade,
@@ -300,14 +311,16 @@ export class StudentStatuses {
   ): Promise<StudentDetail> {
     const branchId = branchOf(access);
     let placement: PlacementClass | undefined;
+    let nextYear: string | null = null;
     return atClassFields(() =>
       this.change(access, id, requestId, {
         action: 'student.graduate_restored',
         version: input.version,
         before: async (transaction) => {
           placement = await this.classOfBody(transaction, branchId, input.classId);
+          nextYear = await this.nextYearStart(transaction, branchId);
         },
-        plan: (rows, today) => planRestore(rows, input.from, input.reason, today),
+        plan: (rows, today) => planRestore(rows, input.from, input.reason, today, nextYear),
         newValue: { from: input.from, classId: input.classId },
         reason: input.reason,
         also: async (transaction) => {
@@ -330,6 +343,97 @@ export class StudentStatuses {
         },
       }),
     );
+  }
+
+  /**
+   * The first day of the branch's next planned academic year: the earliest
+   * year with status `planned` that starts after today, today read from the
+   * transaction moment (task 3.6b-2, decision 7; owner's answer L170). The one
+   * future date a return or a restore may take; `null` when there is none.
+   */
+  private async nextYearStart(transaction: Transaction, branchId: string): Promise<string | null> {
+    const today = await this.students.todayIn(transaction, branchId);
+    const next = await transaction
+      .selectFrom('academic_years')
+      .select(sql<string>`start_date::text`.as('start_date'))
+      .where('branch_id', '=', branchId)
+      .where('status', '=', 'planned')
+      .where('start_date', '>', today)
+      .orderBy('start_date')
+      .limit(1)
+      .executeTakeFirst();
+    return next?.start_date ?? null;
+  }
+
+  /**
+   * The cancel of a scheduled return or restore, until its date (edge: "It
+   * can be changed or cancelled until the date"; task 3.6b-2, decision 8):
+   * the planned class and group rows of the return are withdrawn, the active
+   * row is emptied and a row of the earlier status written from its date.
+   * The cancel of a restore is for the holders of `student_graduates`
+   * `edit`, decided from every current assignment after the row's cause is
+   * read (`.claude/rules/api.md`).
+   */
+  cancelReturn(
+    access: Access,
+    id: string,
+    input: StudentCancelReturn,
+    requestId: string,
+  ): Promise<StudentDetail> {
+    const branchId = branchOf(access);
+    return this.change(access, id, requestId, {
+      action: 'student.return_cancelled',
+      version: input.version,
+      plan: (rows, today) => {
+        const outcome = planCancelReturn(rows, today);
+        if (!('refusal' in outcome) && outcome.cause === 'restore' && !mayRestore(access)) {
+          throw new ApiException('permission_denied', 403);
+        }
+        return outcome;
+      },
+      newValue: {},
+      reason: null,
+      also: async (transaction, context) => {
+        const cut = context.outcome.cuts[0];
+        const day = context.outcome.writes[0]?.validFrom;
+        if (cut === undefined || day === undefined) {
+          return undefined;
+        }
+        const planned = await transaction
+          .selectFrom('class_memberships')
+          .select(['id', 'class_id', 'valid_from', 'valid_until'])
+          .where('student_id', '=', id)
+          .where('branch_id', '=', branchId)
+          .where('cause', 'in', ['return', 'restore'])
+          .where('valid_from', '=', day)
+          .where('ended_by', 'is', null)
+          .execute();
+        const groupsWithdrawn: GroupRowEnded[] = [];
+        for (const row of planned) {
+          await transaction
+            .updateTable('class_memberships')
+            .set({ valid_until: row.valid_from, ended_by: 'withdrawn', leaving_id: null })
+            .where('id', '=', row.id)
+            .execute();
+          groupsWithdrawn.push(
+            ...(await withdrawGroupRows(
+              transaction,
+              id,
+              row.class_id,
+              row.valid_from,
+              row.valid_until,
+            )),
+          );
+        }
+        return {
+          newValue: {
+            membershipsWithdrawn: planned.map((row) => row.id),
+            ...(groupsWithdrawn.length === 0 ? {} : { groupMemberships: groupsWithdrawn }),
+          },
+          groupsPlaced: [],
+        };
+      },
+    });
   }
 
   /**

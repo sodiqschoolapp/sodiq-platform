@@ -53,7 +53,9 @@ const liveRows = (rows: readonly StoredStudentStatus[]): StoredStudentStatus[] =
  * where the active row before it ends, written by a cancel or an undo, is
  * read as part of that row: one line from its first day. The stored rows and
  * their audit entries keep the cancel or the undo, with its reason; a real
- * break (a leaving in force, then a return) stays two lines.
+ * break (a leaving in force, then a return) stays two lines. A return or
+ * restore cancelled before its date leaves a row of the earlier status with
+ * the cause `cancel` (task 3.6b-2): it joins the row before it the same way.
  */
 export function historyLines<Row extends StoredStudentStatus>(rows: readonly Row[]): Row[] {
   const lines: Row[] = [];
@@ -61,8 +63,7 @@ export function historyLines<Row extends StoredStudentStatus>(rows: readonly Row
     const last = lines.at(-1);
     if (
       last !== undefined &&
-      last.status === 'active' &&
-      row.status === 'active' &&
+      last.status === row.status &&
       last.validUntil === row.validFrom &&
       (row.cause === 'cancel' || row.cause === 'undo')
     ) {
@@ -72,6 +73,55 @@ export function historyLines<Row extends StoredStudentStatus>(rows: readonly Row
     }
   }
   return lines;
+}
+
+/**
+ * The last stay of the student read as one (task 3.6b-2, decision 4): a row
+ * and the rows after it of the same status written by a `cancel`, each
+ * beginning where the one before ends. A cancelled return or restore leaves
+ * such a row, because status rows only shrink; the stay still begins with the
+ * first row's start and cause. `rows` are the rows of the stay in order.
+ */
+function lastStay(live: readonly StoredStudentStatus[]): {
+  rows: StoredStudentStatus[];
+  first: StoredStudentStatus;
+  last: StoredStudentStatus;
+} | null {
+  const last = live.at(-1);
+  if (last === undefined) {
+    return null;
+  }
+  const rows = [last];
+  for (let index = live.length - 2; index >= 0; index -= 1) {
+    const before = live[index];
+    const head = rows[0];
+    if (
+      before === undefined ||
+      head === undefined ||
+      head.cause !== 'cancel' ||
+      before.status !== head.status ||
+      before.validUntil !== head.validFrom
+    ) {
+      break;
+    }
+    rows.unshift(before);
+  }
+  const first = rows[0];
+  return first === undefined ? null : { rows, first, last };
+}
+
+/** The cuts that end a stay's rows on `day`: rows from that day on are emptied, the others end there. */
+function cutStay(
+  rows: readonly StoredStudentStatus[],
+  day: SchoolDate,
+): { id: string; validUntil: SchoolDate }[] {
+  return rows.flatMap((row) =>
+    row.validFrom >= day
+      ? [{ id: row.id, validUntil: row.validFrom }]
+      : row.validUntil === null || row.validUntil > day
+        ? [{ id: row.id, validUntil: day }]
+        : [],
+  );
 }
 
 /** A leaving written and not yet in force: its inactive row starts after today. */
@@ -210,22 +260,22 @@ export function planUndoLeaving(
   reason: string,
   today: SchoolDate,
 ): StudentStatusOutcome {
-  const last = liveRows(rows).at(-1);
+  const stay = lastStay(liveRows(rows));
   if (
-    last === undefined ||
-    last.status !== 'inactive' ||
-    last.validUntil !== null ||
-    last.validFrom > today
+    stay === null ||
+    stay.last.status !== 'inactive' ||
+    stay.last.validUntil !== null ||
+    stay.first.validFrom > today
   ) {
     return { refusal: 'student_not_inactive' };
   }
-  if (last.cause !== 'leaving') {
+  if (stay.first.cause !== 'leaving') {
     return { refusal: 'undo_not_leaving' };
   }
   return {
-    cuts: [{ id: last.id, validUntil: last.validFrom }],
+    cuts: cutStay(stay.rows, stay.first.validFrom),
     writes: [
-      { status: 'active', validFrom: last.validFrom, validUntil: null, cause: 'undo', reason },
+      { status: 'active', validFrom: stay.first.validFrom, validUntil: null, cause: 'undo', reason },
     ],
   };
 }
@@ -233,31 +283,34 @@ export function planUndoLeaving(
 /**
  * Coming back from the Inactive list (`04`, Movements): active again from the
  * return date, which is after the first inactive day (that would be an undo)
- * and not after today (decision 5).
+ * and not after today (decision 5), except the first day of the next planned
+ * year (`nextYearStart`, owner's answer L170): the student stays inactive
+ * until then and the return can be cancelled until its date (task 3.6b-2).
  */
 export function planReturn(
   rows: readonly StoredStudentStatus[],
   from: SchoolDate,
   reason: string | null,
   today: SchoolDate,
+  nextYearStart: SchoolDate | null = null,
 ): StudentStatusOutcome {
-  const last = liveRows(rows).at(-1);
+  const stay = lastStay(liveRows(rows));
   if (
-    last === undefined ||
-    last.status !== 'inactive' ||
-    last.validUntil !== null ||
-    last.validFrom > today
+    stay === null ||
+    stay.last.status !== 'inactive' ||
+    stay.last.validUntil !== null ||
+    stay.first.validFrom > today
   ) {
     return { refusal: 'student_not_inactive' };
   }
-  if (from > today) {
+  if (from > today && from !== nextYearStart) {
     return { refusal: 'status_date_future' };
   }
-  if (from <= last.validFrom) {
+  if (from <= stay.first.validFrom) {
     return { refusal: 'return_too_early' };
   }
   return {
-    cuts: [{ id: last.id, validUntil: from }],
+    cuts: cutStay(stay.rows, from),
     writes: [{ status: 'active', validFrom: from, validUntil: null, cause: 'return', reason }],
   };
 }
@@ -274,25 +327,68 @@ export function planRestore(
   from: SchoolDate,
   reason: string,
   today: SchoolDate,
+  nextYearStart: SchoolDate | null = null,
 ): StudentStatusOutcome {
-  const last = liveRows(rows).at(-1);
+  const stay = lastStay(liveRows(rows));
   if (
-    last === undefined ||
-    last.status !== 'graduated' ||
-    last.validUntil !== null ||
-    last.validFrom > today
+    stay === null ||
+    stay.last.status !== 'graduated' ||
+    stay.last.validUntil !== null ||
+    stay.first.validFrom > today
   ) {
     return { refusal: 'student_not_graduated' };
   }
-  if (from > today) {
+  if (from > today && from !== nextYearStart) {
     return { refusal: 'status_date_future' };
   }
-  if (from < last.validFrom) {
+  if (from < stay.first.validFrom) {
     return { refusal: 'restore_before_graduation' };
   }
   return {
-    cuts: [{ id: last.id, validUntil: from }],
+    cuts: cutStay(stay.rows, from),
     writes: [{ status: 'active', validFrom: from, validUntil: null, cause: 'restore', reason }],
+  };
+}
+
+/**
+ * The cancel of a scheduled return or restore (edge: "It can be changed or
+ * cancelled until the date"; task 3.6b-2, decision 4): the active row of the
+ * return is emptied and a row of the earlier status is written from its date
+ * with the cause `cancel`, because status rows only shrink. Answers the
+ * cause of the row cancelled so that the route can check who may cancel it.
+ */
+export function planCancelReturn(
+  rows: readonly StoredStudentStatus[],
+  today: SchoolDate,
+): StudentStatusOutcome & { readonly cause?: 'return' | 'restore' } {
+  const live = liveRows(rows);
+  const last = live.at(-1);
+  const before = live.at(-2);
+  if (
+    last === undefined ||
+    last.status !== 'active' ||
+    (last.cause !== 'return' && last.cause !== 'restore') ||
+    before === undefined ||
+    before.status === 'active' ||
+    before.validUntil !== last.validFrom
+  ) {
+    return { refusal: 'return_not_planned' };
+  }
+  if (last.validFrom <= today) {
+    return { refusal: 'return_in_force' };
+  }
+  return {
+    cause: last.cause,
+    cuts: [{ id: last.id, validUntil: last.validFrom }],
+    writes: [
+      {
+        status: before.status,
+        validFrom: last.validFrom,
+        validUntil: null,
+        cause: 'cancel',
+        reason: null,
+      },
+    ],
   };
 }
 

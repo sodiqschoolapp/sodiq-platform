@@ -193,6 +193,8 @@ const MESSAGE: Record<ErrorCode, string> = {
   student_not_inactive: 'The student is not inactive.',
   undo_not_leaving: 'The inactive status was not written by a leaving.',
   return_too_early: 'The return is not after the first inactive day.',
+  return_not_planned: 'No return or restore is scheduled.',
+  return_in_force: 'The return or restore has taken effect.',
   status_date_future: 'The date is after today.',
   student_not_graduated: 'The student is not graduated.',
   restore_before_graduation: 'The date is before the graduation.',

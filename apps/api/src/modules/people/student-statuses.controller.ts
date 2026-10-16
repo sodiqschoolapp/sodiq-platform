@@ -1,6 +1,7 @@
 import { Controller, HttpCode, Post } from '@nestjs/common';
 import {
   studentCancelLeavingSchema,
+  studentCancelReturnSchema,
   studentDeleteSchema,
   studentDetailSchema,
   studentLeavingSchema,
@@ -9,6 +10,7 @@ import {
   studentReturnSchema,
   studentUndoLeavingSchema,
   type StudentCancelLeaving,
+  type StudentCancelReturn,
   type StudentDelete,
   type StudentDetail,
   type StudentLeaving,
@@ -85,6 +87,19 @@ export class StudentStatusesController {
     @RequestId() requestId: string,
   ): Promise<StudentDetail> {
     return this.statuses.returnStudent(access, params.id, input, requestId);
+  }
+
+  @Post('students/:id/return/cancel')
+  @HttpCode(200)
+  @Requires('students', 'archive')
+  @Returns(studentDetailSchema)
+  cancelReturn(
+    @CurrentAccess() access: Access,
+    @ValidParams(studentParamsSchema) params: StudentParams,
+    @ValidBody(studentCancelReturnSchema) input: StudentCancelReturn,
+    @RequestId() requestId: string,
+  ): Promise<StudentDetail> {
+    return this.statuses.cancelReturn(access, params.id, input, requestId);
   }
 
   @Post('students/:id/restore')

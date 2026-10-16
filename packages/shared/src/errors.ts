@@ -276,6 +276,10 @@ export const ERROR_CODES = [
   'undo_not_leaving',
   /** A return is dated on or before the first inactive day; on that day it would be an undo (task 2.4b-1, decision 5). */
   'return_too_early',
+  /** No return or restore is scheduled after today, so there is nothing to cancel (task 3.6b-2, L170). */
+  'return_not_planned',
+  /** The return or restore has taken effect; it can no longer be cancelled (task 3.6b-2, L170). */
+  'return_in_force',
   /** A return or a restore is dated after today; both are dated today or earlier (task 2.4b-1, decision 5). */
   'status_date_future',
   /** The student is not graduated today, or has a later status (task 2.4b-1). */
