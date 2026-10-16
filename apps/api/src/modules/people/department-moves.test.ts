@@ -1442,10 +1442,11 @@ describe('the department move against the load', () => {
     const exportCell = async (
       path: '/api/people/staff/export' | '/api/setup/subjects/export',
       id: string,
+      cookie: string,
     ): Promise<unknown> => {
       const response = await request(t.kit.server)
         .post(path)
-        .set('Cookie', t.admin)
+        .set('Cookie', cookie)
         .set(BRANCH_HEADER, t.north)
         .send({ ids: [id], columns: ['department'], selection: 'ticked', search: '', filters: {} })
         .buffer(true)
@@ -1454,10 +1455,16 @@ describe('the department move against the load', () => {
       return (await fileOf(response)).sheet.rows[0]?.[0];
     };
 
-    /** Every reader of a person's department, as the Super Admin and the Academic Vice Principal. */
+    /**
+     * The roles that read a department (`.claude/rules/api.md`: every reader
+     * of a value read in a new way, every role that reads it included).
+     */
+    const readers = () => [t.admin, t.principal, t.vicePrincipal];
+
+    /** Every reader of a person's department, as each role that reads it. */
     async function teacherReads(teacher: string) {
       const reads = [];
-      for (const cookie of [t.admin, t.vicePrincipal]) {
+      for (const cookie of readers()) {
         const one = await t.get(`/api/people/staff/${teacher}`, t.north, cookie);
         expect(one.status, JSON.stringify(one.body)).toBe(200);
         const list = await t.get('/api/people/staff', t.north, cookie);
@@ -1469,7 +1476,9 @@ describe('the department move against the load', () => {
       expect(report.status, JSON.stringify(report.body)).toBe(200);
       return {
         reads,
-        file: await exportCell('/api/people/staff/export', teacher),
+        files: await Promise.all(
+          readers().map((cookie) => exportCell('/api/people/staff/export', teacher, cookie)),
+        ),
         report: staffReportSchema
           .parse(report.body)
           .staff.divisions.find((division) => division.division.en === 'Academic')?.department,
@@ -1478,7 +1487,7 @@ describe('the department move against the load', () => {
 
     async function subjectReads(subject: string) {
       const reads = [];
-      for (const cookie of [t.admin, t.vicePrincipal]) {
+      for (const cookie of readers()) {
         const list = await t.get('/api/setup/subjects', t.north, cookie);
         expect(list.status, JSON.stringify(list.body)).toBe(200);
         const found = subjectListSchema.parse(list.body).subjects.find((one) => one.id === subject);
@@ -1490,7 +1499,12 @@ describe('the department move against the load', () => {
           },
         );
       }
-      return { reads, file: await exportCell('/api/setup/subjects/export', subject) };
+      return {
+        reads,
+        files: await Promise.all(
+          readers().map((cookie) => exportCell('/api/setup/subjects/export', subject, cookie)),
+        ),
+      };
     }
 
     /** The `subject.edit` entries of the school-wide log, of one subject when given. */
@@ -1552,8 +1566,11 @@ describe('the department move against the load', () => {
         departmentSince: null,
         departmentMove: { departmentId: national, startsOn: TOMORROW },
       };
-      expect(dayBefore.reads).toEqual([planned, planned, planned, planned]);
-      expect(Object.values(steamNames)).toContain(dayBefore.file);
+      expect(dayBefore.reads).toEqual(Array(6).fill(planned));
+      expect(dayBefore.files).toHaveLength(3);
+      for (const file of dayBefore.files) {
+        expect(Object.values(steamNames)).toContain(file);
+      }
       expect(dayBefore.report).toEqual(steamNames);
       const onTheDay = await at('2026-10-11T00:01:00+05:00', () => teacherReads(teacher));
       const moved = {
@@ -1563,8 +1580,11 @@ describe('the department move against the load', () => {
         departmentSince: TOMORROW,
         departmentMove: null,
       };
-      expect(onTheDay.reads).toEqual([moved, moved, moved, moved]);
-      expect(Object.values(nationalNames)).toContain(onTheDay.file);
+      expect(onTheDay.reads).toEqual(Array(6).fill(moved));
+      expect(onTheDay.files).toHaveLength(3);
+      for (const file of onTheDay.files) {
+        expect(Object.values(nationalNames)).toContain(file);
+      }
       expect(onTheDay.report).toEqual(nationalNames);
       expect(await departmentRows()).toEqual(before);
     });
@@ -1579,12 +1599,18 @@ describe('the department move against the load', () => {
         departmentSince: null,
         departmentMove: { departmentId: national, startsOn: TOMORROW },
       };
-      expect(dayBefore.reads).toEqual([planned, planned]);
-      expect(Object.values(await departmentNames(steam))).toContain(dayBefore.file);
+      expect(dayBefore.reads).toEqual(Array(3).fill(planned));
+      expect(dayBefore.files).toHaveLength(3);
+      for (const file of dayBefore.files) {
+        expect(Object.values(await departmentNames(steam))).toContain(file);
+      }
       const onTheDay = await at('2026-10-11T00:01:00+05:00', () => subjectReads(subject));
       const moved = { departmentId: national, departmentSince: TOMORROW, departmentMove: null };
-      expect(onTheDay.reads).toEqual([moved, moved]);
-      expect(Object.values(await departmentNames(national))).toContain(onTheDay.file);
+      expect(onTheDay.reads).toEqual(Array(3).fill(moved));
+      expect(onTheDay.files).toHaveLength(3);
+      for (const file of onTheDay.files) {
+        expect(Object.values(await departmentNames(national))).toContain(file);
+      }
       expect(await departmentRows()).toEqual(before);
     });
 
@@ -1737,6 +1763,62 @@ describe('the department move against the load', () => {
           divisions: [{ divisionId: academic, departmentId: national, main: true }],
           departmentMoveCancelled: true,
         },
+      });
+    });
+
+    it('a change of a plan is the Super Admin’s; the Academic Vice Principal edits other fields while a move is planned', async () => {
+      const { staffId: teacher } = await load.teacher(t.north);
+      ok(await teacherMove(teacher, national, MOVE_ON));
+      const subject = await load.classes.subject({ grades: [7] });
+      ok(await subjectMove(subject, national, MOVE_ON));
+      const before = await rowsOf();
+      // Another date for the planned department, and another department.
+      for (const [department, startsOn] of [
+        [national, '2026-11-05'],
+        [general, MOVE_ON],
+      ] as const) {
+        refusedWith(
+          await put(
+            `/api/people/staff/${teacher}`,
+            staffBody(await detail(teacher), {
+              divisions: toDepartment(department),
+              departmentStartsOn: startsOn,
+            }),
+            t.vicePrincipal,
+          ),
+          403,
+          'permission_denied',
+        );
+        refusedWith(
+          await put(
+            `/api/setup/subjects/${subject}`,
+            subjectBody(await subjectAnswer(subject), {
+              departmentId: department,
+              departmentStartsOn: startsOn,
+            }),
+            t.vicePrincipal,
+          ),
+          403,
+          'subject_move_super_admin',
+        );
+      }
+      expect(await rowsOf()).toEqual(before);
+      // Another field of the subject, the planned department sent back as the form does.
+      const coloured = ok(
+        await put(
+          `/api/setup/subjects/${subject}`,
+          subjectBody(await subjectAnswer(subject), { colour: 'amber' }),
+          t.vicePrincipal,
+        ),
+      );
+      expect(subjectSchema.parse(coloured.body)).toMatchObject({
+        colour: 'amber',
+        departmentId: steam,
+        departmentMove: { departmentId: national, startsOn: MOVE_ON },
+      });
+      expect((await schoolEntries(subject)).at(-1)).toMatchObject({
+        assignment_id: t.viceAssignment,
+        new_value: { colour: 'amber' },
       });
     });
 
