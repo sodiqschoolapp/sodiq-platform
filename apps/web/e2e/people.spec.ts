@@ -881,7 +881,6 @@ test('an Academic Vice Principal gives a parent an extra phone and the phone of 
   await expect(
     same.getByText(relatives.staffIdOf.replace('{{staffId}}', 'S-269401'), { exact: true }),
   ).toBeVisible();
-  await expect(same.getByText(relatives.sameFromPhone, { exact: true })).toBeVisible();
   await expect(same.getByRole('button')).toHaveCount(0);
   await studentScreenshot(page, 'same-person');
 
@@ -894,5 +893,39 @@ test('an Academic Vice Principal gives a parent an extra phone and the phone of 
       .locator('dt', { hasText: en.people.staff.alsoParent })
       .locator('+ dd')
       .getByRole('link', { name: 'Kamola Yusupova', exact: true }),
+  ).toBeVisible();
+
+  // A new parent typed with the phone of another teacher of the branch takes
+  // the teacher's name and email, locked in the form, and is the same person.
+  await page.goto('/people/students');
+  await expect(heading(page, en.people.students.title)).toBeVisible();
+  await page.getByRole('button', { name: 'Yusupova Sevara', exact: true }).click();
+  const student = page.getByRole('complementary');
+  await student.getByText(en.people.students.tabs.relatives, { exact: true }).click();
+  await student.getByRole('button', { name: relatives.add, exact: true }).click();
+  const added = student.getByRole('form').first();
+  await added.getByLabel(relatives.phone, { exact: true }).fill('+998 93 555 01 43');
+  await added.getByLabel(relatives.phone, { exact: true }).blur();
+  await expect(
+    added.getByText(relatives.phoneIsStaff.replace('{{name}}', 'Qodirova Dilnoza')),
+  ).toBeVisible();
+  const name = added.getByLabel(relatives.fullNameField, { exact: true });
+  await expect(name).toHaveValue('Qodirova Dilnoza');
+  await expect(name).toBeDisabled();
+  await expect(added.getByLabel(relatives.email, { exact: true })).toHaveValue(
+    'd.qodirova@example.uz',
+  );
+  await added.getByLabel(relatives.relationship, { exact: true }).selectOption('aunt');
+  await added.getByRole('button', { name: en.form.save, exact: true }).click();
+  await expect(student.getByRole('button', { name: relatives.add, exact: true })).toBeVisible();
+
+  await page.goto('/people/parents');
+  await expect(heading(page, relatives.title)).toBeVisible();
+  await page.getByRole('button', { name: 'Qodirova Dilnoza', exact: true }).click();
+  await expect(
+    page
+      .getByRole('complementary', { name: 'Qodirova Dilnoza' })
+      .getByRole('region', { name: relatives.sameTitle })
+      .getByRole('link', { name: 'Qodirova Dilnoza', exact: true }),
   ).toBeVisible();
 });

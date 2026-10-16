@@ -56,6 +56,7 @@ import {
   linkingFound,
   usePhoneLookup,
   fromStaff,
+  newRelativeDetails,
   staffMatchOf,
   StaffPhoneNote,
   type StaffMatch,
@@ -400,10 +401,14 @@ export function StudentForm({
             : {
                 kind: 'new',
                 relative: {
-                  fullName: typed.relativeName,
+                  ...newRelativeDetails(
+                    staffMatch,
+                    phoneNow,
+                    match !== null && match.phone === phoneNow,
+                    { fullName: typed.relativeName, email: typed.relativeEmail },
+                  ),
                   phone: noPhone ? null : typed.relativePhone,
                   workplace: typed.relativeWorkplace,
-                  email: typed.relativeEmail,
                   extraPhones: extraPhonesTyped(RELATIVE_EXTRA_FIELDS, typed),
                 },
                 ...link,

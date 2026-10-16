@@ -333,6 +333,26 @@ describe('the mark "same person" and staff phones in the database', () => {
       ).rejects.toMatchObject({ code: UNIQUE_VIOLATION, constraint: 'staff_phone_idx' });
       expect(await phoneOf(database, other)).not.toBe(taken);
     });
+
+    it('refuses a new staff record inserted with a phone another one holds', async () => {
+      const held = (await classes.person(north, ['uz'])).staffId;
+      const taken = await phoneOf(database, held);
+      await expect(
+        database.migrator
+          .insertInto('staff')
+          .values({
+            kind: 'person',
+            staff_id: 'S-269901',
+            first_name: 'Akmal',
+            last_name: 'Karimov',
+            sex: 'male',
+            birth_date: '1990-01-01',
+            phone: taken,
+            admission_date: '2026-09-01',
+          })
+          .execute(),
+      ).rejects.toMatchObject({ code: UNIQUE_VIOLATION, constraint: 'staff_phone_idx' });
+    });
   });
 
   describe('same_person_staff and same_person_relative (decision 3, Look first)', () => {

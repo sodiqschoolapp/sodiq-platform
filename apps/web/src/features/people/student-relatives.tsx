@@ -41,6 +41,7 @@ import {
   type ExtraPhoneFields,
   linkingFound,
   fromStaff,
+  newRelativeDetails,
   staffMatchOf,
   StaffPhoneNote,
   usePhoneLookup,
@@ -583,10 +584,14 @@ function AddRelative({
         : {
             kind: 'new',
             relative: {
-              fullName: typed.fullName,
+              ...newRelativeDetails(
+                staffMatch,
+                phoneNow,
+                match !== null && match.phone === phoneNow,
+                { fullName: typed.fullName, email: typed.email },
+              ),
               phone: noPhone ? null : typed.phone,
               workplace: typed.workplace,
-              email: typed.email,
               extraPhones: extraPhonesTyped(EXTRA_FIELDS, typed),
             },
             ...link,

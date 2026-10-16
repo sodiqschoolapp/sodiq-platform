@@ -6,6 +6,7 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 
 - Built L81 of issue #42 and the answer of 16 October: the mark "same person" is read from the phones (migration 0063: `same_person_staff`, `same_person_relative`, the stored `relatives.staff_id` dropped with an entry for each hand mark the phones do not give); staff phones are unique (`staff_phone_idx`, left and archived included); every phone write takes `phone_owner_lock` and writes the mark's change in its entry and in `relative.same_person` / `relative.same_person_removed` with a cause.
 - A new relative with a staff phone of the branch takes the staff name and email; a new staff member with a parent's phone takes the email; `staff_phone_taken` and `phone_is_staff` refuse; the two hand-mark routes and the Parent panel's mark buttons are gone.
+- The browser test found that a new parent with a staff phone of the branch was refused "Fill in this field." in both forms: the locked name and email are now what the form checks and sends (`newRelativeDetails`).
 - 3.6b is split: 3.6b-2 (L128, L170) and 3.6b-3 (L195) are the next lines. Left out: the handbook pages (3.7, its "From 3.6b-1" line).
 
 The next sessions must know:

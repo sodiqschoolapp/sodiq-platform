@@ -725,6 +725,84 @@ describe('a typed phone of a staff member (edge/close-relatives, "A teacher is a
     expect([email.value, email.disabled]).toEqual(['b.karimov@example.uz', true]);
   });
 
+  // The spec review of the build: the locked name and email are the ones the
+  // form checks and sends, so Save is not refused with "Fill in this field.".
+  it("saves a new student with the staff record's name and email, none typed", async () => {
+    const { calls, form } = await startStudent({
+      holder: null,
+      staff: { fullName: 'Karimov Bahodir Akmalovich', email: 'b.karimov@example.uz' },
+      staffElsewhere: false,
+    });
+    await within(form).findByText(
+      en.people.relatives.phoneIsStaff.replace('{{name}}', 'Karimov Bahodir Akmalovich'),
+    );
+    const type = (label: string, value: string) => {
+      fireEvent.change(within(form).getByLabelText(label), { target: { value } });
+    };
+    type(en.people.students.uid, '2607005');
+    type(en.people.students.lastName, 'Karimova');
+    type(en.people.students.firstName, 'Madina');
+    type(en.people.students.sex, 'female');
+    type(en.people.students.birthDate, '2014-05-02');
+    type(en.people.students.grade, '7');
+    type(en.people.students.startsOn, '2026-09-02');
+    type(en.people.students.contractNumber, 'SQ-2026/143');
+    type(en.people.students.contractSignedOn, '2026-08-20');
+    type(en.people.relatives.relationship, 'father');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(calls.some((call) => call.route === 'POST /api/people/students')).toBe(true);
+    });
+    const sent = calls.find((call) => call.route === 'POST /api/people/students')?.body as {
+      relatives: { relative: unknown }[];
+    };
+    expect(sent.relatives[0]?.relative).toMatchObject({
+      fullName: 'Karimov Bahodir Akmalovich',
+      phone: '+998907778899',
+      email: 'b.karimov@example.uz',
+    });
+  });
+
+  it("adds a relative in the Relatives tab with the staff record's name and email, none typed", async () => {
+    const calls = openList(TWO, {
+      'POST /api/people/relatives/phone-match': () =>
+        json({
+          holder: null,
+          staff: { fullName: 'Karimov Bahodir Akmalovich', email: null },
+          staffElsewhere: false,
+        }),
+      [`POST /api/people/students/${OTKIR.id}/relatives`]: () => json(TWO),
+    });
+    renderApp(PATH);
+    const panel = await openPanel();
+    fireEvent.click(tabOf(panel, en.people.students.tabs.relatives));
+    fireEvent.click(await within(panel).findByRole('button', { name: en.people.relatives.add }));
+    const form = await within(panel).findByRole('form', {
+      name: en.people.relatives.formLabel.replace('{{name}}', 'Oʻtkir Rahimov'),
+    });
+    const phone = within(form).getByLabelText(en.people.relatives.phone);
+    fireEvent.change(phone, { target: { value: '+998 90 777 88 99' } });
+    fireEvent.blur(phone);
+    await within(form).findByText(
+      en.people.relatives.phoneIsStaff.replace('{{name}}', 'Karimov Bahodir Akmalovich'),
+    );
+    fireEvent.change(within(form).getByLabelText(en.people.relatives.relationship), {
+      target: { value: 'father' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(
+        calls.some((call) => call.route === `POST /api/people/students/${OTKIR.id}/relatives`),
+      ).toBe(true);
+    });
+    expect(
+      calls.find((call) => call.route === `POST /api/people/students/${OTKIR.id}/relatives`)?.body,
+    ).toMatchObject({
+      kind: 'new',
+      relative: { fullName: 'Karimov Bahodir Akmalovich', phone: '+998907778899', email: null },
+    });
+  });
+
   it('says so for a staff member of another branch, with the name typed', async () => {
     const { form } = await startStudent({ holder: null, staff: null, staffElsewhere: true });
     expect(await within(form).findByText(en.people.relatives.phoneIsStaffElsewhere)).toBeDefined();

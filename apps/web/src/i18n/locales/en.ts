@@ -205,8 +205,7 @@ export const en = {
     relative_changed: 'This relative was changed by someone else. Reload and try again.',
     relative_merged:
       'This relative was merged into another record. Type the phone again to find the record that stays.',
-    staff_phone_taken:
-      'This phone belongs to another staff record. Check the number, or open that record.',
+    staff_phone_taken: 'This phone belongs to another staff record. Check the number.',
     phone_is_staff:
       "This phone is a staff member's phone, so it is not given to another person. Correct the staff record's phone first.",
     class_year_closed:
@@ -1907,7 +1906,6 @@ export const en = {
       extraPhoneTwice: 'This phone is already in the list.',
       sameTitle: 'Same person as a staff member',
       sameElsewhere: 'The same person as a staff member of another branch.',
-      sameFromPhone: 'Read from the phone: the parent and the staff member have the same phone.',
       staffIdOf: 'Staff ID {{staffId}}',
       relationships: {
         father: 'Father',

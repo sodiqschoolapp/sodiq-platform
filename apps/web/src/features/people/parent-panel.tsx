@@ -253,6 +253,17 @@ function TakenChoices({
   );
   const holderName = taken.holder.fullName;
   const typed = taken.record.phone;
+  const { branchId } = useView();
+  // A phone that is also a staff member's is never handed to another person:
+  // "new owner" is not offered (the owner's answer of 16 October 2026; task
+  // 3.6b-1, decision 5). The server refuses it with `phone_is_staff` too.
+  const staffCheck = useQuery({
+    queryKey: ['people', 'relatives', 'phone-match', branchId, typed],
+    queryFn: () => phoneMatch(typed),
+  });
+  const staffPhone =
+    staffCheck.data !== undefined &&
+    (staffCheck.data.staff !== null || staffCheck.data.staffElsewhere);
   /**
    * The holder's id, read by the phone match (the same holders as the merge
    * and the new owner); a phone that has no holder any more is the race of
@@ -338,7 +349,9 @@ function TakenChoices({
       <div className="flex flex-wrap gap-3">
         {taken.holder.mergeable &&
           choose('merge', t('people.relatives.mergeWith', { name: holderName }))}
-        {choose('owner', t('people.relatives.newOwner'))}
+        {staffCheck.data !== undefined &&
+          !staffPhone &&
+          choose('owner', t('people.relatives.newOwner'))}
         {/* Off while a merge or a new owner is on its way: it would land after the
             close. Not "Cancel": the record's form has its own (finding 26). */}
         <Button
@@ -349,6 +362,17 @@ function TakenChoices({
           {t('people.relatives.closeChoices')}
         </Button>
       </div>
+      {staffCheck.isError && (
+        <ErrorState
+          error={staffCheck.error}
+          onRetry={() => {
+            void staffCheck.refetch();
+          }}
+        />
+      )}
+      {staffPhone && (
+        <p className="text-sm text-muted-foreground">{t('people.relatives.newOwnerStaff')}</p>
+      )}
       {choice === 'merge' && (
         <div className="grid gap-3">
           {/* Both records side by side, with the students whose links move. */}
@@ -432,7 +456,7 @@ function TakenChoices({
           </div>
         </div>
       )}
-      {choice === 'owner' && <NewOwnerForm owner={owner} holderName={holderName} />}
+      {choice === 'owner' && !staffPhone && <NewOwnerForm owner={owner} holderName={holderName} />}
     </section>
   );
 }
@@ -580,7 +604,6 @@ function SamePersonSection({ relative }: { relative: RelativeDetail }) {
           </span>
         </p>
       )}
-      <p className="text-sm text-muted-foreground">{t('people.relatives.sameFromPhone')}</p>
     </section>
   );
 }

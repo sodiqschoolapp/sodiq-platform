@@ -212,8 +212,7 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu qarindoshni boshqa kishi oʻzgartirdi. Sahifani yangilab, qayta urinib koʻring.',
     relative_merged:
       'Bu qarindosh boshqa yozuv bilan birlashtirilgan. Qolgan yozuvni topish uchun telefonni qayta kiriting.',
-    staff_phone_taken:
-      'Bu telefon boshqa xodim yozuviga tegishli. Raqamni tekshiring yoki oʻsha yozuvni oching.',
+    staff_phone_taken: 'Bu telefon boshqa xodim yozuviga tegishli. Raqamni tekshiring.',
     phone_is_staff:
       'Bu telefon xodimning telefoni, shuning uchun boshqa odamga berilmaydi. Avval xodim yozuvidagi telefonni tuzating.',
     class_year_closed:
@@ -1921,7 +1920,6 @@ export const uz: Texts<'one' | 'other'> = {
       extraPhoneTwice: 'Bu telefon roʻyxatda allaqachon bor.',
       sameTitle: 'Xodim bilan bir shaxs',
       sameElsewhere: 'Boshqa filial xodimi bilan bir shaxs.',
-      sameFromPhone: 'Telefon boʻyicha aniqlangan: ota-ona va xodimning telefoni bir xil.',
       staffIdOf: 'Xodim raqami {{staffId}}',
       relationships: {
         father: 'Otasi',

@@ -436,6 +436,23 @@ describe('the mark "same person" read from the phones', () => {
       }
     });
 
+    // Correction 1 of the plan review: a person who left keeps the current
+    // phone, so the mark holds (edge/close-relatives: current phone numbers).
+    it('is marked with a staff member who left, with the entry and the staff panel showing it', async () => {
+      const teacher = await staffMember(t.north, { left: true });
+      const parent = await relative(t.north, teacher.phone);
+      expect(await markOf(parent.id)).toBe(teacher.id);
+      expect((await relativeOf(parent.id)).samePerson).toMatchObject({ staffId: teacher.id });
+      expect(await markEntries(parent.id)).toEqual([
+        expect.objectContaining({
+          action: 'relative.same_person',
+          new_value: { staffId: teacher.id },
+          details: { branchId: t.north, staffId: teacher.id, cause: 'relative_created' },
+        }),
+      ]);
+      expect((await staffOf(teacher.id)).sameAsRelative?.id).toBe(parent.id);
+    });
+
     it('is marked with a staff member of another branch, with the typed name and nothing told of the record', async () => {
       const teacher = await staffMember(t.south);
       const match = relativePhoneMatchResultSchema.parse(
@@ -522,6 +539,21 @@ describe('the mark "same person" read from the phones', () => {
       expect((await relativeOf(parent.id)).samePerson?.staffId).toBe(staff.id);
     });
 
+    it('keeps a typed email over the email of a relative of the branch', async () => {
+      const number = phone();
+      const parent = await relative(t.north, number, { email: 'parent@example.uz' });
+      const created = await t.post(
+        '/api/people/staff',
+        t.north,
+        staffBody({ phone: number, email: 'own@example.uz' }),
+      );
+      expect(created.status, JSON.stringify(created.body)).toBe(201);
+      const staff = staffDetailSchema.parse(created.body);
+      expect(staff.email).toBe('own@example.uz');
+      expect(staff.sameAsRelative?.id).toBe(parent.id);
+      expect(await markOf(parent.id)).toBe(staff.id);
+    });
+
     it('keeps a typed email, and tells a relative of another branch without naming it', async () => {
       const number = phone();
       const parent = await relative(t.south, number, { email: 'south@example.uz' });
@@ -597,10 +629,18 @@ describe('the mark "same person" read from the phones', () => {
 
     it('of a staff member marks when it becomes a relative phone and unmarks when it changes away', async () => {
       const teacher = await staffMember(t.north);
-      const parent = await relative(t.north);
+      // A staff record without an email and a relative with one: an edit
+      // takes no details (decision 7), so the email stays empty.
+      await t.database.migrator
+        .updateTable('staff')
+        .set({ email: null })
+        .where('id', '=', teacher.id)
+        .execute();
+      const parent = await relative(t.north, phone(), { email: 'parent@example.uz' });
       const marked = await editStaffPhone(teacher.id, parent.phone ?? '');
       expect(marked.status, JSON.stringify(marked.body)).toBe(200);
       expect(staffDetailSchema.parse(marked.body).sameAsRelative?.id).toBe(parent.id);
+      expect(staffDetailSchema.parse(marked.body).email).toBeNull();
       const [edit] = await t.entries('staff.edit', teacher.id);
       expect(edit?.details).toEqual({ samePerson: { before: null, after: parent.id } });
       const unmarked = await editStaffPhone(teacher.id, phone());

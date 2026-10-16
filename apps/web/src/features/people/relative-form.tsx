@@ -113,6 +113,25 @@ export function StaffPhoneNote({ match }: { match: StaffMatch }) {
 }
 
 /**
+ * The name and email a new relative is checked and sent with: the staff
+ * record's when its phone is a staff member's of the branch and no relative's
+ * (task 3.6b-1, decision 2), the values `fromStaff` shows in the locked fields;
+ * what is typed otherwise. The server takes the staff record's values itself.
+ */
+export function newRelativeDetails(
+  staffMatch: StaffMatch | null,
+  phone: string | null,
+  holderFound: boolean,
+  typed: { fullName: string; email: string },
+): { fullName: string; email: string } {
+  const staff =
+    !holderFound && phone !== null && staffMatch !== null && staffMatch.phone === phone
+      ? staffMatch.staff
+      : null;
+  return staff === null ? typed : { fullName: staff.fullName, email: staff.email ?? '' };
+}
+
+/**
  * A field whose value the staff record gives (task 3.6b-1, decision 2): shown
  * with that value and locked, as the server saves it.
  */

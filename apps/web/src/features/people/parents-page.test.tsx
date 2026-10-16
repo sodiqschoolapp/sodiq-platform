@@ -423,6 +423,39 @@ describe('the page of a relative', () => {
       expect(within(panel).queryByRole('form')).toBeNull();
     });
 
+    // The owner's answer of 16 October 2026 (task 3.6b-1, decision 5): a phone
+    // that is also a staff member's is never handed to another person.
+    it.each([
+      [
+        'of the branch',
+        { staff: { fullName: 'Karimov Bahodir Akmalovich', email: null }, staffElsewhere: false },
+      ],
+      ['of another branch', { staff: null, staffElsewhere: true }],
+    ] as const)(
+      'offers no "new owner" for a phone that is also the phone of a staff member %s',
+      async (_, staff) => {
+        openList('academic_vice_principal', {
+          [`PATCH /api/people/relatives/${DILFUZA.id}`]: takenAnswer(true),
+          'POST /api/people/relatives/phone-match': () =>
+            json({
+              ...staff,
+              holder: { id: uid(3), fullName: 'Shoira Nazarova', students: 2 },
+            }),
+        });
+        renderApp(PATH);
+        const choices = await refuse();
+        expect(await within(choices).findByText(en.people.relatives.newOwnerStaff)).toBeDefined();
+        expect(
+          within(choices).queryByRole('button', { name: en.people.relatives.newOwner }),
+        ).toBeNull();
+        expect(
+          within(choices).getByRole('button', {
+            name: en.people.relatives.mergeWith.replace('{{name}}', 'Shoira Nazarova'),
+          }),
+        ).toBeDefined();
+      },
+    );
+
     it('keeps the record form\'s Save as the one primary, and closes the form with "Saved." after "Give the number"', async () => {
       let patches = 0;
       const calls = openList('academic_vice_principal', {
@@ -455,7 +488,9 @@ describe('the page of a relative', () => {
           .getAttribute('data-variant'),
       ).toBe('destructive');
       expect(primaries()).toEqual([en.form.save]);
-      fireEvent.click(within(choices).getByRole('button', { name: en.people.relatives.newOwner }));
+      fireEvent.click(
+        await within(choices).findByRole('button', { name: en.people.relatives.newOwner }),
+      );
       fireEvent.click(
         within(choices).getByLabelText(
           en.people.relatives.previousUnknown.replace('{{name}}', 'Shoira Nazarova'),
@@ -537,7 +572,9 @@ describe('the page of a relative', () => {
           name: en.people.relatives.mergeWith.replace('{{name}}', 'Shoira Nazarova'),
         }),
       ).toBeNull();
-      fireEvent.click(within(choices).getByRole('button', { name: en.people.relatives.newOwner }));
+      fireEvent.click(
+        await within(choices).findByRole('button', { name: en.people.relatives.newOwner }),
+      );
       fireEvent.click(
         within(choices).getByLabelText(
           en.people.relatives.previousUnknown.replace('{{name}}', 'Shoira Nazarova'),
@@ -616,7 +653,7 @@ describe('the page of a relative', () => {
         renderApp(PATH);
         const choices = await refuse();
         fireEvent.click(
-          within(choices).getByRole('button', { name: en.people.relatives.newOwner }),
+          await within(choices).findByRole('button', { name: en.people.relatives.newOwner }),
         );
         cancel(choices);
         expect(screen.queryByRole('alertdialog')).toBeNull();
@@ -628,7 +665,7 @@ describe('the page of a relative', () => {
         renderApp(PATH);
         const choices = await refuse();
         fireEvent.click(
-          within(choices).getByRole('button', { name: en.people.relatives.newOwner }),
+          await within(choices).findByRole('button', { name: en.people.relatives.newOwner }),
         );
         const previous = within(choices).getByLabelText<HTMLInputElement>(
           en.people.relatives.previousPhone.replace('{{name}}', 'Shoira Nazarova'),
@@ -827,7 +864,7 @@ describe('the extra phones and the same person of a relative', () => {
   // Task 3.6b-1 (decision 3): the mark is read from the phones; nobody sets
   // or removes it, so the section has no action for any reader.
   it.each(['academic_vice_principal', 'principal'] as const)(
-    'shows the mark with no action to the %s, read from the phone',
+    'shows the mark with no action to the %s',
     async (role) => {
       openList(role, {}, 'en', { samePerson: SAME, canEdit: role === 'academic_vice_principal' });
       renderApp(PATH);
@@ -836,7 +873,6 @@ describe('the extra phones and the same person of a relative', () => {
         name: en.people.relatives.sameTitle,
       });
       expect(within(section).getByRole('link', { name: 'Karimov Bahodir' })).toBeDefined();
-      expect(within(section).getByText(en.people.relatives.sameFromPhone)).toBeDefined();
       expect(within(section).queryAllByRole('button')).toEqual([]);
     },
   );
@@ -874,7 +910,6 @@ describe('the extra phones and the same person of a relative', () => {
     expect(
       within(section).getByText(ru.people.relatives.staffIdOf.replace('{{staffId}}', 'S-260012')),
     ).toBeDefined();
-    expect(within(section).getByText(ru.people.relatives.sameFromPhone)).toBeDefined();
     expect(await valueOf(panel, ru.people.relatives.extraPhones)).toBe('+998 93 555 66 77');
     const form = await edit(
       panel,
