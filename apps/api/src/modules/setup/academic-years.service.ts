@@ -20,6 +20,7 @@ import { ApiException } from '../../http/api-exception.js';
 import { Audit } from '../audit/audit.service.js';
 import type { Access } from '../access/permission.guard.js';
 import { loadEntries } from './calendar-state.js';
+import { endsOf, lockFollowingRows, refuseCutHolds } from './academic-year-dates.js';
 import { notFound, refusingConstraints } from './setup-refusals.js';
 
 interface YearRow {
@@ -213,6 +214,12 @@ export class AcademicYears {
     return refusingConstraints(() =>
       this.transactions.run(access.branchIds, async (transaction) => {
         const goLiveDate = await this.lockBranch(transaction, branchId);
+        // The branch lock makes every other change of the branch's years wait,
+        // so the year is read without a lock first (its 404 check); the rows
+        // that run to its last day are locked before the year row, the order
+        // a leaving or a move takes (3.6b-2, correction 1 of the review).
+        const read = await this.readYear(transaction, id);
+        const following = await lockFollowingRows(transaction, id, read.endDate);
         const before = await this.lockedYear(transaction, id);
         if (before.status === 'closed') {
           throw refused('year_closed');
@@ -257,11 +264,15 @@ export class AcademicYears {
             ...(leftOut.some((entry) => entry.lastDate > record.endDate) ? ['endDate'] : []),
           ]);
         }
+        // L128: made longer at any time, shorter only when no stay stands in
+        // the days cut off; the database keeps the same rule (0064).
+        await refuseCutHolds(transaction, id, record.startDate, record.endDate);
         await transaction
           .updateTable('academic_years')
           .set({ start_date: record.startDate, end_date: record.endDate })
           .where('id', '=', id)
           .execute();
+        const followed = before.endDate === record.endDate ? [] : await endsOf(transaction, following);
         await this.audit.record(transaction, {
           branchId,
           actorId: access.accountId,
@@ -269,7 +280,27 @@ export class AcademicYears {
           action: 'academic_year.edit',
           record: { type: 'academic_year', id },
           oldValue: { startDate: before.startDate, endDate: before.endDate },
-          newValue: { startDate: record.startDate, endDate: record.endDate },
+          newValue: {
+            startDate: record.startDate,
+            endDate: record.endDate,
+            ...(followed.length === 0
+              ? {}
+              : {
+                  rowsFollowed: followed.flatMap((row) => {
+                    const was = following.find((one) => one.table === row.table && one.id === row.id);
+                    return was === undefined || (was.ownUntil === row.ownUntil && was.validUntil === row.validUntil)
+                      ? []
+                      : [
+                          {
+                            table: row.table,
+                            id: row.id,
+                            ownUntil: [was.ownUntil, row.ownUntil],
+                            validUntil: [was.validUntil, row.validUntil],
+                          },
+                        ];
+                  }),
+                }),
+          },
           requestId,
         });
         return this.readYear(transaction, id);

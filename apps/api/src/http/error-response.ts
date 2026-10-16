@@ -184,7 +184,7 @@ const MESSAGE: Record<ErrorCode, string> = {
   class_has_members: 'The class has members in force or planned.',
   class_grade_members: 'The class has members; its grade cannot change.',
   class_size_below_members: 'The class holds more members than that on a date from today on.',
-  academic_year_has_members: 'Classes of the year hold members; its dates cannot change.',
+  year_cut_holds: 'Class or group stays stand in the days the new dates cut off.',
   no_academic_year: 'The start date is in no academic year of the branch.',
   student_not_active: 'The student is not active on that day, or a leaving is in force.',
   leaving_before_start: 'The last day is before the current time at school began.',

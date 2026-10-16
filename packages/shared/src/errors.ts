@@ -368,8 +368,8 @@ export const ERROR_CODES = [
   'class_grade_members',
   /** The maximum size cannot drop below the members of a date from today on (task 3.1b, decision 11). */
   'class_size_below_members',
-  /** The dates of an academic year cannot change while its classes hold members (task 3.1b, decision 3). */
-  'academic_year_has_members',
+  /** The new dates of an academic year cut days that class or group stays stand in (task 3.6b-2, L128). */
+  'year_cut_holds',
   /** The academic year of the group is closed: a group of a closed year stays as it was (task 3.2a). */
   'group_year_closed',
   /** The branch has no planned or current academic year to create a group in (task 3.2a, decision 5). */

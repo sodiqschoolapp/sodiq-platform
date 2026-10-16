@@ -265,8 +265,8 @@ export const uz: Texts<'one' | 'other'> = {
       'Sinfda oʻquvchilar bor, shuning uchun uning sinf darajasini oʻzgartirib boʻlmaydi.',
     class_size_below_members:
       'Bugundan boshlab qaysidir kuni sinfda bundan koʻp oʻquvchi bor. Kattaroq sonni tanlang.',
-    academic_year_has_members:
-      'Bu yil sinflarida oʻquvchilar bor, shuning uchun uning sanalarini endi oʻzgartirib boʻlmaydi.',
+    year_cut_holds:
+      'Bu oʻzgarish kesib tashlaydigan kunlarda oʻquvchilar sinf yoki guruhlarga joylashtirilgan. Boshqa sanalarni tanlang yoki avval oʻquvchilarni koʻchiring.',
     group_year_closed: 'Bu guruhning oʻquv yili yopilgan. Uning guruhlari avvalgidek qoladi.',
     group_needs_year:
       'Filialda rejalashtirilgan yoki joriy oʻquv yili yoʻq. Uni qoʻshishni Super administratordan soʻrang.',

@@ -78,8 +78,8 @@ export const CONSTRAINT_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   academic_years_status_order: 'request_refused',
   academic_years_out_of_order: 'year_out_of_order',
   academic_years_earlier_open: 'earlier_year_not_closed',
-  // Task 3.1b, decision 3: the classes of the year hold members (db/migrations/0045).
-  academic_years_has_members: 'academic_year_has_members',
+  // Task 3.6b-2, L128: a stay stands in the days cut off (db/migrations/0064).
+  academic_years_cut_holds: 'year_cut_holds',
   quarters_no_overlap: 'quarters_out_of_order',
   quarters_order: 'quarters_out_of_order',
   // Four quarters are written with their year; a fault answers the general refusal.

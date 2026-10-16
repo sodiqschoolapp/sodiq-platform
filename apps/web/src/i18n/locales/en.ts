@@ -257,8 +257,8 @@ export const en = {
     class_grade_members: 'The class has students, so its grade cannot change.',
     class_size_below_members:
       'The class holds more students than that on some day from today on. Choose a higher maximum number of students.',
-    academic_year_has_members:
-      'Classes of this year have students, so its dates can no longer change.',
+    year_cut_holds:
+      'Some students are placed in classes or groups on days this change would cut off. Choose other dates, or move those students first.',
     group_year_closed: 'The academic year of this group is closed. Its groups stay as they were.',
     group_needs_year:
       'This branch has no planned or current academic year. Ask the Super Admin to add one.',

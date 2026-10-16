@@ -530,7 +530,7 @@ describe('class membership', () => {
       expect(raised.status, JSON.stringify(raised.body)).toBe(200);
     });
 
-    it('refuses a change of the dates of a year whose classes hold members', async () => {
+    it('refuses a start of the year past a stay with the list, and lets the end move with the stay (L128)', async () => {
       const branch = await t.newBranch();
       const year = await classes.year(branch, 'planned');
       const oxford = await schoolClass({ branch, year });
@@ -541,15 +541,49 @@ describe('class membership', () => {
       });
       expect(response.status, JSON.stringify(response.body)).toBe(201);
       const before = await rowsOf();
-      refusedWith(
-        await t.put(`/api/setup/academic-years/${year}`, branch, {
-          startDate: '2026-09-02',
-          endDate: '2027-05-31',
-        }),
-        409,
-        'academic_year_has_members',
-      );
+      const refused = await t.put(`/api/setup/academic-years/${year}`, branch, {
+        startDate: '2026-10-20',
+        endDate: '2027-05-31',
+      });
+      refusedWith(refused, 409, 'year_cut_holds');
+      const details = apiErrorSchema.parse(refused.body).error.details ?? [];
+      expect(details).toHaveLength(1);
+      expect(details[0]?.message).toContain(one.firstName);
+      expect(details[0]?.message).toContain('2026-10-12');
       expect(await rowsOf()).toEqual(before);
+      // Longer, and shorter where no stay stands: the stay follows the last day.
+      for (const endDate of ['2027-06-30', '2027-05-20']) {
+        const moved = await t.put(`/api/setup/academic-years/${year}`, branch, {
+          startDate: '2026-09-01',
+          endDate,
+        });
+        expect(moved.status, JSON.stringify(moved.body)).toBe(200);
+      }
+      const rows = await t.database.migrator
+        .selectFrom('class_memberships')
+        .select(['valid_until', 'own_until'])
+        .where('student_id', '=', one.id)
+        .execute();
+      expect(rows).toEqual([
+        expect.objectContaining({ valid_until: '2027-05-21', own_until: '2027-05-21' }),
+      ]);
+      const written = await t.database.migrator
+        .selectFrom('audit_log')
+        .select('new_value')
+        .where('action', '=', 'academic_year.edit')
+        .where('record_id', '=', year)
+        .orderBy('id')
+        .execute();
+      expect(written.at(-1)?.new_value).toMatchObject({
+        endDate: '2027-05-20',
+        rowsFollowed: [
+          expect.objectContaining({
+            table: 'class_memberships',
+            ownUntil: ['2027-07-01', '2027-05-21'],
+            validUntil: ['2027-07-01', '2027-05-21'],
+          }),
+        ],
+      });
     });
 
     it('refuses the grade edit of a student in a class', async () => {
