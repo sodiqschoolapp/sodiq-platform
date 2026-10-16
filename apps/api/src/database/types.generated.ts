@@ -401,12 +401,11 @@ export interface LessonBlocks {
   double_pair_id: string | null;
   ends_at: Timestamp;
   id: Generated<string>;
-  kind: string;
   lesson_date: string;
-  pattern_block_id: string | null;
+  pattern_block_id: string;
   quarter_id: string;
   starts_at: Timestamp;
-  version_id: string | null;
+  version_id: string;
 }
 
 export interface Lessons {
@@ -420,8 +419,8 @@ export interface Lessons {
   group_id: string | null;
   id: Generated<string>;
   lesson_date: string;
-  load_row_id: string | null;
-  pattern_entry_id: string | null;
+  load_row_id: string;
+  pattern_entry_id: string;
   room_id: string | null;
   starts_at: Timestamp;
   subject_id: string;

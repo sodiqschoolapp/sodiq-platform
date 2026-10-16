@@ -327,11 +327,7 @@ function checkDay(placement: Placement, facts: Facts, results: Results): void {
     }
   }
   const open = days.flatMap((one) => (one.day.lessons ? [{ grade: one.grade, day: one.day }] : []));
-  if (
-    placement.kind === 'lesson' &&
-    !placement.extra &&
-    open.some((one) => one.day.noRegularLessons)
-  ) {
+  if (placement.kind === 'lesson' && open.some((one) => one.day.noRegularLessons)) {
     results.add('exam_week', placement.day, [placement]);
   }
   // An exam is not a lesson for the one-slot rule (06, Rules, the exam row).

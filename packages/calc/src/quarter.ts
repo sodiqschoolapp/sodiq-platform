@@ -3,8 +3,8 @@
  * Calculation rules 5 to 10; docs/spec/edge-cases/calculation.md; task 4.2).
  *
  * - The attendance average is the mean of the attendance values of the lessons
- *   with a mark (rule 5). Marks 4 and 5, a lesson not yet marked and an extra
- *   lesson whose "counts for attendance" switch is off are left out (decision 1).
+ *   with a mark (rule 5). Marks 4 and 5 and a lesson not yet marked are left out
+ *   (decision 1).
  * - The classwork and homework averages count each work once over the quarter
  *   (rule 6), never the lesson's parts. Works of a lesson with mark 4 or 5 are
  *   left out, the homeworks checked at it included, and a number there is a
@@ -49,8 +49,6 @@ export interface QuarterWeights {
 export interface QuarterLesson {
   /** The attendance mark, `null` while not typed. */
   readonly mark: AttendanceMark | null;
-  /** `false` only for an extra lesson whose "counts for attendance" switch is off. */
-  readonly countsForAttendance: boolean;
   /** The lesson's classworks. */
   readonly classworks: readonly Work[];
   /** The homeworks checked at the lesson. */
@@ -120,13 +118,10 @@ function checkedWeights(weights: QuarterWeights): Readonly<Record<QuarterPart, b
 
 /** The attendance value of a lesson for the averages; `null` when it is left out. */
 function countedValue(
-  lesson: Pick<QuarterLesson, 'mark' | 'countsForAttendance'>,
+  lesson: Pick<QuarterLesson, 'mark'>,
   values: AttendanceValues,
 ): Fraction | 'exempt' | null {
-  if (lesson.mark === null) return null;
-  const value = attendanceValue(lesson.mark, values);
-  if (value === 'exempt') return value;
-  return lesson.countsForAttendance ? value : null;
+  return lesson.mark === null ? null : attendanceValue(lesson.mark, values);
 }
 
 /**
@@ -136,7 +131,7 @@ function countedValue(
  */
 export function quarterAttendanceAverage(input: {
   readonly attendanceValues: AttendanceValues;
-  readonly lessons: readonly Pick<QuarterLesson, 'mark' | 'countsForAttendance'>[];
+  readonly lessons: readonly Pick<QuarterLesson, 'mark'>[];
 }): Fraction | null {
   checkedAttendanceValues(input.attendanceValues);
   return Fraction.meanOf(

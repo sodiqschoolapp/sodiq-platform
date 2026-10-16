@@ -246,6 +246,20 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 16 October 2026: the year result and no extra lessons (task 3.6c-1)
+
+Plan approved on pull request #124 with corrections 1 and 2; decisions 1 to 10 confirmed there. Flagged on issue #42. The earlier entries of 4.1 to 4.3 on extra lessons and their "counts for attendance" switch no longer apply.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** 3.6c is split in two: 3.6c-1 (the year result, no extra lessons) and 3.6c-2 (Tutor lessons follow the Tutor) | Decision 1; the Tutor answer reaches 3.1a, 3.4a and 5.1a with a preview and a clash path of its own |
+| **Look first.** The year result rounds each quarter that is a number with the module's own `roundHalfUp` (the quarter's `shown`), means the whole numbers exactly and rounds once more; quarters that are not numbers are left out with `basedOn` | Decision 2; `07` rules 10 and 11, L210 |
+| **Look first.** The calc tests of the extra lesson and its switch, the year tests of 49.475, 66.45 and "not in the system", the two database tests of extra blocks and `lesson_blocks_source_check` are removed or turned round; four guard tests got fixtures that still reach their guard first | Decision 3; the requirement changed (answer 1, L210) |
+| **Look first.** Migration 0066 drops `lesson_blocks.kind`, its check, `lesson_blocks_source_check` and `lessons_source_check`, and makes the version, pattern block, load row and pattern entry of every dated lesson `not null`; nothing is deleted | Decision 4; a dated lesson only comes from a pattern (`06`, "No extra lessons") |
+| `CALC_VERSION` 1 → 2; the reference journal `year-50-50-49-50.json` (a sample) replaces `year-49-475.json` | Decisions 5 and 6 |
+| A database test writes a dated block on a version of its own with `LessonsKit.source`: draft for its rows, pattern block and entries, then published; a fixture teacher per load row, entries without rooms | Decision 7; `pattern_rows_draft` and `lesson_block_version` fix the order |
+| Merged 0058 keeps its comments; stored-record format 1 loses `countsForAttendance` in place, and a stored lesson carrying it is refused (`record_shape`) | Decisions 8 and 10; no format-1 record is stored yet |
+
 ## 16 October 2026: the year's dates and the return in August (task 3.6b-2)
 
 Plan approved on pull request #120 with corrections 1 to 5; decisions 1 to 12 confirmed there. Flagged on issue #42.

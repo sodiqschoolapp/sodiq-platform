@@ -56,7 +56,7 @@ export interface Placement {
   readonly exemptStudentIds: readonly string[];
   /** `null` for an exam without a subject. */
   readonly subjectId: string | null;
-  /** The teaching load row of a lesson; `null` for an extra lesson without one and an exam. */
+  /** The teaching load row of a lesson; `null` for an exam. */
   readonly loadRowId: string | null;
   /** The teacher or vacancy of a lesson (one), or the invigilators of an exam. */
   readonly teacherIds: readonly string[];
@@ -66,8 +66,6 @@ export interface Placement {
   readonly roomId: string | null;
   /** The rooms of an exam, each with the students of the classes it holds; empty for a lesson. */
   readonly examRooms: readonly { readonly roomId: string; readonly students: number }[];
-  /** An extra lesson (06, Changes after publishing, Extra lesson). */
-  readonly extra: boolean;
   /**
    * A published lesson of another branch, shown as busy elsewhere: it takes
    * part in every clash and in travel time, and no rule of its own is

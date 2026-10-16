@@ -27,11 +27,9 @@ function lesson(
   mark: AttendanceMark | null,
   classworks: readonly Pair[] = [],
   homeworks: readonly Pair[] = [],
-  countsForAttendance = true,
 ): QuarterLesson {
   return {
     mark,
-    countsForAttendance,
     classworks: works(classworks),
     homeworks: works(homeworks),
   };
@@ -171,11 +169,10 @@ describe('quarterResult', () => {
       lesson(4),
       lesson(5),
       lesson(null),
-      lesson(0, [], [], false),
     ];
     const attendanceValues = { lateValue: 75, skippedValue: 25 };
     const result = resultOf(input({ lessons, attendanceValues }));
-    // (100 + 75 + 25 + 0) ÷ 4: exempt, unmarked and the extra lesson that does not count are left out.
+    // (100 + 75 + 25 + 0) ÷ 4: exempt and unmarked lessons are left out.
     expectExactly(result.averages.attendance, 50n);
     // edge/calculation, "Ma'naviyat soati": the same figure with no weights.
     expectExactly(quarterAttendanceAverage({ attendanceValues, lessons }), 50n);
@@ -453,9 +450,7 @@ function reference(value: QuarterResultInput): Ratio | null {
       BigInt(value.weights.attendance),
       mean(
         attended.flatMap((item) =>
-          item.mark === null || !item.countsForAttendance
-            ? []
-            : [{ num: marks[item.mark] ?? -1n, den: 1n }],
+          item.mark === null ? [] : [{ num: marks[item.mark] ?? -1n, den: 1n }],
         ),
       ),
     ],
@@ -510,13 +505,11 @@ const work = fc
 const emptyWork = fc.integer({ min: 1, max: 1000 }).map((total) => ({ total, score: null }));
 const heldLesson = fc.record({
   mark: fc.option(fc.constantFrom<AttendanceMark>(0, 1, 2, 3)),
-  countsForAttendance: fc.boolean(),
   classworks: fc.array(work, { maxLength: 3 }),
   homeworks: fc.array(work, { maxLength: 3 }),
 });
 const exemptLesson = fc.record({
   mark: fc.constantFrom<AttendanceMark>(4, 5),
-  countsForAttendance: fc.boolean(),
   classworks: fc.array(emptyWork, { maxLength: 2 }),
   homeworks: fc.array(emptyWork, { maxLength: 2 }),
 });

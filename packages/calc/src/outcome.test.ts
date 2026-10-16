@@ -19,11 +19,9 @@ function lesson(
   mark: AttendanceMark | null,
   classwork: number | null = null,
   homework: number | null = null,
-  countsForAttendance = true,
 ): QuarterLesson {
   return {
     mark,
-    countsForAttendance,
     classworks: classwork === null ? [] : [{ score: classwork, total: 100 }],
     homeworks: homework === null ? [] : [{ score: homework, total: 100 }],
   };
@@ -229,14 +227,10 @@ describe('edge/calculation: few lessons', () => {
     expect(outcome.basedOn).toEqual({ expected: 8, held: 40 });
   });
 
-  it('counts unmarked lessons and extra lessons off attendance as expected (decision 2)', () => {
-    const lessons = [
-      ...times(10, () => lesson(1, 70, 70)),
-      ...times(2, () => lesson(null)),
-      ...times(2, () => lesson(1, null, null, false)),
-    ];
-    const outcome = numberOf(studentQuarterOutcome(input({ lessons, heldInJournals: 42 })));
-    expect(outcome.basedOn.expected).toBe(14);
+  it('counts unmarked lessons as expected (decision 2)', () => {
+    const lessons = [...times(10, () => lesson(1, 70, 70)), ...times(2, () => lesson(null))];
+    const outcome = numberOf(studentQuarterOutcome(input({ lessons, heldInJournals: 36 })));
+    expect(outcome.basedOn.expected).toBe(12);
     expect(outcome.flags).toEqual([]);
   });
 

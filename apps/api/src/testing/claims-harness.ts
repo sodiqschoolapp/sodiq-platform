@@ -135,13 +135,25 @@ export function claimsHarness() {
     return quarters[index] ?? '';
   };
 
-  /** An extra block and its lessons, written in the transaction given. */
+  /**
+   * A block and its lessons, written in the transaction given, on a version
+   * and pattern of their own that the migrator writes first (`LessonsKit.source`).
+   */
   async function writeBlock(
     transaction: Transaction,
     branch: string,
     block: BlockInput,
     lessons: readonly LessonInput[],
   ): Promise<{ block: string; lessons: string[] }> {
+    const source = await state.kit.source(
+      branch,
+      yearOf(branch),
+      lessons.map((lesson) => ({
+        classId: lesson.classId ?? null,
+        groupId: lesson.groupId ?? null,
+        subjectId: lesson.subjectId ?? state.subject,
+      })),
+    );
     const written = await transaction
       .insertInto('lesson_blocks')
       .values({
@@ -151,15 +163,16 @@ export function claimsHarness() {
         lesson_date: block.date,
         starts_at: at(block.date, block.start),
         ends_at: at(block.date, block.end),
-        version_id: null,
-        pattern_block_id: null,
-        kind: 'extra',
+        version_id: source.versionId,
+        pattern_block_id: source.patternBlockId,
         double_pair_id: block.pairId ?? null,
       })
       .returning(['id', 'lesson_date', 'starts_at', 'ends_at'])
       .executeTakeFirstOrThrow();
     const ids: string[] = [];
-    for (const lesson of lessons) {
+    for (const [index, lesson] of lessons.entries()) {
+      const from = source.lessons[index];
+      if (from === undefined) throw new Error('No source for the lesson.');
       const row = await transaction
         .insertInto('lessons')
         .values({
@@ -171,6 +184,8 @@ export function claimsHarness() {
           class_id: lesson.classId ?? null,
           group_id: lesson.groupId ?? null,
           subject_id: lesson.subjectId ?? state.subject,
+          load_row_id: from.loadRowId,
+          pattern_entry_id: from.patternEntryId,
           teacher_id: lesson.teacherId ?? null,
           room_id: lesson.roomId ?? null,
           cancel_cause: lesson.cancel === true ? 'exam' : null,

@@ -213,7 +213,6 @@ function place(extra: Partial<Placement> = {}): Placement {
     substitute: false,
     roomId: 'r1',
     examRooms: [],
-    extra: false,
     fixed: false,
     ...extra,
   };
@@ -564,9 +563,8 @@ describe('the day', () => {
     ).toEqual(['no_template']);
   });
 
-  it('refuses a regular lesson in an exam week with no regular lessons, not an extra one or an exam', () => {
+  it('refuses every lesson in an exam week with no regular lessons, not an exam', () => {
     expect(codes(checkTimetable([place({ day: '2026-12-21' })], dated()))).toEqual(['exam_week']);
-    expect(codes(checkTimetable([place({ day: '2026-12-21', extra: true })], dated()))).toEqual([]);
     expect(codes(checkTimetable([exam({ day: '2026-12-21' })], dated()))).toEqual([]);
   });
 
