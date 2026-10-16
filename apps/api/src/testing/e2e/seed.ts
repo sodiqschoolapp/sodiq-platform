@@ -2542,6 +2542,84 @@ try {
   });
   seeded.returns = { login: returnsVice.login, password: returnsVice.firstPassword };
 
+  // The Academic Vice Principal of the return in August (task 3.6b-2, L170),
+  // in a branch of its own: the year around today, the next year planned
+  // right after it with the class 7 Cambridge, and a student in 7 Oxford.
+  const augustBranch = await insertBranch(migrator, 'August return browser test branch');
+  const augustVice = await create('Zarina', 'Ismoilova');
+  await transactions.run([augustBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: augustVice.id,
+      role: 'academic_vice_principal',
+      branchId: augustBranch,
+      givenBy: null,
+    }),
+  );
+  await migrator.transaction().execute(async (transaction) => {
+    const nextStart = new Date(yearStart.getTime() + 365 * dayMs);
+    const years: { id: string; name: string; start: Date; end: Date }[] = [];
+    for (const [name, start] of [
+      ['current', yearStart],
+      ['next', nextStart],
+    ] as const) {
+      const row = await transaction
+        .insertInto('academic_years')
+        .values({
+          branch_id: augustBranch,
+          start_date: isoDate(start),
+          end_date: isoDate(new Date(start.getTime() + 364 * dayMs)),
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await transaction
+        .insertInto('quarters')
+        .values(
+          [1, 2, 3, 4].map((number) => ({
+            branch_id: augustBranch,
+            academic_year_id: row.id,
+            number,
+          })),
+        )
+        .execute();
+      years.push({ id: row.id, name, start, end: new Date(start.getTime() + 364 * dayMs) });
+    }
+    const classIds: string[] = [];
+    for (const [yearIndex, name] of [
+      [0, 'Oxford'],
+      [1, 'Cambridge'],
+    ] as const) {
+      const row = await transaction
+        .insertInto('classes')
+        .values({
+          branch_id: augustBranch,
+          academic_year_id: years[yearIndex]?.id ?? '',
+          grade: 7,
+          name,
+          language: 'uz',
+          max_size: 25,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      classIds.push(row.id);
+    }
+    // The current year is current; the next one stays planned.
+    await transaction
+      .updateTable('academic_years')
+      .set({ status: 'current' })
+      .where('id', '=', years[0]?.id ?? '')
+      .execute();
+    await studentInClass(transaction, {
+      branch: augustBranch,
+      classId: classIds[0] ?? null,
+      uid: '9999971',
+      first: 'Madina',
+      last: 'Ergasheva',
+      createdBy: augustVice.id,
+      phone: '+998905550711',
+    });
+  });
+  seeded.returnAugust = { login: augustVice.login, password: augustVice.firstPassword };
+
   // The Academic Vice Principal of two branches for the move to another
   // branch (task 3.3c): the sending branch with 7 Oxford and a student in it,
   // the receiving branch with 7 Cambridge, each with the year around today;
