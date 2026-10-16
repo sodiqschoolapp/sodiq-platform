@@ -198,4 +198,5 @@ as $$
   select pg_advisory_xact_lock(hashtextextended('phone_owner:' || phone_owner_lock.phone, 0))
 $$;
 
+revoke execute on function phone_owner_lock(text) from public;
 grant execute on function phone_owner_lock(text) to sodiq_app;

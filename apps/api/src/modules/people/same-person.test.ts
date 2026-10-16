@@ -2,9 +2,11 @@ import {
   BRANCH_HEADER,
   apiErrorSchema,
   relativeDetailSchema,
+  relativeReportSchema,
   relativePhoneMatchResultSchema,
   staffCheckResultSchema,
   staffDetailSchema,
+  staffReportSchema,
   studentDetailSchema,
   studentRelativesSchema,
   type StaffDetail,
@@ -879,6 +881,99 @@ describe('the mark "same person" read from the phones', () => {
       // The staff phone is free of any relative now: a new one takes it.
       const next = await relative(t.north, teacher.phone);
       expect(await markOf(next.id)).toBe(teacher.id);
+    });
+  });
+
+  // The permission review of the build: the readers of the mark that the
+  // roles other than the Super Admin reach, and the personal-data report.
+  describe('every reader of the mark', () => {
+    it('names the mark in both personal-data reports, and none for a phone that differs', async () => {
+      const teacher = await staffMember(t.north);
+      const parent = await relative(t.north, teacher.phone);
+      const fullName = (await relativeOf(parent.id)).fullName;
+      const reportOf = async (kind: 'staff' | 'relatives', id: string) => {
+        const response = await t.post(`/api/people/${kind}/${id}/report`, t.north, {});
+        expect(response.status, JSON.stringify(response.body)).toBe(200);
+        return response.body as unknown;
+      };
+      expect(staffReportSchema.parse(await reportOf('staff', teacher.id)).sameAsRelative).toEqual({
+        id: parent.id,
+        fullName,
+      });
+      expect(relativeReportSchema.parse(await reportOf('relatives', parent.id)).samePerson).toEqual(
+        {
+          id: teacher.id,
+          name: expect.stringMatching(/^Nazarov[a-z]* Rustam$/) as unknown,
+          staffId: expect.any(String) as unknown,
+        },
+      );
+      const alone = await staffMember(t.north);
+      const other = await relative(t.north);
+      expect(staffReportSchema.parse(await reportOf('staff', alone.id)).sameAsRelative).toBeNull();
+      expect(
+        relativeReportSchema.parse(await reportOf('relatives', other.id)).samePerson,
+      ).toBeNull();
+    });
+
+    it('tells the Principal and the Academic Vice Principal only that the staff member is of another branch', async () => {
+      const teacher = await staffMember(t.south);
+      const parent = await relative(t.north, teacher.phone, { fullName: 'Shoira Rahimova' });
+      for (const cookie of [t.principal, t.vicePrincipal]) {
+        const response = await t.get(`/api/people/relatives/${parent.id}`, t.north, cookie);
+        expect(response.status, JSON.stringify(response.body)).toBe(200);
+        expect(relativeDetailSchema.parse(response.body)).toMatchObject({
+          samePerson: null,
+          samePersonElsewhere: true,
+        });
+        const text = JSON.stringify(response.body);
+        expect(text).not.toContain(teacher.id);
+        expect(text).not.toContain('Nazarov');
+      }
+    });
+
+    it("answers the Academic Vice Principal's phone check with a staff member of the branch named, and of another branch unnamed", async () => {
+      const here = await staffMember(t.north);
+      const there = await staffMember(t.south);
+      const match = async (number: string) => {
+        const response = await t.post(
+          '/api/people/relatives/phone-match',
+          t.north,
+          { phone: number },
+          t.vicePrincipal,
+        );
+        expect(response.status, JSON.stringify(response.body)).toBe(200);
+        return relativePhoneMatchResultSchema.parse(response.body);
+      };
+      expect(await match(here.phone)).toMatchObject({
+        holder: null,
+        staff: { fullName: expect.stringMatching(/^Nazarov[a-z]* Rustam Akmalovich$/) as unknown },
+        staffElsewhere: false,
+      });
+      const elsewhere = await match(there.phone);
+      expect(elsewhere).toEqual({ holder: null, staff: null, staffElsewhere: true });
+    });
+
+    it("refuses an edit to the phone of a staff member of another branch unnamed, and the Super Admin's edit named", async () => {
+      const edited = await staffMember(t.north);
+      const there = await staffMember(t.south);
+      const here = await staffMember(t.north);
+      const before = await snapshot();
+      const unnamed = await editStaffPhone(edited.id, there.phone);
+      refusedWith(unnamed, 409, 'staff_phone_taken');
+      expect(detailsOf(unnamed)[0]).toEqual({
+        path: 'phone',
+        code: 'staff_phone_taken',
+        message: expect.any(String) as unknown,
+      });
+      const named = await t.put(
+        `/api/people/staff/${edited.id}`,
+        t.north,
+        staffEdit(await staffOf(edited.id), { phone: here.phone }),
+        t.admin,
+      );
+      refusedWith(named, 409, 'staff_phone_taken');
+      expect(detailsOf(named)[0]).toMatchObject({ path: 'phone', recordId: here.id });
+      expect(await snapshot()).toEqual(before);
     });
   });
 
