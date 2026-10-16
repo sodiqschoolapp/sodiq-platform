@@ -46,7 +46,7 @@ export interface GroupMemberRow {
   from: string;
   until?: string;
   ownUntil?: string;
-  cause?: 'placement' | 'automatic' | 'transfer';
+  cause?: 'placement' | 'automatic' | 'transfer' | 'cancel' | 'undo';
   review?: boolean;
   endedBy?: 'leaving' | 'transfer' | null;
   leavingId?: string | null;

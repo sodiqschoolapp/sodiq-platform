@@ -203,20 +203,52 @@ describe('one stay in the database', () => {
         );
         // The first class again after a gap of a day.
         await members.member(
-          { branch: north, classId: oxford, studentId: student, from: '2026-10-11' },
+          {
+            branch: north,
+            classId: oxford,
+            studentId: student,
+            from: '2026-10-11',
+            ownUntil: '2026-11-02',
+          },
+          transaction,
+        );
+        // A planned row of the first class from the day that row ends,
+        // withdrawn: an empty row on the last day of a row's closed range.
+        const planned = await members.member(
+          {
+            branch: north,
+            classId: oxford,
+            studentId: student,
+            from: '2026-11-02',
+            ownUntil: '2026-11-10',
+          },
+          transaction,
+        );
+        await transaction
+          .updateTable('class_memberships')
+          .set({ valid_until: '2026-11-02', ended_by: 'withdrawn' })
+          .where('id', '=', planned)
+          .execute();
+        await members.member(
+          { branch: north, classId: yale, studentId: student, from: '2026-11-02' },
           transaction,
         );
       });
       const held = await database.migrator
         .selectFrom('class_memberships')
-        .select(['class_id', 'valid_from', 'valid_until'])
+        .select(['class_id', 'valid_from', 'valid_until', 'ended_by'])
         .where('student_id', '=', student)
         .orderBy('valid_from')
+        .orderBy('valid_until')
         .execute();
-      expect(held.map((one) => [one.class_id, one.valid_from, one.valid_until])).toEqual([
-        [oxford, '2026-09-01', '2026-10-01'],
-        [yale, '2026-10-01', '2026-10-10'],
-        [oxford, '2026-10-11', YEAR_END],
+      expect(
+        held.map((one) => [one.class_id, one.valid_from, one.valid_until, one.ended_by]),
+      ).toEqual([
+        [oxford, '2026-09-01', '2026-10-01', null],
+        [yale, '2026-10-01', '2026-10-10', null],
+        [oxford, '2026-10-11', '2026-11-02', null],
+        [oxford, '2026-11-02', '2026-11-02', 'withdrawn'],
+        [yale, '2026-11-02', YEAR_END, null],
       ]);
     });
 
@@ -1288,6 +1320,12 @@ describe('one stay in the database', () => {
           .execute();
         await growBack(transaction, 'class_memberships', row);
       });
+      // The row the move cut grows back once the move is undone.
+      expect(await members.rowOf(row)).toMatchObject({
+        valid_from: '2026-09-01',
+        valid_until: YEAR_END,
+        ended_by: null,
+      });
       expect(
         await refusal(
           inBranch((transaction) => growBack(transaction, 'class_memberships', target)),
@@ -1462,6 +1500,395 @@ describe('one stay in the database', () => {
     });
   });
 
+  // The review of the build, round 2, finding 1: the group copies of the
+  // guards, each reached with nothing before it refusing first.
+  describe('the group copies of the guards of a join and of a row given back', () => {
+    /** The refusal of the statement itself, before any check deferred to the commit runs; then rolled back. */
+    async function refusedAtOnce(
+      work: (transaction: Transaction) => Promise<unknown>,
+    ): Promise<{ code?: string; constraint?: string } | 'not refused'> {
+      let caught: { code?: string; constraint?: string } | 'not refused' = 'not refused';
+      await refusal(
+        asMigrator(async (transaction) => {
+          try {
+            await work(transaction);
+          } catch (error) {
+            caught = error as { code?: string; constraint?: string };
+          }
+          throw new Error('Rolled back.');
+        }),
+      );
+      return caught;
+    }
+
+    /** A student of a new class with a row of a maths group the class feeds, from 1 September. */
+    async function groupPupil() {
+      const oxford = await classes.schoolClass(north, year);
+      const group = await classes.group(north, year, maths, [oxford]);
+      const other = await classes.group(north, year, maths, [oxford]);
+      const student = await members.student(north, { startsOn: '2026-09-01' });
+      const { row, groupRow } = await asMigrator(async (transaction) => ({
+        row: await members.member(
+          { branch: north, classId: oxford, studentId: student, from: '2026-09-01' },
+          transaction,
+        ),
+        groupRow: await members.groupMember(
+          {
+            branch: north,
+            groupId: group,
+            subjectId: maths,
+            studentId: student,
+            from: '2026-09-01',
+          },
+          transaction,
+        ),
+      }));
+      return { oxford, group, other, student, row, groupRow };
+    }
+
+    it('grows a group row a leaving cut only once the leaving is taken back', async () => {
+      const one = await groupPupil();
+      const leaving = await inBranch((transaction) =>
+        leave(transaction, one.student, '2026-11-01', [
+          { table: 'class_memberships', id: one.row },
+          { table: 'group_memberships', id: one.groupRow },
+        ]),
+      );
+      // The group row alone, while the leaving stands: refused by the row's
+      // own guard, at the statement.
+      expect(
+        await refusal(
+          inBranch((transaction) => growBack(transaction, 'group_memberships', one.groupRow)),
+        ),
+      ).toMatchObject({ constraint: 'group_memberships_only_shrink' });
+      await inBranch(async (transaction) => {
+        await takeBack(transaction, one.student, leaving);
+        await growBack(transaction, 'class_memberships', one.row);
+        await growBack(transaction, 'group_memberships', one.groupRow);
+      });
+      expect(await members.groupRowOf(one.groupRow)).toMatchObject({
+        valid_from: '2026-09-01',
+        valid_until: YEAR_END,
+        ended_by: null,
+        leaving_id: null,
+      });
+    });
+
+    it('grows a group row a move cut once the move is cancelled, and refuses it while the move is live', async () => {
+      const one = await groupPupil();
+      const move = await members.move({
+        branch: north,
+        studentId: one.student,
+        from: '2026-10-20',
+        fromGroupId: one.group,
+        toGroupId: one.other,
+        subjectId: maths,
+      });
+      const target = await inBranch(async (transaction) => {
+        await transaction
+          .updateTable('group_memberships')
+          .set({ valid_until: '2026-10-20', ended_by: 'transfer', ended_by_move_id: move })
+          .where('id', '=', one.groupRow)
+          .execute();
+        return members.groupMember(
+          {
+            branch: north,
+            groupId: one.other,
+            subjectId: maths,
+            studentId: one.student,
+            from: '2026-10-20',
+            cause: 'transfer',
+            writtenByMoveId: move,
+          },
+          transaction,
+        );
+      });
+      expect(
+        await refusal(
+          inBranch((transaction) => growBack(transaction, 'group_memberships', one.groupRow)),
+        ),
+      ).toMatchObject({ constraint: 'group_memberships_only_shrink' });
+      await inBranch(async (transaction) => {
+        await transaction
+          .updateTable('student_moves')
+          .set({ cancelled_at: new Date(NOW) })
+          .where('id', '=', move)
+          .execute();
+        await transaction
+          .updateTable('group_memberships')
+          .set({ valid_until: '2026-10-20', ended_by: 'withdrawn' })
+          .where('id', '=', target)
+          .execute();
+        await growBack(transaction, 'group_memberships', one.groupRow);
+      });
+      expect(await members.groupRowOf(one.groupRow)).toMatchObject({
+        valid_until: YEAR_END,
+        ended_by: null,
+      });
+    });
+
+    it('grows a group row up to a leaving that stands, never to one taken back', async () => {
+      const one = await groupPupil();
+      const first = await inBranch((transaction) =>
+        leave(transaction, one.student, '2026-11-01', [
+          { table: 'class_memberships', id: one.row },
+          { table: 'group_memberships', id: one.groupRow },
+        ]),
+      );
+      // The replace of the scheduled leaving by a later one; the class row
+      // takes the new leaving, the group row the one named.
+      const replace = (named: 'first' | 'second') =>
+        inBranch(async (transaction) => {
+          await transaction
+            .updateTable('student_statuses')
+            .set({ valid_until: '2026-11-01' })
+            .where('id', '=', first)
+            .execute();
+          await transaction
+            .insertInto('student_statuses')
+            .values({
+              student_id: one.student,
+              branch_id: north,
+              status: 'active',
+              valid_from: '2026-11-01',
+              valid_until: '2026-12-01',
+              cause: 'cancel',
+            })
+            .execute();
+          const second = await transaction
+            .insertInto('student_statuses')
+            .values({
+              student_id: one.student,
+              branch_id: north,
+              status: 'inactive',
+              valid_from: '2026-12-01',
+              cause: 'leaving',
+              reason: 'Moved to another city',
+            })
+            .returning('id')
+            .executeTakeFirstOrThrow();
+          await transaction
+            .updateTable('class_memberships')
+            .set({ valid_until: '2026-12-01', ended_by: 'leaving', leaving_id: second.id })
+            .where('id', '=', one.row)
+            .execute();
+          await transaction
+            .updateTable('group_memberships')
+            .set({
+              valid_until: '2026-12-01',
+              ended_by: 'leaving',
+              leaving_id: named === 'first' ? first : second.id,
+            })
+            .where('id', '=', one.groupRow)
+            .execute();
+        });
+      expect(await refusal(replace('first'))).toMatchObject({
+        constraint: 'group_memberships_only_shrink',
+      });
+      await replace('second');
+      expect(await members.groupRowOf(one.groupRow)).toMatchObject({
+        valid_until: '2026-12-01',
+        ended_by: 'leaving',
+      });
+    });
+
+    it('refuses the days given back to a group of a closed year', async () => {
+      // A group move undone and the group row it cut grown back, the year
+      // closed before the commit: only the group rows change, and the
+      // commit check of the group refuses the days given back.
+      const west = await insertBranch(database.migrator, 'One stay West');
+      const closedYear = await classes.year(west, 'current', '2025-09-01', '2026-05-31');
+      const old = await classes.schoolClass(west, closedYear);
+      const group = await classes.group(west, closedYear, maths, [old]);
+      const other = await classes.group(west, closedYear, maths, [old]);
+      const student = await members.student(west, { startsOn: '2025-09-01' });
+      const groupRow = await database.migrator.transaction().execute(async (transaction) => {
+        await members.member(
+          {
+            branch: west,
+            classId: old,
+            studentId: student,
+            from: '2025-09-01',
+            ownUntil: '2026-06-01',
+          },
+          transaction,
+        );
+        return members.groupMember(
+          {
+            branch: west,
+            groupId: group,
+            subjectId: maths,
+            studentId: student,
+            from: '2025-09-01',
+            ownUntil: '2026-06-01',
+          },
+          transaction,
+        );
+      });
+      const move = await members.move({
+        branch: west,
+        studentId: student,
+        from: '2026-03-02',
+        fromGroupId: group,
+        toGroupId: other,
+        subjectId: maths,
+      });
+      await transactions.run([west], async (transaction) => {
+        await transaction
+          .updateTable('group_memberships')
+          .set({ valid_until: '2026-03-02', ended_by: 'transfer', ended_by_move_id: move })
+          .where('id', '=', groupRow)
+          .execute();
+        await members.groupMember(
+          {
+            branch: west,
+            groupId: other,
+            subjectId: maths,
+            studentId: student,
+            from: '2026-03-02',
+            ownUntil: '2026-06-01',
+            cause: 'transfer',
+            writtenByMoveId: move,
+          },
+          transaction,
+        );
+      });
+      const undo = (close: boolean) =>
+        database.migrator.transaction().execute(async (transaction) => {
+          await sql`
+            select set_config(${BRANCH_SETTING}, ${`{${west}}`}, true),
+              set_config(${MOMENT_SETTING}, ${new Date(NOW).toISOString()}, true)
+          `.execute(transaction);
+          await transaction
+            .updateTable('student_moves')
+            .set({ undone_at: new Date(NOW), reason: 'Typed by mistake' })
+            .where('id', '=', move)
+            .execute();
+          await transaction
+            .updateTable('group_memberships')
+            .set({ valid_until: '2026-03-02', ended_by: 'undone', ended_by_move_id: move })
+            .where('written_by_move_id', '=', move)
+            .execute();
+          await transaction
+            .updateTable('group_memberships')
+            .set({ valid_until: '2026-06-01', ended_by: null, ended_by_move_id: null })
+            .where('id', '=', groupRow)
+            .execute();
+          if (close) {
+            await transaction
+              .updateTable('academic_years')
+              .set({ status: 'closed' })
+              .where('id', '=', closedYear)
+              .execute();
+          }
+          // The checks of the commit, run now; then nothing is kept.
+          await sql`set constraints all immediate`.execute(transaction);
+          throw new Error('Rolled back.');
+        });
+      // The same undo with the year left open reaches the end: only the
+      // closed year refuses.
+      expect(await refusal(undo(false))).toMatchObject({ message: 'Rolled back.' });
+      expect(await refusal(undo(true))).toMatchObject({ constraint: 'class_year_closed' });
+    });
+
+    it('refuses at the statement a group join of rows with a gap, of another group, of another student or of a row with no days', async () => {
+      const oxford = await classes.schoolClass(north, year);
+      const group = await classes.group(north, year, maths, [oxford]);
+      const other = await classes.group(north, year, maths, [oxford]);
+      const student = await members.student(north, { startsOn: '2026-09-01' });
+      const someone = await members.student(north, { startsOn: '2026-09-01' });
+      const join = (transaction: Transaction, later: string, into: string) =>
+        transaction
+          .updateTable('group_memberships')
+          .set({
+            valid_until: sql<string>`valid_from`,
+            ended_by: 'joined',
+            joined_into_id: into,
+            joined_xact: sql<string>`pg_current_xact_id()`,
+            leaving_id: null,
+            ended_by_move_id: null,
+          })
+          .where('id', '=', later)
+          .execute();
+      for (const later of [
+        { groupId: group, studentId: student, from: '2026-10-02' },
+        { groupId: other, studentId: student, from: '2026-10-01' },
+        { groupId: group, studentId: someone, from: '2026-10-01' },
+      ]) {
+        expect(
+          await refusedAtOnce(async (transaction) => {
+            for (const studentId of [student, someone]) {
+              await members.member(
+                { branch: north, classId: oxford, studentId, from: '2026-09-01' },
+                transaction,
+              );
+            }
+            const first = await members.groupMember(
+              {
+                branch: north,
+                groupId: group,
+                subjectId: maths,
+                studentId: student,
+                from: '2026-09-01',
+                ownUntil: '2026-10-01',
+              },
+              transaction,
+            );
+            const second = await members.groupMember(
+              { branch: north, subjectId: maths, ...later },
+              transaction,
+            );
+            await join(transaction, second, first);
+          }),
+        ).toMatchObject({ constraint: 'group_memberships_join' });
+      }
+      // A planned row a leaving emptied, right where the earlier row ends:
+      // only its having no day refuses.
+      expect(
+        await refusedAtOnce(async (transaction) => {
+          const out = await members.leaving(transaction, north, student, '2026-11-02');
+          await members.member(
+            {
+              branch: north,
+              classId: oxford,
+              studentId: student,
+              from: '2026-09-01',
+              until: '2026-11-02',
+              endedBy: 'leaving',
+              leavingId: out,
+            },
+            transaction,
+          );
+          const first = await members.groupMember(
+            {
+              branch: north,
+              groupId: group,
+              subjectId: maths,
+              studentId: student,
+              from: '2026-09-01',
+              ownUntil: '2026-11-02',
+            },
+            transaction,
+          );
+          const empty = await members.groupMember(
+            {
+              branch: north,
+              groupId: group,
+              subjectId: maths,
+              studentId: student,
+              from: '2026-11-02',
+              until: '2026-11-02',
+              endedBy: 'leaving',
+              leavingId: out,
+            },
+            transaction,
+          );
+          await join(transaction, empty, first);
+        }),
+      ).toMatchObject({ constraint: 'group_memberships_join' });
+    });
+  });
+
   describe('a changed move names the move it replaced (H34)', () => {
     it('takes a cancelled move of the same student and kind only, and fills it once', async () => {
       const { oxford, yale, student } = await pupil();
@@ -1567,6 +1994,74 @@ describe('one stay in the database', () => {
         .where('id', '=', third)
         .executeTakeFirstOrThrow();
       expect(filled.replaces_move_id).toBe(fourth);
+    });
+
+    it('refuses a move of another kind or subject as the one replaced, and a move replaced twice', async () => {
+      const { oxford, yale, student } = await pupil();
+      const physics = await classes.subject({ grades: [7, 8] });
+      const [algebra, geometry, optics, mechanics] = [
+        await classes.group(north, year, maths, [oxford]),
+        await classes.group(north, year, maths, [oxford]),
+        await classes.group(north, year, physics, [oxford]),
+        await classes.group(north, year, physics, [oxford]),
+      ];
+      const cancelled = async (row: Parameters<MembersKit['move']>[0]) => {
+        const id = await members.move(row);
+        await inBranch((transaction) =>
+          transaction
+            .updateTable('student_moves')
+            .set({ cancelled_at: new Date(NOW) })
+            .where('id', '=', id)
+            .execute(),
+        );
+        return id;
+      };
+      const classMove = await cancelled({
+        branch: north,
+        studentId: student,
+        from: '2026-10-20',
+        fromClassId: oxford,
+        toClassId: yale,
+      });
+      const mathsMove = await cancelled({
+        branch: north,
+        studentId: student,
+        from: '2026-10-20',
+        fromGroupId: algebra ?? '',
+        toGroupId: geometry ?? '',
+        subjectId: maths,
+      });
+      const groupMove = (subject: string, from: string, to: string, replaced: string) =>
+        inBranch((transaction) =>
+          transaction
+            .insertInto('student_moves')
+            .values({
+              branch_id: north,
+              student_id: student,
+              kind: 'group',
+              subject_id: subject,
+              from_group_id: from,
+              to_group_id: to,
+              effective_on: '2026-10-27',
+              made_at: new Date(NOW),
+              replaces_move_id: replaced,
+            })
+            .returning('id')
+            .executeTakeFirstOrThrow(),
+        );
+      // A group move does not replace a class move.
+      expect(
+        await refusal(groupMove(maths, algebra ?? '', geometry ?? '', classMove)),
+      ).toMatchObject({ constraint: 'student_moves_replaces' });
+      // A physics move does not replace a maths move.
+      expect(
+        await refusal(groupMove(physics, optics ?? '', mechanics ?? '', mathsMove)),
+      ).toMatchObject({ constraint: 'student_moves_replaces' });
+      // The maths move replaces it, once only.
+      await groupMove(maths, algebra ?? '', geometry ?? '', mathsMove);
+      expect(
+        await refusal(groupMove(maths, algebra ?? '', geometry ?? '', mathsMove)),
+      ).toMatchObject({ code: '23505', constraint: 'student_moves_replaces_idx' });
     });
   });
 });

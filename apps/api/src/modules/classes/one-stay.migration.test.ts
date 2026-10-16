@@ -35,8 +35,17 @@ describe('migration 0062 joins the stays already split', () => {
   let south: string;
   let chain: { student: string; rows: string[]; groupRows: string[] };
   let branchMoved: { student: string; rows: string[]; branchMove: string };
-  let changed: { first: string; second: string };
+  let changed: { first: string; second: string; groupFirst: string; groupSecond: string };
   let emptied: string[];
+  let undone: {
+    student: string;
+    row: string;
+    groupRow: string;
+    target: string;
+    continuation: string;
+    groupContinuation: string;
+  };
+  let cancelled: { student: string; groupRow: string; target: string; continuation: string };
 
   /** A transaction of the migrator with the branches and the moment set. */
   const asMigrator = <T>(branches: string[], work: (transaction: Transaction) => Promise<T>) =>
@@ -149,11 +158,192 @@ describe('migration 0062 joins the stays already split', () => {
             subjectId: maths,
             studentId: student,
             from: '2026-09-20',
+            until: '2026-10-05',
+            cause: 'cancel',
+            endedBy: 'leaving',
+            leavingId: second,
+          },
+          transaction,
+        ),
+        await members.groupMember(
+          {
+            branch: north,
+            groupId: group,
+            subjectId: maths,
+            studentId: student,
+            from: '2026-10-05',
+            cause: 'undo',
           },
           transaction,
         ),
       ];
       return { student, rows, groupRows };
+    });
+
+    // A class move undone as the code before 0062 wrote it
+    // (`student-moves.service.ts` of main before 0062): the class row and the
+    // group row the move cut keep their end `transfer` and their own end; the
+    // row the move wrote in the other class is emptied `undone`; the undo
+    // writes a class row and a group row from the move's date, cause `undo`,
+    // named as written by the move.
+    const yale = await classes.schoolClass(north, year);
+    const returned = await members.student(north, { startsOn: '2026-09-01' });
+    const first = await asMigrator([north], async (transaction) => {
+      const row = await members.member(
+        { branch: north, classId: oxford, studentId: returned, from: '2026-09-01' },
+        transaction,
+      );
+      const groupRow = await members.groupMember(
+        {
+          branch: north,
+          groupId: group,
+          subjectId: maths,
+          studentId: returned,
+          from: '2026-09-01',
+        },
+        transaction,
+      );
+      return { row, groupRow };
+    });
+    const undoneMove = await members.move({
+      branch: north,
+      studentId: returned,
+      from: '2026-10-07',
+      fromClassId: oxford,
+      toClassId: yale,
+    });
+    const target = await asMigrator([north], async (transaction) => {
+      for (const table of ['class_memberships', 'group_memberships'] as const) {
+        await transaction
+          .updateTable(table)
+          .set({ valid_until: '2026-10-07', ended_by: 'transfer', ended_by_move_id: undoneMove })
+          .where('student_id', '=', returned)
+          .execute();
+      }
+      return members.member(
+        {
+          branch: north,
+          classId: yale,
+          studentId: returned,
+          from: '2026-10-07',
+          cause: 'transfer',
+          writtenByMoveId: undoneMove,
+        },
+        transaction,
+      );
+    });
+    undone = await asMigrator([north], async (transaction) => {
+      await transaction
+        .updateTable('student_moves')
+        .set({ undone_at: new Date(NOW), reason: 'Typed by mistake' })
+        .where('id', '=', undoneMove)
+        .execute();
+      await transaction
+        .updateTable('class_memberships')
+        .set({ valid_until: '2026-10-07', ended_by: 'undone', ended_by_move_id: undoneMove })
+        .where('id', '=', target)
+        .execute();
+      return {
+        student: returned,
+        ...first,
+        target,
+        continuation: await members.member(
+          {
+            branch: north,
+            classId: oxford,
+            studentId: returned,
+            from: '2026-10-07',
+            cause: 'undo',
+            writtenByMoveId: undoneMove,
+          },
+          transaction,
+        ),
+        groupContinuation: await members.groupMember(
+          {
+            branch: north,
+            groupId: group,
+            subjectId: maths,
+            studentId: returned,
+            from: '2026-10-07',
+            cause: 'undo',
+            writtenByMoveId: undoneMove,
+          },
+          transaction,
+        ),
+      };
+    });
+
+    // A scheduled group move cancelled as the code before 0062 wrote it: the
+    // group row it cut keeps its end `transfer`; the row it wrote in the
+    // other group is emptied `withdrawn`; the cancel writes a group row from
+    // the move's date, cause `cancel`, named as written by the move.
+    const geometry = await classes.group(north, year, maths, [oxford]);
+    const stayer = await members.student(north, { startsOn: '2026-09-01' });
+    const stayerRow = await asMigrator([north], async (transaction) => {
+      await members.member(
+        { branch: north, classId: oxford, studentId: stayer, from: '2026-09-01' },
+        transaction,
+      );
+      return members.groupMember(
+        { branch: north, groupId: group, subjectId: maths, studentId: stayer, from: '2026-09-01' },
+        transaction,
+      );
+    });
+    const cancelledMove = await members.move({
+      branch: north,
+      studentId: stayer,
+      from: '2026-10-20',
+      fromGroupId: group,
+      toGroupId: geometry,
+      subjectId: maths,
+    });
+    const stayerTarget = await asMigrator([north], async (transaction) => {
+      await transaction
+        .updateTable('group_memberships')
+        .set({ valid_until: '2026-10-20', ended_by: 'transfer', ended_by_move_id: cancelledMove })
+        .where('id', '=', stayerRow)
+        .execute();
+      return members.groupMember(
+        {
+          branch: north,
+          groupId: geometry,
+          subjectId: maths,
+          studentId: stayer,
+          from: '2026-10-20',
+          cause: 'transfer',
+          writtenByMoveId: cancelledMove,
+        },
+        transaction,
+      );
+    });
+    cancelled = await asMigrator([north], async (transaction) => {
+      await transaction
+        .updateTable('student_moves')
+        .set({ cancelled_at: new Date(NOW) })
+        .where('id', '=', cancelledMove)
+        .execute();
+      await transaction
+        .updateTable('group_memberships')
+        .set({ valid_until: '2026-10-20', ended_by: 'withdrawn' })
+        .where('id', '=', stayerTarget)
+        .execute();
+      return {
+        student: stayer,
+        groupRow: stayerRow,
+        target: stayerTarget,
+        continuation: await members.groupMember(
+          {
+            branch: north,
+            groupId: group,
+            subjectId: maths,
+            studentId: stayer,
+            from: '2026-10-20',
+            cause: 'cancel',
+            writtenByMoveId: cancelledMove,
+          },
+          transaction,
+        ),
+      };
     });
 
     // A cancel's row that a later, earlier-dated leaving emptied (still in
@@ -206,11 +396,29 @@ describe('migration 0062 joins the stays already split', () => {
     });
 
     // A stay split in two whose later row a move to another branch cut
-    // (correction 2 of the plan review: the test site holds such rows).
-    const yale = await classes.schoolClass(north, year);
+    // (correction 2 of the plan review: the test site holds such rows). The
+    // earlier row is cut by a leaving its cancel took back, and keeps that
+    // end, the leaving and its own end at the year's end, as the code before
+    // 0062 left it.
     const harvard = await classes.schoolClass(south, southYear);
     const leaver = await members.student(north, { startsOn: '2026-09-01' });
     branchMoved = await asMigrator([north, south], async (transaction) => {
+      const leaving = await members.leaving(transaction, north, leaver, '2026-10-01');
+      await transaction
+        .updateTable('student_statuses')
+        .set({ valid_until: '2026-10-01' })
+        .where('id', '=', leaving)
+        .execute();
+      await transaction
+        .insertInto('student_statuses')
+        .values({
+          student_id: leaver,
+          branch_id: north,
+          status: 'active',
+          valid_from: '2026-10-01',
+          cause: 'cancel',
+        })
+        .execute();
       const rows = [
         await members.member(
           {
@@ -218,7 +426,9 @@ describe('migration 0062 joins the stays already split', () => {
             classId: yale,
             studentId: leaver,
             from: '2026-09-01',
-            ownUntil: '2026-10-01',
+            until: '2026-10-01',
+            endedBy: 'leaving',
+            leavingId: leaving,
           },
           transaction,
         ),
@@ -314,7 +524,39 @@ describe('migration 0062 joins the stays already split', () => {
           new_value: JSON.stringify({ moveId: second }),
         })
         .execute();
-      return { first, second };
+      // The same for a group move, from the entry of its change.
+      const groupMove = (from: string) =>
+        members.move(
+          {
+            branch: north,
+            studentId: mover,
+            from,
+            fromGroupId: group,
+            toGroupId: geometry,
+            subjectId: maths,
+          },
+          transaction,
+        );
+      const groupFirst = await groupMove('2026-10-20');
+      await transaction
+        .updateTable('student_moves')
+        .set({ cancelled_at: new Date(NOW) })
+        .where('id', '=', groupFirst)
+        .execute();
+      const groupSecond = await groupMove('2026-10-27');
+      await transaction
+        .insertInto('audit_log')
+        .values({
+          occurred_at: new Date(NOW),
+          branch_id: north,
+          action: 'student.group_transfer_changed',
+          record_type: 'student',
+          record_id: mover,
+          old_value: JSON.stringify({ moveId: groupFirst }),
+          new_value: JSON.stringify({ moveId: groupSecond }),
+        })
+        .execute();
+      return { first, second, groupFirst, groupSecond };
     });
 
     await copyFile(path.join(MIGRATIONS, ONE_STAY), path.join(directory, ONE_STAY));
@@ -339,6 +581,7 @@ describe('migration 0062 joins the stays already split', () => {
         'ended_by',
         'joined_into_id',
         'ended_by_branch_move_id',
+        'ended_by_move_id',
         'leaving_id',
       ])
       .where('student_id', '=', student)
@@ -346,7 +589,24 @@ describe('migration 0062 joins the stays already split', () => {
       .orderBy('id')
       .execute();
 
-  it('joins a chain of three class rows and two group rows into one each', async () => {
+  const groupRowsOf = (student: string) =>
+    database.migrator
+      .selectFrom('group_memberships')
+      .select([
+        'id',
+        'valid_from',
+        'valid_until',
+        'own_until',
+        'ended_by',
+        'joined_into_id',
+        'ended_by_move_id',
+      ])
+      .where('student_id', '=', student)
+      .orderBy('valid_from')
+      .orderBy('id')
+      .execute();
+
+  it('joins a chain of three class rows and three group rows into one each', async () => {
     const [first, second, third] = chain.rows;
     expect(await classRowsOf(chain.student)).toEqual([
       expect.objectContaining({
@@ -393,6 +653,80 @@ describe('migration 0062 joins the stays already split', () => {
         ended_by: 'joined',
         joined_into_id: chain.groupRows[0],
       },
+      {
+        id: chain.groupRows[2],
+        valid_from: '2026-10-05',
+        valid_until: '2026-10-05',
+        ended_by: 'joined',
+        joined_into_id: chain.groupRows[0],
+      },
+    ]);
+  });
+
+  it('joins the rows a move undone and a move cancelled had split, and leaves their targets empty', async () => {
+    expect(await classRowsOf(undone.student)).toEqual([
+      expect.objectContaining({
+        id: undone.row,
+        valid_from: '2026-09-01',
+        valid_until: YEAR_END,
+        own_until: YEAR_END,
+        ended_by: null,
+        ended_by_move_id: null,
+      }),
+      expect.objectContaining({
+        id: undone.target,
+        valid_from: '2026-10-07',
+        valid_until: '2026-10-07',
+        ended_by: 'undone',
+        joined_into_id: null,
+      }),
+      expect.objectContaining({
+        id: undone.continuation,
+        valid_from: '2026-10-07',
+        valid_until: '2026-10-07',
+        ended_by: 'joined',
+        joined_into_id: undone.row,
+      }),
+    ]);
+    expect(await groupRowsOf(undone.student)).toEqual([
+      expect.objectContaining({
+        id: undone.groupRow,
+        valid_from: '2026-09-01',
+        valid_until: YEAR_END,
+        ended_by: null,
+        ended_by_move_id: null,
+      }),
+      expect.objectContaining({
+        id: undone.groupContinuation,
+        valid_from: '2026-10-07',
+        valid_until: '2026-10-07',
+        ended_by: 'joined',
+        joined_into_id: undone.groupRow,
+      }),
+    ]);
+    expect(await groupRowsOf(cancelled.student)).toEqual([
+      expect.objectContaining({
+        id: cancelled.groupRow,
+        valid_from: '2026-09-01',
+        valid_until: YEAR_END,
+        own_until: YEAR_END,
+        ended_by: null,
+        ended_by_move_id: null,
+      }),
+      expect.objectContaining({
+        id: cancelled.target,
+        valid_from: '2026-10-20',
+        valid_until: '2026-10-20',
+        ended_by: 'withdrawn',
+        joined_into_id: null,
+      }),
+      expect.objectContaining({
+        id: cancelled.continuation,
+        valid_from: '2026-10-20',
+        valid_until: '2026-10-20',
+        ended_by: 'joined',
+        joined_into_id: cancelled.groupRow,
+      }),
     ]);
   });
 
@@ -418,6 +752,8 @@ describe('migration 0062 joins the stays already split', () => {
       own_until: YEAR_END,
       ended_by: 'branch_move',
       ended_by_branch_move_id: branchMoved.branchMove,
+      // The end of the leaving taken back went with the join.
+      leaving_id: null,
     });
     expect(rows.find((row) => row.id === second)).toMatchObject({
       valid_until: '2026-10-01',
@@ -454,6 +790,12 @@ describe('migration 0062 joins the stays already split', () => {
               keptId: chain.groupRows[0],
               joinedId: chain.groupRows[1],
               from: '2026-09-20',
+              until: '2026-10-05',
+            },
+            {
+              keptId: chain.groupRows[0],
+              joinedId: chain.groupRows[2],
+              from: '2026-10-05',
               until: YEAR_END,
             },
           ],
@@ -468,9 +810,13 @@ describe('migration 0062 joins the stays already split', () => {
     const found = await database.migrator
       .selectFrom('student_moves')
       .select(['id', 'replaces_move_id'])
-      .where('id', 'in', [changed.first, changed.second])
+      .where('id', 'in', [changed.first, changed.second, changed.groupFirst, changed.groupSecond])
       .execute();
-    expect(found.find((one) => one.id === changed.second)?.replaces_move_id).toBe(changed.first);
-    expect(found.find((one) => one.id === changed.first)?.replaces_move_id).toBeNull();
+    const replaced = (id: string) => found.find((one) => one.id === id)?.replaces_move_id;
+    expect(replaced(changed.second)).toBe(changed.first);
+    expect(replaced(changed.first)).toBeNull();
+    // From `student.group_transfer_changed` too.
+    expect(replaced(changed.groupSecond)).toBe(changed.groupFirst);
+    expect(replaced(changed.groupFirst)).toBeNull();
   });
 });
