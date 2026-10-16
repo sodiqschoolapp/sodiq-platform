@@ -1701,8 +1701,6 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         lastMove: 'Из {{class}}, {{date}}',
         classMove: 'Переведён из {{from}} в {{to}}',
         groupMove: 'Переведён из группы {{from}} в группу {{to}}',
-        classJoin: 'Зачислен в {{class}}',
-        groupJoin: 'Зачислен в группу {{group}}',
         classMovePlanned: 'Будет переведён из {{from}} в {{to}}',
         groupMovePlanned: 'Будет переведён из группы {{from}} в группу {{to}}',
         classMoveCancelled: 'Планировался перевод из {{from}} в {{to}}',

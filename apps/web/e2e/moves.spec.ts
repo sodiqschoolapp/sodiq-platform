@@ -69,6 +69,10 @@ test('an Academic Vice Principal moves a student to another class, cancels, and 
   const history = panel.getByRole('region', { name: moves.historyLabel });
   const moved = moves.classMove.replace('{{from}}', '7 Oxford').replace('{{to}}', '7 Yale');
   await expect(history.getByText(`${moved} · ${moves.states.done}`)).toBeVisible();
-  await expect(history.getByText(`${moved} · ${moves.states.cancelled}`)).toBeVisible();
+  // Task 3.5c, H34: "moved" only of a move that happened.
+  const planned = moves.classMoveCancelled
+    .replace('{{from}}', '7 Oxford')
+    .replace('{{to}}', '7 Yale');
+  await expect(history.getByText(`${planned} · ${moves.states.cancelled}`)).toBeVisible();
   await expect(history.getByRole('button', { name: moves.undo, exact: true })).toBeVisible();
 });

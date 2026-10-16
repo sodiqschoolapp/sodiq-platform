@@ -345,7 +345,12 @@ describe('the move to another branch', () => {
         .replace('{{class}}', '7 Yale'),
     );
     expect(lines[0]).toContain(texts.states.accepted);
-    expect(lines[1]).toContain(en.people.students.moves.classJoin.replace('{{class}}', '7 Oxford'));
+    // Task 3.5c, H35: the stay in the class left, with its last day.
+    expect(lines[1]).toContain(
+      en.people.students.moves.classStay
+        .replace('{{class}}', '7 Oxford')
+        .replace('{{until}}', schoolDateText('2026-10-04', 'en')),
+    );
   });
 
   it('lists the students released to the branch, with Accept off before the date', async () => {

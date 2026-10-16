@@ -80,7 +80,10 @@ test('a student is released by one branch and accepted by another', async ({ pag
       /Moved from Sending browser test branch to Receiving browser test branch, into 7 Cambridge/,
     ),
   ).toBeVisible();
+  // Task 3.5c, H35: the stay in the class left, to its last day.
   await expect(
-    moved.getByText(texts.moves.classJoin.replace('{{class}}', '7 Oxford')),
+    moved.getByText(
+      texts.moves.classStay.replace('{{class}}', '7 Oxford').split('{{until}}')[0] ?? '',
+    ),
   ).toBeVisible();
 });

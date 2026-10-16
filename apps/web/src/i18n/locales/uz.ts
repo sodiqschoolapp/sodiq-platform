@@ -1622,8 +1622,6 @@ export const uz: Texts<'one' | 'other'> = {
         lastMove: '{{class}}dan, {{date}}',
         classMove: '{{from}}dan {{to}}ga koʻchirildi',
         groupMove: '{{from}} guruhidan {{to}} guruhiga koʻchirildi',
-        classJoin: '{{class}}ga qabul qilindi',
-        groupJoin: '{{group}} guruhiga qabul qilindi',
         classMovePlanned: '{{from}}dan {{to}}ga koʻchiriladi',
         groupMovePlanned: '{{from}} guruhidan {{to}} guruhiga koʻchiriladi',
         classMoveCancelled: '{{from}}dan {{to}}ga koʻchirish rejalashtirilgan edi',

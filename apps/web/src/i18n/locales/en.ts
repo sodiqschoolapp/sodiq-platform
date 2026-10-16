@@ -1610,8 +1610,6 @@ export const en = {
         lastMove: 'From {{class}}, {{date}}',
         classMove: 'Moved from {{from}} to {{to}}',
         groupMove: 'Moved from group {{from}} to group {{to}}',
-        classJoin: 'Joined {{class}}',
-        groupJoin: 'Joined group {{group}}',
         classMovePlanned: 'Moves from {{from}} to {{to}}',
         groupMovePlanned: 'Moves from group {{from}} to group {{to}}',
         classMoveCancelled: 'A move from {{from}} to {{to}} was planned',

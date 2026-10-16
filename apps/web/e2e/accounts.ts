@@ -51,6 +51,7 @@ export type AccountKey =
   | 'handTest35bForms'
   | 'handTest35bSwitch'
   | 'handTest35bSearch'
+  | 'handTest35cStays'
   | 'classes'
   | 'groups'
   | 'groupMembers'
