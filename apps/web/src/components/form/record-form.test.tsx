@@ -376,7 +376,10 @@ describe('the sign of a failed save with two forms on the page', () => {
     fireEvent.submit(formOf(OTHER.name));
     await within(formOf(OTHER.name)).findByText(en.form.saved);
 
-    expect(unsent()).toBe('typed');
+    // The saved form drops its own entry a render after "Saved" shows: wait for it.
+    await waitFor(() => {
+      expect(unsent()).toBe('typed');
+    });
   });
 
   it('is gone when the refused form is closed', async () => {
