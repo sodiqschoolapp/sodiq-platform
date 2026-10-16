@@ -81861,6 +81861,9 @@
                         ]
                       }
                     },
+                    "taughtOnly": {
+                      "type": "boolean"
+                    },
                     "readsFinancial": {
                       "type": "boolean"
                     },

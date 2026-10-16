@@ -59,7 +59,8 @@ export interface ExportInput<Row, Column extends string> {
    * Whether a row written may carry a column the file holds (task 3.6a,
    * decision 15 of pull request #118: a Tutor who is also a Head Teacher
    * writes Contact in own-class rows only); its cells are empty otherwise.
-   * Absent when every row carries every column of the file.
+   * Absent when every row carries every column of the file. A column left
+   * empty in some rows is named in the audit entry's `partly`.
    */
   rowAllows?: (column: Column, id: string) => boolean;
   columns: Readonly<Record<Column, ExportColumn<Row>>>;
@@ -126,6 +127,12 @@ export async function exportList<Row, Column extends string>(
     .executeTakeFirstOrThrow();
   const today = schoolDateOf(clock.now(), branch.time_zone);
   const texts = EXPORT_TEXTS[language];
+  const rowAllows = input.rowAllows;
+  // Task 3.6a, decision 15: the columns withheld from some rows of the file.
+  const partly =
+    rowAllows === undefined
+      ? []
+      : columns.filter((column) => kept.some(({ id }) => !rowAllows(column, id)));
   const specs = columns.map((column) => input.columns[column]);
   const content = await writeWorkbook({
     name: texts[input.list].name,
@@ -133,7 +140,7 @@ export async function exportList<Row, Column extends string>(
     rows: kept.map(({ id, row }) =>
       columns.flatMap((column) => {
         const spec = input.columns[column];
-        return input.rowAllows === undefined || input.rowAllows(column, id)
+        return rowAllows === undefined || rowAllows(column, id)
           ? spec.cells(row, texts, language)
           : spec.headings(texts).map(() => null);
       }),
@@ -151,6 +158,7 @@ export async function exportList<Row, Column extends string>(
       filters: { ...input.request.filters },
       columns,
       leftOut,
+      ...(partly.length === 0 ? {} : { partly }),
       ...(rowsLeftOut === undefined ? {} : { rowsLeftOut }),
       rows: rows.length,
     },

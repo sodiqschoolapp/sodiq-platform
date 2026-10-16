@@ -1420,7 +1420,8 @@ export const uz: Texts<'one' | 'other'> = {
       emptyTitle: 'Hali oʻquvchilar yoʻq',
       empty: 'Filialning birinchi oʻquvchisini qoʻshing.',
       emptyTaughtTitle: 'Hali oʻquvchilar yoʻq',
-      emptyTaught: 'Sinf va guruhlaringiz oʻquvchilari dars jadvali eʼlon qilingach koʻrinadi.',
+      emptyTaught:
+        'Bu yerda eʼlon qilingan dars jadvali boʻyicha siz dars beradigan sinf va guruhlar oʻquvchilari koʻrinadi. Hozircha ular yoʻq.',
       uid: 'UID',
       name: 'Familiya va ism',
       class: 'Sinf',

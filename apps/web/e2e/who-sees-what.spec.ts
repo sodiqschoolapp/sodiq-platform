@@ -70,5 +70,4 @@ test('a Head Teacher reads a Senior Head Teacher of another branch by full name'
   await page.goto('/people/head-teachers');
   await expect(heading(page, en.people.headTeachers.title)).toBeVisible();
   await expect(page.locator('tbody tr').filter({ hasText: 'Toshev Bahrom' })).toHaveCount(1);
-  await expect(page.locator('tbody tr').filter({ hasText: 'Tolipov Ravshan' })).toHaveCount(1);
 });

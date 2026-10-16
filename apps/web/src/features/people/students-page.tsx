@@ -440,8 +440,8 @@ export function StudentsPage() {
       },
       {
         // `04`: "groups" (task 3.2b): in force today, else the first planned
-        // with its first day, one per subject; a Tutor's rows of other classes
-        // hold none (decision 4).
+        // with its first day, one per subject, on every row for every reader
+        // (task 3.6a, L147).
         key: 'groups',
         header: t('people.students.groups'),
         cell: (row) =>
@@ -762,8 +762,8 @@ export function StudentsPage() {
         onSearchChange={open}
         empty={
           // Task 3.6a (L48): a Teacher lists the students taught in the
-          // published load; before one exists the list is empty.
-          role === 'teacher'
+          // published load only, as the server says.
+          all.data?.taughtOnly === true
             ? {
                 title: t('people.students.emptyTaughtTitle'),
                 text: t('people.students.emptyTaught'),

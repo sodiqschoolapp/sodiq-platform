@@ -425,6 +425,14 @@ describe('the class scope of a Tutor', () => {
       expect(ownRow?.[2]).toBe(64);
       expect(otherRow?.[0]).toBe(await uidOf(other));
       expect(otherRow?.slice(1).filter((cell) => cell !== null && cell !== '')).toEqual([]);
+      // The log names the columns withheld from some rows (decision 15).
+      const [entry] = (await t.entries('student.export')).slice(-1);
+      expect(entry?.details).toMatchObject({
+        columns: ['uid', 'phone', 'diagnosticScore'],
+        leftOut: [],
+        partly: ['phone', 'diagnosticScore'],
+        rows: 2,
+      });
     });
 
     it('leaves the export of a class-wide reader whole, with no count', async () => {

@@ -1410,7 +1410,7 @@ export const en = {
       empty: 'Add the first student of the branch.',
       emptyTaughtTitle: 'No students to show',
       emptyTaught:
-        'The students of your classes and groups appear once the timetable is published.',
+        'Your students are those of the classes and groups you teach in the published timetable. None is given to you yet.',
       uid: 'UID',
       name: 'Surname and name',
       class: 'Class',

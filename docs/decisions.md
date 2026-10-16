@@ -253,6 +253,9 @@ Plan approved on pull request #118 with corrections 1 to 4; decisions 1 to 16 co
 | Ctrl+K asks no class, group or staff search of a Teacher | Decision 13 |
 | Export groups per role and per row: a Tutor who is also a Head Teacher writes Contact and the score in own-class rows only | Decision 15 |
 | The handbook pages come with 3.7 ("From 3.6a" line) | Decision 16 |
+| Built: the audit entry of a student file names the columns withheld from some rows (`partly`), so the log says what a Tutor who is also a Head Teacher left out beyond own class | Spec review of the build, must-fix 2; decision 15 |
+| Built: the list answers `taughtOnly`, which chooses the Teacher's empty state ("Your students are those of the classes and groups you teach in the published timetable. None is given to you yet."), never the role shown | Spec review of the build, should-fix 1 |
+| Built: the Parents list answers `searchesPhone: true` to every reader the route lets in; the refusal left in the route could not be reached | Permission review of the build, should-fix 1 |
 
 ## 16 October 2026: one stay in a class and the History tab (task 3.5c)
 

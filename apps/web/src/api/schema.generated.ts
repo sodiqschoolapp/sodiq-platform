@@ -18402,6 +18402,7 @@ export interface operations {
                         }[];
                         canArchive: boolean;
                         exportGroups: ("basic" | "contact" | "identity" | "financial" | "diagnostic")[];
+                        taughtOnly?: boolean;
                         readsFinancial: boolean;
                         /** Format: date */
                         today: string;

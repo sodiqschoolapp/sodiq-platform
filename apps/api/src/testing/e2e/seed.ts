@@ -3359,7 +3359,7 @@ try {
 
   // Task 3.6a (the owner's answers L32, L48, L59 on issue #42): a Teacher of
   // 7 Oxford in the published load, with a student of 7 Oxford and one of 7
-  // Yale; a Head Tutor; a Head Teacher of Astronomy and a Senior Head Teacher
+  // Yale; a Head Tutor; a Head Teacher of Seismology and a Senior Head Teacher
   // of it whose staff record is in another branch. All names are invented.
   const whoBranch = await insertBranch(migrator, 'Who sees what browser test branch');
   const whoOther = await insertBranch(migrator, 'Who sees what other branch');
@@ -3367,7 +3367,7 @@ try {
   const whoHeadTutor = await create('Mohira', 'Saidova');
   const whoHeadTeacher = await create('Ravshan', 'Tolipov');
   const whoSenior = await create('Bahrom', 'Toshev');
-  const astronomy = await migrator.transaction().execute(async (transaction) => {
+  const seismology = await migrator.transaction().execute(async (transaction) => {
     const steam = await transaction
       .selectFrom('departments')
       .select('id')
@@ -3377,9 +3377,9 @@ try {
       await transaction
         .insertInto('subjects')
         .values({
-          name_uz: 'Astronomiya',
-          name_ru: 'Астрономия',
-          name_en: 'Astronomy',
+          name_uz: 'Seysmologiya',
+          name_ru: 'Сейсмология',
+          name_en: 'Seismology',
           department_id: steam.id,
           grades: [7],
           colour: 'indigo',
@@ -3404,7 +3404,7 @@ try {
       accountId: whoHeadTeacher.id,
       role: 'head_teacher',
       branchId: whoBranch,
-      subjectIds: [astronomy],
+      subjectIds: [seismology],
       givenBy: null,
     }),
   );
@@ -3413,7 +3413,7 @@ try {
       accountId: whoSenior.id,
       role: 'senior_head_teacher',
       branchId: null,
-      subjectIds: [astronomy],
+      subjectIds: [seismology],
       givenBy: null,
     }),
   );
@@ -3470,7 +3470,7 @@ try {
         .execute();
       await transaction
         .insertInto('staff_subjects')
-        .values({ staff_id: person.id, subject_id: astronomy, grades: [7] })
+        .values({ staff_id: person.id, subject_id: seismology, grades: [7] })
         .execute();
       await transaction
         .insertInto('staff_statuses')
@@ -3558,7 +3558,7 @@ try {
         branch_id: whoBranch,
         version_id: version.id,
         class_id: classIds.get('Oxford') ?? '',
-        subject_id: astronomy,
+        subject_id: seismology,
         teacher_id: teacherStaff,
         lessons_per_week: 2,
       })

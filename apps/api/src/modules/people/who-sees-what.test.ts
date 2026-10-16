@@ -135,15 +135,23 @@ describe('who sees what: the students a Teacher teaches', () => {
     await row(v2, main.staffId, { group_id: groupA }, english);
     const v3 = await versionOf('2026-10-19');
     await row(v3, later.staffId, { class_id: oxford });
-    const draft = await versionOf('2026-10-12');
+    // A draft that starts after v2 and before today: only its status keeps it
+    // out (review of the build).
+    const draft = await versionOf('2026-10-06');
     await row(draft, drafted.staffId, { class_id: oxford });
     // The planned year: its published version starts on its first day, and
     // counts already (decision 4 as confirmed by the review).
+    // Two published versions start that day: the higher number is in force
+    // ("ties by number").
+    const atNextTie = await teacherOf('Umida', 'Sobirova', [maths]);
     const next = await versionOf('2027-09-01', planned);
     await row(next, atNext.staffId, { class_id: nextOxford });
+    const nextTie = await versionOf('2027-09-01', planned);
+    await row(nextTie, atNextTie.staffId, { class_id: nextOxford });
+    tieTeacher = atNextTie.cookie;
     // Every row is in; the four versions are published.
     const publish = async () => {
-      for (const id of [v1, v2, v3, next]) {
+      for (const id of [v1, v2, v3, next, nextTie]) {
         await load.setVersion(id, 'published');
       }
     };
@@ -159,6 +167,10 @@ describe('who sees what: the students a Teacher teaches', () => {
     });
     await load.classes.tutorRow(t.north, harvard, tutorRole.id, { from: tutorFrom });
     await row(v2, both.staffId, { class_id: princeton });
+    // And Mathematics in the own class 7 Harvard: read as its Tutor.
+    await row(v2, both.staffId, { class_id: harvard });
+    // The main Teacher also holds the role in the south, with no load there.
+    await t.kit.giveRole(main.accountId, { role: 'teacher', branchId: t.south });
     await publish();
     tutorTeacher = both.cookie;
     await t.database.migrator
@@ -173,6 +185,7 @@ describe('who sees what: the students a Teacher teaches', () => {
   });
 
   let olderTeacher: string;
+  let tieTeacher: string;
   let tutorTeacher: string;
   let taughtByBoth: string;
   let laterTeacher: string;
@@ -187,7 +200,7 @@ describe('who sees what: the students a Teacher teaches', () => {
     it('lists the taught students only: a taught class, a taught group, a planned move into it', async () => {
       expect(await listedIds(teacher)).toEqual([inClass, inGroup, movingIn].sort());
       const list = await listed(teacher);
-      expect(list).toMatchObject({ exportGroups: [], readsFinancial: false });
+      expect(list).toMatchObject({ exportGroups: [], readsFinancial: false, taughtOnly: true });
     });
 
     it('reads the published version in force only: not an older, a later or a draft', async () => {
@@ -196,8 +209,9 @@ describe('who sees what: the students a Teacher teaches', () => {
       }
     });
 
-    it('reads the published version of the planned year from its first day', async () => {
-      expect(await listedIds(plannedTeacher)).toEqual([nextYear]);
+    it('reads the published version of the planned year from its first day, the higher number of a tie', async () => {
+      expect(await listedIds(tieTeacher)).toEqual([nextYear]);
+      expect(await listedIds(plannedTeacher)).toEqual([]);
     });
 
     it('answers the Basic group, the groups, the status and the start date, field by field', async () => {
@@ -293,6 +307,17 @@ describe('who sees what: the students a Teacher teaches', () => {
       expect(await t.auditCount()).toBe(before);
     });
 
+    it('reads nobody in a branch where the Teacher has no load, and no student of another branch', async () => {
+      const south = await t.get('/api/people/students', t.south, teacher);
+      expect(south.status, JSON.stringify(south.body)).toBe(200);
+      expect(studentListSchema.parse(south.body).students).toEqual([]);
+      refusedWith(
+        await t.get(`/api/people/students/${inClass}`, t.south, teacher),
+        404,
+        'not_found',
+      );
+    });
+
     it('lists no student to a Teacher with no load', async () => {
       expect(await listedIds(t.teacher)).toEqual([]);
       refusedWith(
@@ -308,9 +333,20 @@ describe('who sees what: the students a Teacher teaches', () => {
   // class is read as a Teacher only.
   describe('a Tutor who also teaches', () => {
     it('reads a taught student of another class Basic only, and own class with Contact and the score', async () => {
-      expect(await listedIds(tutorTeacher)).toEqual(
+      const list = await listed(tutorTeacher);
+      expect(list.taughtOnly).toBe(false);
+      expect(list.students.map((one) => one.id)).toEqual(
         expect.arrayContaining([classmate, taughtByBoth]),
       );
+      // The row of a taught student of another class: Basic only.
+      expect(list.students.find((one) => one.id === taughtByBoth)).toMatchObject({
+        tutor: null,
+        actingTutor: null,
+        plannedClass: null,
+        planned: null,
+        mergedUids: [],
+        opens: true,
+      });
       const taught = studentDetailSchema.parse(
         (await get(`/api/people/students/${taughtByBoth}`, tutorTeacher)).body,
       );
@@ -324,7 +360,9 @@ describe('who sees what: the students a Teacher teaches', () => {
       const own = studentDetailSchema.parse(
         (await get(`/api/people/students/${elsewhere}`, tutorTeacher)).body,
       );
+      // Taught and of the own class: the Tutor's view.
       expect(own.contact).not.toBeNull();
+      expect(own.statuses).not.toEqual([]);
       expect(own).toMatchObject({ diagnosticScore: 55, readsDiagnostic: true, identity: null });
     });
   });

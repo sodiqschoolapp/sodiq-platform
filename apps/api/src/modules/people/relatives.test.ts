@@ -507,12 +507,6 @@ describe('close relatives', () => {
         ).body,
       );
       expect(byPhone.relatives.map((one) => one.id)).toEqual([holder.relativeId]);
-      // A reader of the branch who does not read the list stays refused.
-      refusedWith(
-        await t.get('/api/people/relatives?phone=901', t.north, t.teacher),
-        403,
-        'permission_denied',
-      );
     });
 
     it('answers 404 for a relative of another branch only and an unknown one', async () => {

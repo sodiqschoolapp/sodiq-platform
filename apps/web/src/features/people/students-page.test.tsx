@@ -587,13 +587,14 @@ describe('the profile of a student', () => {
 
   // Task 3.6a (L48): a Teacher lists the students taught; none before a
   // timetable is published.
-  it('says to a Teacher with no student taught why the list is empty, with no Add', async () => {
+  it('says to a Teacher with no student taught why the list is empty, as the server says, with no Add', async () => {
     openList('teacher', {
       'GET /api/people/students': () =>
         json({
           students: [],
           canArchive: false,
           exportGroups: [],
+          taughtOnly: true,
           readsFinancial: false,
           today: '2026-10-10',
         }),

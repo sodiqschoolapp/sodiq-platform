@@ -631,6 +631,8 @@ describe('student records', () => {
         expect(read.consentMissing).toBe(false);
         expect(read.identityHidden).toBe(false);
         expect(read.canEdit).toBe(true);
+        // Task 3.6a (L50): the score is read on its own.
+        expect(read).toMatchObject({ diagnosticScore: 74, readsDiagnostic: true });
       }
     });
 
@@ -642,6 +644,8 @@ describe('student records', () => {
       expect(read.financial).not.toBeNull();
       expect(read.consentMissing).toBe(false);
       expect(read.canEdit).toBe(false);
+      // Task 3.6a (L50): a reader of Financial reads the score.
+      expect(read).toMatchObject({ diagnosticScore: 74, readsDiagnostic: true });
       expect(JSON.stringify(read)).not.toContain(student.identity?.birthDate ?? 'missing');
       expect(JSON.stringify(read)).not.toContain(student.identity?.jshshir ?? 'missing');
     });

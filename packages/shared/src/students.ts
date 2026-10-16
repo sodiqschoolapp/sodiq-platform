@@ -469,10 +469,15 @@ export const studentListSchema = z.object({
   canArchive: z.boolean(),
   /**
    * The groups this reader may export in the branch of the request (task
-   * 2.4b-2, decisions 1 to 3): empty without `students` `export`; Contact
-   * and Identity only for the Super Admin and the Academic Vice Principal.
+   * 2.4b-2, decisions 1 to 3; task 3.6a): empty without `students`
+   * `export`; the groups of each role in `EXPORT_GROUPS_OF_ROLE` of the API.
    */
   exportGroups: z.array(studentFieldGroupSchema),
+  /**
+   * The list holds the students the reader teaches only: a Teacher who reads
+   * no other student (task 3.6a, L48). The server always sends it.
+   */
+  taughtOnly: z.boolean().optional(),
   /** The reader reads the Financial group: the consent filter is offered (answer 23). */
   readsFinancial: z.boolean(),
   /** Today in the time zone of the branch of the request. */

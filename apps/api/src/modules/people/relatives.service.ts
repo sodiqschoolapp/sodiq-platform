@@ -118,15 +118,11 @@ export class Relatives {
    * name and phone"). Search by phone is for every reader of the list, the
    * Super Admin, the Principal and the Academic Vice Principal, as Ctrl+K
    * finds relatives by phone for them (`edge/people-roles-accounts`, Ctrl+K
-   * row; task 3.6a, decision 7 of pull request #118, Look first); others are
-   * refused it.
+   * row; task 3.6a, decision 7 of pull request #118, Look first); the route
+   * lets no other reader in.
    */
   list(access: Access, query: RelativeListQuery = {}): Promise<RelativeList> {
     const branchId = branchOf(access);
-    const searchesPhone = holderOf(access, 'relatives', 'view') !== undefined;
-    if (query.phone !== undefined && !searchesPhone) {
-      throw new ApiException('permission_denied', 403);
-    }
     return this.transactions.run(access.branchIds, async (transaction) => {
       let found = transaction
         .selectFrom('relatives')
@@ -175,7 +171,7 @@ export class Relatives {
       }
       return {
         relatives,
-        searchesPhone,
+        searchesPhone: true,
         canEdit: holderOf(access, 'relatives', 'edit') !== undefined,
       };
     });

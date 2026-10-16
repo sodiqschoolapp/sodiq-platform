@@ -327,6 +327,7 @@ export class Students {
         students,
         canArchive: archiverOf(access) !== undefined,
         exportGroups: [...exportGroupsOf(access).keys()],
+        taughtOnly: !listsBranchStudents(access),
         readsFinancial,
         today,
       };
