@@ -1,3 +1,4 @@
+import { sql } from 'kysely';
 import type { Database } from '../database/database.js';
 import { ClassesKit } from './classes-kit.js';
 
@@ -168,6 +169,30 @@ export class LoadKit {
     return row.id;
   }
 
+  /**
+   * A person of the Tutors department with a Tutor subject in the profile, as
+   * 3.4a let take any Tutor row (task 3.6c-2: no longer).
+   */
+  async tutorSubjectHolder(
+    branch: string,
+    subject: string,
+    grades: readonly number[],
+  ): Promise<{ staffId: string; accountId: string }> {
+    const person = await this.teacher(branch);
+    const tutors = await this.migrator
+      .selectFrom('departments')
+      .select('id')
+      .where('tutors', '=', true)
+      .executeTakeFirstOrThrow();
+    await this.migrator
+      .updateTable('staff_divisions')
+      .set({ department_id: tutors.id })
+      .where('staff_id', '=', person.staffId)
+      .execute();
+    await this.profile(person.staffId, [{ subject, grades }]);
+    return person;
+  }
+
   /** A Tutor of the class (a Tutor assignment of the account and its class row). */
   async tutorOf(
     branch: string,
@@ -218,6 +243,29 @@ export class LoadKit {
       .set({ status })
       .where('id', '=', id)
       .execute();
+  }
+
+  /**
+   * A load row written past the row trigger, as 3.4a let a Tutor row be
+   * written (another teacher with the profile row, a vacancy) before task
+   * 3.6c-2: such rows can still be stored.
+   */
+  async rowAsBefore(values: LoadRowValues): Promise<string> {
+    return this.migrator.transaction().execute(async (transaction) => {
+      await sql`alter table teaching_load_rows disable trigger teaching_load_rows_check`.execute(
+        transaction,
+      );
+      const row = await transaction
+        .insertInto('teaching_load_rows')
+        .values({ lessons_per_week: 2, ...values })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await sql`set constraints all immediate`.execute(transaction);
+      await sql`alter table teaching_load_rows enable trigger teaching_load_rows_check`.execute(
+        transaction,
+      );
+      return row.id;
+    });
   }
 
   /** A load row written by the migrator, through every check of 0055. */

@@ -835,7 +835,14 @@ describe('teaching load in the database', () => {
     });
   });
 
-  describe('a Tutor subject (decision 2, correction 4)', () => {
+  // 3.4a decision 2 as narrowed by task 3.6c-2 (decision 1, review correction
+  // 1; db/migrations/0067): a Tutor row holds the class's Tutor on the later
+  // of the start date and today, the acting one while one is set, and nobody
+  // else; a group row of a Tutor subject keeps the profile rule. The refusals
+  // that were `load_teacher_subject` under 3.4a's "a Tutor of the class, or
+  // anyone with the profile row" are now `load_no_tutor` and
+  // `load_tutor_row_teacher`.
+  describe('a Tutor subject (decision 2 as narrowed by 3.6c-2)', () => {
     let tutorSubject: string;
 
     beforeAll(async () => {
@@ -882,7 +889,7 @@ describe('teaching load in the database', () => {
       await insertRow({ ...own.base, teacher_id: own.person.staffId });
     });
 
-    it('is taken by a Tutor given during the start date, and refused for one whose row ended before it', async () => {
+    it('is taken by a Tutor given during the start date, and refused with no Tutor when the row ended before it', async () => {
       const given = await tutored({ from: new Date('2026-10-19T15:00:00+05:00') });
       await insertRow({ ...given.base, teacher_id: given.person.staffId });
       const ended = await tutored({
@@ -891,20 +898,94 @@ describe('teaching load in the database', () => {
       });
       expect(
         (await refusal(insertRow({ ...ended.base, teacher_id: ended.person.staffId }))).constraint,
-      ).toBe('load_teacher_subject');
+      ).toBe('load_no_tutor');
     });
 
-    it('is refused for another teacher without it, for the Tutor of another class and on a group row', async () => {
+    it('is refused for another teacher, also one with the subject in the profile', async () => {
       const own = await tutored();
       const other = await kit.teacher(north);
       expect(
         (await refusal(insertRow({ ...own.base, teacher_id: other.staffId }))).constraint,
-      ).toBe('load_teacher_subject');
+      ).toBe('load_tutor_row_teacher');
+      const holder = await kit.tutorSubjectHolder(north, tutorSubject, [7]);
+      expect(
+        (await refusal(insertRow({ ...own.base, teacher_id: holder.staffId }))).constraint,
+      ).toBe('load_tutor_row_teacher');
+    });
+
+    it('is refused for the main Tutor while an acting one is set, and taken by the acting one', async () => {
+      const own = await tutored();
+      const acting = await kit.teacher(north);
+      await kit.tutorOf(north, own.classId, acting.accountId, {
+        kind: 'acting',
+        from: new Date('2026-10-01T00:00:00+05:00'),
+        until: new Date('2026-11-01T00:00:00+05:00'),
+      });
+      expect(
+        (await refusal(insertRow({ ...own.base, teacher_id: own.person.staffId }))).constraint,
+      ).toBe('load_tutor_row_teacher');
+      await insertRow({ ...own.base, teacher_id: acting.staffId });
+    });
+
+    it('reads the Tutor of today in a draft whose start date has passed', async () => {
+      const classId = await kit.classes.schoolClass(north, northYear, { grade: 7 });
+      const before = await kit.teacher(north);
+      const now = await kit.teacher(north);
+      await kit.tutorOf(north, classId, before.accountId, {
+        until: new Date('2026-10-14T00:00:00+05:00'),
+      });
+      await kit.tutorOf(north, classId, now.accountId, {
+        from: new Date('2026-10-14T00:00:00+05:00'),
+      });
+      const version = await kit.version(north, northYear, { startsOn: '2026-10-12' });
+      const base = {
+        branch_id: north,
+        version_id: version,
+        class_id: classId,
+        subject_id: tutorSubject,
+      };
+      expect((await refusal(insertRow({ ...base, teacher_id: before.staffId }))).constraint).toBe(
+        'load_tutor_row_teacher',
+      );
+      await insertRow({ ...base, teacher_id: now.staffId });
+    });
+
+    it('lets a row written by the rule of 3.4a keep its teacher through an edit of its lessons', async () => {
+      const own = await tutored();
+      const holder = await kit.tutorSubjectHolder(north, tutorSubject, [7]);
+      const id = await insertRow({ ...own.base, teacher_id: own.person.staffId });
+      // As 3.4a let it be written: another teacher with the profile row.
+      await database.migrator.transaction().execute(async (transaction) => {
+        await sql`alter table teaching_load_rows disable trigger teaching_load_rows_check`.execute(
+          transaction,
+        );
+        await transaction
+          .updateTable('teaching_load_rows')
+          .set({ teacher_id: holder.staffId })
+          .where('id', '=', id)
+          .execute();
+        await sql`set constraints all immediate`.execute(transaction);
+        await sql`alter table teaching_load_rows enable trigger teaching_load_rows_check`.execute(
+          transaction,
+        );
+      });
+      // The teacher does not change: no teacher rule is read (3.4a decision 7).
+      await updateRow(north, id, { lessons_per_week: 3 });
+      // A change of its teacher must name the Tutor.
+      const other = await kit.tutorSubjectHolder(north, tutorSubject, [7]);
+      expect((await refusal(updateRow(north, id, { teacher_id: other.staffId }))).constraint).toBe(
+        'load_tutor_row_teacher',
+      );
+      await updateRow(north, id, { teacher_id: own.person.staffId });
+    });
+
+    it('refuses the Tutor of another class and keeps the profile rule on a group row', async () => {
+      const own = await tutored();
       const elsewhere = await tutored();
       expect(
         (await refusal(insertRow({ ...own.base, teacher_id: elsewhere.person.staffId })))
           .constraint,
-      ).toBe('load_teacher_subject');
+      ).toBe('load_tutor_row_teacher');
       const group = await kit.classes.group(north, northYear, tutorSubject, [own.classId]);
       expect(
         (
@@ -919,6 +1000,14 @@ describe('teaching load in the database', () => {
           )
         ).constraint,
       ).toBe('load_teacher_subject');
+      const holder = await kit.tutorSubjectHolder(north, tutorSubject, [7]);
+      await insertRow({
+        branch_id: north,
+        version_id: own.version,
+        group_id: group,
+        subject_id: tutorSubject,
+        teacher_id: holder.staffId,
+      });
     });
 
     it('is refused for the Tutor without the language of the class', async () => {

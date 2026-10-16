@@ -250,6 +250,7 @@ $$;
 -- The load rows a department move would leave outside the subject's
 -- department (0057), with the Tutor row read by `class_tutor_on` in place of
 -- "a Tutor of the class overlapping the day" (decision 3, review should-fix 7).
+-- `is not distinct from`: a class with no Tutor leaves no row out.
 create or replace function department_move_loads(
   branch_ref uuid, teacher_ref uuid, subject_ref uuid, department_ref uuid, starts_on date
 )
@@ -329,7 +330,7 @@ begin
               from public.branches br
               where br.id = c.branch_id
             )
-          ) = c.teacher_id
+          ) is not distinct from c.teacher_id
         )
     )
     select o.id, o.version_id, o.branch_id, 1

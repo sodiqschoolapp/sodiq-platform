@@ -218,6 +218,7 @@ async function followDrafts(
       .select([
         'teaching_load_rows.id',
         'teaching_load_rows.class_id',
+        'teaching_load_rows.subject_id',
         'teaching_load_rows.teacher_id',
       ])
       .where('teaching_load_rows.version_id', '=', version.id)
@@ -225,6 +226,19 @@ async function followDrafts(
       .where('departments.tutors', '=', true)
       .orderBy('teaching_load_rows.id')
       .execute();
+    // The subjects FOR KEY SHARE in the order of their id, as a load write
+    // locks them (3.4c, decision 6): a subject leaving the Tutors department
+    // at the same moment waits for the re-point or is waited for.
+    const subjects = [...new Set(rows.map((row) => row.subject_id))].sort();
+    if (subjects.length > 0) {
+      await transaction
+        .selectFrom('subjects')
+        .select('id')
+        .where('id', 'in', subjects)
+        .orderBy('id')
+        .forKeyShare()
+        .execute();
+    }
     for (const row of rows) {
       const target = tutorAt(tutors.get(row.class_id ?? '') ?? [], moment);
       // No Tutor: the row keeps its teacher and shows `load_no_tutor`.

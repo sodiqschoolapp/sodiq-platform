@@ -1158,7 +1158,8 @@ describe('the department move against the load', () => {
           .where('staff_id', '=', staffId)
           .execute();
         await load.profile(staffId, [{ subject: tutorCaseRows.subject, grades: [7] }]);
-        const row = await load.row({
+        // Task 3.6c-2: a row of another teacher is one 3.4a let be written.
+        const row = await load.rowAsBefore({
           branch_id: t.north,
           version_id: tutorCaseRows.version,
           class_id: tutorCaseRows.classId,
@@ -1181,24 +1182,32 @@ describe('the department move against the load', () => {
         doubleLessons: false,
       });
 
-      it('and the teacher edit of a row to the Tutor: an edit sent during the move is refused', async () => {
-        const { subject, tutor, version, row } = await rowOfAnother();
-        const held = await heldSubjectMove(subject, national);
-        const sent = t
-          .patch(
+      // Task 3.6c-2 (decision 1, review correction 1): no edit names the
+      // teacher of a Tutor row, the Tutor included, so 3.4c's race of such an
+      // edit with the move is gone; the edit is refused whatever the move
+      // does. The one writer of a Tutor to a Tutor row is the follow of a
+      // Tutor change, which locks the subject as the edit did (next test).
+      it('and the teacher edit of a row to the Tutor: refused, nobody picks that teacher', async () => {
+        const { tutor, version, row, other } = await rowOfAnother();
+        refusedWith(
+          await t.patch(
             `/api/timetable/versions/${version}/load/${row}`,
             t.north,
             editBody(tutor),
             t.vicePrincipal,
-          )
-          .then((response) => response);
-        await untilWaiting();
-        held.release();
-        expect(await held.done).toBeUndefined();
-        refusedWith(await sent, 409, 'load_teacher_subject');
+          ),
+          422,
+          'load_tutor_row_teacher',
+        );
+        const stored = await t.database.migrator
+          .selectFrom('teaching_load_rows')
+          .select('teacher_id')
+          .where('id', '=', row)
+          .executeTakeFirstOrThrow();
+        expect(stored.teacher_id).toBe(other);
       });
 
-      it('and the teacher edit of a row to the Tutor: a move sent during the edit is refused', async () => {
+      it('and the follow of a row to the Tutor: a move sent during the follow is refused', async () => {
         const { subject, tutor, row, other } = await rowOfAnother();
         // The other teacher moves to National first, so that before the edit
         // the row does not count against a move of the subject to National:
@@ -1208,6 +1217,8 @@ describe('the department move against the load', () => {
           .set({ department_id: national })
           .where('staff_id', '=', other)
           .execute();
+        // What the follow of a Tutor change does (tutor-lessons.ts): the
+        // subject FOR KEY SHARE, then the row's teacher.
         const held = await holdOpen(async (transaction) => {
           await transaction
             .selectFrom('subjects')
