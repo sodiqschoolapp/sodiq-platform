@@ -229,7 +229,7 @@ const CALCULATION: readonly Row[] = [
     case: 'The year result when quarters show 50, 50, 49, 50 but are exactly 49.5, 49.5, 49.4, 49.5.',
     rule: '1f8f7d059eb7861e',
     tests: [['year.test.ts'], ['outcome.test.ts', 'outcomeForYear']],
-    tasks: ['3.6c'],
+    tasks: [],
   },
   {
     case: "Ma'naviyat soati and the Homework slot.",

@@ -91,15 +91,11 @@ function works(value: Json, path: string) {
 }
 
 function lesson(value: Json, path: string): QuarterLesson {
-  const item = record(value, path, ['mark', 'countsForAttendance', 'classworks', 'homeworks']);
+  const item = record(value, path, ['mark', 'classworks', 'homeworks']);
   const mark = wholeOrNull(item.mark, `${path}.mark`);
   if (mark !== null && (mark < 0 || mark > 5)) fail(`${path}.mark`, 'a mark from 0 to 5');
   return {
     mark: mark as AttendanceMark | null,
-    countsForAttendance:
-      item.countsForAttendance === undefined
-        ? true
-        : bool(item.countsForAttendance, `${path}.countsForAttendance`),
     classworks: works(item.classworks, `${path}.classworks`),
     homeworks: works(item.homeworks, `${path}.homeworks`),
   };
@@ -303,7 +299,7 @@ function casesOf(value: Json): Case[] {
 describe('reference journals', () => {
   it('has the samples to run', () => {
     expect(files).toEqual(
-      expect.arrayContaining(['07-worked-example.json', 'boundary-49-5.json', 'year-49-475.json']),
+      expect.arrayContaining(['07-worked-example.json', 'boundary-49-5.json', 'year-50-50-49-50.json']),
     );
   });
 

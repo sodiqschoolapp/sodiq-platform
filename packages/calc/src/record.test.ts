@@ -9,7 +9,6 @@ import { CALC_VERSION } from './version.js';
 function lesson(mark: AttendanceMark | null, score: number | null = null): QuarterLesson {
   return {
     mark,
-    countsForAttendance: true,
     classworks: score === null ? [] : [{ score, total: 30 }],
     homeworks: score === null ? [] : [{ score, total: 30 }],
   };
@@ -27,7 +26,6 @@ const CLOSED: StudentQuarterInput = {
   lessons: [
     {
       mark: 1,
-      countsForAttendance: true,
       classworks: [{ score: 15, total: 30 }],
       homeworks: [{ score: 3, total: 10 }],
     },
@@ -263,6 +261,13 @@ describe('recalculateAndCompare', () => {
       'a lesson with no works list',
       (stored): unknown =>
         JSON.parse(JSON.stringify(stored).replace('"classworks":', '"classwork":')),
+    ],
+    [
+      'a lesson with a key outside the format (countsForAttendance)',
+      (stored): unknown =>
+        JSON.parse(
+          JSON.stringify(stored).replace('"mark":1', '"mark":1,"countsForAttendance":true'),
+        ),
     ],
     [
       'an unknown mark',

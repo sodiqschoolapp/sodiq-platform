@@ -1,0 +1,14 @@
+{
+  "title": "The year result is the mean of the quarter results as published: 50, 50, 49, 50 give 49.75, shown 50, grade 3",
+  "source": "docs/spec/edge-cases/calculation.md, \"The year result when quarters show 50, 50, 49, 50\"",
+  "status": "sample",
+  "year": {
+    "quarters": ["49.5", "49.5", "49.4", "49.5"],
+    "expected": {
+      "result": "49.75",
+      "shown": 50,
+      "grade": 3,
+      "basedOn": 4
+    }
+  }
+}

@@ -11,7 +11,9 @@
  * number, and `moduleVersion`. It is plain JSON: a fraction is `{ num, den }`, the decimal strings
  * of the reduced `bigint`s, a `bigint` is its decimal string, so nothing passes through a float
  * (task 4.3, decision 13). `format: 1` names this shape, which is frozen: a later shape is
- * format 2, with a reader for format 1. `recalculateAndCompare` lists a record the current
+ * format 2, with a reader for format 1. (Task 3.6c-1, decision 10, took `countsForAttendance` out of
+ * a lesson in place, before any record was stored; a lesson holds only `mark`, `classworks` and
+ * `homeworks`.) `recalculateAndCompare` lists a record the current
  * module refuses (`refused`, its code) instead of throwing, so a check over many records goes on.
  *
  * Two kinds (decisions 6 and 8):
@@ -127,15 +129,19 @@ function worksAt(value: unknown, path: string): Work[] {
   });
 }
 
+const LESSON_KEYS: ReadonlySet<string> = new Set(['mark', 'classworks', 'homeworks']);
+
 function lessonsAt(value: unknown, path: string): QuarterLesson[] {
   return arrayAt(value, path).map((item, index) => {
     const at = `${path}[${index}]`;
     const lesson = objectAt(item, at);
+    for (const key of Object.keys(lesson)) {
+      if (!LESSON_KEYS.has(key)) throw shapeError(`${at}.${key}`);
+    }
     const mark = lesson.mark;
     if (mark !== null && !isMark(mark)) throw shapeError(`${at}.mark`);
     return {
       mark,
-      countsForAttendance: booleanAt(lesson.countsForAttendance, `${at}.countsForAttendance`),
       classworks: worksAt(lesson.classworks, `${at}.classworks`),
       homeworks: worksAt(lesson.homeworks, `${at}.homeworks`),
     };

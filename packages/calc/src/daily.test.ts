@@ -12,7 +12,6 @@ function input(overrides: Partial<LessonScoreInput>): LessonScoreInput {
     weights: { attendance: 20, classwork: 30, homework: 50 },
     mark: 1,
     attendanceValues: VALUES,
-    countsForAttendance: true,
     classworks: [],
     homeworks: [],
     ...overrides,
@@ -195,20 +194,9 @@ describe('lessonScore', () => {
     );
   });
 
-  // edge/calculation, "An extra Saturday lesson"; decision 7.
-  it('leaves the attendance part out when the lesson does not count for attendance', () => {
-    const result = lessonScore(
-      input({ countsForAttendance: false, mark: 0, homeworks: [{ total: 10, score: 9 }] }),
-    );
-    expect(result.kind === 'score' && result.value.equals(Fraction.whole(90n))).toBe(true);
-    expect(lessonScore(input({ countsForAttendance: false, mark: 1 }))).toEqual({ kind: 'blank' });
-  });
-
-  // Decision 8: every input is checked on every call, whatever the mark and the switch.
+  // Decision 8: every input is checked on every call, whatever the mark.
   it('checks the mark and the quarter values on every call', () => {
-    expect(codeOf(input({ countsForAttendance: false, mark: 6 as AttendanceMark }))).toBe(
-      'unknown_mark',
-    );
+    expect(codeOf(input({ mark: 6 as AttendanceMark }))).toBe('unknown_mark');
     expect(
       codeOf(input({ mark: null, attendanceValues: { lateValue: 101, skippedValue: 0 } })),
     ).toBe('out_of_range');
@@ -256,7 +244,7 @@ function reference(value: LessonScoreInput): Ratio | null {
     2: BigInt(value.attendanceValues.lateValue),
     3: BigInt(value.attendanceValues.skippedValue),
   };
-  if (value.countsForAttendance && value.mark !== null) {
+  if (value.mark !== null) {
     parts.push([BigInt(value.weights.attendance), { num: marks[value.mark] ?? -1n, den: 1n }]);
   }
   const classwork = meanOfWorks(value.classworks);
@@ -293,7 +281,6 @@ const lesson = fc.record({
     lateValue: fc.integer({ min: 0, max: 100 }),
     skippedValue: fc.integer({ min: 0, max: 100 }),
   }),
-  countsForAttendance: fc.boolean(),
   classworks: fc.array(work, { maxLength: 4 }),
   homeworks: fc.array(work, { maxLength: 4 }),
 });

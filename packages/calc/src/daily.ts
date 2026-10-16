@@ -12,9 +12,7 @@
  * - A part with no data is left out and the weights of the parts present are
  *   scaled up to 100: the sum of weight × part over the parts present, divided by
  *   the sum of their weights (decision 6; docs/spec/edge-cases/calculation.md).
- * - An attendance mark not yet typed, or a lesson that does not count for
- *   attendance (an extra lesson with the switch off), leaves the attendance part
- *   out (decisions 2 and 7).
+ * - An attendance mark not yet typed leaves the attendance part out (decision 2).
  * - Marks 4 and 5 give no score; a number with them is a fault (decision 3).
  *
  * The lesson score is for display only and never enters a quarter figure
@@ -55,8 +53,6 @@ export interface LessonScoreInput {
   readonly mark: AttendanceMark | null;
   /** The late and skipped values of the lesson's quarter. */
   readonly attendanceValues: AttendanceValues;
-  /** `false` only for an extra lesson whose "counts for attendance" switch is off. */
-  readonly countsForAttendance: boolean;
   /** The lesson's classworks. */
   readonly classworks: readonly Work[];
   /** The homeworks checked at the lesson. */
@@ -101,7 +97,7 @@ function partOf(works: readonly Work[]): Fraction | null {
 export function lessonScore(input: LessonScoreInput): LessonScore {
   const [attendanceWeight, classworkWeight, homeworkWeight] = checkedWeights(input.weights);
 
-  // Every input is checked on every call, whatever the mark and the switch (decision 8).
+  // Every input is checked on every call, whatever the mark (decision 8).
   checkedAttendanceValues(input.attendanceValues);
   const value = input.mark === null ? null : attendanceValue(input.mark, input.attendanceValues);
   const classwork = partOf(input.classworks);
@@ -113,11 +109,9 @@ export function lessonScore(input: LessonScoreInput): LessonScore {
     }
     return { kind: 'exempt' };
   }
-  const attendance = input.countsForAttendance ? value : null;
-
   const present = (
     [
-      [attendanceWeight, attendance],
+      [attendanceWeight, value],
       [classworkWeight, classwork],
       [homeworkWeight, homework],
     ] as const
@@ -132,6 +126,6 @@ export function lessonScore(input: LessonScoreInput): LessonScore {
   return {
     kind: 'score',
     value: weighted.div(weights),
-    parts: { attendance, classwork, homework },
+    parts: { attendance: value, classwork, homework },
   };
 }
