@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 16 October 2026: task 3.6a The owner's answers of 15 October: who sees what
+
+- Built L32, L48, L50, L59, L136, L147 of issue #42 (L157 was built by 3.5b): a Teacher reads the students taught in the published load in force, Basic only; the diagnostic score has its own area `student_diagnostic`; the Head Tutor reads and exports every group; the Head Teachers export Basic; a Tutor exports Contact and the score of own class, per row; groups on every row; the Head Teachers list names every holder in full through `audit_names`; the Principal searches the Parents list by phone.
+- No migration. The browser test `e2e/who-sees-what.spec.ts` (seeded "Who sees what browser test branch") runs in CI; the cloud session has no matching browser.
+- Left out: the handbook pages (3.7, its "From 3.6a" line); the journal side of a Teacher's students (8.1, its "From 3.6a" line); "Classes taught" (5.5c).
+
+The next sessions must know:
+
+- A student's scope is `StudentPlaces` (classes and groups, in force or planned): `studentPlaces`, `placesOfStudent`, and `studentReaderOf(access, area, places)` in `class-scope.ts`; a Teacher fits by `taughtAt` (`taught-scope.ts`), filled by the guard into `classIds` and `groupIds`.
+- `readsAsTeacherOnly` decides the Basic-only answer, `listsBranchStudents` whether the list is the branch's or the taught students only.
+- The groups of a student file are per role (`EXPORT_GROUPS_OF_ROLE`, `student-export.ts`) and per row (`rowWrites`, `ExportInput.rowAllows`).
+- Until 5.5 publishes, a Teacher's Students list is empty; tests write a published version as the migrator.
+- The next task is 3.6b.
+
 ## 16 October 2026: task 3.5c Hand test of Phase 3: one stay in a class, and the History tab
 
 - Built issue #105, Part D (H34 to H36): a cancel or an undo of a leaving or of a move grows the row it cut back (migration 0062: the grow-back and join paths of the shrink triggers, the days given back checked at the commit, `class_memberships_one_stay` and `group_memberships_one_stay`, the end `joined`, `student_moves.replaces_move_id`); the merge joins the stays it brings together; the migration joined the rows already split and linked the changed moves.
