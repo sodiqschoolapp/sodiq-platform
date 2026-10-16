@@ -333,10 +333,6 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   // across branches to all but the Super Admin by the route (relative-owners.test.ts).
   'GET /api/people/relatives/no-valid-phone': { branch: 'request', roles: SETUP_VIEWERS },
   'POST /api/people/relatives/:id/merge': { branch: 'request', roles: STUDENT_EDITORS },
-  // Task 2.5b-2: the mark "same person" under `relatives` `edit`; a mark set to a
-  // staff member of another branch is refused to all but the Super Admin (same-person.test.ts).
-  'PUT /api/people/relatives/:id/same-person': { branch: 'request', roles: STUDENT_EDITORS },
-  'DELETE /api/people/relatives/:id/same-person': { branch: 'request', roles: STUDENT_EDITORS },
   // Task 3.1c (decision 2 of pull request #90): the class Tutor, own classes
   // only (classes/tutor-scope.test.ts).
   'GET /api/people/students/:id/relatives': {

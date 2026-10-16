@@ -304,6 +304,8 @@ describe('close relatives', () => {
       expect(match.status, JSON.stringify(match.body)).toBe(200);
       expect(relativePhoneMatchResultSchema.parse(match.body)).toEqual({
         holder: { id: holder.relativeId, fullName: 'Shoira Nazarova', students: 1 },
+        staff: null,
+        staffElsewhere: false,
       });
       const created = await student([existing(holder.relativeId, number, true)]);
       expect((await tab(created.id)).relatives).toMatchObject([

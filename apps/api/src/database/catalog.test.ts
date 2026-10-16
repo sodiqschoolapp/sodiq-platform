@@ -240,8 +240,14 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
     'The working hours of the other branches of one record linked to a branch of the transaction, read only (06: the Academic Vice Principal "sees the others read only"); rows of hours, nothing personal.',
   'staff_count_by_division(timestamp with time zone)':
     'The number of people per main division for the school-wide list of divisions.',
+  'same_person_relative(uuid[])':
+    'The relative whose main phone is the phone of each staff record named, in any branch, archived included: the mark "same person" read from the phones (task 3.6b-1, decision 3 of pull request #119, Look first); ids only.',
+  'same_person_staff(uuid[])':
+    'The staff record whose phone is the main phone of each relative named, in any branch: the mark "same person" read from the phones (task 3.6b-1, decision 3 of pull request #119, Look first); ids only.',
   'staff_duplicate_elsewhere(text,text,date,text)':
-    "Whether a person of another branch has the same name and birth date or the same phone (the duplicate warning, the owner's answer).",
+    "Whether a person of another branch has the same name and birth date (the duplicate warning, the owner's answer); since task 3.6b-1 the phone argument is not read, a taken phone is refused.",
+  'staff_phone_elsewhere(text)':
+    'Whether a staff record of another branch holds a phone, for the refusal before Save (task 3.6b-1: "that record is shown" in the branch, told across branches); a boolean only.',
   'staff_in_division(uuid,uuid,timestamp with time zone)':
     'Whether anybody who has not left is in a division or a department: the school-wide archives.',
   'staff_out_for_good(uuid,timestamp with time zone)':

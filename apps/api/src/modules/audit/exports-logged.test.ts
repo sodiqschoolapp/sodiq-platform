@@ -48,6 +48,11 @@ describe('every export is logged', () => {
   };
 
   /** One row of each list in the branch `north`, the column sent, the audit action and the list. */
+  let staffPhones = 0;
+  const nextStaffPhone = () => {
+    staffPhones += 1;
+    return `+99891777${String(staffPhones).padStart(4, '0')}`;
+  };
   const EXPORTS: Record<
     string,
     { action: string; list: string; column: string; row: () => Promise<string> }
@@ -185,7 +190,8 @@ describe('every export is logged', () => {
               sex: 'female',
               birthDate: '1992-04-05',
               educationLevel: 'master',
-              phone: '+998917770101',
+              // A phone of its own each time: a staff phone is unique (task 3.6b-1).
+              phone: nextStaffPhone(),
               email: '',
               jshshir: '',
               admissionDate: '2026-09-01',

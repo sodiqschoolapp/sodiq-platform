@@ -860,7 +860,20 @@ describe('staff records in the database', () => {
           return found.rows[0]?.answer;
         });
       expect(await ask([south], 'zafar', 'TOSHMATOV', '1985-05-05', '+998900000000')).toBe(true);
-      expect(await ask([south], 'Anvar', 'Rahimov', '1980-01-01', '+998909998877')).toBe(true);
+      // The same phone alone is no longer a warning (task 3.6b-1, correction 2,
+      // Look first): `staff_phone_idx` refuses it, and `staff_phone_elsewhere`
+      // tells the check before Save.
+      expect(await ask([south], 'Anvar', 'Rahimov', '1980-01-01', '+998909998877')).toBe(false);
+      const phoneElsewhere = (branch: string[], phone: string) =>
+        call(branch, async (transaction) => {
+          const found = await sql<{ answer: unknown }>`
+            select staff_phone_elsewhere(${phone}) as answer
+          `.execute(transaction);
+          return found.rows[0]?.answer;
+        });
+      expect(await phoneElsewhere([south], '+998909998877')).toBe(true);
+      expect(await phoneElsewhere([north], '+998909998877')).toBe(false);
+      expect(await phoneElsewhere([south], '+998900000000')).toBe(false);
       expect(await ask([south], 'Zafar', 'Toshmatov', '1985-05-06', '+998900000000')).toBe(false);
       // Linked to the branch of the request: read normally, not "elsewhere".
       expect(await ask([north], 'Zafar', 'Toshmatov', '1985-05-05', '+998909998877')).toBe(false);
