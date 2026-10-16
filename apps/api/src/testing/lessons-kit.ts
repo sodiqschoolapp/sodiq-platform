@@ -19,6 +19,12 @@ export interface LessonUnit {
   readonly classId: string | null;
   readonly groupId: string | null;
   readonly subjectId: string;
+  /**
+   * The teacher of the load row; for a Tutor row (a Tutor subject on a class
+   * row, task 3.6c-2) the class's Tutor on the version's start, which the
+   * database requires. Without it, a fixture teacher of the block.
+   */
+  readonly rowTeacherId?: string;
 }
 
 /** What a dated block and its lessons stand on: a version, a pattern block, a row and an entry each. */
@@ -105,8 +111,13 @@ export class LessonsKit {
    * group rows of one block have different teachers), with every grade of the subject and both languages (0055); the lesson's own teacher and room are what
    * the test writes. The subject gains the unit's grades when it lacks one.
    */
-  async source(branch: string, year: string, units: readonly LessonUnit[]): Promise<LessonSource> {
-    const versionId = await this.load.version(branch, year);
+  async source(
+    branch: string,
+    year: string,
+    units: readonly LessonUnit[],
+    startsOn = '2026-10-19',
+  ): Promise<LessonSource> {
+    const versionId = await this.load.version(branch, year, { startsOn });
     const block = await this.migrator
       .insertInto('pattern_blocks')
       .values({
@@ -122,7 +133,7 @@ export class LessonsKit {
     const lessons: { loadRowId: string; patternEntryId: string }[] = [];
     for (const [index, unit] of units.entries()) {
       await this.withUnitGrades(unit);
-      const teacherId = await this.rowTeacher(branch, index, unit.subjectId);
+      const teacherId = unit.rowTeacherId ?? (await this.rowTeacher(branch, index, unit.subjectId));
       const loadRowId = await this.load.row({
         branch_id: branch,
         version_id: versionId,
