@@ -917,7 +917,7 @@ describe('the class of a return and of a graduate restore', () => {
         }),
       );
       const [entry] = await t.entries('student.return_cancelled', student.id);
-      expect(entry).toMatchObject({ assignment_id: expect.any(String) });
+      expect(entry?.assignment_id).toBe(t.adminAssignment);
       // The same version cannot be used twice.
       refusedWith(await cancelReturn(student.id, t.admin, stale), 409, 'student_changed');
       refusedWith(await cancelReturn(student.id), 409, 'return_not_planned');

@@ -460,7 +460,7 @@ describe('a return or restore on the first day of next year', () => {
     const afterAgain = applied(cancelled, again);
     expect(
       afterAgain
-        .filter((one) => one.validFrom < one.validUntil! || one.validUntil === null)
+        .filter((one) => one.validUntil === null || one.validFrom < one.validUntil)
         .map((one) => [one.status, one.validFrom, one.validUntil]),
     ).toEqual([
       ['active', '2026-09-02', '2026-10-06'],
