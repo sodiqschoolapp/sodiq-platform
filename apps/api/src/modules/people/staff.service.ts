@@ -45,9 +45,16 @@ import { decide } from '../access/permission-check.js';
 import { activeSuperAdmins, lockSuperAdmins } from '../access/super-admins.js';
 import {
   checkMoveStart,
+  departmentChangeOf,
+  departmentColumnsAfter,
+  departmentInForce,
   lockDepartmentMoves,
   moveStartsOn,
   refuseMoveLoads,
+  sameChange,
+  todayOf,
+  type DepartmentChange,
+  type DepartmentColumns,
 } from './department-moves.js';
 import {
   changesBetween,
@@ -190,19 +197,19 @@ const academicDepartmentOf = (
   divisions.find((division) => division.divisionId === academicId)?.departmentId;
 
 /**
- * A teacher move (task 3.4c, decision 5): the Academic division's department
- * changes to another or the division is removed; adding it is not a move.
+ * What an edit asks of the Academic department (task 3.4c, decision 5; task
+ * 3.6b-3): adding the division is not a move; a start date sent all the same
+ * is `stray`.
  */
-const isMove = (before: string | null | undefined, after: string | null | undefined): boolean =>
-  before !== undefined && before !== after;
-
-/** A `date` column as `YYYY-MM-DD`, whichever way the driver gave it. */
-const dateOrNull = (value: Date | string | null): string | null =>
-  value === null
-    ? null
-    : typeof value === 'string'
-      ? value.slice(0, 10)
-      : value.toISOString().slice(0, 10);
+const academicChangeOf = (
+  stored: DepartmentColumns | undefined,
+  asked: string | null | undefined,
+  startsOn: string | null | undefined,
+  today: string,
+): DepartmentChange =>
+  stored === undefined
+    ? { kind: 'none', stray: startsOn !== null && startsOn !== undefined }
+    : departmentChangeOf(stored, asked, startsOn, today);
 
 /** Divisions in one order, the main one first, so two equal lists compare equal. */
 const sortDivisions = (divisions: StaffDivisions): StaffDivisions =>
@@ -586,43 +593,59 @@ export class Staff {
       this.transactions.run(access.branchIds, async (transaction) => {
         // Task 3.4c, decision 6: a teacher move takes the lock of department
         // moves before any row lock, decided from the department read without
-        // one; the locked read must agree (decision 9). Only a Super Admin
-        // moves, so nobody else takes the lock (permission review, nit 5); the
-        // read sees no record of another branch, which the lock answers 404.
+        // one; the locked read must agree on what the edit asks of the
+        // department (decision 9; task 3.6b-3, a move, a change of a plan or a
+        // cancel). Only a Super Admin moves, so nobody else takes the lock
+        // (permission review, nit 5); the read sees no record of another
+        // branch, which the lock answers 404.
         const mayMove = superAdminOf(access) !== undefined;
         const academicId = await this.academicDivisionId(transaction);
         const asked = academicDepartmentOf(record.divisions, academicId);
-        const unlocked = academicDepartmentOf(await this.divisionsOf(transaction, id), academicId);
-        const lockedForMove = mayMove && isMove(unlocked, asked);
+        const today = await todayOf(transaction, branchId);
+        const unlockedRow = await this.academicColumnsOf(transaction, id, academicId);
+        const unlocked = academicChangeOf(unlockedRow, asked, record.departmentStartsOn, today);
+        const lockedForMove = mayMove && unlocked.kind !== 'none';
         if (lockedForMove) {
           await lockDepartmentMoves(transaction);
         }
         const row = await this.lockPerson(transaction, id);
         const divisions = await this.divisionsOf(transaction, id);
-        const moving = isMove(academicDepartmentOf(divisions, academicId), asked);
-        if (mayMove && moving !== lockedForMove) {
+        const stored = await this.academicColumnsOf(transaction, id, academicId);
+        const change = academicChangeOf(stored, asked, record.departmentStartsOn, today);
+        if (
+          mayMove &&
+          !sameChange({ row: unlockedRow, change: unlocked }, { row: stored, change }, today)
+        ) {
           throw new ApiException('staff_changed', 409);
         }
+        const planned = stored === undefined ? null : departmentInForce(stored, today).move;
         const before = fieldsOf(row, sortDivisions(divisions));
         const { departmentStartsOn, ...fields } = record;
         const after: StaffFields = { ...fields, divisions: sortDivisions(record.divisions) };
         const changes = changesOf({ ...before }, { ...after });
-        if (changes === null) {
-          // A start date is sent with a move only (task 3.4c, decision 2).
-          moveStartsOn(false, departmentStartsOn);
+        if (change.kind === 'none' && changes === null) {
+          // A start date is sent with a move only (task 3.4c, decision 2); the
+          // planned one may come back with an edit that keeps the plan.
+          moveStartsOn(false, change.stray ? departmentStartsOn : null);
           return this.readDetail(transaction, access, id);
         }
-        const contactOnly = Object.keys(changes.newValue).every((key) =>
-          (STAFF_CONTACT_FIELDS as readonly string[]).includes(key),
-        );
+        const contactOnly =
+          change.kind === 'none' &&
+          changes !== null &&
+          Object.keys(changes.newValue).every((key) =>
+            (STAFF_CONTACT_FIELDS as readonly string[]).includes(key),
+          );
         const assignmentId = contactOnly ? access.assignmentId : superAdminOf(access);
         if (assignmentId === undefined) {
           throw new ApiException('permission_denied', 403);
         }
         // A start date is sent with a move only (task 3.4c, decision 2), after
-        // the permission: a move is the Super Admin's.
-        const startsOn = moveStartsOn(moving, departmentStartsOn);
-        const emailChanged = 'email' in changes.newValue;
+        // the permission: a move is the Super Admin's. A cancel has none.
+        const startsOn = moveStartsOn(
+          change.kind === 'move',
+          change.kind === 'none' && !change.stray ? null : departmentStartsOn,
+        );
+        const emailChanged = changes !== null && 'email' in changes.newValue;
         if (emailChanged && !(await this.mayChangeEmail(transaction, access, row.account_id))) {
           throw new ApiException('permission_denied', 403);
         }
@@ -637,7 +660,7 @@ export class Staff {
         await this.checkDivisions(transaction, added);
         // A changed phone (task 3.6b-1): its lock for the old and the new
         // phone, the refusal of a taken one, and the mark before the write.
-        const phoneChanged = 'phone' in changes.newValue;
+        const phoneChanged = changes !== null && 'phone' in changes.newValue;
         if (phoneChanged) {
           await lockPhones(transaction, [row.phone, record.phone]);
           await this.refusePhoneTaken(transaction, record.phone, id);
@@ -646,12 +669,19 @@ export class Staff {
         // `edge/people-roles-accounts`, row 15 (task 3.4c): a move carries a
         // start date and is refused while a load would have the teacher outside
         // the subject's department; the profile's own check comes at the commit.
+        // A cancel (task 3.6b-3) is a move back from today.
         if (startsOn !== null) {
           await checkMoveStart(transaction, branchId, startsOn);
           await refuseMoveLoads(transaction, branchId, {
             teacherId: id,
             departmentId: asked ?? null,
             startsOn,
+          });
+        } else if (change.kind === 'cancel') {
+          await refuseMoveLoads(transaction, branchId, {
+            teacherId: id,
+            departmentId: change.departmentId,
+            startsOn: today,
           });
         }
         await transaction
@@ -666,10 +696,12 @@ export class Staff {
           marksBefore === null
             ? []
             : changesBetween(marksBefore, await marksOf(transaction, { staffIds: [id] }));
-        if (startsOn !== null && asked !== undefined) {
+        // Task 3.6b-3: the department in force until the start date is kept
+        // beside it, and a cancel gives it back.
+        if (stored !== undefined && asked !== undefined && change.kind !== 'none') {
           await transaction
             .updateTable('staff_divisions')
-            .set({ department_since: startsOn })
+            .set(departmentColumnsAfter(stored, change.departmentId, startsOn, today))
             .where('staff_id', '=', id)
             .where('division_id', '=', academicId)
             .execute();
@@ -690,11 +722,16 @@ export class Staff {
           personId: id,
           action: 'staff.edit',
           record: { type: 'staff', id },
-          oldValue: changes.oldValue,
-          newValue:
-            startsOn === null
-              ? changes.newValue
-              : { ...changes.newValue, departmentStartsOn: startsOn },
+          // A change or a cancel of a planned move names the start date it had.
+          oldValue:
+            planned === null || change.kind === 'none'
+              ? (changes?.oldValue ?? {})
+              : { ...changes?.oldValue, departmentStartsOn: planned.startsOn },
+          newValue: {
+            ...changes?.newValue,
+            ...(startsOn === null ? {} : { departmentStartsOn: startsOn }),
+            ...(change.kind === 'cancel' ? { departmentMoveCancelled: true } : {}),
+          },
           ...(marks.length === 0 ? {} : { details: staffMarkDetail(marks, id) }),
           requestId,
         });
@@ -1280,6 +1317,20 @@ export class Staff {
     return found.id;
   }
 
+  /** The department columns of the person's Academic division, `undefined` without it. */
+  private async academicColumnsOf(
+    transaction: Transaction,
+    id: string,
+    academicId: string,
+  ): Promise<DepartmentColumns | undefined> {
+    return transaction
+      .selectFrom('staff_divisions')
+      .select(['department_id', 'department_since', 'department_before', 'department_before_since'])
+      .where('staff_id', '=', id)
+      .where('division_id', '=', academicId)
+      .executeTakeFirst();
+  }
+
   private async divisionsOf(transaction: Transaction, id: string): Promise<StaffDivisions> {
     return (
       await transaction
@@ -1537,7 +1588,15 @@ export class Staff {
       .execute();
     const divisions = await transaction
       .selectFrom('staff_divisions')
-      .select(['staff_id', 'division_id', 'department_id', 'is_main', 'department_since'])
+      .select([
+        'staff_id',
+        'division_id',
+        'department_id',
+        'is_main',
+        'department_since',
+        'department_before',
+        'department_before_since',
+      ])
       .where('staff_id', 'in', list)
       .orderBy('is_main', 'desc')
       .orderBy('division_id')
@@ -1562,6 +1621,9 @@ export class Staff {
       .orderBy('valid_from')
       .execute();
     const now = this.clock.now();
+    // The department each division shows: in force today in the branch time
+    // of the request (task 3.6b-3, decision 5).
+    const departmentDay = await todayOf(transaction, branchOf(access));
     const categories = new Map<string, Role[]>();
     // The person's current roles in the branch of the request, for every
     // reader (`04`, Personal): a role with a branch counts in that branch
@@ -1610,12 +1672,16 @@ export class Staff {
         })),
         divisions: divisions
           .filter((division) => division.staff_id === row.id)
-          .map((division) => ({
-            divisionId: division.division_id,
-            departmentId: division.department_id,
-            main: division.is_main,
-            departmentSince: dateOrNull(division.department_since),
-          })),
+          .map((division) => {
+            const shown = departmentInForce(division, departmentDay);
+            return {
+              divisionId: division.division_id,
+              departmentId: shown.departmentId,
+              main: division.is_main,
+              departmentSince: shown.since,
+              departmentMove: shown.move,
+            };
+          }),
         subjects: subjects
           .filter((subject) => subject.staff_id === row.id)
           .map((subject) => ({ subjectId: subject.subject_id, grades: subject.grades })),

@@ -1,5 +1,5 @@
 import type { ErrorDetail } from '@sodiq/shared';
-import { schoolDateOf } from '@sodiq/shared';
+import { departmentChangeKind, schoolDateOf } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { transactionMoment, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
@@ -220,4 +220,142 @@ export function moveStartsOn(moving: boolean, startsOn: string | null | undefine
     ]);
   }
   return moving ? (startsOn ?? null) : null;
+}
+
+/** Today in the time zone of a branch at the moment of the transaction (task 3.6b-3, decision 5). */
+export async function todayOf(transaction: Transaction, branchId: string): Promise<string> {
+  const branch = await transaction
+    .selectFrom('branches')
+    .select('time_zone')
+    .where('id', '=', branchId)
+    .executeTakeFirstOrThrow();
+  return schoolDateOf(await transactionMoment(transaction), branch.time_zone);
+}
+
+/** The four department columns of a subject or of a person's division (db/migrations/0065). */
+export interface DepartmentColumns {
+  department_id: string | null;
+  department_since: Date | string | null;
+  department_before: string | null;
+  department_before_since: Date | string | null;
+}
+
+/** The department a record shows on a day, and the move planned after it. */
+export interface DepartmentInForce {
+  departmentId: string | null;
+  since: string | null;
+  move: { departmentId: string | null; startsOn: string } | null;
+}
+
+/**
+ * The one rule of what a record shows (owner's answer of 15 October 2026,
+ * L195: "the record shows the old department until then"; task 3.6b-3): while
+ * `today` is before the start date of a move that stored the department before
+ * it, that department and its date, with the move planned; otherwise the
+ * department after the last move. Read on each request; nothing flips it. The
+ * rules never read this: they read `department_id` (decision 1).
+ */
+export function departmentInForce(row: DepartmentColumns, today: string): DepartmentInForce {
+  const since = row.department_since === null ? null : dateText(row.department_since);
+  if (since !== null && since > today && row.department_before !== null) {
+    return {
+      departmentId: row.department_before,
+      since: row.department_before_since === null ? null : dateText(row.department_before_since),
+      move: { departmentId: row.department_id, startsOn: since },
+    };
+  }
+  return { departmentId: row.department_id, since, move: null };
+}
+
+/**
+ * What an edit asks of the department (task 3.6b-3, decisions 4 and 8):
+ * - `none`: the department asked is the planned one (or, with no plan, the
+ *   stored one), sent with no start date or the planned one; `stray` when a
+ *   start date was sent all the same, which `moveStartsOn` refuses;
+ * - `move`: another department, or the planned one with another start date
+ *   (a change of the plan); the start date is required;
+ * - `cancel`: the department in force while a move is planned; sent without
+ *   a start date.
+ * `asked` is `undefined` when the Academic division is removed: a move to no
+ * department that takes effect when saved (decision 3).
+ */
+export type DepartmentChange =
+  | { kind: 'none'; stray: boolean }
+  | { kind: 'move'; departmentId: string | null }
+  | { kind: 'cancel'; departmentId: string | null };
+
+export function departmentChangeOf(
+  row: DepartmentColumns,
+  asked: string | null | undefined,
+  startsOn: string | null | undefined,
+  today: string,
+): DepartmentChange {
+  const sent = startsOn ?? null;
+  if (asked === undefined) {
+    return { kind: 'move', departmentId: null };
+  }
+  const shown = departmentInForce(row, today);
+  const kind = departmentChangeKind(shown, asked, sent);
+  if (kind === 'none') {
+    // The planned date may come back with an edit that keeps the plan.
+    return { kind, stray: sent !== null && sent !== shown.move?.startsOn };
+  }
+  return { kind, departmentId: asked };
+}
+
+/**
+ * Whether the read without a lock and the locked read of one edit agree
+ * (task 3.4c, decision 9; task 3.6b-3): the same kind of change to the same
+ * department, from the same department in force and the same planned move.
+ * Otherwise the edit was made on what another change has replaced.
+ */
+export function sameChange(
+  unlocked: { row: DepartmentColumns | undefined; change: DepartmentChange },
+  locked: { row: DepartmentColumns | undefined; change: DepartmentChange },
+  today: string,
+): boolean {
+  const shown = (row: DepartmentColumns | undefined) =>
+    row === undefined ? null : JSON.stringify(departmentInForce(row, today));
+  const target = (change: DepartmentChange) =>
+    change.kind === 'none' ? null : change.departmentId;
+  return (
+    unlocked.change.kind === locked.change.kind &&
+    target(unlocked.change) === target(locked.change) &&
+    shown(unlocked.row) === shown(locked.row)
+  );
+}
+
+/**
+ * The four columns after a move to `departmentId` from `startsOn`, or after a
+ * cancel (`startsOn` null), from the stored ones: a move after today keeps
+ * the department in force before it; one from today writes no before columns;
+ * a cancel gives back the department in force and its date.
+ */
+export function departmentColumnsAfter(
+  row: DepartmentColumns,
+  departmentId: string | null,
+  startsOn: string | null,
+  today: string,
+): {
+  department_id: string | null;
+  department_since: string | null;
+  department_before: string | null;
+  department_before_since: string | null;
+} {
+  const shown = departmentInForce(row, today);
+  if (startsOn === null) {
+    return {
+      department_id: departmentId,
+      department_since: shown.since,
+      department_before: null,
+      department_before_since: null,
+    };
+  }
+  const later = startsOn > today;
+  return {
+    department_id: departmentId,
+    department_since: startsOn,
+    department_before: later ? shown.departmentId : null,
+    department_before_since: later ? shown.since : null,
+  };
 }

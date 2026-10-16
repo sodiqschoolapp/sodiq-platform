@@ -507,13 +507,128 @@ describe('department_move_loads in the database', () => {
         order by table_name
       `.execute(database.migrator);
       expect(found.rows).toEqual([
-        { table_name: 'staff_divisions', columns: 'department_id,department_since,is_main' },
+        // Task 3.6b-3 (db/migrations/0065): the department before a planned move.
+        {
+          table_name: 'staff_divisions',
+          columns:
+            'department_before,department_before_since,department_id,department_since,is_main',
+        },
         {
           table_name: 'subjects',
           columns:
-            'archived_at,colour,demanding,department_id,department_since,grades,group_subject,journal_type,language_rule,name_en,name_ru,name_uz,rating_exam,rating_round,weights_round',
+            'archived_at,colour,demanding,department_before,department_before_since,department_id,department_since,grades,group_subject,journal_type,language_rule,name_en,name_ru,name_uz,rating_exam,rating_round,weights_round',
         },
       ]);
+    });
+  });
+  // 0065 (task 3.6b-3, pull request #123, decision 8): the department in
+  // force until a planned move's start date, stored beside it.
+  describe('the department before a planned move (0065)', () => {
+    const CHECK_VIOLATION = '23514';
+    const FOREIGN_KEY_VIOLATION = '23503';
+
+    it('refuses a department before without a start date, and a date before without a department, on both tables', async () => {
+      const { subject, teacher } = await steamRow();
+      for (const table of ['subjects', 'staff_divisions'] as const) {
+        const update = (values: {
+          department_since: string | null;
+          department_before: string | null;
+          department_before_since: string | null;
+        }) =>
+          table === 'subjects'
+            ? database.migrator
+                .updateTable('subjects')
+                .set(values)
+                .where('id', '=', subject)
+                .execute()
+            : database.migrator
+                .updateTable('staff_divisions')
+                .set(values)
+                .where('staff_id', '=', teacher)
+                .execute();
+        const constraint = `${table}_department_before_check`;
+        const alone = await refusal(
+          update({
+            department_since: null,
+            department_before: national,
+            department_before_since: null,
+          }),
+        );
+        expect(alone).toMatchObject({ code: CHECK_VIOLATION, constraint });
+        const dateAlone = await refusal(
+          update({
+            department_since: '2026-11-02',
+            department_before: null,
+            department_before_since: '2026-09-15',
+          }),
+        );
+        expect(dateAlone).toMatchObject({ code: CHECK_VIOLATION, constraint });
+        // Every value valid: a planned move with the department before it and its date.
+        await update({
+          department_since: '2026-11-02',
+          department_before: national,
+          department_before_since: '2026-09-15',
+        });
+        await update({
+          department_since: null,
+          department_before: null,
+          department_before_since: null,
+        });
+      }
+    });
+
+    it('refuses a department before of another division for a person, and an unknown one for a subject', async () => {
+      const { subject, teacher } = await steamRow();
+      const medical = await departmentId('Medical');
+      const person = await refusal(
+        database.migrator
+          .updateTable('staff_divisions')
+          .set({ department_since: '2026-11-02', department_before: medical })
+          .where('staff_id', '=', teacher)
+          .execute(),
+      );
+      expect(person).toMatchObject({
+        code: FOREIGN_KEY_VIOLATION,
+        constraint: 'staff_divisions_department_before_fkey',
+      });
+      const unknown = await refusal(
+        database.migrator
+          .updateTable('subjects')
+          .set({
+            department_since: '2026-11-02',
+            department_before: '0199a000-0000-7000-8000-000000000099',
+          })
+          .where('id', '=', subject)
+          .execute(),
+      );
+      expect(unknown).toMatchObject({
+        code: FOREIGN_KEY_VIOLATION,
+        constraint: 'subjects_department_before_fkey',
+      });
+    });
+
+    it('lets the application write the department before a move', async () => {
+      const { subject, teacher } = await steamRow();
+      await inBranch(north, async (transaction) => {
+        await transaction
+          .updateTable('subjects')
+          .set({
+            department_since: '2026-11-02',
+            department_before: national,
+            department_before_since: null,
+          })
+          .where('id', '=', subject)
+          .execute();
+        await transaction
+          .updateTable('staff_divisions')
+          .set({
+            department_since: '2026-11-02',
+            department_before: national,
+            department_before_since: null,
+          })
+          .where('staff_id', '=', teacher)
+          .execute();
+      });
     });
   });
 });

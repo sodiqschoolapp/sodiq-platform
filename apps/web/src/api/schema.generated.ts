@@ -12930,6 +12930,12 @@ export interface operations {
                             id: string;
                             /** Format: date */
                             departmentSince: string | null;
+                            departmentMove: {
+                                /** Format: uuid */
+                                departmentId: string;
+                                /** Format: date */
+                                startsOn: string;
+                            } | null;
                             /** Format: date-time */
                             archivedAt: string | null;
                             daily: {
@@ -13091,6 +13097,12 @@ export interface operations {
                         id: string;
                         /** Format: date */
                         departmentSince: string | null;
+                        departmentMove: {
+                            /** Format: uuid */
+                            departmentId: string;
+                            /** Format: date */
+                            startsOn: string;
+                        } | null;
                         /** Format: date-time */
                         archivedAt: string | null;
                         daily: {
@@ -13366,6 +13378,12 @@ export interface operations {
                         id: string;
                         /** Format: date */
                         departmentSince: string | null;
+                        departmentMove: {
+                            /** Format: uuid */
+                            departmentId: string;
+                            /** Format: date */
+                            startsOn: string;
+                        } | null;
                         /** Format: date-time */
                         archivedAt: string | null;
                         daily: {
@@ -13507,6 +13525,12 @@ export interface operations {
                         id: string;
                         /** Format: date */
                         departmentSince: string | null;
+                        departmentMove: {
+                            /** Format: uuid */
+                            departmentId: string;
+                            /** Format: date */
+                            startsOn: string;
+                        } | null;
                         /** Format: date-time */
                         archivedAt: string | null;
                         daily: {
@@ -13640,6 +13664,12 @@ export interface operations {
                         id: string;
                         /** Format: date */
                         departmentSince: string | null;
+                        departmentMove: {
+                            /** Format: uuid */
+                            departmentId: string;
+                            /** Format: date */
+                            startsOn: string;
+                        } | null;
                         /** Format: date-time */
                         archivedAt: string | null;
                         daily: {
@@ -13773,6 +13803,12 @@ export interface operations {
                         id: string;
                         /** Format: date */
                         departmentSince: string | null;
+                        departmentMove: {
+                            /** Format: uuid */
+                            departmentId: string;
+                            /** Format: date */
+                            startsOn: string;
+                        } | null;
                         /** Format: date-time */
                         archivedAt: string | null;
                         daily: {
@@ -14297,6 +14333,12 @@ export interface operations {
                                 main: boolean;
                                 /** Format: date */
                                 departmentSince: string | null;
+                                departmentMove: {
+                                    /** Format: uuid */
+                                    departmentId: string | null;
+                                    /** Format: date */
+                                    startsOn: string;
+                                } | null;
                             }[];
                             subjects: {
                                 /** Format: uuid */
@@ -14475,6 +14517,12 @@ export interface operations {
                             main: boolean;
                             /** Format: date */
                             departmentSince: string | null;
+                            departmentMove: {
+                                /** Format: uuid */
+                                departmentId: string | null;
+                                /** Format: date */
+                                startsOn: string;
+                            } | null;
                         }[];
                         subjects: {
                             /** Format: uuid */
@@ -14774,6 +14822,12 @@ export interface operations {
                             main: boolean;
                             /** Format: date */
                             departmentSince: string | null;
+                            departmentMove: {
+                                /** Format: uuid */
+                                departmentId: string | null;
+                                /** Format: date */
+                                startsOn: string;
+                            } | null;
                         }[];
                         subjects: {
                             /** Format: uuid */
@@ -14993,6 +15047,12 @@ export interface operations {
                             main: boolean;
                             /** Format: date */
                             departmentSince: string | null;
+                            departmentMove: {
+                                /** Format: uuid */
+                                departmentId: string | null;
+                                /** Format: date */
+                                startsOn: string;
+                            } | null;
                         }[];
                         subjects: {
                             /** Format: uuid */
@@ -15325,6 +15385,12 @@ export interface operations {
                             main: boolean;
                             /** Format: date */
                             departmentSince: string | null;
+                            departmentMove: {
+                                /** Format: uuid */
+                                departmentId: string | null;
+                                /** Format: date */
+                                startsOn: string;
+                            } | null;
                         }[];
                         subjects: {
                             /** Format: uuid */
@@ -15518,6 +15584,12 @@ export interface operations {
                             main: boolean;
                             /** Format: date */
                             departmentSince: string | null;
+                            departmentMove: {
+                                /** Format: uuid */
+                                departmentId: string | null;
+                                /** Format: date */
+                                startsOn: string;
+                            } | null;
                         }[];
                         subjects: {
                             /** Format: uuid */
@@ -15712,6 +15784,12 @@ export interface operations {
                             main: boolean;
                             /** Format: date */
                             departmentSince: string | null;
+                            departmentMove: {
+                                /** Format: uuid */
+                                departmentId: string | null;
+                                /** Format: date */
+                                startsOn: string;
+                            } | null;
                         }[];
                         subjects: {
                             /** Format: uuid */
@@ -18245,6 +18323,12 @@ export interface operations {
                             main: boolean;
                             /** Format: date */
                             departmentSince: string | null;
+                            departmentMove: {
+                                /** Format: uuid */
+                                departmentId: string | null;
+                                /** Format: date */
+                                startsOn: string;
+                            } | null;
                         }[];
                         subjects: {
                             /** Format: uuid */

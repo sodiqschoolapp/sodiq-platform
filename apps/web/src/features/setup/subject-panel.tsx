@@ -35,8 +35,10 @@ const FOUR: readonly WeightPart[] = ['attendance', 'classwork', 'homework', 'rat
 interface SubjectPanelProps {
   subject: Subject;
   departments: readonly DepartmentChoice[];
-  /** The name of the subject's department, archived ones included. */
+  /** The name of the subject's department in force, archived ones included. */
   departmentName: string;
+  /** The name of the department of a planned move (task 3.6b-3); empty without one. */
+  plannedDepartmentName: string;
   canEdit: boolean;
   canArchive: boolean;
   /** The server's answer, from every current assignment (decision 17), not the role shown. */
@@ -54,6 +56,7 @@ export function SubjectPanel({
   subject,
   departments,
   departmentName,
+  plannedDepartmentName,
   canEdit,
   canArchive,
   mayMoveDepartment,
@@ -163,12 +166,25 @@ export function SubjectPanel({
                 [t('setup.subjects.nameEn'), subject.names.en],
                 [
                   t('setup.subjects.department'),
-                  subject.departmentSince === null
-                    ? departmentName
-                    : t('setup.subjects.departmentSince', {
-                        name: departmentName,
-                        date: schoolDateText(subject.departmentSince, language),
-                      }),
+                  <span key="department" className="grid">
+                    <span>
+                      {subject.departmentSince === null
+                        ? departmentName
+                        : t('setup.subjects.departmentSince', {
+                            name: departmentName,
+                            date: schoolDateText(subject.departmentSince, language),
+                          })}
+                    </span>
+                    {/* Task 3.6b-3 (L195): the move shows from its start date. */}
+                    {subject.departmentMove !== null && (
+                      <span>
+                        {t('setup.subjects.departmentMove', {
+                          name: plannedDepartmentName,
+                          date: schoolDateText(subject.departmentMove.startsOn, language),
+                        })}
+                      </span>
+                    )}
+                  </span>,
                 ],
                 [t('setup.subjects.grades'), gradeRanges(subject.grades)],
                 [

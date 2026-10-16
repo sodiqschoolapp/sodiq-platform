@@ -609,6 +609,8 @@ const NOT_IDENTITY_KEYS = new Set([
   'departmentId',
   // the start date of a department move (task 3.4c, pull request #101)
   'departmentStartsOn',
+  // a planned department move cancelled (task 3.6b-3)
+  'departmentMoveCancelled',
   'departmentSince',
   'department_since',
   'department',

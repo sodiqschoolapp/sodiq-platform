@@ -576,7 +576,11 @@ describe('subjects', () => {
         }),
       );
       expect(moved.status).toBe(200);
-      expect(subjectSchema.parse(moved.body).departmentId).toBe(tutors);
+      // Task 3.6b-3 (L195): the record shows STEAM until the start date.
+      expect(subjectSchema.parse(moved.body)).toMatchObject({
+        departmentId: steam,
+        departmentMove: { departmentId: tutors, startsOn: MOVE_ON },
+      });
       expect((await schoolEntries('subject.edit', subject.id)).at(-1)).toMatchObject({
         old_value: { departmentId: steam },
         new_value: { departmentId: tutors },
@@ -621,7 +625,11 @@ describe('subjects', () => {
       );
 
       expect(moved.status, JSON.stringify(moved.body)).toBe(200);
-      expect(subjectSchema.parse(moved.body).departmentId).toBe(tutors);
+      // Task 3.6b-3 (L195): the record shows STEAM until the start date.
+      expect(subjectSchema.parse(moved.body)).toMatchObject({
+        departmentId: steam,
+        departmentMove: { departmentId: tutors, startsOn: MOVE_ON },
+      });
       expect((await schoolEntries('subject.edit', subject.id)).at(-1)).toMatchObject({
         actor_id: both.account.id,
         assignment_id: superAdmin.id,

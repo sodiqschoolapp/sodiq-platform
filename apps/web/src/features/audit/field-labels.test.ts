@@ -13,4 +13,13 @@ describe('the labels of the audit fields', () => {
       'setup.subjects.departmentStartsOn',
     );
   });
+
+  it('names the cancel of a planned department move (task 3.6b-3)', () => {
+    expect(fieldLabel(fieldsTypeOf('staff.edit', 'staff'), 'departmentMoveCancelled')).toBe(
+      'people.staff.departmentMoveCancelled',
+    );
+    expect(fieldLabel(fieldsTypeOf('subject.edit', 'subject'), 'departmentMoveCancelled')).toBe(
+      'setup.subjects.departmentMoveCancelled',
+    );
+  });
 });

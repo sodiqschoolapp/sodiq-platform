@@ -33,9 +33,15 @@ import {
 import { refuseGroupsOfSubject } from '../classes/group-side.js';
 import {
   checkMoveStart,
+  departmentChangeOf,
+  departmentColumnsAfter,
+  departmentInForce,
   lockDepartmentMoves,
   moveStartsOn,
   refuseMoveLoads,
+  sameChange,
+  todayOf,
+  type DepartmentChange,
 } from '../people/department-moves.js';
 import { refuseTeachersOutside } from '../people/subject-teachers.js';
 import { changesOf, notFound, refusingConstraints, refusingDuplicates } from './setup-refusals.js';
@@ -66,6 +72,8 @@ const SUBJECT_COLUMNS = [
   'name_en',
   'department_id',
   'department_since',
+  'department_before',
+  'department_before_since',
   'grades',
   'colour',
   'journal_type',
@@ -86,6 +94,9 @@ interface SubjectRow {
   department_id: string;
   /** The start date of the last department move (task 3.4c, decision 8). */
   department_since: Date | string | null;
+  /** The department in force until `department_since` and its date (task 3.6b-3, decision 8). */
+  department_before: string | null;
+  department_before_since: Date | string | null;
   grades: number[];
   colour: string;
   journal_type: string;
@@ -186,14 +197,6 @@ const fits = (row: QuarterWeightsRow, ratingExam: boolean): boolean =>
   (row.rating_exam !== null) === ratingExam;
 
 const refused = (code: ErrorCode): ApiException => new ApiException(code, 409);
-
-/** A `date` column as `YYYY-MM-DD`, whichever way the driver gave it. */
-const dateOrNull = (value: Date | string | null): string | null =>
-  value === null
-    ? null
-    : typeof value === 'string'
-      ? value.slice(0, 10)
-      : value.toISOString().slice(0, 10);
 
 /** A route bound to a branch always has one; the guard sets it. */
 function branchOf(access: Access): string {
@@ -337,53 +340,87 @@ export class Subjects {
       this.transactions.run(access.branchIds, async (transaction) => {
         // Task 3.4c, decision 6: a move takes the lock of department moves
         // before any row lock, decided from the department read without one;
-        // the locked read must agree (decision 9). Only a Super Admin moves,
-        // so nobody else takes the lock (permission review, nit 5).
+        // the locked read must agree on what the edit asks of the department
+        // (decision 9; task 3.6b-3, a move, a change of a plan or a cancel).
+        // Only a Super Admin moves, so nobody else takes the lock (permission
+        // review, nit 5).
         const mayMove = superAdminOf(access) !== undefined;
-        const unlocked = await transaction
+        const today = await todayOf(transaction, branchId);
+        const unlockedRow = await transaction
           .selectFrom('subjects')
-          .select('department_id')
+          .select([
+            'department_id',
+            'department_since',
+            'department_before',
+            'department_before_since',
+          ])
           .where('id', '=', id)
           .executeTakeFirst();
-        const lockedForMove =
-          mayMove && unlocked !== undefined && unlocked.department_id !== record.departmentId;
+        const unlocked: DepartmentChange =
+          unlockedRow === undefined
+            ? { kind: 'none', stray: false }
+            : departmentChangeOf(
+                unlockedRow,
+                record.departmentId,
+                record.departmentStartsOn,
+                today,
+              );
+        const lockedForMove = mayMove && unlocked.kind !== 'none';
         if (lockedForMove) {
           await lockDepartmentMoves(transaction);
         }
         const row = await this.lockActive(transaction, id);
-        const before = fieldsOf(row);
-        const after = recordFields(record);
-        const moving = after.departmentId !== before.departmentId;
-        if (mayMove && moving !== lockedForMove) {
+        const change = departmentChangeOf(
+          row,
+          record.departmentId,
+          record.departmentStartsOn,
+          today,
+        );
+        if (
+          mayMove &&
+          !sameChange({ row: unlockedRow, change: unlocked }, { row, change }, today)
+        ) {
           throw refused('subject_changed');
         }
+        const planned = departmentInForce(row, today).move;
+        const before = fieldsOf(row);
+        const after = recordFields(record);
         // The assignment the audit entry names: for a move, the Super Admin one.
         let assignmentId = access.assignmentId;
         let startsOn: string | null = null;
-        if (moving) {
+        if (change.kind === 'none') {
+          // A start date is sent with a move only (task 3.4c, decision 2); the
+          // planned one may come back with an edit that keeps the plan.
+          moveStartsOn(false, change.stray ? record.departmentStartsOn : null);
+        } else {
           // `edge/people-roles-accounts`: "A teacher moves to another department,
           // or a subject is moved, mid-year. Both changes ... are made by the
-          // Super Admin." (Decision 17 of pull request #52.)
+          // Super Admin." (Decision 17 of pull request #52.) A change or a
+          // cancel of a planned move too (task 3.6b-3).
           const superAdmin = superAdminOf(access);
           if (superAdmin === undefined) {
             throw new ApiException('subject_move_super_admin', 403);
           }
           assignmentId = superAdmin;
-          startsOn = moveStartsOn(true, record.departmentStartsOn);
-          if (startsOn === null) {
-            throw new Error('moveStartsOn gives a date for a move.');
+          if (change.kind === 'move') {
+            startsOn = moveStartsOn(true, record.departmentStartsOn);
+            if (startsOn === null) {
+              throw new Error('moveStartsOn gives a date for a move.');
+            }
+            await checkMoveStart(transaction, branchId, startsOn);
+            await this.checkDepartment(transaction, after.departmentId);
+          } else {
+            // A cancel is a move back from today; its department is checked
+            // by the database (`subjects_department_archived`, 0020).
+            moveStartsOn(false, record.departmentStartsOn);
           }
-          await checkMoveStart(transaction, branchId, startsOn);
-          await this.checkDepartment(transaction, after.departmentId);
           // Task 3.4c: the loads first, listed for reassignment (row 15),
           // then the profiles (task 2.2a).
           await refuseMoveLoads(transaction, branchId, {
             subjectId: id,
             departmentId: after.departmentId,
-            startsOn,
+            startsOn: startsOn ?? today,
           });
-        } else {
-          moveStartsOn(false, record.departmentStartsOn);
         }
         // Task 2.2a, decision 13: a department move or a removed grade is
         // refused while a teacher who has not left has the subject outside them.
@@ -419,14 +456,21 @@ export class Subjects {
           throw refused('daily_weights_required');
         }
         const changes = changesOf({ ...before }, { ...after });
-        if (changes !== null) {
+        if (changes !== null || change.kind !== 'none') {
           await transaction
             .updateTable('subjects')
             .set({
               ...columnsOf(after),
               weights_round: round,
               rating_round: ratingRound,
-              ...(startsOn === null ? {} : { department_since: startsOn }),
+              // Task 3.6b-3: the department in force until the start date is
+              // kept beside it, and a cancel gives it back.
+              ...(change.kind === 'none'
+                ? {}
+                : {
+                    ...departmentColumnsAfter(row, after.departmentId, startsOn, today),
+                    department_id: after.departmentId,
+                  }),
             })
             .where('id', '=', id)
             .execute();
@@ -436,11 +480,16 @@ export class Subjects {
             assignmentId,
             action: 'subject.edit',
             record: { type: 'subject', id },
-            oldValue: changes.oldValue,
-            newValue:
-              startsOn === null
-                ? changes.newValue
-                : { ...changes.newValue, departmentStartsOn: startsOn },
+            // A change or a cancel of a planned move names the start date it had.
+            oldValue:
+              planned === null || change.kind === 'none'
+                ? (changes?.oldValue ?? {})
+                : { ...changes?.oldValue, departmentStartsOn: planned.startsOn },
+            newValue: {
+              ...changes?.newValue,
+              ...(startsOn === null ? {} : { departmentStartsOn: startsOn }),
+              ...(change.kind === 'cancel' ? { departmentMoveCancelled: true } : {}),
+            },
             // A new round: the weights of every branch from before no longer count.
             ...roundDetails(row, round, ratingRound),
             requestId,
@@ -959,8 +1008,12 @@ export class Subjects {
         .where('academic_years.status', 'in', ['planned', 'current'])
         .execute(),
     ]);
+    // The department each subject shows: in force today in the branch time of
+    // the request (task 3.6b-3, decision 5).
+    const today = await todayOf(transaction, branchId);
     return rows.map((row) => {
       const graded = row.journal_type === 'graded';
+      const shown = departmentInForce(row, today);
       const own = daily.find(
         (weights) => weights.subject_id === row.id && weights.weights_round === row.weights_round,
       );
@@ -974,7 +1027,12 @@ export class Subjects {
       return {
         id: row.id,
         ...fieldsOf(row),
-        departmentSince: dateOrNull(row.department_since),
+        departmentId: shown.departmentId ?? row.department_id,
+        departmentSince: shown.since,
+        departmentMove:
+          shown.move === null || shown.move.departmentId === null
+            ? null
+            : { departmentId: shown.move.departmentId, startsOn: shown.move.startsOn },
         archivedAt: row.archived_at === null ? null : row.archived_at.toISOString(),
         daily: !graded || own === undefined ? null : dailyOf(own),
         quarterWeightsMissing: graded && quarters.length > 0 ? quarters.length - fitting : null,

@@ -177,6 +177,7 @@ function open(
             names: { uz: 'Ingliz tili', ru: 'Английский язык', en: 'English' },
             departmentId: uid(11),
             departmentSince: null,
+            departmentMove: null,
             grades: [7, 8],
             colour: 'blue',
             journalType: 'graded',

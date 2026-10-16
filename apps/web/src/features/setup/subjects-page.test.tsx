@@ -50,6 +50,7 @@ const academic = (departments = [STEAM, TUTORS]): Division => ({
 
 const MATHS: Subject = {
   departmentSince: null,
+  departmentMove: null,
   id: uid(21),
   names: { uz: 'Matematika', ru: 'Математика', en: 'Mathematics' },
   departmentId: STEAM,
@@ -84,6 +85,7 @@ const SPIRIT: Subject = {
   names: { uz: 'Maʼnaviyat soati', ru: 'Час духовности', en: 'Spiritual hour' },
   departmentId: TUTORS,
   departmentSince: null,
+  departmentMove: null,
   grades: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
   colour: 'green',
   journalType: 'attendance_only',
@@ -148,6 +150,7 @@ async function openList({
   extra = {},
   language = 'en',
   mayMoveDepartment = true,
+  path = PATH,
 }: {
   session?: ReturnType<typeof superAdmin>;
   subjects?: Subject[];
@@ -157,6 +160,7 @@ async function openList({
   extra?: Record<string, (body: unknown) => Response>;
   language?: 'en' | 'ru';
   mayMoveDepartment?: boolean;
+  path?: string;
 } = {}) {
   const account = { ...session, language };
   const answer = (rows: SubjectQuarter[]): SubjectQuarterWeights => ({
@@ -198,7 +202,7 @@ async function openList({
       refusal('subject_department_archived', 409),
     ...extra,
   });
-  const shell = renderApp(PATH, language);
+  const shell = renderApp(path, language);
   const texts = language === 'ru' ? (await import('@/i18n/locales/ru')).ru : en;
   await screen.findByRole('heading', { name: texts.setup.subjects.title });
   if (subjects.length > 0) {
@@ -868,5 +872,102 @@ describe('the export of the subjects list', () => {
     expect(headingsDrawn()).toEqual(
       SUBJECT_EXPORT_COLUMNS.map((key) => EXPORT_TEXTS.en.subjects.columns[key]),
     );
+  });
+});
+
+// Task 3.6b-3, the plan approved on pull request #123 with corrections 1 and
+// 2. Owner's answer of 15 October 2026, L195: "the record shows the old
+// department until then". The server answers the department in force and the
+// planned move; the form starts on the planned move, as the rules read it.
+describe('a planned department move (task 3.6b-3)', () => {
+  const PLANNED: Subject = {
+    ...MATHS,
+    departmentSince: '2026-09-15',
+    departmentMove: { departmentId: TUTORS, startsOn: '2026-11-02' },
+  };
+
+  it('shows the department in force with its date and the move with its start date', async () => {
+    await openList({ subjects: [PLANNED] });
+    fireEvent.click(rowButton('Mathematics'));
+    const panel = await screen.findByRole('complementary', { name: 'Mathematics' });
+    const term = await within(panel).findByText(subjectsText.department, { selector: 'dt' });
+    const lines = [...(term.nextElementSibling?.querySelectorAll('span > span') ?? [])].map(
+      (line) => line.textContent,
+    );
+    expect(lines).toHaveLength(2);
+    expect(lines[0]).toMatch(/^STEAM, since /);
+    expect(lines[1]).toMatch(/^Moves to Tutors on /);
+  });
+
+  it('filters the list by the department in force, as the server shows it (correction 2)', async () => {
+    // Physics is in Tutors today; Mathematics moves there on 2 November.
+    await openList({
+      subjects: [PLANNED, { ...PHYSICS, departmentId: TUTORS }],
+      path: `${PATH}?f=${encodeURIComponent(JSON.stringify({ department: STEAM }))}`,
+    });
+    await waitFor(() => {
+      expect(
+        [...document.querySelectorAll('tbody tr')].map(
+          (row) => row.querySelector('button')?.textContent,
+        ),
+      ).toEqual(['Mathematics']);
+    });
+  });
+
+  it('starts the form on the planned department and date; a save that keeps them sends no start date', async () => {
+    const { calls } = await openList({ subjects: [PLANNED] });
+    fireEvent.click(rowButton('Mathematics'));
+    const panel = await screen.findByRole('complementary', { name: 'Mathematics' });
+    const form = await edit(panel, 'Mathematics');
+    expect(within(form).getByLabelText<HTMLSelectElement>(subjectsText.department).value).toBe(
+      TUTORS,
+    );
+    expect(
+      within(form).getByLabelText<HTMLInputElement>(subjectsText.departmentStartsOn).value,
+    ).toBe('2026-11-02');
+    fireEvent.change(within(form).getByLabelText(subjectsText.nameEn), {
+      target: { value: 'Mathematics A' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      const sent = calls.find((call) => call.route === `PUT /api/setup/subjects/${MATHS.id}`);
+      expect(sent?.body).toMatchObject({ departmentId: TUTORS });
+      expect(sent?.body).not.toHaveProperty('departmentStartsOn');
+    });
+  });
+
+  it('sends another start date as a change of the plan', async () => {
+    const { calls } = await openList({ subjects: [PLANNED] });
+    fireEvent.click(rowButton('Mathematics'));
+    const panel = await screen.findByRole('complementary', { name: 'Mathematics' });
+    const form = await edit(panel, 'Mathematics');
+    fireEvent.change(within(form).getByLabelText(subjectsText.departmentStartsOn), {
+      target: { value: '2026-11-09' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(
+        calls.find((call) => call.route === `PUT /api/setup/subjects/${MATHS.id}`)?.body,
+      ).toMatchObject({ departmentId: TUTORS, departmentStartsOn: '2026-11-09' });
+    });
+  });
+
+  it('says that the department in force cancels the move, and sends no start date', async () => {
+    const { calls } = await openList({ subjects: [PLANNED] });
+    fireEvent.click(rowButton('Mathematics'));
+    const panel = await screen.findByRole('complementary', { name: 'Mathematics' });
+    const form = await edit(panel, 'Mathematics');
+    expect(within(form).queryByText(/^Cancels the move to /)).toBeNull();
+    fireEvent.change(within(form).getByLabelText(subjectsText.department), {
+      target: { value: STEAM },
+    });
+    expect(within(form).getByText(/^Cancels the move to Tutors on /)).toBeDefined();
+    expect(within(form).queryByLabelText(subjectsText.departmentStartsOn)).toBeNull();
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      const sent = calls.find((call) => call.route === `PUT /api/setup/subjects/${MATHS.id}`);
+      expect(sent?.body).toMatchObject({ departmentId: STEAM });
+      expect(sent?.body).not.toHaveProperty('departmentStartsOn');
+    });
   });
 });

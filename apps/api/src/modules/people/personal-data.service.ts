@@ -20,6 +20,7 @@ import { entryAnswers } from '../audit/audit-entries.service.js';
 import { Audit } from '../audit/audit.service.js';
 import { ApiException } from '../../http/api-exception.js';
 import { notFound } from '../setup/setup-refusals.js';
+import { departmentInForce, todayOf } from './department-moves.js';
 import { readPersonEntries, type ReportPerson } from './personal-data.query.js';
 import { branchOf, neverUsedAccounts } from './staff-account-records.js';
 import { FIELD_COLUMNS, textOf } from './student-merges.js';
@@ -301,23 +302,48 @@ export class PersonalData {
         .orderBy('l.is_main', 'desc')
         .orderBy('b.name')
         .execute();
-      const divisions = await transaction
+      const divisionRows = await transaction
         .selectFrom('staff_divisions as d')
         .innerJoin('divisions as v', 'v.id', 'd.division_id')
-        .leftJoin('departments as p', 'p.id', 'd.department_id')
         .select([
           'v.name_uz as division_uz',
           'v.name_ru as division_ru',
           'v.name_en as division_en',
-          'p.name_uz as department_uz',
-          'p.name_ru as department_ru',
-          'p.name_en as department_en',
+          'd.department_id',
+          'd.department_since',
+          'd.department_before',
+          'd.department_before_since',
           'd.is_main',
         ])
         .where('d.staff_id', '=', id)
         .orderBy('d.is_main', 'desc')
         .orderBy('v.name_en')
         .execute();
+      // The department in force today in the branch time of the request, as
+      // the record shows it (task 3.6b-3, L195).
+      const today = await todayOf(transaction, branchId);
+      const shownIds = divisionRows.flatMap((row) => {
+        const shown = departmentInForce(row, today).departmentId;
+        return shown === null ? [] : [shown];
+      });
+      const departmentNames =
+        shownIds.length === 0
+          ? []
+          : await transaction
+              .selectFrom('departments')
+              .select(['id', 'name_uz', 'name_ru', 'name_en'])
+              .where('id', 'in', shownIds)
+              .execute();
+      const divisions = divisionRows.map((row) => {
+        const shown = departmentInForce(row, today).departmentId;
+        const department = departmentNames.find((one) => one.id === shown);
+        return {
+          ...row,
+          department_uz: department?.name_uz ?? null,
+          department_ru: department?.name_ru ?? null,
+          department_en: department?.name_en ?? null,
+        };
+      });
       const subjects = await transaction
         .selectFrom('staff_subjects as s')
         .innerJoin('subjects as j', 'j.id', 's.subject_id')
