@@ -452,10 +452,16 @@ How to read the task lines:
   - Build: a department move that takes effect on its start date, with open requests moving then (L195).
   - Done when: each rule has a database or route test that fails without it, and L195 has a test on the day before and on the start date with the injected clock.
 
-- [ ] **3.6c The owner's answers of 15 October: the year result, no extra lessons, Tutor lessons** (issue #42, the owner's answers of 15 October 2026, item L210 and answers 1 and 2)
-  - Read: the owner's answers comments on issue #42 (15 and 16 October 2026), `07` (Calculation rules), `edge/calculation`, `06` (Changes after publishing), `edge/timetable`, `edge/time-dates-calendar`, `edge/lesson-plans`, `09`, the plans of pull requests #102 and #103.
-  - Build: the year result as the mean of the quarter results as published (each rounded as shown), rounded once more for the year, in `packages/calc` with its reference journal (L210; a reading of a calculation rule decided by the owner); the extra lesson, its "counts for attendance" switch and the "replaces the lesson of [date]" make-up removed from `packages/calc` and from every later task line of this file that names them (a lesson moved across quarters is only cancelled); the Maʼnaviyat soati and Homework slot rows of a class always held by the class's Tutor in force on the lesson's date (the acting Tutor while set), with no teacher chosen by hand and the future lessons following a new Tutor from the date of the change.
-  - Done when: the calc tests include the 50, 50, 49, 50 example giving 50, grade 3; no code or later task line names an extra lesson; a test gives a class a new Tutor and finds the future Tutor lessons with the new Tutor and the held ones with the old.
+- [ ] **3.6c-1 The owner's answers of 15 October: the year result and no extra lessons** (issue #42, the owner's answers of 15 October 2026, item L210 and answer 1; 3.6c split in two, pull request #124, decision 1)
+  - Read: the owner's answers comments on issue #42 (15 and 16 October 2026), `07` (Calculation rules), `edge/calculation`, `06` (Changes after publishing), `edge/timetable`, `edge/time-dates-calendar`, `edge/lesson-plans`, `09`, `edge/developer-rules`, the plans of pull requests #102 and #103.
+  - Build: the year result as the mean of the quarter results as published (each rounded as shown), rounded once more for the year, in `packages/calc` with its reference journal (L210; a reading of a calculation rule decided by the owner); the extra lesson, its "counts for attendance" switch and the "replaces the lesson of [date]" make-up removed from `packages/calc`, `packages/timetable-rules`, the database (every dated lesson comes from a version's pattern) and every later task line of this file that names them (a lesson moved across quarters is only cancelled).
+  - Done when: the calc tests include the 50, 50, 49, 50 example giving 50, grade 3; no code or later task line names an extra lesson.
+
+- [ ] **3.6c-2 The owner's answers of 15 October: Tutor lessons follow the Tutor** (issue #42, answer 2 of the owner's answers of 15 October 2026 and answer 1 of 16 October 2026; 3.6c split in two, pull request #124, decision 1)
+  - Read: the owner's answers comments on issue #42 (15 and 16 October 2026), `05` (Teaching load), `06` (Changes after publishing), `edge/timetable` (Structure, "The Homework slot and Ma'naviyat soati"), `edge/people-roles-accounts`, `edge/developer-rules`, the plans of pull requests #88 and #99.
+  - Build: the Maʼnaviyat soati and Homework slot rows of a class always held by the class's Tutor in force on the lesson's date (the acting Tutor while one is set), with no teacher chosen by hand in the teaching load; the future lessons going to a new or acting Tutor from the date of the change, held lessons keeping the person who held them; the class's Tutor lessons that clash with the new Tutor's other lessons, from the appointment's start, listed in the appointment's preview and set to "needs a teacher", the appointment never refused for a clash.
+  - Done when: a test gives a class a new Tutor and finds the future Tutor lessons with the new Tutor and the held ones with the old; a test of a clash finds the lesson in the preview and needing a teacher; no load route accepts a hand-picked teacher on a Tutor row.
+  - From 3.6c-1 (pull request #124, decision 7): every dated lesson names its version, pattern block, load row and pattern entry (migration 0066); a database test writes them with `LessonsKit.source`.
 
 ## Phase 4. Calculation module
 
@@ -548,7 +554,7 @@ How to read the task lines:
 
 - [ ] **5.6a One-day changes**
   - Read: `06` (Changes after publishing), `edge/timetable` (After publishing).
-  - Build: move, room change, cancel and restore, extra lesson, bulk cancel, and correction of a past lesson by the Academic Vice Principal with a reason.
+  - Build: move, room change, cancel and restore, bulk cancel, and correction of a past lesson by the Academic Vice Principal with a reason.
   - Done when: each row of the "After publishing" table that concerns these actions has a test.
   - From 5.2 (pull request #109, decision 13): every one-day change calls `checkCandidate` with the lesson at its new place (`mode: 'dated'`), which calls `lessonTimeProblem`; `vacation` and `outside_year` refuse a move out of the quarters.
 

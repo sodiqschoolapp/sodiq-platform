@@ -299,7 +299,11 @@ function casesOf(value: Json): Case[] {
 describe('reference journals', () => {
   it('has the samples to run', () => {
     expect(files).toEqual(
-      expect.arrayContaining(['07-worked-example.json', 'boundary-49-5.json', 'year-50-50-49-50.json']),
+      expect.arrayContaining([
+        '07-worked-example.json',
+        'boundary-49-5.json',
+        'year-50-50-49-50.json',
+      ]),
     );
   });
 
