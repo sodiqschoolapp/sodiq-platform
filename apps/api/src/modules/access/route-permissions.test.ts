@@ -427,6 +427,8 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'POST /api/classes/:id/archive': { branch: 'request', roles: CLASS_EDITORS },
   'POST /api/classes/:id/restore': { branch: 'request', roles: CLASS_EDITORS },
   'POST /api/classes/:id/tutors': { branch: 'request', roles: CLASS_EDITORS },
+  // Task 3.6c-2, decision 10: the give's preview, under the give's permission.
+  'POST /api/classes/:id/tutors/preview': { branch: 'request', roles: CLASS_EDITORS },
   'POST /api/classes/:id/tutors/:tutorId/end': { branch: 'request', roles: CLASS_EDITORS },
   // Task 3.1b, decision 9: the Students tab for the readers, placement and withdraw for the editors.
   'GET /api/classes/:id/members': { branch: 'request', roles: CLASS_VIEWERS },

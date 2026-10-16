@@ -6,6 +6,7 @@ import {
   type ClassDetail,
   type ClassTutorEnd,
   type ClassTutorGive,
+  type ClassTutorPreview,
   type SchoolDate,
   type TutorCandidateList,
 } from '@sodiq/shared';
@@ -16,6 +17,12 @@ import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { startOfDate } from '../people/staff-status.js';
 import { notFound, refusingConstraints } from '../setup/setup-refusals.js';
+import {
+  auditOf,
+  followChanged,
+  followTutors,
+  type TutorFollow,
+} from '../timetable/tutor-lessons.js';
 import { CLASS_REFUSALS, tutorEnded } from './class-tutor-rows.js';
 import { branchOf, readClassDetail, zoneOf } from './classes.service.js';
 
@@ -161,69 +168,111 @@ export class ClassTutors {
     return refusingConstraints(
       () =>
         this.transactions.run(access.branchIds, async (transaction) => {
-          const held = await this.lockClass(transaction, classId);
-          // A body id of another branch, or unknown, is not found; a role of
-          // the branch that is not Tutor is refused. Locked FOR SHARE as the
-          // trigger locks it, so a role end at the same moment waits.
-          const assignment = await transaction
-            .selectFrom('assignments')
-            .select(['id', 'role', 'valid_from', 'valid_until'])
-            .where('id', '=', give.assignmentId)
-            .where('branch_id', '=', branchId)
-            .forShare()
-            .executeTakeFirst();
-          if (assignment === undefined) {
-            throw notFound();
-          }
-          if (assignment.role !== 'tutor') {
-            throw new ApiException('tutor_not_tutor', 409);
-          }
-          const now = await transactionMoment(transaction);
-          const zone = await zoneOf(transaction, branchId);
-          const validFrom = await this.momentOf(transaction, give.from, now, zone);
-          const ownUntil =
-            give.until === null ? null : await startOfDate(transaction, give.until, zone);
-          if (
-            validFrom < assignment.valid_from ||
-            (assignment.valid_until !== null && validFrom >= assignment.valid_until)
-          ) {
-            throw new ApiException('tutor_outside_role', 409);
-          }
-          if (!(await teachesLanguage(transaction, give.assignmentId, held.language))) {
-            throw new ApiException('tutor_language', 409);
-          }
-          const row = await transaction
-            .insertInto('class_tutors')
-            .values({
-              branch_id: branchId,
-              class_id: classId,
-              assignment_id: give.assignmentId,
-              kind: give.kind,
-              valid_from: validFrom,
-              own_until: ownUntil,
-              given_by: access.accountId,
-            })
-            .returning(['id', 'valid_until'])
-            .executeTakeFirstOrThrow();
-          await this.audit.record(transaction, {
-            branchId,
-            actorId: access.accountId,
-            assignmentId: access.assignmentId,
-            action: 'class.tutor_given',
-            record: { type: 'class', id: classId },
-            newValue: {
-              tutorId: row.id,
-              assignmentId: give.assignmentId,
-              kind: give.kind,
-              validFrom: validFrom.toISOString(),
-              validUntil: row.valid_until?.toISOString() ?? null,
-            },
-            requestId,
-          });
+          await this.giveIn(transaction, access, classId, give, requestId);
           return readClassDetail(transaction, branchId, classId);
         }),
       CLASS_REFUSALS,
     );
+  }
+
+  /**
+   * What the give would do to the class's Tutor lessons (task 3.6c-2,
+   * decision 10): the real give and its follow run under a savepoint that is
+   * rolled back, so the preview is what the save writes. Every refusal of the
+   * give answers here too.
+   */
+  preview(
+    access: Access,
+    classId: string,
+    give: ClassTutorGive,
+    requestId: string,
+  ): Promise<ClassTutorPreview> {
+    const branchId = branchOf(access);
+    return refusingConstraints(
+      () =>
+        this.transactions.run(access.branchIds, async (transaction) => {
+          await sql`savepoint tutor_preview`.execute(transaction);
+          const follow = await this.giveIn(transaction, access, classId, give, requestId);
+          const answer = await previewOf(transaction, branchId, follow);
+          await sql`rollback to savepoint tutor_preview`.execute(transaction);
+          return answer;
+        }),
+      CLASS_REFUSALS,
+    );
+  }
+
+  /** The give in a transaction, with its audit entry; answers what its follow changed. */
+  private async giveIn(
+    transaction: Transaction,
+    access: Access,
+    classId: string,
+    give: ClassTutorGive,
+    requestId: string,
+  ): Promise<TutorFollow> {
+    const branchId = branchOf(access);
+    const held = await this.lockClass(transaction, classId);
+    // A body id of another branch, or unknown, is not found; a role of
+    // the branch that is not Tutor is refused. Locked FOR SHARE as the
+    // trigger locks it, so a role end at the same moment waits.
+    const assignment = await transaction
+      .selectFrom('assignments')
+      .select(['id', 'role', 'valid_from', 'valid_until'])
+      .where('id', '=', give.assignmentId)
+      .where('branch_id', '=', branchId)
+      .forShare()
+      .executeTakeFirst();
+    if (assignment === undefined) {
+      throw notFound();
+    }
+    if (assignment.role !== 'tutor') {
+      throw new ApiException('tutor_not_tutor', 409);
+    }
+    const now = await transactionMoment(transaction);
+    const zone = await zoneOf(transaction, branchId);
+    const validFrom = await this.momentOf(transaction, give.from, now, zone);
+    const ownUntil = give.until === null ? null : await startOfDate(transaction, give.until, zone);
+    if (
+      validFrom < assignment.valid_from ||
+      (assignment.valid_until !== null && validFrom >= assignment.valid_until)
+    ) {
+      throw new ApiException('tutor_outside_role', 409);
+    }
+    if (!(await teachesLanguage(transaction, give.assignmentId, held.language))) {
+      throw new ApiException('tutor_language', 409);
+    }
+    const row = await transaction
+      .insertInto('class_tutors')
+      .values({
+        branch_id: branchId,
+        class_id: classId,
+        assignment_id: give.assignmentId,
+        kind: give.kind,
+        valid_from: validFrom,
+        own_until: ownUntil,
+        given_by: access.accountId,
+      })
+      .returning(['id', 'valid_until'])
+      .executeTakeFirstOrThrow();
+    // Task 3.6c-2: the class's Tutor rows and Tutor lessons follow, from
+    // the start of the new row.
+    const follow = await followTutors(transaction, [classId], validFrom);
+    await this.audit.record(transaction, {
+      branchId,
+      actorId: access.accountId,
+      assignmentId: access.assignmentId,
+      action: 'class.tutor_given',
+      record: { type: 'class', id: classId },
+      newValue: {
+        tutorId: row.id,
+        assignmentId: give.assignmentId,
+        kind: give.kind,
+        validFrom: validFrom.toISOString(),
+        validUntil: row.valid_until?.toISOString() ?? null,
+        ...(followChanged(follow) ? { tutorLessons: auditOf(follow) } : {}),
+      },
+      requestId,
+    });
+    return follow;
   }
 
   /**
@@ -274,6 +323,9 @@ export class ClassTutors {
             })
             .where('id', '=', tutorId)
             .execute();
+          // Task 3.6c-2: from the new end, the earlier of the two (an end only
+          // moves earlier).
+          const follow = await followTutors(transaction, [classId], validUntil);
           await this.audit.record(transaction, {
             branchId,
             actorId: access.accountId,
@@ -281,7 +333,11 @@ export class ClassTutors {
             action: 'class.tutor_ended',
             record: { type: 'class', id: classId },
             oldValue: { tutorId, validUntil: row.valid_until?.toISOString() ?? null },
-            newValue: { tutorId, validUntil: validUntil.toISOString() },
+            newValue: {
+              tutorId,
+              validUntil: validUntil.toISOString(),
+              ...(followChanged(follow) ? { tutorLessons: auditOf(follow) } : {}),
+            },
             requestId,
           });
           return readClassDetail(transaction, branchId, classId);
@@ -349,4 +405,93 @@ async function teachesLanguage(
     select tutor_teaches_language(${assignmentId}::uuid, ${language}) as teaches
   `.execute(transaction);
   return found.rows[0]?.teaches === true;
+}
+
+/** The answer of a preview: the lessons a follow changed, with what the screen shows of them. */
+async function previewOf(
+  transaction: Transaction,
+  branchId: string,
+  follow: TutorFollow,
+): Promise<ClassTutorPreview> {
+  const ids = [...follow.moved, ...follow.needsTeacher].map((one) => one.lessonId);
+  const lessons =
+    ids.length === 0
+      ? []
+      : await transaction
+          .selectFrom('lessons')
+          .innerJoin('subjects', 'subjects.id', 'lessons.subject_id')
+          .select([
+            'lessons.id',
+            'lessons.starts_at',
+            'lessons.ends_at',
+            'subjects.name_uz',
+            'subjects.name_ru',
+            'subjects.name_en',
+          ])
+          .where('lessons.id', 'in', ids)
+          .execute();
+  const lessonOf = (id: string) => {
+    const found = lessons.find((one) => one.id === id);
+    if (found === undefined) {
+      throw new Error('previewOf: a lesson of the follow is not readable');
+    }
+    return {
+      lessonId: found.id,
+      startsAt: found.starts_at.toISOString(),
+      endsAt: found.ends_at.toISOString(),
+      subjectNames: { uz: found.name_uz, ru: found.name_ru, en: found.name_en },
+    };
+  };
+  const staffIds = [...new Set(follow.moved.map((one) => one.to))];
+  const people =
+    staffIds.length === 0
+      ? []
+      : await transaction
+          .selectFrom('staff')
+          .select(['id', 'first_name', 'last_name'])
+          .where('id', 'in', staffIds)
+          .execute();
+  const nameOf = (id: string) => {
+    const found = people.find((one) => one.id === id);
+    return found?.first_name == null || found.last_name == null
+      ? null
+      : { firstName: found.first_name, lastName: found.last_name };
+  };
+  const otherBranches = [
+    ...new Set(
+      follow.needsTeacher.flatMap((one) =>
+        one.clashes.map((clash) => clash.branchId).filter((id) => id !== branchId),
+      ),
+    ),
+  ];
+  const branches =
+    otherBranches.length === 0
+      ? []
+      : await transaction
+          .selectFrom('branches')
+          .select(['id', 'name'])
+          .where('id', 'in', otherBranches)
+          .execute();
+  const byStart = <T extends { startsAt: string; lessonId: string }>(a: T, b: T) =>
+    a.startsAt.localeCompare(b.startsAt) || a.lessonId.localeCompare(b.lessonId);
+  return {
+    moved: follow.moved
+      .map((one) => ({ ...lessonOf(one.lessonId), to: nameOf(one.to) }))
+      .sort(byStart),
+    needsTeacher: follow.needsTeacher
+      .map((one) => ({
+        ...lessonOf(one.lessonId),
+        clashes: one.clashes.map((clash) => ({
+          startsAt: clash.startsAt.toISOString(),
+          endsAt: clash.endsAt.toISOString(),
+          branchName:
+            clash.branchId === branchId
+              ? null
+              : (branches.find((branch) => branch.id === clash.branchId)?.name ?? ''),
+        })),
+      }))
+      .sort(byStart),
+    draftRows: follow.draftRows.length,
+    draftEntriesRemoved: follow.draftEntriesRemoved.length,
+  };
 }

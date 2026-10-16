@@ -14,6 +14,7 @@ import {
   classSeatsSchema,
   classTutorEndSchema,
   classTutorGiveSchema,
+  classTutorPreviewSchema,
   classTutorParamsSchema,
   tutorCandidateListSchema,
   type ClassCreate,
@@ -30,6 +31,7 @@ import {
   type ClassSeatsQuery,
   type ClassTutorEnd,
   type ClassTutorGive,
+  type ClassTutorPreview,
   type ClassTutorParams,
   type TutorCandidateList,
 } from '@sodiq/shared';
@@ -170,6 +172,23 @@ export class ClassesController {
     @RequestId() requestId: string,
   ): Promise<ClassDetail> {
     return this.tutors.give(access, params.id, give, requestId);
+  }
+
+  /**
+   * What a give would do to the class's Tutor lessons, written nowhere (task
+   * 3.6c-2, decision 10): the same body, permission and refusals as the give.
+   */
+  @Post(':id/tutors/preview')
+  @HttpCode(200)
+  @Requires('classes', 'edit')
+  @Returns(classTutorPreviewSchema)
+  previewGive(
+    @CurrentAccess() access: Access,
+    @ValidParams(classParamsSchema) params: ClassParams,
+    @ValidBody(classTutorGiveSchema) give: ClassTutorGive,
+    @RequestId() requestId: string,
+  ): Promise<ClassTutorPreview> {
+    return this.tutors.preview(access, params.id, give, requestId);
   }
 
   @Post(':id/tutors/:tutorId/end')

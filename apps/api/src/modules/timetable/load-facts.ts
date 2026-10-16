@@ -1,15 +1,23 @@
-import { instructionLanguageSchema, listName, type ErrorCode, type LoadRow } from '@sodiq/shared';
+import {
+  classTutorKindSchema,
+  instructionLanguageSchema,
+  listName,
+  type ErrorCode,
+  type LoadRow,
+} from '@sodiq/shared';
 import {
   blockOf,
   blockProblems,
   loadRowProblems,
   splitAndWhole,
+  tutorAt,
   twoGradeSlots,
   type BlockGroup,
   type LoadProblem,
   type LoadSubject,
   type LoadTeacher,
   type LoadUnit,
+  type TutorRow,
 } from '@sodiq/timetable-rules';
 import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
@@ -35,6 +43,9 @@ export const LOAD_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   load_group_subject: 'load_group_subject',
   load_subject_archived: 'load_subject_archived',
   load_subject_grade: 'load_subject_grade',
+  // Task 3.6c-2 (db/migrations/0067).
+  load_no_tutor: 'load_no_tutor',
+  load_tutor_row_teacher: 'load_tutor_row_teacher',
   load_teacher_branch: 'load_teacher_branch',
   load_teacher_status: 'load_teacher_status',
   load_teacher_subject: 'load_teacher_subject',
@@ -73,8 +84,6 @@ export interface UnitFacts {
   readonly id: string;
   readonly name: string;
   readonly unit: LoadUnit;
-  /** The class's Tutor on the start date: the main one, else the acting one (correction 1). */
-  readonly mainTutor: string | null;
 }
 
 export interface SubjectFacts extends LoadSubject {
@@ -111,11 +120,70 @@ const unique = (ids: readonly (string | null)[]): string[] =>
   [...new Set(ids.filter((id): id is string => id !== null))].sort();
 
 /**
- * The classes named, with their Tutors whose rows overlap the start date in
- * the branch's time zone (correction 4: from 00:00 of that day to 00:00 of
- * the next, the Tutor found through the account of the assignment, as
- * `teaching_load_rows_check` reads it). Only the classes of the branch.
+ * The rows of `class_tutors` of the classes named, with the staff record of
+ * each, found through the account of the assignment, as `class_tutor_on`
+ * reads it (db/migrations/0067). Read in a statement of its own, so a caller
+ * that locked first sees a change committed before its locks.
  */
+export async function readTutorRows(
+  transaction: Transaction,
+  classIds: readonly string[],
+): Promise<Map<string, TutorRow[]>> {
+  const found = new Map<string, TutorRow[]>();
+  const wanted = unique(classIds);
+  if (wanted.length === 0) {
+    return found;
+  }
+  const rows = await transaction
+    .selectFrom('class_tutors')
+    .innerJoin('assignments', 'assignments.id', 'class_tutors.assignment_id')
+    .innerJoin('staff', 'staff.account_id', 'assignments.account_id')
+    .select([
+      'class_tutors.class_id',
+      'class_tutors.kind',
+      'class_tutors.valid_from',
+      'class_tutors.valid_until',
+      'staff.id as staff_id',
+    ])
+    .where('class_tutors.class_id', 'in', wanted)
+    .orderBy('class_tutors.class_id')
+    .orderBy('class_tutors.valid_from')
+    .orderBy('class_tutors.id')
+    .execute();
+  for (const row of rows) {
+    const own = found.get(row.class_id) ?? [];
+    own.push({
+      staffId: row.staff_id,
+      kind: classTutorKindSchema.parse(row.kind),
+      validFrom: row.valid_from,
+      validUntil: row.valid_until,
+    });
+    found.set(row.class_id, own);
+  }
+  return found;
+}
+
+/**
+ * The moment a version reads its Tutors at (task 3.6c-2, decision 3): the last
+ * moment of the later of its start date and today in branch time (`statusOn`),
+ * the end of that day less one millisecond, as `class_tutor_on` reads the
+ * day's end.
+ */
+export async function versionTutorMoment(
+  transaction: Transaction,
+  context: Pick<VersionContext, 'statusOn' | 'timeZone'>,
+): Promise<Date> {
+  const { rows } = await sql<{ day_end: Date }>`
+    select ((${context.statusOn}::date + 1)::timestamp at time zone ${context.timeZone}) as day_end
+  `.execute(transaction);
+  const dayEnd = rows[0]?.day_end;
+  if (dayEnd === undefined) {
+    throw new Error('versionTutorMoment: no answer');
+  }
+  return new Date(dayEnd.getTime() - 1);
+}
+
+/** The classes named, with the class's Tutor of the version (`tutorAt`). Only the classes of the branch. */
 export async function readClassFacts(
   transaction: Transaction,
   context: VersionContext,
@@ -132,24 +200,15 @@ export async function readClassFacts(
     .where('id', 'in', wanted)
     .where('branch_id', '=', context.branchId)
     .execute();
-  const tutors = await sql<{ class_id: string; staff_id: string; kind: string }>`
-    select ct.class_id, s.id as staff_id, ct.kind
-    from class_tutors ct
-    join assignments a on a.id = ct.assignment_id
-    join staff s on s.account_id = a.account_id
-    where ct.class_id in (${sql.join(wanted)})
-      and tstzrange(ct.valid_from, ct.valid_until) && tstzrange(
-        ${context.startsOn}::date::timestamp at time zone ${context.timeZone},
-        (${context.startsOn}::date + 1)::timestamp at time zone ${context.timeZone}
-      )
-    order by ct.class_id, (ct.kind = 'tutor') desc, ct.valid_from, s.id
-  `.execute(transaction);
+  const tutors = await readTutorRows(
+    transaction,
+    classes.map((row) => row.id),
+  );
+  const moment = await versionTutorMoment(transaction, context);
   for (const row of classes) {
-    const own = tutors.rows.filter((tutor) => tutor.class_id === row.id);
     found.set(row.id, {
       id: row.id,
       name: row.name,
-      mainTutor: own[0]?.staff_id ?? null,
       unit: {
         kind: 'class',
         yearId: row.academic_year_id,
@@ -157,7 +216,7 @@ export async function readClassFacts(
         grades: [row.grade],
         language: row.language,
         subjectId: null,
-        tutorStaffIds: own.map((tutor) => tutor.staff_id),
+        tutorOnStart: tutorAt(tutors.get(row.id) ?? [], moment),
       },
     });
   }
@@ -191,7 +250,6 @@ export async function readGroupFacts(
     found.set(row.id, {
       id: row.id,
       name: row.name,
-      mainTutor: null,
       unit: {
         kind: 'group',
         yearId: row.academic_year_id,
@@ -201,7 +259,7 @@ export async function readGroupFacts(
         ].sort((a, b) => a - b),
         language: row.language,
         subjectId: row.subject_id,
-        tutorStaffIds: [],
+        tutorOnStart: null,
       },
     });
   }

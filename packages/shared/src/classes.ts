@@ -173,6 +173,47 @@ export const classTutorGiveSchema = z
 
 export type ClassTutorGive = z.infer<typeof classTutorGiveSchema>;
 
+/**
+ * What a give would do to the class's Tutor lessons (task 3.6c-2, decision
+ * 10; owner's answer 1 of 16 October 2026: the clashing lessons "are listed
+ * in the appointment's preview"): the dated lessons that go to a Tutor, those
+ * that will need a teacher with what they clash with (only the branch of a
+ * clash in another branch, decision 13), and the draft rows and pattern
+ * entries that change. Nothing is written.
+ */
+export const classTutorPreviewSchema = z.object({
+  moved: z.array(
+    z.object({
+      lessonId: z.uuid(),
+      startsAt: z.iso.datetime(),
+      endsAt: z.iso.datetime(),
+      subjectNames: z.object({ uz: z.string(), ru: z.string(), en: z.string() }),
+      to: personNameSchema.nullable(),
+    }),
+  ),
+  needsTeacher: z.array(
+    z.object({
+      lessonId: z.uuid(),
+      startsAt: z.iso.datetime(),
+      endsAt: z.iso.datetime(),
+      subjectNames: z.object({ uz: z.string(), ru: z.string(), en: z.string() }),
+      /** Empty: no Tutor is in force at the lesson's start. */
+      clashes: z.array(
+        z.object({
+          startsAt: z.iso.datetime(),
+          endsAt: z.iso.datetime(),
+          /** `null`: this branch. */
+          branchName: z.string().nullable(),
+        }),
+      ),
+    }),
+  ),
+  draftRows: z.int().min(0),
+  draftEntriesRemoved: z.int().min(0),
+});
+
+export type ClassTutorPreview = z.infer<typeof classTutorPreviewSchema>;
+
 /** The end of a Tutor row from a date: today ends it now, a later date at 00:00 of that day. */
 export const classTutorEndSchema = z.object({ from: schoolDateSchema });
 

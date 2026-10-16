@@ -26,6 +26,7 @@ import {
   classWeekLessons,
   firstOn,
   freeSlots,
+  isTutorRow,
   lessonIntervals,
   loadBlocks,
   loadRowProblems,
@@ -65,10 +66,28 @@ import {
   type VersionContext,
 } from './load-facts.js';
 import { blockRowOf, readBlockGroups } from './load-blocks.js';
+import { auditOf, followChanged, followVersion } from './tutor-lessons.js';
 import { dayOf, loadStore } from '../setup/day-template-state.js';
 import { isWithdrawn } from '../setup/dated-rows.js';
 
 const refused = (code: ErrorCode): ApiException => new ApiException(code, 409);
+
+/**
+ * Task 3.6c-2, decision 1: nobody names the teacher of a Tutor row
+ * (`load_tutor_row_teacher`), and every other row needs one
+ * (`load_teacher_needed`); 422 on `teacherId`.
+ */
+const teacherField = (code: 'load_tutor_row_teacher' | 'load_teacher_needed'): ApiException =>
+  new ApiException(code, 422, undefined, [
+    {
+      path: 'teacherId',
+      code,
+      message:
+        code === 'load_tutor_row_teacher'
+          ? "The class's Tutor holds this row."
+          : 'A teacher or a vacancy is needed.',
+    },
+  ]);
 
 /**
  * The subjects of rows about to be written FOR KEY SHARE in the order of their
@@ -336,7 +355,14 @@ export class Timetable {
           const copied: StoredLoadRow[] = [];
           const left: LeftRow[] = [];
           if (source !== undefined) {
-            const rows = await this.rowsOf(transaction, source.id);
+            // Task 3.6c-2, decision 5: a Tutor row is copied with the class's
+            // Tutor of the new draft; with none it keeps its teacher and is
+            // left with `load_no_tutor`.
+            const rows = await this.withVersionTutors(
+              transaction,
+              context,
+              await this.rowsOf(transaction, source.id),
+            );
             // The teachers FOR KEY SHARE in the order of their id before their
             // statuses are read, as a row write does, so a vacancy close at the
             // same moment leaves its row in `left_rows` rather than failing
@@ -466,6 +492,10 @@ export class Timetable {
             })
             .where('id', '=', id)
             .execute();
+          // Task 3.6c-2, decision 5: the Tutor rows take the Tutor of the new
+          // start date.
+          const follow =
+            after.startsOn === before.startsOn ? null : await followVersion(transaction, id);
           await this.audit.record(transaction, {
             branchId,
             actorId: access.accountId,
@@ -478,7 +508,12 @@ export class Timetable {
                 ? {}
                 : { leftRows: version.left_rows as JsonValue }),
             },
-            newValue: changes.newValue,
+            newValue: {
+              ...changes.newValue,
+              ...(follow !== null && followChanged(follow)
+                ? { tutorLessons: auditOf(follow) }
+                : {}),
+            },
             requestId,
           });
           return this.answerOf(transaction, id);
@@ -530,6 +565,21 @@ export class Timetable {
         throw notFound();
       }
       const all = await readTeacherFacts(transaction, context, 'branch');
+      // Task 3.6c-2, decision 1: a Tutor row holds the class's Tutor alone.
+      if (isTutorRow(unit.unit, subject)) {
+        const tutorId = unit.unit.tutorOnStart;
+        const tutor = tutorId === null ? undefined : all.get(tutorId);
+        return {
+          tutorRow: true,
+          teachers:
+            tutor === undefined
+              ? []
+              : [{ id: tutor.id, kind: tutor.kind, name: tutor.name, tutor: true }],
+          defaultTeacherId: tutor?.id ?? null,
+          excluded: [],
+          noTutor: tutor === undefined,
+        };
+      }
       const otherParts = await this.otherPartsTeachers(
         transaction,
         context,
@@ -586,11 +636,8 @@ export class Timetable {
       excluded.sort(
         (a, b) => (a.name ?? '').localeCompare(b.name ?? '') || a.id.localeCompare(b.id),
       );
-      const tutors = unit.unit.tutorStaffIds;
-      const rank = (teacherId: string) => {
-        const at = tutors.indexOf(teacherId);
-        return at === -1 ? tutors.length : at;
-      };
+      const tutorId = unit.unit.tutorOnStart;
+      const rank = (teacherId: string) => (teacherId === tutorId ? 0 : 1);
       fit.sort(
         (a, b) =>
           rank(a.id) - rank(b.id) ||
@@ -598,18 +645,17 @@ export class Timetable {
           (a.name ?? '').localeCompare(b.name ?? '') ||
           a.id.localeCompare(b.id),
       );
-      const preselect = subject.tutorSubject && unit.unit.kind === 'class' ? unit.mainTutor : null;
       return {
+        tutorRow: false,
         teachers: fit.map((teacher) => ({
           id: teacher.id,
           kind: teacher.kind,
           name: teacher.name,
-          tutor: tutors.includes(teacher.id),
+          tutor: teacher.id === tutorId,
         })),
-        defaultTeacherId:
-          preselect !== null && fit.some((teacher) => teacher.id === preselect) ? preselect : null,
+        defaultTeacherId: null,
         excluded,
-        noTutor: subject.tutorSubject && unit.unit.kind === 'class' && tutors.length === 0,
+        noTutor: false,
       };
     });
   }
@@ -816,7 +862,22 @@ export class Timetable {
           if (subject === undefined) {
             throw notFound();
           }
-          const teacher = await this.teacherOf(transaction, context, input.teacherId);
+          // Task 3.6c-2, decision 1: the server writes a Tutor row's teacher.
+          let teacherId: string;
+          if (isTutorRow(unit.unit, subject)) {
+            if (input.teacherId !== null) {
+              throw teacherField('load_tutor_row_teacher');
+            }
+            if (unit.unit.tutorOnStart === null) {
+              this.refuse(['load_no_tutor']);
+            }
+            teacherId = unit.unit.tutorOnStart ?? '';
+          } else if (input.teacherId === null) {
+            throw teacherField('load_teacher_needed');
+          } else {
+            teacherId = input.teacherId.toLowerCase();
+          }
+          const teacher = await this.teacherOf(transaction, context, teacherId);
           const room = await this.roomOf(transaction, context, input.roomId);
           // Task 3.4b: the row among the version's rows, for its block and the
           // split-or-whole rule (the version is locked FOR UPDATE).
@@ -825,7 +886,7 @@ export class Timetable {
             class_id: input.classId === null ? null : input.classId.toLowerCase(),
             group_id: input.groupId === null ? null : input.groupId.toLowerCase(),
             subject_id: input.subjectId.toLowerCase(),
-            teacher_id: input.teacherId.toLowerCase(),
+            teacher_id: teacherId,
             lessons_per_week: input.lessonsPerWeek,
             room_id: input.roomId === null ? null : input.roomId.toLowerCase(),
             room_type: input.roomType,
@@ -854,7 +915,7 @@ export class Timetable {
               class_id: input.classId,
               group_id: input.groupId,
               subject_id: input.subjectId,
-              teacher_id: input.teacherId,
+              teacher_id: teacherId,
               lessons_per_week: input.lessonsPerWeek,
               room_id: input.roomId,
               room_type: input.roomType,
@@ -902,9 +963,20 @@ export class Timetable {
           const version = await this.lockDraft(transaction, branchId, id);
           const context = await this.contextOf(transaction, version);
           const before = await this.rowOf(transaction, id, rowId);
+          // Task 3.6c-2, decision 1: nobody names the teacher of a Tutor row;
+          // `null` keeps the teacher of the row.
+          const tutorRow =
+            before.class_id !== null && (await this.isTutorSubject(transaction, before.subject_id));
+          if (tutorRow && input.teacherId !== null) {
+            throw teacherField('load_tutor_row_teacher');
+          }
+          if (!tutorRow && input.teacherId === null) {
+            throw teacherField('load_teacher_needed');
+          }
           const after: StoredLoadRow = {
             ...before,
-            teacher_id: input.teacherId.toLowerCase(),
+            teacher_id:
+              input.teacherId === null ? before.teacher_id : input.teacherId.toLowerCase(),
             lessons_per_week: input.lessonsPerWeek,
             room_id: input.roomId === null ? null : input.roomId.toLowerCase(),
             room_type: input.roomType,
@@ -1175,6 +1247,47 @@ export class Timetable {
         },
       ]);
     }
+  }
+
+  /** Whether the subject is of the Tutors department (3.4a decision 2). */
+  private async isTutorSubject(transaction: Transaction, subjectId: string): Promise<boolean> {
+    const found = await transaction
+      .selectFrom('subjects')
+      .innerJoin('departments', 'departments.id', 'subjects.department_id')
+      .select('departments.tutors')
+      .where('subjects.id', '=', subjectId)
+      .executeTakeFirst();
+    return found?.tutors === true;
+  }
+
+  /**
+   * The rows with the teacher of each Tutor row set to the class's Tutor of
+   * the version, when the class has one (task 3.6c-2, decision 5); the others
+   * as they are.
+   */
+  private async withVersionTutors(
+    transaction: Transaction,
+    context: VersionContext,
+    rows: readonly StoredLoadRow[],
+  ): Promise<StoredLoadRow[]> {
+    const subjects = await readSubjectFacts(
+      transaction,
+      rows.map((row) => row.subject_id),
+    );
+    const classes = await readClassFacts(
+      transaction,
+      context,
+      rows.flatMap((row) => (row.class_id === null ? [] : [row.class_id])),
+    );
+    return rows.map((row) => {
+      const subject = subjects.get(row.subject_id);
+      const unit = row.class_id === null ? undefined : classes.get(row.class_id);
+      if (subject === undefined || unit === undefined || !isTutorRow(unit.unit, subject)) {
+        return row;
+      }
+      const tutor = unit.unit.tutorOnStart;
+      return tutor === null ? row : { ...row, teacher_id: tutor };
+    });
   }
 
   /** The class or group of a row, of the branch; 404 otherwise. */
