@@ -454,7 +454,7 @@ export class StudentStatuses {
         const before: unknown = written?.old_value;
         const grade =
           typeof before === 'object' && before !== null && 'grade' in before
-            ? (before as { grade: unknown }).grade
+            ? before.grade
             : undefined;
         if (typeof grade === 'number') {
           await transaction.updateTable('students').set({ grade }).where('id', '=', id).execute();
