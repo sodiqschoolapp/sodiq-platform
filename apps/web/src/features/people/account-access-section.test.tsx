@@ -36,7 +36,15 @@ const ODIL: StaffListItem = {
   fatherName: null,
   categories: ['teacher'],
   branches: [{ branchId: NORTH.id, name: 'North', main: true }],
-  divisions: [{ divisionId: ACADEMIC.id, departmentId: null, main: true, departmentSince: null }],
+  divisions: [
+    {
+      divisionId: ACADEMIC.id,
+      departmentId: null,
+      main: true,
+      departmentSince: null,
+      departmentMove: null,
+    },
+  ],
   subjects: [],
   languages: [],
   phone: '+998901112244',

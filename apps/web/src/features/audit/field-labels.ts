@@ -54,6 +54,8 @@ const STAFF: Record<string, ParseKeys> = {
   divisions: 'people.staff.divisions',
   // Task 3.4c: the start date of a department move.
   departmentStartsOn: 'people.staff.departmentStartsOn',
+  // Task 3.6b-3: a planned move cancelled.
+  departmentMoveCancelled: 'people.staff.departmentMoveCancelled',
   branches: 'people.staff.branches',
   subjects: 'people.staff.subjects',
   grades: 'people.staff.grades',
@@ -94,6 +96,8 @@ const SUBJECT: Record<string, ParseKeys> = {
   departmentId: 'setup.subjects.department',
   // Task 3.4c: the start date of a department move.
   departmentStartsOn: 'setup.subjects.departmentStartsOn',
+  // Task 3.6b-3: a planned move cancelled.
+  departmentMoveCancelled: 'setup.subjects.departmentMoveCancelled',
   grades: 'setup.subjects.grades',
   colour: 'setup.subjects.colour',
   journalType: 'setup.subjects.journalType',

@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 16 October 2026: task 3.6b-3 The owner's answers of 15 October: the department move on its start date
+
+- Built L195 of issue #42. Migration 0065: `department_before` and `department_before_since` on `subjects` and `staff_divisions` (the department in force until `department_since`), with a check and a foreign key each; `department_id` keeps meaning the department after the move, which every rule reads (decision 1).
+- One rule in one place: `departmentChangeKind` (`packages/shared`) tells a move, a change of a plan, a cancel and no change, for the server and both forms; `departmentInForce` (`department-moves.ts`) gives what a record shows today in branch time, for the staff and subject answers, the exports and the personal-data report. A cancel runs the load check from today; the locked read must agree with the unlocked one on the kind and the stored plan (`staff_changed`, `subject_changed`).
+- Screens: "Moves to <department> on <date>" on the staff and subject panels; the forms start on the planned department and date and say "Cancels the move to …" for the department in force; the subject pickers (teacher, vacancy) offer the department after the move. The browser step of `e2e/department-move.ts` checks the panel line and the list.
+- Left out: the routing of open requests (7.2 and 8.4, their "From 3.6b-3" lines, decision 2); the handbook pages (3.7, its "From 3.6b-3" line). A move saved by 3.4c before 0065 with a start date after today keeps no department before it and shows the new one at once.
+
+The next sessions must know:
+
+- Read what a record shows of its department only through `departmentInForce`; a rule keeps reading `department_id`. A new writer of a department move goes through `departmentChangeOf` and `departmentColumnsAfter`.
+- The lists filter and sort by department in the browser over the answer's `departmentId`, the department in force; no server query filters by department.
+- The next task is 3.6c.
+
 ## 16 October 2026: task 3.6b-2 The owner's answers of 15 October: the year's dates and the return in August
 
 - Built L128 and L170 of issue #42. Migration 0064: `year_cut_holds` (one function for the trigger and the route), `academic_years_dates_guard` and `academic_years_dates_follow` in place of 0045's `academic_years_has_members`, and the shrink rule of class and group rows (0062) with one path added: a row may move its own end only in the exact shape of the follow (depth 2, a transaction-local mark `app.year_follow`, the year's old and new end).

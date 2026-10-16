@@ -465,6 +465,11 @@ function Overview({ staff, divisions }: { staff: StaffDetail; divisions: Divisio
         .map((division) => {
           const found = divisionName(division.divisionId);
           const department = departmentName(division.departmentId);
+          // Task 3.6b-3 (L195): the move shows from its start date.
+          const planned =
+            division.departmentMove === null
+              ? undefined
+              : departmentName(division.departmentMove.departmentId);
           const text = [
             found === undefined ? '' : nameOf(found.names, language),
             department === null || department === undefined
@@ -475,6 +480,12 @@ function Overview({ staff, divisions }: { staff: StaffDetail; divisions: Divisio
                     name: nameOf(department.names, language),
                     date: schoolDateText(division.departmentSince, language),
                   }),
+            division.departmentMove === null || planned === null || planned === undefined
+              ? null
+              : t('people.staff.departmentMove', {
+                  name: nameOf(planned.names, language),
+                  date: schoolDateText(division.departmentMove.startsOn, language),
+                }),
           ]
             .filter((part) => part !== null)
             .join(', ');
@@ -566,13 +577,19 @@ function TeachingSection({
   const { t, i18n } = useTranslation();
   const language = i18n.language;
   const academic = divisions.divisions.find((division) => division.builtIn);
-  const department = staff.divisions.find(
-    (division) => division.divisionId === academic?.id,
-  )?.departmentId;
+  // The department the server's rule reads: a planned move's, of the person
+  // and of the subject (task 3.6b-3, decision 1 and correction 1).
+  const academicDivision = staff.divisions.find((division) => division.divisionId === academic?.id);
+  const department =
+    academicDivision?.departmentMove?.departmentId ?? academicDivision?.departmentId;
   const offered = subjects.filter(
     (subject) =>
       staff.subjects.some((own) => own.subjectId === subject.id) ||
-      (subject.archivedAt === null && subject.departmentId === department),
+      (subject.archivedAt === null &&
+        (subject.departmentMove?.departmentId ?? subject.departmentId) === department),
+  );
+  const plannedDepartment = academic?.departments.find(
+    (one) => one.id === academicDivision?.departmentMove?.departmentId,
   );
   const subjectName = (id: string) => {
     const found = subjects.find((subject) => subject.id === id);
@@ -587,6 +604,14 @@ function TeachingSection({
   return (
     <section className="grid gap-3">
       <h3 className={SECTION_TITLE}>{t('people.staff.teachingTitle')}</h3>
+      {plannedDepartment !== undefined && academicDivision?.departmentMove != null && (
+        <p className="text-sm">
+          {t('people.staff.teachingPlannedDepartment', {
+            name: nameOf(plannedDepartment.names, language),
+            date: schoolDateText(academicDivision.departmentMove.startsOn, language),
+          })}
+        </p>
+      )}
       {panel.editing === 'teaching' && department !== undefined && department !== null ? (
         <TeachingForm
           key={`${staff.id}-teaching-${department}`}

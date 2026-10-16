@@ -455,6 +455,11 @@ export {
   type SubjectRecord,
 } from './subjects.js';
 export {
+  departmentChangeKind,
+  type DepartmentChangeKind,
+  type DepartmentShown,
+} from './department-moves.js';
+export {
   CONTRACT_TYPES,
   contractTypeSchema,
   DAILY_LESSONS_MAX,
@@ -472,6 +477,7 @@ export {
   staffCheckResultSchema,
   staffCheckSchema,
   staffDetailSchema,
+  departmentMoveSchema,
   staffStatusAnswerSchema,
   staffDivisionsSchema,
   staffIdentitySchema,

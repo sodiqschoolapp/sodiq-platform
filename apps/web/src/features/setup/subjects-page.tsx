@@ -380,6 +380,11 @@ export function SubjectsPage() {
             subject={row}
             departments={choices}
             departmentName={departmentNames.get(row.departmentId) ?? ''}
+            plannedDepartmentName={
+              row.departmentMove === null
+                ? ''
+                : (departmentNames.get(row.departmentMove.departmentId) ?? '')
+            }
             canEdit={canEdit}
             canArchive={canArchive}
             mayMoveDepartment={subjects.data?.mayMoveDepartment ?? false}

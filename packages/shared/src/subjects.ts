@@ -190,8 +190,18 @@ export const newSubjectRecordSchema = subjectRecordSchema.superRefine((subject, 
 /** A subject as the routes answer it, with the weights of the branch of the request. */
 export const subjectSchema = subjectFieldsSchema.extend({
   id: z.uuid(),
-  /** The start date of the department's last move (task 3.4c, decision 8); `null` if never moved. */
+  /**
+   * The department in force today in the branch time of the request (task
+   * 3.6b-3, decision 6): until a planned move's start date, the one before it.
+   */
+  departmentId: z.uuid(),
+  /** The date the department in force has held since (task 3.4c, decision 8); `null` if never moved. */
   departmentSince: schoolDateSchema.nullable(),
+  /**
+   * A move planned after today (task 3.6b-3): the department the rules
+   * already read, and the date the record shows it from; `null` without one.
+   */
+  departmentMove: z.object({ departmentId: z.uuid(), startsOn: schoolDateSchema }).nullable(),
   archivedAt: z.iso.datetime().nullable(),
   /** This branch's daily distribution; `null` while not set (decision 2). */
   daily: dailyWeightsSchema.nullable(),

@@ -315,6 +315,12 @@ export const staffStatusRowSchema = z.object({
 
 export type StaffStatusRow = z.infer<typeof staffStatusRowSchema>;
 
+/** A planned department move of a person's division (task 3.6b-3); the department is `null` for none. */
+export const departmentMoveSchema = z.object({
+  departmentId: z.uuid().nullable(),
+  startsOn: schoolDateSchema,
+});
+
 /** A person as the list answers it: the columns of `04` that exist so far. */
 export const staffListItemSchema = z.object({
   id: z.uuid(),
@@ -327,10 +333,19 @@ export const staffListItemSchema = z.object({
   divisions: z.array(
     z.object({
       divisionId: z.uuid(),
+      /**
+       * The department in force today in the branch time of the request (task
+       * 3.6b-3, decision 6): until a planned move's start date, the one before it.
+       */
       departmentId: z.uuid().nullable(),
       main: z.boolean(),
-      /** The start date of the department's last move (task 3.4c, decision 8); `null` if never moved. */
+      /** The date the department in force has held since (task 3.4c, decision 8); `null` if never moved. */
       departmentSince: schoolDateSchema.nullable(),
+      /**
+       * A move planned after today (task 3.6b-3): the department the rules
+       * already read, and the date the record shows it from; `null` without one.
+       */
+      departmentMove: departmentMoveSchema.nullable(),
     }),
   ),
   subjects: z.array(z.object({ subjectId: z.uuid(), grades: z.array(z.int()) })),

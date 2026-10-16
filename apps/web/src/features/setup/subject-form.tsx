@@ -1,9 +1,11 @@
 import {
+  departmentChangeKind,
   JOURNAL_TYPES,
   newSubjectRecordSchema,
   SUBJECT_COLOURS,
   SUBJECT_GRADES,
   subjectRecordSchema,
+  type DepartmentChangeKind,
   type Subject,
   type SubjectColour,
   type SubjectRecord,
@@ -25,6 +27,7 @@ import { useRecordForm } from '@/components/form/use-record-form';
 import { takenNameOf } from './division-panel';
 import { SubjectSwatch } from './subject-colour';
 import { WeightFields } from './weights-form';
+import { schoolDateText } from '@/lib/dates';
 
 /** The fields of the form: one per input, the daily parts under `daily`, and the total. */
 type SubjectField =
@@ -125,11 +128,22 @@ export function SubjectForm({
   onSave,
   onCancel,
 }: SubjectFormProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const switchValue = (on: boolean) => (on ? CHECKED : '');
-  /** Whether the department chosen moves the saved subject (task 3.4c, decision 2). */
-  const moves = (departmentId: string) =>
-    subject !== null && departmentId !== '' && departmentId !== subject.departmentId;
+  /**
+   * What the department and date chosen ask of the saved subject (task 3.4c,
+   * decision 2; task 3.6b-3): the server's own rule. The form starts on a
+   * planned move's department and date; the department in force cancels it.
+   */
+  const change = (departmentId: string, startsOn: string): DepartmentChangeKind =>
+    subject === null || departmentId === ''
+      ? 'none'
+      : departmentChangeKind(
+          { departmentId: subject.departmentId, move: subject.departmentMove },
+          departmentId,
+          startsOn === '' ? null : startsOn,
+        );
+  const planned = subject?.departmentMove ?? null;
   const form = useRecordForm<SubjectField, SubjectRecord>({
     schema: formSchema(subject === null),
     // Keyed by the subject alone: its own save keeps "Saved." (finding 18).
@@ -138,7 +152,7 @@ export function SubjectForm({
       nameUz: subject?.names.uz ?? '',
       nameRu: subject?.names.ru ?? '',
       nameEn: subject?.names.en ?? '',
-      departmentId: subject?.departmentId ?? '',
+      departmentId: subject?.departmentMove?.departmentId ?? subject?.departmentId ?? '',
       grades: listValue((subject?.grades ?? []).map(String)),
       colour: subject?.colour ?? 'blue',
       journalType: subject?.journalType ?? 'graded',
@@ -151,13 +165,13 @@ export function SubjectForm({
       dailyhomework: '',
       dailyratingExam: '',
       dailytotal: '',
-      departmentStartsOn: '',
+      departmentStartsOn: subject?.departmentMove?.startsOn ?? '',
     },
     read: (typed) => {
       const graded = typed.journalType === 'graded';
       return {
         // A move to another department carries a start date (task 3.4c).
-        ...(moves(typed.departmentId)
+        ...(change(typed.departmentId, typed.departmentStartsOn) === 'move'
           ? {
               departmentStartsOn: typed.departmentStartsOn === '' ? null : typed.departmentStartsOn,
             }
@@ -216,12 +230,23 @@ export function SubjectForm({
         note={departmentLocked ? t('setup.subjects.departmentLocked') : undefined}
         {...form.bind('departmentId')}
       />
-      {moves(form.bind('departmentId').value) && (
+      {(change(form.bind('departmentId').value, form.bind('departmentStartsOn').value) === 'move' ||
+        (planned !== null && form.bind('departmentId').value === planned.departmentId)) && (
         <DateField
           label={t('setup.subjects.departmentStartsOn')}
           {...form.bind('departmentStartsOn')}
         />
       )}
+      {planned !== null &&
+        change(form.bind('departmentId').value, form.bind('departmentStartsOn').value) ===
+          'cancel' && (
+          <p className="text-sm">
+            {t('setup.subjects.departmentMoveCancels', {
+              name: departments.find((one) => one.id === planned.departmentId)?.name ?? '',
+              date: schoolDateText(planned.startsOn, i18n.language),
+            })}
+          </p>
+        )}
       <CheckboxGroupField
         label={t('setup.subjects.grades')}
         options={SUBJECT_GRADES.map((grade) => ({

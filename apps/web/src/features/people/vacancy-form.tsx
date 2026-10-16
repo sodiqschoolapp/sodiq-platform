@@ -114,7 +114,9 @@ export function VacancyForm({
   const offered = subjects.filter(
     (subject) =>
       (vacancy?.subjects.some((own) => own.subjectId === subject.id) ?? false) ||
-      (subject.archivedAt === null && subject.departmentId === department),
+      // A planned move's department, which the server's rule reads (task 3.6b-3, correction 1).
+      (subject.archivedAt === null &&
+        (subject.departmentMove?.departmentId ?? subject.departmentId) === department),
   );
   const chosen = listValues(form.bind('subjects').value);
   return (

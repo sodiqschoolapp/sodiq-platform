@@ -38,6 +38,7 @@ const MANAGEMENT: Division = {
 
 const MATHEMATICS: Subject = {
   departmentSince: null,
+  departmentMove: null,
   id: uid(21),
   names: { uz: 'Matematika', ru: 'Математика', en: 'Mathematics' },
   departmentId: uid(11),
@@ -67,7 +68,13 @@ const AKMAL: StaffListItem = {
     { branchId: SOUTH.id, name: 'South', main: false },
   ],
   divisions: [
-    { divisionId: ACADEMIC.id, departmentId: uid(11), main: true, departmentSince: null },
+    {
+      divisionId: ACADEMIC.id,
+      departmentId: uid(11),
+      main: true,
+      departmentSince: null,
+      departmentMove: null,
+    },
   ],
   subjects: [{ subjectId: MATHEMATICS.id, grades: [5, 6] }],
   languages: ['uz', 'ru'],
@@ -85,7 +92,15 @@ const NODIRA: StaffListItem = {
   lastName: 'Aliyeva',
   categories: [],
   branches: [{ branchId: NORTH.id, name: 'North', main: true }],
-  divisions: [{ divisionId: MANAGEMENT.id, departmentId: null, main: true, departmentSince: null }],
+  divisions: [
+    {
+      divisionId: MANAGEMENT.id,
+      departmentId: null,
+      main: true,
+      departmentSince: null,
+      departmentMove: null,
+    },
+  ],
   subjects: [],
   languages: [],
   phone: '+998907654321',
@@ -850,7 +865,13 @@ describe('the actions of the staff panel', () => {
   it('switches the subjects off with its reason when the person has no Academic department', async () => {
     openList('super_admin', {}, 'en', {
       divisions: [
-        { divisionId: MANAGEMENT.id, departmentId: null, main: true, departmentSince: null },
+        {
+          divisionId: MANAGEMENT.id,
+          departmentId: null,
+          main: true,
+          departmentSince: null,
+          departmentMove: null,
+        },
       ],
     });
     const panel = await openAkmal();
@@ -1378,5 +1399,159 @@ describe('the personal data report link of a staff member', () => {
     const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
     await within(panel).findByRole('link', { name: en.audit.history });
     expect(within(panel).queryByRole('link', { name: en.people.report.link })).toBeNull();
+  });
+});
+
+// Task 3.6b-3, the plan approved on pull request #123 with corrections 1 and
+// 2. Owner's answer of 15 October 2026, L195: "the record shows the old
+// department until then". The rules read the department after the move from
+// the save (decision 1), so the subjects offered and the form follow it.
+describe('a planned department move (task 3.6b-3)', () => {
+  const NATIONAL = uid(12);
+  const WITH_NATIONAL: Division = {
+    ...ACADEMIC,
+    departments: [
+      ...ACADEMIC.departments,
+      {
+        id: NATIONAL,
+        names: { uz: 'Milliy', ru: 'Национальная', en: 'National' },
+        archivedAt: null,
+      },
+    ],
+  };
+  const HISTORY: Subject = {
+    ...MATHEMATICS,
+    id: uid(22),
+    names: { uz: 'Tarix', ru: 'История', en: 'History' },
+    departmentId: NATIONAL,
+  };
+  // In STEAM today, moving to National on 2 November.
+  const PHYSICS: Subject = {
+    ...MATHEMATICS,
+    id: uid(23),
+    names: { uz: 'Fizika', ru: 'Физика', en: 'Physics' },
+    departmentMove: { departmentId: NATIONAL, startsOn: '2026-11-02' },
+  };
+  const PLANNED: StaffListItem = {
+    ...AKMAL,
+    subjects: [],
+    divisions: [
+      {
+        divisionId: ACADEMIC.id,
+        departmentId: uid(11),
+        main: true,
+        departmentSince: '2026-09-15',
+        departmentMove: { departmentId: NATIONAL, startsOn: '2026-11-02' },
+      },
+    ],
+  };
+
+  const openPlanned = (staff: StaffListItem = PLANNED) => {
+    const calls = openList('super_admin', {
+      'GET /api/people/staff': () => json({ staff: [staff, NODIRA], today: '2026-10-10' }),
+      'GET /api/setup/divisions': () =>
+        json({ divisions: [WITH_NATIONAL, MANAGEMENT], staffCounts: [] }),
+      'GET /api/setup/subjects': () =>
+        json({ subjects: [MATHEMATICS, HISTORY, PHYSICS], mayMoveDepartment: true }),
+      [`GET /api/people/staff/${AKMAL.id}`]: () => json(detailOf(staff)),
+      [`PUT /api/people/staff/${AKMAL.id}`]: () => json(detailOf(staff)),
+    });
+    return { calls };
+  };
+
+  async function openPanel(path = PATH): Promise<HTMLElement> {
+    renderApp(path);
+    fireEvent.click(await screen.findByText('Karimov Akmal', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
+    await within(panel).findByRole('heading', { name: en.people.staff.statusTitle });
+    return panel;
+  }
+
+  it('shows the department in force with its date and the move with its start date', async () => {
+    openPlanned();
+    const panel = await openPanel();
+    const divisions = termOf(panel, en.people.staff.divisions) ?? '';
+    expect(divisions).toMatch(/^Academic, STEAM, since /);
+    expect(divisions).toMatch(/, Moves to National on /);
+    expect(
+      within(panel).getByText(/^The subjects offered are those of National, the department from /),
+    ).toBeDefined();
+  });
+
+  it('offers the subjects of the department after the move, of the person and of the subject (correction 1)', async () => {
+    openPlanned();
+    const panel = await openPanel();
+    const teaching = await edit(
+      panel,
+      en.people.staff.teachingOf.replace('{{name}}', 'Akmal Karimov'),
+      en.people.staff.changeTeaching,
+    );
+    expect(within(teaching).queryByLabelText('Mathematics')).toBeNull();
+    expect(within(teaching).getByLabelText('History')).toBeDefined();
+    expect(within(teaching).getByLabelText('Physics')).toBeDefined();
+  });
+
+  it('offers a STEAM teacher no subject planned to leave STEAM (correction 1)', async () => {
+    openPlanned({ ...AKMAL, subjects: [] });
+    const panel = await openPanel();
+    const teaching = await edit(
+      panel,
+      en.people.staff.teachingOf.replace('{{name}}', 'Akmal Karimov'),
+      en.people.staff.changeTeaching,
+    );
+    expect(within(teaching).getByLabelText('Mathematics')).toBeDefined();
+    expect(within(teaching).queryByLabelText('Physics')).toBeNull();
+    expect(within(teaching).queryByLabelText('History')).toBeNull();
+  });
+
+  it('filters the list by the department in force, as the server shows it (correction 2)', async () => {
+    openPlanned();
+    renderApp(`${PATH}?f=${encodeURIComponent(JSON.stringify({ department: uid(11) }))}`);
+    await waitFor(() => {
+      expect(rowsDrawn().map((row) => row[1])).toEqual(['Karimov Akmal']);
+    });
+  });
+
+  it('starts the form on the planned department and date; an edit of the phone sends no start date', async () => {
+    const { calls } = openPlanned();
+    const panel = await openPanel();
+    const record = await edit(panel, 'Akmal Karimov');
+    expect(within(record).getByLabelText<HTMLSelectElement>(en.people.staff.department).value).toBe(
+      NATIONAL,
+    );
+    expect(
+      within(record).getByLabelText<HTMLInputElement>(en.people.staff.departmentStartsOn).value,
+    ).toBe('2026-11-02');
+    fireEvent.change(within(record).getByLabelText(en.people.staff.phone), {
+      target: { value: '+998 90 123 45 68' },
+    });
+    fireEvent.click(within(record).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      const sent = calls.find((call) => call.route === `PUT /api/people/staff/${AKMAL.id}`);
+      expect(sent?.body).toMatchObject({
+        divisions: [{ divisionId: ACADEMIC.id, departmentId: NATIONAL, main: true }],
+      });
+      expect(sent?.body).not.toHaveProperty('departmentStartsOn');
+    });
+  });
+
+  it('says that the department in force cancels the move, and sends no start date', async () => {
+    const { calls } = openPlanned();
+    const panel = await openPanel();
+    const record = await edit(panel, 'Akmal Karimov');
+    expect(within(record).queryByText(/^Cancels the move to /)).toBeNull();
+    fireEvent.change(within(record).getByLabelText(en.people.staff.department), {
+      target: { value: uid(11) },
+    });
+    expect(within(record).getByText(/^Cancels the move to National on /)).toBeDefined();
+    expect(within(record).queryByLabelText(en.people.staff.departmentStartsOn)).toBeNull();
+    fireEvent.click(within(record).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      const sent = calls.find((call) => call.route === `PUT /api/people/staff/${AKMAL.id}`);
+      expect(sent?.body).toMatchObject({
+        divisions: [{ divisionId: ACADEMIC.id, departmentId: uid(11), main: true }],
+      });
+      expect(sent?.body).not.toHaveProperty('departmentStartsOn');
+    });
   });
 });

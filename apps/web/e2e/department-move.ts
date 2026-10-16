@@ -19,7 +19,8 @@ function schoolDay(days: number): string {
  * would have a teacher outside the subject's department; those loads are
  * listed for reassignment first." Task 3.4c, pull request #101. The Super
  * Admin moves Cosmology to National, sees its row of 7 Oxford listed, follows
- * the link to the draft, deletes the row and moves the subject. The seed holds
+ * the link to the draft, deletes the row and moves the subject, which shows
+ * STEAM with the move until its start date (task 3.6b-3). The seed holds
  * no fourth Super Admin, so this runs at the end of the years test's session.
  * All names are invented.
  */
@@ -107,5 +108,18 @@ export async function moveSubjectDepartment(page: Page): Promise<void> {
   const moved = await move();
   await expect(moved.getByRole('button', { name: en.form.edit, exact: true })).toBeVisible();
   await expect(moved.getByRole('status', { name: en.people.moveLoads.title })).toHaveCount(0);
-  await expect(moved.locator('dd').filter({ hasText: 'National' })).toContainText('since');
+  // Task 3.6b-3 (L195): the record shows STEAM until the start date, with the
+  // planned move; the list's department column too. The browser test runs on
+  // the server's real clock, so the start date is a week away.
+  const department = moved
+    .locator('dt', { hasText: texts.department })
+    .locator('xpath=following-sibling::dd[1]');
+  await expect(department).toContainText('STEAM');
+  await expect(department).toContainText('Moves to National on');
+  await expect(
+    page
+      .getByRole('row')
+      .filter({ hasText: 'Cosmology' })
+      .getByRole('cell', { name: 'STEAM', exact: true }),
+  ).toBeVisible();
 }

@@ -46,6 +46,7 @@ const ACADEMIC: Division = {
 
 const MATHEMATICS: Subject = {
   departmentSince: null,
+  departmentMove: null,
   id: uid(21),
   names: { uz: 'Matematika', ru: 'Математика', en: 'Mathematics' },
   departmentId: uid(11),
@@ -75,7 +76,13 @@ const AKMAL: StaffListItem = {
     { branchId: SOUTH.id, name: 'South', main: false },
   ],
   divisions: [
-    { divisionId: ACADEMIC.id, departmentId: uid(11), main: true, departmentSince: null },
+    {
+      divisionId: ACADEMIC.id,
+      departmentId: uid(11),
+      main: true,
+      departmentSince: null,
+      departmentMove: null,
+    },
   ],
   subjects: [{ subjectId: MATHEMATICS.id, grades: [5, 6] }],
   languages: ['uz'],
@@ -669,5 +676,52 @@ describe('the export of the vacancies list', () => {
     expect(headingsDrawn()).toEqual(
       VACANCY_EXPORT_COLUMNS.map((key) => EXPORT_TEXTS.en.vacancies.columns[key]),
     );
+  });
+});
+
+// Task 3.6b-3, correction 1 of the review of pull request #123: while a
+// subject's move is planned, the server's rule reads its department after the
+// move, so the form offers it there.
+describe('the subjects a vacancy is offered during a planned subject move (task 3.6b-3)', () => {
+  it('offers a subject under the department it moves to, not the one it leaves', async () => {
+    const NATIONAL = uid(12);
+    const WITH_NATIONAL: Division = {
+      ...ACADEMIC,
+      departments: [
+        ...ACADEMIC.departments,
+        {
+          id: NATIONAL,
+          names: { uz: 'Milliy', ru: 'Национальная', en: 'National' },
+          archivedAt: null,
+        },
+      ],
+    };
+    const PHYSICS: Subject = {
+      ...MATHEMATICS,
+      id: uid(23),
+      names: { uz: 'Fizika', ru: 'Физика', en: 'Physics' },
+      departmentMove: { departmentId: NATIONAL, startsOn: '2026-11-02' },
+    };
+    api('academic_vice_principal', {
+      'GET /api/setup/divisions': () => json({ divisions: [WITH_NATIONAL], staffCounts: [] }),
+      'GET /api/setup/subjects': () =>
+        json({ subjects: [MATHEMATICS, PHYSICS], mayMoveDepartment: false }),
+    });
+    renderApp('/people/vacancies');
+    const add = await screen.findByRole('button', { name: en.people.vacancies.add });
+    await waitFor(() => {
+      expect((add as HTMLButtonElement).disabled).toBe(false);
+    });
+    fireEvent.click(add);
+    const form = within(
+      await screen.findByRole('complementary', { name: en.people.vacancies.newTitle }),
+    ).getByRole('form', { name: en.people.vacancies.newTitle });
+    const department = within(form).getByLabelText(en.people.vacancies.department);
+    fireEvent.change(department, { target: { value: uid(11) } });
+    expect(await within(form).findByLabelText('Mathematics')).toBeDefined();
+    expect(within(form).queryByLabelText('Physics')).toBeNull();
+    fireEvent.change(department, { target: { value: NATIONAL } });
+    expect(await within(form).findByLabelText('Physics')).toBeDefined();
+    expect(within(form).queryByLabelText('Mathematics')).toBeNull();
   });
 });
