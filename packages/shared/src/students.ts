@@ -380,7 +380,18 @@ export type StudentCheckResult = z.infer<typeof studentCheckResultSchema>;
  * Personal data and the audit log; decision 4 of pull request #67): Basic for
  * all staff of the branch, then Contact, Identity and Financial.
  */
-export const STUDENT_FIELD_GROUPS = ['basic', 'contact', 'identity', 'financial'] as const;
+/**
+ * The groups of fields of a student (edge/people-roles-accounts, Personal data
+ * and the audit log); `diagnostic` is the diagnostic score, which has readers
+ * of its own (task 3.6a, owner's answer L50).
+ */
+export const STUDENT_FIELD_GROUPS = [
+  'basic',
+  'contact',
+  'identity',
+  'financial',
+  'diagnostic',
+] as const;
 
 export const studentFieldGroupSchema = z.enum(STUDENT_FIELD_GROUPS);
 
@@ -458,10 +469,15 @@ export const studentListSchema = z.object({
   canArchive: z.boolean(),
   /**
    * The groups this reader may export in the branch of the request (task
-   * 2.4b-2, decisions 1 to 3): empty without `students` `export`; Contact
-   * and Identity only for the Super Admin and the Academic Vice Principal.
+   * 2.4b-2, decisions 1 to 3; task 3.6a): empty without `students`
+   * `export`; the groups of each role in `EXPORT_GROUPS_OF_ROLE` of the API.
    */
   exportGroups: z.array(studentFieldGroupSchema),
+  /**
+   * The list holds the students the reader teaches only: a Teacher who reads
+   * no other student (task 3.6a, L48). The server always sends it.
+   */
+  taughtOnly: z.boolean().optional(),
   /** The reader reads the Financial group: the consent filter is offered (answer 23). */
   readsFinancial: z.boolean(),
   /** Today in the time zone of the branch of the request. */
@@ -512,14 +528,15 @@ export type StudentIdentity = z.infer<typeof studentIdentitySchema>;
 
 /**
  * The Financial group: "contract, scholarship, stipend" (edge), with the
- * previous school, the diagnostic score and the consent (decision 4).
+ * previous school and the consent (decision 4). The diagnostic score has
+ * readers of its own (task 3.6a, owner's answer L50): `diagnosticScore` of
+ * the record.
  */
 export const studentFinancialSchema = z.object({
   /** Every contract, newest first. */
   contracts: z.array(z.object({ id: z.uuid(), number: z.string(), signedOn: schoolDateSchema })),
   scholarship: scholarshipSchema,
   previousSchool: z.string().nullable(),
-  diagnosticScore: z.int().nullable(),
   consentSignedOn: schoolDateSchema.nullable(),
 });
 
@@ -548,6 +565,13 @@ export const studentDetailSchema = studentListItemSchema.extend({
   /** `identity` is `null` and a show is offered (the Principal). */
   identityHidden: z.boolean(),
   financial: studentFinancialSchema.nullable(),
+  /**
+   * The entrance diagnostic score (task 3.6a, owner's answer L50): read by
+   * the readers of Financial, the Head Teachers and the class Tutor; `null`
+   * when not typed or not read (`readsDiagnostic`).
+   */
+  diagnosticScore: z.int().nullable(),
+  readsDiagnostic: z.boolean(),
   statuses: z.array(studentStatusRowSchema),
   /** The Academic block (task 3.1b): the main classroom of the class shown, by name. */
   mainRoom: z.string().nullable(),

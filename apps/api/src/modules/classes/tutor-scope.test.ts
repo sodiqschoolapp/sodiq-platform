@@ -334,15 +334,26 @@ describe('the class scope of a Tutor', () => {
   });
 
   describe('the export (decisions 3 and 5)', () => {
-    it('writes the own class only, Basic columns only, and counts the rows left out', async () => {
+    // Task 3.6a, owner's answer L136 (was Basic columns only, decision 3 of
+    // pull request #90): every field the Tutor reads, Contact, the relatives
+    // and the diagnostic score included; not Identity or Financial.
+    it('writes the own class only, with every group the Tutor reads, and counts the rows left out', async () => {
       const ids = [own, planned, former, other, noClass];
       const response = await exportOf(ids, tutor, {
-        columns: ['uid', 'name', 'phone', 'contractNumber'],
+        columns: [
+          'uid',
+          'name',
+          'phone',
+          'mainContactPhone',
+          'diagnosticScore',
+          'address',
+          'contractNumber',
+        ],
       });
       expect(response.status).toBe(200);
       expect(response.headers['x-export-rows-left-out']).toBe('3');
       const file = await fileOf(response);
-      expect(file.columns).toBe('uid,name');
+      expect(file.columns).toBe('uid,name,phone,mainContactPhone,diagnosticScore');
       expect(file.sheet.rows.map((row) => row[0])).toEqual([
         await uidOf(own),
         await uidOf(planned),
@@ -350,7 +361,7 @@ describe('the class scope of a Tutor', () => {
       const [entry] = (await t.entries('student.export')).slice(-1);
       expect(entry).toMatchObject({
         assignment_id: tutorAssignment,
-        details: { rows: 2, rowsLeftOut: 3, leftOut: ['phone', 'contractNumber'] },
+        details: { rows: 2, rowsLeftOut: 3, leftOut: ['address', 'contractNumber'] },
       });
     });
 
@@ -384,6 +395,44 @@ describe('the class scope of a Tutor', () => {
       expect((await fileOf(response)).sheet.rows).toHaveLength(2);
       const [entry] = (await t.entries('student.export')).slice(-1);
       expect(entry?.assignment_id).toBe(principal);
+    });
+
+    // Task 3.6a, decision 15 of pull request #118: a Tutor who is also a
+    // Head Teacher exports the whole branch, Contact and the score in the
+    // rows of own class only (edge: contact fields of rows beyond own class
+    // are for the Super Admin, the Academic Vice Principal and the Head Tutor).
+    it('writes Contact and the score in own-class rows only for a Tutor who is also a Head Teacher', async () => {
+      for (const [id, phone, score] of [
+        [own, '+998901110001', 64],
+        [other, '+998901110002', 77],
+      ] as const) {
+        await t.database.migrator
+          .updateTable('students')
+          .set({ phone, diagnostic_score: score })
+          .where('id', '=', id)
+          .execute();
+      }
+      const response = await exportOf([own, other], tutorHeadTeacher, {
+        columns: ['uid', 'phone', 'diagnosticScore'],
+      });
+      expect(response.status).toBe(200);
+      expect(response.headers['x-export-rows-left-out']).toBeUndefined();
+      const file = await fileOf(response);
+      expect(file.columns).toBe('uid,phone,diagnosticScore');
+      const [ownRow, otherRow] = file.sheet.rows;
+      expect(ownRow?.[0]).toBe(await uidOf(own));
+      expect(ownRow?.[1]).toMatch(/^\+998 90 111 00 01$/);
+      expect(ownRow?.[2]).toBe(64);
+      expect(otherRow?.[0]).toBe(await uidOf(other));
+      expect(otherRow?.slice(1).filter((cell) => cell !== null && cell !== '')).toEqual([]);
+      // The log names the columns withheld from some rows (decision 15).
+      const [entry] = (await t.entries('student.export')).slice(-1);
+      expect(entry?.details).toMatchObject({
+        columns: ['uid', 'phone', 'diagnosticScore'],
+        leftOut: [],
+        partly: ['phone', 'diagnosticScore'],
+        rows: 2,
+      });
     });
 
     it('leaves the export of a class-wide reader whole, with no count', async () => {

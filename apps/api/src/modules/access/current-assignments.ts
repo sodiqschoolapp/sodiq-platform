@@ -37,6 +37,14 @@ export interface CurrentAssignment {
    * keeps it empty and fits no class.
    */
   classIds: readonly string[];
+  /**
+   * The groups of a Teacher assignment that the published teaching load in
+   * force gives the teacher, in small letters (task 3.6a, owner's answer L48;
+   * the taught classes are in `classIds`). Absent as the session reads it:
+   * the permission guard fills it in the branch of the request
+   * (`taught-scope.ts`); every other role has none.
+   */
+  groupIds?: readonly string[];
 }
 
 /**

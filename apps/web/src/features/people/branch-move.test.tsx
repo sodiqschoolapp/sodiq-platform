@@ -68,6 +68,8 @@ const detailOf = (fields: Partial<StudentDetail> = {}): StudentDetail => ({
   identityHidden: false,
   mainRoom: null,
   financial: null,
+  diagnosticScore: null,
+  readsDiagnostic: false,
   statuses: [{ status: 'active', from: '2026-09-02', until: null, cause: 'start', reason: null }],
   canEdit: true,
   canArchive: true,

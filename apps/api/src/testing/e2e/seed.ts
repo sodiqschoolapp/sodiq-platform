@@ -3357,6 +3357,222 @@ try {
   });
   seeded.handTest35cStays = { login: handStays.login, password: handStays.firstPassword };
 
+  // Task 3.6a (the owner's answers L32, L48, L59 on issue #42): a Teacher of
+  // 7 Oxford in the published load, with a student of 7 Oxford and one of 7
+  // Yale; a Head Tutor; a Head Teacher of Seismology and a Senior Head Teacher
+  // of it whose staff record is in another branch. All names are invented.
+  const whoBranch = await insertBranch(migrator, 'Who sees what browser test branch');
+  const whoOther = await insertBranch(migrator, 'Who sees what other branch');
+  const whoTeacher = await create('Dilshod', 'Aminov');
+  const whoHeadTutor = await create('Mohira', 'Saidova');
+  const whoHeadTeacher = await create('Ravshan', 'Tolipov');
+  const whoSenior = await create('Bahrom', 'Toshev');
+  const seismology = await migrator.transaction().execute(async (transaction) => {
+    const steam = await transaction
+      .selectFrom('departments')
+      .select('id')
+      .where('name_en', '=', 'STEAM')
+      .executeTakeFirstOrThrow();
+    return (
+      await transaction
+        .insertInto('subjects')
+        .values({
+          name_uz: 'Seysmologiya',
+          name_ru: 'Сейсмология',
+          name_en: 'Seismology',
+          department_id: steam.id,
+          grades: [7],
+          colour: 'indigo',
+          journal_type: 'graded',
+          rating_exam: false,
+          language_rule: true,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow()
+    ).id;
+  });
+  for (const [account, role, branchId] of [
+    [whoTeacher, 'teacher', whoBranch],
+    [whoHeadTutor, 'head_tutor', whoBranch],
+  ] as const) {
+    await transactions.run([branchId], (transaction) =>
+      assignments.give(transaction, { accountId: account.id, role, branchId, givenBy: null }),
+    );
+  }
+  await transactions.run([whoBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: whoHeadTeacher.id,
+      role: 'head_teacher',
+      branchId: whoBranch,
+      subjectIds: [seismology],
+      givenBy: null,
+    }),
+  );
+  await transactions.run([], (transaction) =>
+    assignments.give(transaction, {
+      accountId: whoSenior.id,
+      role: 'senior_head_teacher',
+      branchId: null,
+      subjectIds: [seismology],
+      givenBy: null,
+    }),
+  );
+  await migrator.transaction().execute(async (transaction) => {
+    const academic = await transaction
+      .selectFrom('divisions')
+      .select('id')
+      .where('name_en', '=', 'Academic')
+      .executeTakeFirstOrThrow();
+    const steam = await transaction
+      .selectFrom('departments')
+      .select('id')
+      .where('name_en', '=', 'STEAM')
+      .executeTakeFirstOrThrow();
+    const staffOf = async (input: {
+      accountId: string;
+      first: string;
+      last: string;
+      staffId: string;
+      phone: string;
+      branchId: string;
+    }) => {
+      const person = await transaction
+        .insertInto('staff')
+        .values({
+          kind: 'person',
+          staff_id: input.staffId,
+          account_id: input.accountId,
+          first_name: input.first,
+          last_name: input.last,
+          sex: 'male',
+          birth_date: '1986-02-03',
+          phone: input.phone,
+          admission_date: '2026-09-01',
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await transaction
+        .insertInto('staff_branches')
+        .values({ staff_id: person.id, branch_id: input.branchId, is_main: true })
+        .execute();
+      await transaction
+        .insertInto('staff_divisions')
+        .values({
+          staff_id: person.id,
+          division_id: academic.id,
+          department_id: steam.id,
+          is_main: true,
+        })
+        .execute();
+      await transaction
+        .insertInto('staff_languages')
+        .values({ staff_id: person.id, language: 'uz' })
+        .execute();
+      await transaction
+        .insertInto('staff_subjects')
+        .values({ staff_id: person.id, subject_id: seismology, grades: [7] })
+        .execute();
+      await transaction
+        .insertInto('staff_statuses')
+        .values({ staff_id: person.id, status: 'active', valid_from: '2026-09-01' })
+        .execute();
+      return person.id;
+    };
+    const teacherStaff = await staffOf({
+      accountId: whoTeacher.id,
+      first: 'Dilshod',
+      last: 'Aminov',
+      staffId: 'S-269361',
+      phone: '+998935553361',
+      branchId: whoBranch,
+    });
+    // The Senior Head Teacher's record is of the other branch only (L32).
+    await staffOf({
+      accountId: whoSenior.id,
+      first: 'Bahrom',
+      last: 'Toshev',
+      staffId: 'S-269362',
+      phone: '+998935553362',
+      branchId: whoOther,
+    });
+    const year = await transaction
+      .insertInto('academic_years')
+      .values({
+        branch_id: whoBranch,
+        start_date: startDate,
+        end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('quarters')
+      .values(
+        [1, 2, 3, 4].map((number) => ({ branch_id: whoBranch, academic_year_id: year.id, number })),
+      )
+      .execute();
+    const classIds = new Map<string, string>();
+    for (const name of ['Oxford', 'Yale']) {
+      const written = await transaction
+        .insertInto('classes')
+        .values({
+          branch_id: whoBranch,
+          academic_year_id: year.id,
+          grade: 7,
+          name,
+          language: 'uz',
+          max_size: 24,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      classIds.set(name, written.id);
+    }
+    for (const [uid, first, last, klass, phone] of [
+      ['9999831', 'Madina', 'Yoqubova', 'Oxford', '+998935553331'],
+      ['9999832', 'Javohir', 'Nurmatov', 'Yale', '+998935553332'],
+    ] as const) {
+      const id = await studentInClass(transaction, {
+        branch: whoBranch,
+        classId: classIds.get(klass) ?? null,
+        uid,
+        first,
+        last,
+        createdBy: whoHeadTutor.id,
+        phone,
+      });
+      await transaction
+        .updateTable('students')
+        .set({ diagnostic_score: 68 })
+        .where('id', '=', id)
+        .execute();
+    }
+    // The load is written into a draft and published here: publishing
+    // comes with task 5.5 (decision 4 of pull request #118).
+    const version = await transaction
+      .insertInto('timetable_versions')
+      .values({ branch_id: whoBranch, academic_year_id: year.id, number: 1, starts_on: startDate })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('teaching_load_rows')
+      .values({
+        branch_id: whoBranch,
+        version_id: version.id,
+        class_id: classIds.get('Oxford') ?? '',
+        subject_id: seismology,
+        teacher_id: teacherStaff,
+        lessons_per_week: 2,
+      })
+      .execute();
+    await transaction
+      .updateTable('timetable_versions')
+      .set({ status: 'published' })
+      .where('id', '=', version.id)
+      .execute();
+  });
+  seeded.whoTeacher = { login: whoTeacher.login, password: whoTeacher.firstPassword };
+  seeded.whoHeadTutor = { login: whoHeadTutor.login, password: whoHeadTutor.firstPassword };
+  seeded.whoHeadTeacher = { login: whoHeadTeacher.login, password: whoHeadTeacher.firstPassword };
+
   for (const branch of classBranches) {
     const years = await migrator
       .selectFrom('academic_years')

@@ -55,6 +55,14 @@ export interface ExportInput<Row, Column extends string> {
    * Absent for a list without a scope.
    */
   inScope?: (id: string) => boolean;
+  /**
+   * Whether a row written may carry a column the file holds (task 3.6a,
+   * decision 15 of pull request #118: a Tutor who is also a Head Teacher
+   * writes Contact in own-class rows only); its cells are empty otherwise.
+   * Absent when every row carries every column of the file. A column left
+   * empty in some rows is named in the audit entry's `partly`.
+   */
+  rowAllows?: (column: Column, id: string) => boolean;
   columns: Readonly<Record<Column, ExportColumn<Row>>>;
 }
 
@@ -95,9 +103,8 @@ export async function exportList<Row, Column extends string>(
     return { id, row };
   });
   const inScope = input.inScope;
-  const rows = found
-    .filter((one) => inScope === undefined || inScope(one.id))
-    .map((one) => one.row);
+  const kept = found.filter((one) => inScope === undefined || inScope(one.id));
+  const rows = kept.map((one) => one.row);
   const rowsLeftOut = inScope === undefined ? undefined : found.length - rows.length;
   if (found.length > 0 && rows.length === 0) {
     throw new ApiException('permission_denied', 403);
@@ -120,11 +127,24 @@ export async function exportList<Row, Column extends string>(
     .executeTakeFirstOrThrow();
   const today = schoolDateOf(clock.now(), branch.time_zone);
   const texts = EXPORT_TEXTS[language];
+  const rowAllows = input.rowAllows;
+  // Task 3.6a, decision 15: the columns withheld from some rows of the file.
+  const partly =
+    rowAllows === undefined
+      ? []
+      : columns.filter((column) => kept.some(({ id }) => !rowAllows(column, id)));
   const specs = columns.map((column) => input.columns[column]);
   const content = await writeWorkbook({
     name: texts[input.list].name,
     headings: specs.flatMap((spec) => spec.headings(texts)),
-    rows: rows.map((row) => specs.flatMap((spec) => spec.cells(row, texts, language))),
+    rows: kept.map(({ id, row }) =>
+      columns.flatMap((column) => {
+        const spec = input.columns[column];
+        return rowAllows === undefined || rowAllows(column, id)
+          ? spec.cells(row, texts, language)
+          : spec.headings(texts).map(() => null);
+      }),
+    ),
   });
   await audit.record(transaction, {
     branchId,
@@ -138,6 +158,7 @@ export async function exportList<Row, Column extends string>(
       filters: { ...input.request.filters },
       columns,
       leftOut,
+      ...(partly.length === 0 ? {} : { partly }),
       ...(rowsLeftOut === undefined ? {} : { rowsLeftOut }),
       rows: rows.length,
     },

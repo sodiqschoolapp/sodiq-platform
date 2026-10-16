@@ -11,7 +11,7 @@ import type {
 import { sql } from 'kysely';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
-import { studentClasses, studentReaderOf } from '../access/class-scope.js';
+import { NO_PLACES, studentPlaces, studentReaderOf } from '../access/class-scope.js';
 import type { Access } from '../access/permission.guard.js';
 import { membershipsOf } from '../classes/class-membership-rows.js';
 import { groupMembershipsOf } from '../classes/group-membership-rows.js';
@@ -67,8 +67,8 @@ export class StudentHistories {
         throw notFound();
       }
       const today = await this.students.todayIn(transaction, branchId);
-      const classes = (await studentClasses(transaction, today, id)).get(id) ?? [];
-      if (studentReaderOf(access, 'student_history', classes) === undefined) {
+      const places = (await studentPlaces(transaction, today, id)).get(id) ?? NO_PLACES;
+      if (studentReaderOf(access, 'student_history', places) === undefined) {
         throw new ApiException('permission_denied', 403);
       }
       const lines: Ordered[] = [];

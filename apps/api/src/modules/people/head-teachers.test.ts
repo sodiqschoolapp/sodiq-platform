@@ -880,7 +880,10 @@ describe('Head Teacher appointments', () => {
       expect(ids).not.toContain(other.assignmentId);
     });
 
-    it('refuses a Teacher, and names a holder of another branch by login only (decision 14)', async () => {
+    // Task 3.6a, owner's answer L32 (was the login only, decision 14 of #63):
+    // a holder whose record is in another branch is named in full, first and
+    // last name only (decisions 1 and 3 of pull request #118).
+    it('refuses a Teacher, and names a holder of another branch by full name', async () => {
       const sociology = await subject('Sociology');
       const southern = await appoint([sociology], { role: 'senior_head_teacher', branch: t.south });
 
@@ -888,8 +891,16 @@ describe('Head Teacher appointments', () => {
       const found = appointmentListSchema
         .parse((await list()).body)
         .appointments.find((appointment) => appointment.id === southern.assignmentId);
-      expect(found?.person.name).toBeNull();
+      expect(found?.person.name).toEqual({
+        firstName: 'Nodir',
+        lastName: expect.stringMatching(/^Sobirov/) as unknown,
+      });
       expect(found?.person.login).toMatch(/^n\.sobirov/);
+      // Nothing else of the record crosses: the raw answer holds the name and the login only.
+      const raw = (await list()).body as { appointments: { id: string; person: object }[] };
+      const person = raw.appointments.find((one) => one.id === southern.assignmentId)?.person;
+      expect(Object.keys(person ?? {}).sort()).toEqual(['login', 'name']);
+      expect(Object.keys(found?.person.name ?? {}).sort()).toEqual(['firstName', 'lastName']);
       const inSouth = appointmentListSchema
         .parse((await list(t.south)).body)
         .appointments.find((appointment) => appointment.id === southern.assignmentId);

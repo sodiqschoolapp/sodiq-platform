@@ -88,7 +88,7 @@ describe('student records', () => {
       address: student.identity.address ?? '',
       region: student.identity.region,
       previousSchool: student.financial.previousSchool ?? '',
-      diagnosticScore: student.financial.diagnosticScore,
+      diagnosticScore: student.diagnosticScore,
       scholarship: student.financial.scholarship,
       consentSignedOn: student.financial.consentSignedOn,
       contract: { number: contract.number, signedOn: contract.signedOn },
@@ -631,6 +631,8 @@ describe('student records', () => {
         expect(read.consentMissing).toBe(false);
         expect(read.identityHidden).toBe(false);
         expect(read.canEdit).toBe(true);
+        // Task 3.6a (L50): the score is read on its own.
+        expect(read).toMatchObject({ diagnosticScore: 74, readsDiagnostic: true });
       }
     });
 
@@ -642,25 +644,43 @@ describe('student records', () => {
       expect(read.financial).not.toBeNull();
       expect(read.consentMissing).toBe(false);
       expect(read.canEdit).toBe(false);
+      // Task 3.6a (L50): a reader of Financial reads the score.
+      expect(read).toMatchObject({ diagnosticScore: 74, readsDiagnostic: true });
       expect(JSON.stringify(read)).not.toContain(student.identity?.birthDate ?? 'missing');
       expect(JSON.stringify(read)).not.toContain(student.identity?.jshshir ?? 'missing');
     });
 
-    it('answers Basic and Contact to the Spiritual VP and the Head Tutor, no birth date or address', async () => {
-      for (const cookie of [spiritual, headTutor]) {
-        const read = await detail(student.id, cookie);
-        expect(read.contact).not.toBeNull();
-        expect(read.identity).toBeNull();
-        expect(read.identityHidden).toBe(false);
-        expect(read.financial).toBeNull();
-        // Task 2.4b-2: the consent is Financial too.
-        expect(read.consentMissing).toBeNull();
-        expect(JSON.stringify(read)).not.toContain('birthDate');
-        expect(JSON.stringify(read)).not.toContain('Navoiy');
-      }
+    it('answers Basic and Contact to the Spiritual VP, no birth date, address or score', async () => {
+      const read = await detail(student.id, spiritual);
+      expect(read.contact).not.toBeNull();
+      expect(read.identity).toBeNull();
+      expect(read.identityHidden).toBe(false);
+      expect(read.financial).toBeNull();
+      // Task 2.4b-2: the consent is Financial too.
+      expect(read.consentMissing).toBeNull();
+      // Task 3.6a (L50): the Spiritual VP is no reader of the score.
+      expect(read).toMatchObject({ diagnosticScore: null, readsDiagnostic: false });
+      expect(JSON.stringify(read)).not.toContain('birthDate');
+      expect(JSON.stringify(read)).not.toContain('Navoiy');
     });
 
-    it('answers Basic only to a Head Teacher and a Senior Head Teacher', async () => {
+    // Task 3.6a, owner's answer L59 (was Basic and Contact): the Head Tutor
+    // reads every group of every student of the branch, unhidden, with the
+    // consent and the reasons of the status rows.
+    it('answers every group to the Head Tutor, Identity unhidden', async () => {
+      const read = await detail(student.id, headTutor);
+      expect(read.contact).not.toBeNull();
+      expect(read.identity).toMatchObject({ address: 'Navoiy koʻchasi 5' });
+      expect(read.identityHidden).toBe(false);
+      expect(read.financial).not.toBeNull();
+      expect(read.consentMissing).toBe(false);
+      expect(read).toMatchObject({ diagnosticScore: 74, readsDiagnostic: true });
+      expect(read.canEdit).toBe(false);
+    });
+
+    // Task 3.6a, owner's answer L50: the Head Teachers read the score of every
+    // student they read; nothing else beyond Basic.
+    it('answers Basic and the diagnostic score to a Head Teacher and a Senior Head Teacher', async () => {
       for (const cookie of [headTeacher, seniorHeadTeacher]) {
         const read = await detail(student.id, cookie);
         expect(read.contact).toBeNull();
@@ -668,6 +688,7 @@ describe('student records', () => {
         expect(read.financial).toBeNull();
         expect(read.consentMissing).toBeNull();
         expect(read.identityHidden).toBe(false);
+        expect(read).toMatchObject({ diagnosticScore: 74, readsDiagnostic: true });
       }
     });
 
@@ -752,7 +773,8 @@ describe('student records', () => {
       ]);
       const read = await detail(student.id, cookie);
       expect(read.contact).not.toBeNull();
-      expect(read.identity).toBeNull();
+      // Task 3.6a (L59): the Head Tutor reads Identity too.
+      expect(read.identity).not.toBeNull();
     });
 
     it('names the Principal assignment on a show by a Head Teacher who is also the Principal', async () => {
@@ -854,7 +876,10 @@ describe('student records', () => {
           startsOn: '2026-09-02',
           photoId: null,
           // The consent is with the Financial readers (task 2.4b-2).
-          consentMissing: [t.admin, t.principal, t.vicePrincipal].includes(cookie) ? false : null,
+          // Task 3.6a (L59): the Head Tutor reads Financial.
+          consentMissing: [t.admin, t.principal, t.vicePrincipal, headTutor].includes(cookie)
+            ? false
+            : null,
           status: 'active',
           planned: null,
           // Task 3.1b: the class of the create, its Tutors, and its row in the version.
@@ -891,12 +916,15 @@ describe('student records', () => {
       expect(await ids(t.north, seniorHeadTeacher)).not.toContain(south.id);
     });
 
-    it('refuses a Teacher, and a Head Teacher in another branch', async () => {
-      refusedWith(
-        await t.get('/api/people/students', t.north, t.teacher),
-        403,
-        'permission_denied',
-      );
+    // Task 3.6a (L48; was refused): a Teacher lists the students taught,
+    // here none (no published load; people/who-sees-what.test.ts).
+    it('lists no student to a Teacher with no load, and refuses a Head Teacher in another branch', async () => {
+      const taught = await t.get('/api/people/students', t.north, t.teacher);
+      expect(taught.status, JSON.stringify(taught.body)).toBe(200);
+      expect(studentListSchema.parse(taught.body)).toMatchObject({
+        students: [],
+        exportGroups: [],
+      });
       refusedWith(
         await t.get('/api/people/students', t.south, headTeacher),
         403,

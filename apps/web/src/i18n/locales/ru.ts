@@ -1497,6 +1497,9 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       cancel: 'Отмена',
       emptyTitle: 'Учеников пока нет',
       empty: 'Добавьте первого ученика филиала.',
+      emptyTaughtTitle: 'Учеников пока нет',
+      emptyTaught:
+        'Здесь ученики классов и групп, которые вы ведёте по опубликованному расписанию. Пока у вас их нет.',
       uid: 'UID',
       name: 'Фамилия и имя',
       class: 'Класс',
@@ -1583,6 +1586,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         contact: 'Телефон и почта',
         identity: 'Документы, дата рождения и адрес',
         financial: 'Договор, стипендия и согласие',
+        diagnostic: 'Балл диагностического теста',
       },
       noConsent: 'Не подписано',
       choose: 'Выберите',

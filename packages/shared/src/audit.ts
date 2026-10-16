@@ -648,6 +648,8 @@ const NOT_IDENTITY_KEYS = new Set([
   'filters',
   'columns',
   'leftOut',
+  // Task 3.6a: the columns withheld from some rows of a file.
+  'partly',
   'rows',
   // Sign-in, accounts and roles: counts, moments and ids, nothing of a person
   'secondStep',

@@ -488,16 +488,25 @@ describe('close relatives', () => {
       expect(byPhone.relatives.map((one) => one.id)).toEqual([holder.relativeId]);
     });
 
-    it('lets the Principal read the list without a phone search', async () => {
+    // Task 3.6a, decision 7 of pull request #118 (Look first; was the editors
+    // only): the Principal searches the list by phone, as Ctrl+K does (L157).
+    it('lets the Principal read and search the list by phone, without edits', async () => {
+      const number = phone();
+      const holder = await withRelative(number);
       const list = relativeListSchema.parse(
         (await t.get('/api/people/relatives', t.north, t.principal)).body,
       );
-      expect(list).toMatchObject({ searchesPhone: false, canEdit: false });
-      refusedWith(
-        await t.get('/api/people/relatives?phone=901', t.north, t.principal),
-        403,
-        'permission_denied',
+      expect(list).toMatchObject({ searchesPhone: true, canEdit: false });
+      const byPhone = relativeListSchema.parse(
+        (
+          await t.get(
+            `/api/people/relatives?phone=${encodeURIComponent(number.slice(4))}`,
+            t.north,
+            t.principal,
+          )
+        ).body,
       );
+      expect(byPhone.relatives.map((one) => one.id)).toEqual([holder.relativeId]);
     });
 
     it('answers 404 for a relative of another branch only and an unknown one', async () => {
@@ -668,7 +677,11 @@ describe('close relatives', () => {
         identity: null,
       });
       expect(spiritualTab.canEdit).toBe(false);
-      expect((await tab(created.id, '', headTutor)).relatives[0]?.identity).toBeNull();
+      // Task 3.6a (L59): the Head Tutor reads every group, the relatives'
+      // workplace and email included.
+      expect((await tab(created.id, '', headTutor)).relatives[0]?.identity).toMatchObject({
+        workplace: 'Toshkent shahar shifoxonasi',
+      });
       expect((await tab(created.id, '', t.principal)).relatives[0]).toMatchObject({
         portalAccess: true,
         identity: null,

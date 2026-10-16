@@ -821,6 +821,13 @@ function Overview({ student }: { student: StudentDetail }) {
     [t('people.students.startsOn'), schoolDateText(student.startsOn, language)],
     [t('people.students.status'), studentStatusText(t, student, student.today, language)],
   ];
+  // Task 3.6a (L50): the score has readers of its own, shown in the Overview.
+  if (student.readsDiagnostic) {
+    rows.push([
+      t('people.students.diagnosticScore'),
+      student.diagnosticScore === null ? notSet : String(student.diagnosticScore),
+    ]);
+  }
   if (student.contact !== null) {
     rows.push(
       [
@@ -913,10 +920,6 @@ function ContractTab({ student }: { student: StudentDetail }) {
           ),
           [t('people.students.scholarship'), scholarshipText],
           [t('people.students.previousSchool'), financial.previousSchool ?? notSet],
-          [
-            t('people.students.diagnosticScore'),
-            financial.diagnosticScore === null ? notSet : String(financial.diagnosticScore),
-          ],
           [
             t('people.students.consentSignedOn'),
             financial.consentSignedOn === null

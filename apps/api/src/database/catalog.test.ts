@@ -173,7 +173,7 @@ function auditSchoolPartitions(): Record<string, string> {
  */
 const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
   'audit_names(uuid[])':
-    'The first and last name of each person named by an account or staff id, in any branch, for the actor and the person of one page of the audit log (task 2.6a, decision 12 of pull request #75, Look first); the Basic group only.',
+    "The first and last name of each person named by an account or staff id, in any branch, for the actor and the person of one page of the audit log (task 2.6a, decision 12 of pull request #75, Look first), and for the Head Teachers and Senior Head Teachers the appointments list of a branch answers, named in every branch (task 3.6a, the owner's answer L32, decision 1 of pull request #118, Look first); the Basic group only.",
   'assignments_class_tutors_end()':
     'Writes the end of a Tutor assignment on its class rows, which the application cannot write for a branch it does not filter to: a role end is written school-wide (task 3.1a, decision 2 of pull request #88, Look first).',
   'class_tutor_ends(uuid)':

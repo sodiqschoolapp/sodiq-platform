@@ -169,17 +169,24 @@ function rows(named: Partial<Record<Role, readonly Action[]>>): PermissionRows {
  *   Education, the Head Tutor, the Tutor, the Head Teacher and the Senior Head
  *   Teacher view (`02`: each "Sees the student list of the branch" or the
  *   "Full student list across classes and groups"; a Senior Head Teacher in
- *   each branch of a request). Teachers have no list (`02`: "Own lessons").
- *   The Tutor opens the profiles of own classes only (`02`: "the profiles
- *   of own class"; the class scope of task 3.1c, `class-scope.ts`).
+ *   each branch of a request). The Teacher views the students the teacher
+ *   teaches (the members of the classes and groups of the published teaching
+ *   load in force), the Basic group only, and no other student; the rows and
+ *   the scope are decided in the route (`taught-scope.ts`; task 3.6a, owner's
+ *   answer L48 on issue #42, decisions 4, 12 and 14 of pull request #118,
+ *   Look first). The Tutor opens the profiles of own classes only (`02`:
+ *   "the profiles of own class"; the class scope of task 3.1c,
+ *   `class-scope.ts`).
  *   `student_contact`: the Super Admin, the Principal, the Academic Vice
  *   Principal, the Vice Principal for Spiritual and Moral Education, the
  *   Head Tutor and the class Tutor, for the students of own classes only
  *   (task 3.1c, decision 2 of pull request #90, Look first: a widening of an
- *   existing role). `student_identity`: the
- *   Super Admin and the Academic Vice Principal; the Principal sees it hidden
- *   with a logged show under `students` `view`. `student_financial`: the
- *   Super Admin, the Academic Vice Principal and the Principal. Four new areas
+ *   existing role). `student_identity`: the Super Admin, the Academic Vice
+ *   Principal and the Head Tutor; the Principal sees it hidden with a logged
+ *   show under `students` `view`. `student_financial`: the Super Admin, the
+ *   Academic Vice Principal, the Principal and the Head Tutor, who "reads
+ *   every group of every student of the branch" (task 3.6a, owner's answer
+ *   L59, decision 5 of pull request #118, Look first). Four new areas
  *   for new routes, decided without the owner on pull request #67 (decision
  *   2, Look first: the Senior Head Teacher reads students of every branch),
  *   confirmed at its review and flagged on issue #42.
@@ -196,12 +203,27 @@ function rows(named: Partial<Record<Role, readonly Action[]>>): PermissionRows {
  *   the audit log: "An export contains only what the role may see ... Every
  *   export is logged"; task 2.4b-2): the Super Admin, the Academic Vice
  *   Principal and the Principal ("Exports are allowed, without identity
- *   documents"). The Spiritual VP and the Head Tutor are "view only" in `02`
- *   and the Head Teachers have no export line; Tutors export their own
- *   class, Basic columns of the students of own classes only (task 3.1c,
- *   decision 3 of pull request #90, Look first). Which groups a file holds
- *   is decided by the route. Decided without the owner on pull request #70 (decision 1,
- *   Look first), confirmed at its review and flagged on issue #42.
+ *   documents"); the Head Tutor, who "exports every field group of the
+ *   branch's students", and the Head Teacher and the Senior Head Teacher, who
+ *   "export the Basic fields" (task 3.6a, owner's answer L59); the Tutor, the
+ *   students of own classes with every field the Tutor reads (task 3.1c,
+ *   decision 3 of pull request #90; task 3.6a, owner's answer L136). The
+ *   Spiritual VP is "view only" in `02`; teachers export their own journals
+ *   only. Which groups a file holds is decided by the route, per role and per
+ *   row (`student-export.ts`; decisions 9, 10, 11 and 15 of pull request
+ *   #118, Look first). Decided without the owner on pull request #70
+ *   (decision 1, Look first), confirmed at its review and flagged on issue
+ *   #42.
+ * - `student_diagnostic` (`edge/people-roles-accounts`, Personal data and the
+ *   audit log: "The diagnostic test score: the readers of Financial, the Head
+ *   Teachers, and the Tutor of the student's class"; task 3.6a, owner's
+ *   answer L50): the entrance diagnostic score, read on the record and
+ *   written in an export. The Super Admin, the Principal, the Academic Vice
+ *   Principal, the Head Tutor, the Head Teacher and the Senior Head Teacher
+ *   view it for every student they read; the Tutor for the students of own
+ *   classes, decided in the route (`studentReaderOf`). No route declares it.
+ *   A new area for an existing field, decided on pull request #118 (decision
+ *   6, Look first) and flagged on issue #42.
  * - `relatives` (`04`, Close relatives; `edge/close-relatives`; task 2.5a): the
  *   Parents list and page, the relative record and the phone typed first.
  *   The Super Admin and the Academic Vice Principal view, create and edit
@@ -366,10 +388,11 @@ export const PERMISSIONS = freezeTable({
     principal: ['view', 'export'],
     academic_vice_principal: ['view', 'create', 'edit', 'archive', 'export'],
     spiritual_vice_principal: ['view'],
-    head_tutor: ['view'],
+    head_tutor: ['view', 'export'],
     tutor: ['view', 'export'],
-    senior_head_teacher: ['view'],
-    head_teacher: ['view'],
+    senior_head_teacher: ['view', 'export'],
+    head_teacher: ['view', 'export'],
+    teacher: ['view'],
   }),
   student_contact: rows({
     super_admin: ['view'],
@@ -382,11 +405,22 @@ export const PERMISSIONS = freezeTable({
   student_identity: rows({
     super_admin: ['view'],
     academic_vice_principal: ['view'],
+    head_tutor: ['view'],
   }),
   student_financial: rows({
     super_admin: ['view'],
     principal: ['view'],
     academic_vice_principal: ['view'],
+    head_tutor: ['view'],
+  }),
+  student_diagnostic: rows({
+    super_admin: ['view'],
+    principal: ['view'],
+    academic_vice_principal: ['view'],
+    head_tutor: ['view'],
+    tutor: ['view'],
+    senior_head_teacher: ['view'],
+    head_teacher: ['view'],
   }),
   student_graduates: rows({
     super_admin: ['edit'],

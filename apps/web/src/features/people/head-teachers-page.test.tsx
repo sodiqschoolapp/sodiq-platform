@@ -24,8 +24,8 @@ const HEAD: Appointment = {
   state: 'current',
 };
 
-// A Senior Head Teacher whose record is in another branch: the login only
-// (decision 14 of #63).
+// A Senior Head Teacher with no staff record: the login only. A holder whose
+// record is in another branch is named in full (task 3.6a, L32).
 const SENIOR: Appointment = {
   id: uid(2),
   role: 'senior_head_teacher',

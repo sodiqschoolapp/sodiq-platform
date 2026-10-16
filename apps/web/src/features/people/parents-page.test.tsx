@@ -82,7 +82,9 @@ function openList(
   return fakeApi({
     'GET /api/auth/session': () => json(sessionAs(role, language)),
     'GET /api/people/relatives': () =>
-      json({ relatives: [ANVAR, DILFUZA], searchesPhone: editor, canEdit: editor }),
+      // Task 3.6a (decision 7 of pull request #118): every reader of the
+      // list searches by phone, the Principal included.
+      json({ relatives: [ANVAR, DILFUZA], searchesPhone: true, canEdit: editor }),
     [`GET /api/people/relatives/${DILFUZA.id}`]: () => json(detailOf(DILFUZA, detail)),
     ...extra,
   });
@@ -133,8 +135,23 @@ describe('the Parents list', () => {
     });
   });
 
-  it('leaves the phone out of the search of the Principal (edge/people-roles-accounts)', async () => {
+  it('searches the phone for the Principal (task 3.6a, decision 7)', async () => {
     openList('principal');
+    renderApp(PATH);
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(2);
+    });
+    search('90 111 22 33');
+    await waitFor(() => {
+      expect(rowsDrawn().map((row) => row[0])).toEqual(['Dilfuza Rahimova']);
+    });
+  });
+
+  it('leaves the phone out of the search when the server says the reader may not', async () => {
+    openList('principal', {
+      'GET /api/people/relatives': () =>
+        json({ relatives: [ANVAR, DILFUZA], searchesPhone: false, canEdit: false }),
+    });
     renderApp(PATH);
     await waitFor(() => {
       expect(rowsDrawn()).toHaveLength(2);

@@ -114,14 +114,8 @@ describe('a frozen permission table', () => {
   // the audit log).
   it('gives the student list to the roles of 02 and each group of fields to its readers', () => {
     const editors = ['super_admin', 'academic_vice_principal'];
-    const viewers = [
-      'principal',
-      'spiritual_vice_principal',
-      'head_tutor',
-      'tutor',
-      'senior_head_teacher',
-      'head_teacher',
-    ];
+    // The roles that view and export the list; the Spiritual VP views only.
+    const viewers = ['principal', 'head_tutor', 'tutor', 'senior_head_teacher', 'head_teacher'];
     const groups: Record<string, string[]> = {
       student_contact: [
         'super_admin',
@@ -133,20 +127,36 @@ describe('a frozen permission table', () => {
         // Tutor, for the students of own classes (the route decides the scope).
         'tutor',
       ],
-      student_identity: ['super_admin', 'academic_vice_principal'],
-      student_financial: ['super_admin', 'principal', 'academic_vice_principal'],
+      // Task 3.6a (L59, Look first): the Head Tutor reads every group.
+      student_identity: ['super_admin', 'academic_vice_principal', 'head_tutor'],
+      student_financial: ['super_admin', 'principal', 'academic_vice_principal', 'head_tutor'],
+      // Task 3.6a (L50, decision 6, Look first): the readers of Financial, the
+      // Head Teachers and the class Tutor (the route decides the class).
+      student_diagnostic: [
+        'super_admin',
+        'principal',
+        'academic_vice_principal',
+        'head_tutor',
+        'tutor',
+        'senior_head_teacher',
+        'head_teacher',
+      ],
     };
     for (const role of ROLES) {
       // Task 2.4b-2 (decision 1): `export` for the editors and the Principal;
-      // task 3.1c (decision 3 of pull request #90): the Tutor, own classes only.
+      // task 3.1c (decision 3 of pull request #90): the Tutor, own classes only;
+      // task 3.6a (L59, decision 5): the Head Tutor and the Head Teachers.
+      // Task 3.6a (L48): the Teacher reads the students taught (the route).
       const students = editors.includes(role)
         ? ['view', 'create', 'edit', 'archive', 'export']
-        : role === 'principal' || role === 'tutor'
+        : viewers.includes(role)
           ? ['view', 'export']
-          : viewers.includes(role)
+          : role === 'teacher'
             ? ['view']
             : [];
-      expect(PERMISSIONS.students[role], role).toEqual(students);
+      expect(PERMISSIONS.students[role], role).toEqual(
+        role === 'spiritual_vice_principal' ? ['view'] : students,
+      );
       for (const [area, readers] of Object.entries(groups)) {
         const rowsOfArea = PERMISSIONS[area as keyof typeof PERMISSIONS];
         expect(rowsOfArea[role], `${area} ${role}`).toEqual(readers.includes(role) ? ['view'] : []);
@@ -370,6 +380,7 @@ describe('a frozen permission table', () => {
       'staff',
       'staff_teaching',
       'student_contact',
+      'student_diagnostic',
       'student_financial',
       'student_graduates',
       'student_history',

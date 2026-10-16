@@ -22,9 +22,9 @@ import { ApiException } from '../../http/api-exception.js';
 import type { XlsxFile } from '../../http/xlsx.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
-import { classesInScope, inClassScope, studentClasses } from '../access/class-scope.js';
+import { classesInScope, inClassScope, NO_PLACES, studentPlaces } from '../access/class-scope.js';
 import { exportList, oneCell, type ExportColumn } from '../audit/export-list.js';
-import { assignmentForGroups, exportGroupsOf } from './student-export.js';
+import { assignmentForGroups, exportGroupsOf, rowWrites } from './student-export.js';
 import { Students } from './students.service.js';
 
 /** A row of the student file: the list's row and the fields of the groups behind it. */
@@ -107,9 +107,8 @@ export class StudentExports {
       // exporter (the Principal, the Academic Vice Principal) fits every row.
       const exporters = access.permitting;
       const scoped = classesInScope(exporters) !== 'all';
-      const classes = scoped
-        ? await studentClasses(transaction, today, null)
-        : new Map<string, string[]>();
+      const places = await studentPlaces(transaction, today, null);
+      const placesOf = (id: string) => places.get(id.toLowerCase()) ?? NO_PLACES;
       const fields = await transaction
         .selectFrom('students')
         .select([
@@ -193,10 +192,16 @@ export class StudentExports {
         request,
         rows,
         allowed: (column) => groups.has(STUDENT_EXPORT_GROUPS[column]),
+        // Task 3.6a (decision 15): a group a Tutor assignment writes is
+        // written in the rows of own classes only.
+        rowAllows: (column, id) =>
+          rowWrites(exporters, STUDENT_EXPORT_GROUPS[column], placesOf(id)),
         ...(scoped
           ? {
-              inScope: (id: string) =>
-                inClassScope(exporters, classes.get(id.toLowerCase()) ?? []) !== undefined,
+              inScope: (id: string) => {
+                const own = placesOf(id);
+                return inClassScope(exporters, own.classIds, own.groupIds) !== undefined;
+              },
             }
           : {}),
         // A file of the whole branch names a class-wide exporter, never a

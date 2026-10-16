@@ -236,6 +236,27 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 16 October 2026: who sees what, the owner's answers of 15 October (task 3.6a)
+
+Plan approved on pull request #118 with corrections 1 to 4; decisions 1 to 16 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** The Head Teachers list names a holder whose staff record is in another branch through the allow-listed `audit_names` (first and last name only, for the holders the list answers); no new definer, no migration | Decisions 1 and 3; L32 |
+| **Look first.** The tests that pinned the old answers changed with the requirement (head teachers 883, students 649/663/894, search 691, exports 188–205 and 525–540, tutor scope 337, group members 595, relatives 490, statuses 461, the web Parents and Ctrl+K tests); none removed | Decision 2 |
+| **Look first.** A Teacher's students are the members, in force or planned, of the classes and groups of the teacher's rows in the **published** version in force of each year not closed, on `greatest(today, the year's start)`, latest start, ties by number; a draft never counts; until 5.5 publishes a Teacher sees nobody. Groups are read from every group row with days not ended (correction 1) | Decision 4; L48 |
+| **Look first.** Widened: the Teacher `students` view; the Head Tutor `student_identity`, `student_financial` view and `students` export; the Head Teacher and the Senior Head Teacher `students` export; the Tutor the Contact columns of own class | Decision 5; L48, L59, L136 |
+| **Look first.** `student_diagnostic` is a new area for the diagnostic score (view: Super Admin, Principal, Academic VP, Head Tutor, Head Teacher, Senior Head Teacher, Tutor of own class); no route declares it, not in `CLASS_SCOPED_AREAS` | Decision 6; L50 |
+| **Look first.** The Parents list's phone search for every reader of `relatives`, the Principal included | Decision 7; the 3.6a line of the build plan |
+| The Head Teachers read the score of every student they read; their file is Basic only, never the score; the Principal's file gains the score as its own group; a Tutor's file holds Basic, Contact (relatives included) and the score | Decisions 8 to 11 |
+| A Teacher alone lists the taught rows only and is refused the "No class" counter and the identity show; a Teacher-only reader gets Basic, the groups, the status today and the start date, nothing else of the record | Decisions 12 and 14, correction 3 |
+| Ctrl+K asks no class, group or staff search of a Teacher | Decision 13 |
+| Export groups per role and per row: a Tutor who is also a Head Teacher writes Contact and the score in own-class rows only | Decision 15 |
+| The handbook pages come with 3.7 ("From 3.6a" line) | Decision 16 |
+| Built: the audit entry of a student file names the columns withheld from some rows (`partly`), so the log says what a Tutor who is also a Head Teacher left out beyond own class | Spec review of the build, must-fix 2; decision 15 |
+| Built: the list answers `taughtOnly`, which chooses the Teacher's empty state ("Your students are those of the classes and groups you teach in the published timetable. None is given to you yet."), never the role shown | Spec review of the build, should-fix 1 |
+| Built: the Parents list answers `searchesPhone: true` to every reader the route lets in; the refusal left in the route could not be reached | Permission review of the build, should-fix 1 |
+
 ## 16 October 2026: one stay in a class and the History tab (task 3.5c)
 
 Plan approved on pull request #117 with corrections 1 to 7; decisions 1 to 5 marked Look first and confirmed there. Flagged on issue #42.

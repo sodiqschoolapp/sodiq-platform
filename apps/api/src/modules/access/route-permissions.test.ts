@@ -57,7 +57,9 @@ const SUBJECT_WRITERS: readonly Role[] = ['super_admin', 'academic_vice_principa
 const STAFF_VIEWERS = SETUP_VIEWERS;
 const STAFF_EDITORS: readonly Role[] = ['super_admin', 'academic_vice_principal'];
 
-// Task 2.4a, decision 2 of pull request #67: the area `students`.
+// Task 2.4a, decision 2 of pull request #67: the area `students`. Task 3.6a
+// (L48): the Teacher, the students taught only; the "No class" counter and
+// the identity show refuse a Teacher alone in the route (who-sees-what.test.ts).
 const STUDENT_VIEWERS: readonly Role[] = [
   'super_admin',
   'principal',
@@ -67,6 +69,7 @@ const STUDENT_VIEWERS: readonly Role[] = [
   'tutor',
   'senior_head_teacher',
   'head_teacher',
+  'teacher',
 ];
 const STUDENT_EDITORS: readonly Role[] = ['super_admin', 'academic_vice_principal'];
 
@@ -290,10 +293,19 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'POST /api/people/students/:id/delete': { branch: 'request', roles: STUDENT_EDITORS },
   // Task 2.4b-2: the export (decision 1), the photos and the "No class" counter.
   // Task 3.1c (decision 3 of pull request #90): the Tutor, own classes only
-  // (classes/tutor-scope.test.ts).
+  // (classes/tutor-scope.test.ts). Task 3.6a (L59): the Head Tutor, the Head
+  // Teacher and the Senior Head Teacher (student-exports.test.ts).
   'POST /api/people/students/export': {
     branch: 'request',
-    roles: ['super_admin', 'principal', 'academic_vice_principal', 'tutor'],
+    roles: [
+      'super_admin',
+      'principal',
+      'academic_vice_principal',
+      'head_tutor',
+      'tutor',
+      'senior_head_teacher',
+      'head_teacher',
+    ],
   },
   'GET /api/people/students/no-class': { branch: 'request', roles: STUDENT_VIEWERS },
   'PUT /api/people/students/:id/photo': { branch: 'request', roles: STUDENT_EDITORS },

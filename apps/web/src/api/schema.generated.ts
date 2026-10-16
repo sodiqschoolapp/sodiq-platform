@@ -18401,7 +18401,8 @@ export interface operations {
                             opens: boolean;
                         }[];
                         canArchive: boolean;
-                        exportGroups: ("basic" | "contact" | "identity" | "financial")[];
+                        exportGroups: ("basic" | "contact" | "identity" | "financial" | "diagnostic")[];
+                        taughtOnly?: boolean;
                         readsFinancial: boolean;
                         /** Format: date */
                         today: string;
@@ -18689,10 +18690,11 @@ export interface operations {
                                 amount: number | null;
                             };
                             previousSchool: string | null;
-                            diagnosticScore: number | null;
                             /** Format: date */
                             consentSignedOn: string | null;
                         } | null;
+                        diagnosticScore: number | null;
+                        readsDiagnostic: boolean;
                         statuses: {
                             /** @enum {string} */
                             status: "active" | "inactive" | "graduated";
@@ -19348,10 +19350,11 @@ export interface operations {
                                 amount: number | null;
                             };
                             previousSchool: string | null;
-                            diagnosticScore: number | null;
                             /** Format: date */
                             consentSignedOn: string | null;
                         } | null;
+                        diagnosticScore: number | null;
+                        readsDiagnostic: boolean;
                         statuses: {
                             /** @enum {string} */
                             status: "active" | "inactive" | "graduated";
@@ -19744,10 +19747,11 @@ export interface operations {
                                 amount: number | null;
                             };
                             previousSchool: string | null;
-                            diagnosticScore: number | null;
                             /** Format: date */
                             consentSignedOn: string | null;
                         } | null;
+                        diagnosticScore: number | null;
+                        readsDiagnostic: boolean;
                         statuses: {
                             /** @enum {string} */
                             status: "active" | "inactive" | "graduated";
@@ -20110,10 +20114,11 @@ export interface operations {
                                 amount: number | null;
                             };
                             previousSchool: string | null;
-                            diagnosticScore: number | null;
                             /** Format: date */
                             consentSignedOn: string | null;
                         } | null;
+                        diagnosticScore: number | null;
+                        readsDiagnostic: boolean;
                         statuses: {
                             /** @enum {string} */
                             status: "active" | "inactive" | "graduated";
@@ -20577,10 +20582,11 @@ export interface operations {
                                 amount: number | null;
                             };
                             previousSchool: string | null;
-                            diagnosticScore: number | null;
                             /** Format: date */
                             consentSignedOn: string | null;
                         } | null;
+                        diagnosticScore: number | null;
+                        readsDiagnostic: boolean;
                         statuses: {
                             /** @enum {string} */
                             status: "active" | "inactive" | "graduated";
@@ -20941,10 +20947,11 @@ export interface operations {
                                 amount: number | null;
                             };
                             previousSchool: string | null;
-                            diagnosticScore: number | null;
                             /** Format: date */
                             consentSignedOn: string | null;
                         } | null;
+                        diagnosticScore: number | null;
+                        readsDiagnostic: boolean;
                         statuses: {
                             /** @enum {string} */
                             status: "active" | "inactive" | "graduated";
@@ -21306,10 +21313,11 @@ export interface operations {
                                 amount: number | null;
                             };
                             previousSchool: string | null;
-                            diagnosticScore: number | null;
                             /** Format: date */
                             consentSignedOn: string | null;
                         } | null;
+                        diagnosticScore: number | null;
+                        readsDiagnostic: boolean;
                         statuses: {
                             /** @enum {string} */
                             status: "active" | "inactive" | "graduated";
@@ -21682,10 +21690,11 @@ export interface operations {
                                 amount: number | null;
                             };
                             previousSchool: string | null;
-                            diagnosticScore: number | null;
                             /** Format: date */
                             consentSignedOn: string | null;
                         } | null;
+                        diagnosticScore: number | null;
+                        readsDiagnostic: boolean;
                         statuses: {
                             /** @enum {string} */
                             status: "active" | "inactive" | "graduated";
@@ -22051,10 +22060,11 @@ export interface operations {
                                 amount: number | null;
                             };
                             previousSchool: string | null;
-                            diagnosticScore: number | null;
                             /** Format: date */
                             consentSignedOn: string | null;
                         } | null;
+                        diagnosticScore: number | null;
+                        readsDiagnostic: boolean;
                         statuses: {
                             /** @enum {string} */
                             status: "active" | "inactive" | "graduated";
@@ -22515,10 +22525,11 @@ export interface operations {
                                 amount: number | null;
                             };
                             previousSchool: string | null;
-                            diagnosticScore: number | null;
                             /** Format: date */
                             consentSignedOn: string | null;
                         } | null;
+                        diagnosticScore: number | null;
+                        readsDiagnostic: boolean;
                         statuses: {
                             /** @enum {string} */
                             status: "active" | "inactive" | "graduated";
@@ -22884,10 +22895,11 @@ export interface operations {
                                 amount: number | null;
                             };
                             previousSchool: string | null;
-                            diagnosticScore: number | null;
                             /** Format: date */
                             consentSignedOn: string | null;
                         } | null;
+                        diagnosticScore: number | null;
+                        readsDiagnostic: boolean;
                         statuses: {
                             /** @enum {string} */
                             status: "active" | "inactive" | "graduated";
@@ -23248,10 +23260,11 @@ export interface operations {
                                 amount: number | null;
                             };
                             previousSchool: string | null;
-                            diagnosticScore: number | null;
                             /** Format: date */
                             consentSignedOn: string | null;
                         } | null;
+                        diagnosticScore: number | null;
+                        readsDiagnostic: boolean;
                         statuses: {
                             /** @enum {string} */
                             status: "active" | "inactive" | "graduated";
@@ -23613,10 +23626,11 @@ export interface operations {
                                 amount: number | null;
                             };
                             previousSchool: string | null;
-                            diagnosticScore: number | null;
                             /** Format: date */
                             consentSignedOn: string | null;
                         } | null;
+                        diagnosticScore: number | null;
+                        readsDiagnostic: boolean;
                         statuses: {
                             /** @enum {string} */
                             status: "active" | "inactive" | "graduated";
@@ -23982,10 +23996,11 @@ export interface operations {
                                 amount: number | null;
                             };
                             previousSchool: string | null;
-                            diagnosticScore: number | null;
                             /** Format: date */
                             consentSignedOn: string | null;
                         } | null;
+                        diagnosticScore: number | null;
+                        readsDiagnostic: boolean;
                         statuses: {
                             /** @enum {string} */
                             status: "active" | "inactive" | "graduated";
@@ -24349,10 +24364,11 @@ export interface operations {
                                 amount: number | null;
                             };
                             previousSchool: string | null;
-                            diagnosticScore: number | null;
                             /** Format: date */
                             consentSignedOn: string | null;
                         } | null;
+                        diagnosticScore: number | null;
+                        readsDiagnostic: boolean;
                         statuses: {
                             /** @enum {string} */
                             status: "active" | "inactive" | "graduated";
@@ -24711,10 +24727,11 @@ export interface operations {
                                 amount: number | null;
                             };
                             previousSchool: string | null;
-                            diagnosticScore: number | null;
                             /** Format: date */
                             consentSignedOn: string | null;
                         } | null;
+                        diagnosticScore: number | null;
+                        readsDiagnostic: boolean;
                         statuses: {
                             /** @enum {string} */
                             status: "active" | "inactive" | "graduated";
@@ -25075,10 +25092,11 @@ export interface operations {
                                 amount: number | null;
                             };
                             previousSchool: string | null;
-                            diagnosticScore: number | null;
                             /** Format: date */
                             consentSignedOn: string | null;
                         } | null;
+                        diagnosticScore: number | null;
+                        readsDiagnostic: boolean;
                         statuses: {
                             /** @enum {string} */
                             status: "active" | "inactive" | "graduated";
@@ -25664,10 +25682,11 @@ export interface operations {
                                 amount: number | null;
                             };
                             previousSchool: string | null;
-                            diagnosticScore: number | null;
                             /** Format: date */
                             consentSignedOn: string | null;
                         } | null;
+                        diagnosticScore: number | null;
+                        readsDiagnostic: boolean;
                         statuses: {
                             /** @enum {string} */
                             status: "active" | "inactive" | "graduated";
@@ -26026,10 +26045,11 @@ export interface operations {
                                 amount: number | null;
                             };
                             previousSchool: string | null;
-                            diagnosticScore: number | null;
                             /** Format: date */
                             consentSignedOn: string | null;
                         } | null;
+                        diagnosticScore: number | null;
+                        readsDiagnostic: boolean;
                         statuses: {
                             /** @enum {string} */
                             status: "active" | "inactive" | "graduated";
@@ -26708,10 +26728,11 @@ export interface operations {
                                 amount: number | null;
                             };
                             previousSchool: string | null;
-                            diagnosticScore: number | null;
                             /** Format: date */
                             consentSignedOn: string | null;
                         } | null;
+                        diagnosticScore: number | null;
+                        readsDiagnostic: boolean;
                         statuses: {
                             /** @enum {string} */
                             status: "active" | "inactive" | "graduated";
@@ -27424,10 +27445,11 @@ export interface operations {
                                     amount: number | null;
                                 };
                                 previousSchool: string | null;
-                                diagnosticScore: number | null;
                                 /** Format: date */
                                 consentSignedOn: string | null;
                             } | null;
+                            diagnosticScore: number | null;
+                            readsDiagnostic: boolean;
                             statuses: {
                                 /** @enum {string} */
                                 status: "active" | "inactive" | "graduated";

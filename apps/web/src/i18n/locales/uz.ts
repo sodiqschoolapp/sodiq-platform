@@ -1419,6 +1419,9 @@ export const uz: Texts<'one' | 'other'> = {
       cancel: 'Bekor qilish',
       emptyTitle: 'Hali oʻquvchilar yoʻq',
       empty: 'Filialning birinchi oʻquvchisini qoʻshing.',
+      emptyTaughtTitle: 'Hali oʻquvchilar yoʻq',
+      emptyTaught:
+        'Bu yerda eʼlon qilingan dars jadvali boʻyicha siz dars beradigan sinf va guruhlar oʻquvchilari koʻrinadi. Hozircha ular yoʻq.',
       uid: 'UID',
       name: 'Familiya va ism',
       class: 'Sinf',
@@ -1506,6 +1509,7 @@ export const uz: Texts<'one' | 'other'> = {
         contact: 'Telefon va pochta',
         identity: 'Hujjatlar, tugʻilgan sana va manzil',
         financial: 'Shartnoma, grant va rozilik',
+        diagnostic: 'Diagnostik test bali',
       },
       noConsent: 'Imzolanmagan',
       choose: 'Tanlang',

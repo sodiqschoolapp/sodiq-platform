@@ -1408,6 +1408,9 @@ export const en = {
       cancel: 'Cancel',
       emptyTitle: 'No students yet',
       empty: 'Add the first student of the branch.',
+      emptyTaughtTitle: 'No students to show',
+      emptyTaught:
+        'Your students are those of the classes and groups you teach in the published timetable. None is given to you yet.',
       uid: 'UID',
       name: 'Surname and name',
       class: 'Class',
@@ -1495,6 +1498,7 @@ export const en = {
         contact: 'Phone and email',
         identity: 'Documents, birth date and address',
         financial: 'Contract, scholarship and consent',
+        diagnostic: 'Diagnostic test score',
       },
       noConsent: 'Not signed',
       choose: 'Choose',

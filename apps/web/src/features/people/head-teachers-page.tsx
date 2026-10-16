@@ -14,8 +14,8 @@ import { PeopleTabs } from './people-tabs';
 import { schoolDateText } from '@/lib/dates';
 
 /**
- * The holder: the name when the server could read it, surname first (finding
- * 27), the login otherwise (decision 14 of #63).
+ * The holder: the name, surname first (finding 27), in every branch (task
+ * 3.6a, L32); the login for an account with no staff record.
  */
 const personText = (row: Appointment): string =>
   row.person.name === null ? row.person.login : listName(row.person.name);

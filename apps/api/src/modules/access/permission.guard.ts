@@ -20,6 +20,7 @@ import { owedStepsAllowedOn, sessionOf } from '../auth/session.guard.js';
 import { declarationsOf } from './access.decorators.js';
 import { CLASS_SCOPED_AREAS, tutorClassesAt } from './class-scope.js';
 import type { CurrentAssignment } from './current-assignments.js';
+import { taughtAt } from './taught-scope.js';
 import { permitting } from './permission-check.js';
 import { PERMISSION_TABLE } from './permission-table.token.js';
 
@@ -133,7 +134,7 @@ export class PermissionGuard implements CanActivate {
     const assignments =
       branchId === null || !CLASS_SCOPED_AREAS.includes(access.area)
         ? session.assignments
-        : await this.withClasses(session.assignments, branchId);
+        : await this.withClasses(session.assignments, session.accountId, branchId);
     const allowing = permitting(access, assignments, branchId, this.table);
     const [assignment] = allowing;
     if (assignment === undefined) {
@@ -164,32 +165,47 @@ export class PermissionGuard implements CanActivate {
    * request #90). Read on every request ("Rights are read again on every
    * request"), through the branch filter of the request; the session's
    * objects are not changed, and a Tutor assignment of another branch keeps
-   * no class.
+   * no class. A Teacher assignment of the branch gets the classes and groups
+   * the published load in force gives the teacher (task 3.6a, `taughtAt`).
    */
   private async withClasses(
     assignments: readonly CurrentAssignment[],
+    accountId: string,
     branchId: string,
   ): Promise<readonly CurrentAssignment[]> {
-    const tutors = assignments
-      .filter(
-        (assignment) =>
-          assignment.role === 'tutor' && assignment.branchId?.toLowerCase() === branchId,
-      )
-      .map((assignment) => assignment.id);
-    if (tutors.length === 0) {
+    const ofBranch = (role: string) =>
+      assignments
+        .filter(
+          (assignment) =>
+            assignment.role === role && assignment.branchId?.toLowerCase() === branchId,
+        )
+        .map((assignment) => assignment.id);
+    const tutors = ofBranch('tutor');
+    const teachers = ofBranch('teacher');
+    if (tutors.length === 0 && teachers.length === 0) {
       return assignments;
     }
-    const classes = await this.transactions.run([branchId], (transaction) =>
-      tutorClassesAt(transaction, tutors),
-    );
-    return assignments.map((assignment) =>
-      tutors.includes(assignment.id)
-        ? Object.freeze({
-            ...assignment,
-            classIds: Object.freeze(classes.get(assignment.id) ?? []),
-          })
-        : assignment,
-    );
+    const [classes, taught] = await this.transactions.run([branchId], async (transaction) => [
+      await tutorClassesAt(transaction, tutors),
+      teachers.length === 0 ? undefined : await taughtAt(transaction, accountId, branchId),
+    ]);
+    return assignments.map((assignment) => {
+      if (tutors.includes(assignment.id)) {
+        return Object.freeze({
+          ...assignment,
+          classIds: Object.freeze(classes.get(assignment.id) ?? []),
+        });
+      }
+      // Task 3.6a (L48): the classes and groups the load in force gives the teacher.
+      if (teachers.includes(assignment.id) && taught !== undefined) {
+        return Object.freeze({
+          ...assignment,
+          classIds: Object.freeze([...taught.classIds]),
+          groupIds: Object.freeze([...taught.groupIds]),
+        });
+      }
+      return assignment;
+    });
   }
 
   private exists(branchId: string): Promise<boolean> {

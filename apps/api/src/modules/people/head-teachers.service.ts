@@ -5,6 +5,7 @@ import {
   type Appointment,
   type AppointmentList,
 } from '@sodiq/shared';
+import { sql } from 'kysely';
 import { transactionMoment, Transactions } from '../../database/transactions.js';
 import { appointedSubjects } from '../access/appointment-subjects.js';
 import type { Access } from '../access/permission.guard.js';
@@ -30,8 +31,11 @@ export class HeadTeachers {
       throw new Error('The list of appointments works for the branch of the request.');
     }
     const scope = subjectsInScope(access);
-    // The branch of the request only: a holder is named when their staff
-    // record is linked to it, by login otherwise (decision 14 of #63).
+    // A holder is named in every branch (task 3.6a, owner's answer L32;
+    // decisions 1 and 3 of pull request #118, Look first): through the
+    // branch filter when their staff record is linked to the branch, else
+    // first and last name only through `audit_names`, for the holders the
+    // list answers and nobody else; by login when there is no staff record.
     return this.transactions.run(access.branchIds, async (transaction) => {
       const now = await transactionMoment(transaction);
       // `assignments` has no row policy: the rows of this branch and the
@@ -78,13 +82,39 @@ export class HeadTeachers {
         transaction,
         rows.map((row) => row.account_id),
       );
+      const shown = rows.filter((row) =>
+        (subjects.get(row.id) ?? []).some(
+          (subject) => scope === 'all' || scope.has(subject.id.toLowerCase()),
+        ),
+      );
+      const unnamed = [
+        ...new Set(
+          shown
+            .map((row) => row.account_id)
+            .filter((accountId) => people.get(accountId)?.name === null),
+        ),
+      ].sort();
+      if (unnamed.length > 0) {
+        const names = await sql<{ id: string; first_name: string; last_name: string }>`
+          select id, first_name, last_name from audit_names(${unnamed}::uuid[])
+        `.execute(transaction);
+        for (const named of names.rows) {
+          const person = people.get(named.id);
+          if (person !== undefined) {
+            people.set(named.id, {
+              ...person,
+              name: { firstName: named.first_name, lastName: named.last_name },
+            });
+          }
+        }
+      }
       const appointments: Appointment[] = [];
-      for (const row of rows) {
+      for (const row of shown) {
         const seen = (subjects.get(row.id) ?? []).filter(
           (subject) => scope === 'all' || scope.has(subject.id.toLowerCase()),
         );
         const person = people.get(row.account_id);
-        if (seen.length === 0 || person === undefined) {
+        if (person === undefined) {
           continue;
         }
         const zone = row.time_zone ?? DEFAULT_TIME_ZONE;
