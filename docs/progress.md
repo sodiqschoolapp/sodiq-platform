@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 16 October 2026: task 3.6c-1 The owner's answers of 15 October: the year result and no extra lessons
+
+- Built L210 and answer 1 of issue #42: `yearResult` means the quarter results as published (each rounded half up), exactly, and rounds once more (50, 50, 49, 50 give 49.75, shown 50, grade 3); `CALC_VERSION` 2; reference journal `year-50-50-49-50.json`.
+- No extra lessons: `countsForAttendance` gone from `packages/calc` (stored-record format 1 refuses it), `Placement.extra` gone from `packages/timetable-rules` (the exam-week rule reports every lesson); migration 0066 drops `lesson_blocks.kind` and makes a block's version and pattern block and a lesson's load row and pattern entry `not null`.
+- 3.6c is split: 3.6c-2 (Tutor lessons follow the Tutor) is the next line. 5.6a no longer names an extra lesson.
+- Left out: the Tutor lessons (3.6c-2); the handbook (paused until the release).
+
+The next sessions must know:
+
+- A database test that writes a dated block takes its version, pattern block, load rows and entries from `LessonsKit.source` (the claims harness and `lessons.database.test.ts` do it for you); it widens the subject's grades to the unit's.
+- The year result takes the exact quarter results and does the rounding itself; never pass it shown figures.
+- The next task is 3.6c-2.
+
 ## 16 October 2026: task 3.6b-3 The owner's answers of 15 October: the department move on its start date
 
 - Built L195 of issue #42. Migration 0065: `department_before` and `department_before_since` on `subjects` and `staff_divisions` (the department in force until `department_since`), with a check and a foreign key each; `department_id` keeps meaning the department after the move, which every rule reads (decision 1).

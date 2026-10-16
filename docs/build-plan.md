@@ -452,7 +452,7 @@ How to read the task lines:
   - Build: a department move that takes effect on its start date, with open requests moving then (L195).
   - Done when: each rule has a database or route test that fails without it, and L195 has a test on the day before and on the start date with the injected clock.
 
-- [ ] **3.6c-1 The owner's answers of 15 October: the year result and no extra lessons** (issue #42, the owner's answers of 15 October 2026, item L210 and answer 1; 3.6c split in two, pull request #124, decision 1)
+- [x] **3.6c-1 The owner's answers of 15 October: the year result and no extra lessons** (issue #42, the owner's answers of 15 October 2026, item L210 and answer 1; 3.6c split in two, pull request #124, decision 1)
   - Read: the owner's answers comments on issue #42 (15 and 16 October 2026), `07` (Calculation rules), `edge/calculation`, `06` (Changes after publishing), `edge/timetable`, `edge/time-dates-calendar`, `edge/lesson-plans`, `09`, `edge/developer-rules`, the plans of pull requests #102 and #103.
   - Build: the year result as the mean of the quarter results as published (each rounded as shown), rounded once more for the year, in `packages/calc` with its reference journal (L210; a reading of a calculation rule decided by the owner); the extra lesson, its "counts for attendance" switch and the "replaces the lesson of [date]" make-up removed from `packages/calc`, `packages/timetable-rules`, the database (every dated lesson comes from a version's pattern) and every later task line of this file that names them (a lesson moved across quarters is only cancelled).
   - Done when: the calc tests include the 50, 50, 49, 50 example giving 50, grade 3; no code or later task line names an extra lesson.
