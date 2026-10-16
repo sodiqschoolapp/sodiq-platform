@@ -150,6 +150,7 @@ describe('OpenAPI document', () => {
         '/api/people/students/{id}/report',
         '/api/people/students/{id}/restore',
         '/api/people/students/{id}/return',
+        '/api/people/students/{id}/return/cancel',
         '/api/people/students/{id}/uid',
         '/api/people/vacancies',
         '/api/people/vacancies/export',
