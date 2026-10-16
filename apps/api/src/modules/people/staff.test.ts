@@ -779,7 +779,15 @@ describe('staff records', () => {
       expect(here.sameNameAndBirth.map((match) => match.id)).toEqual([north.id]);
       expect(here.elsewhere).toBe(false);
       const there = staffCheckResultSchema.parse((await ask(t.south)).body);
-      expect(there).toEqual({ sameNameAndBirth: [], samePhone: [], elsewhere: true });
+      // The phone is no longer a warning: a taken one is refused on Save
+      // (task 3.6b-1; same-person.test.ts).
+      expect(there).toEqual({
+        sameNameAndBirth: [],
+        elsewhere: true,
+        phoneTaken: null,
+        relative: null,
+        relativeElsewhere: false,
+      });
     });
   });
 

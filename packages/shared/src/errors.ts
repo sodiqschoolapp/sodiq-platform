@@ -306,16 +306,10 @@ export const ERROR_CODES = [
   'relative_changed',
   /** The relative was merged into another record and is not linked again (task 2.5b-1, decision 9). */
   'relative_merged',
-  /** The staff record is already marked as the same person as another relative (`edge/close-relatives`, row 8; task 2.5b-2). `details` names the holder when visible in the branch. */
-  'same_person_taken',
-  /** The staff record is marked as the same person as a relative of another branch, who is not named (task 2.5b-2). */
-  'same_person_held_elsewhere',
-  /** The relative is marked as the same person as a staff member of another branch: only the Super Admin changes it (task 2.5b-2, decision 9). */
-  'same_person_elsewhere',
-  /** A vacancy is not a person and cannot be marked as the same person (task 2.5b-2). */
-  'same_person_vacancy',
-  /** Two relatives marked as the same person as two different staff members are not merged (task 2.5b-2, decision 5). */
-  'merge_marks_differ',
+  /** The phone is another staff record's, archived and left included (`edge/people-roles-accounts`, re-hire row; task 3.6b-1). `details` names the record when it is of the branch of the request. */
+  'staff_phone_taken',
+  /** The relative's phone is a staff member's current phone and is not given to another person: the staff phone is corrected first (the owner's answer of 16 October 2026; task 3.6b-1, decision 5). */
+  'phone_is_staff',
   /** The academic year of the class is closed: a class of a closed year and its Tutors stay as they were (`edge/academic-year`; task 3.1a, decision 18). */
   'class_year_closed',
   /** The branch has no planned or current academic year to create a class in (task 3.1a, decision 6). */
@@ -583,6 +577,12 @@ export const errorDetailSchema = z.object({
    * branch, or in any branch for the Super Admin).
    */
   mergeable: z.boolean().optional(),
+  /**
+   * The staff record that holds a phone, on a `staff_phone_taken` or a
+   * `phone_is_staff` (task 3.6b-1), when it is of the branch of the request;
+   * `recordId` is its id.
+   */
+  staffName: z.string().optional(),
   /**
    * The value the rule expected, when the reader is told it: the UID set of
    * the grade on a `uid_set_mismatch` (task 2.7b-1, decision 7).

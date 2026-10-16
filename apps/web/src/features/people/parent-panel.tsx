@@ -5,7 +5,6 @@ import {
   relativeDetailSchema,
   relativeIdentitySchema,
   relativePreviousPhoneSchema,
-  searchWords,
   type RelativeDetail,
   type RelativeEdit,
   type RelativeIdentity,
@@ -19,23 +18,16 @@ import { api, branchHeader } from '@/api/client';
 import { answerOf, ApiFailure } from '@/api/failure';
 import { useConfirm } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
-import { CHECKED, CheckboxField, Field, PhoneField, SelectField } from '@/components/field';
-import { searchKey } from '@/components/list/list-state';
+import { CHECKED, CheckboxField, PhoneField, SelectField } from '@/components/field';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { useRecordForm, type RecordFormState } from '@/components/form/use-record-form';
 import { PanelActions } from '@/components/list/panel-actions';
-import { usePanelEditing, type PanelEditing } from '@/components/list/use-panel-editing';
+import { usePanelEditing } from '@/components/list/use-panel-editing';
 import { Button } from '@/components/ui/button';
 import { HistoryLink } from '@/features/audit/history-link';
 import { ReportLink } from './report-link';
 import { useView } from '@/features/access/use-view';
-import {
-  invalidateRelatives,
-  invalidateStaff,
-  phoneMatch,
-  relativeDetailQuery,
-  staffQuery,
-} from './people-api';
+import { invalidateRelatives, phoneMatch, relativeDetailQuery } from './people-api';
 import { asFormSchema } from './form-schema';
 import { RelativeForm, type TakenPhone } from './relative-form';
 import { momentDateText } from '@/lib/dates';
@@ -198,8 +190,8 @@ export function ParentPanel({ id, name }: { id: string; name: string }) {
               </p>
             )}
           </section>
-          {(relative.samePerson !== null || relative.samePersonElsewhere || relative.canEdit) && (
-            <SamePersonSection key={`${relative.id}-same`} relative={relative} panel={panel} />
+          {(relative.samePerson !== null || relative.samePersonElsewhere) && (
+            <SamePersonSection relative={relative} />
           )}
         </>
       )}
@@ -261,13 +253,24 @@ function TakenChoices({
   );
   const holderName = taken.holder.fullName;
   const typed = taken.record.phone;
+  const { branchId } = useView();
+  // A phone that is also a staff member's is never handed to another person:
+  // "new owner" is not offered (the owner's answer of 16 October 2026; task
+  // 3.6b-1, decision 5). The server refuses it with `phone_is_staff` too.
+  const staffCheck = useQuery({
+    queryKey: ['people', 'relatives', 'phone-match', branchId, typed],
+    queryFn: () => phoneMatch(typed),
+  });
+  const staffPhone =
+    staffCheck.data !== undefined &&
+    (staffCheck.data.staff !== null || staffCheck.data.staffElsewhere);
   /**
    * The holder's id, read by the phone match (the same holders as the merge
    * and the new owner); a phone that has no holder any more is the race of
    * `relative_phone_changed`.
    */
   const holderId = async (): Promise<string> => {
-    const found = await phoneMatch(typed);
+    const found = (await phoneMatch(typed)).holder;
     if (found?.id === undefined || found.id === null) {
       throw new ApiFailure('relative_phone_changed');
     }
@@ -346,7 +349,9 @@ function TakenChoices({
       <div className="flex flex-wrap gap-3">
         {taken.holder.mergeable &&
           choose('merge', t('people.relatives.mergeWith', { name: holderName }))}
-        {choose('owner', t('people.relatives.newOwner'))}
+        {staffCheck.data !== undefined &&
+          !staffPhone &&
+          choose('owner', t('people.relatives.newOwner'))}
         {/* Off while a merge or a new owner is on its way: it would land after the
             close. Not "Cancel": the record's form has its own (finding 26). */}
         <Button
@@ -357,6 +362,17 @@ function TakenChoices({
           {t('people.relatives.closeChoices')}
         </Button>
       </div>
+      {staffCheck.isError && (
+        <ErrorState
+          error={staffCheck.error}
+          onRetry={() => {
+            void staffCheck.refetch();
+          }}
+        />
+      )}
+      {staffPhone && (
+        <p className="text-sm text-muted-foreground">{t('people.relatives.newOwnerStaff')}</p>
+      )}
       {choice === 'merge' && (
         <div className="grid gap-3">
           {/* Both records side by side, with the students whose links move. */}
@@ -440,7 +456,7 @@ function TakenChoices({
           </div>
         </div>
       )}
-      {choice === 'owner' && <NewOwnerForm owner={owner} holderName={holderName} />}
+      {choice === 'owner' && !staffPhone && <NewOwnerForm owner={owner} holderName={holderName} />}
     </section>
   );
 }
@@ -561,67 +577,19 @@ function RelativeTerms({ relative }: { relative: RelativeDetail }) {
 
 /**
  * The mark "same person" (`edge/close-relatives`, row 8: a relative who is
- * also a staff member; task 2.5b-2): the staff member with a link to their
- * panel, and for the `relatives` edit holders the mark, its change and its
- * removal. The server decides who may change a mark of another branch.
+ * also a staff member), read from the phones (task 3.6b-1, decision 3): the
+ * staff member with a link to their panel, or "a staff member of another
+ * branch" with no name (decision 2). Nobody sets or removes it: a corrected
+ * phone changes it.
  */
-function SamePersonSection({ relative, panel }: { relative: RelativeDetail; panel: PanelEditing }) {
+function SamePersonSection({ relative }: { relative: RelativeDetail }) {
   const { t } = useTranslation();
-  const { branchId } = useView();
-  const queryClient = useQueryClient();
-  const confirm = useConfirm();
-  const where = { header: branchHeader(), path: { id: relative.id } };
-  const mark = useMutation({
-    mutationFn: (staffId: string) =>
-      answerOf(
-        api.PUT('/api/people/relatives/{id}/same-person', { params: where, body: { staffId } }),
-      ),
-    onSuccess: async (answer) => {
-      queryClient.setQueryData(
-        relativeDetailQuery(branchId, relative.id).queryKey,
-        relativeDetailSchema.parse(answer),
-      );
-      panel.stop({ saved: true, key: 'same' });
-      // The staff panel shows "Also a parent".
-      await invalidateStaff(queryClient);
-    },
-  });
-  const remove = useMutation({
-    mutationFn: () =>
-      answerOf(api.DELETE('/api/people/relatives/{id}/same-person', { params: where })),
-    onSuccess: async () => {
-      queryClient.setQueryData<RelativeDetail>(
-        relativeDetailQuery(branchId, relative.id).queryKey,
-        (before) =>
-          before === undefined
-            ? before
-            : { ...before, samePerson: null, samePersonElsewhere: false },
-      );
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: relativeDetailQuery(branchId, relative.id).queryKey,
-        }),
-        invalidateStaff(queryClient),
-      ]);
-      // Its button is gone: the focus goes to "Mark as staff member" (task 2.7c-2b-2b).
-      panel.point('same', { saved: true });
-    },
-  });
   const same = relative.samePerson;
-  // A mark to a staff member not of the branch: told to the Super Admin
-  // only, with no name, so that it can be removed (correction 1 of the review).
-  const marked = same !== null || relative.samePersonElsewhere;
   return (
     <section className="grid gap-3" aria-label={t('people.relatives.sameTitle')}>
       <h3 className={SECTION_TITLE}>{t('people.relatives.sameTitle')}</h3>
       {same === null ? (
-        <p className="text-sm text-muted-foreground">
-          {t(
-            relative.samePersonElsewhere
-              ? 'people.relatives.sameElsewhere'
-              : 'people.relatives.sameNone',
-          )}
-        </p>
+        <p className="text-sm text-muted-foreground">{t('people.relatives.sameElsewhere')}</p>
       ) : (
         <p className="flex flex-wrap gap-x-2 text-sm">
           <Link
@@ -636,163 +604,6 @@ function SamePersonSection({ relative, panel }: { relative: RelativeDetail; pane
           </span>
         </p>
       )}
-      {/* The mark's actions give way while a form of the panel is open (task 2.7c-2b-2b). */}
-      {relative.canEdit && panel.editing === null && (
-        <div className="flex flex-wrap items-center gap-3">
-          <Button
-            variant="secondary"
-            {...panel.opener('same')}
-            onClick={() => {
-              panel.start('same', () => {
-                mark.reset();
-                remove.reset();
-              });
-            }}
-          >
-            {t(marked ? 'people.relatives.changeStaff' : 'people.relatives.markStaff')}
-          </Button>
-          {marked && (
-            <Button
-              variant="destructive"
-              disabled={remove.isPending}
-              onClick={() => {
-                void confirm({
-                  title: t('people.relatives.removeMarkTitle'),
-                  text: t('people.relatives.removeMarkText'),
-                  names: same === null ? [relative.fullName] : [relative.fullName, same.name],
-                  action: t('people.relatives.removeMark'),
-                  destructive: true,
-                }).then((go) => {
-                  if (go) {
-                    remove.mutate();
-                  }
-                });
-              }}
-            >
-              {t('people.relatives.removeMark')}
-            </Button>
-          )}
-          <FailureAlert error={remove.error} />
-        </div>
-      )}
-      {relative.canEdit && panel.editing === 'same' && (
-        <StaffPickerForm
-          current={same?.staffId ?? null}
-          pending={mark.isPending}
-          failure={mark.error}
-          onPick={(staffId) => {
-            mark.mutate(staffId);
-          }}
-          onCancel={() => {
-            mark.reset();
-            panel.stop();
-          }}
-        />
-      )}
     </section>
-  );
-}
-
-/**
- * A staff member of the branch, found by name (the persons of the staff list;
- * vacancies are a list of their own). The choice follows the matches: one no
- * longer among them is no choice. The search field is drawn at once, so it
- * takes the focus as the form opens; the matches wait on the staff list
- * (task 2.7c-2b-2b, correction 1).
- */
-function StaffPickerForm({
-  current,
-  pending,
-  failure,
-  onPick,
-  onCancel,
-}: {
-  current: string | null;
-  pending: boolean;
-  failure: unknown;
-  onPick: (staffId: string) => void;
-  onCancel: () => void;
-}) {
-  const { t } = useTranslation();
-  const { branchId } = useView();
-  const staff = useQuery(staffQuery(branchId));
-  const [typed, setTyped] = useState('');
-  const [chosen, setChosen] = useState('');
-  const words = searchWords(typed);
-  const nameOf = (person: { firstName: string; lastName: string }) => listName(person);
-  const matches = (staff.data?.staff ?? [])
-    .filter((person) => person.id !== current)
-    .filter((person) => {
-      if (words === null) {
-        return true;
-      }
-      const key = searchKey(`${nameOf(person)} ${person.fatherName ?? ''}`);
-      return words.every((word) => key.includes(word));
-    })
-    .sort((one, other) => nameOf(one).localeCompare(nameOf(other)));
-  const choice = matches.some((person) => person.id === chosen) ? chosen : '';
-  return (
-    <form
-      data-slot="panel-form"
-      className="grid gap-3"
-      aria-label={t('people.relatives.markStaff')}
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (choice !== '') {
-          onPick(choice);
-        }
-      }}
-    >
-      <Field
-        label={t('people.relatives.staffSearch')}
-        type="search"
-        autoComplete="off"
-        name="staffSearch"
-        value={typed}
-        onChange={(event) => {
-          setTyped(event.target.value);
-        }}
-      />
-      {staff.isError ? (
-        <ErrorState
-          error={staff.error}
-          onRetry={() => {
-            void staff.refetch();
-          }}
-        />
-      ) : staff.data === undefined ? (
-        <LoadingOutline />
-      ) : matches.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t('people.relatives.staffNone')}</p>
-      ) : (
-        <SelectField
-          label={t('people.relatives.staffChoice')}
-          options={[
-            { value: '', label: t('people.relatives.choose') },
-            ...matches.map((person) => ({
-              value: person.id,
-              label: t('people.relatives.staffOption', {
-                name: nameOf(person),
-                staffId: person.staffId,
-              }),
-            })),
-          ]}
-          name="staffChoice"
-          value={choice}
-          onChange={(event) => {
-            setChosen(event.target.value);
-          }}
-        />
-      )}
-      <FailureAlert error={failure} />
-      <div className="flex flex-wrap gap-3">
-        <Button type="submit" disabled={pending || choice === ''}>
-          {t('people.relatives.markSave')}
-        </Button>
-        <Button type="button" variant="ghost" onClick={onCancel}>
-          {t('people.relatives.markCancel')}
-        </Button>
-      </div>
-    </form>
   );
 }

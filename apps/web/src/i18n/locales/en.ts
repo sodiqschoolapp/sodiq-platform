@@ -205,15 +205,9 @@ export const en = {
     relative_changed: 'This relative was changed by someone else. Reload and try again.',
     relative_merged:
       'This relative was merged into another record. Type the phone again to find the record that stays.',
-    same_person_taken:
-      'This staff member is already marked as the same person as another relative. Remove that mark first.',
-    same_person_held_elsewhere:
-      'This staff member is already marked as the same person as a relative of another branch. Ask the Super Admin to remove that mark.',
-    same_person_elsewhere:
-      'This relative is marked as the same person as a staff member of another branch. Ask the Super Admin to change it.',
-    same_person_vacancy: 'A vacancy is not a person. Choose a staff member.',
-    merge_marks_differ:
-      'These relatives are marked as two different staff members. Remove one of the marks, then merge.',
+    staff_phone_taken: 'This phone belongs to another staff record. Check the number.',
+    phone_is_staff:
+      "This phone is a staff member's phone, so it is not given to another person. Correct the staff record's phone first.",
     class_year_closed:
       'The academic year of this class is closed. Its classes and Tutors stay as they were.',
     class_needs_year:
@@ -1862,6 +1856,12 @@ export const en = {
       ownerChoice: 'Who is {{name}}?',
       samePerson: 'The same person: link them',
       newOwner: 'A different person: the number has a new owner',
+      phoneIsStaff:
+        "This is the phone of the staff member {{name}}: the parent will be the same person, with the name and email of the staff record. If it is another person, correct the staff record's phone first.",
+      phoneIsStaffElsewhere:
+        "This is the phone of a staff member of another branch: the parent will be marked as the same person. If it is another person, the staff record's phone is corrected first.",
+      newOwnerStaff:
+        "This phone is also a staff member's phone, so it cannot be given to a different person. Correct the staff record's phone first.",
       previousPhone: 'New phone of {{name}}',
       previousUnknown: 'The new phone of {{name}} is unknown: no valid phone',
       noValidPhone: 'No valid phone',
@@ -1905,21 +1905,8 @@ export const en = {
       removeExtraPhone: 'Remove extra phone {{n}}',
       extraPhoneTwice: 'This phone is already in the list.',
       sameTitle: 'Same person as a staff member',
-      sameNone: 'Not marked as a staff member.',
-      sameElsewhere: 'Marked as the same person as a staff member of another branch.',
+      sameElsewhere: 'The same person as a staff member of another branch.',
       staffIdOf: 'Staff ID {{staffId}}',
-      staffOption: '{{name}} ({{staffId}})',
-      markStaff: 'Mark as staff member',
-      changeStaff: 'Change',
-      removeMark: 'Remove',
-      staffSearch: 'Find a staff member',
-      staffChoice: 'Staff member',
-      staffNone: 'No staff member of this name.',
-      markSave: 'Mark',
-      markCancel: 'Cancel',
-      removeMarkTitle: 'Remove the mark "same person"?',
-      removeMarkText:
-        'The relative and the staff member stay as they are; they are no longer marked as one person.',
       relationships: {
         father: 'Father',
         mother: 'Mother',
@@ -2109,11 +2096,18 @@ export const en = {
       newStatus: 'New status',
       changeStatus: 'Change status',
       duplicateTitle: 'Possibly the same person',
-      duplicateHere:
-        'A staff member with the same name and date of birth, or the same phone, already exists.',
+      duplicateHere: 'A staff member with the same name and date of birth already exists.',
       duplicateElsewhere:
-        'A staff member with the same name and date of birth, or the same phone, works in another branch.',
+        'A staff member with the same name and date of birth works in another branch.',
       saveAnyway: 'Save anyway',
+      phoneTaken: 'This phone belongs to the staff record {{name}}.',
+      phoneTakenElsewhere: 'This phone belongs to a staff record of another branch.',
+      sameAsParentTitle: 'Also a parent',
+      sameAsParent:
+        "This phone is a parent's main phone: the two records will be marked as the same person. The parent's email is taken when none is typed.",
+      sameAsParentElsewhere:
+        'This phone is the main phone of a parent of another branch: the two records will be marked as the same person.',
+      saveSamePerson: 'Save',
     },
   },
   devices: {

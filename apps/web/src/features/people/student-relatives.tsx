@@ -40,7 +40,12 @@ import {
   smsWarning,
   type ExtraPhoneFields,
   linkingFound,
+  fromStaff,
+  newRelativeDetails,
+  staffMatchOf,
+  StaffPhoneNote,
   usePhoneLookup,
+  type StaffMatch,
 } from './relative-form';
 import { SECTION_TITLE } from '@/components/ui/control';
 import type { PanelEditing } from '@/components/list/use-panel-editing';
@@ -502,6 +507,7 @@ function AddRelative({
 }) {
   const { t } = useTranslation();
   const [match, setMatch] = useState<{ phone: string; holder: RelativeHolder } | null>(null);
+  const [staffMatch, setStaffMatch] = useState<StaffMatch | null>(null);
   const add = useLinkChange(
     studentId,
     (input: RelativeLinkInput) =>
@@ -523,8 +529,10 @@ function AddRelative({
     if (typed === null || typed === match?.phone) {
       return;
     }
-    void lookup(typed).then((holder) => {
+    void lookup(typed).then((answer) => {
+      const holder = answer.holder;
       setMatch(holder === null || holder.id === null ? null : { phone: typed, holder });
+      setStaffMatch(staffMatchOf(typed, answer));
     });
   };
   const form = useRecordForm<AddField, RelativeLinkInput>({
@@ -576,10 +584,14 @@ function AddRelative({
         : {
             kind: 'new',
             relative: {
-              fullName: typed.fullName,
+              ...newRelativeDetails(
+                staffMatch,
+                phoneNow,
+                match !== null && match.phone === phoneNow,
+                { fullName: typed.fullName, email: typed.email },
+              ),
               phone: noPhone ? null : typed.phone,
               workplace: typed.workplace,
-              email: typed.email,
               extraPhones: extraPhonesTyped(EXTRA_FIELDS, typed),
             },
             ...link,
@@ -589,7 +601,7 @@ function AddRelative({
       // H26: Save waits for the lookup of the phone it sends and links the person found.
       const found =
         typedInput.kind === 'new' && typedInput.relative.phone !== null
-          ? await lookup(typedInput.relative.phone)
+          ? (await lookup(typedInput.relative.phone)).holder
           : null;
       if (
         found !== null &&
@@ -623,6 +635,13 @@ function AddRelative({
   const phone = form.bind('phone');
   const found =
     !noPhone && match !== null && storedPhone(phone.value) === match.phone ? match.holder : null;
+  // A staff member's phone (task 3.6b-1): the note, and the staff record's
+  // name and email for a new relative when it is of the branch.
+  const staff =
+    !noPhone && staffMatch !== null && storedPhone(phone.value) === staffMatch.phone
+      ? staffMatch
+      : null;
+  const staffHere = found === null ? (staff?.staff ?? null) : null;
   const option = (value: string, text: string) => ({ value, label: text });
   return (
     <section className="grid gap-3">
@@ -656,20 +675,24 @@ function AddRelative({
             }}
           />
         )}
+        {staff !== null && found === null && <StaffPhoneNote match={staff} />}
         {found !== null && (
           <OwnerChoice
             found={found}
             owner={form.bind('owner')}
             previousPhone={form.bind('previousPhone')}
             previousUnknown={form.bind('previousUnknown')}
+            staffPhone={staff !== null}
           />
         )}
-        {(found === null || form.bind('owner').value === NEW_OWNER) && (
+        {(found === null || (staff === null && form.bind('owner').value === NEW_OWNER)) && (
           <>
             <Field
               label={t('people.relatives.fullNameField')}
               autoComplete="off"
-              {...form.bind('fullName')}
+              {...(staffHere === null
+                ? form.bind('fullName')
+                : fromStaff(form.bind('fullName'), staffHere.fullName))}
             />
             <ExtraPhonesField
               count={form.bind(EXTRA_FIELDS.count)}
@@ -684,7 +707,9 @@ function AddRelative({
               label={t('people.relatives.email')}
               type="email"
               autoComplete="off"
-              {...form.bind('email')}
+              {...(staffHere === null
+                ? form.bind('email')
+                : fromStaff(form.bind('email'), staffHere.email ?? ''))}
             />
           </>
         )}

@@ -23,6 +23,7 @@ import { notFound } from '../setup/setup-refusals.js';
 import { readPersonEntries, type ReportPerson } from './personal-data.query.js';
 import { branchOf, neverUsedAccounts } from './staff-account-records.js';
 import { FIELD_COLUMNS, textOf } from './student-merges.js';
+import { relativesOfStaff, staffOfRelatives } from './same-person.js';
 
 /** An open end is stored as `infinity` (`staff_availability.valid_until`, 0025). */
 const openEnd = (date: string): string | null => (date === 'infinity' ? null : date);
@@ -352,11 +353,17 @@ export class PersonalData {
         .orderBy('weekday')
         .orderBy('start_minutes')
         .execute();
-      const sameAs = await transaction
-        .selectFrom('relatives')
-        .select(['id', 'full_name'])
-        .where('staff_id', '=', id)
-        .executeTakeFirst();
+      // The mark is read from the phones (task 3.6b-1, decision 3); the
+      // relative is named when the transaction sees it, as before.
+      const sameAsId = (await relativesOfStaff(transaction, [id])).get(id);
+      const sameAs =
+        sameAsId === undefined
+          ? undefined
+          : await transaction
+              .selectFrom('relatives')
+              .select(['id', 'full_name'])
+              .where('id', '=', sameAsId)
+              .executeTakeFirst();
       const account =
         person.account_id === null
           ? undefined
@@ -561,7 +568,6 @@ export class PersonalData {
           'email',
           'phone_invalid_since',
           'archived_at',
-          'staff_id',
         ])
         .where('id', '=', id)
         .executeTakeFirst();
@@ -573,13 +579,14 @@ export class PersonalData {
         .select(['created_at', 'switched_on_at'])
         .where('relative_id', '=', id)
         .executeTakeFirst();
+      const samePersonId = (await staffOfRelatives(transaction, [id])).get(id);
       const samePerson =
-        relative.staff_id === null
+        samePersonId === undefined
           ? undefined
           : await transaction
               .selectFrom('staff')
               .select(['id', 'first_name', 'last_name', 'staff_id'])
-              .where('id', '=', relative.staff_id)
+              .where('id', '=', samePersonId)
               .executeTakeFirst();
       const links = await transaction
         .selectFrom('student_relatives as l')

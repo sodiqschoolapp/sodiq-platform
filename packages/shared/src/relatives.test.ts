@@ -3,7 +3,6 @@ import {
   RELATIONSHIPS,
   RELATIVE_EXTRA_PHONES_MAX,
   relativeEditSchema,
-  relativeSamePersonSchema,
   receivesNotices,
   relativeListQuerySchema,
   relativeNameKey,
@@ -217,12 +216,5 @@ describe('extra phones and the mark "same person"', () => {
   it('wants the whole list on the edit, never a silent clear', () => {
     expect(relativeEditSchema.safeParse(record()).success).toBe(false);
     expect(relativeEditSchema.safeParse(record([])).success).toBe(true);
-  });
-
-  it('names one staff record by id for the mark', () => {
-    const staffId = '01a13429-da37-76ab-9087-36a8604699c4';
-    expect(relativeSamePersonSchema.parse({ staffId })).toEqual({ staffId });
-    expect(relativeSamePersonSchema.safeParse({ staffId: 'S-000001' }).success).toBe(false);
-    expect(relativeSamePersonSchema.safeParse({ staffId, more: 1 }).success).toBe(false);
   });
 });

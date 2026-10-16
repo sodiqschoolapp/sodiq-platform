@@ -595,11 +595,12 @@ describe('the staff page', () => {
         json({
           sameNameAndBirth: [
             { id: uid(41), staffId: 'S-260041', firstName: 'Oʻtkir', lastName: 'Rahimov' },
-          ],
-          samePhone: [
             { id: uid(42), staffId: 'S-260042', firstName: 'Bobur', lastName: 'Toshmatov' },
           ],
           elsewhere: false,
+          phoneTaken: null,
+          relative: null,
+          relativeElsewhere: false,
         }),
     });
     renderApp(PATH);
@@ -630,7 +631,13 @@ describe('the staff page', () => {
     let saved: (typeof AKMAL)[] = [];
     const calls = openList('super_admin', {
       'POST /api/people/staff/check': () =>
-        json({ sameNameAndBirth: [], samePhone: [], elsewhere: true }),
+        json({
+          sameNameAndBirth: [],
+          elsewhere: true,
+          phoneTaken: null,
+          relative: null,
+          relativeElsewhere: false,
+        }),
       'POST /api/people/staff': () => {
         saved = [{ ...AKMAL, id: uid(33) }];
         return json(detailOf({ ...AKMAL, id: uid(33) }), 201);
@@ -676,6 +683,70 @@ describe('the staff page', () => {
     });
     // The panel shows the saved record (task 2.7c-2a).
     await savedRecordPanel(en.people.staff.newTitle);
+  });
+
+  // Task 3.6b-1: a staff phone is unique; a parent's phone marks the two
+  // records as the same person.
+  const startNew = async (check: Record<string, unknown>) => {
+    const calls = openList('super_admin', {
+      'POST /api/people/staff/check': () =>
+        json({
+          sameNameAndBirth: [],
+          elsewhere: false,
+          phoneTaken: null,
+          relative: null,
+          relativeElsewhere: false,
+          ...check,
+        }),
+      'POST /api/people/staff': () => json(detailOf({ ...AKMAL, id: uid(33) }), 201),
+      [`GET /api/people/staff/${uid(33)}`]: () => json(detailOf({ ...AKMAL, id: uid(33) })),
+    });
+    renderApp(PATH);
+    await screen.findByRole('heading', { name: en.people.staff.title });
+    fireEvent.click(await screen.findByRole('button', { name: en.people.staff.add }));
+    const form = within(
+      await screen.findByRole('complementary', { name: en.people.staff.newTitle }),
+    ).getByRole('form', { name: en.people.staff.newTitle });
+    const type = (label: string, value: string) => {
+      fireEvent.change(within(form).getByLabelText(label), { target: { value } });
+    };
+    type(en.people.staff.firstName, 'Nodira');
+    type(en.people.staff.lastName, 'Saidova');
+    type(en.people.staff.sex, 'female');
+    type(en.people.staff.birthDate, '1987-05-05');
+    type(en.people.staff.phone, '+998 90 111 22 33');
+    type(en.people.staff.admissionDate, '2026-09-01');
+    type(en.people.staff.department, uid(11));
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    return { calls, form };
+  };
+
+  it.each([
+    [
+      { id: uid(42), staffId: 'S-260042', firstName: 'Bobur', lastName: 'Toshmatov' },
+      en.people.staff.phoneTaken.replace('{{name}}', 'Toshmatov Bobur'),
+    ],
+    [null, en.people.staff.phoneTakenElsewhere],
+  ] as const)('refuses a phone of another staff record before Save (%#)', async (match, text) => {
+    const { calls, form } = await startNew({ phoneTaken: { match } });
+    expect(await within(form).findByText(text)).toBeDefined();
+    expect(calls.some((call) => call.route === 'POST /api/people/staff')).toBe(false);
+  });
+
+  it("asks before saving a staff member whose phone is a parent's, and saves when told to", async () => {
+    const { calls } = await startNew({
+      relative: { fullName: 'Nodira Saidova', email: 'nodira@example.uz' },
+    });
+    const dialog = await screen.findByRole('alertdialog', {
+      name: en.people.staff.sameAsParentTitle,
+    });
+    expect(within(dialog).getByText(en.people.staff.sameAsParent)).toBeDefined();
+    expect(within(dialog).getByText('Nodira Saidova')).toBeDefined();
+    expect(calls.some((call) => call.route === 'POST /api/people/staff')).toBe(false);
+    fireEvent.click(within(dialog).getByRole('button', { name: en.people.staff.saveSamePerson }));
+    await waitFor(() => {
+      expect(calls.some((call) => call.route === 'POST /api/people/staff')).toBe(true);
+    });
   });
 
   // Task 2.4a: the Tutor has People for the student list, without the staff.

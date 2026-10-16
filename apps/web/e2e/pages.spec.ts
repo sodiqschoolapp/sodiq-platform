@@ -160,13 +160,6 @@ const EDITS = [
     en.people.students.deleteAction,
   ],
   ['people-parents', '/people/parents', en.people.relatives.title, null, en.form.edit],
-  [
-    'people-parents-same',
-    '/people/parents',
-    en.people.relatives.title,
-    null,
-    en.people.relatives.markStaff,
-  ],
   ['setup-slot-types', '/setup/slot-types', en.setup.slotTypes.title, null, en.form.edit],
   ['setup-day-templates', '/setup/day-templates', en.setup.dayTemplates.title, null, en.form.edit],
   ['setup-calendar', '/setup/calendar', en.setup.calendar.title, 'Pages day off', en.form.edit],

@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 16 October 2026: task 3.6b-1 The owner's answers of 15 October: the same-person mark by phone
+
+- Built L81 of issue #42 and the answer of 16 October: the mark "same person" is read from the phones (migration 0063: `same_person_staff`, `same_person_relative`, the stored `relatives.staff_id` dropped with an entry for each hand mark the phones do not give); staff phones are unique (`staff_phone_idx`, left and archived included); every phone write takes `phone_owner_lock` and writes the mark's change in its entry and in `relative.same_person` / `relative.same_person_removed` with a cause.
+- A new relative with a staff phone of the branch takes the staff name and email; a new staff member with a parent's phone takes the email; `staff_phone_taken` and `phone_is_staff` refuse; the two hand-mark routes and the Parent panel's mark buttons are gone.
+- The browser test found that a new parent with a staff phone of the branch was refused "Fill in this field." in both forms: the locked name and email are now what the form checks and sends (`newRelativeDetails`).
+- 3.6b is split: 3.6b-2 (L128, L170) and 3.6b-3 (L195) are the next lines. Left out: the handbook pages (3.7, its "From 3.6b-1" line).
+
+The next sessions must know:
+
+- Read a mark only through `same-person.ts` (`staffOfRelatives`, `relativesOfStaff`, `marksOf`); a new writer of a relative's main phone or a staff phone calls `lockPhones` for the old and the new phone before the write, reads `marksOf` before and after, and records `changesBetween` with `recordMarkChanges`.
+- A test fixture that writes staff gives each record a phone of its own: `staff_phone_idx` refuses a second one.
+- The next task is 3.6b-2.
+
 ## 16 October 2026: task 3.6a The owner's answers of 15 October: who sees what
 
 - Built L32, L48, L50, L59, L136, L147 of issue #42 (L157 was built by 3.5b): a Teacher reads the students taught in the published load in force, Basic only; the diagnostic score has its own area `student_diagnostic`; the Head Tutor reads and exports every group; the Head Teachers export Basic; a Tutor exports Contact and the score of own class, per row; groups on every row; the Head Teachers list names every holder in full through `audit_names`; the Principal searches the Parents list by phone.

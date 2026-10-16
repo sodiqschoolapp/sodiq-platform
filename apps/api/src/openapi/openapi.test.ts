@@ -107,7 +107,6 @@ describe('OpenAPI document', () => {
         '/api/people/relatives/{id}',
         '/api/people/relatives/{id}/merge',
         '/api/people/relatives/{id}/report',
-        '/api/people/relatives/{id}/same-person',
         '/api/people/relatives/{id}/show',
         '/api/people/staff',
         '/api/people/staff/check',

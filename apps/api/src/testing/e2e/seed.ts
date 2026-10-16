@@ -1038,37 +1038,55 @@ try {
       fullName: 'Kamola Yusupova',
       phone: '+998905550141',
     });
-    const person = await transaction
-      .insertInto('staff')
-      .values({
-        kind: 'person',
+    // Farrux Yusupov takes Kamola Yusupova's phone in the test; a new parent
+    // is added with Dilnoza Qodirova's and takes her name and email (task 3.6b-1).
+    for (const teacher of [
+      {
         staff_id: 'S-269401',
         first_name: 'Farrux',
         last_name: 'Yusupov',
         sex: 'male',
         birth_date: '1983-02-10',
         phone: '+998935550141',
-        admission_date: '2026-09-01',
-      })
-      .returning('id')
-      .executeTakeFirstOrThrow();
-    await transaction
-      .insertInto('staff_branches')
-      .values({ staff_id: person.id, branch_id: sameBranch, is_main: true })
-      .execute();
-    await transaction
-      .insertInto('staff_divisions')
-      .values({
-        staff_id: person.id,
-        division_id: academic.id,
-        department_id: steam.id,
-        is_main: true,
-      })
-      .execute();
-    await transaction
-      .insertInto('staff_statuses')
-      .values({ staff_id: person.id, status: 'active', valid_from: '2026-09-01' })
-      .execute();
+        email: null,
+      },
+      {
+        staff_id: 'S-269402',
+        first_name: 'Dilnoza',
+        last_name: 'Qodirova',
+        sex: 'female',
+        birth_date: '1986-05-12',
+        phone: '+998935550143',
+        email: 'd.qodirova@example.uz',
+      },
+    ] as const) {
+      const person = await transaction
+        .insertInto('staff')
+        .values({
+          kind: 'person',
+          ...teacher,
+          admission_date: '2026-09-01',
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await transaction
+        .insertInto('staff_branches')
+        .values({ staff_id: person.id, branch_id: sameBranch, is_main: true })
+        .execute();
+      await transaction
+        .insertInto('staff_divisions')
+        .values({
+          staff_id: person.id,
+          division_id: academic.id,
+          department_id: steam.id,
+          is_main: true,
+        })
+        .execute();
+      await transaction
+        .insertInto('staff_statuses')
+        .values({ staff_id: person.id, status: 'active', valid_from: '2026-09-01' })
+        .execute();
+    }
   });
   seeded.samePerson = { login: sameVice.login, password: sameVice.firstPassword };
 

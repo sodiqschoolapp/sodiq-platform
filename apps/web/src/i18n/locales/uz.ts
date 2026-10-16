@@ -212,15 +212,9 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu qarindoshni boshqa kishi oʻzgartirdi. Sahifani yangilab, qayta urinib koʻring.',
     relative_merged:
       'Bu qarindosh boshqa yozuv bilan birlashtirilgan. Qolgan yozuvni topish uchun telefonni qayta kiriting.',
-    same_person_taken:
-      'Bu xodim allaqachon boshqa qarindosh bilan bir shaxs deb belgilangan. Avval oʻsha belgini olib tashlang.',
-    same_person_held_elsewhere:
-      'Bu xodim allaqachon boshqa filial qarindoshi bilan bir shaxs deb belgilangan. Oʻsha belgini olib tashlashni Super administratordan soʻrang.',
-    same_person_elsewhere:
-      'Bu qarindosh boshqa filial xodimi bilan bir shaxs deb belgilangan. Belgini oʻzgartirishni Super administratordan soʻrang.',
-    same_person_vacancy: 'Boʻsh oʻrin shaxs emas. Xodimni tanlang.',
-    merge_marks_differ:
-      'Bu qarindoshlar ikki xil xodim deb belgilangan. Belgilardan birini olib tashlang, soʻng birlashtiring.',
+    staff_phone_taken: 'Bu telefon boshqa xodim yozuviga tegishli. Raqamni tekshiring.',
+    phone_is_staff:
+      'Bu telefon xodimning telefoni, shuning uchun boshqa odamga berilmaydi. Avval xodim yozuvidagi telefonni tuzating.',
     class_year_closed:
       'Bu sinfning oʻquv yili yopilgan. Uning sinflari va tyutorlari avvalgidek qoladi.',
     class_needs_year:
@@ -1876,6 +1870,12 @@ export const uz: Texts<'one' | 'other'> = {
       ownerChoice: '{{name}} kim?',
       samePerson: 'Oʻsha odam: bogʻlash',
       newOwner: 'Boshqa odam: raqamning yangi egasi bor',
+      phoneIsStaff:
+        'Bu {{name}} xodimining telefoni: ota-ona xodim yozuvidagi ism va email bilan oʻsha shaxs boʻladi. Agar bu boshqa odam boʻlsa, avval xodim yozuvidagi telefonni tuzating.',
+      phoneIsStaffElsewhere:
+        'Bu boshqa filial xodimining telefoni: ota-ona oʻsha shaxs deb belgilanadi. Agar bu boshqa odam boʻlsa, avval xodim yozuvidagi telefon tuzatiladi.',
+      newOwnerStaff:
+        'Bu telefon xodimning ham telefoni, shuning uchun boshqa odamga berilmaydi. Avval xodim yozuvidagi telefonni tuzating.',
       previousPhone: '{{name}}ning yangi telefoni',
       previousUnknown: '{{name}}ning yangi telefoni nomaʼlum: amaldagi telefon yoʻq',
       noValidPhone: 'Amaldagi telefon yoʻq',
@@ -1919,21 +1919,8 @@ export const uz: Texts<'one' | 'other'> = {
       removeExtraPhone: '{{n}}-qoʻshimcha telefonni olib tashlash',
       extraPhoneTwice: 'Bu telefon roʻyxatda allaqachon bor.',
       sameTitle: 'Xodim bilan bir shaxs',
-      sameNone: 'Xodim deb belgilanmagan.',
-      sameElsewhere: 'Boshqa filial xodimi bilan bir shaxs deb belgilangan.',
+      sameElsewhere: 'Boshqa filial xodimi bilan bir shaxs.',
       staffIdOf: 'Xodim raqami {{staffId}}',
-      staffOption: '{{name}} ({{staffId}})',
-      markStaff: 'Xodim deb belgilash',
-      changeStaff: 'Oʻzgartirish',
-      removeMark: 'Olib tashlash',
-      staffSearch: 'Xodimni topish',
-      staffChoice: 'Xodim',
-      staffNone: 'Bunday ismli xodim topilmadi.',
-      markSave: 'Belgilash',
-      markCancel: 'Bekor qilish',
-      removeMarkTitle: '«Bir shaxs» belgisi olib tashlansinmi?',
-      removeMarkText:
-        'Qarindosh va xodim oʻz holicha qoladi; ular endi bir shaxs deb belgilanmaydi.',
       relationships: {
         father: 'Otasi',
         mother: 'Onasi',
@@ -2126,10 +2113,17 @@ export const uz: Texts<'one' | 'other'> = {
       newStatus: 'Yangi holat',
       changeStatus: 'Holatni oʻzgartirish',
       duplicateTitle: 'Ehtimol, bu oʻsha odam',
-      duplicateHere: 'Ismi va tugʻilgan sanasi yoki telefoni bir xil xodim allaqachon bor.',
-      duplicateElsewhere:
-        'Ismi va tugʻilgan sanasi yoki telefoni bir xil xodim boshqa filialda ishlaydi.',
+      duplicateHere: 'Ismi va tugʻilgan sanasi bir xil xodim allaqachon bor.',
+      duplicateElsewhere: 'Ismi va tugʻilgan sanasi bir xil xodim boshqa filialda ishlaydi.',
       saveAnyway: 'Baribir saqlash',
+      phoneTaken: 'Bu telefon {{name}} xodim yozuviga tegishli.',
+      phoneTakenElsewhere: 'Bu telefon boshqa filialdagi xodim yozuviga tegishli.',
+      sameAsParentTitle: 'Ota-ona ham',
+      sameAsParent:
+        'Bu telefon ota-onaning asosiy telefoni: ikki yozuv bir shaxs deb belgilanadi. Email kiritilmasa, ota-onaning emaili olinadi.',
+      sameAsParentElsewhere:
+        'Bu telefon boshqa filialdagi ota-onaning asosiy telefoni: ikki yozuv bir shaxs deb belgilanadi.',
+      saveSamePerson: 'Saqlash',
     },
   },
   devices: {

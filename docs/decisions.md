@@ -236,6 +236,28 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 16 October 2026: the same-person mark by phone, one phone for one adult (task 3.6b-1)
+
+Plan approved on pull request #119 with corrections 1 to 5; decisions 1 to 9 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** 3.6b split in 3.6b-1 (L81, the answer of 16 October), 3.6b-2 (L128, L170) and 3.6b-3 (L195) | Decision 1 |
+| **Look first.** A new relative with the phone of a staff member of another branch is marked, keeps the typed name and email, and is shown as "a staff member of another branch" to every reader of the relative, unnamed | Decision 2; `edge/close-relatives` is silent on another branch |
+| **Look first.** The stored mark (`relatives.staff_id`, `relatives_staff_idx`, `relatives_same_person_check`, the staff half of `relatives_merged_empty_check`) dropped in 0063; the mark is read from the phones; the tests that pinned the hand mark changed with the requirement | Decision 3; L81 |
+| **Look first.** `staff_phone_idx`: a staff phone is unique, left and archived records included; 0063 stops with the ids on a phone held twice | Decision 4; `edge/people-roles-accounts`, re-hire row |
+| **Look first.** "Different person, the number has a new owner" is refused `phone_is_staff` for a staff member's current phone | Decision 5; the answer of 16 October |
+| **Look first.** A new staff member with a parent's main phone takes the parent's email when none is typed; the names are typed | Decision 6 |
+| **Look first.** The parent's email that a new staff member takes (decision 6) is read on the staff panel as a staff email, plainly, where the Principal reads a relative's email behind a logged show | Permission review of the build; the same person's own address, the staff record's field groups apply to it |
+| **Look first.** `staff_phone_elsewhere(text)`, a SECURITY DEFINER boolean, tells the check before Save and the phone match that a staff record of another branch holds a phone; `staff_duplicate_elsewhere` keeps its signature and no longer reads the phone | Built; correction 2 |
+| An edit that makes two existing records equal on the phone changes the mark only | Decision 7 |
+| The main phone only is compared; a relative with no phone, a merged record and a student's phone never | Decision 8 |
+| The staff page asks before saving a staff member whose phone is a parent's, naming the parent | Built; decision 6 |
+| The Parent panel's choices for a taken phone offer no "new owner" when the phone is also a staff member's, with the line to correct the staff record first, as the student form and Add relative do | Spec review of the build; the answer of 16 October |
+| `staff_phone_taken` says "Check the number." only: the record is named under the phone field in the branch, and a record of another branch cannot be opened | Spec review of the build; `.claude/rules/web.md`, a text true on every path |
+| The Same person section has no line under it: the title, the name and the staff number say it | Spec review of the build; `.claude/rules/web.md`, Text on screens |
+| The handbook pages come with 3.7 ("From 3.6b-1" line) | Decision 9 |
+
 ## 16 October 2026: who sees what, the owner's answers of 15 October (task 3.6a)
 
 Plan approved on pull request #118 with corrections 1 to 4; decisions 1 to 16 confirmed there. Flagged on issue #42.

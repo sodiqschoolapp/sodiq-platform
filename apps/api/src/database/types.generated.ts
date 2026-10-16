@@ -518,7 +518,6 @@ export interface Relatives {
   name_key: string;
   phone: string | null;
   phone_invalid_since: Timestamp | null;
-  staff_id: string | null;
   workplace: string | null;
 }
 

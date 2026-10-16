@@ -9,7 +9,9 @@ import {
   type RelativeDetail,
   type RelativeHolder,
   type RelativeLinkInput,
+  type RelativePhoneMatchResult,
   type RelativeRecord,
+  type RelativeStaffMatch,
 } from '@sodiq/shared';
 import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -52,12 +54,12 @@ const EXTRA_SLOTS: typeof RELATIVE_EXTRA_PHONES_MAX = 3;
  * asked again next time.
  */
 export function usePhoneLookup(
-  ask: ((phone: string) => Promise<RelativeHolder | null>) | undefined,
-): (phone: string) => Promise<RelativeHolder | null> {
-  const asked = useRef(new Map<string, Promise<RelativeHolder | null>>());
+  ask: ((phone: string) => Promise<RelativePhoneMatchResult>) | undefined,
+): (phone: string) => Promise<RelativePhoneMatchResult> {
+  const asked = useRef(new Map<string, Promise<RelativePhoneMatchResult>>());
   return (phone) => {
     if (ask === undefined) {
-      return Promise.resolve(null);
+      return Promise.resolve(NO_MATCH);
     }
     const before = asked.current.get(phone);
     if (before !== undefined) {
@@ -65,12 +67,79 @@ export function usePhoneLookup(
     }
     const answer = ask(phone).catch(() => {
       asked.current.delete(phone);
-      return null;
+      return NO_MATCH;
     });
     asked.current.set(phone, answer);
     return answer;
   };
 }
+
+/** A lookup that found nothing, or failed. */
+export const NO_MATCH: RelativePhoneMatchResult = {
+  holder: null,
+  staff: null,
+  staffElsewhere: false,
+};
+
+/** The staff member a typed phone belongs to, with the phone it was found by (task 3.6b-1). */
+export interface StaffMatch {
+  phone: string;
+  staff: RelativeStaffMatch | null;
+  staffElsewhere: boolean;
+}
+
+/** The staff part of a lookup's answer, or null when no staff member has the phone. */
+export const staffMatchOf = (phone: string, answer: RelativePhoneMatchResult): StaffMatch | null =>
+  answer.staff === null && !answer.staffElsewhere
+    ? null
+    : { phone, staff: answer.staff, staffElsewhere: answer.staffElsewhere };
+
+/**
+ * A typed phone that is a staff member's (`edge/close-relatives`, "A teacher
+ * is also a parent"; task 3.6b-1): the new relative will be the same person,
+ * with the staff record's name and email when it is of the branch (decision
+ * 2), and the staff phone is corrected first when it is another person (the
+ * owner's answer of 16 October 2026).
+ */
+export function StaffPhoneNote({ match }: { match: StaffMatch }) {
+  const { t } = useTranslation();
+  return (
+    <p role="status" className="text-sm">
+      {match.staff === null
+        ? t('people.relatives.phoneIsStaffElsewhere')
+        : t('people.relatives.phoneIsStaff', { name: match.staff.fullName })}
+    </p>
+  );
+}
+
+/**
+ * The name and email a new relative is checked and sent with: the staff
+ * record's when its phone is a staff member's of the branch and no relative's
+ * (task 3.6b-1, decision 2), the values `fromStaff` shows in the locked fields;
+ * what is typed otherwise. The server takes the staff record's values itself.
+ */
+export function newRelativeDetails(
+  staffMatch: StaffMatch | null,
+  phone: string | null,
+  holderFound: boolean,
+  typed: { fullName: string; email: string },
+): { fullName: string; email: string } {
+  const staff =
+    !holderFound && phone !== null && staffMatch !== null && staffMatch.phone === phone
+      ? staffMatch.staff
+      : null;
+  return staff === null ? typed : { fullName: staff.fullName, email: staff.email ?? '' };
+}
+
+/**
+ * A field whose value the staff record gives (task 3.6b-1, decision 2): shown
+ * with that value and locked, as the server saves it.
+ */
+export const fromStaff = <Binding extends { value: string }>(binding: Binding, value: string) => ({
+  ...binding,
+  value,
+  disabled: true,
+});
 
 /**
  * A new relative whose phone the lookup finds is that person (H26, decision 2:
@@ -291,13 +360,30 @@ export function OwnerChoice({
   owner,
   previousPhone,
   previousUnknown,
+  staffPhone = false,
 }: {
   found: RelativeHolder;
   owner: FieldBinding;
   previousPhone: FieldBinding;
   previousUnknown: FieldBinding;
+  /**
+   * The phone is also a staff member's current phone (the owner's answer of
+   * 16 October 2026; task 3.6b-1, decision 5): "different person" is not
+   * offered, the staff phone is corrected first.
+   */
+  staffPhone?: boolean;
 }) {
   const { t } = useTranslation();
+  if (staffPhone) {
+    return (
+      <>
+        <p role="status" className="text-sm">
+          {t('people.relatives.found', { name: found.fullName, count: found.students })}
+        </p>
+        <p className="text-sm text-muted-foreground">{t('people.relatives.newOwnerStaff')}</p>
+      </>
+    );
+  }
   return (
     <>
       <SelectField
