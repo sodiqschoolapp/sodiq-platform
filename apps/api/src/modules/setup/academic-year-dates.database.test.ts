@@ -272,14 +272,50 @@ describe('the dates of a year and its stays in the database', () => {
         expect(await outcome(grow({ own_until: '2027-05-01', valid_until: '2027-05-01' }))).toBe(
           `${table}_only_shrink`,
         );
-        // The mark set by hand at depth one is not honoured.
+      }
+    });
+
+    // The follow's exact shape written by hand: the year's end now stands at
+    // 31 May, the rows end on 1 May, and the mark names exactly that move. A
+    // write at depth one is not the follow, whatever mark it carries.
+    it('refuses the exact shape of the follow written outside the follow, in both tables', async () => {
+      const setup = await setting();
+      const { branch, year } = setup;
+      const student = await members.student(branch);
+      const { classRow, groupRow } = await inBranch(branch, async (transaction) => ({
+        classRow: await members.member(
+          {
+            branch,
+            classId: setup.grouped,
+            studentId: student,
+            from: '2026-09-01',
+            ownUntil: '2027-05-01',
+          },
+          transaction,
+        ),
+        groupRow: await members.groupMember(
+          {
+            branch,
+            groupId: setup.group,
+            subjectId: maths,
+            studentId: student,
+            from: '2026-09-01',
+            ownUntil: '2027-05-01',
+          },
+          transaction,
+        ),
+      }));
+      for (const [table, id] of [
+        ['class_memberships', classRow],
+        ['group_memberships', groupRow],
+      ] as const) {
         const marked = inBranch(branch, async (transaction) => {
-          await sql`select set_config('app.year_follow', ${'x|2027-05-31|2027-06-30'}, true)`.execute(
+          await sql`select set_config('app.year_follow', ${`${year}|2027-04-30|2027-05-31`}, true)`.execute(
             transaction,
           );
           await transaction
             .updateTable(table)
-            .set({ own_until: '2027-07-01', valid_until: '2027-07-01' })
+            .set({ own_until: '2027-06-01', valid_until: '2027-06-01' })
             .where('id', '=', id)
             .execute();
         });
