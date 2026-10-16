@@ -286,16 +286,11 @@ describe('group transfers and the History tab', () => {
         await post(`/api/groups/transfers/${move}/change`, { toGroupId: c, from: '2026-10-26' }),
       );
       expect(await held(one.id)).toEqual([
-        [a, TOMORROW, '2026-10-19'],
-        [a, '2026-10-19', '2026-10-26'],
+        [a, TOMORROW, '2026-10-26'],
         [c, '2026-10-26', '2027-06-01'],
       ]);
       ok(await post(`/api/groups/transfers/${groupMove(changed)}/cancel`, {}));
-      expect(await held(one.id)).toEqual([
-        [a, TOMORROW, '2026-10-19'],
-        [a, '2026-10-19', '2026-10-26'],
-        [a, '2026-10-26', '2027-06-01'],
-      ]);
+      expect(await held(one.id)).toEqual([[a, TOMORROW, '2027-06-01']]);
       refusedWith(
         await post(`/api/groups/transfers/${groupMove(changed)}/cancel`, {}),
         409,
@@ -389,10 +384,7 @@ describe('group transfers and the History tab', () => {
           version: (await fresh(one.id)).version,
         }),
       );
-      expect(await held(one.id)).toEqual([
-        [a, TOMORROW, '2026-10-19'],
-        [a, '2026-10-19', '2027-06-01'],
-      ]);
+      expect(await held(one.id)).toEqual([[a, TOMORROW, '2027-06-01']]);
     });
 
     it('answers 404 for a student, a group row, a group or a move it cannot see', async () => {
@@ -670,13 +662,19 @@ describe('group transfers and the History tab', () => {
               ? [line.kind, line.move.from]
               : line.kind === 'merged'
                 ? [line.kind, line.on]
-                : [line.kind, line.from],
+                : line.kind === 'class' || line.kind === 'group'
+                  ? [line.kind, line.from, line.until]
+                  : [line.kind, line.from],
         ),
       ).toEqual([
+        // One line per stay (task 3.5c, H35), a move's target included: the
+        // stays ahead and in force have no last day yet, a cut one has it.
+        ['class', '2026-10-19', null],
         ['move', 'class', '2026-10-19', 'scheduled'],
+        ['group', '2026-10-12', '2026-10-19'],
         ['move', 'group', '2026-10-12', 'scheduled'],
-        ['group', TOMORROW],
-        ['class', '2026-09-02'],
+        ['group', TOMORROW, '2026-10-12'],
+        ['class', '2026-09-02', '2026-10-19'],
         ['status', '2026-09-02'],
       ]);
     });

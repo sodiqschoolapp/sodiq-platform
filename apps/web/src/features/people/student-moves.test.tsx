@@ -121,7 +121,11 @@ const sessionAs = (role: Role, language: 'en' | 'ru' = 'en') => ({
 
 const HISTORY: StudentHistory = {
   lines: [
-    { kind: 'move', move: { ...MOVE, from: '2026-10-05', state: 'done', undoable: true } },
+    {
+      kind: 'move',
+      move: { ...MOVE, from: '2026-10-05', state: 'done', undoable: true },
+      changes: [],
+    },
     { kind: 'class', class: OXFORD, from: '2026-09-02', until: '2026-10-05' },
     { kind: 'status', status: 'active', cause: 'start', from: '2026-09-02', until: null },
   ],

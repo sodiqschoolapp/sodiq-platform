@@ -186,6 +186,8 @@ export interface ClassMemberships {
   ended_by_branch_move_id: string | null;
   ended_by_move_id: string | null;
   id: Generated<string>;
+  joined_into_id: string | null;
+  joined_xact: string | null;
   leaving_id: string | null;
   own_until: string;
   student_id: string;
@@ -349,6 +351,8 @@ export interface GroupMemberships {
   ended_by_move_id: string | null;
   group_id: string;
   id: Generated<string>;
+  joined_into_id: string | null;
+  joined_xact: string | null;
   leaving_id: string | null;
   own_until: string;
   review: Generated<boolean>;
@@ -751,6 +755,7 @@ export interface StudentMoves {
   kind: string;
   made_at: Timestamp;
   reason: string | null;
+  replaces_move_id: string | null;
   student_id: string;
   subject_id: string | null;
   to_class_id: string | null;

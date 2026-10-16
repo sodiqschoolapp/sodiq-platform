@@ -63,9 +63,11 @@ export interface ClassRowToCover {
   ownUntil: SchoolDate;
   /** The leaving that cuts the row, if any. */
   leavingId: string | null;
+  /** The move that cuts the row at `until`, if any (a row given back up to a later move, task 3.5c). */
+  endedByMoveId?: string | null;
 }
 
-/** A group row a class path writes. */
+/** A group row a class path writes, or gives back by growing it (`growId`, task 3.5c). */
 export interface CoverRow {
   studentId: string;
   groupId: string;
@@ -79,6 +81,10 @@ export interface CoverRow {
   review: boolean;
   /** The move whose action writes the row (task 3.3a, 0050), if any. */
   writtenByMoveId: string | null;
+  /** The move that cuts the row at `until` (task 3.5c), if any. */
+  endedByMoveId: string | null;
+  /** The row a take-back grows again (task 3.5c, decision 1), instead of a new row. */
+  growId?: string;
 }
 
 /** A group row written, as the audit entry of the change names it (should-fix 9). */
@@ -296,14 +302,17 @@ function cutBy(row: StoredGroupMembership, takenBack: TakenBackLeaving): boolean
 }
 
 /**
- * The group rows a leaving taken back gives back (decision 6), as
- * `planMemberships` gives back class rows: each row the leaving cut, from the
- * later of its first inactive day and the row's own start, to its own end but
- * inside the class row written back that holds that day and never past the
- * start of the next row of the subject given back; cut by a new leaving as
- * the class row is; its own `review`. A row of a group out of service, of a
- * class not written back, or of a group with no seat on every day is not
- * given back: its days go to the smallest suitable group
+ * The group rows a change taken back gives back (decision 6 of 3.2c; task
+ * 3.5c, decision 1: by growing each again), as `planMemberships` gives back
+ * class rows: each row the change cut grows from its end (the later of the
+ * first day taken back and the row's own start) up to its own end, but
+ * inside the run of class rows given back of its group's classes that holds
+ * that day, and never past the start of the next row of the subject given
+ * back; cut by a new leaving as the class row is, or ended by the move that
+ * ends that run or wrote that next row; its `review` kept. A row of a group
+ * out of service, of a class not given back, of a group with no seat on
+ * every day, or that would end before its own end with nothing to end it, is
+ * not given back: its days go to the smallest suitable group
  * (`planClassGroups`). A row the new leaving takes over as it is (its date
  * on or before the row's) is renamed by `cutGroupRows`, not given back.
  */
@@ -333,17 +342,30 @@ export async function planGiveBack(
     if (group === undefined || !group.inService) {
       continue;
     }
-    const holder = classRows.find(
-      (one) =>
-        one.studentId === studentId &&
-        group.classIds.has(one.classId.toLowerCase()) &&
-        one.from <= start &&
-        start < one.ownUntil,
-    );
-    if (holder === undefined) {
+    const inGroup = (one: ClassRowToCover): boolean =>
+      one.studentId === studentId && group.classIds.has(one.classId.toLowerCase());
+    const first = classRows.find((one) => inGroup(one) && one.from <= start && start < one.until);
+    if (first === undefined) {
       continue;
     }
-    let end = row.ownUntil < holder.ownUntil ? row.ownUntil : holder.ownUntil;
+    // The class rows given back of the group's classes, back to back.
+    let holder: ClassRowToCover = first;
+    for (;;) {
+      const runEnd: SchoolDate = holder.until;
+      const after: ClassRowToCover | undefined = classRows.find(
+        (one) => inGroup(one) && one.from === runEnd && one.from < one.until,
+      );
+      if (after === undefined) {
+        break;
+      }
+      holder = after;
+    }
+    // Where the run of class rows ends before the group row's own end, the
+    // group row ends as the run does: at a leaving or at a move.
+    const capped = holder.until < row.ownUntil;
+    let end = capped ? holder.until : row.ownUntil;
+    let endMove = capped ? (holder.endedByMoveId ?? null) : null;
+    let endLeaving = capped ? holder.leavingId : null;
     const next = cut
       .slice(index + 1)
       .find(
@@ -353,11 +375,19 @@ export async function planGiveBack(
       );
     if (next !== undefined && next.start < end) {
       end = next.start;
+      endMove = next.row.writtenByMoveId;
+      endLeaving = null;
     }
     if (start >= end) {
       continue;
     }
     const until = leave !== null && leave.from < end ? leave.from : end;
+    const leavingId =
+      until < end && leave !== null ? leave.leavingId : until < row.ownUntil ? endLeaving : null;
+    const endedByMoveId = leavingId === null && until < row.ownUntil ? endMove : null;
+    if (until < row.ownUntil && leavingId === null && endedByMoveId === null) {
+      continue;
+    }
     if (!(await book.fits(group, { from: start, until }))) {
       continue;
     }
@@ -369,11 +399,13 @@ export async function planGiveBack(
       branchId: group.branchId,
       from: start,
       until,
-      ownUntil: end,
-      leavingId: until < end && leave !== null ? leave.leavingId : null,
+      ownUntil: row.ownUntil,
+      leavingId,
       cause,
       review: reviewOf.get(row.id) ?? false,
       writtenByMoveId: takenBack.moveId ?? null,
+      endedByMoveId,
+      growId: row.id,
     });
   }
   return given;
@@ -484,6 +516,10 @@ export async function planClassGroups(
           cause: 'automatic',
           review: true,
           writtenByMoveId: moveId,
+          endedByMoveId:
+            next === undefined && row.until < row.ownUntil && row.leavingId === null
+              ? (row.endedByMoveId ?? null)
+              : null,
         });
         day = stop;
       }
@@ -514,6 +550,30 @@ export async function writeCoverRows(
 ): Promise<GroupRowWritten[]> {
   const written: GroupRowWritten[] = [];
   for (const row of rows) {
+    if (row.growId !== undefined) {
+      // Task 3.5c, decision 1: a row given back grows again; the days it
+      // gets back are checked at the commit (`group_memberships_regained`).
+      await transaction
+        .updateTable('group_memberships')
+        .set({
+          valid_until: row.until,
+          ...endedAs(row),
+        })
+        .where('id', '=', row.growId)
+        .where('student_id', '=', row.studentId)
+        .execute();
+      written.push({
+        id: row.growId,
+        studentId: row.studentId,
+        groupId: row.groupId,
+        subjectId: row.subjectId,
+        from: row.from,
+        until: row.until,
+        cause: row.cause,
+        review: row.review,
+      });
+      continue;
+    }
     const inserted = await transaction
       .insertInto('group_memberships')
       .values({
@@ -526,8 +586,7 @@ export async function writeCoverRows(
         own_until: row.ownUntil,
         cause: row.cause,
         review: row.review,
-        ended_by: row.leavingId === null ? null : 'leaving',
-        leaving_id: row.leavingId,
+        ...endedAs(row),
         written_by_move_id: row.writtenByMoveId,
       })
       .returning('id')
@@ -563,6 +622,68 @@ export async function writeCoverRows(
     }
   }
   return written;
+}
+
+/**
+ * One stay in a group is one row (task 3.5c, `group_memberships_one_stay`):
+ * an automatic row that ends where a row given back of the same group begins
+ * takes that row's days and end, and the row given back stays as the change
+ * left it (a planned row a leaving emptied, filled from the first day taken
+ * back); a row given back that ends where an automatic row of its group
+ * begins takes the automatic row's days and end, when they lie inside its own
+ * end.
+ */
+export function joinCoverRows(
+  given: readonly CoverRow[],
+  automatic: readonly CoverRow[],
+): { given: CoverRow[]; automatic: CoverRow[] } {
+  const keptGiven = [...given];
+  const keptAutomatic: CoverRow[] = [];
+  for (const row of automatic) {
+    const sameGroup = (one: CoverRow) =>
+      one.studentId === row.studentId && one.groupId.toLowerCase() === row.groupId.toLowerCase();
+    const after = keptGiven.findIndex((one) => sameGroup(one) && one.from === row.until);
+    const before = keptGiven.findIndex(
+      (one) => sameGroup(one) && one.until === row.from && row.until <= one.ownUntil,
+    );
+    const following = keptGiven[after];
+    const preceding = keptGiven[before];
+    if (following !== undefined) {
+      keptGiven.splice(after, 1);
+      keptAutomatic.push({
+        ...row,
+        until: following.until,
+        ownUntil: following.ownUntil,
+        leavingId: following.leavingId,
+        endedByMoveId: following.endedByMoveId,
+      });
+    } else if (preceding !== undefined) {
+      keptGiven[before] = {
+        ...preceding,
+        until: row.until,
+        leavingId: row.leavingId,
+        endedByMoveId: row.endedByMoveId,
+      };
+    } else {
+      keptAutomatic.push(row);
+    }
+  }
+  return { given: keptGiven, automatic: keptAutomatic };
+}
+
+/** The end of a group row a class path writes: a leaving, a move, or none (its own end). */
+function endedAs(row: CoverRow): {
+  ended_by: 'leaving' | 'transfer' | null;
+  leaving_id: string | null;
+  ended_by_move_id: string | null;
+} {
+  if (row.leavingId !== null) {
+    return { ended_by: 'leaving', leaving_id: row.leavingId, ended_by_move_id: null };
+  }
+  if (row.endedByMoveId !== null) {
+    return { ended_by: 'transfer', leaving_id: null, ended_by_move_id: row.endedByMoveId };
+  }
+  return { ended_by: null, leaving_id: null, ended_by_move_id: null };
 }
 
 /** The group rows with days of a student, as `planClassGroups` reads them. */
@@ -712,8 +833,9 @@ export async function coverClassRows(
         (a.subjectId ?? '').localeCompare(b.subjectId ?? ''),
     ),
   );
-  const written = await writeCoverRows(transaction, audit, access, given, requestId);
-  const automatic = await writeCoverRows(transaction, audit, access, planned.rows, requestId);
+  const joined = joinCoverRows(given, planned.rows);
+  const written = await writeCoverRows(transaction, audit, access, joined.given, requestId);
+  const automatic = await writeCoverRows(transaction, audit, access, joined.automatic, requestId);
   return { written: [...written, ...automatic], automatic };
 }
 

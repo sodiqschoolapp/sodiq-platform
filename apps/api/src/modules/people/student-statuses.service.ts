@@ -21,6 +21,8 @@ import {
   classesInService,
   membershipsOf,
   MEMBERSHIP_REFUSALS,
+  studentVersion,
+  versionCounts,
 } from '../classes/class-membership-rows.js';
 import {
   CLASS_PATH_GROUP_REFUSALS,
@@ -488,7 +490,9 @@ export class StudentStatuses {
         const row = await this.students.lockStudent(transaction, id);
         const rows = (await this.students.statusRowsOf(transaction, id)).get(id) ?? [];
         const memberships = await membershipsOf(transaction, id);
-        if (rows.length + memberships.length !== input.version) {
+        if (
+          studentVersion(rows.length, await versionCounts(transaction, id), id) !== input.version
+        ) {
           throw new ApiException('student_changed', 409);
         }
         // Task 3.2b: the group rows go with the student too (the cascade).
@@ -585,8 +589,11 @@ export class StudentStatuses {
         const student = await this.students.lockStudent(transaction, id);
         const rows = (await this.students.statusRowsOf(transaction, id)).get(id) ?? [];
         const memberships = await membershipsOf(transaction, id);
-        // The version counts the class rows too (task 3.1b, decision 17).
-        if (rows.length + memberships.length !== change.version) {
+        // The version counts the class rows too (task 3.1b, decision 17) and
+        // the class moves taken back (task 3.5c, decision 7).
+        if (
+          studentVersion(rows.length, await versionCounts(transaction, id), id) !== change.version
+        ) {
           throw new ApiException('student_changed', 409);
         }
         const today = await this.students.todayIn(transaction, branchId);
@@ -763,10 +770,10 @@ export class StudentStatuses {
     // groups of the classes written back.
     const groups = await lockClassGroups(
       transaction,
-      plan.inserts.map((row) => row.classId),
+      plan.grows.map((row) => row.classId),
       (await groupMembershipsOf(transaction, id)).map((row) => row.groupId),
     );
-    const moved = await applyMembershipPlan(transaction, id, memberships, plan, leavingId, cause);
+    const moved = await applyMembershipPlan(transaction, id, memberships, plan, leavingId);
     // Task 3.2b (decision 8 of pull request #92): the group rows of the dates
     // the class rows lose end with them; a cancel, an undo or a later date
     // gives none back (decision 9: task 3.2c).
@@ -790,15 +797,16 @@ export class StudentStatuses {
       this.audit,
       access,
       {
-        classRows: plan.inserts.map((row) => ({
+        // Only the days a row gets back need groups (task 3.5c).
+        classRows: plan.grows.map((row) => ({
           index: 0,
           row: {
             studentId: id,
             classId: row.classId,
-            from: row.validFrom,
+            from: row.from,
             until: row.validUntil,
             ownUntil: row.ownUntil,
-            leavingId: row.cut ? leavingId : null,
+            leavingId: row.endedBy === 'leaving' ? leavingId : null,
           },
         })),
         giveBack:

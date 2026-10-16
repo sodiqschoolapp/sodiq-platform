@@ -235,6 +235,7 @@ const MESSAGE: Record<ErrorCode, string> = {
   placement_no_seat: 'No group of the screen has a seat for some students.',
   class_group_no_seat: 'No group of a subject of the class has a seat for some students.',
   class_group_missing: 'A class row would be saved without a group of its subjects.',
+  stay_continues: 'The student is already in this class or group on the day before.',
   move_in_past: 'A move dated before today is for the Super Admin and the Academic Vice Principal.',
   move_not_scheduled: 'Only a scheduled move is changed or cancelled.',
   move_not_undoable: 'The move cannot be undone.',

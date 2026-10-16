@@ -9,7 +9,7 @@ export interface StoredMembership {
   /** The row's own end (correction 1), which a leaving taken back gives back. */
   readonly ownUntil: SchoolDate;
   readonly endedBy:
-    'leaving' | 'withdrawn' | 'transfer' | 'undone' | 'branch_move' | 'merge' | null;
+    'leaving' | 'withdrawn' | 'transfer' | 'undone' | 'branch_move' | 'merge' | 'joined' | null;
   readonly leavingId: string | null;
   /** What wrote the row (0045, 0050, 0052, 0053): a placement, the create, a cancel, an undo, a move, a return, a restore, a move to another branch. */
   readonly cause:
@@ -113,18 +113,24 @@ export interface MembershipChange {
   readonly leave: { readonly from: SchoolDate } | null;
 }
 
-/** What the change does to the class rows: rows only shrink, new rows are added (decision 8). */
+/** What the change does to the class rows (decision 1 of task 3.5c: a take-back grows the row it cut). */
 export interface MembershipPlan {
   /** Rows the new leaving ends at `validUntil` and names. */
   readonly cuts: readonly { readonly id: string; readonly validUntil: SchoolDate }[];
-  /** Rows written back, each up to its own end, or cut by the new leaving. */
-  readonly inserts: readonly {
+  /**
+   * Rows the leaving taken back cut, given their days back: each grows from
+   * `from` (its end before) to `validUntil`, which is its own end (no end),
+   * the first inactive day of the new leaving (`leaving`), or the date of the
+   * move that wrote the next row given back (`transfer`, that move).
+   */
+  readonly grows: readonly {
+    readonly id: string;
     readonly classId: string;
-    readonly validFrom: SchoolDate;
+    readonly from: SchoolDate;
     readonly validUntil: SchoolDate;
     readonly ownUntil: SchoolDate;
-    /** Cut by the new leaving: ends at `validUntil` before its own end, or written empty. */
-    readonly cut: boolean;
+    readonly endedBy: 'leaving' | 'transfer' | null;
+    readonly endedByMoveId: string | null;
   }[];
   /** The rows a taken-back leaving could not give back: their class is out of service. */
   readonly notRestored: readonly StoredMembership[];
@@ -132,22 +138,22 @@ export interface MembershipPlan {
 
 /**
  * The class rows of a student through a change of a leaving (`04`,
- * Movements: "taken out of classes ... from that date"; decision 1 with
- * correction 1):
+ * Movements: "taken out of classes ... from that date"; decision 1 of 3.1b
+ * with correction 1; decision 1 of 3.5c):
  *
  * - a leaving cuts every row with days after its first inactive day at that
- *   day (a planned row is withdrawn: an empty range), whatever ended it
- *   before, and names itself on it;
- * - a leaving taken back gives back, as new rows, the rows it cut, each from
- *   the later of its first inactive day and the row's own start (a withdrawn
- *   planned row comes back on its planned date) to the row's own end, or to
- *   the start of the next row given back when that comes first (a leaving,
- *   its cancel and an earlier leaving cut both the first row and the row the
- *   cancel wrote back);
+ *   day (a planned row is emptied), whatever ended it before, and names
+ *   itself on it;
+ * - a leaving taken back gives back the rows it cut by growing each again
+ *   (issue #105, H36: "a cancel or an undo gives the stay back as it was
+ *   before, not as a new planned stay"), from its end to its own end, or to
+ *   the start of the next row given back when that comes first: that row was
+ *   written by a move that had begun (a leaving dated before it), and the
+ *   row ends at the move again;
  * - the replace of a scheduled leaving does both: by an earlier date the new
  *   leaving cuts the rows the old one cut, which keep their own end, and takes
- *   over the planned rows it withdrew; by a later date the rows come back up
- *   to the new date, cut by it;
+ *   over the planned rows it emptied; by a later date the rows grow up to the
+ *   new date, cut by it;
  * - a row whose class is out of service (archived, or in a closed year) is
  *   not given back and is named (`.claude/rules/database.md`, a mirror brings
  *   back only rows whose own record is in service);
@@ -164,13 +170,7 @@ export function planMemberships(
   cancelledNow: ReadonlySet<string> = new Set(),
 ): MembershipPlan {
   const cuts: { id: string; validUntil: SchoolDate }[] = [];
-  const inserts: {
-    classId: string;
-    validFrom: SchoolDate;
-    validUntil: SchoolDate;
-    ownUntil: SchoolDate;
-    cut: boolean;
-  }[] = [];
+  const grows: MembershipPlan['grows'][number][] = [];
   const notRestored: StoredMembership[] = [];
   const given: { row: StoredMembership; start: SchoolDate }[] = [];
   const { takeBack, leave } = change;
@@ -196,7 +196,7 @@ export function planMemberships(
         continue;
       }
       if (!holdsDays(row) && cutByTakenBack && row.validFrom >= leave.from) {
-        // Still withdrawn, now by the new leaving: a later cancel brings it back.
+        // Still emptied, now by the new leaving: a later cancel brings it back.
         cuts.push({ id: row.id, validUntil: row.validUntil });
         continue;
       }
@@ -205,20 +205,21 @@ export function planMemberships(
       given.push({ row, start: later(takeBack.from, row.validFrom) });
     }
   }
-  // The rows the leaving cut never overlapped before it: each comes back up
+  // The rows the leaving cut never overlapped before it: each grows back up
   // to its own end, but not past the start of the next one that comes back
-  // (a row a cancel wrote back continues one the leaving cut first).
+  // (the target of a move that had begun when the leaving cut both).
   given.sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
   given.forEach(({ row, start }, index) => {
     const next = given[index + 1];
-    const end = next !== undefined && next.start < row.ownUntil ? next.start : row.ownUntil;
+    const stopsAtMove = next !== undefined && next.start < row.ownUntil;
+    const end = stopsAtMove ? next.start : row.ownUntil;
     if (start >= end) {
       return;
     }
     if (leave !== null && leave.from <= start) {
       // The new leaving takes the row over as it is: nothing comes back
       // before its date (the replace of a scheduled leaving by the same or an
-      // earlier one of these days), so no empty row is written.
+      // earlier one of these days).
       cuts.push({ id: row.id, validUntil: row.validUntil });
       return;
     }
@@ -227,22 +228,32 @@ export function planMemberships(
       return;
     }
     if (leave !== null && leave.from < end) {
-      inserts.push({
+      grows.push({
+        id: row.id,
         classId: row.classId,
-        validFrom: start,
+        from: row.validUntil,
         validUntil: later(start, leave.from),
-        ownUntil: end,
-        cut: true,
+        ownUntil: row.ownUntil,
+        endedBy: 'leaving',
+        endedByMoveId: null,
       });
-    } else {
-      inserts.push({
-        classId: row.classId,
-        validFrom: start,
-        validUntil: end,
-        ownUntil: end,
-        cut: false,
-      });
+      return;
     }
+    if (stopsAtMove && next.row.writtenByMoveId === null) {
+      // Two rows a leaving cut always meet at a move that wrote the later
+      // one (a placement or a return never begins inside a row of the
+      // student); anything else is a fault.
+      throw new Error('A row given back meets the next one only at a move.');
+    }
+    grows.push({
+      id: row.id,
+      classId: row.classId,
+      from: row.validUntil,
+      validUntil: end,
+      ownUntil: row.ownUntil,
+      endedBy: stopsAtMove ? 'transfer' : null,
+      endedByMoveId: stopsAtMove ? next.row.writtenByMoveId : null,
+    });
   });
-  return { cuts, inserts, notRestored };
+  return { cuts, grows, notRestored };
 }

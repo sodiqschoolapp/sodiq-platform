@@ -7,10 +7,13 @@ import {
   groupTransferSchema,
   groupTransferUndoSchema,
   nextDay,
+  previousDay,
   type ClassTransfer,
   type ClassTransferChange,
   type GroupTransfer,
   type GroupTransferChange,
+  type MoveClass,
+  type MoveGroup,
   type StudentDetail,
   type StudentHistoryLine,
   type StudentMove,
@@ -485,35 +488,121 @@ export function moveRows(
   return rows;
 }
 
+/**
+ * The text of a move line (task 3.5c, H34): "moved" only of a move that
+ * happened; a scheduled one "moves", a cancelled one "was planned".
+ */
+function moveText(t: TFunction, move: StudentMove): string {
+  const shape =
+    move.state === 'scheduled' ? 'Planned' : move.state === 'cancelled' ? 'Cancelled' : '';
+  const names =
+    move.kind === 'class'
+      ? {
+          from:
+            move.fromClass === null
+              ? ''
+              : classDisplayName(move.fromClass.grade, move.fromClass.name),
+          to: targetOf(move),
+        }
+      : { from: move.fromGroup?.name ?? '', to: targetOf(move) };
+  const text =
+    move.kind === 'class'
+      ? t(`people.students.moves.classMove${shape}` as 'people.students.moves.classMove', names)
+      : t(`people.students.moves.groupMove${shape}` as 'people.students.moves.groupMove', names);
+  const state = move.cancelledByLeaving
+    ? t('people.students.moves.states.cancelledByLeaving')
+    : t(`people.students.moves.states.${move.state}`);
+  return `${text} · ${state}`;
+}
+
+/** The target of a move or of an earlier version of it, as the History lines name it. */
+function changeTarget(target: { toClass: MoveClass | null; toGroup: MoveGroup | null }): string {
+  return target.toClass !== null
+    ? classDisplayName(target.toClass.grade, target.toClass.name)
+    : (target.toGroup?.name ?? '');
+}
+
+/**
+ * The changes of a scheduled move under its line (task 3.5c, H34: "one move
+ * with its changes"): each change of the date and of the target, from the
+ * first version of the move to the one in force.
+ */
+function changeTexts(
+  t: TFunction,
+  line: Extract<StudentHistoryLine, { kind: 'move' }>,
+  language: string,
+): string[] {
+  const versions = [
+    ...line.changes,
+    { from: line.move.from, toClass: line.move.toClass, toGroup: line.move.toGroup },
+  ];
+  const texts: string[] = [];
+  versions.slice(1).forEach((version, index) => {
+    const before = versions[index];
+    if (before === undefined) {
+      return;
+    }
+    if (before.from !== version.from) {
+      texts.push(
+        t('people.students.moves.dateChanged', {
+          from: schoolDateText(before.from, language),
+          to: schoolDateText(version.from, language),
+        }),
+      );
+    }
+    if (changeTarget(before) !== changeTarget(version)) {
+      texts.push(
+        t(
+          line.move.kind === 'class'
+            ? 'people.students.moves.classChanged'
+            : 'people.students.moves.groupChanged',
+          { from: changeTarget(before), to: changeTarget(version) },
+        ),
+      );
+    }
+  });
+  return texts;
+}
+
+/**
+ * The text of a stay in a class or a group (task 3.5c, H35: "one line per
+ * stay in a class, from its first to its last day (or 'hozirgacha')"): its
+ * last day, "until now" while it is in force, "from <date>" while it is ahead.
+ */
+function stayText(
+  t: TFunction,
+  line: Extract<StudentHistoryLine, { kind: 'class' } | { kind: 'group' }>,
+  today: string,
+  language: string,
+): string {
+  const named =
+    line.kind === 'class'
+      ? { class: classDisplayName(line.class.grade, line.class.name) }
+      : { group: line.group.name };
+  const kind = line.kind === 'class' ? 'class' : 'group';
+  if (line.from > today) {
+    return t(`people.students.moves.${kind}StayFrom`, {
+      ...named,
+      from: schoolDateText(line.from, language),
+    });
+  }
+  if (line.until === null) {
+    return t(`people.students.moves.${kind}StayNow`, named);
+  }
+  return t(`people.students.moves.${kind}Stay`, {
+    ...named,
+    until: schoolDateText(previousDay(line.until), language),
+  });
+}
+
 /** The text of one line of the History tab. */
 function lineText(t: TFunction, line: StudentHistoryLine, today: string, language: string): string {
   switch (line.kind) {
-    case 'move': {
-      const { move } = line;
-      const text =
-        move.kind === 'class'
-          ? t('people.students.moves.classMove', {
-              from:
-                move.fromClass === null
-                  ? ''
-                  : classDisplayName(move.fromClass.grade, move.fromClass.name),
-              to: targetOf(move),
-            })
-          : t('people.students.moves.groupMove', {
-              from: move.fromGroup?.name ?? '',
-              to: targetOf(move),
-            });
-      const state = move.cancelledByLeaving
-        ? t('people.students.moves.states.cancelledByLeaving')
-        : t(`people.students.moves.states.${move.state}`);
-      return `${text} · ${state}`;
-    }
+    case 'move':
+      return moveText(t, line.move);
     case 'class':
-      return t('people.students.moves.classJoin', {
-        class: classDisplayName(line.class.grade, line.class.name),
-      });
     case 'group':
-      return t('people.students.moves.groupJoin', { group: line.group.name });
+      return stayText(t, line, today, language);
     case 'branch_move':
       return branchMoveLineText(t, line);
     case 'merged':
@@ -572,6 +661,12 @@ export function HistoryTab({
             <li key={`${line.kind}-${from}-${String(index)}`} className="grid gap-1">
               <span className="text-muted-foreground">{schoolDateText(from, i18n.language)}</span>
               <span>{lineText(t, line, history.data.today, i18n.language)}</span>
+              {line.kind === 'move' &&
+                changeTexts(t, line, i18n.language).map((text) => (
+                  <span key={text} className="text-muted-foreground">
+                    {text}
+                  </span>
+                ))}
               {move !== null && move.undoable && movesIt(student, move) && (
                 <span>
                   <Button

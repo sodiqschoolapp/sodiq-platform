@@ -944,11 +944,24 @@ describe('group membership in the database', () => {
           ),
         ),
       ).toMatchObject({ constraint: 'memberships_merge' });
+      // Task 3.5c (decision 2, Look first): the own end has an update grant
+      // for the join of two adjoining rows only; any other change of it is
+      // refused by the shrink rule.
+      expect(
+        await refusal(
+          inBranch(north, (transaction) =>
+            transaction
+              .updateTable('group_memberships')
+              .set({ own_until: '2027-05-01' })
+              .where('id', '=', row)
+              .execute(),
+          ),
+        ),
+      ).toMatchObject({ constraint: 'group_memberships_only_shrink' });
       for (const values of [
         { group_id: group },
         { subject_id: maths },
         { valid_from: '2026-10-15' },
-        { own_until: '2027-05-01' },
         { cause: 'automatic' },
       ]) {
         expect(

@@ -556,6 +556,8 @@ export {
   studentNameKey,
   studentNameSchema,
   studentParamsSchema,
+  moveChangeLineSchema,
+  type MoveChangeLine,
   studentHistoryLineSchema,
   studentHistorySchema,
   type StudentHistory,

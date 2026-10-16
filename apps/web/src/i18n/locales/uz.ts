@@ -328,6 +328,8 @@ export const uz: Texts<'one' | 'other'> = {
       'Sinfning boʻlinadigan yoki guruhli fanlaridan birining hech bir guruhida oʻquvchi sinfda boʻladigan har bir kun uchun boʻsh oʻrin yoʻq, shuning uchun hech narsa saqlanmadi. Guruhning eng koʻp sonini oshiring yoki guruh qoʻshing va qayta urinib koʻring.',
     class_group_missing:
       'Oʻquvchi guruhli fanlaridan birining guruhisiz sinfda qolar edi. Hech narsa saqlanmadi. Sahifani yangilang va qayta urinib koʻring.',
+    stay_continues:
+      'Oʻquvchi bir kun oldin allaqachon shu sinf yoki guruhda, bu oʻsha davrni davom ettirar edi xolos. Buning oʻrniga avvalgi oʻzgarishni bekor qiling.',
     move_in_past:
       'Bugundan oldingi sanali koʻchirishni faqat oʻquv ishlari boʻyicha direktor oʻrinbosari yoki super administrator rasmiylashtiradi. Bugungi yoki keyingi sanani tanlang.',
     move_not_scheduled:
@@ -1622,6 +1624,19 @@ export const uz: Texts<'one' | 'other'> = {
         groupMove: '{{from}} guruhidan {{to}} guruhiga koʻchirildi',
         classJoin: '{{class}}ga qabul qilindi',
         groupJoin: '{{group}} guruhiga qabul qilindi',
+        classMovePlanned: '{{from}}dan {{to}}ga koʻchiriladi',
+        groupMovePlanned: '{{from}} guruhidan {{to}} guruhiga koʻchiriladi',
+        classMoveCancelled: '{{from}}dan {{to}}ga koʻchirish rejalashtirilgan edi',
+        groupMoveCancelled: '{{from}} guruhidan {{to}} guruhiga koʻchirish rejalashtirilgan edi',
+        dateChanged: 'Sana oʻzgartirildi: {{from}} → {{to}}',
+        classChanged: 'Sinf oʻzgartirildi: {{from}} → {{to}}',
+        groupChanged: 'Guruh oʻzgartirildi: {{from}} → {{to}}',
+        classStay: '{{class}}da {{until}}gacha',
+        classStayNow: '{{class}}da hozirgacha',
+        classStayFrom: '{{class}}da {{from}}dan',
+        groupStay: '{{group}} guruhida {{until}}gacha',
+        groupStayNow: '{{group}} guruhida hozirgacha',
+        groupStayFrom: '{{group}} guruhida {{from}}dan',
         states: {
           scheduled: 'Rejalashtirilgan',
           done: 'Bajarilgan',
@@ -2509,6 +2524,7 @@ export const uz: Texts<'one' | 'other'> = {
         branch_left: 'Boshqa filialga ketdi',
         branch_moved: 'Boshqa filialdan keldi',
         merged: 'Boshqa yozuv bilan birlashtirildi',
+        stays_joined: 'Sinf yoki guruhdagi davrlar bittaga birlashtirildi',
         delete: 'Ikki marta yaratilgan oʻquvchi oʻchirildi',
         export: 'Oʻquvchilar eksport qilindi',
         identity_shown: 'Oʻquvchi yozuvining yashirin maydonlari koʻrsatildi',

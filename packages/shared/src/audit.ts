@@ -147,6 +147,7 @@ export const AUDIT_ACTION_GROUPS = {
     'student.branch_left',
     'student.branch_moved',
     'student.merged',
+    'student.stays_joined',
     'relative.create',
     'relative.edit',
     'relative.archive',
@@ -492,6 +493,11 @@ const NOT_IDENTITY_KEYS = new Set([
   'cancelledByLeavingId',
   'writtenByMoveId',
   'endedByMoveId',
+  // one stay in a class and a group (task 3.5c): the rows given back and joined
+  'given',
+  'joined',
+  'joinedId',
+  'table',
   // the class of a return or a graduate restore (task 3.3b, decision 4)
   'classMembershipId',
   'languageConfirmed',

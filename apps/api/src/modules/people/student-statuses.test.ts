@@ -527,8 +527,17 @@ describe('leaving, return and delete of a student', () => {
           version: scheduled.version,
         }),
       );
-      // Three status rows, the class row cut and the one written back (task 3.1b).
-      expect(cancelled).toMatchObject({ status: 'active', planned: null, version: 5 });
+      // Three status rows and one class row: the cut row grew back (task
+      // 3.5c, H36: "a cancel or an undo gives the stay back as it was before").
+      expect(cancelled).toMatchObject({ status: 'active', planned: null, version: 4 });
+      const stay = await t.database.migrator
+        .selectFrom('class_memberships')
+        .select(['valid_from', 'valid_until', 'own_until', 'ended_by'])
+        .where('student_id', '=', student.id)
+        .execute();
+      expect(stay).toHaveLength(1);
+      expect(stay[0]).toMatchObject({ valid_from: '2026-09-02', ended_by: null });
+      expect(stay[0]?.valid_until).toBe(stay[0]?.own_until);
       expect(await t.entries('student.leave_cancelled', student.id)).toHaveLength(1);
       // One unbroken line (issue #39, hand test of 13 October 2026, finding 7).
       expect(cancelled.statuses.map((row) => [row.status, row.from, row.until, row.cause])).toEqual(

@@ -483,9 +483,30 @@ describe('the merge of two student records', () => {
         .orderBy('valid_from')
         .execute();
       // Every group row of the merged record is on the kept record; the one
-      // in force on the kept record's first day ends there (`merge`).
+      // in force on the kept record's first day ended there (`merge`), and
+      // the kept record's row of the same group from that day continues it:
+      // one stay, so the two are joined (task 3.5c, decision 2). The carried
+      // row takes the kept row's end; the kept row is emptied into it.
       expect(after.every((one) => one.student_id === kept.id)).toBe(true);
-      expect(after.at(-1)).toMatchObject({ valid_until: '2026-09-10', ended_by: 'merge' });
+      expect(after.at(-1)).toMatchObject({ valid_until: '2027-06-01', ended_by: null });
+      const keptRows = await t.database.migrator
+        .selectFrom('group_memberships')
+        .select(['valid_from', 'valid_until', 'ended_by', 'joined_into_id'])
+        .where('student_id', '=', kept.id)
+        .where(
+          'id',
+          'not in',
+          groups.map((one) => one.id),
+        )
+        .execute();
+      expect(keptRows).toEqual([
+        {
+          valid_from: '2026-09-10',
+          valid_until: '2026-09-10',
+          ended_by: 'joined',
+          joined_into_id: after.at(-1)?.id,
+        },
+      ]);
     });
 
     it('leaves behind a move whose every row is left behind, on the merge', async () => {
