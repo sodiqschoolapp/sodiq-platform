@@ -2162,9 +2162,9 @@ describe('the Status section', () => {
       ),
     });
     fireEvent.click(pick);
-    expect(
-      (within(form).getByLabelText(en.people.students.returnFrom) as HTMLInputElement).value,
-    ).toBe('2027-09-01');
+    expect(within(form).getByLabelText<HTMLInputElement>(en.people.students.returnFrom).value).toBe(
+      '2027-09-01',
+    );
   });
 
   // Issue #39, hand test of 13 October 2026, finding 18 (task 2.7b-2, decision
