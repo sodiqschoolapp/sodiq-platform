@@ -1049,5 +1049,74 @@ describe('branch moves in the database', () => {
       expect(await elsewhere([north], north)).toEqual([]);
       expect(await elsewhere([north, south, east], east)).toEqual([]);
     });
+
+    // Permission review of task 3.5c, should-fix 4: the keys each kind
+    // answers are pinned, so that a field added later is read for personal
+    // data before it reaches another branch.
+    it('answers ids, names, dates, causes, ends and links only', async () => {
+      const facts = await pupil();
+      const other = await classes.schoolClass(north, northYear);
+      await members.move({
+        branch: north,
+        studentId: facts.student,
+        from: '2026-10-20',
+        fromClassId: facts.oxford,
+        toClassId: other,
+      });
+      const move = await release(facts.student);
+      await inBranches([south, north], (transaction) =>
+        acceptWrites(transaction, { ...facts, move }),
+      );
+      const keys = await inBranches([south], async (transaction) => {
+        const found = await sql<{ kind: string; data: Record<string, unknown> }>`
+          select kind, data from student_rows_elsewhere(${facts.student}::uuid, ${south}::uuid)
+        `.execute(transaction);
+        return Object.fromEntries(
+          found.rows.map((one) => [one.kind, Object.keys(one.data).sort()]),
+        );
+      });
+      expect(keys).toEqual({
+        class: [
+          'branchId',
+          'cause',
+          'classId',
+          'endedBy',
+          'grade',
+          'id',
+          'name',
+          'validFrom',
+          'validUntil',
+          'writtenByMoveId',
+        ],
+        group: [
+          'branchId',
+          'cause',
+          'endedBy',
+          'groupId',
+          'id',
+          'name',
+          'subjectId',
+          'validFrom',
+          'validUntil',
+          'writtenByMoveId',
+        ],
+        move: [
+          'branchId',
+          'cancelled',
+          'cancelledByLeaving',
+          'effectiveOn',
+          'fromClass',
+          'fromGroup',
+          'id',
+          'kind',
+          'madeAt',
+          'replacesMoveId',
+          'subjectId',
+          'toClass',
+          'toGroup',
+          'undone',
+        ],
+      });
+    });
   });
 });

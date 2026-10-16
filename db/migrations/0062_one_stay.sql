@@ -472,9 +472,12 @@ $$;
 -- before-row trigger; every application path that gives rows back has
 -- locked its classes and groups FOR UPDATE in the order of their id before
 -- its first write, so this is a re-take. The days are those the row holds at
--- the commit beyond its end before this update. A join gets no day back and
--- is not checked. The refusals name the constraints of the insert guard, so
--- that they answer the same codes.
+-- the commit beyond its end before this update. The update of a join (a row
+-- joined into it in this transaction began at that end) gets no day back
+-- and is not checked; `*_joined` holds it to the joined rows' days. The
+-- leaving a row names is checked by the shrink rule before the write. The
+-- refusals name the constraints of the insert guard, so that they answer
+-- the same codes.
 
 create function class_memberships_regained() returns trigger
 language plpgsql
@@ -490,7 +493,9 @@ begin
   if not found or now_row.valid_until <= from_day
     or exists (
       select 1 from class_memberships j
-      where j.joined_into_id = new.id and j.joined_xact = pg_current_xact_id()
+      where j.joined_into_id = new.id
+        and j.joined_xact = pg_current_xact_id()
+        and j.valid_from = old.valid_until
     ) then
     return null;
   end if;
@@ -510,11 +515,6 @@ begin
   if pupil.grade <> held.grade then
     raise exception 'class_memberships_grade'
       using errcode = 'check_violation', constraint = 'class_memberships_grade';
-  end if;
-  if now_row.leaving_id is not null
-    and not class_membership_leaving_valid(now_row.student_id, now_row.leaving_id) then
-    raise exception 'class_memberships_leaving'
-      using errcode = 'check_violation', constraint = 'class_memberships_leaving';
   end if;
   if class_members_peak(now_row.class_id, from_day, now_row.valid_until) > held.max_size then
     raise exception 'class_memberships_full'
@@ -553,7 +553,9 @@ begin
   if not found or now_row.valid_until <= from_day
     or exists (
       select 1 from group_memberships j
-      where j.joined_into_id = new.id and j.joined_xact = pg_current_xact_id()
+      where j.joined_into_id = new.id
+        and j.joined_xact = pg_current_xact_id()
+        and j.valid_from = old.valid_until
     ) then
     return null;
   end if;
@@ -570,11 +572,6 @@ begin
       using errcode = 'check_violation', constraint = 'group_memberships_group_archived';
   end if;
   perform class_year_open(held.academic_year_id);
-  if now_row.leaving_id is not null
-    and not class_membership_leaving_valid(now_row.student_id, now_row.leaving_id) then
-    raise exception 'group_memberships_leaving'
-      using errcode = 'check_violation', constraint = 'group_memberships_leaving';
-  end if;
   if group_members_peak(now_row.group_id, from_day, now_row.valid_until) > held.max_size then
     raise exception 'group_memberships_full'
       using errcode = 'check_violation', constraint = 'group_memberships_full';
@@ -591,8 +588,10 @@ create constraint trigger group_memberships_regained
   execute function group_memberships_regained();
 
 -- Correction 3: a row emptied `joined` is held, on every day it had, by the
--- row its `joined_into_id` names, at the commit; when that row ends where the
--- joined row ended, with the same end and own end. Otherwise a row emptied
+-- row its `joined_into_id` names, at the commit: that row ends exactly where
+-- the joined row ended, with the same end and own end, or where a further
+-- row joined into it in this transaction ends (a chain), never anywhere else
+-- (spec review of the build, must-fix 1). Otherwise a row emptied
 -- `joined` with no row grown would lose a stay that no reader can tell.
 create function class_memberships_joined() returns trigger
 language plpgsql
@@ -606,8 +605,14 @@ begin
       and r.class_id = old.class_id
       and r.valid_from <= old.valid_from
       and r.valid_until >= old.valid_until
-      and (r.valid_until > old.valid_until
-        or (r.own_until = old.own_until
+      and ((r.valid_until > old.valid_until and exists (
+          select 1 from class_memberships k
+          where k.joined_into_id = r.id
+            and k.joined_xact = pg_current_xact_id()
+            and k.valid_from = old.valid_until
+        ))
+        or (r.valid_until = old.valid_until
+          and r.own_until = old.own_until
           and r.ended_by is not distinct from old.ended_by
           and r.leaving_id is not distinct from old.leaving_id
           and r.ended_by_move_id is not distinct from old.ended_by_move_id
@@ -639,8 +644,14 @@ begin
       and r.group_id = old.group_id
       and r.valid_from <= old.valid_from
       and r.valid_until >= old.valid_until
-      and (r.valid_until > old.valid_until
-        or (r.own_until = old.own_until
+      and ((r.valid_until > old.valid_until and exists (
+          select 1 from group_memberships k
+          where k.joined_into_id = r.id
+            and k.joined_xact = pg_current_xact_id()
+            and k.valid_from = old.valid_until
+        ))
+        or (r.valid_until = old.valid_until
+          and r.own_until = old.own_until
           and r.ended_by is not distinct from old.ended_by
           and r.leaving_id is not distinct from old.leaving_id
           and r.ended_by_move_id is not distinct from old.ended_by_move_id
@@ -668,7 +679,7 @@ create constraint trigger group_memberships_joined
 
 alter table student_moves
   add column replaces_move_id uuid references student_moves (id);
-create unique index student_moves_replaces_idx on student_moves (replaces_move_id);
+create unique index student_moves_replaces_idx on student_moves (branch_id, replaces_move_id);
 grant insert (replaces_move_id) on student_moves to sodiq_app;
 
 -- The move replaced is a cancelled move of the same student, kind and
@@ -780,7 +791,8 @@ where a.action in ('student.class_transfer_changed', 'student.group_transfer_cha
 
 -- ---------------------------------------------------------------------------
 -- 6. The History of a student who moved branch reads the old branch's rows
--- with their ends and the moves with the move they replace (should-fix 3 of
+-- with their ends (`endedBy` on group rows too) and the moves with the move
+-- they replace (should-fix 3 of
 -- the plan review). Decision 3 of 3.3c as before: ids, names, dates, causes
 -- and links; nothing personal.
 create or replace function student_rows_elsewhere(student uuid, branch uuid)
@@ -799,7 +811,7 @@ as $$
   select 'class', jsonb_build_object(
       'id', m.id, 'branchId', m.branch_id, 'classId', m.class_id, 'grade', c.grade,
       'name', c.name, 'validFrom', m.valid_from, 'validUntil', m.valid_until,
-      'ownUntil', m.own_until, 'cause', m.cause, 'endedBy', m.ended_by,
+      'cause', m.cause, 'endedBy', m.ended_by,
       'writtenByMoveId', m.written_by_move_id)
   from public.class_memberships m
   join allowed a on a.id = m.student_id
@@ -809,7 +821,7 @@ as $$
   select 'group', jsonb_build_object(
       'id', m.id, 'branchId', m.branch_id, 'groupId', m.group_id, 'name', g.name,
       'subjectId', m.subject_id, 'validFrom', m.valid_from, 'validUntil', m.valid_until,
-      'ownUntil', m.own_until, 'cause', m.cause, 'endedBy', m.ended_by,
+      'cause', m.cause, 'endedBy', m.ended_by,
       'writtenByMoveId', m.written_by_move_id)
   from public.group_memberships m
   join allowed a on a.id = m.student_id

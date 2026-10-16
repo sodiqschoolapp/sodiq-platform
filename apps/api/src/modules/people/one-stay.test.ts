@@ -598,6 +598,70 @@ describe('one stay in a class and a group', () => {
     });
   });
 
+  describe('a stay split before 0062', () => {
+    it('gives the stay back as one row when a leaving cut a row and emptied the row a cancel wrote after it', async () => {
+      // Spec review of the build, must-fix 2: the row a cancel wrote before
+      // 0062, emptied by a later leaving dated earlier, is part of the stay.
+      const oxford = await schoolClass();
+      const one = await pupil(oxford);
+      await leave(one.id, '2026-10-01');
+      const leaving = await t.database.migrator
+        .selectFrom('student_statuses')
+        .select('id')
+        .where('student_id', '=', one.id)
+        .where('status', '=', 'inactive')
+        .executeTakeFirstOrThrow();
+      const branch = await t.database.migrator
+        .selectFrom('classes')
+        .select('branch_id')
+        .where('id', '=', oxford)
+        .executeTakeFirstOrThrow();
+      await t.database.migrator
+        .insertInto('class_memberships')
+        .values({
+          branch_id: branch.branch_id,
+          student_id: one.id,
+          class_id: oxford,
+          valid_from: '2026-10-21',
+          valid_until: '2026-10-21',
+          own_until: YEAR_END,
+          cause: 'cancel',
+          ended_by: 'leaving',
+          leaving_id: leaving.id,
+        })
+        .execute();
+      await undoLeaving(one.id);
+      expect(await daysIn('class_memberships', one.id, oxford)).toEqual([
+        expect.objectContaining({
+          valid_from: '2026-09-02',
+          valid_until: YEAR_END,
+          ended_by: null,
+        }),
+      ]);
+    });
+  });
+
+  describe('the same-day move back into a group', () => {
+    it('refuses it: one stay (stay_continues)', async () => {
+      const oxford = await schoolClass();
+      const one = await pupil(oxford);
+      const maths = await subject();
+      const [a, b] = [await group(maths, [oxford]), await group(maths, [oxford])];
+      await placeInGroup(a, one.id, '2026-10-05');
+      await moveGroup(one.id, a, b, TODAY);
+      refusedWith(
+        await post('/api/groups/transfers', {
+          studentId: one.id,
+          memberId: await memberOf(one.id, b),
+          toGroupId: a,
+          from: TODAY,
+        }),
+        409,
+        'stay_continues',
+      );
+    });
+  });
+
   describe('the History tab', () => {
     it('shows a stay ahead as "from", a cut stay with its last day, and a past one ended', async () => {
       const oxford = await schoolClass();

@@ -163,6 +163,34 @@ describe('the class rows through a change of a leaving', () => {
     ).toThrow('A row given back meets the next one only at a move.');
   });
 
+  it('grows a row over a continuation a cancel wrote before 0062, which stays as it is', () => {
+    // Spec review of the build, must-fix 2: a leaving and its cancel before
+    // 0062 wrote the second row; an earlier leaving cut the first and emptied
+    // the second. Its undo gives the stay back as one row.
+    const first = row('first', '2026-09-02', '2026-10-02', { endedBy: 'leaving', leavingId: 'L2' });
+    const back = row('back', '2026-10-21', '2026-10-21', {
+      endedBy: 'leaving',
+      leavingId: 'L2',
+      cause: 'cancel',
+    });
+    const plan = planMemberships(
+      [first, back],
+      { takeBack: { leavingId: 'L2', from: '2026-10-02' }, leave: null },
+      always,
+    );
+    expect(plan.grows).toEqual([
+      {
+        id: 'first',
+        classId: 'oxford',
+        from: '2026-10-02',
+        validUntil: YEAR_END,
+        ownUntil: YEAR_END,
+        endedBy: null,
+        endedByMoveId: null,
+      },
+    ]);
+  });
+
   it('replaces a scheduled leaving by the same date and changes no day', () => {
     const cut = row('now', '2026-09-01', '2026-11-02', { endedBy: 'leaving', leavingId: 'L0' });
     const plan = planMemberships(

@@ -495,6 +495,7 @@ const NOT_IDENTITY_KEYS = new Set([
   'endedByMoveId',
   // one stay in a class and a group (task 3.5c): the rows given back and joined
   'given',
+  'notGiven',
   'joined',
   'joinedId',
   'table',

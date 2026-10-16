@@ -36,6 +36,7 @@ describe('migration 0062 joins the stays already split', () => {
   let chain: { student: string; rows: string[]; groupRows: string[] };
   let branchMoved: { student: string; rows: string[]; branchMove: string };
   let changed: { first: string; second: string };
+  let emptied: string[];
 
   /** A transaction of the migrator with the branches and the moment set. */
   const asMigrator = <T>(branches: string[], work: (transaction: Transaction) => Promise<T>) =>
@@ -66,9 +67,36 @@ describe('migration 0062 joins the stays already split', () => {
     const oxford = await classes.schoolClass(north, year);
     const group = await classes.group(north, year, maths, [oxford]);
 
-    // A stay split in three by two take-backs, and its group row in two.
+    // A stay split in three as the code before 0062 wrote it: a leaving cut
+    // the row at 20 September and its cancel wrote a row from that day; a
+    // second leaving cut that row at 5 October and its undo wrote a third.
+    // Each cut row keeps its own end (the year's) and names the leaving taken
+    // back; the group row the same, in two (spec review of the build,
+    // must-fix 3).
     const student = await members.student(north, { startsOn: '2026-09-01' });
     chain = await asMigrator([north], async (transaction) => {
+      const takenBack = async (day: string, cause: 'cancel' | 'undo') => {
+        const leaving = await members.leaving(transaction, north, student, day);
+        await transaction
+          .updateTable('student_statuses')
+          .set({ valid_until: day })
+          .where('id', '=', leaving)
+          .execute();
+        await transaction
+          .insertInto('student_statuses')
+          .values({
+            student_id: student,
+            branch_id: north,
+            status: 'active',
+            valid_from: day,
+            cause,
+            reason: cause === 'undo' ? 'Entered by mistake' : null,
+          })
+          .execute();
+        return leaving;
+      };
+      const first = await takenBack('2026-09-20', 'cancel');
+      const second = await takenBack('2026-10-05', 'undo');
       const rows = [
         await members.member(
           {
@@ -76,7 +104,9 @@ describe('migration 0062 joins the stays already split', () => {
             classId: oxford,
             studentId: student,
             from: '2026-09-01',
-            ownUntil: '2026-09-20',
+            until: '2026-09-20',
+            endedBy: 'leaving',
+            leavingId: first,
           },
           transaction,
         ),
@@ -86,8 +116,10 @@ describe('migration 0062 joins the stays already split', () => {
             classId: oxford,
             studentId: student,
             from: '2026-09-20',
-            ownUntil: '2026-10-05',
+            until: '2026-10-05',
             cause: 'cancel',
+            endedBy: 'leaving',
+            leavingId: second,
           },
           transaction,
         ),
@@ -104,7 +136,9 @@ describe('migration 0062 joins the stays already split', () => {
             subjectId: maths,
             studentId: student,
             from: '2026-09-01',
-            ownUntil: '2026-09-20',
+            until: '2026-09-20',
+            endedBy: 'leaving',
+            leavingId: first,
           },
           transaction,
         ),
@@ -120,6 +154,55 @@ describe('migration 0062 joins the stays already split', () => {
         ),
       ];
       return { student, rows, groupRows };
+    });
+
+    // A cancel's row that a later, earlier-dated leaving emptied (still in
+    // force): it holds no day, so it is no stay and is not joined; the undo
+    // of that leaving grows the first row over its days (must-fix 2,
+    // `continuesStay`).
+    const emptiedStudent = await members.student(north, { startsOn: '2026-09-01' });
+    emptied = await asMigrator([north], async (transaction) => {
+      const leaving = await members.leaving(transaction, north, emptiedStudent, '2026-10-02');
+      await members.groupMember(
+        {
+          branch: north,
+          groupId: group,
+          subjectId: maths,
+          studentId: emptiedStudent,
+          from: '2026-09-01',
+          until: '2026-10-02',
+          endedBy: 'leaving',
+          leavingId: leaving,
+        },
+        transaction,
+      );
+      return [
+        await members.member(
+          {
+            branch: north,
+            classId: oxford,
+            studentId: emptiedStudent,
+            from: '2026-09-01',
+            until: '2026-10-02',
+            endedBy: 'leaving',
+            leavingId: leaving,
+          },
+          transaction,
+        ),
+        await members.member(
+          {
+            branch: north,
+            classId: oxford,
+            studentId: emptiedStudent,
+            from: '2026-10-21',
+            until: '2026-10-21',
+            cause: 'cancel',
+            endedBy: 'leaving',
+            leavingId: leaving,
+          },
+          transaction,
+        ),
+      ];
     });
 
     // A stay split in two whose later row a move to another branch cut
@@ -256,6 +339,7 @@ describe('migration 0062 joins the stays already split', () => {
         'ended_by',
         'joined_into_id',
         'ended_by_branch_move_id',
+        'leaving_id',
       ])
       .where('student_id', '=', student)
       .orderBy('valid_from')
@@ -271,6 +355,7 @@ describe('migration 0062 joins the stays already split', () => {
         valid_until: YEAR_END,
         own_until: YEAR_END,
         ended_by: null,
+        leaving_id: null,
       }),
       expect.objectContaining({
         id: second,
@@ -308,6 +393,19 @@ describe('migration 0062 joins the stays already split', () => {
         ended_by: 'joined',
         joined_into_id: chain.groupRows[0],
       },
+    ]);
+  });
+
+  it('leaves a row that holds no day as it is', async () => {
+    const after = await database.migrator
+      .selectFrom('class_memberships')
+      .select(['id', 'valid_from', 'valid_until', 'ended_by'])
+      .where('id', 'in', emptied)
+      .orderBy('valid_from')
+      .execute();
+    expect(after.map((row) => [row.valid_from, row.valid_until, row.ended_by])).toEqual([
+      ['2026-09-01', '2026-10-02', 'leaving'],
+      ['2026-10-21', '2026-10-21', 'leaving'],
     ]);
   });
 

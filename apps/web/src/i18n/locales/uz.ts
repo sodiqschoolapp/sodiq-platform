@@ -329,7 +329,7 @@ export const uz: Texts<'one' | 'other'> = {
     class_group_missing:
       'Oʻquvchi guruhli fanlaridan birining guruhisiz sinfda qolar edi. Hech narsa saqlanmadi. Sahifani yangilang va qayta urinib koʻring.',
     stay_continues:
-      'Oʻquvchi bir kun oldin allaqachon shu sinf yoki guruhda, bu oʻsha davrni davom ettirar edi xolos. Buning oʻrniga avvalgi oʻzgarishni bekor qiling.',
+      'Oʻquvchi bir kun oldin allaqachon shu sinf yoki guruhda, bu oʻsha davrni davom ettirar edi xolos. Buning oʻrniga avvalgi oʻzgarishni bekor qiling yoki qaytaring.',
     move_in_past:
       'Bugundan oldingi sanali koʻchirishni faqat oʻquv ishlari boʻyicha direktor oʻrinbosari yoki super administrator rasmiylashtiradi. Bugungi yoki keyingi sanani tanlang.',
     move_not_scheduled:

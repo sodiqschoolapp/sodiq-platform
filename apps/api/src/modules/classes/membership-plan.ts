@@ -105,6 +105,27 @@ export function placementEnd(
   return { refusal: 'student_not_active_on' };
 }
 
+/**
+ * Whether `next` continues the stay of `row`: a row of the same class (or
+ * group) that a cancel or an undo wrote before 0062 (cause `cancel` or
+ * `undo`; since 0062 a take-back grows the row it cut and writes none),
+ * inside `row`'s own end (task 3.5c, spec review of the build, must-fix 2).
+ * A row given back grows over its days, and it stays as it is.
+ */
+export function continuesStay(
+  row: { classId?: string; groupId?: string; ownUntil: SchoolDate },
+  next: { classId?: string; groupId?: string; ownUntil: SchoolDate; cause: string } | undefined,
+): boolean {
+  return (
+    next !== undefined &&
+    (next.cause === 'cancel' || next.cause === 'undo') &&
+    next.ownUntil <= row.ownUntil &&
+    (row.classId !== undefined
+      ? next.classId === row.classId
+      : row.groupId !== undefined && next.groupId === row.groupId)
+  );
+}
+
 /** A change of a leaving, as the class rows of the student follow it (decision 1). */
 export interface MembershipChange {
   /** A leaving taken back (a cancel, an undo, the replace of a scheduled one): its row and first inactive day. */
@@ -209,23 +230,37 @@ export function planMemberships(
   // to its own end, but not past the start of the next one that comes back
   // (the target of a move that had begun when the leaving cut both).
   given.sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
-  given.forEach(({ row, start }, index) => {
-    const next = given[index + 1];
+  for (let index = 0; index < given.length; index += 1) {
+    const one = given[index];
+    if (one === undefined) {
+      break;
+    }
+    const { row, start } = one;
+    // A row of the same class that a cancel or an undo wrote before 0062 and a
+    // later cut emptied continues this one: one stay, it stays as it is and
+    // this row grows over its days (spec review of the build, must-fix 2).
+    let after = index + 1;
+    while (given[after] !== undefined && continuesStay(row, given[after]?.row)) {
+      after += 1;
+    }
+    const skippedTo = after;
+    const next = given[after];
     const stopsAtMove = next !== undefined && next.start < row.ownUntil;
     const end = stopsAtMove ? next.start : row.ownUntil;
+    index = skippedTo - 1;
     if (start >= end) {
-      return;
+      continue;
     }
     if (leave !== null && leave.from <= start) {
       // The new leaving takes the row over as it is: nothing comes back
       // before its date (the replace of a scheduled leaving by the same or an
       // earlier one of these days).
       cuts.push({ id: row.id, validUntil: row.validUntil });
-      return;
+      continue;
     }
     if (!inService(row.classId)) {
       notRestored.push(row);
-      return;
+      continue;
     }
     if (leave !== null && leave.from < end) {
       grows.push({
@@ -237,12 +272,11 @@ export function planMemberships(
         endedBy: 'leaving',
         endedByMoveId: null,
       });
-      return;
+      continue;
     }
     if (stopsAtMove && next.row.writtenByMoveId === null) {
-      // Two rows a leaving cut always meet at a move that wrote the later
-      // one (a placement or a return never begins inside a row of the
-      // student); anything else is a fault.
+      // Two rows a leaving cut meet at a move that wrote the later one, or
+      // the later one continues the stay (above); anything else is a fault.
       throw new Error('A row given back meets the next one only at a move.');
     }
     grows.push({
@@ -254,6 +288,6 @@ export function planMemberships(
       endedBy: stopsAtMove ? 'transfer' : null,
       endedByMoveId: stopsAtMove ? next.row.writtenByMoveId : null,
     });
-  });
+  }
   return { cuts, grows, notRestored };
 }

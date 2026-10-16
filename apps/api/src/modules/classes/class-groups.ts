@@ -13,7 +13,7 @@ import {
   type StoredGroupMembership,
 } from './group-membership-rows.js';
 import { classesOfGroups } from './group-rows.js';
-import { writtenByCancelledMove } from './membership-plan.js';
+import { continuesStay, writtenByCancelledMove } from './membership-plan.js';
 
 /**
  * Groups on every class membership path (task 3.2c, pull request #93):
@@ -333,9 +333,25 @@ export async function planGiveBack(
     .filter((row) => cutBy(row, takenBack) && !writtenByCancelledMove(row, cancelledMoves))
     .map((row) => ({ row, start: later(takenBack.from, row.validFrom) }))
     .sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
+  // A row of the same group a cancel or an undo wrote before 0062 continues
+  // the row before it: it stays as it is, and that row grows over its days
+  // (spec review of the build, must-fix 2).
+  const continuing = new Set<string>();
+  cut.forEach(({ row }, index) => {
+    if (continuing.has(row.id)) {
+      return;
+    }
+    for (const later of cut.slice(index + 1)) {
+      if (continuesStay(row, later.row)) {
+        continuing.add(later.row.id);
+      } else if (later.row.groupId.toLowerCase() === row.groupId.toLowerCase()) {
+        break;
+      }
+    }
+  });
   const given: CoverRow[] = [];
   for (const [index, { row, start }] of cut.entries()) {
-    if (leave !== null && leave.from <= start) {
+    if (continuing.has(row.id) || (leave !== null && leave.from <= start)) {
       continue;
     }
     const group = groups.get(row.groupId.toLowerCase());
@@ -370,6 +386,7 @@ export async function planGiveBack(
       .slice(index + 1)
       .find(
         (one) =>
+          !continuing.has(one.row.id) &&
           groups.get(one.row.groupId.toLowerCase())?.subjectId === group.subjectId &&
           one.start > start,
       );

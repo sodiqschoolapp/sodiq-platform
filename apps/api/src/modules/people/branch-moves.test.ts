@@ -757,6 +757,87 @@ describe('the move of a student to another branch', () => {
       expect(await lines(t.admin)).toEqual(seen);
     });
 
+    // Task 3.5c (spec review of the build, must-fix 5; permission review,
+    // should-fix 3): the old branch's lines read past the filter follow the
+    // rules of this branch's: a changed move is one line with its changes, a
+    // group stay ends where the move to the other branch cut it.
+    it("draws the old branch's changed move as one line and its group stay to the move", async () => {
+      const english = await classes.subject({ grades: [7] });
+      const oxford = await classes.schoolClass(t.north, northYear, {
+        grade: 7,
+        name: 'Oxford Stay',
+      });
+      const princeton = await classes.schoolClass(t.north, northYear, {
+        grade: 7,
+        name: 'Princeton Stay',
+      });
+      const group = await classes.group(t.north, northYear, english, [oxford]);
+      const { student } = await pupil(t.north, oxford);
+      const post = async (path: string, body: object) => {
+        const response = await t.post(path, t.north, body, t.vicePrincipal);
+        expect(response.status, JSON.stringify(response.body)).toBe(200);
+        return studentDetailSchema.parse(response.body);
+      };
+      const first = await post('/api/classes/transfers', {
+        studentId: student.id,
+        version: (await fresh(student.id)).version,
+        toClassId: princeton,
+        from: '2026-10-16',
+      });
+      const firstMove = first.scheduledMoves[0]?.id ?? '';
+      const changed = await post(`/api/classes/transfers/${firstMove}/change`, {
+        version: first.version,
+        toClassId: princeton,
+        from: '2026-10-23',
+      });
+      const secondMove = changed.scheduledMoves[0]?.id ?? '';
+      await post(`/api/classes/transfers/${secondMove}/cancel`, { version: changed.version });
+      const moveId = accepted(await release(student.id)).branchMove?.id ?? '';
+      const yale = await classes.schoolClass(t.south, southYear, { grade: 7, name: 'Yale Stay' });
+      accepted(await accept(moveId, { classId: yale }));
+      const lines = async (cookie: string) => {
+        const response = await t.get(`/api/people/students/${student.id}/history`, t.south, cookie);
+        expect(response.status, JSON.stringify(response.body)).toBe(200);
+        return studentHistorySchema.parse(response.body).lines;
+      };
+      const seen = await lines(southVice);
+      const moves = seen.filter((line) => line.kind === 'move');
+      expect(moves).toEqual([
+        expect.objectContaining({
+          move: expect.objectContaining({
+            id: secondMove,
+            from: '2026-10-23',
+            state: 'cancelled',
+          }) as unknown,
+          changes: [
+            {
+              from: '2026-10-16',
+              toClass: { id: princeton, grade: 7, name: 'Princeton Stay' },
+              toGroup: null,
+            },
+          ],
+        }),
+      ]);
+      expect(seen.filter((line) => line.kind === 'group' && line.group.id === group)).toEqual([
+        {
+          kind: 'group',
+          group: { id: group, name: expect.any(String) as unknown },
+          subjectId: english,
+          from: '2026-09-02',
+          until: TODAY,
+        },
+      ]);
+      expect(seen.filter((line) => line.kind === 'class' && line.class.id === oxford)).toEqual([
+        {
+          kind: 'class',
+          class: { id: oxford, grade: 7, name: 'Oxford Stay' },
+          from: '2026-09-02',
+          until: TODAY,
+        },
+      ]);
+      expect(await lines(t.admin)).toEqual(seen);
+    });
+
     it("answers 404 for the sending branch's class and group, unknown ids and a release not to the branch, with nothing written in either branch", async () => {
       const english = await classes.subject({ grades: [7, 8] });
       const oxford = await classes.schoolClass(t.north, northYear, { grade: 7 });

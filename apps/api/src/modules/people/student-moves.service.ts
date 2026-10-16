@@ -43,7 +43,12 @@ import {
   type StoredGroupMembership,
 } from '../classes/group-membership-rows.js';
 import { classesOfGroups } from '../classes/group-rows.js';
-import { holdsDays, placementEnd, type StoredMembership } from '../classes/membership-plan.js';
+import {
+  continuesStay,
+  holdsDays,
+  placementEnd,
+  type StoredMembership,
+} from '../classes/membership-plan.js';
 import {
   lockMove,
   MOVE_REFUSALS,
@@ -756,8 +761,20 @@ export class StudentMoves {
     const classRows: { index: number; row: ClassRowToCover }[] = [];
     const written: { id: string; classId: string; from: SchoolDate; until: SchoolDate }[] = [];
     let leave: { from: SchoolDate; leavingId: string } | null = null;
-    for (const [index, { row, start }] of given.entries()) {
-      const next = given[index + 1];
+    for (let index = 0; index < given.length; index += 1) {
+      const one = given[index];
+      if (one === undefined) {
+        break;
+      }
+      const { row, start } = one;
+      // A continuation of the same stay written before 0062 stays emptied;
+      // this row grows over its days (spec review of the build, must-fix 2).
+      let after = index + 1;
+      while (given[after] !== undefined && continuesStay(row, given[after]?.row)) {
+        after += 1;
+      }
+      index = after - 1;
+      const next = given[after];
       const stopsAtMove = next !== undefined && next.start < row.ownUntil;
       const ownEnd = stopsAtMove ? next.start : row.ownUntil;
       const end = placementEnd(student.statuses, student.startsOn, start, ownEnd);
@@ -1132,6 +1149,14 @@ export class StudentMoves {
       toGroupId,
       groupMemberships: {
         emptied: [{ id: target.id, groupId: toGroupId, was: target.validUntil }],
+        // The days the target held that no row came back over (the row the
+        // move cut no longer ends where the target begins): named, as every
+        // path that cannot give rows back names them (spec review of the
+        // build, should-fix 3).
+        notGiven:
+          given === undefined && holdsDays(target)
+            ? [{ groupId: fromGroupId, from: target.validFrom, until: target.validUntil }]
+            : [],
         given:
           given === undefined
             ? []
