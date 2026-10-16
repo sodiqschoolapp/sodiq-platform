@@ -209,7 +209,7 @@ If a session opened its pull request without binding it (the tool was missing), 
 Bind the pull request you opened to this session, so that review comments reach you.
 ```
 
-If a woken session does not continue after a comment, the start routine resumes the task (section 6). A builder that is alive shows it: its first act on an `approved` or `changes needed` is the line "Acting on the review." (`next-task` step 12, `finish-task` step 9), it posts a progress comment at least once an hour while it builds (`next-task` step 13), and a plan revision ends with an empty commit. So the hourly run treats a task pull request whose newest `[review]` is `approved` or `changes needed` as stalled when (a) nothing came after that review for 30 minutes, or (b) nothing at all happened for two hours, unless the pull request waits for the reviewer (its head sha is not the sha named in its newest `[review]`, other than on a draft that is being built; or its newest `[review]` is a `CI red` verdict at its head sha and every check of that sha has since passed on a re-run). It checks out the branch, binds the pull request to itself, posts "Resumed by the start routine." and continues from step 12 of `next-task` (a draft) or step 9 of `finish-task` (a ready pull request). A missed wake costs at most an hour, and ten minutes since the bridge (section 7): every `[review] approved` or `changes needed` on a task pull request fires the start routine, which waits ten minutes for "Acting on the review." and resumes the task when it does not come. The other way round, a pull request that has waited three hours for the reviewer (from its head commit, or from the end of the green re-run in the second case) gets one comment from the start routine, `@abbosc No review for three hours; the review routine may not be running (its runs: claude.ai/code/routines).`
+If a woken session does not continue after a comment, the start routine resumes the task (section 6). A builder that is alive shows it: its first act on an `approved` or `changes needed` is the line "Acting on the review." (`next-task` step 12, `finish-task` step 9), it posts a progress comment at least once an hour while it builds (`next-task` step 13), and a plan revision ends with an empty commit. So the hourly run treats a task pull request whose newest `[review]` is `approved` or `changes needed` as stalled when (a) nothing came after that review for 30 minutes, or (b) nothing at all happened for two hours, unless the pull request waits for the reviewer (its head sha is not the sha named in its newest `[review]`, other than on a draft that is being built; or its newest `[review]` is a `CI red` verdict at its head sha and every check of that sha has since passed on a re-run). It checks out the branch, binds the pull request to itself, posts "Resumed by the start routine." and continues from step 12 of `next-task` (a draft) or step 9 of `finish-task` (a ready pull request). A missed wake costs at most an hour, and ten minutes since the bridge (section 7): every `[review] approved` or `changes needed` on a task pull request fires the start routine, which waits ten minutes for "Acting on the review." and resumes the task when it does not come. When the start routine's own session has no `bind_pr` tool, it resumes at once: builders are sessions of the same routine and environment, so none of them can be bound or woken (the second account, 17 October 2026, where bound builders of the first account had taken three to six minutes to wake). The other way round, a pull request that has waited three hours for the reviewer (from its head commit, or from the end of the green re-run in the second case) gets one comment from the start routine, `@abbosc No review for three hours; the review routine may not be running (its runs: claude.ai/code/routines).`
 
 ### 6. The start routine
 
@@ -225,12 +225,14 @@ Once steps 3 to 5 have each worked on a task, the loop starts itself. **New rout
 
 ```
 When a routine-fire-payload block says "Review on #<n>: ...", the builder of
-pull request #<n> should be reacting to that review now. Read the comments and
-the commits of #<n> every 60 seconds for up to 10 minutes (in one shell loop or
-with the session's own tool for waiting on a condition). As soon as a comment
-"Acting on the review." or any commit appears after the newest [review], say so
-and stop: the builder is awake. When nothing appears in 10 minutes, #<n> is
-stalled: unless it carries the label needs-owner (then say so and stop), resume
+pull request #<n> should be reacting to that review now. If this session has no
+bind_pr tool (nor subscribe_pr_activity), no builder session can be bound either,
+so nothing can wake it: #<n> is stalled now, without waiting. Otherwise read the
+comments and the commits of #<n> every 60 seconds for up to 10 minutes (in one
+shell loop or with the session's own tool for waiting on a condition). As soon as
+a comment "Acting on the review." or any commit appears after the newest
+[review], say so and stop: the builder is awake. When nothing appears in 10
+minutes, #<n> is stalled: unless it carries the label needs-owner (then say so and stop), resume
 it exactly as the stall rule below says (check out its branch, bind the pull
 request to this session with the bind_pr tool, post "Resumed by the start
 routine.", continue from the step the rule names), and start nothing else in this
