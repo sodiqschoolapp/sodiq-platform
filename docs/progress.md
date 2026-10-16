@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 16 October 2026: task 3.6b-2 The owner's answers of 15 October: the year's dates and the return in August
+
+- Built L128 and L170 of issue #42. Migration 0064: `year_cut_holds` (one function for the trigger and the route), `academic_years_dates_guard` and `academic_years_dates_follow` in place of 0045's `academic_years_has_members`, and the shrink rule of class and group rows (0062) with one path added: a row may move its own end only in the exact shape of the follow (depth 2, a transaction-local mark `app.year_follow`, the year's old and new end).
+- The year edit takes the branch row, reads the year, locks the rows that run to its last day (`lockFollowingRows`), then the year row; refuses `year_cut_holds` with at most 50 lines and the count of the rest; the audit entry carries `rowsFollowed`.
+- A return and the Super Admin's restore may be dated the first day of the branch's next planned year; `POST /api/people/students/:id/return/cancel` takes it back until its date (the cancel of a restore needs the Super Admin); the planners read a row and its `cancel` row as one stay; the History tab joins them.
+- Screens: the refusal list under the year form; "First day of next year (<date>)" in the return and restore forms; "Cancel the return" on the record. Browser test `e2e/return-august.spec.ts` (seeded "August return browser test branch").
+- Left out: lessons, exams, marks and attendance in the days cut off (5.6b, 8.1 lines); the handbook pages (3.7, its "From 3.6b-2" line). A cancelled return keeps the grade and the contract the return wrote (they are history, the record can be edited).
+
+The next sessions must know:
+
+- A new writer of a class or group row's `own_until` goes through the follow of 0064 or is refused by the shrink rule; a change of a row that only updates it (a withdraw) meets the year edit on the rows, so it takes the row before the year (`.claude/rules/database.md`).
+- Read the last stay of a student's status rows through `lastStay` in `student-status.ts`, not `live.at(-1)`, when a cancelled return can precede it.
+- The next task is 3.6b-3.
+
 ## 16 October 2026: task 3.6b-1 The owner's answers of 15 October: the same-person mark by phone
 
 - Built L81 of issue #42 and the answer of 16 October: the mark "same person" is read from the phones (migration 0063: `same_person_staff`, `same_person_relative`, the stored `relatives.staff_id` dropped with an entry for each hand mark the phones do not give); staff phones are unique (`staff_phone_idx`, left and archived included); every phone write takes `phone_owner_lock` and writes the mark's change in its entry and in `relative.same_person` / `relative.same_person_removed` with a cause.
