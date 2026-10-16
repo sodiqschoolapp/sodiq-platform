@@ -773,6 +773,11 @@ export const studentRestoreSchema = z.strictObject({
 
 export type StudentRestore = z.infer<typeof studentRestoreSchema>;
 
+/** The cancel of a scheduled return or restore (edge: "It can be changed or cancelled until the date"; task 3.6b-2, L170). */
+export const studentCancelReturnSchema = z.strictObject({ version: versionSchema });
+
+export type StudentCancelReturn = z.infer<typeof studentCancelReturnSchema>;
+
 /** Edge: "A student is created twice by mistake" (decision 4: with a reason). */
 export const studentDeleteSchema = z.strictObject({
   reason: statusReasonSchema,

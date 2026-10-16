@@ -20,6 +20,7 @@ import { api, branchHeader } from '@/api/client';
 import { answerOf, ApiFailure } from '@/api/failure';
 import { failureText } from '@/api/failure-text';
 import { useConfirm } from '@/components/confirm-dialog';
+import { Button } from '@/components/ui/button';
 import { DateField, Field, SelectField } from '@/components/field';
 import { RecordForm } from '@/components/form/record-form';
 import { SaveCancelled } from '@/components/form/save-cancelled';
@@ -61,6 +62,8 @@ export interface StatusActions {
   undo: boolean;
   /** "Return to school": inactive. */
   return: boolean;
+  /** "Cancel the return": a return or restore is scheduled for next year's first day (L170). */
+  cancelReturn: boolean;
   /** "Delete" of a student created twice: no data. */
   delete: boolean;
   /** "Restore to active": graduated, the Super Admin. */
@@ -73,7 +76,11 @@ export function statusActions(student: StudentDetail): StatusActions {
   const graduated = student.status === 'graduated' && student.planned === null;
   const scheduled = student.planned?.status === 'inactive';
   const archive = student.canArchive;
+  // A return is cancelled by the holders of the return, a restore by the Super Admin only.
+  const returning = student.planned?.status === 'active' && student.status === 'inactive';
+  const restoring = student.planned?.status === 'active' && student.status === 'graduated';
   return {
+    cancelReturn: (archive && returning) || (student.canRestoreGraduated && restoring),
     cancel: archive && scheduled,
     // A scheduled leaving is cancelled first, not recorded again (finding 29).
     leave: archive && (student.status === 'active' || student.status === null) && !scheduled,
@@ -187,6 +194,84 @@ export function useCancelLeaving(
       }
     },
   });
+}
+
+/**
+ * "Cancel the return" of a return or restore scheduled for the first day of
+ * next year (edge: "It can be changed or cancelled until the date"; task
+ * 3.6b-2), after a confirmation naming the student; `null` when the person
+ * keeps it.
+ */
+export function useCancelReturn(
+  student: StudentDetail | undefined,
+  label: string,
+  onChanged: (answer: unknown) => Promise<void>,
+  onStale: () => Promise<void>,
+) {
+  const { t } = useTranslation();
+  const confirm = useConfirm();
+  return useMutation({
+    mutationFn: async () => {
+      if (student === undefined) {
+        return null;
+      }
+      const go = await confirm({
+        title: t('people.students.cancelReturnConfirmTitle'),
+        text: t('people.students.cancelReturnConfirmText'),
+        names: [label],
+        action: t('people.students.cancelReturn'),
+        cancel: t('people.students.keepReturn'),
+        destructive: false,
+      });
+      if (!go) {
+        return null;
+      }
+      return answerOf(
+        api.POST('/api/people/students/{id}/return/cancel', {
+          params: { header: branchHeader(), path: { id: student.id } },
+          body: { version: student.version },
+        }),
+      );
+    },
+    onSuccess: async (answer) => {
+      if (answer !== null) {
+        await onChanged(answer);
+      }
+    },
+    onError: async (error) => {
+      if (error instanceof ApiFailure && error.code === 'student_changed') {
+        await onStale();
+      }
+    },
+  });
+}
+
+/**
+ * The button that fills the date with the first day of the branch's next
+ * planned year (owner's answer L170); the server decides whether it may be
+ * used. Nothing is drawn when the branch has no planned year.
+ */
+function NextYearStart({ onPick }: { onPick: (date: string) => void }) {
+  const { t, i18n } = useTranslation();
+  const { branchId } = useView();
+  const years = useQuery({ ...yearsQuery(branchId), enabled: branchId !== null });
+  const next = (years.data?.years ?? [])
+    .filter((one) => one.status === 'planned')
+    .sort((a, b) => (a.startDate < b.startDate ? -1 : 1))[0];
+  if (next === undefined) {
+    return null;
+  }
+  return (
+    <Button
+      type="button"
+      variant="secondary"
+      onClick={() => {
+        onPick(next.startDate);
+      }}
+    >
+      {t('people.students.nextYearStart', { date: schoolDateText(next.startDate, i18n.language) })}
+    </Button>
+  );
 }
 
 interface ChangeFormProps {
@@ -497,6 +582,11 @@ export function ReturnForm({
           {...from}
           error={from.error ?? refusalOn(t, form.failure, 'from')}
         />
+        <NextYearStart
+          onPick={(date) => {
+            from.onChange({ target: { value: date } });
+          }}
+        />
         <SelectField
           label={t('people.students.grade')}
           options={Array.from({ length: 11 }, (_unused, index) => ({
@@ -621,6 +711,11 @@ export function RestoreForm({ student, label, onChanged, onStale, onCancel }: Ch
           label={t('people.students.restoreFrom')}
           {...from}
           error={from.error ?? refusalOn(t, form.failure, 'from')}
+        />
+        <NextYearStart
+          onPick={(date) => {
+            from.onChange({ target: { value: date } });
+          }}
         />
         {choice.failed ? (
           <ErrorState error={choice.error} onRetry={choice.retry} />

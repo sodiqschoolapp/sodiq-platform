@@ -276,6 +276,10 @@ export const ERROR_CODES = [
   'undo_not_leaving',
   /** A return is dated on or before the first inactive day; on that day it would be an undo (task 2.4b-1, decision 5). */
   'return_too_early',
+  /** No return or restore is scheduled after today, so there is nothing to cancel (task 3.6b-2, L170). */
+  'return_not_planned',
+  /** The return or restore has taken effect; it can no longer be cancelled (task 3.6b-2, L170). */
+  'return_in_force',
   /** A return or a restore is dated after today; both are dated today or earlier (task 2.4b-1, decision 5). */
   'status_date_future',
   /** The student is not graduated today, or has a later status (task 2.4b-1). */
@@ -368,8 +372,8 @@ export const ERROR_CODES = [
   'class_grade_members',
   /** The maximum size cannot drop below the members of a date from today on (task 3.1b, decision 11). */
   'class_size_below_members',
-  /** The dates of an academic year cannot change while its classes hold members (task 3.1b, decision 3). */
-  'academic_year_has_members',
+  /** The new dates of an academic year cut days that class or group stays stand in (task 3.6b-2, L128). */
+  'year_cut_holds',
   /** The academic year of the group is closed: a group of a closed year stays as it was (task 3.2a). */
   'group_year_closed',
   /** The branch has no planned or current academic year to create a group in (task 3.2a, decision 5). */
@@ -634,6 +638,27 @@ export const errorDetailSchema = z.object({
       teacher: z.object({ id: z.uuid(), name: z.string().nullable(), vacancy: z.boolean() }),
     })
     .optional(),
+  /**
+   * A class or group stay in the days a change of the year's dates would cut
+   * off, on a `year_cut_holds` (task 3.6b-2, decision 9): the student's name,
+   * `null` for a student the branch does not hold now ("a student of another
+   * branch"); the class (with its grade) or the group; the stay's first and
+   * last day.
+   */
+  stay: z
+    .object({
+      studentName: z.string().nullable(),
+      unit: z.object({
+        kind: z.enum(['class', 'group']),
+        name: z.string(),
+        grade: z.int().nullable(),
+      }),
+      firstDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      lastDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    })
+    .optional(),
+  /** The number of items a list of details leaves out, on its detail `more` (`year_cut_holds`, task 3.6b-2). */
+  more: z.int().min(1).optional(),
 });
 
 export type ErrorDetail = z.infer<typeof errorDetailSchema>;

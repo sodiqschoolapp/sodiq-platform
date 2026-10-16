@@ -246,6 +246,24 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 16 October 2026: the year's dates and the return in August (task 3.6b-2)
+
+Plan approved on pull request #120 with corrections 1 to 5; decisions 1 to 12 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** A stay that runs to the year's last day is not in the way of a shorter year and follows the new last day; a longer year carries it to the new last day. Only a stay that starts in the days cut off, or ends in them (or on their first day) by a dated leaving or move, is in the way. Proposed `/spec-change` of "The academic year is extended or shortened": "…or a class or group stay that starts or ends in them; a stay that runs to the last day of the year ends on the new last day, and a longer year carries it to the new last day." | Decision 1; every row with days ends at the year's end + 1 (3.1b), so the literal reading would refuse every shortening |
+| **Look first.** `academic_years_has_members` (0045) dropped, replaced by `academic_years_dates_guard` and `academic_years_dates_follow`; the route and database tests that expected it changed with L128 | Decision 2 |
+| **Look first.** `class_memberships_only_shrink` and `group_memberships_only_shrink` (0062) let a row move its own end in the exact shape of the follow: depth 2, mark `app.year_follow` with the year id and both ends, the year's end as it now stands, `valid_until` moving only where it equalled `own_until`, nothing else changing | Decision 3, correction 2; a longer year keeps its students in their classes |
+| **Look first.** A cancelled return or restore empties the future active row and writes a row of the earlier status from its date with cause `cancel`; the planners and the History tab read the two as one stay | Decision 4; status rows only shrink |
+| A longer year keeps the year's own refusals (closed, overlap, order, quarters, go-live date, calendar entries) | Decision 5 |
+| An earlier start changes no stay | Decision 6 |
+| "The next planned year" is the branch's earliest planned year starting after today; its first day is the only future date a return or restore may take | Decision 7 |
+| A scheduled return or restore is cancelled until its date by the holders of the route that wrote it (a restore: the Super Admin), with the student's version; the cancel gives the grade back from the audit entry and keeps the contract row (reused by a later return with the same number) | Decision 8 |
+| The refusal list holds at most 50 lines and the count of the rest; the code is `year_cut_holds`, `academic_year_has_members` is gone | Decisions 9 and 10 |
+| Lessons, exams, marks and attendance in the days cut off are handed to 5.6b and 8.1; the handbook pages to 3.7; a "From 3.6b-2" line on 9.5b | Decisions 11 and 12 |
+| The audit entry `academic_year.edit` gains `rowsFollowed` (table, id, old and new ends); `student.return_cancelled` is a new people entry using existing keys; no key is added to the pinned list | Correction 3 (checked: none needed) |
+
 ## 16 October 2026: the same-person mark by phone, one phone for one adult (task 3.6b-1)
 
 Plan approved on pull request #119 with corrections 1 to 5; decisions 1 to 9 confirmed there. Flagged on issue #42.

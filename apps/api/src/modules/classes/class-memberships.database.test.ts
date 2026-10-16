@@ -539,7 +539,7 @@ describe('class membership in the database', () => {
       );
     });
 
-    it('refuses a change of the dates of a year whose classes hold members, past rows included', async () => {
+    it('refuses a change of the start of a year past a stay, and lets the last day move with a past row (L128)', async () => {
       const branch = await insertBranch(database.migrator, 'Year dates');
       const year = await classes.year(branch);
       const oxford = await schoolClass(branch, year);
@@ -555,9 +555,9 @@ describe('class membership in the database', () => {
       // Before any member the dates move.
       await move('2026-09-02', '2027-05-31');
       await move('2026-09-01', '2027-05-31');
-      await inBranch(branch, async (transaction) => {
+      const past = await inBranch(branch, async (transaction) => {
         const leaving = await members.leaving(transaction, branch, student, '2026-09-15');
-        await members.member(
+        return members.member(
           {
             branch,
             classId: oxford,
@@ -570,12 +570,18 @@ describe('class membership in the database', () => {
           transaction,
         );
       });
-      // Only a past row is left, and the start still cannot move past it.
+      // Only a past row is left, and the start still cannot move past it
+      // (0064 replaced 0045's rule: L128, owner's answer of 15 October 2026).
       expect(await refusal(move('2026-09-08', '2027-05-31'))).toMatchObject({
-        constraint: 'academic_years_has_members',
+        constraint: 'academic_years_cut_holds',
       });
-      expect(await refusal(move('2026-09-01', '2027-05-30'))).toMatchObject({
-        constraint: 'academic_years_has_members',
+      // A shorter year no stay stands in: the past row only gets the new own end.
+      await move('2026-09-01', '2027-05-30');
+      expect(await members.rowOf(past)).toMatchObject({
+        valid_from: '2026-09-01',
+        valid_until: '2026-09-15',
+        own_until: '2027-05-31',
+        ended_by: 'leaving',
       });
     });
   });

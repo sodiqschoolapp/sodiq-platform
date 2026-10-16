@@ -303,6 +303,55 @@ describe('the academic years page', () => {
     ).toEqual({ startDate: '2027-09-02', endDate: '2028-05-30' });
   });
 
+  // Task 3.6b-2, L128: the stays that stand in the days a change would cut off.
+  it('lists the stays in the way when the dates would cut them off, with the count of the rest', async () => {
+    await openList('super_admin', [PLANNED], {
+      [`PUT /api/setup/academic-years/${PLANNED.id}`]: () =>
+        refusalWith('year_cut_holds', [
+          {
+            path: 'rows.0',
+            code: 'year_cut_holds',
+            message: 'year_cut_holds',
+            stay: {
+              studentName: 'Lola Karimova',
+              unit: { kind: 'class', name: 'Oxford', grade: 7 },
+              firstDay: '2028-05-26',
+              lastDay: '2028-05-31',
+            },
+          },
+          {
+            path: 'rows.1',
+            code: 'year_cut_holds',
+            message: 'year_cut_holds',
+            stay: {
+              studentName: null,
+              unit: { kind: 'group', name: '7-M-1', grade: null },
+              firstDay: '2027-09-02',
+              lastDay: '2028-05-24',
+            },
+          },
+          { path: 'more', code: 'year_cut_holds', message: 'year_cut_holds', more: 3 },
+        ]),
+    });
+    const panel = await openYear('2027–2028');
+    const form = await edit(panel, '2027–2028');
+    type(within(form).getByLabelText(en.setup.years.endDate), '2028-05-20');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    const list = await within(form).findByRole('list', { name: en.setup.years.cutHoldsList });
+    expect(
+      within(list)
+        .getAllByRole('listitem')
+        .map((one) => one.textContent),
+    ).toEqual([
+      // Worded by the screen from the fields, never the API's message (item 6
+      // of code round 1): the last day is the stay's own, not the day after.
+      'Lola Karimova · 7 Oxford · 26 May 2028 – 31 May 2028',
+      `${en.setup.years.cutHoldsOtherBranch} · 7-M-1 · 2 September 2027 – 24 May 2028`,
+      'and 3 more',
+    ]);
+    expect(within(form).getByText(en.errors.year_cut_holds)).toBeDefined();
+  });
+
   it('says what to fix in the quarters before anything is sent, and shows a quarter outside the year beside its field', async () => {
     const calls = await openList('super_admin', [CURRENT], {
       [`PUT /api/setup/academic-years/${CURRENT.id}/quarters`]: () =>

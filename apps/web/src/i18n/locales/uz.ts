@@ -187,9 +187,12 @@ export const uz: Texts<'one' | 'other'> = {
       'Ketish allaqachon kuchga kirgan. Sabab bilan «Ketishni bekor qilish»dan foydalaning.',
     student_not_inactive: 'Oʻquvchi hozir faol. Joriy holatni koʻrish uchun sahifani yangilang.',
     undo_not_leaving: 'Bu holat ketishdan kelib chiqmagan, uni bu yerda bekor qilib boʻlmaydi.',
+    return_not_planned: 'Bu oʻquvchining rejalashtirilgan qaytishi yoʻq. Sahifani yangilang.',
+    return_in_force: 'Qaytish allaqachon kuchga kirgan.',
     return_too_early:
       'Qaytish kuni yoʻq boʻlgan birinchi kundan keyin boʻlishi kerak. Xato kiritilgan ketishni olib tashlash uchun «Ketishni bekor qilish»dan foydalaning.',
-    status_date_future: 'Bugungi yoki oldingi kunni tanlang.',
+    status_date_future:
+      'Bugungi yoki oldingi kunni, yoki rejalashtirilgan keyingi oʻquv yili boʻlsa, uning birinchi kunini tanlang.',
     student_not_graduated:
       'Oʻquvchi hozir bitiruvchi emas. Joriy holatni koʻrish uchun sahifani yangilang.',
     restore_before_graduation: 'Bitirgan kun yoki undan keyingi kunni tanlang.',
@@ -265,8 +268,8 @@ export const uz: Texts<'one' | 'other'> = {
       'Sinfda oʻquvchilar bor, shuning uchun uning sinf darajasini oʻzgartirib boʻlmaydi.',
     class_size_below_members:
       'Bugundan boshlab qaysidir kuni sinfda bundan koʻp oʻquvchi bor. Kattaroq sonni tanlang.',
-    academic_year_has_members:
-      'Bu yil sinflarida oʻquvchilar bor, shuning uchun uning sanalarini endi oʻzgartirib boʻlmaydi.',
+    year_cut_holds:
+      'Bu oʻzgarish kesib tashlaydigan kunlarda oʻquvchilar sinf yoki guruhlarga joylashtirilgan. Boshqa sanalarni tanlang yoki avval oʻquvchilarni koʻchiring.',
     group_year_closed: 'Bu guruhning oʻquv yili yopilgan. Uning guruhlari avvalgidek qoladi.',
     group_needs_year:
       'Filialda rejalashtirilgan yoki joriy oʻquv yili yoʻq. Uni qoʻshishni Super administratordan soʻrang.',
@@ -1245,6 +1248,11 @@ export const uz: Texts<'one' | 'other'> = {
       startText: 'U filialning joriy yiliga aylanadi. Bir vaqtda faqat bitta yil joriy boʻladi.',
       startBlockedCurrent: 'Filialning boshqa yili joriy.',
       startBlockedEarlier: 'Filialning oldingi yili hali yopilmagan.',
+      cutHoldsList: 'Toʻsqinlik qilayotgan oʻquvchilar',
+      cutHoldsLine: '{{student}} · {{unit}} · {{from}} – {{until}}',
+      cutHoldsOtherBranch: 'Boshqa filial oʻquvchisi',
+      cutHoldsMore_one: 'va yana {{count}} ta',
+      cutHoldsMore_other: 'va yana {{count}} ta',
       quartersTitle: 'Choraklar',
       changeQuarters: 'Choraklarni oʻzgartirish',
       quarter: '{{number}}-chorak',
@@ -1551,6 +1559,12 @@ export const uz: Texts<'one' | 'other'> = {
       keepLeaving: 'Ketishni qoldirish',
       cancelConfirmTitle: 'Rejalashtirilgan ketish bekor qilinsinmi?',
       cancelConfirmText: 'Oʻquvchi faol qoladi.',
+      cancelReturn: 'Qaytishni bekor qilish',
+      keepReturn: 'Qaytishni qoldirish',
+      cancelReturnConfirmTitle: 'Rejalashtirilgan qaytish bekor qilinsinmi?',
+      cancelReturnConfirmText:
+        'Oʻquvchi qaytishdan oldingi holatida qoladi. Kelgusi yilga band qilingan oʻrin boʻshatiladi.',
+      nextYearStart: 'Kelgusi yilning birinchi kuni ({{date}})',
       undoTitle: 'Ketishni bekor qilish',
       returnTitle: 'Maktabga qaytish',
       returnFrom: 'Qaytgandan keyingi birinchi kun',
@@ -2501,6 +2515,7 @@ export const uz: Texts<'one' | 'other'> = {
         leave_undone: 'Ketish qaytarildi',
         return: 'Oʻquvchi qaytdi',
         graduate_restored: 'Bitiruvchi tiklandi',
+        return_cancelled: 'Qaytish bekor qilindi',
         class_joined: 'Sinfga joylashtirildi',
         class_withdrawn: 'Sinfga joylashtirish bekor qilindi',
         group_joined: 'Guruhga joylashtirildi',

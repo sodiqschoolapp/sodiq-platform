@@ -180,9 +180,12 @@ export const en = {
     student_not_inactive:
       'This student is not inactive now. Reload the page to see the current status.',
     undo_not_leaving: 'This status did not come from a leaving, so it cannot be undone here.',
+    return_not_planned: 'No return is scheduled for this student. Reload the page.',
+    return_in_force: 'This return has already taken effect.',
     return_too_early:
       'The return must be after the first day away. To erase a leaving entered by mistake, use "Undo leaving".',
-    status_date_future: 'Choose today or an earlier date.',
+    status_date_future:
+      'Choose today, an earlier date, or the first day of the next planned year, when there is one.',
     student_not_graduated:
       'This student is not graduated now. Reload the page to see the current status.',
     restore_before_graduation: 'Choose a date on or after the day the student graduated.',
@@ -257,8 +260,8 @@ export const en = {
     class_grade_members: 'The class has students, so its grade cannot change.',
     class_size_below_members:
       'The class holds more students than that on some day from today on. Choose a higher maximum number of students.',
-    academic_year_has_members:
-      'Classes of this year have students, so its dates can no longer change.',
+    year_cut_holds:
+      'Some students are placed in classes or groups on days this change would cut off. Choose other dates, or move those students first.',
     group_year_closed: 'The academic year of this group is closed. Its groups stay as they were.',
     group_needs_year:
       'This branch has no planned or current academic year. Ask the Super Admin to add one.',
@@ -1236,6 +1239,11 @@ export const en = {
       startText: 'It becomes the current year of the branch. Only one year is current at a time.',
       startBlockedCurrent: 'Another year of the branch is current.',
       startBlockedEarlier: 'An earlier year of the branch is not closed yet.',
+      cutHoldsList: 'Students in the way',
+      cutHoldsLine: '{{student}} · {{unit}} · {{from}} – {{until}}',
+      cutHoldsOtherBranch: 'A student of another branch',
+      cutHoldsMore_one: 'and {{count}} more',
+      cutHoldsMore_other: 'and {{count}} more',
       quartersTitle: 'Quarters',
       changeQuarters: 'Change quarters',
       quarter: 'Quarter {{number}}',
@@ -1540,6 +1548,12 @@ export const en = {
       keepLeaving: 'Keep the leaving',
       cancelConfirmTitle: 'Cancel the scheduled leaving?',
       cancelConfirmText: 'The student stays active.',
+      cancelReturn: 'Cancel the return',
+      keepReturn: 'Keep the return',
+      cancelReturnConfirmTitle: 'Cancel the scheduled return?',
+      cancelReturnConfirmText:
+        'The student stays as before the return. The class booked for next year is released.',
+      nextYearStart: 'First day of next year ({{date}})',
       undoTitle: 'Undo leaving',
       returnTitle: 'Return to school',
       returnFrom: 'First day back',
@@ -2485,6 +2499,7 @@ export const en = {
         leave_undone: 'Leaving undone',
         return: 'Student returned',
         graduate_restored: 'Graduate restored',
+        return_cancelled: 'Return cancelled',
         class_joined: 'Placed in a class',
         class_withdrawn: 'Placement in a class withdrawn',
         group_joined: 'Placed in a group',

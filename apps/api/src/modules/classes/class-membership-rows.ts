@@ -24,7 +24,7 @@ export const MEMBERSHIP_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   classes_grade_members: 'class_grade_members',
   classes_size_below_members: 'class_size_below_members',
   students_grade_class: 'student_grade_class',
-  academic_years_has_members: 'academic_year_has_members',
+  academic_years_cut_holds: 'year_cut_holds',
   // The service checks these first; a fault answers the general refusal.
   class_memberships_student_branch: 'request_refused',
   class_memberships_only_shrink: 'request_refused',

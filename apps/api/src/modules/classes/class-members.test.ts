@@ -14,8 +14,10 @@ import { sql } from 'kysely';
 import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions, type Transaction } from '../../database/transactions.js';
+import { Audit } from '../audit/audit.service.js';
+import { lockFollowingRows } from '../setup/academic-year-dates.js';
 import { ClassesKit } from '../../testing/classes-kit.js';
-import { MembersKit } from '../../testing/members-kit.js';
+import { MembersKit, moveStudentBranch } from '../../testing/members-kit.js';
 import { dayTemplatesKit, UNKNOWN, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { relativesInput } from '../../testing/relatives-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
@@ -139,6 +141,15 @@ describe('class membership', () => {
       t.auditCount(),
     ]);
 
+  const classNameOf = async (id: string) =>
+    (
+      await t.database.migrator
+        .selectFrom('classes')
+        .select('name')
+        .where('id', '=', id)
+        .executeTakeFirstOrThrow()
+    ).name;
+
   const rowsOfStudent = (id: string) =>
     t.database.migrator
       .selectFrom('class_memberships')
@@ -166,7 +177,11 @@ describe('class membership', () => {
   }
 
   /** Runs `work` in a transaction of the application that stays open until released. */
-  async function holdOpen(work: (transaction: Transaction) => Promise<void>) {
+  async function holdOpen(
+    work: (transaction: Transaction) => Promise<void>,
+    branch = t.north,
+    after?: (transaction: Transaction) => Promise<void>,
+  ) {
     let release: () => void = () => undefined;
     const released = new Promise<void>((resolve) => {
       release = resolve;
@@ -177,10 +192,11 @@ describe('class membership', () => {
     });
     const done = t.app
       .get(Transactions)
-      .run([t.north], async (transaction) => {
+      .run([branch], async (transaction) => {
         await work(transaction);
         ready();
         await released;
+        await after?.(transaction);
       })
       .catch((error: unknown) => error);
     await Promise.race([isReady, done]);
@@ -530,7 +546,7 @@ describe('class membership', () => {
       expect(raised.status, JSON.stringify(raised.body)).toBe(200);
     });
 
-    it('refuses a change of the dates of a year whose classes hold members', async () => {
+    it('refuses a start of the year past a stay with the list, and lets the end move with the stay (L128)', async () => {
       const branch = await t.newBranch();
       const year = await classes.year(branch, 'planned');
       const oxford = await schoolClass({ branch, year });
@@ -541,15 +557,482 @@ describe('class membership', () => {
       });
       expect(response.status, JSON.stringify(response.body)).toBe(201);
       const before = await rowsOf();
-      refusedWith(
-        await t.put(`/api/setup/academic-years/${year}`, branch, {
-          startDate: '2026-09-02',
-          endDate: '2027-05-31',
-        }),
-        409,
-        'academic_year_has_members',
-      );
+      const refused = await t.put(`/api/setup/academic-years/${year}`, branch, {
+        startDate: '2026-10-20',
+        endDate: '2027-05-31',
+      });
+      refusedWith(refused, 409, 'year_cut_holds');
+      const details = apiErrorSchema.parse(refused.body).error.details ?? [];
+      expect(details).toHaveLength(1);
+      // The stay as fields, worded by the screen (item 6 of code round 1): its
+      // first day and its last day, the day before its end.
+      expect(details[0]?.stay).toEqual({
+        studentName: `${one.firstName} ${one.lastName}`,
+        unit: { kind: 'class', name: await classNameOf(oxford), grade: 7 },
+        firstDay: '2026-10-12',
+        lastDay: '2027-05-31',
+      });
       expect(await rowsOf()).toEqual(before);
+      // Longer, and shorter where no stay stands: the stay follows the last day.
+      for (const endDate of ['2027-06-30', '2027-05-20']) {
+        const moved = await t.put(`/api/setup/academic-years/${year}`, branch, {
+          startDate: '2026-09-01',
+          endDate,
+        });
+        expect(moved.status, JSON.stringify(moved.body)).toBe(200);
+      }
+      const rows = await t.database.migrator
+        .selectFrom('class_memberships')
+        .select(['valid_until', 'own_until'])
+        .where('student_id', '=', one.id)
+        .execute();
+      expect(rows).toEqual([
+        expect.objectContaining({ valid_until: '2027-05-21', own_until: '2027-05-21' }),
+      ]);
+      const written = await t.database.migrator
+        .selectFrom('audit_log')
+        .select('new_value')
+        .where('action', '=', 'academic_year.edit')
+        .where('record_id', '=', year)
+        .orderBy('id')
+        .execute();
+      expect(written.at(-1)?.new_value).toMatchObject({
+        endDate: '2027-05-20',
+        rowsFollowed: [
+          expect.objectContaining({
+            table: 'class_memberships',
+            ownUntil: ['2027-07-01', '2027-05-21'],
+            validUntil: ['2027-07-01', '2027-05-21'],
+          }),
+        ],
+      });
+    });
+
+    // 3.6b-2, correction 1 of its plan review and item 1 of code round 1: the
+    // year edit locks the rows that run to the last day before the branch row
+    // and the year row. A withdraw of a planned placement locks the student,
+    // updates its row (the year FOR SHARE in the row's trigger) and then
+    // writes its audit entry, whose `branch_id` takes the branch row FOR KEY
+    // SHARE: an edit that held the branch FOR UPDATE while it waited for the
+    // row deadlocked with it. Tested in both directions; each held side
+    // writes what its route writes.
+    it('lets a withdraw of a planned placement held first and a longer year both stand, with no deadlock', async () => {
+      const branch = await t.newBranch();
+      const year = await classes.year(branch, 'planned');
+      const oxford = await schoolClass({ branch, year });
+      const one = await student({ startsOn: '2026-10-12', classId: null }, branch);
+      const member = placed(await place(oxford, [one], '2026-10-12', t.admin, branch)).members[0];
+      const before = await t.auditCount();
+      // As ClassMembers.withdraw does: the student, the row (and the year FOR
+      // SHARE in its trigger), then the audit entry once released.
+      const held = await holdOpen(
+        async (transaction) => {
+          await transaction
+            .selectFrom('students')
+            .select('id')
+            .where('id', '=', one.id)
+            .forUpdate()
+            .execute();
+          await transaction
+            .updateTable('class_memberships')
+            .set({ valid_until: '2026-10-12', ended_by: 'withdrawn', leaving_id: null })
+            .where('id', '=', member?.id ?? '')
+            .execute();
+        },
+        branch,
+        async (transaction) => {
+          await t.app.get(Audit).record(transaction, {
+            branchId: branch,
+            actorId: null,
+            assignmentId: t.adminAssignment,
+            action: 'student.class_withdrawn',
+            record: { type: 'student', id: one.id },
+            oldValue: { classId: oxford, membershipId: member?.id, from: '2026-10-12' },
+            newValue: { until: '2026-10-12', endedBy: 'withdrawn' },
+          });
+        },
+      );
+      const edit = t
+        .put(`/api/setup/academic-years/${year}`, branch, {
+          startDate: '2026-09-01',
+          endDate: '2027-06-30',
+        })
+        .then((response) => response);
+      await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
+      held.release();
+      expect(await held.done).toBeUndefined();
+      const answer = await edit;
+      expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+      // The withdrawn row is final: the longer year leaves it as it is.
+      expect(await rowsOfStudent(one.id)).toEqual([
+        expect.objectContaining({
+          valid_from: '2026-10-12',
+          valid_until: '2026-10-12',
+          own_until: '2027-06-01',
+          ended_by: 'withdrawn',
+        }),
+      ]);
+      expect(await t.auditCount()).toBe(before + 2);
+    });
+
+    it('lets a longer year held first and a withdraw of a planned placement both stand, the withdraw on the followed row', async () => {
+      const branch = await t.newBranch();
+      const year = await classes.year(branch, 'planned');
+      const oxford = await schoolClass({ branch, year });
+      const one = await student({ startsOn: '2026-10-12', classId: null }, branch);
+      const member = placed(await place(oxford, [one], '2026-10-12', t.admin, branch)).members[0];
+      // As AcademicYears.edit does: the rows that run to the last day, the
+      // branch row, the year row, the new end (the follow moves the row), and
+      // the audit entry once released.
+      const held = await holdOpen(
+        async (transaction) => {
+          await lockFollowingRows(transaction, year, '2027-05-31');
+          await transaction
+            .selectFrom('branches')
+            .select('id')
+            .where('id', '=', branch)
+            .forUpdate()
+            .execute();
+          await transaction
+            .selectFrom('academic_years')
+            .select('id')
+            .where('id', '=', year)
+            .forUpdate()
+            .execute();
+          await transaction
+            .updateTable('academic_years')
+            .set({ end_date: '2027-06-30' })
+            .where('id', '=', year)
+            .execute();
+        },
+        branch,
+        async (transaction) => {
+          await t.app.get(Audit).record(transaction, {
+            branchId: branch,
+            actorId: null,
+            assignmentId: t.adminAssignment,
+            action: 'academic_year.edit',
+            record: { type: 'academic_year', id: year },
+            oldValue: { startDate: '2026-09-01', endDate: '2027-05-31' },
+            newValue: { startDate: '2026-09-01', endDate: '2027-06-30' },
+          });
+        },
+      );
+      const withdraw = t
+        .post(`/api/classes/${oxford}/members/${member?.id ?? ''}/withdraw`, branch, {})
+        .then((response) => response);
+      await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
+      held.release();
+      expect(await held.done).toBeUndefined();
+      const answer = await withdraw;
+      expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+      // The withdraw met the row the longer year had moved: its own end is the
+      // new one.
+      expect(await rowsOfStudent(one.id)).toEqual([
+        expect.objectContaining({
+          valid_from: '2026-10-12',
+          valid_until: '2026-10-12',
+          own_until: '2027-07-01',
+          ended_by: 'withdrawn',
+        }),
+      ]);
+      expect(await t.entries('student.class_withdrawn', one.id)).toHaveLength(1);
+    });
+
+    /** A leaving of a student of the branch, by the route. */
+    const leaveIn = (branch: string, one: StudentDetail, lastDay: string) =>
+      t.post(`/api/people/students/${one.id}/leaving`, branch, {
+        lastDay,
+        reason: 'The family moved.',
+        version: one.version,
+      });
+
+    const yearTo = (branch: string, year: string, endDate: string) =>
+      t.put(`/api/setup/academic-years/${year}`, branch, { startDate: '2026-09-01', endDate });
+
+    // Item 4 of code round 1: a row cut by a scheduled leaving takes the new
+    // own end, and the cancel of the leaving afterwards gives it back to the
+    // new last day, never to the old one.
+    it('gives a row back to the new last day when its leaving is cancelled after the year moved', async () => {
+      const branch = await t.newBranch();
+      const year = await classes.year(branch, 'planned');
+      const oxford = await schoolClass({ branch, year });
+      const first = await student({ startsOn: '2026-09-02', classId: oxford }, branch);
+      const second = await student({ startsOn: '2026-09-02', classId: oxford }, branch);
+      const cancel = async (one: StudentDetail) => {
+        const cancelled = await t.post(`/api/people/students/${one.id}/leaving/cancel`, branch, {
+          version: one.version,
+        });
+        expect(cancelled.status, JSON.stringify(cancelled.body)).toBe(200);
+      };
+      const firstLeft = studentDetailSchema.parse(
+        (await leaveIn(branch, first, '2026-12-01')).body,
+      );
+      expect((await yearTo(branch, year, '2027-06-30')).status).toBe(200);
+      expect(await rowsOfStudent(first.id)).toEqual([
+        expect.objectContaining({
+          valid_until: '2026-12-02',
+          own_until: '2027-07-01',
+          ended_by: 'leaving',
+        }),
+      ]);
+      await cancel(firstLeft);
+      expect(await rowsOfStudent(first.id)).toEqual([
+        expect.objectContaining({
+          valid_until: '2027-07-01',
+          own_until: '2027-07-01',
+          ended_by: null,
+        }),
+      ]);
+      const secondLeft = studentDetailSchema.parse(
+        (await leaveIn(branch, await readStudent(second.id, branch), '2026-12-01')).body,
+      );
+      expect((await yearTo(branch, year, '2027-05-20')).status).toBe(200);
+      await cancel(secondLeft);
+      for (const id of [first.id, second.id]) {
+        expect(await rowsOfStudent(id)).toEqual([
+          expect.objectContaining({
+            valid_until: '2027-05-21',
+            own_until: '2027-05-21',
+            ended_by: null,
+          }),
+        ]);
+      }
+    });
+
+    // Item 4 of code round 1: a leaving and a longer year meet on the class
+    // row. Each order; the held side writes what its route writes.
+    it('lets a leaving held first and a longer year both stand: the cut row takes the new own end only', async () => {
+      const branch = await t.newBranch();
+      const year = await classes.year(branch, 'planned');
+      const oxford = await schoolClass({ branch, year });
+      const one = await student({ startsOn: '2026-09-02', classId: oxford }, branch);
+      // As StudentStatuses.leave does: the student, its status rows, the cut
+      // of its class row (the year FOR SHARE in the row's trigger), then the
+      // audit entry once released.
+      const held = await holdOpen(
+        async (transaction) => {
+          await transaction
+            .selectFrom('students')
+            .select('id')
+            .where('id', '=', one.id)
+            .forUpdate()
+            .execute();
+          const leaving = await new MembersKit(t.database.migrator, '').leaving(
+            transaction,
+            branch,
+            one.id,
+            '2026-12-02',
+          );
+          await transaction
+            .updateTable('class_memberships')
+            .set({ valid_until: '2026-12-02', ended_by: 'leaving', leaving_id: leaving })
+            .where('student_id', '=', one.id)
+            .execute();
+        },
+        branch,
+        async (transaction) => {
+          await t.app.get(Audit).record(transaction, {
+            branchId: branch,
+            actorId: null,
+            assignmentId: t.adminAssignment,
+            action: 'student.leave',
+            record: { type: 'student', id: one.id },
+            newValue: { lastDay: '2026-12-01' },
+          });
+        },
+      );
+      const edit = yearTo(branch, year, '2027-06-30').then((response) => response);
+      await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
+      held.release();
+      expect(await held.done).toBeUndefined();
+      const answer = await edit;
+      expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+      expect(await rowsOfStudent(one.id)).toEqual([
+        expect.objectContaining({
+          valid_until: '2026-12-02',
+          own_until: '2027-07-01',
+          ended_by: 'leaving',
+        }),
+      ]);
+    });
+
+    it('lets a longer year held first and a leaving both stand: the leaving cuts the followed row', async () => {
+      const branch = await t.newBranch();
+      const year = await classes.year(branch, 'planned');
+      const oxford = await schoolClass({ branch, year });
+      const one = await student({ startsOn: '2026-09-02', classId: oxford }, branch);
+      const held = await holdOpen(
+        async (transaction) => {
+          await lockFollowingRows(transaction, year, '2027-05-31');
+          await transaction
+            .selectFrom('branches')
+            .select('id')
+            .where('id', '=', branch)
+            .forUpdate()
+            .execute();
+          await transaction
+            .selectFrom('academic_years')
+            .select('id')
+            .where('id', '=', year)
+            .forUpdate()
+            .execute();
+          await transaction
+            .updateTable('academic_years')
+            .set({ end_date: '2027-06-30' })
+            .where('id', '=', year)
+            .execute();
+        },
+        branch,
+        async (transaction) => {
+          await t.app.get(Audit).record(transaction, {
+            branchId: branch,
+            actorId: null,
+            assignmentId: t.adminAssignment,
+            action: 'academic_year.edit',
+            record: { type: 'academic_year', id: year },
+            oldValue: { startDate: '2026-09-01', endDate: '2027-05-31' },
+            newValue: { startDate: '2026-09-01', endDate: '2027-06-30' },
+          });
+        },
+      );
+      const leaving = leaveIn(branch, one, '2026-12-01').then((response) => response);
+      await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
+      held.release();
+      expect(await held.done).toBeUndefined();
+      const answer = await leaving;
+      expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+      expect(await rowsOfStudent(one.id)).toEqual([
+        expect.objectContaining({
+          valid_until: '2026-12-02',
+          own_until: '2027-07-01',
+          ended_by: 'leaving',
+        }),
+      ]);
+    });
+
+    // Item 4 of code round 1: the order of a placement against a shorter year
+    // where the edit commits first; the order where the placement commits
+    // first is the test below.
+    it('refuses a placement into the days a shorter year held first cuts off', async () => {
+      const branch = await t.newBranch();
+      const year = await classes.year(branch, 'planned');
+      const oxford = await schoolClass({ branch, year });
+      const one = await student({ startsOn: '2026-10-12', classId: null }, branch);
+      const held = await holdOpen(
+        async (transaction) => {
+          await lockFollowingRows(transaction, year, '2027-05-31');
+          await transaction
+            .selectFrom('branches')
+            .select('id')
+            .where('id', '=', branch)
+            .forUpdate()
+            .execute();
+          await transaction
+            .selectFrom('academic_years')
+            .select('id')
+            .where('id', '=', year)
+            .forUpdate()
+            .execute();
+          await transaction
+            .updateTable('academic_years')
+            .set({ end_date: '2027-05-20' })
+            .where('id', '=', year)
+            .execute();
+        },
+        branch,
+        async (transaction) => {
+          await t.app.get(Audit).record(transaction, {
+            branchId: branch,
+            actorId: null,
+            assignmentId: t.adminAssignment,
+            action: 'academic_year.edit',
+            record: { type: 'academic_year', id: year },
+            oldValue: { startDate: '2026-09-01', endDate: '2027-05-31' },
+            newValue: { startDate: '2026-09-01', endDate: '2027-05-20' },
+          });
+        },
+      );
+      const before = await t.auditCount();
+      const placing = place(oxford, [one], '2027-05-25', t.admin, branch).then(
+        (response) => response,
+      );
+      await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
+      held.release();
+      expect(await held.done).toBeUndefined();
+      refusedWith(await placing, 409, 'membership_outside_year');
+      expect(await rowsOfStudent(one.id)).toEqual([]);
+      expect(await t.auditCount()).toBe(before + 1);
+    });
+
+    it('names a student now in another branch without the name when a shorter year is refused', async () => {
+      const branch = await t.newBranch();
+      const year = await classes.year(branch, 'planned');
+      const oxford = await schoolClass({ branch, year });
+      const one = await student({ startsOn: '2026-09-02', classId: oxford }, branch);
+      await moveStudentBranch(t.database.migrator, one.id, branch, t.south);
+      for (const cookie of [t.admin]) {
+        const refused = await t.put(
+          `/api/setup/academic-years/${year}`,
+          branch,
+          { startDate: '2026-09-08', endDate: '2027-05-31' },
+          cookie,
+        );
+        refusedWith(refused, 409, 'year_cut_holds');
+        const stays = (apiErrorSchema.parse(refused.body).error.details ?? []).map(
+          (detail) => detail.stay,
+        );
+        expect(stays).toEqual([
+          {
+            studentName: null,
+            unit: { kind: 'class', name: await classNameOf(oxford), grade: 7 },
+            firstDay: '2026-09-02',
+            lastDay: '2027-05-31',
+          },
+        ]);
+        expect(JSON.stringify(refused.body)).not.toContain(one.firstName);
+        expect(JSON.stringify(refused.body)).not.toContain(one.lastName);
+      }
+    });
+
+    it('refuses a shorter year that waited for a placement into the days it cuts', async () => {
+      const branch = await t.newBranch();
+      const year = await classes.year(branch, 'planned');
+      const oxford = await schoolClass({ branch, year });
+      const one = await student({ startsOn: '2026-10-12', classId: null }, branch);
+      const held = await holdOpen(async (transaction) => {
+        await transaction
+          .selectFrom('students')
+          .select('id')
+          .where('id', '=', one.id)
+          .forUpdate()
+          .execute();
+        await transaction
+          .insertInto('class_memberships')
+          .values({
+            branch_id: branch,
+            student_id: one.id,
+            class_id: oxford,
+            valid_from: '2027-05-25',
+            valid_until: '2027-06-01',
+            own_until: '2027-06-01',
+            cause: 'placement',
+          })
+          .execute();
+      }, branch);
+      const edit = t
+        .put(`/api/setup/academic-years/${year}`, branch, {
+          startDate: '2026-09-01',
+          endDate: '2027-05-20',
+        })
+        .then((response) => response);
+      await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
+      held.release();
+      expect(await held.done).toBeUndefined();
+      refusedWith(await edit, 409, 'year_cut_holds');
+      expect(await rowsOfStudent(one.id)).toEqual([
+        expect.objectContaining({ valid_from: '2027-05-25', own_until: '2027-06-01' }),
+      ]);
     });
 
     it('refuses the grade edit of a student in a class', async () => {

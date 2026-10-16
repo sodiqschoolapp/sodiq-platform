@@ -4,6 +4,7 @@ import {
   historyLines,
   holdsData,
   planCancelLeaving,
+  planCancelReturn,
   planLeaving,
   planRestore,
   planReturn,
@@ -36,7 +37,7 @@ function planOf(outcome: StudentStatusOutcome): StudentStatusPlan {
 }
 
 /** The rows after a plan, as the database would hold them; new rows get ids n1, n2, … */
-function applied(rows: readonly StoredStudentStatus[], plan: StudentStatusPlan) {
+function applied(rows: readonly StoredStudentStatus[], plan: StudentStatusPlan, prefix = 'n') {
   const cut = rows.map((one) => {
     const change = plan.cuts.find((c) => c.id === one.id);
     return change === undefined ? one : { ...one, validUntil: change.validUntil };
@@ -44,7 +45,13 @@ function applied(rows: readonly StoredStudentStatus[], plan: StudentStatusPlan) 
   return [
     ...cut,
     ...plan.writes.map((write, index) =>
-      row(`n${String(index + 1)}`, write.status, write.validFrom, write.validUntil, write.cause),
+      row(
+        `${prefix}${String(index + 1)}`,
+        write.status,
+        write.validFrom,
+        write.validUntil,
+        write.cause,
+      ),
     ),
   ];
 }
@@ -391,5 +398,104 @@ describe('the lines of the status history', () => {
       row('b', 'inactive', '2026-10-20', null, 'leaving'),
     ];
     expect(historyLines(rows)).toEqual(rows);
+  });
+});
+
+// Task 3.6b-2, owner's answer L170: a return or restore dated the first day of
+// the next planned year, its cancel, and the planners reading a row and its
+// `cancel` row as one stay (decision 4).
+describe('a return or restore on the first day of next year', () => {
+  const AUGUST = '2027-09-01';
+  const left = [
+    row('a', 'active', '2026-09-02', '2026-10-06', 'start'),
+    row('b', 'inactive', '2026-10-06', null, 'leaving'),
+  ];
+
+  it('allows only the first day of next year after today, and keeps the time away', () => {
+    const plan = planOf(planReturn(left, AUGUST, null, TODAY, AUGUST));
+    expect(applied(left, plan).map((one) => [one.status, one.validFrom, one.validUntil])).toEqual([
+      ['active', '2026-09-02', '2026-10-06'],
+      ['inactive', '2026-10-06', AUGUST],
+      ['active', AUGUST, null],
+    ]);
+    expect(planReturn(left, '2027-09-02', null, TODAY, AUGUST)).toEqual({
+      refusal: 'status_date_future',
+    });
+    expect(planReturn(left, AUGUST, null, TODAY, null)).toEqual({ refusal: 'status_date_future' });
+    expect(planReturn(left, AUGUST, null, TODAY, '2027-10-01')).toEqual({
+      refusal: 'status_date_future',
+    });
+  });
+
+  it('allows the same day for a restore of a graduate', () => {
+    const graduated = [
+      row('a', 'active', '2026-09-02', '2026-10-01', 'start'),
+      row('g', 'graduated', '2026-10-01', null, 'graduation'),
+    ];
+    const plan = planOf(planRestore(graduated, AUGUST, 'By mistake.', TODAY, AUGUST));
+    expect(plan.writes).toEqual([
+      expect.objectContaining({ status: 'active', validFrom: AUGUST, cause: 'restore' }),
+    ]);
+    expect(planRestore(graduated, '2027-09-02', 'By mistake.', TODAY, AUGUST)).toEqual({
+      refusal: 'status_date_future',
+    });
+  });
+
+  it('cancels a scheduled return by emptying its row and writing the earlier status from its date', () => {
+    const planned = applied(left, planOf(planReturn(left, AUGUST, null, TODAY, AUGUST)));
+    const plan = planOf(planCancelReturn(planned, TODAY));
+    expect(plan.cuts).toEqual([{ id: 'n1', validUntil: AUGUST }]);
+    expect(plan.writes).toEqual([
+      { status: 'inactive', validFrom: AUGUST, validUntil: null, cause: 'cancel', reason: null },
+    ]);
+    expect(planCancelReturn(planned, TODAY)).toMatchObject({ cause: 'return' });
+  });
+
+  it('refuses a cancel with nothing scheduled, and one that has taken effect', () => {
+    expect(planCancelReturn(left, TODAY)).toEqual({ refusal: 'return_not_planned' });
+    expect(planCancelReturn(started(), TODAY)).toEqual({ refusal: 'return_not_planned' });
+    const back = applied(left, planOf(planReturn(left, '2026-10-08', null, TODAY)));
+    expect(planCancelReturn(back, TODAY)).toEqual({ refusal: 'return_in_force' });
+  });
+
+  it('reads a row and its cancel row as one stay, for a return again and an undo of the leaving', () => {
+    const planned = applied(left, planOf(planReturn(left, AUGUST, null, TODAY, AUGUST)));
+    const cancelled = applied(planned, planOf(planCancelReturn(planned, TODAY)), 'm');
+    // Returned again, a day earlier than the cancel row began.
+    const again = planOf(planReturn(cancelled, '2026-10-08', null, TODAY, AUGUST));
+    const afterAgain = applied(cancelled, again);
+    expect(
+      afterAgain
+        .filter((one) => one.validUntil === null || one.validFrom < one.validUntil)
+        .map((one) => [one.status, one.validFrom, one.validUntil]),
+    ).toEqual([
+      ['active', '2026-09-02', '2026-10-06'],
+      ['inactive', '2026-10-06', '2026-10-08'],
+      ['active', '2026-10-08', null],
+    ]);
+    // The return may not come at or before the first inactive day of the stay.
+    expect(planReturn(cancelled, '2026-10-06', null, TODAY, AUGUST)).toEqual({
+      refusal: 'return_too_early',
+    });
+    // The undo closes the gap from the first day of the leaving, emptying both inactive rows.
+    const undo = planOf(planUndoLeaving(cancelled, 'Entered by mistake.', TODAY));
+    expect(undo.cuts).toEqual([
+      { id: 'b', validUntil: '2026-10-06' },
+      { id: 'm1', validUntil: AUGUST },
+    ]);
+    expect(undo.writes).toEqual([
+      expect.objectContaining({ status: 'active', validFrom: '2026-10-06', cause: 'undo' }),
+    ]);
+  });
+
+  it('shows one line for the stay in the history', () => {
+    const planned = applied(left, planOf(planReturn(left, AUGUST, null, TODAY, AUGUST)));
+    const cancelled = applied(planned, planOf(planCancelReturn(planned, TODAY)), 'm');
+    expect(
+      historyLines(cancelled).map((one) => [one.status, one.validFrom, one.validUntil]),
+    ).toEqual([
+      ['active', '2026-09-02', '2026-10-06'],
+      ['inactive', '2026-10-06', null],
+    ]);
   });
 });

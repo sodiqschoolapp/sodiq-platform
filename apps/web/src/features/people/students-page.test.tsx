@@ -2078,6 +2078,95 @@ describe('the Status section', () => {
     });
   });
 
+  // Task 3.6b-2, owner's answer L170: a return scheduled for the first day of
+  // next year is cancelled through its confirmation, and the return form offers
+  // that day when the branch has a planned year.
+  it('cancels a scheduled return through its confirmation, without Return and Undo beside it', async () => {
+    const scheduled = detailOf(OTKIR, {
+      status: 'inactive',
+      canArchive: true,
+      planned: { status: 'active', from: '2027-09-01' },
+      version: 4,
+      statuses: [
+        { status: 'active', from: '2026-09-02', until: '2026-10-01', cause: 'start', reason: null },
+        {
+          status: 'inactive',
+          from: '2026-10-01',
+          until: '2027-09-01',
+          cause: 'leaving',
+          reason: 'Moved',
+        },
+        { status: 'active', from: '2027-09-01', until: null, cause: 'return', reason: null },
+      ],
+    });
+    const calls = openOne('academic_vice_principal', OTKIR, scheduled, {
+      [`POST /api/people/students/${OTKIR.id}/return/cancel`]: () =>
+        json(detailOf(OTKIR, { status: 'inactive', canArchive: true, version: 5 })),
+    });
+    renderApp(`${PATH}?open=${OTKIR.id}`);
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    fireEvent.click(
+      await within(panel).findByRole('button', { name: en.people.students.cancelReturn }),
+    );
+    expect(
+      within(panel).queryByRole('button', { name: en.people.students.returnTitle }),
+    ).toBeNull();
+    const dialog = await screen.findByRole('alertdialog', {
+      name: en.people.students.cancelReturnConfirmTitle,
+    });
+    expect(calls.some((call) => call.route.endsWith('/return/cancel'))).toBe(false);
+    fireEvent.click(within(dialog).getByRole('button', { name: en.people.students.cancelReturn }));
+    await waitFor(() => {
+      expect(calls.some((call) => call.route.endsWith('/return/cancel'))).toBe(true);
+    });
+    expect(calls.find((call) => call.route.endsWith('/return/cancel'))?.body).toEqual({
+      version: 4,
+    });
+  });
+
+  it('offers the first day of next year in the return form when the branch has a planned year', async () => {
+    const left = detailOf(OTKIR, {
+      status: 'inactive',
+      canArchive: true,
+      version: 2,
+      statuses: [
+        { status: 'active', from: '2026-09-02', until: '2026-10-01', cause: 'start', reason: null },
+        { status: 'inactive', from: '2026-10-01', until: null, cause: 'leaving', reason: 'Moved' },
+      ],
+    });
+    openOne('academic_vice_principal', OTKIR, left, {
+      ...CLASS_CHOICE,
+      'GET /api/setup/academic-years': () =>
+        json({
+          years: [
+            ...YEARS.years,
+            {
+              id: uid(61),
+              name: '2027–2028',
+              startDate: '2027-09-01',
+              endDate: '2028-05-31',
+              status: 'planned',
+              quarters: [],
+            },
+          ],
+        }),
+    });
+    renderApp(`${PATH}?open=${OTKIR.id}`);
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    await within(panel).findByRole('heading', { name: en.people.students.statusTitle });
+    const form = await edit(panel, en.people.students.returnTitle, en.people.students.returnTitle);
+    const pick = await within(form).findByRole('button', {
+      name: en.people.students.nextYearStart.replace(
+        '{{date}}',
+        schoolDateText('2027-09-01', 'en'),
+      ),
+    });
+    fireEvent.click(pick);
+    expect(within(form).getByLabelText<HTMLInputElement>(en.people.students.returnFrom).value).toBe(
+      '2027-09-01',
+    );
+  });
+
   // Issue #39, hand test of 13 October 2026, finding 18 (task 2.7b-2, decision
   // 7): "Saved." stays after a UID correction; since task 2.7c-2b-2b the form
   // closes and says so in the bottom row, and opens again with an empty reason.

@@ -289,6 +289,7 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'POST /api/people/students/:id/leaving/cancel': { branch: 'request', roles: STUDENT_EDITORS },
   'POST /api/people/students/:id/leaving/undo': { branch: 'request', roles: STUDENT_EDITORS },
   'POST /api/people/students/:id/return': { branch: 'request', roles: STUDENT_EDITORS },
+  'POST /api/people/students/:id/return/cancel': { branch: 'request', roles: STUDENT_EDITORS },
   'POST /api/people/students/:id/restore': { branch: 'request', roles: ['super_admin'] },
   'POST /api/people/students/:id/delete': { branch: 'request', roles: STUDENT_EDITORS },
   // Task 2.4b-2: the export (decision 1), the photos and the "No class" counter.

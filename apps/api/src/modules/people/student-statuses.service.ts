@@ -1,19 +1,23 @@
 import { Injectable } from '@nestjs/common';
-import type {
-  AuditAction,
-  ClassNotRestored,
-  ErrorCode,
-  StudentCancelLeaving,
-  StudentDelete,
-  StudentDetail,
-  StudentLeaving,
-  StudentRestore,
-  StudentReturn,
-  StudentUndoLeaving,
+import { sql } from 'kysely';
+import {
+  PERMISSIONS,
+  type AuditAction,
+  type ClassNotRestored,
+  type ErrorCode,
+  type StudentCancelLeaving,
+  type StudentCancelReturn,
+  type StudentDelete,
+  type StudentDetail,
+  type StudentLeaving,
+  type StudentRestore,
+  type StudentReturn,
+  type StudentUndoLeaving,
 } from '@sodiq/shared';
 import { Transactions, transactionMoment, type Transaction } from '../../database/transactions.js';
 import type { JsonValue } from '../../database/types.generated.js';
 import { ApiException } from '../../http/api-exception.js';
+import { decide } from '../access/permission-check.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import {
@@ -28,6 +32,7 @@ import {
   CLASS_PATH_GROUP_REFUSALS,
   cutGroupRows,
   groupMembershipsOf,
+  withdrawGroupRows,
   type GroupRowEnded,
 } from '../classes/group-membership-rows.js';
 import { planMemberships, type StoredMembership } from '../classes/membership-plan.js';
@@ -50,10 +55,12 @@ import { atClassFields, classLeft, groupsLeavingCut } from './return-class.js';
 import {
   holdsData,
   planCancelLeaving,
+  planCancelReturn,
   planLeaving,
   planRestore,
   planReturn,
   planUndoLeaving,
+  returnCauseOf,
   type StoredStudentStatus,
   type StudentStatusOutcome,
   type StudentStatusPlan,
@@ -137,8 +144,16 @@ interface StatusChange {
   plan: (rows: readonly StoredStudentStatus[], today: string) => StudentStatusOutcome;
   newValue: Record<string, unknown>;
   reason: string | null;
+  /** The assignment that allowed a part of the change, when it is not the first that permits the route. */
+  allowedBy?: { id?: string };
   /** Read before the student is locked and before any write (the class of a return, task 3.3b). */
   before?: (transaction: Transaction) => Promise<void>;
+  /**
+   * Refuses the change to a role that may not make this part of it, from the
+   * status rows read under the student's lock, before the version check and
+   * the plan's refusals (the cancel of a restore, task 3.6b-2).
+   */
+  allow?: (rows: readonly StoredStudentStatus[]) => void;
   /**
    * Writes of the change besides the status rows (the contract, grade and
    * class of a return), after them; what it answers joins the audit entry
@@ -238,6 +253,7 @@ export class StudentStatuses {
   ): Promise<StudentDetail> {
     const branchId = branchOf(access);
     let placement: PlacementClass | undefined;
+    let nextYear: string | null = null;
     return atClassFields(() =>
       this.students.refusingTaken(access, () =>
         this.change(access, id, requestId, {
@@ -245,8 +261,9 @@ export class StudentStatuses {
           version: input.version,
           before: async (transaction) => {
             placement = await this.classOfBody(transaction, branchId, input.classId);
+            nextYear = await this.nextYearStart(transaction, branchId);
           },
-          plan: (rows, today) => planReturn(rows, input.from, input.reason, today),
+          plan: (rows, today) => planReturn(rows, input.from, input.reason, today, nextYear),
           newValue: {
             from: input.from,
             grade: input.grade,
@@ -263,17 +280,27 @@ export class StudentStatuses {
               .set({ grade: input.grade })
               .where('id', '=', id)
               .execute();
-            await this.students.inserting({ 'contract.number': input.contract.number }, () =>
-              transaction
-                .insertInto('student_contracts')
-                .values({
-                  student_id: id,
-                  branch_id: branchId,
-                  number: input.contract.number,
-                  signed_on: input.contract.signedOn,
-                })
-                .execute(),
-            );
+            // A return cancelled and made again names the same paper contract: the
+            // student's own row stands, nothing is added twice.
+            const held = await transaction
+              .selectFrom('student_contracts')
+              .select('id')
+              .where('student_id', '=', id)
+              .where(sql`upper(number)`, '=', input.contract.number.toUpperCase())
+              .executeTakeFirst();
+            if (held === undefined) {
+              await this.students.inserting({ 'contract.number': input.contract.number }, () =>
+                transaction
+                  .insertInto('student_contracts')
+                  .values({
+                    student_id: id,
+                    branch_id: branchId,
+                    number: input.contract.number,
+                    signed_on: input.contract.signedOn,
+                  })
+                  .execute(),
+              );
+            }
             return this.placeBack(transaction, access, requestId, id, placedBy(placement), {
               from: input.from,
               cause: 'return',
@@ -300,14 +327,16 @@ export class StudentStatuses {
   ): Promise<StudentDetail> {
     const branchId = branchOf(access);
     let placement: PlacementClass | undefined;
+    let nextYear: string | null = null;
     return atClassFields(() =>
       this.change(access, id, requestId, {
         action: 'student.graduate_restored',
         version: input.version,
         before: async (transaction) => {
           placement = await this.classOfBody(transaction, branchId, input.classId);
+          nextYear = await this.nextYearStart(transaction, branchId);
         },
-        plan: (rows, today) => planRestore(rows, input.from, input.reason, today),
+        plan: (rows, today) => planRestore(rows, input.from, input.reason, today, nextYear),
         newValue: { from: input.from, classId: input.classId },
         reason: input.reason,
         also: async (transaction) => {
@@ -330,6 +359,132 @@ export class StudentStatuses {
         },
       }),
     );
+  }
+
+  /**
+   * The first day of the branch's next planned academic year: the earliest
+   * year with status `planned` that starts after today, today read from the
+   * transaction moment (task 3.6b-2, decision 7; owner's answer L170). The one
+   * future date a return or a restore may take; `null` when there is none.
+   */
+  private async nextYearStart(transaction: Transaction, branchId: string): Promise<string | null> {
+    const today = await this.students.todayIn(transaction, branchId);
+    const next = await transaction
+      .selectFrom('academic_years')
+      .select(sql<string>`start_date::text`.as('start_date'))
+      .where('branch_id', '=', branchId)
+      .where('status', '=', 'planned')
+      .where('start_date', '>', today)
+      .orderBy('start_date')
+      .limit(1)
+      .executeTakeFirst();
+    return next?.start_date ?? null;
+  }
+
+  /**
+   * The cancel of a scheduled return or restore, until its date (edge: "It
+   * can be changed or cancelled until the date"; task 3.6b-2, decision 8):
+   * the planned class and group rows of the return are withdrawn, the active
+   * row is emptied and a row of the earlier status written from its date.
+   * The cancel of a restore is for the holders of `student_graduates`
+   * `edit`, decided from every current assignment (`decide`, as
+   * `canRestoreGraduated` of the detail) once the row's cause is read under
+   * the student's lock, before the version check and the plan's refusals:
+   * any other role gets the guard's 403 (`.claude/rules/api.md`).
+   */
+  cancelReturn(
+    access: Access,
+    id: string,
+    input: StudentCancelReturn,
+    requestId: string,
+  ): Promise<StudentDetail> {
+    const branchId = branchOf(access);
+    const allowedBy: { id?: string } = {};
+    return this.change(access, id, requestId, {
+      action: 'student.return_cancelled',
+      allowedBy,
+      version: input.version,
+      allow: (rows) => {
+        if (returnCauseOf(rows) !== 'restore') {
+          return;
+        }
+        const holder = decide(
+          { area: 'student_graduates', action: 'edit', branch: 'request' },
+          access.assignments,
+          access.branchId,
+          PERMISSIONS,
+        );
+        if (holder === undefined) {
+          throw new ApiException('permission_denied', 403);
+        }
+        // The entry names the assignment that allowed the restore's cancel.
+        allowedBy.id = holder.id;
+      },
+      plan: (rows, today) => planCancelReturn(rows, today),
+      newValue: {},
+      reason: null,
+      also: async (transaction, context) => {
+        const cut = context.outcome.cuts[0];
+        const day = context.outcome.writes[0]?.validFrom;
+        if (cut === undefined || day === undefined) {
+          return undefined;
+        }
+        const planned = await transaction
+          .selectFrom('class_memberships')
+          .select(['id', 'class_id', 'valid_from', 'valid_until'])
+          .where('student_id', '=', id)
+          .where('branch_id', '=', branchId)
+          .where('cause', 'in', ['return', 'restore'])
+          .where('valid_from', '=', day)
+          .where('ended_by', 'is', null)
+          .execute();
+        const groupsWithdrawn: GroupRowEnded[] = [];
+        for (const row of planned) {
+          await transaction
+            .updateTable('class_memberships')
+            .set({ valid_until: row.valid_from, ended_by: 'withdrawn', leaving_id: null })
+            .where('id', '=', row.id)
+            .execute();
+          groupsWithdrawn.push(
+            ...(await withdrawGroupRows(
+              transaction,
+              id,
+              row.class_id,
+              row.valid_from,
+              row.valid_until,
+            )),
+          );
+        }
+        // The grade the return or restore wrote is given back: the grade it
+        // replaced is in its audit entry (the class rows are withdrawn first, so
+        // `students_grade_class` has nothing to refuse).
+        const written = await transaction
+          .selectFrom('audit_log')
+          .select('old_value')
+          .where('record_id', '=', id)
+          .where('action', 'in', ['student.return', 'student.graduate_restored'])
+          .orderBy('occurred_at', 'desc')
+          .orderBy('id', 'desc')
+          .limit(1)
+          .executeTakeFirst();
+        const before: unknown = written?.old_value;
+        const grade =
+          typeof before === 'object' && before !== null && 'grade' in before
+            ? before.grade
+            : undefined;
+        if (typeof grade === 'number') {
+          await transaction.updateTable('students').set({ grade }).where('id', '=', id).execute();
+        }
+        return {
+          newValue: {
+            ...(typeof grade === 'number' ? { gradeRestored: grade } : {}),
+            membershipsWithdrawn: planned.map((row) => row.id),
+            ...(groupsWithdrawn.length === 0 ? {} : { groupMemberships: groupsWithdrawn }),
+          },
+          groupsPlaced: [],
+        };
+      },
+    });
   }
 
   /**
@@ -585,6 +740,7 @@ export class StudentStatuses {
         const student = await this.students.lockStudent(transaction, id);
         const rows = (await this.students.statusRowsOf(transaction, id)).get(id) ?? [];
         const memberships = await membershipsOf(transaction, id);
+        change.allow?.(rows);
         // The version counts the class rows too (task 3.1b, decision 17) and
         // the class moves taken back (task 3.5c, decision 7).
         if (
@@ -613,7 +769,7 @@ export class StudentStatuses {
         await this.audit.record(transaction, {
           branchId,
           actorId: access.accountId,
-          assignmentId: access.assignmentId,
+          assignmentId: change.allowedBy?.id ?? access.assignmentId,
           action: change.action,
           record: { type: 'student', id },
           // The grade too: a return writes it (permission review of the build).

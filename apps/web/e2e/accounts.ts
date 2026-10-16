@@ -61,6 +61,7 @@ export type AccountKey =
   | 'recordSearch'
   | 'moves'
   | 'returns'
+  | 'returnAugust'
   | 'branchMoves'
   | 'teachingLoad'
   | 'teachingBlocks'

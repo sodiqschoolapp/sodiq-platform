@@ -1139,6 +1139,7 @@ describe('leaving, return and delete of a student', () => {
       [`${base}/leaving`, { lastDay: '2026-10-20', reason: 'Moved.', version: student.version }],
       [`${base}/leaving/cancel`, { version: student.version }],
       [`${base}/leaving/undo`, { reason: 'Mistake.', version: student.version }],
+      [`${base}/return/cancel`, { version: student.version }],
       [
         `${base}/return`,
         {
