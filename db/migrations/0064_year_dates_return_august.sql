@@ -22,7 +22,13 @@
 --   its own end inside them that is not the year's.
 -- A row that runs to the year's last day (`own_until` = old end + 1, not ended
 -- early) is not in the way: it follows the new last day (decision 1, Look
--- first). Runs as the invoker: the rows the branch filter lets the caller see.
+-- first). A row emptied by a leaving or a move (`valid_from = valid_until`)
+-- counts with the days a cancel of that leaving or move gives back, up to its
+-- own end (item 5 of code round 1): a placement from 25 May emptied by a
+-- leaving of 25 May would come back past a last day moved to 20 May. Such a
+-- row is answered with its own end as its end. Withdrawn, undone, joined and
+-- merged rows are final and hold no day. Runs as the invoker: the rows the
+-- branch filter lets the caller see.
 create function year_cut_holds(year_id uuid, new_start date, new_end date)
 returns table (
   kind text,
@@ -43,14 +49,19 @@ as $$
       m.valid_from, m.valid_until, m.own_until
     from class_memberships m
     join classes c on c.id = m.class_id
-    where c.academic_year_id = year_id and m.valid_from < m.valid_until
+    where c.academic_year_id = year_id
+      and (m.valid_from < m.valid_until
+        or (m.ended_by in ('leaving', 'transfer') and m.valid_from < m.own_until))
     union all
     select 'group'::text, m.id, m.student_id, m.group_id, m.valid_from, m.valid_until, m.own_until
     from group_memberships m
     join groups g on g.id = m.group_id
-    where g.academic_year_id = year_id and m.valid_from < m.valid_until
+    where g.academic_year_id = year_id
+      and (m.valid_from < m.valid_until
+        or (m.ended_by in ('leaving', 'transfer') and m.valid_from < m.own_until))
   )
-  select r.kind, r.id, r.student_id, r.holder_id, r.valid_from, r.valid_until
+  select r.kind, r.id, r.student_id, r.holder_id, r.valid_from,
+    case when r.valid_from < r.valid_until then r.valid_until else r.own_until end
   from rows r, year y
   where r.valid_from < new_start
     or (
@@ -98,8 +109,8 @@ create trigger academic_years_dates_guard
 --   final and untouched; so is a row that starts after the new last day.
 -- The mark `app.year_follow` (year id, old end, new end) is a transaction
 -- setting of its own, set here with `set_config(..., true)` and cleared after
--- the updates; the shrink rule below honours it only at trigger depth 2 and
--- only for exactly this shape.
+-- the updates; the shrink rule below honours it only at trigger depth 2 (the
+-- before-row trigger of these updates) and only for exactly this shape.
 create function academic_years_dates_follow() returns trigger
 language plpgsql
 set search_path = pg_catalog, public
@@ -159,7 +170,7 @@ declare
   parts text[];
   year_end date;
 begin
-  if mark is null or pg_trigger_depth() < 2 then
+  if mark is null or pg_trigger_depth() <> 2 then
     return false;
   end if;
   parts := string_to_array(mark, '|');

@@ -56,7 +56,9 @@ const inside = (date: string, range: { startDate: string; endDate: string }): bo
  * database refuses at the commit (`refusingConstraints`).
  *
  * Lock order, the same everywhere: a write of a year (create, edit, "Start
- * year") takes the branch row `for update`, then the year row `for update`;
+ * year") takes the branch row `for update`, then the year row `for update`
+ * (an edit first locks the class and group rows that run to the year's last
+ * day, task 3.6b-2);
  * the go-live save (`Branches.setGoLive`) takes the branch row `for update`
  * and reads the years without a lock; a save of the quarters takes the year
  * row `for update`. So every change of the years of a branch waits for the
@@ -213,17 +215,24 @@ export class AcademicYears {
   ): Promise<AcademicYear> {
     return refusingConstraints(() =>
       this.transactions.run(access.branchIds, async (transaction) => {
-        const goLiveDate = await this.lockBranch(transaction, branchId);
-        // The branch lock makes every other change of the branch's years wait,
-        // so the year is read without a lock first (its 404 check); the rows
-        // that run to its last day are locked before the year row, the order
-        // a leaving or a move takes (3.6b-2, correction 1 of the review).
+        // 3.6b-2 (correction 1 of the plan review, item 1 of code round 1):
+        // the rows that run to the year's last day are locked first, before
+        // the branch row and the year row. A change of such a row (a withdraw,
+        // a leaving) holds the row, takes the year FOR SHARE in its trigger
+        // and then writes its audit entry, whose `branch_id` takes the branch
+        // row FOR KEY SHARE; an edit that held the branch or the year while it
+        // waited for the row would deadlock with it. The year is read without
+        // a lock for its 404 check and its end.
         const read = await this.readYear(transaction, id);
         await lockFollowingRows(transaction, id, read.endDate);
+        const goLiveDate = await this.lockBranch(transaction, branchId);
         const before = await this.lockedYear(transaction, id);
-        // A row inserted between the first read and the year lock is read now
-        // (no lock: the year lock keeps new rows out), for the audit entry.
-        const following = await lockFollowingRows(transaction, id, read.endDate, false);
+        // Under the branch lock no row of the branch is inserted any more; a
+        // row inserted before it (its insert holds the branch FOR KEY SHARE,
+        // which the branch lock waited for), or the rows of an end another
+        // edit committed meanwhile, are locked now, for the follow and the
+        // audit entry. The rows locked above are locked already.
+        const following = await lockFollowingRows(transaction, id, before.endDate);
         if (before.status === 'closed') {
           throw refused('year_closed');
         }

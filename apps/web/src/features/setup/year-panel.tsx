@@ -1,5 +1,6 @@
 import {
   academicYearRecordSchema,
+  classDisplayName,
   QUARTER_FORM_FIELDS,
   QUARTER_NUMBERS,
   quartersFormSchema,
@@ -38,19 +39,31 @@ import { SECTION_TITLE } from '@/components/ui/control';
  * (`year_cut_holds`, task 3.6b-2, L128): one line each, then "and N more".
  */
 function CutHoldsList({ failure }: { failure: unknown }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   if (!(failure instanceof ApiFailure) || failure.code !== 'year_cut_holds') {
     return null;
   }
   const details = failure.details ?? [];
-  const more = Number(details.find((one) => one.path === 'more')?.message ?? 0);
+  const more = details.find((one) => one.path === 'more')?.more ?? 0;
   return (
     <ul className="grid list-disc gap-1 pl-5 text-sm" aria-label={t('setup.years.cutHoldsList')}>
-      {details
-        .filter((one) => one.path !== 'more')
-        .map((one) => (
-          <li key={one.path}>{one.message}</li>
-        ))}
+      {details.flatMap(({ path, stay }) =>
+        stay === undefined
+          ? []
+          : [
+              <li key={path}>
+                {t('setup.years.cutHoldsLine', {
+                  student: stay.studentName ?? t('setup.years.cutHoldsOtherBranch'),
+                  unit:
+                    stay.unit.grade === null
+                      ? stay.unit.name
+                      : classDisplayName(stay.unit.grade, stay.unit.name),
+                  from: schoolDateText(stay.firstDay, i18n.language),
+                  until: schoolDateText(stay.lastDay, i18n.language),
+                })}
+              </li>,
+            ],
+      )}
       {more > 0 && <li>{t('setup.years.cutHoldsMore', { count: more })}</li>}
     </ul>
   );

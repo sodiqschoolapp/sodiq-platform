@@ -1,21 +1,23 @@
 import { Injectable } from '@nestjs/common';
 import { sql } from 'kysely';
-import type {
-  AuditAction,
-  ClassNotRestored,
-  ErrorCode,
-  StudentCancelLeaving,
-  StudentCancelReturn,
-  StudentDelete,
-  StudentDetail,
-  StudentLeaving,
-  StudentRestore,
-  StudentReturn,
-  StudentUndoLeaving,
+import {
+  PERMISSIONS,
+  type AuditAction,
+  type ClassNotRestored,
+  type ErrorCode,
+  type StudentCancelLeaving,
+  type StudentCancelReturn,
+  type StudentDelete,
+  type StudentDetail,
+  type StudentLeaving,
+  type StudentRestore,
+  type StudentReturn,
+  type StudentUndoLeaving,
 } from '@sodiq/shared';
 import { Transactions, transactionMoment, type Transaction } from '../../database/transactions.js';
 import type { JsonValue } from '../../database/types.generated.js';
 import { ApiException } from '../../http/api-exception.js';
+import { decide } from '../access/permission-check.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import {
@@ -58,6 +60,7 @@ import {
   planRestore,
   planReturn,
   planUndoLeaving,
+  returnCauseOf,
   type StoredStudentStatus,
   type StudentStatusOutcome,
   type StudentStatusPlan,
@@ -145,6 +148,12 @@ interface StatusChange {
   allowedBy?: { id?: string };
   /** Read before the student is locked and before any write (the class of a return, task 3.3b). */
   before?: (transaction: Transaction) => Promise<void>;
+  /**
+   * Refuses the change to a role that may not make this part of it, from the
+   * status rows read under the student's lock, before the version check and
+   * the plan's refusals (the cancel of a restore, task 3.6b-2).
+   */
+  allow?: (rows: readonly StoredStudentStatus[]) => void;
   /**
    * Writes of the change besides the status rows (the contract, grade and
    * class of a return), after them; what it answers joins the audit entry
@@ -378,8 +387,10 @@ export class StudentStatuses {
    * the planned class and group rows of the return are withdrawn, the active
    * row is emptied and a row of the earlier status written from its date.
    * The cancel of a restore is for the holders of `student_graduates`
-   * `edit`, decided from every current assignment after the row's cause is
-   * read (`.claude/rules/api.md`).
+   * `edit`, decided from every current assignment (`decide`, as
+   * `canRestoreGraduated` of the detail) once the row's cause is read under
+   * the student's lock, before the version check and the plan's refusals:
+   * any other role gets the guard's 403 (`.claude/rules/api.md`).
    */
   cancelReturn(
     access: Access,
@@ -393,18 +404,23 @@ export class StudentStatuses {
       action: 'student.return_cancelled',
       allowedBy,
       version: input.version,
-      plan: (rows, today) => {
-        const outcome = planCancelReturn(rows, today);
-        if (!('refusal' in outcome) && outcome.cause === 'restore') {
-          const holder = access.assignments.find((one) => one.role === 'super_admin');
-          if (holder === undefined) {
-            throw new ApiException('permission_denied', 403);
-          }
-          // The entry names the assignment that allowed the restore's cancel.
-          allowedBy.id = holder.id;
+      allow: (rows) => {
+        if (returnCauseOf(rows) !== 'restore') {
+          return;
         }
-        return outcome;
+        const holder = decide(
+          { area: 'student_graduates', action: 'edit', branch: 'request' },
+          access.assignments,
+          access.branchId,
+          PERMISSIONS,
+        );
+        if (holder === undefined) {
+          throw new ApiException('permission_denied', 403);
+        }
+        // The entry names the assignment that allowed the restore's cancel.
+        allowedBy.id = holder.id;
       },
+      plan: (rows, today) => planCancelReturn(rows, today),
       newValue: {},
       reason: null,
       also: async (transaction, context) => {
@@ -724,6 +740,7 @@ export class StudentStatuses {
         const student = await this.students.lockStudent(transaction, id);
         const rows = (await this.students.statusRowsOf(transaction, id)).get(id) ?? [];
         const memberships = await membershipsOf(transaction, id);
+        change.allow?.(rows);
         // The version counts the class rows too (task 3.1b, decision 17) and
         // the class moves taken back (task 3.5c, decision 7).
         if (

@@ -184,7 +184,8 @@ export const en = {
     return_in_force: 'This return has already taken effect.',
     return_too_early:
       'The return must be after the first day away. To erase a leaving entered by mistake, use "Undo leaving".',
-    status_date_future: 'Choose today, an earlier date, or the first day of next year.',
+    status_date_future:
+      'Choose today, an earlier date, or the first day of the next planned year, when there is one.',
     student_not_graduated:
       'This student is not graduated now. Reload the page to see the current status.',
     restore_before_graduation: 'Choose a date on or after the day the student graduated.',
@@ -1239,6 +1240,8 @@ export const en = {
       startBlockedCurrent: 'Another year of the branch is current.',
       startBlockedEarlier: 'An earlier year of the branch is not closed yet.',
       cutHoldsList: 'Students in the way',
+      cutHoldsLine: '{{student}} · {{unit}} · {{from}} – {{until}}',
+      cutHoldsOtherBranch: 'A student of another branch',
       cutHoldsMore_one: 'and {{count}} more',
       cutHoldsMore_other: 'and {{count}} more',
       quartersTitle: 'Quarters',

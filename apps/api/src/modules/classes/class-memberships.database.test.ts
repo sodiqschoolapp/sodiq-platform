@@ -555,9 +555,9 @@ describe('class membership in the database', () => {
       // Before any member the dates move.
       await move('2026-09-02', '2027-05-31');
       await move('2026-09-01', '2027-05-31');
-      await inBranch(branch, async (transaction) => {
+      const past = await inBranch(branch, async (transaction) => {
         const leaving = await members.leaving(transaction, branch, student, '2026-09-15');
-        await members.member(
+        return members.member(
           {
             branch,
             classId: oxford,
@@ -577,6 +577,12 @@ describe('class membership in the database', () => {
       });
       // A shorter year no stay stands in: the past row only gets the new own end.
       await move('2026-09-01', '2027-05-30');
+      expect(await members.rowOf(past)).toMatchObject({
+        valid_from: '2026-09-01',
+        valid_until: '2026-09-15',
+        own_until: '2027-05-31',
+        ended_by: 'leaving',
+      });
     });
   });
 

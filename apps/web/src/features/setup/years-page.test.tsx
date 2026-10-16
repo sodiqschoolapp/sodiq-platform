@@ -311,14 +311,26 @@ describe('the academic years page', () => {
           {
             path: 'rows.0',
             code: 'year_cut_holds',
-            message: 'Lola Karimova · Oxford · 2028-05-26 – 2028-06-01',
+            message: 'year_cut_holds',
+            stay: {
+              studentName: 'Lola Karimova',
+              unit: { kind: 'class', name: 'Oxford', grade: 7 },
+              firstDay: '2028-05-26',
+              lastDay: '2028-05-31',
+            },
           },
           {
             path: 'rows.1',
             code: 'year_cut_holds',
-            message: 'a student of another branch · Oxford · 2028-05-26 – 2028-06-01',
+            message: 'year_cut_holds',
+            stay: {
+              studentName: null,
+              unit: { kind: 'group', name: '7-M-1', grade: null },
+              firstDay: '2027-09-02',
+              lastDay: '2028-05-24',
+            },
           },
-          { path: 'more', code: 'year_cut_holds', message: '3' },
+          { path: 'more', code: 'year_cut_holds', message: 'year_cut_holds', more: 3 },
         ]),
     });
     const panel = await openYear('2027–2028');
@@ -331,8 +343,10 @@ describe('the academic years page', () => {
         .getAllByRole('listitem')
         .map((one) => one.textContent),
     ).toEqual([
-      'Lola Karimova · Oxford · 2028-05-26 – 2028-06-01',
-      'a student of another branch · Oxford · 2028-05-26 – 2028-06-01',
+      // Worded by the screen from the fields, never the API's message (item 6
+      // of code round 1): the last day is the stay's own, not the day after.
+      'Lola Karimova · 7 Oxford · 26 May 2028 – 31 May 2028',
+      `${en.setup.years.cutHoldsOtherBranch} · 7-M-1 · 2 September 2027 – 24 May 2028`,
       'and 3 more',
     ]);
     expect(within(form).getByText(en.errors.year_cut_holds)).toBeDefined();

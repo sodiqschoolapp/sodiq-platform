@@ -638,6 +638,27 @@ export const errorDetailSchema = z.object({
       teacher: z.object({ id: z.uuid(), name: z.string().nullable(), vacancy: z.boolean() }),
     })
     .optional(),
+  /**
+   * A class or group stay in the days a change of the year's dates would cut
+   * off, on a `year_cut_holds` (task 3.6b-2, decision 9): the student's name,
+   * `null` for a student the branch does not hold now ("a student of another
+   * branch"); the class (with its grade) or the group; the stay's first and
+   * last day.
+   */
+  stay: z
+    .object({
+      studentName: z.string().nullable(),
+      unit: z.object({
+        kind: z.enum(['class', 'group']),
+        name: z.string(),
+        grade: z.int().nullable(),
+      }),
+      firstDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      lastDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    })
+    .optional(),
+  /** The number of items a list of details leaves out, on its detail `more` (`year_cut_holds`, task 3.6b-2). */
+  more: z.int().min(1).optional(),
 });
 
 export type ErrorDetail = z.infer<typeof errorDetailSchema>;

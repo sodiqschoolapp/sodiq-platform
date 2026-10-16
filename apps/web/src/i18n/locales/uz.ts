@@ -191,7 +191,8 @@ export const uz: Texts<'one' | 'other'> = {
     return_in_force: 'Qaytish allaqachon kuchga kirgan.',
     return_too_early:
       'Qaytish kuni yoʻq boʻlgan birinchi kundan keyin boʻlishi kerak. Xato kiritilgan ketishni olib tashlash uchun «Ketishni bekor qilish»dan foydalaning.',
-    status_date_future: 'Bugungi yoki oldingi kunni, yoki kelgusi yilning birinchi kunini tanlang.',
+    status_date_future:
+      'Bugungi yoki oldingi kunni, yoki rejalashtirilgan keyingi oʻquv yili boʻlsa, uning birinchi kunini tanlang.',
     student_not_graduated:
       'Oʻquvchi hozir bitiruvchi emas. Joriy holatni koʻrish uchun sahifani yangilang.',
     restore_before_graduation: 'Bitirgan kun yoki undan keyingi kunni tanlang.',
@@ -1248,6 +1249,8 @@ export const uz: Texts<'one' | 'other'> = {
       startBlockedCurrent: 'Filialning boshqa yili joriy.',
       startBlockedEarlier: 'Filialning oldingi yili hali yopilmagan.',
       cutHoldsList: 'Toʻsqinlik qilayotgan oʻquvchilar',
+      cutHoldsLine: '{{student}} · {{unit}} · {{from}} – {{until}}',
+      cutHoldsOtherBranch: 'Boshqa filial oʻquvchisi',
       cutHoldsMore_one: 'va yana {{count}} ta',
       cutHoldsMore_other: 'va yana {{count}} ta',
       quartersTitle: 'Choraklar',

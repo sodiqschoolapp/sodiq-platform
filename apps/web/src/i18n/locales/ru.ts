@@ -185,7 +185,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     return_in_force: 'Возвращение уже вступило в силу.',
     return_too_early:
       'День возвращения должен быть позже первого дня отсутствия. Чтобы убрать ошибочное выбытие, используйте «Отменить выбытие».',
-    status_date_future: 'Выберите сегодня, более раннюю дату или первый день следующего года.',
+    status_date_future:
+      'Выберите сегодня, более раннюю дату или первый день следующего запланированного учебного года, если он есть.',
     student_not_graduated:
       'Сейчас ученик не выпускник. Обновите страницу, чтобы увидеть текущий статус.',
     restore_before_graduation: 'Выберите день выпуска или более поздний.',
@@ -1308,6 +1309,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       startBlockedCurrent: 'Другой год филиала уже текущий.',
       startBlockedEarlier: 'Предыдущий год филиала ещё не закрыт.',
       cutHoldsList: 'Ученики, которые мешают',
+      cutHoldsLine: '{{student}} · {{unit}} · {{from}} – {{until}}',
+      cutHoldsOtherBranch: 'Ученик другого филиала',
       cutHoldsMore_one: 'и ещё {{count}}',
       cutHoldsMore_few: 'и ещё {{count}}',
       cutHoldsMore_many: 'и ещё {{count}}',

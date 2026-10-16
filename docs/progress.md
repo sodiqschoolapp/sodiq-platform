@@ -5,14 +5,14 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 ## 16 October 2026: task 3.6b-2 The owner's answers of 15 October: the year's dates and the return in August
 
 - Built L128 and L170 of issue #42. Migration 0064: `year_cut_holds` (one function for the trigger and the route), `academic_years_dates_guard` and `academic_years_dates_follow` in place of 0045's `academic_years_has_members`, and the shrink rule of class and group rows (0062) with one path added: a row may move its own end only in the exact shape of the follow (depth 2, a transaction-local mark `app.year_follow`, the year's old and new end).
-- The year edit takes the branch row, reads the year, locks the rows that run to its last day (`lockFollowingRows`), then the year row; refuses `year_cut_holds` with at most 50 lines and the count of the rest; the audit entry carries `rowsFollowed`.
+- The year edit reads the year, locks the rows that run to its last day (`lockFollowingRows`), then the branch row, then the year row (code round 1: a withdraw holds its row and then takes the branch FOR KEY SHARE for its audit entry); refuses `year_cut_holds` with at most 50 stays as fields (`stay`, worded by the screen) and the count of the rest (`more`); the audit entry carries `rowsFollowed`.
 - A return and the Super Admin's restore may be dated the first day of the branch's next planned year; `POST /api/people/students/:id/return/cancel` takes it back until its date (the cancel of a restore needs the Super Admin); the planners read a row and its `cancel` row as one stay; the History tab joins them.
 - Screens: the refusal list under the year form; "First day of next year (<date>)" in the return and restore forms; "Cancel the return" on the record. Browser test `e2e/return-august.spec.ts` (seeded "August return browser test branch").
-- Left out: lessons, exams, marks and attendance in the days cut off (5.6b, 8.1 lines); the handbook pages (3.7, its "From 3.6b-2" line). A cancelled return gives the grade back and keeps the contract row (no delete right); the next return with the same contract number adds none. A row emptied by a leaving and planned past a shortened year can still regain days past it if the leaving is cancelled (spec review, optional; to be settled with 5.6b/9.5b).
+- Left out: lessons, exams, marks and attendance in the days cut off (5.6b, 8.1 lines); the handbook pages (3.7, its "From 3.6b-2" line). A cancelled return gives the grade back and keeps the contract row (no delete right); the next return with the same contract number adds none. A row emptied by a leaving or a move counts in `year_cut_holds` with the days a cancel gives back (code round 1).
 
 The next sessions must know:
 
-- A new writer of a class or group row's `own_until` goes through the follow of 0064 or is refused by the shrink rule; a change of a row that only updates it (a withdraw) meets the year edit on the rows, so it takes the row before the year (`.claude/rules/database.md`).
+- A new writer of a class or group row's `own_until` goes through the follow of 0064 or is refused by the shrink rule; a change of a row that only updates it (a withdraw) meets the year edit on the rows, so the edit takes the rows before the branch and the year (`.claude/rules/database.md`).
 - Read the last stay of a student's status rows through `lastStay` in `student-status.ts`, not `live.at(-1)`, when a cancelled return can precede it.
 - The next task is 3.6b-3.
 

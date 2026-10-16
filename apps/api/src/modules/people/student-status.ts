@@ -363,6 +363,20 @@ export function planRestore(
  * with the cause `cancel`, because status rows only shrink. Answers the
  * cause of the row cancelled so that the route can check who may cancel it.
  */
+/**
+ * What a cancel of a scheduled return or restore would cancel: the cause of
+ * the student's latest live row when it is an active row a return or a
+ * restore wrote, `null` otherwise. Read before the version check, so that a
+ * cancel of a restore is refused to a role that may not make it before
+ * anything else is said (task 3.6b-2, decision 8, item 7 of code round 1).
+ */
+export function returnCauseOf(rows: readonly StoredStudentStatus[]): 'return' | 'restore' | null {
+  const last = liveRows(rows).at(-1);
+  return last?.status === 'active' && (last.cause === 'return' || last.cause === 'restore')
+    ? last.cause
+    : null;
+}
+
 export function planCancelReturn(
   rows: readonly StoredStudentStatus[],
   today: SchoolDate,

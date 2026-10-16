@@ -850,6 +850,21 @@ describe('the class of a return and of a graduate restore', () => {
         cookie,
       );
 
+    /** Every row of the tables a cancel writes, in both branches, and the audit log (item 8 of code round 1). */
+    const everyRow = () =>
+      Promise.all(
+        (
+          [
+            'students',
+            'student_statuses',
+            'class_memberships',
+            'group_memberships',
+            'student_contracts',
+            'audit_log',
+          ] as const
+        ).map((table) => t.database.migrator.selectFrom(table).selectAll().orderBy('id').execute()),
+      );
+
     it('writes the return with the class of next year, keeps the student inactive, and refuses any other future date', async () => {
       const oxford = await schoolClass();
       const student = await leftFrom(oxford);
@@ -978,11 +993,37 @@ describe('the class of a return and of a graduate restore', () => {
       const eighth = await classes.schoolClass(t.north, nextYear, { grade: 8 });
       const restored = accepted(await restoreInto(student.id, eighth, AUGUST));
       expect(restored.status).toBe('graduated');
+      // Item 7 of code round 1: the Academic Vice Principal gets the guard's
+      // 403 before anything else is said, also with a stale version, and
+      // nothing is written.
+      const before = await everyRow();
       refusedWith(await cancelReturn(student.id, t.vicePrincipal), 403, 'permission_denied');
+      refusedWith(
+        await cancelReturn(student.id, t.vicePrincipal, restored.version - 1),
+        403,
+        'permission_denied',
+      );
+      expect(await everyRow()).toEqual(before);
       expect((await fresh(student.id)).status).toBe('graduated');
-      const cancelled = accepted(await cancelReturn(student.id));
+      // An account whose first assignment by id is an Academic Vice
+      // Principal one, which the guard names, and which also holds a Super
+      // Admin one: the entry names the assignment that allowed the cancel.
+      const both = await t.kit.completeSession('Nodira', 'Usmonova');
+      await t.kit.giveRole(both.account.id, {
+        role: 'academic_vice_principal',
+        branchId: t.north,
+      });
+      await t.kit.giveRole(both.account.id, { role: 'super_admin' });
+      const held = await t.database.migrator
+        .selectFrom('assignments')
+        .select(['id', 'role'])
+        .where('account_id', '=', both.account.id)
+        .orderBy('id')
+        .execute();
+      expect(held.map((one) => one.role)).toEqual(['academic_vice_principal', 'super_admin']);
+      const cancelled = accepted(await cancelReturn(student.id, both.cookie));
       const [entry] = await t.entries('student.return_cancelled', student.id);
-      expect(entry?.assignment_id).toBe(t.adminAssignment);
+      expect(entry?.assignment_id).toBe(held[1]?.id);
       expect(await classRows(student.id)).toContainEqual(
         expect.objectContaining({ class_id: eighth, valid_from: AUGUST, ended_by: 'withdrawn' }),
       );
@@ -996,10 +1037,11 @@ describe('the class of a return and of a graduate restore', () => {
       const student = await leftFrom(oxford);
       const coming = await classes.schoolClass(t.north, nextYear, { grade: 7 });
       accepted(await giveBack(student.id, coming, { from: AUGUST }));
-      const before = await classRows(student.id);
+      const before = await everyRow();
+      const { version } = await fresh(student.id);
       for (const id of [UNKNOWN, student.id]) {
         const response = await t.post(`/api/people/students/${id}/return/cancel`, t.south, {
-          version: 1,
+          version,
         });
         refusedWith(response, 404, 'not_found');
       }
@@ -1013,7 +1055,7 @@ describe('the class of a return and of a graduate restore', () => {
         404,
         'not_found',
       );
-      expect(await classRows(student.id)).toEqual(before);
+      expect(await everyRow()).toEqual(before);
       accepted(await cancelReturn(student.id, t.vicePrincipal));
     });
   });

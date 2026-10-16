@@ -3225,6 +3225,18 @@ export interface components {
                             vacancy: boolean;
                         };
                     };
+                    stay?: {
+                        studentName: string | null;
+                        unit: {
+                            /** @enum {string} */
+                            kind: "class" | "group";
+                            name: string;
+                            grade: number | null;
+                        };
+                        firstDay: string;
+                        lastDay: string;
+                    };
+                    more?: number;
                 }[];
             };
         };
@@ -3989,6 +4001,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -4115,6 +4139,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -4353,6 +4389,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -4461,6 +4509,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -4561,6 +4621,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -4671,6 +4743,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -4778,6 +4862,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -4883,6 +4979,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -4992,6 +5100,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -5094,6 +5214,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -5205,6 +5337,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -5310,6 +5454,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -5415,6 +5571,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -5519,6 +5687,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -5623,6 +5803,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -5721,6 +5913,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -5819,6 +6023,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -5927,6 +6143,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -6048,6 +6276,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -6150,6 +6390,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -6273,6 +6525,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -6391,6 +6655,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -6510,6 +6786,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -6612,6 +6900,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -6733,6 +7033,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -6844,6 +7156,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -6955,6 +7279,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -7064,6 +7400,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -7173,6 +7521,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -7272,6 +7632,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -7371,6 +7743,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -7479,6 +7863,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -7594,6 +7990,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -7711,6 +8119,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -7819,6 +8239,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -7938,6 +8370,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -8053,6 +8497,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -8162,6 +8618,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -8276,6 +8744,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -8389,6 +8869,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -8504,6 +8996,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -8611,6 +9115,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -8718,6 +9234,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -8821,6 +9349,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -8948,6 +9488,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -9071,6 +9623,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -9198,6 +9762,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -9328,6 +9904,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -9449,6 +10037,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -9570,6 +10170,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -9677,6 +10289,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -9794,6 +10418,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -9906,6 +10542,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -10013,6 +10661,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -10189,6 +10849,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -10302,6 +10974,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -10430,6 +11114,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -10624,6 +11320,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -10754,6 +11462,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -10865,6 +11585,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -10976,6 +11708,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -11094,6 +11838,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -11190,6 +11946,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -11292,6 +12060,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -11397,6 +12177,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -11499,6 +12291,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -11607,6 +12411,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -11715,6 +12531,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -11812,6 +12640,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -11908,6 +12748,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -12012,6 +12864,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -12134,6 +12998,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -12281,6 +13157,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -12383,6 +13271,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -12532,6 +13432,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -12661,6 +13573,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -12782,6 +13706,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -12903,6 +13839,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -13017,6 +13965,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -13139,6 +14099,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -13258,6 +14230,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -13391,6 +14375,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -13596,6 +14592,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -13698,6 +14706,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -13871,6 +14891,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -14078,6 +15110,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -14202,6 +15246,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -14386,6 +15442,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -14567,6 +15635,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -14757,6 +15837,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -14852,6 +15944,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -14995,6 +16099,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -15099,6 +16215,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -15192,6 +16320,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -15335,6 +16475,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -15490,6 +16642,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -15641,6 +16805,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -15793,6 +16969,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -15882,6 +17070,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -15975,6 +17175,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -16103,6 +17315,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -16237,6 +17461,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -16365,6 +17601,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -16463,6 +17711,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -16561,6 +17821,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -16665,6 +17937,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -16784,6 +18068,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -16876,6 +18172,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -17054,6 +18362,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -17143,6 +18463,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -17356,6 +18688,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -17495,6 +18839,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -17604,6 +18960,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -17737,6 +19105,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -17839,6 +19219,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -17958,6 +19350,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -18093,6 +19497,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -18212,6 +19628,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -18331,6 +19759,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -18420,6 +19860,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -18591,6 +20043,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -19041,6 +20505,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -19132,6 +20608,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -19234,6 +20722,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -19345,6 +20845,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -19705,6 +21217,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -20103,6 +21627,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -20471,6 +22007,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -20572,6 +22120,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -20941,6 +22501,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -21307,6 +22879,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -21674,6 +23258,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -22052,6 +23648,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -22418,6 +24026,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -22789,6 +24409,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -22885,6 +24517,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -23256,6 +24900,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -23627,6 +25283,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -23993,6 +25661,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -24360,6 +26040,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -24731,6 +26423,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -25100,6 +26804,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -25464,6 +27180,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -25830,6 +27558,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -26052,6 +27792,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -26422,6 +28174,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -26786,6 +28550,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -26881,6 +28657,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -26992,6 +28780,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -27099,6 +28899,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -27473,6 +29285,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -27592,6 +29416,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -27824,6 +29660,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -28199,6 +30047,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -28291,6 +30151,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -28385,6 +30257,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -28474,6 +30358,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -28588,6 +30484,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -28679,6 +30587,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -28786,6 +30706,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -28908,6 +30840,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -29045,6 +30989,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -29180,6 +31136,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -29274,6 +31242,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -29383,6 +31363,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -29540,6 +31532,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -29660,6 +31664,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -29777,6 +31793,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -30027,6 +32055,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -30287,6 +32327,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -30474,6 +32526,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -30586,6 +32650,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -30688,6 +32764,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -30788,6 +32876,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -30946,6 +33046,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -31140,6 +33252,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -31253,6 +33377,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -31352,6 +33488,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -31454,6 +33602,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -31636,6 +33796,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -31833,6 +34005,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -32015,6 +34199,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -32197,6 +34393,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -32392,6 +34600,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -32582,6 +34802,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -32693,6 +34925,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -32824,6 +35068,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -32936,6 +35192,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -33072,6 +35340,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -33236,6 +35516,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -33342,6 +35634,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -33469,6 +35773,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -33575,6 +35891,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -33677,6 +36005,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -33827,6 +36167,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -33990,6 +36342,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -34140,6 +36504,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -34297,6 +36673,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -34416,6 +36804,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -34546,6 +36946,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -34666,6 +37078,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -34786,6 +37210,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -34886,6 +37322,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -34990,6 +37438,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -35103,6 +37563,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -35226,6 +37698,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -35346,6 +37830,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -35555,6 +38051,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -35714,6 +38222,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -35831,6 +38351,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -35948,6 +38480,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -36038,6 +38582,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };
@@ -36191,6 +38747,18 @@ export interface operations {
                                         vacancy: boolean;
                                     };
                                 };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                };
+                                more?: number;
                             }[];
                         };
                     };

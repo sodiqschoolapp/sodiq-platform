@@ -17,6 +17,7 @@ import { FixedClock } from '../../testing/fixed-clock.js';
 import { errorCode, signInKit, type SignInKit } from '../../testing/sign-in-kit.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
 import { CONSTRAINT_REFUSALS, refusingConstraints } from './setup-refusals.js';
+import { lockFollowingRows } from './academic-year-dates.js';
 
 const START = '2026-10-10T09:00:00+05:00';
 const UNKNOWN = '0199a000-0000-7000-8000-000000000099';
@@ -786,8 +787,10 @@ describe('academic years', () => {
     });
   });
 
-  // The lock order of AcademicYears (the spec review of the plan, must-fix 7):
-  // a year edit takes the branch row, then the year row, for update; a quarter
+  // The lock order of AcademicYears (the spec review of the plan, must-fix 7;
+  // task 3.6b-2, correction 1 of its plan review): a year edit takes the class
+  // and group rows that run to the year's last day, then the branch row, then
+  // the year row, for update; a quarter
   // save takes the year row; the go-live save takes the branch row and reads
   // the years without a lock. A test takes the locks as the year edit does,
   // changes the dates and holds the transaction open, sends the other call,
@@ -820,11 +823,21 @@ describe('academic years', () => {
       throw new Error('No call waited for the lock.');
     }
 
-    /** As AcademicYears.edit does: the branch row, then the year row, for update; the new dates; the commit when released. */
+    /**
+     * As AcademicYears.edit does (3.6b-2): the class and group rows that run
+     * to the year's last day, then the branch row, then the year row, for
+     * update; the new dates; the commit when released.
+     */
     function holdYearEdit(branch: string, year: string, start: string, end: string) {
       const held = gate();
       const release = gate();
       const editing = app.get(Transactions).run([branch], async (transaction) => {
+        const { end_date: endDate } = await transaction
+          .selectFrom('academic_years')
+          .select('end_date')
+          .where('id', '=', year)
+          .executeTakeFirstOrThrow();
+        await lockFollowingRows(transaction, year, endDate);
         await transaction
           .selectFrom('branches')
           .select('id')
