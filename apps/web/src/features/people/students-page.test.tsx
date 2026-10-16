@@ -139,9 +139,10 @@ const detailOf = (row: StudentListItem, fields: Partial<StudentDetail> = {}): St
     contracts: [{ id: uid(31), number: 'SQ-2026/017', signedOn: '2026-08-20' }],
     scholarship: { type: 'merit', coverage: 'partial', amount: 1500000 },
     previousSchool: '12-maktab',
-    diagnosticScore: 74,
     consentSignedOn: null,
   },
+  diagnosticScore: 74,
+  readsDiagnostic: true,
   statuses: [{ status: 'active', from: '2026-09-02', until: null, cause: 'start', reason: null }],
   canEdit: true,
   canArchive: false,
@@ -539,10 +540,14 @@ describe('the profile of a student', () => {
     expect(within(panel).queryByRole('form')).toBeNull();
   });
 
-  it('draws only the groups a Head Tutor reads: no contract tab, no documents', async () => {
-    openList('head_tutor', {}, 'en', {
+  // Task 3.6a (L59): the Head Tutor reads every group now; the Spiritual VP
+  // reads Basic and Contact only.
+  it('draws only the groups the Spiritual VP reads: no contract tab, no documents, no score', async () => {
+    openList('spiritual_vice_principal', {}, 'en', {
       identity: null,
       financial: null,
+      diagnosticScore: null,
+      readsDiagnostic: false,
       canEdit: false,
     });
     renderApp(PATH);
@@ -560,6 +565,44 @@ describe('the profile of a student', () => {
     expect(
       within(panel).queryByRole('button', { name: en.people.students.showIdentity }),
     ).toBeNull();
+    expect(within(panel).queryByText(en.people.students.diagnosticScore)).toBeNull();
+  });
+
+  // Task 3.6a (L50): the score has readers of its own, in the Overview.
+  it('shows the diagnostic score in the Overview to its reader, and not in the contract tab', async () => {
+    openList('head_teacher', {}, 'en', {
+      contact: null,
+      identity: null,
+      financial: null,
+      diagnosticScore: 74,
+      readsDiagnostic: true,
+      canEdit: false,
+    });
+    renderApp(PATH);
+    fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    const label = await within(panel).findByText(en.people.students.diagnosticScore);
+    expect(label.nextElementSibling?.textContent).toBe('74');
+  });
+
+  // Task 3.6a (L48): a Teacher lists the students taught; none before a
+  // timetable is published.
+  it('says to a Teacher with no student taught why the list is empty, with no Add', async () => {
+    openList('teacher', {
+      'GET /api/people/students': () =>
+        json({
+          students: [],
+          canArchive: false,
+          exportGroups: [],
+          readsFinancial: false,
+          today: '2026-10-10',
+        }),
+    });
+    renderApp(PATH);
+    expect(await screen.findByText(en.people.students.emptyTaughtTitle)).toBeDefined();
+    expect(screen.getByText(en.people.students.emptyTaught)).toBeDefined();
+    expect(screen.queryByRole('button', { name: en.people.students.add })).toBeNull();
+    expect(screen.queryByText(en.people.students.emptyTitle)).toBeNull();
   });
 });
 
@@ -2419,8 +2462,29 @@ describe('the export of the student list', () => {
     vi.restoreAllMocks();
   });
 
+  // Task 3.6a: the Tutor's file holds Contact and the score (L136, L50).
+  it('offers a Tutor the groups the server names, the diagnostic score in words', async () => {
+    openExport(['basic', 'contact', 'diagnostic']);
+    renderApp(PATH);
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(2);
+    });
+    fireEvent.click(screen.getByRole('button', { name: en.list.exportAlso }));
+    const menu = await screen.findByRole('menu');
+    expect(
+      within(menu)
+        .getAllByRole('menuitemcheckbox')
+        .map((item) => item.textContent),
+    ).toEqual([
+      en.people.students.exportGroups.basic,
+      en.people.students.exportGroups.contact,
+      en.people.students.exportGroups.diagnostic,
+    ]);
+    vi.restoreAllMocks();
+  });
+
   it('draws no Export button for a reader the server gives no group', async () => {
-    openList('head_tutor');
+    openList('spiritual_vice_principal');
     renderApp(PATH);
     await waitFor(() => {
       expect(rowsDrawn()).toHaveLength(2);

@@ -6,7 +6,7 @@ import {
 } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { Transactions } from '../../database/transactions.js';
-import { studentClasses, studentReaderOf } from '../access/class-scope.js';
+import { NO_PLACES, studentPlaces, studentReaderOf } from '../access/class-scope.js';
 import type { Access } from '../access/permission.guard.js';
 import { studentClassesOn } from '../classes/class-membership-rows.js';
 import {
@@ -28,8 +28,9 @@ const UID_PREFIX = /^[0-9]{3,7}$/;
  * branch of the request that the reader may open (`edge/people-roles-
  * accounts`: "Search returns only records the person may open"; decision 1,
  * Look first): the rule of `GET people/students/:id`, `studentReaderOf` over
- * `studentClasses`, so a Tutor finds the students of own classes in force or
- * planned and every other reader the branch. Found by every typed word in the
+ * `studentPlaces`, so a Tutor finds the students of own classes in force or
+ * planned, a Teacher the students taught (task 3.6a, L48) and every other
+ * reader the branch. Found by every typed word in the
  * folded name or paternal name, or by the UID from 3 digits (also a UID
  * of a record merged into it, task 3.3d); the Super Admin
  * and the Academic Vice Principal also by the document number, the JSHSHIR
@@ -68,7 +69,7 @@ export class StudentSearch {
         ])
         .where('branch_id', '=', branchId)
         .execute();
-      const scope = await studentClasses(transaction, today, null);
+      const scope = await studentPlaces(transaction, today, null);
       // A UID of a record merged into one of the branch finds the kept
       // record (task 3.3d): the merges follow the kept record's branch.
       const merged = await this.students.mergedUidsByStudent(transaction);
@@ -92,7 +93,10 @@ export class StudentSearch {
         }
       }
       const found = rows
-        .filter((row) => studentReaderOf(access, 'students', scope.get(row.id) ?? []) !== undefined)
+        .filter(
+          (row) =>
+            studentReaderOf(access, 'students', scope.get(row.id) ?? NO_PLACES) !== undefined,
+        )
         .filter(
           (row) =>
             namesMatch(typed, [row.last_name, row.first_name, row.paternal_name]) ||

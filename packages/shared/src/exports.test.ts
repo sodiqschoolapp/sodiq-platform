@@ -142,9 +142,10 @@ describe('the student export', () => {
       'scholarshipCoverage',
       'scholarshipAmount',
       'previousSchool',
-      'diagnosticScore',
       'consentSignedOn',
     ]);
+    // Task 3.6a, owner's answer L50: the score has readers of its own.
+    expect(of('diagnostic')).toEqual(['diagnosticScore']);
   });
 
   it('takes the columns of the file and refuses a column it does not know', () => {

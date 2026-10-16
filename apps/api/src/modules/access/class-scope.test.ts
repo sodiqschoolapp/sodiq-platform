@@ -5,17 +5,28 @@ import {
   CLASS_WIDE_ROLES,
   classesInScope,
   inClassScope,
+  listsBranchStudents,
+  NO_PLACES,
+  readsAsTeacherOnly,
+  studentReaderOf,
 } from './class-scope.js';
 import type { CurrentAssignment } from './current-assignments.js';
 import { permitting } from './permission-check.js';
+import type { Access } from './permission.guard.js';
 
 const NORTH = '0199b1c0-0000-7000-8000-00000000000a';
 const OXFORD = '0199b1c0-0000-7000-8000-0000000000c1';
 const YALE = '0199b1c0-0000-7000-8000-0000000000c2';
 const HARVARD = '0199b1c0-0000-7000-8000-0000000000c3';
+const ENGLISH_A = '0199b1c0-0000-7000-8000-0000000000d1';
+const ENGLISH_B = '0199b1c0-0000-7000-8000-0000000000d2';
 
 let next = 0;
-function held(role: Role, classIds: readonly string[] = []): CurrentAssignment {
+function held(
+  role: Role,
+  classIds: readonly string[] = [],
+  groupIds?: readonly string[],
+): CurrentAssignment {
   next += 1;
   return {
     id: `0199b1c0-0000-7000-8000-3000000000${String(next).padStart(2, '0')}`,
@@ -23,6 +34,24 @@ function held(role: Role, classIds: readonly string[] = []): CurrentAssignment {
     branchId: role === 'super_admin' || role === 'senior_head_teacher' ? null : NORTH,
     subjectIds: [],
     classIds,
+    ...(groupIds === undefined ? {} : { groupIds }),
+  };
+}
+
+/** The access of a request in North with these assignments. */
+function accessOf(...assignments: CurrentAssignment[]): Access {
+  const [first] = assignments;
+  if (first === undefined) {
+    throw new Error('An access has an assignment.');
+  }
+  return {
+    accountId: '0199b1c0-0000-7000-8000-4000000000a1',
+    assignmentId: first.id,
+    role: first.role,
+    branchId: NORTH,
+    branchIds: [NORTH],
+    assignments,
+    permitting: assignments,
   };
 }
 
@@ -58,7 +87,10 @@ describe('class scope', () => {
   it('fits a class for the class-wide roles and the Tutor of the class only', () => {
     for (const role of ROLES) {
       const fits = inClassScope([held(role, [OXFORD])], [OXFORD]) !== undefined;
-      expect(fits, role).toBe(CLASS_WIDE_ROLES.includes(role) || role === 'tutor');
+      // Task 3.6a (L48): a Teacher fits the classes the load in force gives.
+      expect(fits, role).toBe(
+        CLASS_WIDE_ROLES.includes(role) || role === 'tutor' || role === 'teacher',
+      );
       // Another class: the class-wide roles only.
       expect(inClassScope([held(role, [OXFORD])], [YALE]) !== undefined, role).toBe(
         CLASS_WIDE_ROLES.includes(role),
@@ -92,6 +124,57 @@ describe('class scope', () => {
     );
     expect(inClassScope(readers, [YALE])).toBeUndefined();
     expect(inClassScope(readers, [OXFORD])).toBe(tutor);
+  });
+
+  // Task 3.6a, owner's answer L48 and decision 14 of pull request #118: a
+  // Teacher reads the students of the classes and groups taught, Basic only.
+  describe('a Teacher (L48)', () => {
+    const teacher = held('teacher', [OXFORD], [ENGLISH_A]);
+
+    it('fits a student of a taught class or a taught group, not a classmate in the other group', () => {
+      expect(inClassScope([teacher], [OXFORD], [])).toBe(teacher);
+      // A student of Yale reached only through the taught group.
+      expect(inClassScope([teacher], [YALE], [ENGLISH_A.toUpperCase()])).toBe(teacher);
+      // A classmate of Yale in the other group of the split.
+      expect(inClassScope([teacher], [YALE], [ENGLISH_B])).toBeUndefined();
+      expect(inClassScope([teacher], [], [])).toBeUndefined();
+      // A Teacher with nothing taught fits nobody.
+      expect(inClassScope([held('teacher')], [OXFORD], [ENGLISH_A])).toBeUndefined();
+    });
+
+    it('opens the record of a taught student only, as a Teacher alone', () => {
+      const access = accessOf(teacher);
+      const taught = { classIds: [YALE], groupIds: [ENGLISH_A] };
+      expect(studentReaderOf(access, 'students', taught)).toBe(teacher);
+      expect(
+        studentReaderOf(access, 'students', { classIds: [YALE], groupIds: [ENGLISH_B] }),
+      ).toBeUndefined();
+      expect(studentReaderOf(access, 'student_contact', taught)).toBeUndefined();
+      expect(studentReaderOf(access, 'student_diagnostic', taught)).toBeUndefined();
+      expect(readsAsTeacherOnly(access, taught)).toBe(true);
+      expect(listsBranchStudents(access)).toBe(false);
+    });
+
+    it('reads a taught student of another class as a Teacher only when also a Tutor', () => {
+      const tutor = held('tutor', [HARVARD]);
+      const access = accessOf(tutor, teacher);
+      const taught = { classIds: [OXFORD], groupIds: [] };
+      expect(readsAsTeacherOnly(access, taught)).toBe(true);
+      expect(studentReaderOf(access, 'student_contact', taught)).toBeUndefined();
+      expect(studentReaderOf(access, 'student_diagnostic', taught)).toBeUndefined();
+      // The Tutor's own class is read as the Tutor.
+      expect(readsAsTeacherOnly(access, { classIds: [HARVARD], groupIds: [] })).toBe(false);
+      expect(listsBranchStudents(access)).toBe(true);
+    });
+
+    it('lists the branch for every other reader of students', () => {
+      for (const role of ROLES) {
+        const access = accessOf(held(role));
+        const reads = PERMISSIONS.students[role].includes('view');
+        expect(listsBranchStudents(access), role).toBe(reads && role !== 'teacher');
+        expect(readsAsTeacherOnly(access, NO_PLACES), role).toBe(false);
+      }
+    });
   });
 
   it('gives a Tutor of no class nothing', () => {

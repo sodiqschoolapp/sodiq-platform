@@ -247,7 +247,7 @@ export type RelativeListItem = z.infer<typeof relativeListItemSchema>;
 
 export const relativeListSchema = z.object({
   relatives: z.array(relativeListItemSchema),
-  /** Search by phone: the Super Admin and the Academic Vice Principal (`edge/people-roles-accounts`, Ctrl+K row). */
+  /** Search by phone: every reader of the list, the Principal included (task 3.6a, decision 7 of pull request #118). */
   searchesPhone: z.boolean(),
   canEdit: z.boolean(),
 });

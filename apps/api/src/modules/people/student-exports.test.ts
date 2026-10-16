@@ -186,17 +186,19 @@ describe('the student export, the consent list and the "No class" counter', () =
 
   describe('the list', () => {
     it('names the groups each reader may export and whether it reads the consent', async () => {
-      const groups = ['basic', 'contact', 'identity', 'financial'];
+      const groups = ['basic', 'contact', 'identity', 'financial', 'diagnostic'];
+      // Task 3.6a (decisions 9 to 11 of pull request #118): the Head Tutor
+      // every group (L59), the Head Teachers Basic (L59), the Tutor every
+      // group it reads of own classes (L136), the score its own group (L50).
       for (const [cookie, exportGroups, readsFinancial] of [
         [t.admin, groups, true],
         [t.vicePrincipal, groups, true],
-        [t.principal, ['basic', 'financial'], true],
+        [t.principal, ['basic', 'financial', 'diagnostic'], true],
         [spiritual, [], false],
-        [headTutor, [], false],
-        // Task 3.1c (decision 3 of pull request #90): own classes, Basic only.
-        [tutor, ['basic'], false],
-        [headTeacher, [], false],
-        [seniorHeadTeacher, [], false],
+        [headTutor, groups, true],
+        [tutor, ['basic', 'contact', 'diagnostic'], false],
+        [headTeacher, ['basic'], false],
+        [seniorHeadTeacher, ['basic'], false],
       ] as const) {
         const answer = await list(cookie);
         expect(answer.exportGroups, cookie).toEqual(exportGroups);
@@ -206,11 +208,12 @@ describe('the student export, the consent list and the "No class" counter', () =
 
     it('answers whether consent is missing to the Financial readers only', async () => {
       const without = await create({ consentSignedOn: null });
-      for (const cookie of [t.admin, t.vicePrincipal, t.principal]) {
+      // Task 3.6a (L59): the Head Tutor reads Financial.
+      for (const cookie of [t.admin, t.vicePrincipal, t.principal, headTutor]) {
         const row = (await list(cookie)).students.find((item) => item.id === without.id);
         expect(row?.consentMissing, cookie).toBe(true);
       }
-      for (const cookie of [spiritual, headTutor, tutor, headTeacher, seniorHeadTeacher]) {
+      for (const cookie of [spiritual, tutor, headTeacher, seniorHeadTeacher]) {
         const answer = await list(cookie);
         const row = answer.students.find((item) => item.id === without.id);
         expect(row?.consentMissing, cookie).toBeNull();
@@ -225,7 +228,7 @@ describe('the student export, the consent list and the "No class" counter', () =
       const later = await create({ consentSignedOn: null, startsOn: '2026-11-02' });
       const left = await leave(await create({ consentSignedOn: null }), '2026-10-01');
       const scheduled = await leave(await create({ consentSignedOn: null }), '2026-10-20');
-      for (const cookie of [t.admin, t.vicePrincipal, t.principal]) {
+      for (const cookie of [t.admin, t.vicePrincipal, t.principal, headTutor]) {
         const ids = (await list(cookie, '?consent=missing')).students.map((item) => item.id);
         expect(ids, cookie).toContain(without.id);
         expect(ids).toContain(later.id);
@@ -240,7 +243,11 @@ describe('the student export, the consent list and the "No class" counter', () =
       await create({ consentSignedOn: null });
       await create({ consentSignedOn: null }, t.south);
       const both = await t.kit.completeSession('Dildora', 'Karimova');
-      await t.kit.giveRole(both.account.id, { role: 'head_tutor', branchId: t.north });
+      // Task 3.6a: the Spiritual VP, since the Head Tutor reads Financial (L59).
+      await t.kit.giveRole(both.account.id, {
+        role: 'spiritual_vice_principal',
+        branchId: t.north,
+      });
       await t.kit.giveRole(both.account.id, { role: 'principal', branchId: t.south });
       const north = studentListSchema.parse(
         (await t.get('/api/people/students', t.north, both.cookie)).body,
@@ -252,14 +259,17 @@ describe('the student export, the consent list and the "No class" counter', () =
       const south = await t.get('/api/people/students?consent=missing', t.south, both.cookie);
       expect(south.status, JSON.stringify(south.body)).toBe(200);
       const answer = studentListSchema.parse(south.body);
-      expect(answer).toMatchObject({ readsFinancial: true, exportGroups: ['basic', 'financial'] });
+      expect(answer).toMatchObject({
+        readsFinancial: true,
+        exportGroups: ['basic', 'financial', 'diagnostic'],
+      });
       expect(answer.students.length).toBeGreaterThan(0);
       expect(answer.students.every((item) => item.consentMissing === true)).toBe(true);
     });
 
     // Correction 1 of the review: the filter is checked on the server.
     it('refuses the consent list to every reader without the Financial group', async () => {
-      for (const cookie of [spiritual, headTutor, tutor, headTeacher, seniorHeadTeacher]) {
+      for (const cookie of [spiritual, tutor, headTeacher, seniorHeadTeacher]) {
         const response = await t.get('/api/people/students?consent=missing', t.north, cookie);
         expect(response.status, cookie).toBe(403);
         expect(errorCode(response)).toBe('permission_denied');
@@ -522,18 +532,61 @@ describe('the student export, the consent list and the "No class" counter', () =
       });
     });
 
+    // Task 3.6a, owner's answer L59 (decision 9 of pull request #118): the
+    // Head Tutor exports every group of the branch's students.
+    it('writes every group of the whole branch for the Head Tutor', async () => {
+      await speak('en');
+      const student = await create();
+      const columns = ['uid', 'phone', 'jshshir', 'contractNumber', 'diagnosticScore'];
+      const file = await fileOf(await exportOf(send([student.id], columns), headTutor));
+      expect(file.columns).toBe(columns.join(','));
+      expect(file.sheet.rows).toEqual([
+        [
+          student.uid,
+          grouped(student.contact?.phone),
+          student.identity?.jshshir,
+          student.financial?.contracts[0]?.number,
+          81,
+        ],
+      ]);
+      expect((await t.entries('student.export')).at(-1)).toMatchObject({
+        details: { columns, leftOut: [], rows: 1 },
+      });
+    });
+
+    // L59: "Head Teachers export the Basic fields", never the diagnostic score
+    // they read (L50; decision 9 of pull request #118), the whole branch list.
+    it('writes Basic columns only for the Head Teachers, without the score, whole branch', async () => {
+      await speak('en');
+      const student = await create();
+      for (const cookie of [headTeacher, seniorHeadTeacher]) {
+        const response = await exportOf(
+          send([student.id], ['uid', 'name', 'phone', 'diagnosticScore', 'contractNumber']),
+          cookie,
+        );
+        expect(response.headers['x-export-rows-left-out']).toBeUndefined();
+        const file = await fileOf(response);
+        expect(file.columns).toBe('uid,name');
+        expect(file.sheet.headings).not.toContain('Diagnostic test score');
+        expect((await t.entries('student.export')).at(-1)).toMatchObject({
+          details: { leftOut: ['phone', 'diagnosticScore', 'contractNumber'], rows: 1 },
+        });
+        const before = await snapshot();
+        refusedWith(
+          await exportOf(send([student.id], ['diagnosticScore']), cookie),
+          403,
+          'permission_denied',
+        );
+        expect(await snapshot()).toEqual(before);
+      }
+    });
+
     it('is refused to every role without the export, with nothing logged', async () => {
       const student = await create();
       const before = await snapshot();
-      for (const cookie of [
-        spiritual,
-        headTutor,
-        tutor,
-        headTeacher,
-        seniorHeadTeacher,
-        t.teacher,
-        nurse,
-      ]) {
+      // Task 3.6a (L59): the Head Tutor and the Head Teachers export now; a
+      // Tutor of no class has no row of own class.
+      for (const cookie of [spiritual, tutor, t.teacher, nurse]) {
         refusedWith(await exportOf(send([student.id], ['uid']), cookie), 403, 'permission_denied');
       }
       expect(await snapshot()).toEqual(before);

@@ -63,7 +63,10 @@ export type AccountKey =
   | 'returns'
   | 'branchMoves'
   | 'teachingLoad'
-  | 'teachingBlocks';
+  | 'teachingBlocks'
+  | 'whoTeacher'
+  | 'whoHeadTutor'
+  | 'whoHeadTeacher';
 
 /** Invented for the tests. */
 export const NEW_PASSWORD = 'a-new-password-73';

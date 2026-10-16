@@ -637,7 +637,8 @@ describe('Ctrl+K over students and staff', () => {
       for (const cookie of [tutor, headTeacher, headTutor, spiritual, senior.cookie]) {
         expect(await studentIds('977771122', cookie)).toEqual([]);
       }
-      expect((await searching('students', '977771122', t.teacher)).status).toBe(403);
+      // Task 3.6a: a Teacher searches students, and never by a relative's phone.
+      expect(await studentIds('977771122', t.teacher)).toEqual([]);
     });
 
     it('never finds the child by the phone for a Principal of another branch who is a Tutor here', async () => {
@@ -688,12 +689,13 @@ describe('Ctrl+K over students and staff', () => {
       expect(await t.auditCount()).toBe(before);
     });
 
-    it('is refused to a Teacher', async () => {
-      for (const kind of ['students', 'staff']) {
-        const response = await searching(kind, 'Qodirova', t.teacher);
-        expect(response.status).toBe(403);
-        expect(errorCode(response)).toBe('permission_denied');
-      }
+    // Task 3.6a (L48): a Teacher searches the students taught, here none
+    // (no published load); the staff search stays refused.
+    it('finds no student for a Teacher with no load, and refuses the staff search', async () => {
+      expect((await students('Qodirova', t.teacher)).items).toEqual([]);
+      const response = await searching('staff', 'Qodirova', t.teacher);
+      expect(response.status).toBe(403);
+      expect(errorCode(response)).toBe('permission_denied');
     });
   });
 });

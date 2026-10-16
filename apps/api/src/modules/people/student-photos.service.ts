@@ -5,6 +5,7 @@ import { Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import type { UploadedFile } from '../../http/file-routes.js';
 import { PhotoFile } from '../../http/photo-file.js';
+import { listsBranchStudents, placesOfStudent, studentReaderOf } from '../access/class-scope.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { notFound } from '../setup/setup-refusals.js';
@@ -160,12 +161,24 @@ export class StudentPhotos {
     });
   }
 
-  /** The current photo: the record read and its transaction closed, then the store. Not audited (a view). */
+  /**
+   * The current photo: the record read and its transaction closed, then the
+   * store. Not audited (a view). A Teacher alone reads the photos of the
+   * students taught (task 3.6a, L48): another student is 403 after the 404.
+   */
   async readPhoto(access: Access, id: string): Promise<PhotoFile> {
     const branchId = branchOf(access);
-    const row = await this.transactions.run(access.branchIds, (transaction) =>
-      this.readStudent(transaction, branchId, id),
-    );
+    const row = await this.transactions.run(access.branchIds, async (transaction) => {
+      const found = await this.readStudent(transaction, branchId, id);
+      if (
+        !listsBranchStudents(access) &&
+        studentReaderOf(access, 'students', await placesOfStudent(transaction, branchId, id)) ===
+          undefined
+      ) {
+        throw new ApiException('permission_denied', 403);
+      }
+      return found;
+    });
     if (row.photo_id === null || row.photo_type === null) {
       throw notFound();
     }

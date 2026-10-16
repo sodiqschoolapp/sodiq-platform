@@ -461,13 +461,20 @@ describe('leaving, return and delete of a student', () => {
     it('shows the reason to the Financial readers only (decision 9)', async () => {
       const student = await create();
       accepted(await leave(student, '2026-10-01'));
-      const forHeadTutor = await detail(student.id, headTutor);
-      expect(forHeadTutor.statuses.map((row) => row.reason)).toEqual([null, null]);
-      expect(forHeadTutor.statuses.map((row) => row.cause)).toEqual(['start', 'leaving']);
-      expect((await detail(student.id, t.principal)).statuses[1]?.reason).toBe(
-        'The family moved to another city.',
-      );
-      expect(forHeadTutor).toMatchObject({ canArchive: false, deletable: false });
+      // Task 3.6a (L59): the Head Tutor reads Financial, so the reason; the
+      // Spiritual VP reads neither.
+      const forSpiritual = await detail(student.id, spiritual);
+      expect(forSpiritual.statuses.map((row) => row.reason)).toEqual([null, null]);
+      expect(forSpiritual.statuses.map((row) => row.cause)).toEqual(['start', 'leaving']);
+      for (const reader of [t.principal, headTutor]) {
+        expect((await detail(student.id, reader)).statuses[1]?.reason).toBe(
+          'The family moved to another city.',
+        );
+      }
+      expect(await detail(student.id, headTutor)).toMatchObject({
+        canArchive: false,
+        deletable: false,
+      });
     });
 
     it('replaces a scheduled leaving with a new one (edge: "It can be changed")', async () => {
@@ -1175,7 +1182,7 @@ describe('leaving, return and delete of a student', () => {
       address: student.identity.address,
       region: student.identity.region,
       previousSchool: student.financial.previousSchool,
-      diagnosticScore: student.financial.diagnosticScore,
+      diagnosticScore: student.diagnosticScore,
       scholarship: student.financial.scholarship,
       consentSignedOn: student.financial.consentSignedOn,
       contract: { number: contract.number, signedOn: contract.signedOn },

@@ -592,7 +592,9 @@ describe('group membership', () => {
       }
     });
 
-    it('shows a Tutor the groups of own class rows only in the student list', async () => {
+    // Task 3.6a, owner's answer L147: groups on every row for every reader
+    // (was the rows of own class only, decision 4 of pull request #92).
+    it('shows a Tutor the groups of every row of the student list', async () => {
       const other = await schoolClass();
       const own = tutorPupils[1];
       const foreign = await pupil(other);
@@ -602,7 +604,9 @@ describe('group membership', () => {
       expect(list.students.find((row) => row.id === own.id)?.groups.map((one) => one.id)).toEqual([
         across,
       ]);
-      expect(list.students.find((row) => row.id === foreign.id)?.groups).toEqual([]);
+      const foreignRow = list.students.find((row) => row.id === foreign.id);
+      expect(foreignRow?.opens).toBe(false);
+      expect(foreignRow?.groups.map((one) => one.id)).toEqual([across]);
     });
   });
 

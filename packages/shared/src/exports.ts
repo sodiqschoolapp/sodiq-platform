@@ -198,7 +198,7 @@ export const STUDENT_EXPORT_GROUPS: Readonly<Record<StudentExportColumn, Student
   scholarshipCoverage: 'financial',
   scholarshipAmount: 'financial',
   previousSchool: 'financial',
-  diagnosticScore: 'financial',
+  diagnosticScore: 'diagnostic',
   consentSignedOn: 'financial',
   mainContactName: 'contact',
   mainContactRelationship: 'contact',

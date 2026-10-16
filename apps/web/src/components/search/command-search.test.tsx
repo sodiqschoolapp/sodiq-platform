@@ -170,14 +170,23 @@ describe('the search of pages', () => {
   });
 
   it('says when no page matches', async () => {
-    await openHome();
+    // The default account is a Teacher, who searches the students taught too
+    // (task 3.6a, L48): here none.
+    fakeApi({
+      'GET /api/auth/session': () => json(sessionOf()),
+      'GET /api/search/students': () => json({ items: [], more: false, today: '2026-10-10' }),
+    });
+    renderApp('/', 'en');
+    await screen.findByRole('heading', { name: en.home.title });
     pressShortcut();
     await dialog();
 
     fireEvent.change(box(), { target: { value: 'timetable of the moon' } });
 
     expect(screen.queryAllByRole('option')).toEqual([]);
-    expect(within(await dialog()).getByRole('status').textContent).toBe(en.search.noMatch);
+    await waitFor(async () => {
+      expect(within(await dialog()).getByRole('status').textContent).toBe(en.search.noMatch);
+    });
     expect(box().getAttribute('aria-activedescendant')).toBeNull();
     // Enter with nothing to open does nothing.
     fireEvent.keyDown(box(), { key: 'Enter' });
@@ -358,17 +367,24 @@ describe('the search of records', () => {
     });
   }
 
-  it('asks no record route for a Teacher, who views none of the kinds, past the pause', async () => {
+  // Task 3.6a (L48; decision 13 of pull request #118): a Teacher searches the
+  // students taught, and never the classes, groups or staff, which the
+  // Teacher does not view and the server refuses.
+  it('asks a Teacher’s students only, past the pause', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout'] });
     try {
-      const { calls } = await searchAs('teacher', {});
-      expect(box().getAttribute('placeholder')).toBe(en.search.placeholder);
+      const { calls } = await searchAs('teacher', { 'GET /api/search/students': noStudents });
+      expect(box().getAttribute('placeholder')).toBe(en.search.placeholderRecords);
       type('Oxford');
       await pastThePause();
-      expect(within(screen.getByRole('dialog')).getByRole('status').textContent).toBe(
-        en.search.noMatch,
-      );
-      expect(searchCalls(calls)).toEqual([]);
+      await waitFor(() => {
+        expect(within(screen.getByRole('dialog')).getByRole('status').textContent).toBe(
+          en.search.noMatch,
+        );
+      });
+      expect(searchCalls(calls).map((call) => `${call.route}${call.query ?? ''}`)).toEqual([
+        'GET /api/search/students?q=Oxford',
+      ]);
     } finally {
       vi.useRealTimers();
     }

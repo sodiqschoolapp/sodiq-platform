@@ -301,10 +301,9 @@ export function StudentForm({
       region: student?.identity?.region ?? '',
       previousSchool: student?.financial?.previousSchool ?? '',
       diagnosticScore:
-        student?.financial?.diagnosticScore === null ||
-        student?.financial?.diagnosticScore === undefined
+        student?.diagnosticScore === null || student?.diagnosticScore === undefined
           ? ''
-          : String(student.financial.diagnosticScore),
+          : String(student.diagnosticScore),
       scholarshipType: student?.financial?.scholarship.type ?? 'none',
       scholarshipCoverage: student?.financial?.scholarship.coverage ?? '',
       scholarshipAmount:

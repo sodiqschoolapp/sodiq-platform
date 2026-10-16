@@ -31,7 +31,14 @@ import {
 import { sql, type RawBuilder } from 'kysely';
 import { transactionMoment, Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
-import { studentClasses, studentReaderOf } from '../access/class-scope.js';
+import {
+  listsBranchStudents,
+  NO_PLACES,
+  readsAsTeacherOnly,
+  studentPlaces,
+  studentReaderOf,
+  type StudentPlaces,
+} from '../access/class-scope.js';
 import { decide } from '../access/permission-check.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
@@ -217,15 +224,16 @@ const refused = (code: 'no_academic_year'): ApiException => new ApiException(cod
 
 /**
  * The assignment that lets the account read a group of fields in the branch
- * of the request, for a student of `classIds` (task 3.1c: a Tutor reads the
- * groups of own classes only, `class-scope.ts`). With no class given (the
- * list, a show), only a class-wide reader counts.
+ * of the request, for a student of `places` (task 3.1c: a Tutor reads the
+ * groups of own classes only; task 3.6a: a Teacher the students taught,
+ * `class-scope.ts`). With no place given (the list, a show), only a
+ * class-wide reader counts.
  */
 const readerOf = (
   access: Access,
   area: string,
-  classIds: readonly string[] = [],
-): string | undefined => studentReaderOf(access, area, classIds)?.id;
+  places: StudentPlaces = NO_PLACES,
+): string | undefined => studentReaderOf(access, area, places)?.id;
 
 /**
  * The status of a student on a date: the row in force, or before the start
@@ -360,18 +368,28 @@ export class Students {
     const groups = await studentGroupsOn(transaction, today, null);
     // One rule with the record (decision 8 of pull request #90): a row opens
     // when the record would be answered to this reader.
-    const scope = await studentClasses(transaction, today, null);
+    const scope = await studentPlaces(transaction, today, null);
     const merged = await this.mergedUidsByStudent(transaction);
-    return rows.map((row) => {
+    // A Teacher alone lists the students taught and no other (task 3.6a, L48,
+    // decision 12 of pull request #118).
+    const listsBranch = listsBranchStudents(access);
+    return rows.flatMap((row) => {
+      const places = scope.get(row.id) ?? NO_PLACES;
+      const opens = readerOf(access, 'students', places) !== undefined;
+      if (!listsBranch && !opens) {
+        return [];
+      }
+      // A Teacher-only reader of the row: the Basic group, the groups, the
+      // status today and the start date (decision 14, correction 3).
+      const basicOnly = readsAsTeacherOnly(access, places);
       const own = statuses.get(row.id) ?? [];
       const held = classes.get(row.id);
       const current = held?.current ?? null;
-      const tutor = current === null ? undefined : tutors.get(current.id);
-      const opens = readerOf(access, 'students', scope.get(row.id) ?? []) !== undefined;
+      const tutor = current === null || basicOnly ? undefined : tutors.get(current.id);
       return {
         id: row.id,
         uid: row.uid,
-        mergedUids: merged.get(row.id) ?? [],
+        mergedUids: basicOnly ? [] : (merged.get(row.id) ?? []),
         firstName: row.first_name,
         lastName: row.last_name,
         paternalName: row.paternal_name,
@@ -381,14 +399,14 @@ export class Students {
         photoId: row.photo_id,
         consentMissing: readsFinancial ? row.consent_signed_on === null : null,
         status: row.status as StudentStatus | null,
-        planned: plannedAfter(own, today),
+        planned: basicOnly ? null : plannedAfter(own, today),
         class: current,
-        plannedClass: held?.planned ?? null,
+        plannedClass: basicOnly ? null : (held?.planned ?? null),
         tutor: tutor?.tutor ?? null,
         actingTutor: tutor?.acting ?? null,
-        // A Tutor reads the groups of own classes' students only (decision 4
-        // of pull request #92): the rows the reader opens.
-        groups: opens ? (groups.get(row.id) ?? []) : [],
+        // Groups on every row for every reader (task 3.6a, owner's answer
+        // L147; was the opened rows only, decision 4 of pull request #92).
+        groups: groups.get(row.id) ?? [],
         version: studentVersion(own.length, counts, row.id),
         opens,
       };
@@ -403,6 +421,11 @@ export class Students {
    */
   noClass(access: Access): Promise<StudentNoClass> {
     const branchId = branchOf(access);
+    // The counter is of the whole branch: refused to a Teacher alone (task
+    // 3.6a, decision 12 of pull request #118).
+    if (!listsBranchStudents(access)) {
+      throw new ApiException('permission_denied', 403);
+    }
     return this.transactions.run(access.branchIds, async (transaction) => {
       const today = await this.todayIn(transaction, branchId);
       const rows = await transaction
@@ -673,9 +696,10 @@ export class Students {
       // at (decision 9 of pull request #90).
       await this.readStudent(transaction, id);
       const today = await this.todayIn(transaction, branchId);
-      const classes = (await studentClasses(transaction, today, id)).get(id) ?? [];
-      if (readerOf(access, 'students', classes) === undefined) {
-        // `02`, Tutor: "the profiles of own class" (task 3.1c).
+      const places = (await studentPlaces(transaction, today, id)).get(id) ?? NO_PLACES;
+      if (readerOf(access, 'students', places) === undefined) {
+        // `02`, Tutor: "the profiles of own class" (task 3.1c); Teacher: "the
+        // students they teach" (task 3.6a).
         throw new ApiException('permission_denied', 403);
       }
       return this.readDetail(transaction, access, id);
@@ -1076,7 +1100,15 @@ export class Students {
     const counts = await versionCounts(transaction, id);
     const held = (await studentClassesOn(transaction, today, id)).get(id);
     const current = held?.current ?? null;
-    const tutor = current === null ? undefined : (await tutorsInForce(transaction)).get(current.id);
+    const scope = (await studentPlaces(transaction, today, id)).get(id) ?? NO_PLACES;
+    // A Teacher-only reader: the Basic group, the groups, the status today
+    // and the start date, nothing else of the record (task 3.6a, L48,
+    // decision 14 of pull request #118 with correction 3).
+    const basicOnly = readsAsTeacherOnly(access, scope);
+    const tutor =
+      current === null || basicOnly
+        ? undefined
+        : (await tutorsInForce(transaction)).get(current.id);
     // As `statusOn`: the row in force today, else the first one after today.
     const now = statuses.find((status) => status.validUntil === null || status.validUntil > today);
     const contractCount = await transaction
@@ -1085,10 +1117,11 @@ export class Students {
       .where('student_id', '=', id)
       .executeTakeFirstOrThrow();
     const canArchive = archiverOf(access) !== undefined;
-    const scope = (await studentClasses(transaction, today, id)).get(id) ?? [];
     const contact = readerOf(access, 'student_contact', scope) !== undefined;
     const identity = readerOf(access, 'student_identity', scope) !== undefined;
     const financial = readerOf(access, 'student_financial', scope) !== undefined;
+    // Task 3.6a (L50): the readers of the diagnostic score.
+    const diagnostic = readerOf(access, 'student_diagnostic', scope) !== undefined;
     const contracts = financial
       ? await transaction
           .selectFrom('student_contracts')
@@ -1100,7 +1133,7 @@ export class Students {
     return {
       id: row.id,
       uid: row.uid,
-      mergedUids: await this.mergedUidsOf(transaction, id),
+      mergedUids: basicOnly ? [] : await this.mergedUidsOf(transaction, id),
       firstName: row.first_name,
       lastName: row.last_name,
       paternalName: row.paternal_name,
@@ -1126,13 +1159,14 @@ export class Students {
               amount: row.scholarship_amount,
             },
             previousSchool: row.previous_school,
-            diagnosticScore: row.diagnostic_score,
             consentSignedOn: row.consent_signed_on,
           }
         : null,
+      diagnosticScore: diagnostic ? row.diagnostic_score : null,
+      readsDiagnostic: diagnostic,
       // A leaving taken back leaves no break in the history (finding 7 of the
       // hand test of 13 October 2026); the rows and the audit keep it.
-      statuses: historyLines(statuses).map((status) => ({
+      statuses: (basicOnly ? [] : historyLines(statuses)).map((status) => ({
         status: status.status,
         from: status.validFrom,
         until: status.validUntil,
@@ -1140,12 +1174,12 @@ export class Students {
         // The reason is read by the Financial readers (decision 9).
         reason: financial ? (reasons.get(status.id) ?? null) : null,
       })),
-      planned: plannedAfter(rows, today),
+      planned: basicOnly ? null : plannedAfter(rows, today),
       class: current,
-      plannedClass: held?.planned ?? null,
+      plannedClass: basicOnly ? null : (held?.planned ?? null),
       tutor: tutor?.tutor ?? null,
       actingTutor: tutor?.acting ?? null,
-      mainRoom: held?.mainRoom ?? null,
+      mainRoom: basicOnly ? null : (held?.mainRoom ?? null),
       // The Academic block's groups (task 3.2b): the record is answered only to a reader who opens it.
       groups: (await studentGroupsOn(transaction, today, id)).get(id) ?? [],
       version: studentVersion(rows.length, counts, id),
@@ -1166,8 +1200,8 @@ export class Students {
           PERMISSIONS,
         ) !== undefined,
       deletable: canArchive && !holdsData(rows, row.scholarship_type, Number(contractCount.count)),
-      ...(await this.movesOfDetail(transaction, access, id, today, scope)),
-      ...(await this.branchMovesOfDetail(transaction, access, id)),
+      ...(await this.movesOfDetail(transaction, access, id, today, scope, basicOnly)),
+      ...(await this.branchMovesOfDetail(transaction, access, id, basicOnly)),
       ...(await this.classLeftOfDetail(transaction, canArchive, id, rows, today, branchId)),
       canMerge:
         decide(
@@ -1267,7 +1301,8 @@ export class Students {
     access: Access,
     id: string,
     today: SchoolDate,
-    scope: readonly string[],
+    scope: StudentPlaces,
+    basicOnly: boolean,
   ): Promise<
     Pick<
       StudentDetail,
@@ -1281,7 +1316,7 @@ export class Students {
   > {
     // The moves of this branch: the Super Admin's transaction sees every
     // branch, and a move of an earlier branch is on the History tab (task 3.3c).
-    const moves = await moveSummaries(transaction, id, today, branchOf(access));
+    const moves = basicOnly ? [] : await moveSummaries(transaction, id, today, branchOf(access));
     const movers = permitting(
       { area: 'group_transfers', action: 'edit', branch: 'request' },
       access.assignments,
@@ -1332,6 +1367,7 @@ export class Students {
     transaction: Transaction,
     access: Access,
     id: string,
+    basicOnly: boolean,
   ): Promise<Pick<StudentDetail, 'branchMove' | 'lastBranchMove' | 'canMoveBranch'>> {
     const branchId = branchOf(access);
     const moves = await branchMovesOf(transaction, id, branchId);
@@ -1355,7 +1391,7 @@ export class Students {
       .at(-1);
     return {
       branchMove: open !== undefined && can('view') ? summaryOf(open, names) : null,
-      lastBranchMove: arrived === undefined ? null : summaryOf(arrived, names),
+      lastBranchMove: arrived === undefined || basicOnly ? null : summaryOf(arrived, names),
       canMoveBranch: can('edit'),
     };
   }

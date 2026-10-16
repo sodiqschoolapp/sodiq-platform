@@ -25,7 +25,7 @@ import {
 import { sql } from 'kysely';
 import { transactionMoment, Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
-import { classesOfStudent, studentReaderOf } from '../access/class-scope.js';
+import { placesOfStudent, studentReaderOf } from '../access/class-scope.js';
 import { decide } from '../access/permission-check.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
@@ -115,13 +115,15 @@ export class Relatives {
 
   /**
    * The Parents list of the branch (`04`: "a Relatives list with search by
-   * name and phone"). Search by phone is for the Super Admin and the Academic
-   * Vice Principal (`edge/people-roles-accounts`, Ctrl+K row); others are
+   * name and phone"). Search by phone is for every reader of the list, the
+   * Super Admin, the Principal and the Academic Vice Principal, as Ctrl+K
+   * finds relatives by phone for them (`edge/people-roles-accounts`, Ctrl+K
+   * row; task 3.6a, decision 7 of pull request #118, Look first); others are
    * refused it.
    */
   list(access: Access, query: RelativeListQuery = {}): Promise<RelativeList> {
     const branchId = branchOf(access);
-    const searchesPhone = holderOf(access, 'relatives', 'create') !== undefined;
+    const searchesPhone = holderOf(access, 'relatives', 'view') !== undefined;
     if (query.phone !== undefined && !searchesPhone) {
       throw new ApiException('permission_denied', 403);
     }
@@ -1263,8 +1265,8 @@ export class Relatives {
     // The class Tutor reads the Contact group of own classes only (task 3.1c,
     // decision 2 of pull request #90): checked after the 404, decided from
     // every assignment that reads Contact in the branch.
-    const classes = await classesOfStudent(transaction, branchId, studentId);
-    if (studentReaderOf(access, 'student_contact', classes) === undefined) {
+    const places = await placesOfStudent(transaction, branchId, studentId);
+    if (studentReaderOf(access, 'student_contact', places) === undefined) {
       throw new ApiException('permission_denied', 403);
     }
     const rows = await transaction

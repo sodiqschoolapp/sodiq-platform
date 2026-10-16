@@ -81856,7 +81856,8 @@
                           "basic",
                           "contact",
                           "identity",
-                          "financial"
+                          "financial",
+                          "diagnostic"
                         ]
                       }
                     },
@@ -83240,12 +83241,6 @@
                           "nullable": true,
                           "type": "string"
                         },
-                        "diagnosticScore": {
-                          "nullable": true,
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
                         "consentSignedOn": {
                           "nullable": true,
                           "type": "string",
@@ -83257,10 +83252,18 @@
                         "contracts",
                         "scholarship",
                         "previousSchool",
-                        "diagnosticScore",
                         "consentSignedOn"
                       ],
                       "additionalProperties": false
+                    },
+                    "diagnosticScore": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "readsDiagnostic": {
+                      "type": "boolean"
                     },
                     "statuses": {
                       "type": "array",
@@ -83924,6 +83927,8 @@
                     "identity",
                     "identityHidden",
                     "financial",
+                    "diagnosticScore",
+                    "readsDiagnostic",
                     "statuses",
                     "mainRoom",
                     "canEdit",
@@ -86632,12 +86637,6 @@
                           "nullable": true,
                           "type": "string"
                         },
-                        "diagnosticScore": {
-                          "nullable": true,
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
                         "consentSignedOn": {
                           "nullable": true,
                           "type": "string",
@@ -86649,10 +86648,18 @@
                         "contracts",
                         "scholarship",
                         "previousSchool",
-                        "diagnosticScore",
                         "consentSignedOn"
                       ],
                       "additionalProperties": false
+                    },
+                    "diagnosticScore": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "readsDiagnostic": {
+                      "type": "boolean"
                     },
                     "statuses": {
                       "type": "array",
@@ -87316,6 +87323,8 @@
                     "identity",
                     "identityHidden",
                     "financial",
+                    "diagnosticScore",
+                    "readsDiagnostic",
                     "statuses",
                     "mainRoom",
                     "canEdit",
@@ -88458,12 +88467,6 @@
                           "nullable": true,
                           "type": "string"
                         },
-                        "diagnosticScore": {
-                          "nullable": true,
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
                         "consentSignedOn": {
                           "nullable": true,
                           "type": "string",
@@ -88475,10 +88478,18 @@
                         "contracts",
                         "scholarship",
                         "previousSchool",
-                        "diagnosticScore",
                         "consentSignedOn"
                       ],
                       "additionalProperties": false
+                    },
+                    "diagnosticScore": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "readsDiagnostic": {
+                      "type": "boolean"
                     },
                     "statuses": {
                       "type": "array",
@@ -89142,6 +89153,8 @@
                     "identity",
                     "identityHidden",
                     "financial",
+                    "diagnosticScore",
+                    "readsDiagnostic",
                     "statuses",
                     "mainRoom",
                     "canEdit",
@@ -90140,12 +90153,6 @@
                           "nullable": true,
                           "type": "string"
                         },
-                        "diagnosticScore": {
-                          "nullable": true,
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
                         "consentSignedOn": {
                           "nullable": true,
                           "type": "string",
@@ -90157,10 +90164,18 @@
                         "contracts",
                         "scholarship",
                         "previousSchool",
-                        "diagnosticScore",
                         "consentSignedOn"
                       ],
                       "additionalProperties": false
+                    },
+                    "diagnosticScore": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "readsDiagnostic": {
+                      "type": "boolean"
                     },
                     "statuses": {
                       "type": "array",
@@ -90824,6 +90839,8 @@
                     "identity",
                     "identityHidden",
                     "financial",
+                    "diagnosticScore",
+                    "readsDiagnostic",
                     "statuses",
                     "mainRoom",
                     "canEdit",
@@ -92411,12 +92428,6 @@
                           "nullable": true,
                           "type": "string"
                         },
-                        "diagnosticScore": {
-                          "nullable": true,
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
                         "consentSignedOn": {
                           "nullable": true,
                           "type": "string",
@@ -92428,10 +92439,18 @@
                         "contracts",
                         "scholarship",
                         "previousSchool",
-                        "diagnosticScore",
                         "consentSignedOn"
                       ],
                       "additionalProperties": false
+                    },
+                    "diagnosticScore": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "readsDiagnostic": {
+                      "type": "boolean"
                     },
                     "statuses": {
                       "type": "array",
@@ -93095,6 +93114,8 @@
                     "identity",
                     "identityHidden",
                     "financial",
+                    "diagnosticScore",
+                    "readsDiagnostic",
                     "statuses",
                     "mainRoom",
                     "canEdit",
@@ -94084,12 +94105,6 @@
                           "nullable": true,
                           "type": "string"
                         },
-                        "diagnosticScore": {
-                          "nullable": true,
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
                         "consentSignedOn": {
                           "nullable": true,
                           "type": "string",
@@ -94101,10 +94116,18 @@
                         "contracts",
                         "scholarship",
                         "previousSchool",
-                        "diagnosticScore",
                         "consentSignedOn"
                       ],
                       "additionalProperties": false
+                    },
+                    "diagnosticScore": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "readsDiagnostic": {
+                      "type": "boolean"
                     },
                     "statuses": {
                       "type": "array",
@@ -94768,6 +94791,8 @@
                     "identity",
                     "identityHidden",
                     "financial",
+                    "diagnosticScore",
+                    "readsDiagnostic",
                     "statuses",
                     "mainRoom",
                     "canEdit",
@@ -95763,12 +95788,6 @@
                           "nullable": true,
                           "type": "string"
                         },
-                        "diagnosticScore": {
-                          "nullable": true,
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
                         "consentSignedOn": {
                           "nullable": true,
                           "type": "string",
@@ -95780,10 +95799,18 @@
                         "contracts",
                         "scholarship",
                         "previousSchool",
-                        "diagnosticScore",
                         "consentSignedOn"
                       ],
                       "additionalProperties": false
+                    },
+                    "diagnosticScore": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "readsDiagnostic": {
+                      "type": "boolean"
                     },
                     "statuses": {
                       "type": "array",
@@ -96447,6 +96474,8 @@
                     "identity",
                     "identityHidden",
                     "financial",
+                    "diagnosticScore",
+                    "readsDiagnostic",
                     "statuses",
                     "mainRoom",
                     "canEdit",
@@ -97482,12 +97511,6 @@
                           "nullable": true,
                           "type": "string"
                         },
-                        "diagnosticScore": {
-                          "nullable": true,
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
                         "consentSignedOn": {
                           "nullable": true,
                           "type": "string",
@@ -97499,10 +97522,18 @@
                         "contracts",
                         "scholarship",
                         "previousSchool",
-                        "diagnosticScore",
                         "consentSignedOn"
                       ],
                       "additionalProperties": false
+                    },
+                    "diagnosticScore": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "readsDiagnostic": {
+                      "type": "boolean"
                     },
                     "statuses": {
                       "type": "array",
@@ -98166,6 +98197,8 @@
                     "identity",
                     "identityHidden",
                     "financial",
+                    "diagnosticScore",
+                    "readsDiagnostic",
                     "statuses",
                     "mainRoom",
                     "canEdit",
@@ -99173,12 +99206,6 @@
                           "nullable": true,
                           "type": "string"
                         },
-                        "diagnosticScore": {
-                          "nullable": true,
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
                         "consentSignedOn": {
                           "nullable": true,
                           "type": "string",
@@ -99190,10 +99217,18 @@
                         "contracts",
                         "scholarship",
                         "previousSchool",
-                        "diagnosticScore",
                         "consentSignedOn"
                       ],
                       "additionalProperties": false
+                    },
+                    "diagnosticScore": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "readsDiagnostic": {
+                      "type": "boolean"
                     },
                     "statuses": {
                       "type": "array",
@@ -99857,6 +99892,8 @@
                     "identity",
                     "identityHidden",
                     "financial",
+                    "diagnosticScore",
+                    "readsDiagnostic",
                     "statuses",
                     "mainRoom",
                     "canEdit",
@@ -101405,12 +101442,6 @@
                           "nullable": true,
                           "type": "string"
                         },
-                        "diagnosticScore": {
-                          "nullable": true,
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
                         "consentSignedOn": {
                           "nullable": true,
                           "type": "string",
@@ -101422,10 +101453,18 @@
                         "contracts",
                         "scholarship",
                         "previousSchool",
-                        "diagnosticScore",
                         "consentSignedOn"
                       ],
                       "additionalProperties": false
+                    },
+                    "diagnosticScore": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "readsDiagnostic": {
+                      "type": "boolean"
                     },
                     "statuses": {
                       "type": "array",
@@ -102089,6 +102128,8 @@
                     "identity",
                     "identityHidden",
                     "financial",
+                    "diagnosticScore",
+                    "readsDiagnostic",
                     "statuses",
                     "mainRoom",
                     "canEdit",
@@ -103093,12 +103134,6 @@
                           "nullable": true,
                           "type": "string"
                         },
-                        "diagnosticScore": {
-                          "nullable": true,
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
                         "consentSignedOn": {
                           "nullable": true,
                           "type": "string",
@@ -103110,10 +103145,18 @@
                         "contracts",
                         "scholarship",
                         "previousSchool",
-                        "diagnosticScore",
                         "consentSignedOn"
                       ],
                       "additionalProperties": false
+                    },
+                    "diagnosticScore": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "readsDiagnostic": {
+                      "type": "boolean"
                     },
                     "statuses": {
                       "type": "array",
@@ -103777,6 +103820,8 @@
                     "identity",
                     "identityHidden",
                     "financial",
+                    "diagnosticScore",
+                    "readsDiagnostic",
                     "statuses",
                     "mainRoom",
                     "canEdit",
@@ -104766,12 +104811,6 @@
                           "nullable": true,
                           "type": "string"
                         },
-                        "diagnosticScore": {
-                          "nullable": true,
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
                         "consentSignedOn": {
                           "nullable": true,
                           "type": "string",
@@ -104783,10 +104822,18 @@
                         "contracts",
                         "scholarship",
                         "previousSchool",
-                        "diagnosticScore",
                         "consentSignedOn"
                       ],
                       "additionalProperties": false
+                    },
+                    "diagnosticScore": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "readsDiagnostic": {
+                      "type": "boolean"
                     },
                     "statuses": {
                       "type": "array",
@@ -105450,6 +105497,8 @@
                     "identity",
                     "identityHidden",
                     "financial",
+                    "diagnosticScore",
+                    "readsDiagnostic",
                     "statuses",
                     "mainRoom",
                     "canEdit",
@@ -106445,12 +106494,6 @@
                           "nullable": true,
                           "type": "string"
                         },
-                        "diagnosticScore": {
-                          "nullable": true,
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
                         "consentSignedOn": {
                           "nullable": true,
                           "type": "string",
@@ -106462,10 +106505,18 @@
                         "contracts",
                         "scholarship",
                         "previousSchool",
-                        "diagnosticScore",
                         "consentSignedOn"
                       ],
                       "additionalProperties": false
+                    },
+                    "diagnosticScore": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "readsDiagnostic": {
+                      "type": "boolean"
                     },
                     "statuses": {
                       "type": "array",
@@ -107129,6 +107180,8 @@
                     "identity",
                     "identityHidden",
                     "financial",
+                    "diagnosticScore",
+                    "readsDiagnostic",
                     "statuses",
                     "mainRoom",
                     "canEdit",
@@ -108126,12 +108179,6 @@
                           "nullable": true,
                           "type": "string"
                         },
-                        "diagnosticScore": {
-                          "nullable": true,
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
                         "consentSignedOn": {
                           "nullable": true,
                           "type": "string",
@@ -108143,10 +108190,18 @@
                         "contracts",
                         "scholarship",
                         "previousSchool",
-                        "diagnosticScore",
                         "consentSignedOn"
                       ],
                       "additionalProperties": false
+                    },
+                    "diagnosticScore": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "readsDiagnostic": {
+                      "type": "boolean"
                     },
                     "statuses": {
                       "type": "array",
@@ -108810,6 +108865,8 @@
                     "identity",
                     "identityHidden",
                     "financial",
+                    "diagnosticScore",
+                    "readsDiagnostic",
                     "statuses",
                     "mainRoom",
                     "canEdit",
@@ -109805,12 +109862,6 @@
                           "nullable": true,
                           "type": "string"
                         },
-                        "diagnosticScore": {
-                          "nullable": true,
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
                         "consentSignedOn": {
                           "nullable": true,
                           "type": "string",
@@ -109822,10 +109873,18 @@
                         "contracts",
                         "scholarship",
                         "previousSchool",
-                        "diagnosticScore",
                         "consentSignedOn"
                       ],
                       "additionalProperties": false
+                    },
+                    "diagnosticScore": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "readsDiagnostic": {
+                      "type": "boolean"
                     },
                     "statuses": {
                       "type": "array",
@@ -110489,6 +110548,8 @@
                     "identity",
                     "identityHidden",
                     "financial",
+                    "diagnosticScore",
+                    "readsDiagnostic",
                     "statuses",
                     "mainRoom",
                     "canEdit",
@@ -111469,12 +111530,6 @@
                           "nullable": true,
                           "type": "string"
                         },
-                        "diagnosticScore": {
-                          "nullable": true,
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
                         "consentSignedOn": {
                           "nullable": true,
                           "type": "string",
@@ -111486,10 +111541,18 @@
                         "contracts",
                         "scholarship",
                         "previousSchool",
-                        "diagnosticScore",
                         "consentSignedOn"
                       ],
                       "additionalProperties": false
+                    },
+                    "diagnosticScore": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "readsDiagnostic": {
+                      "type": "boolean"
                     },
                     "statuses": {
                       "type": "array",
@@ -112153,6 +112216,8 @@
                     "identity",
                     "identityHidden",
                     "financial",
+                    "diagnosticScore",
+                    "readsDiagnostic",
                     "statuses",
                     "mainRoom",
                     "canEdit",
@@ -113142,12 +113207,6 @@
                           "nullable": true,
                           "type": "string"
                         },
-                        "diagnosticScore": {
-                          "nullable": true,
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
                         "consentSignedOn": {
                           "nullable": true,
                           "type": "string",
@@ -113159,10 +113218,18 @@
                         "contracts",
                         "scholarship",
                         "previousSchool",
-                        "diagnosticScore",
                         "consentSignedOn"
                       ],
                       "additionalProperties": false
+                    },
+                    "diagnosticScore": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "readsDiagnostic": {
+                      "type": "boolean"
                     },
                     "statuses": {
                       "type": "array",
@@ -113826,6 +113893,8 @@
                     "identity",
                     "identityHidden",
                     "financial",
+                    "diagnosticScore",
+                    "readsDiagnostic",
                     "statuses",
                     "mainRoom",
                     "canEdit",
@@ -115898,12 +115967,6 @@
                           "nullable": true,
                           "type": "string"
                         },
-                        "diagnosticScore": {
-                          "nullable": true,
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
                         "consentSignedOn": {
                           "nullable": true,
                           "type": "string",
@@ -115915,10 +115978,18 @@
                         "contracts",
                         "scholarship",
                         "previousSchool",
-                        "diagnosticScore",
                         "consentSignedOn"
                       ],
                       "additionalProperties": false
+                    },
+                    "diagnosticScore": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "readsDiagnostic": {
+                      "type": "boolean"
                     },
                     "statuses": {
                       "type": "array",
@@ -116582,6 +116653,8 @@
                     "identity",
                     "identityHidden",
                     "financial",
+                    "diagnosticScore",
+                    "readsDiagnostic",
                     "statuses",
                     "mainRoom",
                     "canEdit",
@@ -117562,12 +117635,6 @@
                           "nullable": true,
                           "type": "string"
                         },
-                        "diagnosticScore": {
-                          "nullable": true,
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
                         "consentSignedOn": {
                           "nullable": true,
                           "type": "string",
@@ -117579,10 +117646,18 @@
                         "contracts",
                         "scholarship",
                         "previousSchool",
-                        "diagnosticScore",
                         "consentSignedOn"
                       ],
                       "additionalProperties": false
+                    },
+                    "diagnosticScore": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "readsDiagnostic": {
+                      "type": "boolean"
                     },
                     "statuses": {
                       "type": "array",
@@ -118246,6 +118321,8 @@
                     "identity",
                     "identityHidden",
                     "financial",
+                    "diagnosticScore",
+                    "readsDiagnostic",
                     "statuses",
                     "mainRoom",
                     "canEdit",
@@ -121014,12 +121091,6 @@
                           "nullable": true,
                           "type": "string"
                         },
-                        "diagnosticScore": {
-                          "nullable": true,
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
                         "consentSignedOn": {
                           "nullable": true,
                           "type": "string",
@@ -121031,10 +121102,18 @@
                         "contracts",
                         "scholarship",
                         "previousSchool",
-                        "diagnosticScore",
                         "consentSignedOn"
                       ],
                       "additionalProperties": false
+                    },
+                    "diagnosticScore": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "readsDiagnostic": {
+                      "type": "boolean"
                     },
                     "statuses": {
                       "type": "array",
@@ -121698,6 +121777,8 @@
                     "identity",
                     "identityHidden",
                     "financial",
+                    "diagnosticScore",
+                    "readsDiagnostic",
                     "statuses",
                     "mainRoom",
                     "canEdit",
@@ -124503,12 +124584,6 @@
                               "nullable": true,
                               "type": "string"
                             },
-                            "diagnosticScore": {
-                              "nullable": true,
-                              "type": "integer",
-                              "minimum": -9007199254740991,
-                              "maximum": 9007199254740991
-                            },
                             "consentSignedOn": {
                               "nullable": true,
                               "type": "string",
@@ -124520,10 +124595,18 @@
                             "contracts",
                             "scholarship",
                             "previousSchool",
-                            "diagnosticScore",
                             "consentSignedOn"
                           ],
                           "additionalProperties": false
+                        },
+                        "diagnosticScore": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "readsDiagnostic": {
+                          "type": "boolean"
                         },
                         "statuses": {
                           "type": "array",
@@ -125187,6 +125270,8 @@
                         "identity",
                         "identityHidden",
                         "financial",
+                        "diagnosticScore",
+                        "readsDiagnostic",
                         "statuses",
                         "mainRoom",
                         "canEdit",

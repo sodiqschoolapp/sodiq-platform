@@ -55,6 +55,13 @@ export interface ExportInput<Row, Column extends string> {
    * Absent for a list without a scope.
    */
   inScope?: (id: string) => boolean;
+  /**
+   * Whether a row written may carry a column the file holds (task 3.6a,
+   * decision 15 of pull request #118: a Tutor who is also a Head Teacher
+   * writes Contact in own-class rows only); its cells are empty otherwise.
+   * Absent when every row carries every column of the file.
+   */
+  rowAllows?: (column: Column, id: string) => boolean;
   columns: Readonly<Record<Column, ExportColumn<Row>>>;
 }
 
@@ -95,9 +102,8 @@ export async function exportList<Row, Column extends string>(
     return { id, row };
   });
   const inScope = input.inScope;
-  const rows = found
-    .filter((one) => inScope === undefined || inScope(one.id))
-    .map((one) => one.row);
+  const kept = found.filter((one) => inScope === undefined || inScope(one.id));
+  const rows = kept.map((one) => one.row);
   const rowsLeftOut = inScope === undefined ? undefined : found.length - rows.length;
   if (found.length > 0 && rows.length === 0) {
     throw new ApiException('permission_denied', 403);
@@ -124,7 +130,14 @@ export async function exportList<Row, Column extends string>(
   const content = await writeWorkbook({
     name: texts[input.list].name,
     headings: specs.flatMap((spec) => spec.headings(texts)),
-    rows: rows.map((row) => specs.flatMap((spec) => spec.cells(row, texts, language))),
+    rows: kept.map(({ id, row }) =>
+      columns.flatMap((column) => {
+        const spec = input.columns[column];
+        return input.rowAllows === undefined || input.rowAllows(column, id)
+          ? spec.cells(row, texts, language)
+          : spec.headings(texts).map(() => null);
+      }),
+    ),
   });
   await audit.record(transaction, {
     branchId,

@@ -38,18 +38,43 @@ export const CLASS_SCOPED_AREAS: readonly string[] = [
 ];
 
 /**
- * Whether an assignment's scope fits one of the classes. A Tutor fits the
- * classes of its rows in force (`classIds`, filled by the permission guard);
- * a Teacher (own lessons, the journal) and the roles of Releases 2 and 3 fit
- * none.
+ * The places that make a student "of" a class or a group (decision 7 of pull
+ * request #90; task 3.6a, correction 1 of the review of pull request #118):
+ * the classes and the groups of the student's rows in force or planned.
  */
-function fits(assignment: CurrentAssignment, classIds: readonly string[]): boolean {
+export interface StudentPlaces {
+  classIds: readonly string[];
+  groupIds: readonly string[];
+}
+
+/** No class and no group: only a class-wide reader fits. */
+export const NO_PLACES: StudentPlaces = Object.freeze({ classIds: [], groupIds: [] });
+
+const meets = (own: readonly string[], ids: readonly string[]): boolean =>
+  ids.some((id) => own.includes(id.toLowerCase()));
+
+/**
+ * Whether an assignment's scope fits one of the classes or groups. A Tutor
+ * fits the classes of its rows in force (`classIds`, filled by the
+ * permission guard); a Teacher the classes and groups the published teaching
+ * load in force gives the teacher (`classIds` and `groupIds`, filled by the
+ * guard; task 3.6a, owner's answer L48): a classmate in another group of a
+ * taught class's split is not taught. The roles of Releases 2 and 3 fit none.
+ */
+function fits(
+  assignment: CurrentAssignment,
+  classIds: readonly string[],
+  groupIds: readonly string[],
+): boolean {
   if (CLASS_WIDE_ROLES.includes(assignment.role)) {
     return true;
   }
+  if (assignment.role === 'tutor') {
+    return meets(assignment.classIds, classIds);
+  }
   return (
-    assignment.role === 'tutor' &&
-    classIds.some((classId) => assignment.classIds.includes(classId.toLowerCase()))
+    assignment.role === 'teacher' &&
+    (meets(assignment.classIds, classIds) || meets(assignment.groupIds ?? [], groupIds))
   );
 }
 
@@ -75,8 +100,9 @@ function fits(assignment: CurrentAssignment, classIds: readonly string[]): boole
 export function inClassScope(
   assignments: readonly CurrentAssignment[],
   classIds: readonly string[],
+  groupIds: readonly string[] = [],
 ): CurrentAssignment | undefined {
-  return assignments.find((assignment) => fits(assignment, classIds));
+  return assignments.find((assignment) => fits(assignment, classIds, groupIds));
 }
 
 /**
@@ -170,6 +196,40 @@ export async function studentClasses(
 }
 
 /**
+ * The places of each student (`StudentPlaces`): the classes of
+ * `studentClasses`, and the groups of every group row with days that has not
+ * ended by `today`, in force or planned, read the same way (task 3.6a,
+ * correction 1 of the review of pull request #118). `null` reads every
+ * student of the branch of the transaction.
+ */
+export async function studentPlaces(
+  transaction: Transaction,
+  today: SchoolDate,
+  studentId: string | null,
+): Promise<Map<string, StudentPlaces>> {
+  const classes = await studentClasses(transaction, today, studentId);
+  let query = transaction
+    .selectFrom('group_memberships')
+    .select(['student_id', 'group_id'])
+    .whereRef('valid_from', '<', 'valid_until')
+    .where('valid_until', '>', today);
+  if (studentId !== null) {
+    query = query.where('student_id', '=', studentId);
+  }
+  const groups = new Map<string, string[]>();
+  for (const row of await query.orderBy('student_id').orderBy('group_id').execute()) {
+    const own = groups.get(row.student_id) ?? [];
+    own.push(row.group_id.toLowerCase());
+    groups.set(row.student_id, own);
+  }
+  const found = new Map<string, StudentPlaces>();
+  for (const id of new Set([...classes.keys(), ...groups.keys()])) {
+    found.set(id, { classIds: classes.get(id) ?? [], groupIds: groups.get(id) ?? [] });
+  }
+  return found;
+}
+
+/**
  * The assignment that lets the account read a group of a student's fields
  * (`students` for the record, `student_contact` for Contact, and so on) in
  * the branch of the request, for a student of the given classes: one that
@@ -182,30 +242,53 @@ export async function studentClasses(
 export function studentReaderOf(
   access: Access,
   area: string,
-  classIds: readonly string[],
+  places: StudentPlaces,
 ): CurrentAssignment | undefined {
-  return inClassScope(
-    permitting(
-      { area, action: 'view', branch: 'request' },
-      access.assignments,
-      access.branchId,
-      PERMISSIONS,
-    ),
-    classIds,
-  );
+  return inClassScope(readersOf(access, area), places.classIds, places.groupIds);
 }
 
-/** The classes of one student of the branch of the transaction, today in the branch's time zone. */
-export async function classesOfStudent(
+const readersOf = (access: Access, area: string): CurrentAssignment[] =>
+  permitting(
+    { area, action: 'view', branch: 'request' },
+    access.assignments,
+    access.branchId,
+    PERMISSIONS,
+  );
+
+/**
+ * Whether the account reads the student only as a Teacher of the student
+ * (task 3.6a, decision 14 of pull request #118): every assignment that opens
+ * the record for these places is a Teacher's. Such a reader gets the Basic
+ * group and the groups, nothing else of the record (`02`, Teacher: "with the
+ * Basic fields only").
+ */
+export function readsAsTeacherOnly(access: Access, places: StudentPlaces): boolean {
+  const openers = readersOf(access, 'students').filter(
+    (assignment) => inClassScope([assignment], places.classIds, places.groupIds) !== undefined,
+  );
+  return openers.length > 0 && openers.every((assignment) => assignment.role === 'teacher');
+}
+
+/**
+ * Whether the account lists the whole branch's students: a reader of
+ * `students` that is not a Teacher. A Teacher alone lists the students taught
+ * only (task 3.6a, decision 12 of pull request #118: "and no other student").
+ */
+export function listsBranchStudents(access: Access): boolean {
+  return readersOf(access, 'students').some((assignment) => assignment.role !== 'teacher');
+}
+
+/** The places of one student of the branch of the transaction, today in the branch's time zone. */
+export async function placesOfStudent(
   transaction: Transaction,
   branchId: string,
   studentId: string,
-): Promise<string[]> {
+): Promise<StudentPlaces> {
   const branch = await transaction
     .selectFrom('branches')
     .select('time_zone')
     .where('id', '=', branchId)
     .executeTakeFirstOrThrow();
   const today = schoolDateOf(await transactionMoment(transaction), branch.time_zone);
-  return (await studentClasses(transaction, today, studentId)).get(studentId) ?? [];
+  return (await studentPlaces(transaction, today, studentId)).get(studentId) ?? NO_PLACES;
 }
