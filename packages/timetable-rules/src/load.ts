@@ -6,9 +6,10 @@
  * "Only teachers whose profile has the subject and every grade of the class
  * or group, and the language of the class or group where the language rule
  * applies, can be chosen. A vacancy can be chosen under the same conditions."
- * "Inactive teachers, subjects and rooms cannot be used." A Tutor subject on a
- * class row may be taken by a Tutor of that class without the profile row
- * (decision 2). The API's refusal, the teachers offered, the copy of a version
+ * "Inactive teachers, subjects and rooms cannot be used." A Tutor row (a
+ * Tutor subject on a class row) holds the class's Tutor of the version and
+ * nobody else, without the profile row (3.4a decision 2 as narrowed by task
+ * 3.6c-2, decision 1). The API's refusal, the teachers offered, the copy of a version
  * and the problems shown on each row all call this one function; the database
  * keeps the same rules (db/migrations/0055), except the two-grade slot rule,
  * which needs the templates (decision 8).
@@ -26,6 +27,8 @@ export const LOAD_PROBLEM_ORDER = [
   'load_group_no_shared_slot',
   'load_split_and_whole',
   'load_mixed_not_split',
+  'load_no_tutor',
+  'load_tutor_row_teacher',
   'load_teacher_branch',
   'load_teacher_status',
   'load_teacher_subject',
@@ -42,6 +45,8 @@ export type LoadProblem = (typeof LOAD_PROBLEM_ORDER)[number];
 
 /** The problems that the choice of the teacher decides (decision 7). */
 export const TEACHER_PROBLEMS: readonly LoadProblem[] = [
+  'load_no_tutor',
+  'load_tutor_row_teacher',
   'load_teacher_branch',
   'load_teacher_status',
   'load_teacher_subject',
@@ -73,11 +78,11 @@ export interface LoadUnit {
   /** The group's own subject; `null` for a class. */
   readonly subjectId: string | null;
   /**
-   * The staff records of the Tutors of a class (main or acting) whose rows
-   * overlap the start date of the version in the branch's time zone
-   * (correction 4); empty for a group.
+   * The staff record of the class's Tutor of the version: `tutorAt` at the
+   * last moment of the later of its start date and today in branch time (task
+   * 3.6c-2, decision 3); `null` with none, and for a group.
    */
-  readonly tutorStaffIds: readonly string[];
+  readonly tutorOnStart: string | null;
 }
 
 export interface LoadSubject {
@@ -133,13 +138,16 @@ export interface LoadRowFacts {
 const coversAll = (held: readonly number[], needed: readonly number[]) =>
   needed.every((grade) => held.includes(grade));
 
-/** Whether the teacher takes the row as the class's Tutor, outside the profile rule (decision 2). */
-export function takesAsTutor(
-  unit: LoadUnit,
-  subject: LoadSubject,
-  teacher: Pick<LoadTeacher, 'id'>,
+/**
+ * A Tutor row: a Tutor subject on a class row. Nobody picks its teacher; it is
+ * the class's Tutor (task 3.6c-2, decision 1). A group row of a Tutor subject
+ * keeps the profile rule.
+ */
+export function isTutorRow(
+  unit: Pick<LoadUnit, 'kind'>,
+  subject: Pick<LoadSubject, 'tutorSubject'>,
 ): boolean {
-  return subject.tutorSubject && unit.kind === 'class' && unit.tutorStaffIds.includes(teacher.id);
+  return subject.tutorSubject && unit.kind === 'class';
 }
 
 /** The teacher's problems for the row, in their order. */
@@ -155,7 +163,9 @@ export function teacherProblems(
   if (teacher.out) {
     problems.push('load_teacher_status');
   }
-  if (!takesAsTutor(unit, subject, teacher)) {
+  // The class's Tutor takes a Tutor row without the profile row; anyone else
+  // (a substitute of a dated lesson) needs it.
+  if (!(isTutorRow(unit, subject) && unit.tutorOnStart === teacher.id)) {
     const held = teacher.subjects.find((one) => one.subjectId === subject.id);
     if (held === undefined) {
       problems.push('load_teacher_subject');
@@ -196,6 +206,13 @@ export function loadRowProblems(facts: LoadRowFacts): LoadProblem[] {
   }
   if (facts.blockProblems.includes('load_mixed_not_split')) {
     problems.push('load_mixed_not_split');
+  }
+  if (isTutorRow(unit, subject)) {
+    if (unit.tutorOnStart === null) {
+      problems.push('load_no_tutor');
+    } else if (unit.tutorOnStart !== facts.teacher.id) {
+      problems.push('load_tutor_row_teacher');
+    }
   }
   problems.push(...teacherProblems(unit, subject, facts.teacher));
   for (const problem of ['load_block_mixed', 'load_block_lessons', 'load_block_teacher'] as const) {

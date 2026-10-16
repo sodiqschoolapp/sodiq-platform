@@ -409,7 +409,7 @@ function loadUnitOf(unit: EngineUnit): LoadUnit {
     grades: unit.grades,
     language: unit.language,
     subjectId: null,
-    tutorStaffIds: unit.tutorStaffIds,
+    tutorOnStart: unit.tutorOnStart,
   };
 }
 

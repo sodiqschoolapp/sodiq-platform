@@ -124,8 +124,12 @@ export interface EngineUnit {
   /** One grade for a class; the grades of its classes for a group. */
   readonly grades: readonly number[];
   readonly language: string;
-  /** The staff records of a class's Tutors; empty for a group (load.ts, `takesAsTutor`). */
-  readonly tutorStaffIds: readonly string[];
+  /**
+   * The class's Tutor (`tutorAt`): of the version for a pattern, at the
+   * lessons' start for a dated call; `null` with none and for a group
+   * (load.ts, `isTutorRow`; task 3.6c-2, decision 3).
+   */
+  readonly tutorOnStart: string | null;
 }
 
 /** What a grade of a branch has on a day: the times of its template, or the reason it has no lessons. */

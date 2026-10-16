@@ -80,7 +80,7 @@ const unit = (
   kind,
   grades,
   language,
-  tutorStaffIds: [],
+  tutorOnStart: null,
 });
 
 const room = (id: string, extra: Partial<EngineRoom> = {}): EngineRoom => ({
@@ -663,14 +663,26 @@ describe('the teacher, the subject and the room', () => {
     ]);
   });
 
-  it('lets a Tutor take a Tutor subject of the class without the profile row', () => {
+  // Task 3.6c-2, decision 1 (review correction 1): the class's Tutor takes a
+  // Tutor subject without the profile row; anyone else on that lesson (a
+  // substitute) needs the subject, as for every lesson.
+  it('lets the class Tutor take a Tutor subject without the profile row, nobody else', () => {
     const f = facts({
       subjects: new Map([
         ['homework', { id: 'homework', active: true, languageRule: false, tutorSubject: true }],
       ]),
-      units: new Map([['7a', { ...unit('7a', 'class', [7]), tutorStaffIds: ['t1'] }]]),
+      units: new Map([['7a', { ...unit('7a', 'class', [7]), tutorOnStart: 't1' }]]),
     });
     expect(codes(checkTimetable([place({ subjectId: 'homework' })], f))).toEqual([]);
+    const other = facts({
+      subjects: new Map([
+        ['homework', { id: 'homework', active: true, languageRule: false, tutorSubject: true }],
+      ]),
+      units: new Map([['7a', { ...unit('7a', 'class', [7]), tutorOnStart: 't9' }]]),
+    });
+    expect(codes(checkTimetable([place({ subjectId: 'homework' })], other))).toEqual([
+      'teacher_subject',
+    ]);
   });
 
   it('binds a vacancy by every blocked rule that binds a teacher (06, the vacancy row)', () => {
