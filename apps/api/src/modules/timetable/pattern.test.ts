@@ -137,6 +137,8 @@ describe('the grid of a draft', () => {
         .where('version_id', 'in', versions)
         .orderBy('id')
         .execute(),
+      // A takeover of the edit lock notifies the earlier holder (permission review, S2).
+      t.database.migrator.selectFrom('notifications').selectAll().orderBy('id').execute(),
       // Written by the trigger of the entries and the cascading key (0058).
       t.database.migrator
         .selectFrom('pattern_block_classes')
@@ -239,6 +241,24 @@ describe('the grid of a draft', () => {
       row,
     };
   }
+
+  /** Task 5.4c-1: the edit lock held by the kit's Teacher account, last active 10 minutes ago. */
+  const staleEditLock = async (version: string) => {
+    const holder = await t.database.migrator
+      .selectFrom('assignments')
+      .select('account_id')
+      .where('role', '=', 'teacher')
+      .where('branch_id', '=', t.north)
+      .executeTakeFirstOrThrow();
+    await t.database.migrator
+      .updateTable('timetable_versions')
+      .set({
+        edit_holder_id: holder.account_id,
+        edit_seen_at: new Date(t.clock.now().getTime() - 10 * 60_000),
+      })
+      .where('id', '=', version)
+      .execute();
+  };
 
   /** The kit's Academic Vice Principal, given the role in a branch of a scene too. */
   const viceIn = async (branch: string) => {
@@ -691,8 +711,9 @@ describe('the grid of a draft', () => {
       const otherBlock = await placed(other.branch, other.version, other.rowA, 1, 1);
       const sameBranchBlock = await placed(s.branch, sameBranch, sameBranchRow, 1, 3);
       await viceIn(s.branch);
-      // Task 5.4c-1: the edit lock the writes above took is let go for the next account.
-      await load.freeEditLock(s.version);
+      // Task 5.4c-1 (permission review, S2): another account left the lock 10 minutes ago, so
+      // a refused write would take it over and notify; the refusal must undo both.
+      await staleEditLock(s.version);
       const before = await patternRows([s.version, other.version, sameBranch]);
       for (const cookie of [t.vicePrincipal, t.admin]) {
         for (const version of [other.version, UNKNOWN]) {
@@ -877,8 +898,9 @@ describe('the grid of a draft', () => {
       const lesson = lessonOf(own.answer, own.id).id;
       const spare = await load.classes.room(s.branch);
       await viceIn(s.branch);
-      // Task 5.4c-1: the edit lock the writes above took is let go for the next account.
-      await load.freeEditLock(s.version);
+      // Task 5.4c-1 (permission review, S2): another account left the lock 10 minutes ago, so
+      // a refused write would take it over and notify; the refusal must undo both.
+      await staleEditLock(s.version);
       const before = await patternRows([s.version, other.version, sameBranch]);
       for (const cookie of [t.vicePrincipal, t.admin]) {
         for (const version of [other.version, UNKNOWN]) {
@@ -1493,8 +1515,9 @@ describe('the grid of a draft', () => {
       const sameBranchBlock = await placed(s.branch, sameBranch, sameBranchRow, 1, 3);
       const spare = await load.classes.room(s.branch);
       await viceIn(s.branch);
-      // Task 5.4c-1: the edit lock the writes above took is let go for the next account.
-      await load.freeEditLock(s.version);
+      // Task 5.4c-1 (permission review, S2): another account left the lock 10 minutes ago, so
+      // a refused write would take it over and notify; the refusal must undo both.
+      await staleEditLock(s.version);
       const before = await patternRows([s.version, other.version, sameBranch]);
       const moved = (extra: Partial<Change> = {}): Change[] => [
         { blockId: own.id, weekday: 2, slotPosition: 1, ...extra },
@@ -1959,7 +1982,9 @@ describe('the grid of a draft', () => {
           expect([await patternRows([s.version]), await t.auditCount()]).toEqual(before);
           gridOf(await dropLock(s.branch, s.version, lock.id));
         }
-        // With no lock left the same suggestion is applied.
+        // With no lock left on these lessons (another day's lock stays) the same suggestion is
+        // applied (permission review, S3).
+        gridOf(await addLock(s.branch, s.version, { kind: 'day', weekday: 5 }), 201);
         gridOf(
           await rearrange(s.branch, s.version, [
             { blockId: a.id, weekday: 3, slotPosition: 1 },
@@ -2009,7 +2034,7 @@ describe('the grid of a draft', () => {
         ).locks[0];
         if (otherLock === undefined || sameBranchLock === undefined) throw new Error('No lock.');
         await viceIn(s.branch);
-        await load.freeEditLock(s.version);
+        await staleEditLock(s.version);
         const versions = [s.version, other.version, sameBranch];
         const before = [await patternRows(versions), await t.auditCount()];
         for (const cookie of [t.vicePrincipal, t.admin]) {
