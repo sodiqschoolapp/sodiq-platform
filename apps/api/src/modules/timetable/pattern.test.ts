@@ -804,43 +804,46 @@ describe('the grid of a draft', () => {
       gridOf(await move(s.branch, s.version, own.id, 1, 3));
     });
 
-    it('answers the lesson elsewhere with its weekday, times and branch only, to the Academic Vice Principal of the branch', async () => {
+    it('answers the lesson elsewhere with its weekday, times and branch only, to the Academic Vice Principal of the branch and the Super Admin', async () => {
       const { s, other, entry } = await twoBranches(3);
       await viceIn(s.branch);
       await placed(s.branch, s.version, s.rowA, 2, 1);
-      const response = await grid(s.branch, s.version, t.vicePrincipal);
-      const answer = gridOf(response);
-      expect(answer.facts.busyElsewhere).toEqual([
-        {
-          id: entry,
-          teacherId: s.teacherA,
-          branchId: other.branch,
-          weekday: 1,
-          start: 535,
-          end: 580,
-          tutorLesson: false,
-        },
-      ]);
-      const branch = await t.database.migrator
-        .selectFrom('branches')
-        .select('name')
-        .where('id', '=', other.branch)
-        .executeTakeFirstOrThrow();
-      expect(answer.facts.branches).toEqual([{ id: other.branch, name: branch.name }]);
-      // Nothing else of the other branch: its classes, rows, rooms and subject.
-      const text = JSON.stringify(response.body);
-      for (const id of [
-        other.classA,
-        other.classB,
-        other.rowA,
-        other.rowB,
-        other.roomA,
-        other.roomB,
-        other.version,
-      ]) {
-        expect(text).not.toContain(id);
+      // The Super Admin works in every branch; the answer is still the version's branch's.
+      for (const cookie of [t.vicePrincipal, t.admin]) {
+        const response = await grid(s.branch, s.version, cookie);
+        const answer = gridOf(response);
+        expect(answer.facts.busyElsewhere).toEqual([
+          {
+            id: entry,
+            teacherId: s.teacherA,
+            branchId: other.branch,
+            weekday: 1,
+            start: 535,
+            end: 580,
+            tutorLesson: false,
+          },
+        ]);
+        const branch = await t.database.migrator
+          .selectFrom('branches')
+          .select('name')
+          .where('id', '=', other.branch)
+          .executeTakeFirstOrThrow();
+        expect(answer.facts.branches).toEqual([{ id: other.branch, name: branch.name }]);
+        // Nothing else of the other branch: its classes, rows, rooms and subject.
+        const text = JSON.stringify(response.body);
+        for (const id of [
+          other.classA,
+          other.classB,
+          other.rowA,
+          other.rowB,
+          other.roomA,
+          other.roomB,
+          other.version,
+        ]) {
+          expect(text).not.toContain(id);
+        }
+        expect(answer.facts.otherDrafts).toEqual([]);
       }
-      expect(answer.facts.otherDrafts).toEqual([]);
     });
 
     it('keeps the lesson elsewhere out of reach: a move, a swap and a remove naming it answer 404 and change nothing', async () => {
@@ -852,6 +855,7 @@ describe('the grid of a draft', () => {
         refusedWith(await move(s.branch, s.version, id, 2, 3), 404, 'not_found');
         refusedWith(await drop(s.branch, s.version, id), 404, 'not_found');
         refusedWith(await swap(s.branch, s.version, own.id, id), 404, 'not_found');
+        refusedWith(await swap(s.branch, s.version, id, own.id), 404, 'not_found');
       }
       expect(await patternRows([s.version, other.version])).toEqual(before);
     });

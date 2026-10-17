@@ -263,6 +263,7 @@ Plan approved on pull request #132 with corrections 1 to 3; decisions 1 to 12 co
 | Busy-elsewhere lessons count in a teacher's week and day load; a vacancy is never busy elsewhere | Decisions 10 and 11 |
 | A Tutor lesson elsewhere (`tutor_lesson` of 0071) makes the load step list a Tutor whose pin meets it; a pin conflict carries `elsewhere` | Found in the build: the From 5.3b-2 line ("a Tutor of classes in two branches is listed too"), without naming the other branch's class |
 | Every check of the pattern passes `checkedPlacements` (the blocks and the busy-elsewhere lessons) | Found in the build: one helper for the grid, the routes and the pins' check |
+| A busy-elsewhere or other-draft lesson carries the other branch's pattern entry id (`busyElsewhere[].id`, `otherDrafts[].id`, and in `lessonIds` of results) | Permission review, should-fix 1: a result must name its lessons by a stable id; the id is not personal data, and a move, swap or remove naming it answers 404 (tested) |
 
 ## 17 October 2026: the grid, board and drag (task 5.4a)
 
