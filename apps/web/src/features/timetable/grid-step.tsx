@@ -19,13 +19,17 @@ import { weekdayName } from '@/lib/dates';
 import { SM, useMinWidth } from '@/lib/use-min-width';
 import { GridCell, isCellData } from './grid-cell';
 import { GridClockBoard } from './grid-clock-board';
+import { GridConflicts } from './grid-conflicts';
 import { GridMoveDialog } from './grid-move-dialog';
 import { GridPlaceForm } from './grid-place-form';
+import { GridRoomPicker } from './grid-room-picker';
+import { GridToPlace, isPlaceData } from './grid-to-place';
 import { GridTile, isTileData, unitText } from './grid-tile';
 import { ruleText } from './rule-text';
 import {
   gridQuery,
   invalidateTimetable,
+  changeLessonRoom,
   moveBlock,
   placeBlock,
   removeBlock,
@@ -36,6 +40,8 @@ import {
   cellKey,
   cellStatus,
   clockBoardOf,
+  newBlockOf,
+  NEW_BLOCK_ID,
   useSlotStatuses,
   type BoardCell,
   type Drop,
@@ -55,6 +61,10 @@ import {
  * Task 5.4b-1: the views by teacher and by room on a clock axis, read only,
  * each lesson with a button to its class board (decisions 6 and 9); a
  * teacher's lessons in other branches as grey blocks there (decision 7).
+ *
+ * Task 5.4b-2a: beside the board, the "To place" panel (dragged or placed
+ * from, decision 2) and the conflict panel (each result with a button to its
+ * lesson, decision 8); the room picker of a lesson (decisions 4 and 5).
  */
 const GRID_VIEWS = ['class', 'teacher', 'room'] as const;
 
@@ -86,6 +96,11 @@ export function GridStep({
   const [menuOpen, setMenuOpen] = useState(false);
   const [adding, setAdding] = useState<BoardCell | null>(null);
   const [refusal, setRefusal] = useState<string | null>(null);
+  /** The tile or the "To place" entry the conflict panel showed last. */
+  const [shownBlock, setShownBlock] = useState<string | null>(null);
+  const [shownRow, setShownRow] = useState<string | null>(null);
+  /** The lesson whose room picker is open. */
+  const [rooming, setRooming] = useState<{ blockId: string; lessonId: string } | null>(null);
 
   const model = useMemo(() => (data === undefined ? null : patternModel(data.facts)), [data]);
   const chosen = data?.classes.find((one) => one.id === classId) ?? data?.classes[0];
@@ -172,12 +187,27 @@ export function GridStep({
       if (drop.kind === 'swap') {
         return swapBlocks(versionId, { blockIds: [drop.block.id, drop.other.id] });
       }
+      if (drop.kind === 'place') {
+        return placeBlock(versionId, {
+          loadRowId: drop.block.lessons[0]?.loadRowId ?? '',
+          weekday: weekdaySchema.parse(drop.to.weekday),
+          slotPosition: drop.to.slotPosition,
+        });
+      }
       throw new Error('Only a move or a swap is sent.');
     },
     onSuccess: answered,
   });
   const remove = useMutation({
     mutationFn: (blockId: string) => removeBlock(versionId, blockId),
+    onSuccess: answered,
+  });
+  const room = useMutation({
+    mutationFn: (input: { blockId: string; lessonId: string; roomId: string }) =>
+      changeLessonRoom(versionId, input.blockId, {
+        lessonId: input.lessonId,
+        roomId: input.roomId,
+      }),
     onSuccess: answered,
   });
   const [placed, setPlaced] = useState(false);
@@ -214,6 +244,11 @@ export function GridStep({
     return monitorForElements({
       onDragStart: ({ source }) => {
         const data = source.data;
+        if (isPlaceData(data) && model !== null) {
+          setMoving(newBlockOf(model, data.placeRowId));
+          setRefusal(null);
+          return;
+        }
         if (!isTileData(data)) return;
         setMoving(all.find((one) => one.id === data.blockId) ?? null);
         setRefusal(null);
@@ -222,13 +257,23 @@ export function GridStep({
         setMoving(null);
         const data = source.data;
         const target = location.current.dropTargets[0]?.data;
-        if (!isTileData(data) || target === undefined || !isCellData(target)) return;
-        const block = all.find((one) => one.id === data.blockId);
+        if (target === undefined || !isCellData(target)) return;
+        const block =
+          isPlaceData(data) && model !== null
+            ? newBlockOf(model, data.placeRowId)
+            : isTileData(data)
+              ? all.find((one) => one.id === data.blockId)
+              : undefined;
         const cell = board?.cellAt(target.weekday, target.position) ?? null;
         if (block !== undefined && cell !== null) dropAt(block, cell);
       },
     });
   });
+
+  useEffect(() => {
+    if (shownBlock === null) return;
+    document.querySelector<HTMLElement>(`[data-block="${shownBlock}"]`)?.focus();
+  }, [shownBlock, view, classId]);
 
   if (grid.isError) {
     return (
@@ -249,7 +294,7 @@ export function GridStep({
     );
   }
 
-  const lessonName = (block: PatternBlock) =>
+  const lessonName = (block: Pick<PatternBlock, 'lessons'>) =>
     block.lessons
       .map((lesson) => rowsById.get(lesson.loadRowId))
       .filter((row) => row !== undefined)
@@ -331,7 +376,7 @@ export function GridStep({
             />
           </div>
         )}
-        <SavedSign saved={write.isSuccess || remove.isSuccess || placed} />
+        <SavedSign saved={write.isSuccess || remove.isSuccess || room.isSuccess || placed} />
       </div>
       {!data.editable && <p className="text-sm">{t('timetable.grid.readOnly')}</p>}
       {data.editable && canEdit && !wide && (
@@ -344,129 +389,218 @@ export function GridStep({
       )}
       <FailureAlert error={write.error} text={failureText(write.error)} />
       <FailureAlert error={remove.error} />
-      {view === 'room' && chosenRoom === undefined && (
-        <EmptyState title={t('timetable.grid.noRoomsTitle')} text={t('timetable.grid.noRooms')} />
-      )}
-      {view !== 'class' && clockBoard !== null && (
-        <GridClockBoard
-          board={clockBoard}
-          name={(view === 'teacher' ? chosenTeacher?.id : chosenRoom?.id) ?? ''}
-          rowsById={rowsById}
-          roomsById={roomsById}
-          results={data.results}
-          branchName={branchName}
-          classOf={classOf}
-          onOpenClass={(id) => {
-            setClassId(id);
-            setView('class');
-          }}
-        />
-      )}
-      {view === 'class' && (
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-sm" data-board={chosen.id}>
-            <thead>
-              <tr>
-                <th className="p-1 text-left font-semibold">
-                  <span className="sr-only">{t('timetable.grid.slot')}</span>
-                </th>
-                {board.weekdays.map((weekday) => (
-                  <th key={weekday} className="p-1 text-left font-semibold">
-                    {weekdayName(language, weekdaySchema.parse(weekday))}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {board.positions.map((position) => (
-                <tr key={position}>
-                  <th scope="row" className="p-1 text-left align-top font-semibold">
-                    {t('timetable.grid.slotNumber', { position })}
-                  </th>
-                  {board.weekdays.map((weekday) => {
-                    const cell = board.cellAt(weekday, position);
-                    if (cell === null) {
-                      return (
-                        <td
-                          key={weekday}
-                          className="border border-border p-1 align-top text-xs text-muted-foreground"
-                        >
-                          {t('timetable.grid.noSlot')}
-                        </td>
-                      );
-                    }
-                    const blocks = board.blocksAt(cell);
-                    return (
-                      <GridCell
-                        key={weekday}
-                        cell={cell}
-                        status={menuOpen ? undefined : statuses.get(cellKey(cell))}
-                        editable={editable}
-                      >
-                        <span className="text-xs text-muted-foreground">
-                          {rangeText(t, cell.start, cell.end)}
-                        </span>
-                        {blocks.map((block) => (
-                          <GridTile
-                            key={block.id}
-                            block={block}
-                            rowsById={rowsById}
-                            roomsById={roomsById}
-                            results={data.results}
-                            branchName={branchName}
+      <FailureAlert error={room.error} text={failureText(room.error)} />
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="grid min-w-0 content-start gap-4">
+          {view === 'room' && chosenRoom === undefined && (
+            <EmptyState
+              title={t('timetable.grid.noRoomsTitle')}
+              text={t('timetable.grid.noRooms')}
+            />
+          )}
+          {view !== 'class' && clockBoard !== null && (
+            <GridClockBoard
+              board={clockBoard}
+              name={(view === 'teacher' ? chosenTeacher?.id : chosenRoom?.id) ?? ''}
+              rowsById={rowsById}
+              roomsById={roomsById}
+              results={data.results}
+              branchName={branchName}
+              classOf={classOf}
+              onOpenClass={(id) => {
+                setClassId(id);
+                setView('class');
+              }}
+            />
+          )}
+          {view === 'class' && (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-sm" data-board={chosen.id}>
+                <thead>
+                  <tr>
+                    <th className="p-1 text-left font-semibold">
+                      <span className="sr-only">{t('timetable.grid.slot')}</span>
+                    </th>
+                    {board.weekdays.map((weekday) => (
+                      <th key={weekday} className="p-1 text-left font-semibold">
+                        {weekdayName(language, weekdaySchema.parse(weekday))}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {board.positions.map((position) => (
+                    <tr key={position}>
+                      <th scope="row" className="p-1 text-left align-top font-semibold">
+                        {t('timetable.grid.slotNumber', { position })}
+                      </th>
+                      {board.weekdays.map((weekday) => {
+                        const cell = board.cellAt(weekday, position);
+                        if (cell === null) {
+                          return (
+                            <td
+                              key={weekday}
+                              className="border border-border p-1 align-top text-xs text-muted-foreground"
+                            >
+                              {t('timetable.grid.noSlot')}
+                            </td>
+                          );
+                        }
+                        const blocks = board.blocksAt(cell);
+                        return (
+                          <GridCell
+                            key={weekday}
+                            cell={cell}
+                            status={menuOpen ? undefined : statuses.get(cellKey(cell))}
                             editable={editable}
-                            onMove={() => {
-                              setRefusal(null);
-                              setMoving(block);
-                              setMenuOpen(true);
-                            }}
-                            onRemove={() => {
-                              void removeAsked(block);
-                            }}
-                          />
-                        ))}
-                        {editable && blocks.length === 0 && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            aria-label={t('timetable.grid.addAt', {
-                              weekday: weekdayName(language, weekdaySchema.parse(weekday)),
-                              time: rangeText(t, cell.start, cell.end),
-                            })}
-                            onClick={() => {
-                              setRefusal(null);
-                              setPlaced(false);
-                              setAdding(cell);
-                            }}
                           >
-                            {t('timetable.grid.add')}
-                          </Button>
-                        )}
-                      </GridCell>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                            <span className="text-xs text-muted-foreground">
+                              {rangeText(t, cell.start, cell.end)}
+                            </span>
+                            {blocks.map((block) => (
+                              <GridTile
+                                key={block.id}
+                                block={block}
+                                rowsById={rowsById}
+                                roomsById={roomsById}
+                                results={data.results}
+                                branchName={branchName}
+                                editable={editable}
+                                highlighted={block.id === shownBlock}
+                                versionId={versionId}
+                                onRoom={(lessonId) => {
+                                  setRefusal(null);
+                                  setRooming({ blockId: block.id, lessonId });
+                                }}
+                                onMove={() => {
+                                  setRefusal(null);
+                                  setMoving(block);
+                                  setMenuOpen(true);
+                                }}
+                                onRemove={() => {
+                                  void removeAsked(block);
+                                }}
+                              />
+                            ))}
+                            {editable && blocks.length === 0 && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                aria-label={t('timetable.grid.addAt', {
+                                  weekday: weekdayName(language, weekdaySchema.parse(weekday)),
+                                  time: rangeText(t, cell.start, cell.end),
+                                })}
+                                onClick={() => {
+                                  setRefusal(null);
+                                  setPlaced(false);
+                                  setAdding(cell);
+                                }}
+                              >
+                                {t('timetable.grid.add')}
+                              </Button>
+                            )}
+                          </GridCell>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {view === 'class' && editable && adding !== null && (
+            <GridPlaceForm
+              key={`${chosen.id}|${cellKey(adding)}`}
+              grid={data}
+              model={model}
+              all={all}
+              classId={chosen.id}
+              cell={adding}
+              failureText={failureText}
+              onPlace={async (record: PlaceRecord) => {
+                await answered(await placeBlock(versionId, record));
+                setAdding(null);
+                setPlaced(true);
+              }}
+              onCancel={() => {
+                setAdding(null);
+              }}
+            />
+          )}
         </div>
-      )}
-      {view === 'class' && editable && adding !== null && (
-        <GridPlaceForm
-          key={`${chosen.id}|${cellKey(adding)}`}
+        <aside className="grid content-start gap-6" aria-label={t('timetable.grid.panels')}>
+          {view === 'class' && (
+            <GridToPlace
+              grid={data}
+              model={model}
+              classId={chosen.id}
+              editable={editable}
+              highlightRowId={shownRow}
+              onPlace={(entry) => {
+                setRefusal(null);
+                setPlaced(false);
+                setAdding(null);
+                if (!entry.classIds.includes(chosen.id)) {
+                  setClassId(entry.classIds[0] ?? chosen.id);
+                }
+                setMoving(newBlockOf(model, entry.rowId));
+                setMenuOpen(true);
+              }}
+            />
+          )}
+          <GridConflicts
+            grid={data}
+            branchName={branchName}
+            onShowBlock={(blockId) => {
+              const block = all.find((one) => one.id === blockId);
+              const target = block === undefined ? null : classOf(block);
+              setView('class');
+              if (target !== null) setClassId(target);
+              setShownRow(null);
+              setShownBlock(blockId);
+            }}
+            onShowRow={(rowId) => {
+              const row = model.rowOf(rowId);
+              const target = model.unitOf(row.classId ?? row.groupId ?? '').classIds[0];
+              setView('class');
+              if (target !== undefined) setClassId(target);
+              setShownBlock(null);
+              setShownRow(rowId);
+            }}
+          />
+        </aside>
+      </div>
+      {editable && (
+        <GridRoomPicker
+          title={
+            rooming === null
+              ? null
+              : t('timetable.grid.roomTitle', {
+                  lesson: lessonName({
+                    lessons:
+                      all
+                        .find((one) => one.id === rooming.blockId)
+                        ?.lessons.filter((one) => one.id === rooming.lessonId) ?? [],
+                  }),
+                })
+          }
           grid={data}
           model={model}
-          classId={chosen.id}
-          cell={adding}
-          failureText={failureText}
-          onPlace={async (record: PlaceRecord) => {
-            await answered(await placeBlock(versionId, record));
-            setAdding(null);
-            setPlaced(true);
+          all={all}
+          block={rooming === null ? null : (all.find((one) => one.id === rooming.blockId) ?? null)}
+          lessonId={rooming?.lessonId ?? null}
+          onChoose={(roomId) => {
+            const chosenLesson = rooming;
+            setRooming(null);
+            if (chosenLesson === null) return;
+            const current = all
+              .find((one) => one.id === chosenLesson.blockId)
+              ?.lessons.find((one) => one.id === chosenLesson.lessonId)?.roomId;
+            if (current !== roomId) room.mutate({ ...chosenLesson, roomId });
           }}
-          onCancel={() => {
-            setAdding(null);
+          onClose={() => {
+            setRooming(null);
           }}
         />
       )}
@@ -474,7 +608,12 @@ export function GridStep({
         <GridMoveDialog
           title={
             menuOpen && moving !== null
-              ? t('timetable.grid.moveTitle', { lesson: lessonName(moving) })
+              ? t(
+                  moving.id === NEW_BLOCK_ID
+                    ? 'timetable.grid.placeLesson'
+                    : 'timetable.grid.moveTitle',
+                  { lesson: lessonName(moving) },
+                )
               : null
           }
           board={board}

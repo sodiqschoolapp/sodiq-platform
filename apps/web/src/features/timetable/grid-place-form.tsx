@@ -1,5 +1,5 @@
 import { placeRecordSchema, weekdaySchema, type GridAnswer, type PlaceRecord } from '@sodiq/shared';
-import type { PatternModel } from '@sodiq/timetable-rules';
+import { roomChoices, type PatternBlock, type PatternModel } from '@sodiq/timetable-rules';
 import { useTranslation } from 'react-i18next';
 import { SelectField } from '@/components/field';
 import { SECTION_TITLE } from '@/components/ui/control';
@@ -10,7 +10,8 @@ import { nameOf } from '@/features/setup/setup-api';
 import { rangeText } from '@/features/setup/templates-api';
 import { weekdayName } from '@/lib/dates';
 import { unitText } from './grid-tile';
-import { positionFor, type BoardCell } from './use-slot-status';
+import { roomsOf } from './grid-room-picker';
+import { blockAt, newBlockOf, positionFor, type BoardCell } from './use-slot-status';
 
 type Row = GridAnswer['rows'][number];
 
@@ -54,10 +55,16 @@ export function placeableRows(
 const placedCount = (grid: GridAnswer, rowId: string): number =>
   grid.blocks.filter((block) => block.lessons.some((lesson) => lesson.loadRowId === rowId)).length;
 
-/** The form of an empty slot: one row of the class, placed there with its whole block. */
+/**
+ * The form of an empty slot: one row of the class, placed there with its
+ * whole block; task 5.4b-2a: the room of the row's lesson from the rooms free
+ * in that slot, best fit first (`roomChoices`, decision 4), or, left as it is,
+ * the room its new lesson takes (`roomOfNew`).
+ */
 export function GridPlaceForm({
   grid,
   model,
+  all,
   classId,
   cell,
   failureText,
@@ -66,6 +73,7 @@ export function GridPlaceForm({
 }: {
   grid: GridAnswer;
   model: PatternModel;
+  all: readonly PatternBlock[];
   classId: string;
   cell: BoardCell;
   failureText: (error: unknown) => string | undefined;
@@ -75,15 +83,26 @@ export function GridPlaceForm({
   const { t, i18n } = useTranslation();
   const language = i18n.language;
   const offered = placeableRows(grid, model, classId, cell);
+  const names = roomsOf(grid);
+  /** The rooms free for the row's new lesson at the cell, best fit first. */
+  const roomsFor = (rowId: string) => {
+    if (rowId === '') return [];
+    const placed = blockAt(model, newBlockOf(model, rowId), cell);
+    return placed === null
+      ? []
+      : roomChoices(model, all, placed, `new:${rowId}`, (id) => names.get(id)?.name ?? id);
+  };
   const form = useRecordForm({
     schema: placeRecordSchema,
-    initial: { loadRowId: '' },
+    initial: { loadRowId: '', roomId: '' },
     read: (typed) => {
       const chosen = offered.find((one) => one.row.id === typed.loadRowId);
+      const room = roomsFor(chosen?.row.id ?? '').find((one) => one.roomId === typed.roomId);
       return {
         loadRowId: chosen?.row.id ?? '',
         weekday: weekdaySchema.parse(cell.weekday),
         slotPosition: chosen?.position ?? wholeNumber(''),
+        ...(room === undefined ? {} : { roomId: room.roomId }),
       };
     },
     save: async (record: PlaceRecord) => {
@@ -95,6 +114,8 @@ export function GridPlaceForm({
     time: rangeText(t, cell.start, cell.end),
   });
   const bound = form.bind('loadRowId');
+  const boundRoom = form.bind('roomId');
+  const rooms = roomsFor(offered.some((one) => one.row.id === bound.value) ? bound.value : '');
   return (
     <section aria-labelledby="grid-place" className="grid gap-3" data-place-form="">
       <h3 id="grid-place" className={SECTION_TITLE}>
@@ -122,6 +143,18 @@ export function GridPlaceForm({
           ]}
           {...bound}
           value={offered.some((one) => one.row.id === bound.value) ? bound.value : ''}
+        />
+        <SelectField
+          label={t('timetable.grid.room')}
+          options={[
+            { value: '', label: t('timetable.grid.roomOfRow') },
+            ...rooms.map((one) => ({
+              value: one.roomId,
+              label: names.get(one.roomId)?.name ?? t('timetable.grid.unknownRoom'),
+            })),
+          ]}
+          {...boundRoom}
+          value={rooms.some((one) => one.roomId === boundRoom.value) ? boundRoom.value : ''}
         />
       </RecordForm>
     </section>

@@ -3163,219 +3163,272 @@ try {
   // day template of three 45-minute lessons from 08:00, and a draft whose one
   // Geometry teacher has a row of three lessons in each class: Oxford's first
   // lesson on Monday at 08:00, Princeton's on Monday at 08:45.
-  const gridBranch = await insertBranch(migrator, 'Grid browser test branch');
-  const gridVice = await create('Malika', 'Saidova');
-  await transactions.run([gridBranch], (transaction) =>
-    assignments.give(transaction, {
-      accountId: gridVice.id,
-      role: 'academic_vice_principal',
-      branchId: gridBranch,
-      givenBy: null,
-    }),
-  );
-  await migrator.transaction().execute(async (transaction) => {
-    const year = await transaction
-      .insertInto('academic_years')
-      .values({
-        branch_id: gridBranch,
-        start_date: startDate,
-        end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
-      })
-      .returning('id')
-      .executeTakeFirstOrThrow();
-    await transaction
-      .insertInto('quarters')
-      .values(
-        [1, 2, 3, 4].map((number) => ({
-          branch_id: gridBranch,
-          academic_year_id: year.id,
-          number,
-        })),
-      )
-      .execute();
-    const classes = [];
-    for (const name of ['Oxford', 'Princeton']) {
-      classes.push(
-        await transaction
-          .insertInto('classes')
-          .values({
-            branch_id: gridBranch,
-            academic_year_id: year.id,
-            grade: 7,
-            name,
-            language: 'uz',
-            max_size: 25,
-          })
-          .returning('id')
-          .executeTakeFirstOrThrow(),
-      );
-    }
-    const lesson = await transaction
-      .insertInto('slot_types')
-      .values({ branch_id: gridBranch, name: 'Lesson 45', kind: 'lesson' })
-      .returning('id')
-      .executeTakeFirstOrThrow();
-    await transaction
-      .insertInto('slot_type_lengths')
-      .values({
-        branch_id: gridBranch,
-        slot_type_id: lesson.id,
-        length_minutes: 45,
-        valid_from: startDate,
-      })
-      .execute();
-    const template = await transaction
-      .insertInto('day_templates')
-      .values({ branch_id: gridBranch, name: 'Main' })
-      .returning('id')
-      .executeTakeFirstOrThrow();
-    const templateVersion = await transaction
-      .insertInto('day_template_versions')
-      .values({
-        branch_id: gridBranch,
-        day_template_id: template.id,
-        start_minutes: 480,
-        valid_from: startDate,
-      })
-      .returning('id')
-      .executeTakeFirstOrThrow();
-    await transaction
-      .insertInto('day_template_slots')
-      .values(
-        [1, 2, 3].map((position) => ({
-          version_id: templateVersion.id,
-          branch_id: gridBranch,
-          position,
-          slot_type_id: lesson.id,
-        })),
-      )
-      .execute();
-    await transaction
-      .insertInto('day_template_assignments')
-      .values({
-        branch_id: gridBranch,
-        level: 'default',
-        day_template_id: template.id,
-        valid_from: startDate,
-      })
-      .execute();
-    const geometry = await transaction
-      .selectFrom('subjects')
-      .select('id')
-      .where('name_en', '=', 'Geometry')
-      .executeTakeFirstOrThrow();
-    const person = await transaction
-      .insertInto('staff')
-      .values({
-        kind: 'person',
-        staff_id: 'S-269331',
-        first_name: 'Zarina',
-        last_name: 'Aliyeva',
-        sex: 'female',
-        birth_date: '1987-03-21',
-        phone: '+998935557331',
-        admission_date: '2026-09-01',
-      })
-      .returning('id')
-      .executeTakeFirstOrThrow();
-    await transaction
-      .insertInto('staff_branches')
-      .values({ staff_id: person.id, branch_id: gridBranch, is_main: true })
-      .execute();
-    await transaction
-      .insertInto('staff_divisions')
-      .values({
-        staff_id: person.id,
-        division_id: academic.id,
-        department_id: steam.id,
-        is_main: true,
-      })
-      .execute();
-    await transaction
-      .insertInto('staff_languages')
-      .values({ staff_id: person.id, language: 'uz' })
-      .execute();
-    await transaction
-      .insertInto('staff_subjects')
-      .values({ staff_id: person.id, subject_id: geometry.id, grades: [7] })
-      .execute();
-    await transaction
-      .insertInto('staff_statuses')
-      .values({ staff_id: person.id, status: 'active', valid_from: '2026-09-01' })
-      .execute();
-    const hours = await transaction
-      .insertInto('staff_availability')
-      .values({ branch_id: gridBranch, staff_id: person.id, valid_from: startDate })
-      .returning(['id', 'valid_until'])
-      .executeTakeFirstOrThrow();
-    await transaction
-      .insertInto('staff_availability_ranges')
-      .values(
-        [1, 2, 3, 4, 5].map((weekday) => ({
-          entry_id: hours.id,
-          branch_id: gridBranch,
-          staff_id: person.id,
-          weekday,
-          start_minutes: 0,
-          end_minutes: 1440,
-          valid_from: startDate,
-          valid_until: hours.valid_until,
-        })),
-      )
-      .execute();
-    const draft = await transaction
-      .insertInto('timetable_versions')
-      .values({
-        branch_id: gridBranch,
-        academic_year_id: year.id,
-        number: 1,
-        starts_on: isoDate(new Date(tashkentToday.getTime() + 7 * dayMs)),
-      })
-      .returning('id')
-      .executeTakeFirstOrThrow();
-    for (const [index, one] of classes.entries()) {
-      const row = await transaction
-        .insertInto('teaching_load_rows')
+  const gridScene = async (scene: {
+    branch: string;
+    vice: readonly [string, string];
+    staffId: string;
+    phone: string;
+    rooms: readonly string[];
+  }) => {
+    const gridBranch = await insertBranch(migrator, scene.branch);
+    const gridVice = await create(scene.vice[0], scene.vice[1]);
+    await transactions.run([gridBranch], (transaction) =>
+      assignments.give(transaction, {
+        accountId: gridVice.id,
+        role: 'academic_vice_principal',
+        branchId: gridBranch,
+        givenBy: null,
+      }),
+    );
+    await migrator.transaction().execute(async (transaction) => {
+      const year = await transaction
+        .insertInto('academic_years')
         .values({
           branch_id: gridBranch,
-          version_id: draft.id,
-          class_id: one.id,
-          subject_id: geometry.id,
-          teacher_id: person.id,
-          lessons_per_week: 3,
-        })
-        .returning('id')
-        .executeTakeFirstOrThrow();
-      // Monday, slot 1 (08:00–08:45) for Oxford and slot 2 (08:45–09:30) for Princeton.
-      const start = 480 + index * 45;
-      const block = await transaction
-        .insertInto('pattern_blocks')
-        .values({
-          branch_id: gridBranch,
-          version_id: draft.id,
-          weekday: 1,
-          slot_position: index + 1,
-          start_minutes: start,
-          end_minutes: start + 45,
+          start_date: startDate,
+          end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
         })
         .returning('id')
         .executeTakeFirstOrThrow();
       await transaction
-        .insertInto('pattern_entries')
+        .insertInto('quarters')
+        .values(
+          [1, 2, 3, 4].map((number) => ({
+            branch_id: gridBranch,
+            academic_year_id: year.id,
+            number,
+          })),
+        )
+        .execute();
+      const classes = [];
+      for (const name of ['Oxford', 'Princeton']) {
+        classes.push(
+          await transaction
+            .insertInto('classes')
+            .values({
+              branch_id: gridBranch,
+              academic_year_id: year.id,
+              grade: 7,
+              name,
+              language: 'uz',
+              max_size: 25,
+            })
+            .returning('id')
+            .executeTakeFirstOrThrow(),
+        );
+      }
+      const lesson = await transaction
+        .insertInto('slot_types')
+        .values({ branch_id: gridBranch, name: 'Lesson 45', kind: 'lesson' })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await transaction
+        .insertInto('slot_type_lengths')
         .values({
           branch_id: gridBranch,
-          version_id: draft.id,
-          block_id: block.id,
-          weekday: 1,
-          start_minutes: start,
-          end_minutes: start + 45,
-          load_row_id: row.id,
-          teacher_id: person.id,
+          slot_type_id: lesson.id,
+          length_minutes: 45,
+          valid_from: startDate,
         })
         .execute();
-    }
+      const template = await transaction
+        .insertInto('day_templates')
+        .values({ branch_id: gridBranch, name: 'Main' })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      const templateVersion = await transaction
+        .insertInto('day_template_versions')
+        .values({
+          branch_id: gridBranch,
+          day_template_id: template.id,
+          start_minutes: 480,
+          valid_from: startDate,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await transaction
+        .insertInto('day_template_slots')
+        .values(
+          [1, 2, 3].map((position) => ({
+            version_id: templateVersion.id,
+            branch_id: gridBranch,
+            position,
+            slot_type_id: lesson.id,
+          })),
+        )
+        .execute();
+      await transaction
+        .insertInto('day_template_assignments')
+        .values({
+          branch_id: gridBranch,
+          level: 'default',
+          day_template_id: template.id,
+          valid_from: startDate,
+        })
+        .execute();
+      const geometry = await transaction
+        .selectFrom('subjects')
+        .select('id')
+        .where('name_en', '=', 'Geometry')
+        .executeTakeFirstOrThrow();
+      const person = await transaction
+        .insertInto('staff')
+        .values({
+          kind: 'person',
+          staff_id: scene.staffId,
+          first_name: 'Zarina',
+          last_name: 'Aliyeva',
+          sex: 'female',
+          birth_date: '1987-03-21',
+          phone: scene.phone,
+          admission_date: '2026-09-01',
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await transaction
+        .insertInto('staff_branches')
+        .values({ staff_id: person.id, branch_id: gridBranch, is_main: true })
+        .execute();
+      await transaction
+        .insertInto('staff_divisions')
+        .values({
+          staff_id: person.id,
+          division_id: academic.id,
+          department_id: steam.id,
+          is_main: true,
+        })
+        .execute();
+      await transaction
+        .insertInto('staff_languages')
+        .values({ staff_id: person.id, language: 'uz' })
+        .execute();
+      await transaction
+        .insertInto('staff_subjects')
+        .values({ staff_id: person.id, subject_id: geometry.id, grades: [7] })
+        .execute();
+      await transaction
+        .insertInto('staff_statuses')
+        .values({ staff_id: person.id, status: 'active', valid_from: '2026-09-01' })
+        .execute();
+      const hours = await transaction
+        .insertInto('staff_availability')
+        .values({ branch_id: gridBranch, staff_id: person.id, valid_from: startDate })
+        .returning(['id', 'valid_until'])
+        .executeTakeFirstOrThrow();
+      await transaction
+        .insertInto('staff_availability_ranges')
+        .values(
+          [1, 2, 3, 4, 5].map((weekday) => ({
+            entry_id: hours.id,
+            branch_id: gridBranch,
+            staff_id: person.id,
+            weekday,
+            start_minutes: 0,
+            end_minutes: 1440,
+            valid_from: startDate,
+            valid_until: hours.valid_until,
+          })),
+        )
+        .execute();
+      // Task 5.4b-2a: rooms of the branch for the room picker.
+      if (scene.rooms.length > 0) {
+        const building = await transaction
+          .insertInto('buildings')
+          .values({ branch_id: gridBranch, name: 'Main building' })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        const floor = await transaction
+          .insertInto('floors')
+          .values({ branch_id: gridBranch, building_id: building.id, name: 'First' })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('rooms')
+          .values(
+            scene.rooms.map((name) => ({
+              branch_id: gridBranch,
+              floor_id: floor.id,
+              name,
+              type: 'classroom',
+              capacity: 30,
+              status: 'in_use',
+            })),
+          )
+          .execute();
+      }
+      const draft = await transaction
+        .insertInto('timetable_versions')
+        .values({
+          branch_id: gridBranch,
+          academic_year_id: year.id,
+          number: 1,
+          starts_on: isoDate(new Date(tashkentToday.getTime() + 7 * dayMs)),
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      for (const [index, one] of classes.entries()) {
+        const row = await transaction
+          .insertInto('teaching_load_rows')
+          .values({
+            branch_id: gridBranch,
+            version_id: draft.id,
+            class_id: one.id,
+            subject_id: geometry.id,
+            teacher_id: person.id,
+            lessons_per_week: 3,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        // Monday, slot 1 (08:00–08:45) for Oxford and slot 2 (08:45–09:30) for Princeton.
+        const start = 480 + index * 45;
+        const block = await transaction
+          .insertInto('pattern_blocks')
+          .values({
+            branch_id: gridBranch,
+            version_id: draft.id,
+            weekday: 1,
+            slot_position: index + 1,
+            start_minutes: start,
+            end_minutes: start + 45,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('pattern_entries')
+          .values({
+            branch_id: gridBranch,
+            version_id: draft.id,
+            block_id: block.id,
+            weekday: 1,
+            start_minutes: start,
+            end_minutes: start + 45,
+            load_row_id: row.id,
+            teacher_id: person.id,
+          })
+          .execute();
+      }
+    });
+    return gridVice;
+  };
+  const gridVice = await gridScene({
+    branch: 'Grid browser test branch',
+    vice: ['Malika', 'Saidova'],
+    staffId: 'S-269331',
+    phone: '+998935557331',
+    rooms: [],
   });
   seeded.draftGrid = { login: gridVice.login, password: gridVice.firstPassword };
+
+  // The panels of the grid (task 5.4b-2a): the same scene in a branch of its
+  // own, with two rooms for the room picker.
+  const panelsVice = await gridScene({
+    branch: 'Grid panels browser test branch',
+    vice: ['Nodira', 'Yusupova'],
+    staffId: 'S-269332',
+    phone: '+998935557332',
+    rooms: ['Room 21', 'Room 22'],
+  });
+  seeded.draftGridPanels = { login: panelsVice.login, password: panelsVice.firstPassword };
 
   // The department move (task 3.4c): a branch of its own with a year around
   // today, 7 Oxford, the attendance-only subject Cosmology of STEAM and a

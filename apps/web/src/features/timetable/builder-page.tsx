@@ -37,6 +37,7 @@ import {
   type BuilderSearch,
   type BuilderStep,
 } from './builder-search';
+import { gridMarkText } from './grid-conflicts';
 import { GridStep } from './grid-step';
 import { RulesStep } from './rules-step';
 import {
@@ -48,7 +49,7 @@ import {
 } from './timetable-api';
 import { comingQuarterStarts, StartForm } from './version-form';
 
-/** The eight steps of `06`, Building a timetable; 1 to 5 and 7 are built (tasks 5.3a, 5.3b-1 and 5.4a). */
+/** The eight steps of `06`, Building a timetable; 1 to 5 and 7 are built (tasks 5.3a, 5.3b-1 and 5.4a); step 7's mark comes with task 5.4b-2a. */
 const STEPS = [
   'templates',
   'load',
@@ -175,19 +176,26 @@ export function BuilderPage(): React.JSX.Element {
       status: t(`timetable.load.statuses.${one.status}`),
     });
 
+  // Task 5.4b-2a, decision 7: step 7 has a mark of its own, apart from the gate of generation.
   const stepReady = (key: StepKey, data: DraftReadiness | undefined): boolean | null =>
-    !hasReadiness(key) || data === undefined ? null : data[key].ready;
+    key === 'grid'
+      ? (data?.grid?.ready ?? null)
+      : !hasReadiness(key) || data === undefined
+        ? null
+        : data[key].ready;
 
   const markText = (key: StepKey, data: DraftReadiness | undefined): string =>
-    !isBuilt(key)
-      ? t('timetable.builder.later')
-      : !hasReadiness(key)
-        ? t('timetable.builder.byHand')
-        : data === undefined
-          ? ''
-          : data[key].ready
-            ? t('timetable.builder.ready')
-            : t('timetable.builder.notReady');
+    key === 'grid' && data?.grid !== undefined
+      ? gridMarkText(t, data.grid)
+      : !isBuilt(key)
+        ? t('timetable.builder.later')
+        : !hasReadiness(key)
+          ? t('timetable.builder.byHand')
+          : data === undefined
+            ? ''
+            : data[key].ready
+              ? t('timetable.builder.ready')
+              : t('timetable.builder.notReady');
 
   const data = readiness.data;
   const notReady =
