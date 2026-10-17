@@ -281,7 +281,7 @@ export class ClassesKit {
   async role(
     accountId: string,
     branch: string,
-    role: 'tutor' | 'teacher' | 'academic_vice_principal' = 'tutor',
+    role: 'tutor' | 'teacher' | 'academic_vice_principal' | 'principal' = 'tutor',
     from = new Date('2026-09-01T00:00:00+05:00'),
     until: Date | null = null,
   ): Promise<string> {

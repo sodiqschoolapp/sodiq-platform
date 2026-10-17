@@ -606,7 +606,7 @@ export const patternFactsDataSchema = z.object({
       tutorSubject: z.boolean(),
     }),
   ),
-  /** Every room of the branch and every room a stored entry holds, with its type (task 5.4b-2a, decision 12). */
+  /** Every room of the branch, with its type; an entry's room is a room of its branch (0058; task 5.4b-2a, decision 12). */
   rooms: z.array(
     z.object({
       id: z.uuid(),

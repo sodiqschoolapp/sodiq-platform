@@ -724,8 +724,8 @@ describe('the grid of a draft', () => {
       if (lesson === undefined) throw new Error('The block has no lesson.');
       return lesson;
     };
-    const readiness = async (branch: string, version: string) => {
-      const response = await get(`/api/timetable/versions/${version}/readiness`, branch);
+    const readiness = async (branch: string, version: string, cookie = t.admin) => {
+      const response = await get(`/api/timetable/versions/${version}/readiness`, branch, cookie);
       expect(response.status, JSON.stringify(response.body)).toBe(200);
       return (response.body as { grid?: unknown; ready: boolean }).grid;
     };
@@ -929,6 +929,47 @@ describe('the grid of a draft', () => {
         blocked: 1,
         warnings: 2,
       });
+      // Every role that reads the readiness reads the same mark (permission review, should-fix 3).
+      await viceIn(s.branch);
+      const principal = await t.database.migrator
+        .selectFrom('assignments')
+        .select('account_id')
+        .where('role', '=', 'principal')
+        .where('branch_id', '=', t.north)
+        .executeTakeFirstOrThrow();
+      await load.classes.role(principal.account_id, s.branch, 'principal');
+      for (const cookie of [t.vicePrincipal, t.principal]) {
+        expect(await readiness(s.branch, s.version, cookie)).toEqual({
+          ready: false,
+          blocked: 1,
+          warnings: 2,
+        });
+      }
+    });
+
+    it('answers 404 for a new teacher of another branch or an unknown one on a row with placed lessons, changing nothing (permission review, should-fix 1)', async () => {
+      const s = await scene();
+      const other = await scene();
+      await placed(s.branch, s.version, s.rowB, 1, 1);
+      await viceIn(s.branch);
+      const loadRows = () =>
+        t.database.migrator
+          .selectFrom('teaching_load_rows')
+          .selectAll()
+          .where('version_id', 'in', [s.version, other.version])
+          .orderBy('id')
+          .execute();
+      const before = [await patternRows([s.version, other.version]), await loadRows()];
+      for (const cookie of [t.vicePrincipal, t.admin]) {
+        for (const teacherId of [other.teacherB, UNKNOWN]) {
+          refusedWith(
+            await editRow(s.branch, s.version, s.rowB, teacherId, cookie),
+            404,
+            'not_found',
+          );
+        }
+      }
+      expect([await patternRows([s.version, other.version]), await loadRows()]).toEqual(before);
     });
 
     it('refuses a new teacher who is busy at a placed lesson of the row, naming the rule, and gives the lessons to a free one', async () => {
@@ -1117,6 +1158,15 @@ describe('the grid of a draft', () => {
         refusedWith(await drop(s.branch, s.version, id), 404, 'not_found');
         refusedWith(await swap(s.branch, s.version, own.id, id), 404, 'not_found');
         refusedWith(await swap(s.branch, s.version, id, own.id), 404, 'not_found');
+        // Task 5.4b-2a: nor is its room changed from here.
+        refusedWith(
+          await post(`/api/timetable/versions/${s.version}/pattern/${id}/room`, s.branch, {
+            lessonId: entry,
+            roomId: s.roomA,
+          }),
+          404,
+          'not_found',
+        );
       }
       expect(await patternRows([s.version, other.version])).toEqual(before);
     });
@@ -1124,7 +1174,14 @@ describe('the grid of a draft', () => {
     it('refuses a new teacher of a row whose placed lesson meets their lesson in another branch (review correction 1)', async () => {
       const { s, other } = await twoBranches(3);
       await placed(s.branch, s.version, s.rowB, 1, 3);
-      const before = await patternRows([s.version, other.version]);
+      const loadRows = () =>
+        t.database.migrator
+          .selectFrom('teaching_load_rows')
+          .selectAll()
+          .where('version_id', 'in', [s.version, other.version])
+          .orderBy('id')
+          .execute();
+      const before = [await patternRows([s.version, other.version]), await loadRows()];
       const response = await t.patch(
         `/api/timetable/versions/${s.version}/load/${s.rowB}`,
         s.branch,
@@ -1137,7 +1194,7 @@ describe('the grid of a draft', () => {
         },
       );
       expect(blockedRules(response)).toEqual(['teacher_double']);
-      expect(await patternRows([s.version, other.version])).toEqual(before);
+      expect([await patternRows([s.version, other.version]), await loadRows()]).toEqual(before);
     });
 
     it('saves a lesson at the time another branch’s draft plans the teacher, with the other-draft warning', async () => {
