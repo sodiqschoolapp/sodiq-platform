@@ -964,14 +964,13 @@ export class Timetable {
           const context = await this.contextOf(transaction, version);
           const before = await this.rowOf(transaction, id, rowId);
           // Task 3.6c-2, decision 1: nobody names the teacher of a Tutor row;
-          // `null` keeps the teacher of the row.
-          const tutorRow =
-            before.class_id !== null && (await this.isTutorSubject(transaction, before.subject_id));
-          if (tutorRow && input.teacherId !== null) {
+          // `null` keeps the teacher of any row.
+          if (
+            input.teacherId !== null &&
+            before.class_id !== null &&
+            (await this.isTutorSubject(transaction, before.subject_id))
+          ) {
             throw teacherField('load_tutor_row_teacher');
-          }
-          if (!tutorRow && input.teacherId === null) {
-            throw teacherField('load_teacher_needed');
           }
           const after: StoredLoadRow = {
             ...before,

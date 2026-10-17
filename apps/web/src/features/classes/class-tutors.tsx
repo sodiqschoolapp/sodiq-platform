@@ -9,6 +9,7 @@ import {
   type ClassTutorEnd,
   type ClassTutorGive,
   type ClassTutorKind,
+  type ClassTutorPreview,
   type TutorCandidate,
 } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
@@ -26,8 +27,9 @@ import { Button } from '@/components/ui/button';
 import { SECTION_TITLE } from '@/components/ui/control';
 import { useView } from '@/features/access/use-view';
 import { asFormSchema } from '@/features/people/form-schema';
+import { nameOf } from '@/features/setup/setup-api';
 import { schoolDateText } from '@/lib/dates';
-import { tutorCandidatesQuery } from './classes-api';
+import { tutorCandidatesQuery, tutorPreviewQuery } from './classes-api';
 
 /** The name of a Tutor row or a candidate: surname first, or the account without a record. */
 export function tutorName(
@@ -168,7 +170,10 @@ export function ClassTutors({ schoolClass, canEdit, panel, onGive, onEnd }: Clas
 
 /**
  * A Tutor or an acting Tutor from a date: a person holding the Tutor role in
- * the branch (decision 8). One who does not teach in the class's language is
+ * the branch (decision 8). Once a person and a date are chosen, the form shows
+ * what the give does to the class's dated Tutor lessons (task 3.6c-2,
+ * decision 10): those that go to the person, and those that will need a
+ * teacher because of a clash; they never stop the save. One who does not teach in the class's language is
  * shown, with the reason, and cannot be chosen (`05`: "blocked, not a
  * warning"); the server refuses it too.
  */
@@ -198,6 +203,14 @@ function GiveForm({
     save: onGive,
   });
   const label = kind === 'tutor' ? t('classes.giveTutor') : t('classes.setActing');
+  const assignmentId = form.bind('assignmentId').value;
+  const from = form.bind('from').value;
+  const until = form.bind('until').value;
+  const asked: ClassTutorGive | null =
+    assignmentId === '' || from === ''
+      ? null
+      : { assignmentId, kind, from, until: until === '' ? null : until };
+  const preview = useQuery(tutorPreviewQuery(branchId, schoolClass.id, asked));
   if (candidates.isError) {
     return (
       <ErrorState
@@ -259,7 +272,93 @@ function GiveForm({
       />
       <DateField label={t('classes.from')} min={schoolClass.today} {...form.bind('from')} />
       <DateField label={t('classes.until')} min={schoolClass.today} {...form.bind('until')} />
+      {asked !== null &&
+        (preview.isError ? (
+          <ErrorState
+            error={preview.error}
+            onRetry={() => {
+              void preview.refetch();
+            }}
+          />
+        ) : preview.data === undefined ? (
+          <LoadingOutline lines={1} />
+        ) : (
+          <TutorPreview
+            preview={preview.data}
+            name={(() => {
+              const chosen = candidates.data.candidates.find(
+                (one) => one.assignmentId === assignmentId,
+              );
+              return chosen === undefined ? '' : tutorName(t, chosen);
+            })()}
+          />
+        ))}
     </RecordForm>
+  );
+}
+
+/**
+ * What a give does to the dated Tutor lessons (answer 1 of 16 October 2026:
+ * the clashing lessons "are listed in the appointment's preview").
+ */
+function TutorPreview({ preview, name }: { preview: ClassTutorPreview; name: string }) {
+  const { t, i18n } = useTranslation();
+  if (
+    preview.moved.length === 0 &&
+    preview.needsTeacher.length === 0 &&
+    preview.draftRows === 0 &&
+    preview.draftEntriesRemoved === 0
+  ) {
+    return (
+      <p className="text-sm text-muted-foreground" data-tutor-preview="">
+        {t('classes.preview.none')}
+      </p>
+    );
+  }
+  return (
+    <div className="grid gap-2 text-sm" data-tutor-preview="">
+      {preview.moved.length > 0 && (
+        <p>{t('classes.preview.moved', { count: preview.moved.length, name })}</p>
+      )}
+      {preview.needsTeacher.length > 0 && (
+        <>
+          <p className="font-semibold">
+            {t('classes.preview.needsTeacher', { count: preview.needsTeacher.length })}
+          </p>
+          <ul className="grid gap-1">
+            {preview.needsTeacher.map((one) => (
+              <li key={one.lessonId}>
+                {t('classes.preview.lesson', {
+                  date: schoolDateText(one.date, i18n.language),
+                  start: one.start,
+                  end: one.end,
+                  subject: nameOf(one.subjectNames, i18n.language),
+                })}{' '}
+                {one.clashes.length === 0
+                  ? t('classes.preview.noTutor')
+                  : one.clashes
+                      .map((clash) =>
+                        clash.branchName === null
+                          ? t('classes.preview.clash', { start: clash.start, end: clash.end })
+                          : t('classes.preview.clashIn', {
+                              start: clash.start,
+                              end: clash.end,
+                              branch: clash.branchName,
+                            }),
+                      )
+                      .join(' ')}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {preview.draftRows > 0 && (
+        <p>{t('classes.preview.draftRows', { count: preview.draftRows })}</p>
+      )}
+      {preview.draftEntriesRemoved > 0 && (
+        <p>{t('classes.preview.draftEntries', { count: preview.draftEntriesRemoved })}</p>
+      )}
+    </div>
   );
 }
 

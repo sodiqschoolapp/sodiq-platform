@@ -75,6 +75,27 @@ test('an Academic Vice Principal starts a draft and adds a load row with a teach
   await expect(row).toContainText('Karimova Aziza');
   await expect(row).toContainText(texts.none);
   await screenshot(page, 'load-list');
+
+  // Task 3.6c-2 (decision 1): the Homework slot of 7 Oxford has no teacher to
+  // choose; the form names the class's Tutor, who holds the row.
+  await page.getByRole('button', { name: texts.add, exact: true }).first().click();
+  const tutorRow = page.getByRole('form', { name: texts.newRow });
+  await tutorRow.getByLabel(texts.unit, { exact: true }).selectOption({ label: '7 Oxford' });
+  await tutorRow
+    .getByLabel(texts.subject, { exact: true })
+    .selectOption({ label: 'Homework slot' });
+  await expect(
+    tutorRow.getByText(texts.tutorRowTeacher.replace('{{name}}', 'Tursunova Gulnora')),
+  ).toBeVisible();
+  await expect(tutorRow.getByLabel(texts.teacher, { exact: true })).toHaveCount(0);
+  await tutorRow.getByLabel(texts.lessons, { exact: true }).fill('1');
+  await tutorRow.getByRole('button', { name: en.form.save, exact: true }).click();
+  const homework = page
+    .getByRole('row')
+    .filter({ hasText: '7 Oxford' })
+    .filter({ hasText: 'Homework slot' });
+  await expect(homework).toContainText('Tursunova Gulnora');
+  await expect(homework).toContainText(texts.none);
 });
 
 // edge-cases/timetable.md, Structure: "all parts have equal lessons per week

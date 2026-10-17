@@ -383,6 +383,11 @@ export const en = {
     load_teacher_language:
       'That teacher or vacancy does not teach in the language of the class or group, and the subject follows the language rule. Choose another teacher.',
     load_room_closed: 'That room is closed. Choose another room, or a room type.',
+    load_no_tutor:
+      'That class has no Tutor on the start date of the version, and its Tutor holds this row. Give the class a Tutor first: Classes → the class → Give Tutor.',
+    load_tutor_row_teacher:
+      "The class's Tutor always holds this row; no teacher is chosen for it. It changes when the class's Tutor changes.",
+    load_teacher_needed: 'Choose a teacher or a vacancy for this row.',
     load_room_choice: 'Name a room or a room type, not both.',
     load_row_exists:
       'This version already has a row for that class and subject, or that group. Open that row to change it.',
@@ -2628,6 +2633,21 @@ export const en = {
     nameTaken: 'This year grade {{grade}} already has a class named «{{name}}».',
     tutors: 'Tutors',
     noTutorRows: 'No Tutor yet',
+    preview: {
+      none: 'No dated lessons change.',
+      moved_one: '{{count}} Tutor lesson goes to {{name}}.',
+      moved_other: '{{count}} Tutor lessons go to {{name}}.',
+      needsTeacher_one: '{{count}} lesson will need a teacher:',
+      needsTeacher_other: '{{count}} lessons will need a teacher:',
+      lesson: '{{date}}, {{start}}–{{end}}, {{subject}}:',
+      noTutor: 'no Tutor at that time.',
+      clash: 'busy {{start}}–{{end}}.',
+      clashIn: 'busy {{start}}–{{end}} in {{branch}}.',
+      draftRows_one: '{{count}} row of a draft timetable changes teacher.',
+      draftRows_other: '{{count}} rows of draft timetables change teacher.',
+      draftEntries_one: '{{count}} lesson of a draft goes back to the lessons to place.',
+      draftEntries_other: '{{count}} lessons of drafts go back to the lessons to place.',
+    },
     giveTutor: 'Give Tutor',
     setActing: 'Set acting Tutor',
     person: 'Person',
@@ -2962,7 +2982,8 @@ export const en = {
       noSubjectTeacher:
         '{{subject}} is in no profile of a teacher or vacancy of the branch: People → Staff → Subjects.',
       noTutorTeacher:
-        "{{subject}} is taught by the class's Tutor or a teacher with the subject; the class has no Tutor: Classes → the class → Give Tutor.",
+        "{{subject}} is held by the class's Tutor, and the class has no Tutor on the start date: Classes → the class → Give Tutor.",
+      tutorRowTeacher: "Teacher: {{name}}, the class's Tutor. It changes with the Tutor.",
       whyStatus: '{{teacher}}: not active.',
       whyGrade: '{{teacher}}: does not teach grade {{grades}}.',
       whyLanguage: '{{teacher}}: does not teach in {{language}}.',
@@ -2998,6 +3019,8 @@ export const en = {
         load_teacher_grade: 'Grade not in the profile',
         load_teacher_language: 'Language of instruction',
         load_room_closed: 'Room closed',
+        load_no_tutor: 'Class without a Tutor',
+        load_tutor_row_teacher: 'Not the class Tutor',
         load_split_and_whole: 'Class both whole and split',
         load_mixed_not_split: 'Mixed block on a group across classes',
         load_block_mixed: 'Halves disagree on the mixed block',

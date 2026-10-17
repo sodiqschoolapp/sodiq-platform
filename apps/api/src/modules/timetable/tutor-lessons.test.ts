@@ -453,28 +453,19 @@ describe('Tutor lessons follow the Tutor', () => {
         examDay,
         travelDay,
       ]);
-      expect(answer.needsTeacher.map((one) => one.clashes)).toEqual([
-        [
-          {
-            startsAt: at('2026-10-20', '09:00').toISOString(),
-            endsAt: at('2026-10-20', '09:45').toISOString(),
-            branchName: null,
-          },
-        ],
-        [
-          {
-            startsAt: at('2026-10-21', '08:30').toISOString(),
-            endsAt: at('2026-10-21', '10:00').toISOString(),
-            branchName: null,
-          },
-        ],
-        [
-          {
-            startsAt: at('2026-10-22', '09:50').toISOString(),
-            endsAt: at('2026-10-22', '10:35').toISOString(),
-            branchName: 'South',
-          },
-        ],
+      expect(answer.needsTeacher.map((one) => [one.date, one.start, one.clashes])).toEqual([
+        ['2026-10-20', '09:00', [{ start: '09:00', end: '09:45', branchName: null }]],
+        ['2026-10-21', '09:00', [{ start: '08:30', end: '10:00', branchName: null }]],
+        ['2026-10-22', '09:00', [{ start: '09:50', end: '10:35', branchName: 'South' }]],
+      ]);
+      expect(answer.moved).toEqual([
+        expect.objectContaining({
+          lessonId: free,
+          date: '2026-10-23',
+          start: '09:00',
+          end: '09:45',
+          to: expect.objectContaining({ lastName: expect.any(String) as string }) as object,
+        }),
       ]);
 
       await give(own.classId, b.assignmentId, '2026-10-19').expect(201);
@@ -544,9 +535,9 @@ describe('Tutor lessons follow the Tutor', () => {
       await preview(own.classId, b.assignmentId, '2026-10-19', southVice, south).expect(404);
       expect(await rowsOf()).toEqual(before);
       // A refusal of the give is the preview's too.
-      expect(
-        errorCode(await preview(own.classId, b.assignmentId, '2026-10-01').expect(409)),
-      ).toBe('tutor_date_past');
+      expect(errorCode(await preview(own.classId, b.assignmentId, '2026-10-01').expect(409))).toBe(
+        'tutor_date_past',
+      );
     });
   });
 

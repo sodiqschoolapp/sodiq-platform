@@ -420,10 +420,16 @@ async function previewOf(
       : await transaction
           .selectFrom('lessons')
           .innerJoin('subjects', 'subjects.id', 'lessons.subject_id')
+          .innerJoin('branches', 'branches.id', 'lessons.branch_id')
           .select([
             'lessons.id',
-            'lessons.starts_at',
-            'lessons.ends_at',
+            sql<string>`lessons.lesson_date::text`.as('date'),
+            sql<string>`to_char(lessons.starts_at at time zone branches.time_zone, 'HH24:MI')`.as(
+              'start',
+            ),
+            sql<string>`to_char(lessons.ends_at at time zone branches.time_zone, 'HH24:MI')`.as(
+              'end',
+            ),
             'subjects.name_uz',
             'subjects.name_ru',
             'subjects.name_en',
@@ -437,8 +443,9 @@ async function previewOf(
     }
     return {
       lessonId: found.id,
-      startsAt: found.starts_at.toISOString(),
-      endsAt: found.ends_at.toISOString(),
+      date: found.date,
+      start: found.start,
+      end: found.end,
       subjectNames: { uz: found.name_uz, ru: found.name_ru, en: found.name_en },
     };
   };
@@ -472,25 +479,38 @@ async function previewOf(
           .select(['id', 'name'])
           .where('id', 'in', otherBranches)
           .execute();
-  const byStart = <T extends { startsAt: string; lessonId: string }>(a: T, b: T) =>
-    a.startsAt.localeCompare(b.startsAt) || a.lessonId.localeCompare(b.lessonId);
+  const zone = await zoneOf(transaction, branchId);
+  // A clash's clock times in the branch time of the class.
+  const clockOf = async (moment: Date): Promise<string> => {
+    const { rows } = await sql<{ clock: string }>`
+      select to_char(${moment}::timestamptz at time zone ${zone}, 'HH24:MI') as clock
+    `.execute(transaction);
+    return rows[0]?.clock ?? '';
+  };
+  const byStart = <T extends { date: string; start: string; lessonId: string }>(a: T, b: T) =>
+    a.date.localeCompare(b.date) ||
+    a.start.localeCompare(b.start) ||
+    a.lessonId.localeCompare(b.lessonId);
+  const needsTeacher = [];
+  for (const one of follow.needsTeacher) {
+    const clashes = [];
+    for (const clash of one.clashes) {
+      clashes.push({
+        start: await clockOf(clash.startsAt),
+        end: await clockOf(clash.endsAt),
+        branchName:
+          clash.branchId === branchId
+            ? null
+            : (branches.find((branch) => branch.id === clash.branchId)?.name ?? ''),
+      });
+    }
+    needsTeacher.push({ ...lessonOf(one.lessonId), clashes });
+  }
   return {
     moved: follow.moved
       .map((one) => ({ ...lessonOf(one.lessonId), to: nameOf(one.to) }))
       .sort(byStart),
-    needsTeacher: follow.needsTeacher
-      .map((one) => ({
-        ...lessonOf(one.lessonId),
-        clashes: one.clashes.map((clash) => ({
-          startsAt: clash.startsAt.toISOString(),
-          endsAt: clash.endsAt.toISOString(),
-          branchName:
-            clash.branchId === branchId
-              ? null
-              : (branches.find((branch) => branch.id === clash.branchId)?.name ?? ''),
-        })),
-      }))
-      .sort(byStart),
+    needsTeacher: needsTeacher.sort(byStart),
     draftRows: follow.draftRows.length,
     draftEntriesRemoved: follow.draftEntriesRemoved.length,
   };

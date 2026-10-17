@@ -187,6 +187,7 @@ async function openPage(
           json(
             options.teachers?.('') ?? {
               teachers: [],
+              tutorRow: false,
               defaultTeacherId: null,
               excluded: [],
               noTutor: false,
@@ -351,6 +352,7 @@ describe('the teaching load page', () => {
     const calls = await openPage({
       teachers: () => ({
         teachers: [{ ...TEACHER, tutor: false }],
+        tutorRow: false,
         defaultTeacherId: null,
         excluded: [],
         noTutor: false,
@@ -395,34 +397,77 @@ describe('the teaching load page', () => {
     });
   });
 
-  it('chooses the class Tutor already for a Tutor subject, first and marked (correction 1)', async () => {
-    await openPage({
+  // 3.4a correction 1 as narrowed by task 3.6c-2 (decision 1, review
+  // correction 1): a Tutor row has no teacher to choose; the form names the
+  // class's Tutor and sends no teacher, and the server writes the Tutor.
+  it('names the class Tutor of a Tutor row and sends no teacher (task 3.6c-2)', async () => {
+    const calls = await openPage({
       teachers: () => ({
-        teachers: [
-          { ...TUTOR, tutor: true },
-          { ...TEACHER, tutor: false },
-        ],
+        tutorRow: true,
+        teachers: [{ ...TUTOR, tutor: true }],
         defaultTeacherId: TUTOR.id,
         excluded: [],
         noTutor: false,
+      }),
+      extra: {
+        [`POST /api/timetable/versions/${version(1).id}/load`]: () => json(row(1), 201),
+      },
+    });
+    const form = await openNewRow();
+    type(within(form).getByLabelText(en.timetable.load.unit), `class:${OXFORD.id}`);
+    type(within(form).getByLabelText(en.timetable.load.subject), SPIRITUAL.id);
+    const line = await waitFor(() => {
+      const found = form.querySelector('[data-tutor-row]');
+      expect(found).not.toBeNull();
+      return found;
+    });
+    expect(line?.textContent).toBe(
+      en.timetable.load.tutorRowTeacher.replace('{{name}}', 'Nazarova Lola'),
+    );
+    expect(within(form).queryByLabelText(en.timetable.load.teacher)).toBeNull();
+    type(within(form).getByLabelText(en.timetable.load.lessons), '1');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(
+        calls.find((call) => call.route === `POST /api/timetable/versions/${version(1).id}/load`)
+          ?.body,
+      ).toMatchObject({ classId: OXFORD.id, subjectId: SPIRITUAL.id, teacherId: null });
+    });
+  });
+
+  it('says that a Tutor row has nobody while the class has no Tutor', async () => {
+    await openPage({
+      teachers: () => ({
+        tutorRow: true,
+        teachers: [],
+        defaultTeacherId: null,
+        excluded: [],
+        noTutor: true,
       }),
     });
     const form = await openNewRow();
     type(within(form).getByLabelText(en.timetable.load.unit), `class:${OXFORD.id}`);
     type(within(form).getByLabelText(en.timetable.load.subject), SPIRITUAL.id);
-    const teacher = await within(form).findByLabelText<HTMLSelectElement>(
-      en.timetable.load.teacher,
-    );
-    await waitFor(() => {
-      expect(teacher.value).toBe(TUTOR.id);
+    const line = await waitFor(() => {
+      const found = form.querySelector('[data-tutor-row]');
+      expect(found).not.toBeNull();
+      return found;
     });
-    expect(teacher.options[1]?.textContent).toBe('Nazarova Lola (Tutor)');
+    expect(line?.textContent).toBe(
+      en.timetable.load.noTutorTeacher.replace('{{subject}}', SPIRITUAL.names.en),
+    );
   });
 
   // Task 3.5b, H30 of issue #105: why no teacher can take the row.
   it("names a subject in nobody's profile with a link to Staff", async () => {
     await openPage({
-      teachers: () => ({ teachers: [], defaultTeacherId: null, excluded: [], noTutor: false }),
+      teachers: () => ({
+        tutorRow: false,
+        teachers: [],
+        defaultTeacherId: null,
+        excluded: [],
+        noTutor: false,
+      }),
     });
     const form = await openNewRow();
     type(within(form).getByLabelText(en.timetable.load.unit), `class:${OXFORD.id}`);
@@ -437,6 +482,7 @@ describe('the teaching load page', () => {
     await openPage({
       teachers: () => ({
         teachers: [],
+        tutorRow: false,
         defaultTeacherId: null,
         excluded: [
           { ...TEACHER, reason: 'grade', blockGroup: null },
@@ -476,6 +522,7 @@ describe('the teaching load page', () => {
     await openPage({
       teachers: () => ({
         teachers: [{ ...TEACHER, tutor: false }],
+        tutorRow: false,
         defaultTeacherId: null,
         excluded: [],
         noTutor: false,
@@ -637,6 +684,7 @@ describe('the teaching load page: splits, groups and weekly totals', () => {
     const calls = await openPage({
       teachers: () => ({
         teachers: [{ ...TEACHER, tutor: false }],
+        tutorRow: false,
         defaultTeacherId: null,
         excluded: [],
         noTutor: false,
@@ -714,6 +762,7 @@ describe('the teaching load page: splits, groups and weekly totals', () => {
     const calls = await openPage({
       teachers: () => ({
         teachers: [{ ...TEACHER, tutor: false }],
+        tutorRow: false,
         defaultTeacherId: null,
         excluded: [],
         noTutor: false,

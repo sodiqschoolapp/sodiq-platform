@@ -116,7 +116,7 @@ const loadRowFieldsSchema = z.object({
    * One teacher or one vacancy (06, Model). `null` on a Tutor row (a Tutor
    * subject on a class row), whose teacher the server writes: the class's
    * Tutor (task 3.6c-2, decision 1); a teacher sent there is refused
-   * (`load_tutor_row_teacher`), and `null` on any other row too
+   * (`load_tutor_row_teacher`); a new row that is not a Tutor row needs one
    * (`load_teacher_needed`). On an edit, `null` keeps the teacher.
    */
   teacherId: z.uuid().nullable(),

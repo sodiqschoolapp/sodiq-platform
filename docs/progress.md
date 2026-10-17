@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 17 October 2026: task 3.6c-2 The owner's answers of 15 October: Tutor lessons follow the Tutor
+
+- Built answer 2 of 15 October and answer 1 of 16 October (issue #42): a Tutor row (Maʼnaviyat soati, the Homework slot) holds the class's Tutor, written by the server; the load routes take no teacher for it and the database refuses another (migration 0067, `load_no_tutor`, `load_tutor_row_teacher`).
+- `followTutors` (`apps/api/src/modules/timetable/tutor-lessons.ts`): on every change of a class's Tutors, the dated Tutor lessons dated after today take the Tutor in force at their start, or need a teacher on a clash (`checkTeacherTime`, `teacher_claims_elsewhere`); drafts re-point their Tutor rows; each path audits it. `POST api/classes/:id/tutors/preview` shows it on the give form.
+- Rule engine: `tutorAt`, `isTutorRow`, `checkTeacherTime`; `tutorStaffIds` is `tutorOnStart` everywhere.
+- Left out: notices and the "changed" mark (5.5c), publish (5.5a, 5.5b), one-day changes, absences and substitutions on Tutor lessons (5.6a, 5.7a, 5.7b), each with a "From 3.6c-2" line; the handbook (paused). The browser test was not run here (the installed Chromium does not match Playwright); CI runs it.
+
+The next sessions must know:
+
+- Read a class's Tutor only through `tutorAt` (TypeScript) or `class_tutor_on` (SQL). A new path that changes `class_tutors` calls `followTutors` in its transaction and puts `auditOf` in its entry.
+- A test that needs a Tutor row of another teacher writes it with `LoadKit.rowAsBefore`; `LessonsKit.source` takes `rowTeacherId` for a Tutor row.
+- The next task is 5.3.
+
 ## 16 October 2026: task 3.6c-1 The owner's answers of 15 October: the year result and no extra lessons
 
 - Built L210 and answer 1 of issue #42: `yearResult` means the quarter results as published (each rounded half up), exactly, and rounds once more (50, 50, 49, 50 give 49.75, shown 50, grade 3); `CALC_VERSION` 2; reference journal `year-50-50-49-50.json`.

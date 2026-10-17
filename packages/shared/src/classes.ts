@@ -181,27 +181,27 @@ export type ClassTutorGive = z.infer<typeof classTutorGiveSchema>;
  * clash in another branch, decision 13), and the draft rows and pattern
  * entries that change. Nothing is written.
  */
+/** A clock time in branch time, "09:00". */
+const clockTimeSchema = z.string().regex(/^\d{2}:\d{2}$/);
+
+/** A dated lesson as the preview names it: its school date and clock times in branch time. */
+const previewLessonSchema = z.object({
+  lessonId: z.uuid(),
+  date: schoolDateSchema,
+  start: clockTimeSchema,
+  end: clockTimeSchema,
+  subjectNames: z.object({ uz: z.string(), ru: z.string(), en: z.string() }),
+});
+
 export const classTutorPreviewSchema = z.object({
-  moved: z.array(
-    z.object({
-      lessonId: z.uuid(),
-      startsAt: z.iso.datetime(),
-      endsAt: z.iso.datetime(),
-      subjectNames: z.object({ uz: z.string(), ru: z.string(), en: z.string() }),
-      to: personNameSchema.nullable(),
-    }),
-  ),
+  moved: z.array(previewLessonSchema.extend({ to: personNameSchema.nullable() })),
   needsTeacher: z.array(
-    z.object({
-      lessonId: z.uuid(),
-      startsAt: z.iso.datetime(),
-      endsAt: z.iso.datetime(),
-      subjectNames: z.object({ uz: z.string(), ru: z.string(), en: z.string() }),
+    previewLessonSchema.extend({
       /** Empty: no Tutor is in force at the lesson's start. */
       clashes: z.array(
         z.object({
-          startsAt: z.iso.datetime(),
-          endsAt: z.iso.datetime(),
+          start: clockTimeSchema,
+          end: clockTimeSchema,
           /** `null`: this branch. */
           branchName: z.string().nullable(),
         }),
