@@ -57,6 +57,8 @@ export interface PatternRowData {
   readonly mixedBlock: boolean;
   /** "Whether double lessons are allowed" (05, Teaching load; task 5.4c-3a, decision 2). */
   readonly doubleLessons: boolean;
+  /** Marked "deliberately short" with a reason (`short_reason`; task 5.5a-1, decision 8). */
+  readonly deliberatelyShort: boolean;
   /** The rows of its block, the row included, sorted (`blockOf`); the row alone for a class row. */
   readonly block: readonly string[];
 }
@@ -224,8 +226,7 @@ export function factsFromData(data: PatternFactsData): Facts {
   const loadRows: EngineLoadRow[] = data.rows.map((row) => ({
     id: row.id,
     lessonsPerWeek: row.lessonsPerWeek,
-    // Stored with publish (5.5a).
-    deliberatelyShort: false,
+    deliberatelyShort: row.deliberatelyShort,
     doubleLessons: row.doubleLessons,
     block: row.block,
     partners: partnersIn(data, row),

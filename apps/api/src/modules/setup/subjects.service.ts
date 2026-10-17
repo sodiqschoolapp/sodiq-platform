@@ -44,6 +44,7 @@ import {
   type DepartmentChange,
 } from '../people/department-moves.js';
 import { refuseTeachersOutside } from '../people/subject-teachers.js';
+import { dailyWeightsFit, quarterWeightsFit } from './subject-weights.js';
 import { changesOf, notFound, refusingConstraints, refusingDuplicates } from './setup-refusals.js';
 
 /** The field of the record each unique index of the names covers. */
@@ -1015,14 +1016,10 @@ export class Subjects {
       const graded = row.journal_type === 'graded';
       const shown = departmentInForce(row, today);
       const own = daily.find(
-        (weights) => weights.subject_id === row.id && weights.weights_round === row.weights_round,
+        (weights) => weights.subject_id === row.id && dailyWeightsFit(row, weights),
       );
       const fitting = weights.filter(
-        (stored) =>
-          stored.subject_id === row.id &&
-          stored.weights_round === row.weights_round &&
-          stored.rating_round === row.rating_round &&
-          (stored.rating_exam !== null) === row.rating_exam,
+        (stored) => stored.subject_id === row.id && quarterWeightsFit(row, stored),
       ).length;
       return {
         id: row.id,

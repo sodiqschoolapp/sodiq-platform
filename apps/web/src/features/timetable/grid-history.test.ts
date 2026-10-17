@@ -57,6 +57,7 @@ const row = (id: string, block: string[] = [id]): PatternRowData => ({
   lessonsPerWeek: 3,
   mixedBlock: false,
   doubleLessons: false,
+  deliberatelyShort: false,
   block,
 });
 

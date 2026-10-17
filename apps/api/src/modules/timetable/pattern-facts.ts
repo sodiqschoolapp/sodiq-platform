@@ -352,6 +352,7 @@ export async function readPatternFacts(
         lessonsPerWeek: row.lessons_per_week,
         mixedBlock: row.mixed_block,
         doubleLessons: row.double_lessons,
+        deliberatelyShort: (row.short_reason ?? null) !== null,
         block: block.length === 0 ? [row.id] : block.map((one) => one.id).sort(),
       };
     }),

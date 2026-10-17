@@ -881,6 +881,7 @@ export interface TeachingLoadRows {
   mixed_block: Generated<boolean>;
   room_id: string | null;
   room_type: string | null;
+  short_reason: string | null;
   subject_id: string;
   teacher_id: string;
   version_id: string;
@@ -934,6 +935,7 @@ export interface TimetableVersions {
   id: Generated<string>;
   left_rows: Generated<Json>;
   number: number;
+  out_of_date_at: Timestamp | null;
   rules_confirmed: Json | null;
   starts_on: string;
   status: Generated<string>;

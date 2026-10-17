@@ -64,7 +64,7 @@ const PATTERN_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   pattern_double_pair: 'pattern_clash',
 };
 
-async function refusingPattern<T>(work: () => Promise<T>): Promise<T> {
+export async function refusingPattern<T>(work: () => Promise<T>): Promise<T> {
   try {
     return await refusingConstraints(work, PATTERN_REFUSALS);
   } catch (error) {
@@ -92,7 +92,7 @@ function lockRecordOf(lock: TimetableLock): TimetableLockRecord {
 }
 
 /** What a write reads of its draft: the rows, the engine's input and the placed blocks. */
-interface PatternState {
+export interface PatternState {
   /** The account of the request, for the version's edit lock in the answer (task 5.4c-1). */
   readonly accountId: string;
   readonly version: VersionRow;
@@ -806,13 +806,18 @@ export class TimetablePattern {
     return block.id;
   }
 
-  private async stateOf(
+  /**
+   * What a write reads of its draft. Publish (task 5.5a-1) reads it on the
+   * start date it is checked on, with the Tutor rows of that date (`stored`).
+   */
+  async stateOf(
     transaction: Transaction,
     version: VersionRow,
     accountId: string,
+    stored?: StoredLoadRow[],
   ): Promise<PatternState> {
     const context = await this.timetable.contextOf(transaction, version);
-    const rows = await this.timetable.rowsOf(transaction, version.id);
+    const rows = stored ?? (await this.timetable.rowsOf(transaction, version.id));
     const load = await LoadFacts.of(transaction, context, rows, { versionRows: rows });
     const pattern = await readPatternFacts(transaction, context, rows, load);
     const [blocks, locks] = await Promise.all([

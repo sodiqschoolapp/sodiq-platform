@@ -183,6 +183,9 @@ export const AUDIT_ACTION_GROUPS = {
     // Task 5.3b-1: step 5 of the builder.
     'timetable_version.preferences',
     'timetable_version.rules_confirm',
+    // Task 5.5a-1: publish, and the drafts it marks out of date.
+    'timetable_version.publish',
+    'timetable_version.out_of_date',
     // Task 5.3b-2: pinned lessons of step 5.
     'timetable_pin.create',
     'timetable_pin.delete',

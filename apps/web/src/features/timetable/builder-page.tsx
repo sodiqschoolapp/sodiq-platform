@@ -13,6 +13,7 @@ import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FailureAlert } from '@/components/failure-alert';
+import { WarningIcon } from '@/components/icons';
 import { SelectField } from '@/components/field';
 import { PageHeader } from '@/components/page-header';
 import { EmptyState, ErrorState, LoadingOutline } from '@/components/states';
@@ -41,6 +42,7 @@ import { gridMarkText } from './grid-conflicts';
 import { EditLockBanner, useEditLock } from './edit-lock';
 import { GridStep } from './grid-step';
 import { useGridHistory } from './use-grid-history';
+import { PublishStep } from './publish-step';
 import { RulesStep } from './rules-step';
 import {
   confirmTemplates,
@@ -51,7 +53,7 @@ import {
 } from './timetable-api';
 import { comingQuarterStarts, StartForm } from './version-form';
 
-/** The eight steps of `06`, Building a timetable; 1 to 5 and 7 are built (tasks 5.3a, 5.3b-1 and 5.4a); step 7's mark comes with task 5.4b-2a. */
+/** The eight steps of `06`, Building a timetable; 1 to 5, 7 and 8 are built (tasks 5.3a, 5.3b-1, 5.4a and 5.5a-1); step 7's mark comes with task 5.4b-2a. */
 const STEPS = [
   'templates',
   'load',
@@ -179,29 +181,40 @@ export function BuilderPage(): React.JSX.Element {
     t('timetable.load.versionOption', {
       number: one.number,
       year: one.yearName,
-      status: t(`timetable.load.statuses.${one.status}`),
+      // Task 5.5a-1, decision 4: a draft that a publish marked says so.
+      status: one.outOfDate
+        ? t('timetable.load.statuses.outOfDate')
+        : t(`timetable.load.statuses.${one.status}`),
     });
 
   // Task 5.4b-2a, decision 7: step 7 has a mark of its own, apart from the gate of generation.
   const stepReady = (key: StepKey, data: DraftReadiness | undefined): boolean | null =>
-    key === 'grid'
-      ? (data?.grid?.ready ?? null)
-      : !hasReadiness(key) || data === undefined
-        ? null
-        : data[key].ready;
+    key === 'publish'
+      ? chosen.status === 'published'
+        ? true
+        : null
+      : key === 'grid'
+        ? (data?.grid?.ready ?? null)
+        : !hasReadiness(key) || data === undefined
+          ? null
+          : data[key].ready;
 
   const markText = (key: StepKey, data: DraftReadiness | undefined): string =>
-    key === 'grid' && data?.grid !== undefined
-      ? gridMarkText(t, data.grid)
-      : !isBuilt(key)
-        ? t('timetable.builder.later')
-        : !hasReadiness(key)
-          ? t('timetable.builder.byHand')
-          : data === undefined
-            ? ''
-            : data[key].ready
-              ? t('timetable.builder.ready')
-              : t('timetable.builder.notReady');
+    key === 'publish'
+      ? chosen.status === 'published'
+        ? t('timetable.load.statuses.published')
+        : t('timetable.builder.notPublished')
+      : key === 'grid' && data?.grid !== undefined
+        ? gridMarkText(t, data.grid)
+        : !isBuilt(key)
+          ? t('timetable.builder.later')
+          : !hasReadiness(key)
+            ? t('timetable.builder.byHand')
+            : data === undefined
+              ? ''
+              : data[key].ready
+                ? t('timetable.builder.ready')
+                : t('timetable.builder.notReady');
 
   const data = readiness.data;
   const notReady =
@@ -528,6 +541,17 @@ export function BuilderPage(): React.JSX.Element {
         onHistory={setGridHistory}
       />
     );
+  } else if (step === 'publish') {
+    panel = (
+      <PublishStep
+        key={chosen.id}
+        version={chosen}
+        canEdit={canEdit}
+        onOpenGrid={() => {
+          go({ version: chosen.id, step: 'grid' });
+        }}
+      />
+    );
   } else {
     panel = <p className="text-sm text-muted-foreground">{t('timetable.builder.laterText')}</p>;
   }
@@ -553,6 +577,12 @@ export function BuilderPage(): React.JSX.Element {
               }}
             />
           </div>
+          {chosen.outOfDate && (
+            <p className="flex items-center gap-2 text-sm" data-out-of-date="true">
+              <WarningIcon aria-hidden="true" className="size-4 shrink-0" />
+              {t('timetable.builder.outOfDate')}
+            </p>
+          )}
           {data !== undefined && (
             <p className="text-sm font-semibold" data-ready={data.ready ? 'true' : 'false'}>
               {data.ready

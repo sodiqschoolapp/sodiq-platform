@@ -119,6 +119,8 @@ export interface StoredLoadRow {
   readonly room_type: string | null;
   readonly double_lessons: boolean;
   readonly mixed_block: boolean;
+  /** "Deliberately short" with its reason (task 5.5a-1); absent where no rule reads it. */
+  readonly short_reason?: string | null;
 }
 
 const unique = (ids: readonly (string | null)[]): string[] =>
@@ -669,6 +671,7 @@ export class LoadFacts {
       roomType: row.room_type === null ? null : roomTypeOf(row.room_type),
       doubleLessons: row.double_lessons,
       mixedBlock: row.mixed_block,
+      shortReason: row.short_reason ?? null,
       block: this.blockNamesOf(row),
       unplaced: this.unplaced.get(row.id) ?? 0,
       problems: [...problems],

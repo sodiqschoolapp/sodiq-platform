@@ -1,0 +1,1167 @@
+import { randomUUID } from 'node:crypto';
+import {
+  BRANCH_HEADER,
+  REQUEST_KEY_HEADER,
+  publishCheckSchema,
+  timetableVersionSchema,
+  type PublishCheck,
+  type TimetableVersion,
+} from '@sodiq/shared';
+import { sql } from 'kysely';
+import request, { type Response } from 'supertest';
+import { Transactions, type Transaction } from '../../database/transactions.js';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import {
+  dayTemplatesKit,
+  MONDAY,
+  TODAY,
+  TOMORROW,
+  UNKNOWN,
+  type DayTemplatesKit,
+} from '../../testing/day-templates-kit.js';
+import { LoadKit } from '../../testing/load-kit.js';
+import { errorCode } from '../../testing/sign-in-kit.js';
+
+const refusedWith = (response: Response, status: number, code: string) => {
+  expect(response.status, JSON.stringify(response.body)).toBe(status);
+  expect(errorCode(response)).toBe(code);
+};
+
+const versionOf = (response: Response): TimetableVersion => {
+  expect(response.status, JSON.stringify(response.body)).toBe(200);
+  return timetableVersionSchema.parse(response.body);
+};
+
+const checkOf = (response: Response): PublishCheck => {
+  expect(response.status, JSON.stringify(response.body)).toBe(200);
+  return publishCheckSchema.parse(response.body);
+};
+
+/** The codes of a `publish_blocked`, each with its path. */
+const blockedBy = (response: Response): { code: string; path: string }[] => {
+  refusedWith(response, 409, 'publish_blocked');
+  const body = response.body as { error: { details: { code: string; path: string }[] } };
+  return body.error.details.map((detail) => ({ code: detail.code, path: detail.path }));
+};
+
+/** The quarters of the year 2026-09-01 to 2027-05-31, dated. */
+const QUARTERS = [
+  ['2026-09-01', '2026-10-31'],
+  ['2026-11-09', '2026-12-28'],
+  ['2027-01-11', '2027-03-20'],
+  ['2027-03-30', '2027-05-31'],
+] as const;
+
+// All names are invented. Task 5.5a-1, pull request #139: publish
+// (docs/spec/06-timetable.md, Editing in the grid: "Publish: confirm the
+// start date set at step 1, or change it ... A draft with errors cannot be
+// published"; How surprises are prevented, Start date: "next Monday by default
+// and tomorrow at the earliest, with the first day of each coming quarter
+// offered as a shortcut"; edge/timetable, Versions and drafts and Generator
+// and editing). The clock stands at 23:55 on Saturday 10 October 2026 in
+// Tashkent: tomorrow is Sunday the 11th, next Monday the 12th.
+describe('publish', () => {
+  let t: DayTemplatesKit;
+  let load: LoadKit;
+
+  beforeAll(async () => {
+    // A takeover of the edit lock notifies the earlier holder, through the job queue.
+    t = await dayTemplatesKit({ jobs: true });
+    load = new LoadKit(t.database.migrator);
+  });
+
+  afterAll(async () => {
+    await t.close();
+  });
+
+  const get = (path: string, branch: string, cookie = t.admin) => t.get(path, branch, cookie);
+  const post = (path: string, branch: string, body: object = {}, cookie = t.admin) =>
+    t.post(path, branch, body, cookie);
+
+  const check = (branch: string, version: string, startsOn: string, cookie = t.admin) =>
+    get(`/api/timetable/versions/${version}/publish-check?startsOn=${startsOn}`, branch, cookie);
+  const publish = (
+    branch: string,
+    version: string,
+    startsOn: string,
+    cookie = t.admin,
+    key: string = randomUUID(),
+  ) =>
+    request(t.kit.server)
+      .post(`/api/timetable/versions/${version}/publish`)
+      .set('Cookie', cookie)
+      .set(BRANCH_HEADER, branch)
+      .set(REQUEST_KEY_HEADER, key)
+      .send({ startsOn });
+
+  /** Until `count` sessions of the test database wait for an advisory lock. */
+  async function waitForAdvisory(count: number) {
+    for (let tries = 0; tries < 200; tries += 1) {
+      const waiting = await sql<{ n: number }>`
+        select count(*)::int as n from pg_locks l
+        join pg_stat_activity a on a.pid = l.pid
+        where a.datname = current_database() and l.locktype = 'advisory' and not l.granted
+      `.execute(t.database.migrator);
+      if ((waiting.rows[0]?.n ?? 0) >= count) return;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    throw new Error('The requests never waited for the publish lock.');
+  }
+
+  /** Hours of a person in the branch from 1 September, Monday to Friday, all day. */
+  async function hours(
+    branch: string,
+    staffId: string,
+    [start, end]: readonly [number, number] = [0, 1440],
+  ) {
+    const entry = await t.database.migrator
+      .insertInto('staff_availability')
+      .values({ branch_id: branch, staff_id: staffId, valid_from: '2026-09-01' })
+      .returning(['id', 'valid_until'])
+      .executeTakeFirstOrThrow();
+    for (const weekday of [1, 2, 3, 4, 5]) {
+      await t.database.migrator
+        .insertInto('staff_availability_ranges')
+        .values({
+          entry_id: entry.id,
+          branch_id: branch,
+          staff_id: staffId,
+          weekday,
+          start_minutes: start,
+          end_minutes: end,
+          valid_from: '2026-09-01',
+          valid_until: entry.valid_until,
+        })
+        .execute();
+    }
+  }
+
+  async function datedQuarters(year: string) {
+    for (const [index, [start, end]] of QUARTERS.entries()) {
+      await t.database.migrator
+        .updateTable('quarters')
+        .set({ start_date: start, end_date: end })
+        .where('academic_year_id', '=', year)
+        .where('number', '=', index + 1)
+        .execute();
+    }
+  }
+
+  const draft = async (branch: string, year: string, copyFrom: string | null = null) => {
+    const created = await post('/api/timetable/versions', branch, {
+      academicYearId: year,
+      startsOn: MONDAY,
+      copyFrom,
+    });
+    expect(created.status, JSON.stringify(created.body)).toBe(201);
+    return (created.body as { id: string }).id;
+  };
+
+  const placeAt = async (branch: string, version: string, loadRowId: string, weekday: number) => {
+    const placed = await post(`/api/timetable/versions/${version}/pattern`, branch, {
+      loadRowId,
+      weekday,
+      slotPosition: 1,
+    });
+    expect(placed.status, JSON.stringify(placed.body)).toBe(201);
+  };
+
+  const confirmTemplates = async (branch: string, version: string) => {
+    const confirmed = await post(`/api/timetable/versions/${version}/templates/confirm`, branch);
+    expect(confirmed.status, JSON.stringify(confirmed.body)).toBe(200);
+  };
+
+  /**
+   * A branch of its own with a year of four dated quarters, a day of lesson,
+   * break, lesson, break, lesson (positions 1 to 5) on every weekday, a class
+   * of grade 7 with its main classroom, and a draft from Monday with one row
+   * of `lessons` a week placed `placed` times (Monday, Tuesday ...) and its
+   * templates confirmed: a draft that can be published.
+   */
+  async function scene(
+    input: {
+      journalType?: 'graded' | 'attendance_only';
+      lessons?: number;
+      placed?: number;
+      /** The start of the day's template, 08:00 unless named. */
+      startTime?: string;
+      /** The teacher's hours each weekday, all day unless named. */
+      hoursRange?: readonly [number, number];
+      /** Another teacher than one of the branch's own. */
+      teacherFor?: (branch: string, subject: string) => Promise<string>;
+    } = {},
+  ) {
+    const branch = await t.newBranch();
+    const year = await load.classes.year(branch);
+    await datedQuarters(year);
+    const lesson = await t.createSlotType(branch, 'Lesson', 'lesson', 45);
+    const pause = await t.createSlotType(branch, 'Break', 'break', 10);
+    const regular = await t.createTemplate(
+      branch,
+      'Regular',
+      [lesson, pause, lesson, pause, lesson],
+      input.startTime,
+    );
+    await t.assign(branch, regular);
+    const subject = await load.classes.subject({
+      grades: [7],
+      journalType: input.journalType ?? 'attendance_only',
+    });
+    const room = await load.classes.room(branch);
+    const classId = await load.classes.schoolClass(branch, year, { grade: 7, room });
+    let teacherId: string;
+    if (input.teacherFor === undefined) {
+      teacherId = (await load.teacher(branch, { subjects: [{ subject, grades: [7] }] })).staffId;
+      await hours(branch, teacherId, input.hoursRange);
+    } else {
+      teacherId = await input.teacherFor(branch, subject);
+    }
+    const version = await draft(branch, year);
+    const rowId = await load.row({
+      branch_id: branch,
+      version_id: version,
+      class_id: classId,
+      subject_id: subject,
+      teacher_id: teacherId,
+      lessons_per_week: input.lessons ?? 1,
+    });
+    for (let index = 0; index < (input.placed ?? 1); index += 1) {
+      await placeAt(branch, version, rowId, index + 1);
+    }
+    await confirmTemplates(branch, version);
+    return { branch, year, subject, room, classId, teacherId, version, rowId };
+  }
+
+  /** A second draft of a scene, not a copy, with the same row placed on Monday and its templates confirmed. */
+  const placedDraft = async (s: {
+    branch: string;
+    year: string;
+    classId: string;
+    subject: string;
+    teacherId: string;
+  }) => {
+    const version = await draft(s.branch, s.year);
+    const rowId = await load.row({
+      branch_id: s.branch,
+      version_id: version,
+      class_id: s.classId,
+      subject_id: s.subject,
+      teacher_id: s.teacherId,
+      lessons_per_week: 1,
+    });
+    await placeAt(s.branch, version, rowId, 1);
+    await confirmTemplates(s.branch, version);
+    return version;
+  };
+
+  /** A copy of a version with its one row placed on Monday and its templates confirmed. */
+  const placedCopy = async (branch: string, year: string, from: string) => {
+    const copy = await draft(branch, year, from);
+    const row = await t.database.migrator
+      .selectFrom('teaching_load_rows')
+      .select('id')
+      .where('version_id', '=', copy)
+      .executeTakeFirstOrThrow();
+    await placeAt(branch, copy, row.id, 1);
+    await confirmTemplates(branch, copy);
+    return copy;
+  };
+
+  /** The kit's Academic Vice Principal, given the role in a branch of a scene too. */
+  const viceIn = async (branch: string) => {
+    const vice = await t.database.migrator
+      .selectFrom('assignments')
+      .select('account_id')
+      .where('id', '=', t.viceAssignment)
+      .executeTakeFirstOrThrow();
+    return load.classes.role(vice.account_id, branch, 'academic_vice_principal');
+  };
+
+  const versionRow = (id: string) =>
+    t.database.migrator
+      .selectFrom('timetable_versions')
+      .selectAll()
+      .where('id', '=', id)
+      .executeTakeFirstOrThrow();
+
+  /** Every row a publish writes, in both branches named: what a refused one must leave. */
+  /**
+   * Every row a publish writes, in every branch of the versions named, each
+   * column: what a refused one must leave as it was (`.claude/rules/api.md`).
+   */
+  const written = async (versions: readonly string[]) => {
+    const branches = (
+      await t.database.migrator
+        .selectFrom('timetable_versions')
+        .select('branch_id')
+        .distinct()
+        .where('id', 'in', versions)
+        .execute()
+    ).map((one) => one.branch_id);
+    return Promise.all([
+      t.database.migrator
+        .selectFrom('timetable_versions')
+        .selectAll()
+        .where('branch_id', 'in', branches)
+        .orderBy('id')
+        .execute(),
+      t.database.migrator
+        .selectFrom('teaching_load_rows')
+        .selectAll()
+        .where('branch_id', 'in', branches)
+        .orderBy('id')
+        .execute(),
+      t.database.migrator
+        .selectFrom('pattern_entries')
+        .selectAll()
+        .where('branch_id', 'in', branches)
+        .orderBy('id')
+        .execute(),
+      t.database.migrator.selectFrom('notifications').selectAll().orderBy('id').execute(),
+      // A takeover of the edit lock enqueues the delivery of its notice (permission review, should-fix 4).
+      sql<{ id: string; name: string }>`select id, name from pgboss.job order by id`
+        .execute(t.database.migrator)
+        .then((result) => result.rows),
+      t.database.migrator.selectFrom('request_keys').selectAll().orderBy('key').execute(),
+      t.auditCount(),
+    ]);
+  };
+
+  /**
+   * What a publish of the scene's draft would change besides itself: another
+   * draft to mark, a Tutor row whose Tutor changes on 19 October, and a stale
+   * edit lock to take over.
+   */
+  async function withMoreToChange(s: {
+    branch: string;
+    year: string;
+    classId: string;
+    version: string;
+  }) {
+    await draft(s.branch, s.year);
+    const tutorSubject = await load.tutorSubject({ grades: [7] });
+    const first = await load.teacher(s.branch);
+    const second = await load.teacher(s.branch);
+    const changeover = new Date('2026-10-19T00:00:00+05:00');
+    await load.tutorOf(s.branch, s.classId, first.accountId, { until: changeover });
+    await load.tutorOf(s.branch, s.classId, second.accountId, { from: changeover });
+    const created = await post(`/api/timetable/versions/${s.version}/load`, s.branch, {
+      classId: s.classId,
+      groupId: null,
+      subjectId: tutorSubject,
+      teacherId: null,
+      lessonsPerWeek: 1,
+      roomId: null,
+      roomType: null,
+      doubleLessons: false,
+    });
+    expect(created.status, JSON.stringify(created.body)).toBe(201);
+    const holder = await t.database.migrator
+      .selectFrom('assignments')
+      .select('account_id')
+      .where('role', '=', 'teacher')
+      .where('branch_id', '=', t.north)
+      .executeTakeFirstOrThrow();
+    await t.database.migrator
+      .updateTable('timetable_versions')
+      .set({
+        edit_holder_id: holder.account_id,
+        edit_seen_at: new Date(t.clock.now().getTime() - 10 * 60_000),
+      })
+      .where('id', '=', s.version)
+      .execute();
+  }
+
+  describe('a draft that can be published', () => {
+    it('offers tomorrow at the earliest, next Monday and the coming quarters, with nothing refused', async () => {
+      const s = await scene();
+      const answer = checkOf(await check(s.branch, s.version, MONDAY));
+      expect(answer).toEqual({
+        startsOn: MONDAY,
+        earliest: TOMORROW,
+        defaultStart: MONDAY,
+        quarterStarts: ['2026-11-09', '2027-01-11', '2027-03-30'],
+        refusals: [],
+        warnings: [],
+        canPublish: true,
+      });
+      // The check writes nothing (decision 13).
+      expect((await versionRow(s.version)).status).toBe('draft');
+    });
+
+    it('publishes in one audited write, read only afterwards, and marks nothing it need not', async () => {
+      const s = await scene();
+      const assignment = await viceIn(s.branch);
+      await load.freeEditLock(s.version);
+      const response = await publish(s.branch, s.version, MONDAY, t.vicePrincipal);
+      const answer = versionOf(response);
+      expect(answer).toMatchObject({ status: 'published', startsOn: MONDAY, outOfDate: false });
+      expect(answer.editLock).toBeNull();
+      const [entry] = await t.entries('timetable_version.publish', s.version);
+      expect(entry).toMatchObject({
+        assignment_id: assignment,
+        request_id: response.headers['x-request-id'],
+        old_value: { status: 'draft', startsOn: MONDAY },
+        new_value: {
+          status: 'published',
+          startsOn: MONDAY,
+          inForceBefore: null,
+          markedOutOfDate: [],
+        },
+      });
+      // A published version is read only: its load and its grid no longer change.
+      refusedWith(await publish(s.branch, s.version, MONDAY), 409, 'version_not_draft');
+      const placed = await post(`/api/timetable/versions/${s.version}/pattern`, s.branch, {
+        loadRowId: s.rowId,
+        weekday: 3,
+        slotPosition: 1,
+      });
+      refusedWith(placed, 409, 'version_not_draft');
+      expect(checkOf(await check(s.branch, s.version, '2026-10-19')).canPublish).toBe(false);
+    });
+
+    it('lets the Principal read the check', async () => {
+      const s = await scene();
+      const principal = await t.database.migrator
+        .selectFrom('assignments')
+        .select('account_id')
+        .where('role', '=', 'principal')
+        .where('branch_id', '=', t.north)
+        .executeTakeFirstOrThrow();
+      await load.classes.role(principal.account_id, s.branch, 'principal');
+      expect(checkOf(await check(s.branch, s.version, MONDAY, t.principal)).canPublish).toBe(true);
+      expect((await publish(s.branch, s.version, MONDAY, t.principal)).status).toBe(403);
+    });
+  });
+
+  describe('the start date', () => {
+    it('refuses today and a date outside the year, and changes nothing', async () => {
+      const s = await scene();
+      const before = await written([s.version]);
+      expect(blockedBy(await publish(s.branch, s.version, TODAY))).toEqual([
+        { code: 'version_start_too_early', path: 'startsOn' },
+      ]);
+      expect(blockedBy(await publish(s.branch, s.version, '2027-06-01'))).toEqual([
+        { code: 'version_start_outside_year', path: 'startsOn' },
+      ]);
+      expect(await written([s.version])).toEqual(before);
+      expect(checkOf(await check(s.branch, s.version, TODAY)).refusals).toEqual([
+        { code: 'version_start_too_early' },
+      ]);
+    });
+
+    it('saves a changed date with the publish and checks the draft on it', async () => {
+      const s = await scene();
+      const answer = versionOf(await publish(s.branch, s.version, '2026-10-19'));
+      expect([answer.status, answer.startsOn]).toEqual(['published', '2026-10-19']);
+      expect((await versionRow(s.version)).starts_on).toBe('2026-10-19');
+      const [entry] = await t.entries('timetable_version.publish', s.version);
+      expect(entry).toMatchObject({
+        old_value: { startsOn: MONDAY },
+        new_value: { startsOn: '2026-10-19' },
+      });
+    });
+
+    it('offers the first day of a planned year as the default start', async () => {
+      const branch = await t.newBranch();
+      const year = await load.classes.year(branch, 'planned', '2026-11-02', '2027-06-30');
+      const version = await post('/api/timetable/versions', branch, {
+        academicYearId: year,
+        startsOn: '2026-11-02',
+      });
+      expect(version.status, JSON.stringify(version.body)).toBe(201);
+      const answer = checkOf(
+        await check(branch, (version.body as { id: string }).id, '2026-11-02'),
+      );
+      expect([answer.earliest, answer.defaultStart]).toEqual([TOMORROW, '2026-11-02']);
+    });
+  });
+
+  describe('what refuses a publish', () => {
+    it('refuses a start on or before a published version of the year (decision 3)', async () => {
+      const s = await scene();
+      const later = await placedCopy(s.branch, s.year, s.version);
+      versionOf(await publish(s.branch, later, '2026-10-26'));
+      for (const date of ['2026-10-19', '2026-10-26']) {
+        expect(blockedBy(await publish(s.branch, s.version, date))).toContainEqual({
+          code: 'version_later_published',
+          path: '',
+        });
+      }
+    });
+
+    it('refuses while another account holds the edit lock', async () => {
+      const s = await scene();
+      await viceIn(s.branch);
+      // The admin placed the lessons a moment ago and holds the lock.
+      refusedWith(
+        await publish(s.branch, s.version, MONDAY, t.vicePrincipal),
+        409,
+        'draft_edit_locked',
+      );
+      expect((await versionRow(s.version)).status).toBe('draft');
+    });
+
+    it('refuses a step that is not ready', async () => {
+      const s = await scene();
+      // A template change after the confirmation: step 1 is no longer ready.
+      const other = await t.createSlotType(s.branch, 'Long lesson', 'lesson', 50);
+      const changed = await t.createTemplate(s.branch, 'Changed', [other, other, other]);
+      await t.assign(s.branch, changed, {}, MONDAY);
+      expect(blockedBy(await publish(s.branch, s.version, MONDAY))).toContainEqual({
+        code: 'draft_not_ready',
+        path: 'steps.templates',
+      });
+    });
+
+    it('refuses a problem of a load row', async () => {
+      const s = await scene();
+      await load.status(s.teacherId, 'left', MONDAY);
+      expect(blockedBy(await publish(s.branch, s.version, MONDAY))).toContainEqual({
+        code: 'load_problem',
+        path: `loadRows.${s.rowId}`,
+      });
+      const answer = checkOf(await check(s.branch, s.version, MONDAY));
+      expect(answer.refusals).toContainEqual({
+        code: 'load_problem',
+        loadRowId: s.rowId,
+        problem: 'load_teacher_status',
+      });
+    });
+
+    it('refuses a blocked result of the pattern', async () => {
+      const s = await scene();
+      // The main classroom of the class is closed after the lesson was placed in it.
+      await t.database.migrator
+        .updateTable('rooms')
+        .set({ status: 'closed' })
+        .where('id', '=', s.room)
+        .execute();
+      const refusals = checkOf(await check(s.branch, s.version, MONDAY)).refusals;
+      expect(
+        refusals.map((one) => [one.code, one.result?.rule, one.result?.severity]),
+      ).toContainEqual(['pattern_blocked', 'room_inactive', 'blocked']);
+      expect(blockedBy(await publish(s.branch, s.version, MONDAY))).toContainEqual({
+        code: 'pattern_blocked',
+        path: 'pattern.room_inactive',
+      });
+    });
+  });
+
+  describe('the load and "deliberately short"', () => {
+    const editRow = (branch: string, version: string, rowId: string, body: object) =>
+      t.patch(`/api/timetable/versions/${version}/load/${rowId}`, branch, {
+        teacherId: null,
+        lessonsPerWeek: 2,
+        roomId: null,
+        roomType: null,
+        doubleLessons: false,
+        ...body,
+      });
+
+    it('refuses fewer lessons than the load unless the row is marked short with a reason', async () => {
+      const s = await scene({ lessons: 2, placed: 1 });
+      expect(blockedBy(await publish(s.branch, s.version, MONDAY))).toEqual([
+        { code: 'load_mismatch', path: `loadRows.${s.rowId}` },
+      ]);
+      const edited = await editRow(s.branch, s.version, s.rowId, {
+        shortReason: '  The laboratory opens in November  ',
+      });
+      expect(edited.status, JSON.stringify(edited.body)).toBe(200);
+      expect((edited.body as { shortReason: string }).shortReason).toBe(
+        'The laboratory opens in November',
+      );
+      const [entry] = await t.entries('teaching_load.edit', s.rowId);
+      expect(entry).toMatchObject({
+        old_value: { shortReason: null },
+        new_value: { shortReason: 'The laboratory opens in November' },
+      });
+      versionOf(await publish(s.branch, s.version, MONDAY));
+    });
+
+    it('refuses more lessons than the load, also on a row marked short', async () => {
+      const s = await scene({ lessons: 1, placed: 2 });
+      const edited = await editRow(s.branch, s.version, s.rowId, {
+        lessonsPerWeek: 1,
+        shortReason: 'Marked all the same',
+      });
+      expect(edited.status, JSON.stringify(edited.body)).toBe(200);
+      expect(blockedBy(await publish(s.branch, s.version, MONDAY))).toEqual([
+        { code: 'load_mismatch', path: `loadRows.${s.rowId}` },
+      ]);
+    });
+
+    it('keeps the reason when an edit leaves it out, and a copy carries it', async () => {
+      const s = await scene({ lessons: 2, placed: 1 });
+      await editRow(s.branch, s.version, s.rowId, { shortReason: 'Half a year only' });
+      const kept = await editRow(s.branch, s.version, s.rowId, { roomType: 'classroom' });
+      expect((kept.body as { shortReason: string | null }).shortReason).toBe('Half a year only');
+      const copy = await draft(s.branch, s.year, s.version);
+      const row = await t.database.migrator
+        .selectFrom('teaching_load_rows')
+        .select('short_reason')
+        .where('version_id', '=', copy)
+        .executeTakeFirstOrThrow();
+      expect(row.short_reason).toBe('Half a year only');
+    });
+  });
+
+  describe('the year and the subjects', () => {
+    it('refuses a year without four dated quarters', async () => {
+      const s = await scene();
+      await t.database.migrator
+        .updateTable('quarters')
+        .set({ start_date: null, end_date: null })
+        .where('academic_year_id', '=', s.year)
+        .where('number', '=', 4)
+        .execute();
+      expect(blockedBy(await publish(s.branch, s.version, MONDAY))).toEqual([
+        { code: 'year_quarters', path: '' },
+      ]);
+    });
+
+    const quarterIds = async (year: string) =>
+      (
+        await t.database.migrator
+          .selectFrom('quarters')
+          .select(['id', 'number'])
+          .where('academic_year_id', '=', year)
+          .orderBy('number')
+          .execute()
+      ).map((one) => one.id);
+
+    const weigh = async (branch: string, subject: string, quarters: readonly string[]) => {
+      await t.database.migrator
+        .insertInto('subject_daily_weights')
+        .values({
+          branch_id: branch,
+          subject_id: subject,
+          attendance: 20,
+          classwork: 40,
+          homework: 40,
+        })
+        .execute();
+      for (const quarter of quarters) {
+        await t.database.migrator
+          .insertInto('subject_quarter_weights')
+          .values({
+            branch_id: branch,
+            subject_id: subject,
+            quarter_id: quarter,
+            attendance: 20,
+            classwork: 40,
+            homework: 40,
+          })
+          .execute();
+      }
+    };
+
+    it('refuses a graded subject without its daily distribution and the quarters the version touches', async () => {
+      const s = await scene({ journalType: 'graded' });
+      expect(blockedBy(await publish(s.branch, s.version, MONDAY))).toEqual([
+        { code: 'subject_daily_weights', path: `subjects.${s.subject}` },
+        ...[1, 2, 3, 4].map((quarter) => ({
+          code: 'subject_quarter_weights',
+          path: `subjects.${s.subject}.quarters.${String(quarter)}`,
+        })),
+      ]);
+      const [, ...later] = await quarterIds(s.year);
+      await weigh(s.branch, s.subject, later);
+      // Quarter 1 ends before a start in quarter 2: it is not touched.
+      const quarterTwo = '2026-11-09';
+      const second = await placedCopy(s.branch, s.year, s.version);
+      expect(checkOf(await check(s.branch, second, quarterTwo)).refusals).toEqual([]);
+      expect(blockedBy(await publish(s.branch, s.version, MONDAY))).toEqual([
+        { code: 'subject_quarter_weights', path: `subjects.${s.subject}.quarters.1` },
+      ]);
+    });
+
+    it('counts only the distributions of the current round', async () => {
+      const s = await scene({ journalType: 'graded' });
+      await weigh(s.branch, s.subject, await quarterIds(s.year));
+      expect(checkOf(await check(s.branch, s.version, MONDAY)).refusals).toEqual([]);
+      await t.database.migrator
+        .updateTable('subjects')
+        .set({ weights_round: 2 })
+        .where('id', '=', s.subject)
+        .execute();
+      expect(blockedBy(await publish(s.branch, s.version, MONDAY))).toEqual([
+        { code: 'subject_daily_weights', path: `subjects.${s.subject}` },
+        ...[1, 2, 3, 4].map((quarter) => ({
+          code: 'subject_quarter_weights',
+          path: `subjects.${s.subject}.quarters.${String(quarter)}`,
+        })),
+      ]);
+    });
+
+    it('publishes a changed date with the Tutor rows following the Tutor of that date (decision 7)', async () => {
+      const s = await scene();
+      const tutorSubject = await load.tutorSubject({ grades: [7] });
+      await weigh(s.branch, tutorSubject, await quarterIds(s.year));
+      const first = await load.teacher(s.branch);
+      const second = await load.teacher(s.branch);
+      await hours(s.branch, first.staffId);
+      await hours(s.branch, second.staffId);
+      const changeover = new Date('2026-10-19T00:00:00+05:00');
+      await load.tutorOf(s.branch, s.classId, first.accountId, { until: changeover });
+      await load.tutorOf(s.branch, s.classId, second.accountId, { from: changeover });
+      const created = await post(`/api/timetable/versions/${s.version}/load`, s.branch, {
+        classId: s.classId,
+        groupId: null,
+        subjectId: tutorSubject,
+        teacherId: null,
+        lessonsPerWeek: 1,
+        roomId: null,
+        roomType: null,
+        doubleLessons: false,
+      });
+      const tutorRow = created.body as { id: string; teacher: { id: string } };
+      expect(tutorRow.teacher.id).toBe(first.staffId);
+      await placeAt(s.branch, s.version, tutorRow.id, 2);
+      versionOf(await publish(s.branch, s.version, '2026-10-19'));
+      const stored = await t.database.migrator
+        .selectFrom('teaching_load_rows')
+        .select('teacher_id')
+        .where('id', '=', tutorRow.id)
+        .executeTakeFirstOrThrow();
+      expect(stored.teacher_id).toBe(second.staffId);
+      const [entry] = await t.entries('timetable_version.publish', s.version);
+      expect((entry?.['new_value'] as Record<string, unknown>)['tutorLessons']).toBeDefined();
+    });
+
+    it('asks nothing of an attendance-only subject', async () => {
+      const s = await scene({ journalType: 'attendance_only' });
+      expect(checkOf(await check(s.branch, s.version, MONDAY)).refusals).toEqual([]);
+    });
+  });
+
+  describe('out of date (decision 4)', () => {
+    it('marks every other draft of the branch and year but those copied from the one published', async () => {
+      const s = await scene();
+      const sibling = await draft(s.branch, s.year);
+      const child = await draft(s.branch, s.year, s.version);
+      const grandchild = await draft(s.branch, s.year, child);
+      const nextYear = await load.classes.year(s.branch, 'planned', '2027-09-01', '2028-05-31');
+      const otherYear = await load.version(s.branch, nextYear, { startsOn: '2027-09-06' });
+      await load.freeEditLock(s.version);
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      const marked = await Promise.all(
+        [sibling, child, grandchild, otherYear].map(
+          async (id) => (await versionRow(id)).out_of_date_at,
+        ),
+      );
+      expect(marked.map((one) => one !== null)).toEqual([true, false, false, false]);
+      expect(marked[0]).toEqual(t.clock.now());
+      const [entry] = await t.entries('timetable_version.out_of_date', sibling);
+      expect(entry).toMatchObject({ new_value: { outOfDate: true, publishedId: s.version } });
+      const [published] = await t.entries('timetable_version.publish', s.version);
+      expect(published).toMatchObject({ new_value: { markedOutOfDate: [sibling] } });
+      // The list shows it; a copy of it carries the mark (decision 14).
+      const list = (await get('/api/timetable/versions', s.branch)).body as {
+        versions: TimetableVersion[];
+      };
+      expect(list.versions.find((one) => one.id === sibling)?.outOfDate).toBe(true);
+      const copy = await draft(s.branch, s.year, sibling);
+      expect((await versionRow(copy)).out_of_date_at).toEqual(t.clock.now());
+    });
+
+    it('refuses a draft marked out of date', async () => {
+      const s = await scene();
+      const sibling = await placedCopy(s.branch, s.year, s.version);
+      await load.freeEditLock(sibling);
+      versionOf(await publish(s.branch, sibling, '2026-10-19'));
+      // The first draft was not copied from the one published.
+      expect(blockedBy(await publish(s.branch, s.version, '2026-10-26'))).toContainEqual({
+        code: 'draft_out_of_date',
+        path: '',
+      });
+    });
+  });
+
+  describe('a publish refused changes nothing (spec review of the plan, must-fix 2)', () => {
+    it('leaves the date, the Tutor rows, the edit lock, the marks, the audit log, the notices and the key', async () => {
+      const s = await scene();
+      // A Tutor row whose class has one Tutor until the 19th and another from then.
+      const tutorSubject = await load.tutorSubject({ grades: [7] });
+      const first = await load.teacher(s.branch);
+      const second = await load.teacher(s.branch);
+      const changeover = new Date('2026-10-19T00:00:00+05:00');
+      await load.tutorOf(s.branch, s.classId, first.accountId, { until: changeover });
+      await load.tutorOf(s.branch, s.classId, second.accountId, { from: changeover });
+      const created = await post(`/api/timetable/versions/${s.version}/load`, s.branch, {
+        classId: s.classId,
+        groupId: null,
+        subjectId: tutorSubject,
+        teacherId: null,
+        lessonsPerWeek: 1,
+        roomId: null,
+        roomType: null,
+        doubleLessons: false,
+      });
+      expect(created.status, JSON.stringify(created.body)).toBe(201);
+      const sibling = await draft(s.branch, s.year);
+      // The edit lock is the Teacher's, last active ten minutes ago: a publish takes it over.
+      const holder = await t.database.migrator
+        .selectFrom('assignments')
+        .select('account_id')
+        .where('role', '=', 'teacher')
+        .where('branch_id', '=', t.north)
+        .executeTakeFirstOrThrow();
+      await t.database.migrator
+        .updateTable('timetable_versions')
+        .set({
+          edit_holder_id: holder.account_id,
+          edit_seen_at: new Date(t.clock.now().getTime() - 10 * 60_000),
+        })
+        .where('id', '=', s.version)
+        .execute();
+      // Refused (the Tutor row is not placed, its subject has no weights, its
+      // Tutor no hours), after the changed date was saved and the Tutor row
+      // followed the second Tutor.
+      const before = await written([s.version, sibling]);
+      const tutorRow = (await written([s.version]))[1].find(
+        (one) => one.subject_id === tutorSubject,
+      );
+      expect(tutorRow?.teacher_id).toBe(first.staffId);
+      const refusals = blockedBy(await publish(s.branch, s.version, '2026-10-19'));
+      expect(refusals.map((one) => one.code)).toContain('load_mismatch');
+      expect(await written([s.version, sibling])).toEqual(before);
+      // The check on that date reads the second Tutor and writes nothing either.
+      checkOf(await check(s.branch, s.version, '2026-10-19'));
+      expect(await written([s.version, sibling])).toEqual(before);
+    });
+  });
+
+  describe('a repeat', () => {
+    it('refuses a key of another account, of another date and a missing key, changing nothing (permission review, must-fix 1)', async () => {
+      const s = await scene();
+      await viceIn(s.branch);
+      await load.freeEditLock(s.version);
+      const key = randomUUID();
+      // The Super Admin's key, refused, rolls back with the refusal: it is
+      // used for a refused publish, then sent again by another account.
+      const used = randomUUID();
+      blockedBy(await publish(s.branch, s.version, TODAY, t.admin, used));
+      const before = await written([s.version]);
+      versionOf(await publish(s.branch, s.version, MONDAY, t.admin, key));
+      const after = await written([s.version]);
+      refusedWith(
+        await publish(s.branch, s.version, MONDAY, t.vicePrincipal, key),
+        409,
+        'request_key_reused',
+      );
+      refusedWith(
+        await publish(s.branch, s.version, '2026-10-19', t.admin, key),
+        409,
+        'request_key_reused',
+      );
+      const missing = await request(t.kit.server)
+        .post(`/api/timetable/versions/${s.version}/publish`)
+        .set('Cookie', t.admin)
+        .set(BRANCH_HEADER, s.branch)
+        .send({ startsOn: MONDAY });
+      expect(missing.status, JSON.stringify(missing.body)).toBe(400);
+      expect(await written([s.version])).toEqual(after);
+      expect(after).not.toEqual(before);
+    });
+
+    it('checks the permission and the branch again on a repeat, before the stored answer (permission review, must-fix 1)', async () => {
+      const s = await scene();
+      const theirs = await scene();
+      await load.freeEditLock(s.version);
+      const key = randomUUID();
+      versionOf(await publish(s.branch, s.version, MONDAY, t.admin, key));
+      const after = await written([s.version, theirs.version]);
+      for (const id of [theirs.version, UNKNOWN]) {
+        refusedWith(await publish(s.branch, id, MONDAY, t.admin, key), 404, 'not_found');
+      }
+      const principal = await t.database.migrator
+        .selectFrom('assignments')
+        .select('account_id')
+        .where('role', '=', 'principal')
+        .where('branch_id', '=', t.north)
+        .executeTakeFirstOrThrow();
+      await load.classes.role(principal.account_id, s.branch, 'principal');
+      expect((await publish(s.branch, s.version, MONDAY, t.principal, key)).status).toBe(403);
+      expect(await written([s.version, theirs.version])).toEqual(after);
+    });
+
+    it('gets the same answer and publishes once', async () => {
+      const s = await scene();
+      const key = randomUUID();
+      const first = versionOf(await publish(s.branch, s.version, MONDAY, t.admin, key));
+      const again = versionOf(await publish(s.branch, s.version, MONDAY, t.admin, key));
+      expect(again).toEqual(first);
+      expect(await t.entries('timetable_version.publish', s.version)).toHaveLength(1);
+    });
+
+    it('sent while the first waits for the publish lock, gets the same answer (review correction 2)', async () => {
+      const s = await scene();
+      const key = randomUUID();
+      const held = await t.database.app.connection().execute(async (connection) => {
+        await sql`select pg_advisory_lock(550001)`.execute(connection);
+        const sent = [
+          publish(s.branch, s.version, MONDAY, t.admin, key).then((response) => response),
+          publish(s.branch, s.version, MONDAY, t.admin, key).then((response) => response),
+        ];
+        await waitForAdvisory(2);
+        await sql`select pg_advisory_unlock(550001)`.execute(connection);
+        return Promise.all(sent);
+      });
+      const [one, two] = held.map(versionOf);
+      expect(two).toEqual(one);
+      expect(await t.entries('timetable_version.publish', s.version)).toHaveLength(1);
+    });
+  });
+
+  describe('another branch', () => {
+    it("answers 404 for another branch's version and an unknown one, and changes nothing", async () => {
+      const s = await scene();
+      const theirs = await scene();
+      await viceIn(s.branch);
+      // Rows a publish would change, in both branches (permission review, must-fix 2).
+      await withMoreToChange(s);
+      await withMoreToChange(theirs);
+      const before = await written([s.version, theirs.version]);
+      for (const cookie of [t.admin, t.vicePrincipal]) {
+        for (const id of [theirs.version, UNKNOWN]) {
+          refusedWith(await publish(s.branch, id, '2026-10-19', cookie), 404, 'not_found');
+          refusedWith(await check(s.branch, id, '2026-10-19', cookie), 404, 'not_found');
+        }
+      }
+      expect(await written([s.version, theirs.version])).toEqual(before);
+    });
+  });
+
+  // edge/timetable, Generator and editing: "Publish is clicked twice, or two
+  // people publish. One publish per branch at a time. A publish either
+  // succeeds completely or changes nothing." 06, Two drafts at once: "The
+  // first to publish stands; the second cannot publish the clashing lessons
+  // until they are moved." Both publishes are real routes; a third
+  // transaction holds the publish lock, so that they meet in a known order.
+  describe('two at the same moment', () => {
+    /** A transaction of the application that runs `first`, waits until let go, runs `then` and commits. */
+    async function holdOpen(
+      branches: string[],
+      first: (transaction: Transaction) => Promise<void>,
+      then: (transaction: Transaction) => Promise<void> = () => Promise.resolve(),
+    ) {
+      let release: () => void = () => undefined;
+      const released = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let ready: () => void = () => undefined;
+      const isReady = new Promise<void>((resolve) => {
+        ready = resolve;
+      });
+      const done = t.app
+        .get(Transactions)
+        .run(branches, async (transaction) => {
+          await first(transaction);
+          ready();
+          await released;
+          await then(transaction);
+        })
+        .catch((error: unknown) => error);
+      await Promise.race([isReady, done]);
+      return { release, done };
+    }
+
+    /** The sessions of the test database waiting for a lock, of one kind when named. */
+    async function waiting(locktype: string | null = null): Promise<number> {
+      const found = await sql<{ n: number }>`
+        select count(distinct l.pid)::int as n
+        from pg_locks l join pg_stat_activity a on a.pid = l.pid
+        where a.datname = current_database() and not l.granted
+          and (${locktype}::text is null or l.locktype = ${locktype}::text)
+      `.execute(t.database.migrator);
+      return found.rows[0]?.n ?? 0;
+    }
+
+    /** The two publishes, the first sent first, both behind the held publish lock. */
+    async function inOrder(
+      branches: string[],
+      first: () => Promise<Response>,
+      second: () => Promise<Response>,
+    ): Promise<[Response, Response]> {
+      const gate = await holdOpen(branches, async (transaction) => {
+        await sql`select pg_advisory_xact_lock(550001)`.execute(transaction);
+      });
+      const one = first().then((response) => response);
+      await expect.poll(() => waiting('advisory'), { timeout: 20_000, interval: 25 }).toBe(1);
+      const two = second().then((response) => response);
+      await expect.poll(() => waiting('advisory'), { timeout: 20_000, interval: 25 }).toBe(2);
+      gate.release();
+      expect(await gate.done).toBeUndefined();
+      return Promise.all([one, two]);
+    }
+
+    it('publishes one draft once when two accounts publish it together, in either order', async () => {
+      for (const order of [0, 1]) {
+        const s = await scene();
+        await viceIn(s.branch);
+        await load.freeEditLock(s.version);
+        const cookies = order === 0 ? [t.admin, t.vicePrincipal] : [t.vicePrincipal, t.admin];
+        const [one, two] = await inOrder(
+          [s.branch],
+          () => publish(s.branch, s.version, MONDAY, cookies[0]),
+          () => publish(s.branch, s.version, MONDAY, cookies[1]),
+        );
+        expect(versionOf(one).status).toBe('published');
+        refusedWith(two, 409, 'version_not_draft');
+        expect(await t.entries('timetable_version.publish', s.version)).toHaveLength(1);
+      }
+    });
+
+    it('marks and refuses the second draft of a branch, in either order', async () => {
+      for (const order of [0, 1]) {
+        const s = await scene();
+        const sibling = await placedDraft(s);
+        await load.freeEditLock(s.version);
+        await load.freeEditLock(sibling);
+        // The first sent starts first, so the second is refused for one reason only.
+        const [firstId, secondId] = order === 0 ? [s.version, sibling] : [sibling, s.version];
+        const [one, two] = await inOrder(
+          [s.branch],
+          () => publish(s.branch, firstId, MONDAY),
+          () => publish(s.branch, secondId, '2026-10-19'),
+        );
+        expect(versionOf(one).status).toBe('published');
+        expect(blockedBy(two)).toEqual([{ code: 'draft_out_of_date', path: '' }]);
+        expect((await versionRow(secondId)).status).toBe('draft');
+      }
+    });
+
+    /**
+     * A teacher of two branches whose hours never overlap: in branch A until
+     * 09:00, in branch B from 09:00, with 30 minutes of travel between them.
+     * Branch A's lesson is on Monday at 08:00–08:45, branch B's (a day from
+     * 09:00) at 09:00–09:45: each draft can be published alone, not both.
+     */
+    async function twoBranches() {
+      const a = await scene({ hoursRange: [0, 540] });
+      const b = await scene({
+        startTime: '09:00',
+        teacherFor: async (branch, subject) => {
+          await t.database.migrator
+            .insertInto('staff_branches')
+            .values({ staff_id: a.teacherId, branch_id: branch, is_main: false })
+            .execute();
+          await load.profile(a.teacherId, [{ subject, grades: [7] }]);
+          await hours(branch, a.teacherId, [540, 1440]);
+          return a.teacherId;
+        },
+      });
+      const [low = '', high = ''] = [a.branch, b.branch].sort();
+      await t.database.migrator
+        .insertInto('travel_times')
+        .values({ branch_low: low, branch_high: high, minutes: 30 })
+        .execute();
+      for (const one of [a, b]) {
+        await load.freeEditLock(one.version);
+        expect(checkOf(await check(one.branch, one.version, MONDAY)).canPublish).toBe(true);
+      }
+      return { a, b };
+    }
+
+    it('lets the first of two branches stand and refuses the clash of the second (decision 2)', async () => {
+      for (const order of [0, 1]) {
+        const pair = await twoBranches();
+        const [first, second] = order === 0 ? [pair.a, pair.b] : [pair.b, pair.a];
+        // The two meet on the publish lock alone (spec review of the plan, should-fix 8).
+        const [one, two] = await inOrder(
+          [pair.a.branch, pair.b.branch],
+          () => publish(first.branch, first.version, MONDAY),
+          () => publish(second.branch, second.version, MONDAY),
+        );
+        expect(versionOf(one).status).toBe('published');
+        expect(blockedBy(two)).toEqual([{ code: 'pattern_blocked', path: 'pattern.travel_time' }]);
+      }
+    });
+
+    it('takes the drafts of the year in the order of their id, as a Tutor change does (must-fix 1)', async () => {
+      const s = await scene();
+      // A draft whose id comes before the one published (uuidv7 ids grow).
+      const larger = await placedDraft(s);
+      const smaller = s.version;
+      await load.freeEditLock(larger);
+      // As `followTutors` does: the year FOR SHARE, the drafts FOR UPDATE in
+      // the order of their id, each with its Tutor rows written.
+      const write = (transaction: Transaction, version: string) =>
+        transaction
+          .updateTable('teaching_load_rows')
+          .set({ teacher_id: s.teacherId })
+          .where('version_id', '=', version)
+          .execute();
+      const tutorChange = await holdOpen(
+        [s.branch],
+        async (transaction) => {
+          await transaction
+            .selectFrom('academic_years')
+            .select('id')
+            .where('id', '=', s.year)
+            .forShare()
+            .execute();
+          await transaction
+            .selectFrom('timetable_versions')
+            .select('id')
+            .where('id', '=', smaller)
+            .forUpdate()
+            .execute();
+          await write(transaction, smaller);
+        },
+        async (transaction) => {
+          await transaction
+            .selectFrom('timetable_versions')
+            .select('id')
+            .where('id', '=', larger)
+            .forUpdate()
+            .execute();
+          await write(transaction, larger);
+        },
+      );
+      const published = publish(s.branch, larger, '2026-10-19').then((response) => response);
+      await expect.poll(() => waiting(), { timeout: 20_000, interval: 25 }).toBe(1);
+      // The publish waits on the smaller draft and holds no draft yet: the
+      // Tutor change takes the larger one too and commits, with no deadlock.
+      tutorChange.release();
+      expect(await tutorChange.done).toBeUndefined();
+      expect(versionOf(await published).status).toBe('published');
+    });
+
+    it('takes the branch row before the year, as a year edit does (should-fix 9)', async () => {
+      const s = await scene();
+      await load.freeEditLock(s.version);
+      // As a year edit does: the branch row FOR UPDATE, then the year FOR UPDATE.
+      const yearEdit = await holdOpen(
+        [s.branch],
+        async (transaction) => {
+          await transaction
+            .selectFrom('branches')
+            .select('id')
+            .where('id', '=', s.branch)
+            .forUpdate()
+            .execute();
+        },
+        async (transaction) => {
+          await transaction
+            .selectFrom('academic_years')
+            .select('id')
+            .where('id', '=', s.year)
+            .forUpdate()
+            .execute();
+          await transaction
+            .updateTable('academic_years')
+            .set({ end_date: '2027-05-31' })
+            .where('id', '=', s.year)
+            .execute();
+        },
+      );
+      const published = publish(s.branch, s.version, MONDAY).then((response) => response);
+      await expect.poll(() => waiting(), { timeout: 20_000, interval: 25 }).toBe(1);
+      yearEdit.release();
+      expect(await yearEdit.done).toBeUndefined();
+      expect(versionOf(await published).status).toBe('published');
+    });
+  });
+});

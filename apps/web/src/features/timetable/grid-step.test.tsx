@@ -25,6 +25,7 @@ const VERSION: TimetableVersion = {
   fromVersion: null,
   rows: 3,
   leftRows: 0,
+  outOfDate: false,
   editLock: null,
 };
 
@@ -250,6 +251,7 @@ const GRID: GridAnswer = {
         lessonsPerWeek: 3,
         mixedBlock: false,
         doubleLessons: false,
+        deliberatelyShort: false,
         block: [ROW_OXFORD],
       },
       {
@@ -263,6 +265,7 @@ const GRID: GridAnswer = {
         lessonsPerWeek: 3,
         mixedBlock: false,
         doubleLessons: false,
+        deliberatelyShort: false,
         block: [ROW_PRINCETON],
       },
       {
@@ -276,6 +279,7 @@ const GRID: GridAnswer = {
         lessonsPerWeek: 2,
         mixedBlock: false,
         doubleLessons: false,
+        deliberatelyShort: false,
         block: [ROW_GROUP],
       },
     ],
@@ -345,6 +349,7 @@ const MIXED_GRID: GridAnswer = {
         lessonsPerWeek: 2,
         mixedBlock: true,
         doubleLessons: false,
+        deliberatelyShort: false,
         block:
           one.subject === ENGLISH ? [ROW_ENG_BOYS, ROW_ENG_GIRLS] : [ROW_MATH_BOYS, ROW_MATH_GIRLS],
       })),

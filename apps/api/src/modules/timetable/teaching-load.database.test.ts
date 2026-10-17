@@ -345,10 +345,12 @@ describe('teaching load in the database', () => {
       );
     });
 
-    it('grants no write of its status, year, number or source, and no delete', async () => {
+    // Task 5.5a-1 (0073) grants the status to publish; its trigger
+    // `timetable_versions_status` lets a draft only be published
+    // (publish.database.test.ts).
+    it('grants no write of its year, number or source, and no delete', async () => {
       const draft = await kit.version(north, northYear);
       for (const values of [
-        { status: 'published' },
         { academic_year_id: southYear },
         { number: 50 },
         { from_version_id: null },
