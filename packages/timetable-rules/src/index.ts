@@ -6,7 +6,8 @@
 // the draft builder, task 5.3b-1 its step 5 (preferences.ts), task 5.3b-2
 // the pinned lessons (pins.ts), task 5.4a the pattern facts as data and the
 // lessons of a block at a slot (facts-data.ts, pattern-place.ts), task 5.4b-2a
-// the room of a lesson (rooms-pick.ts), task 5.4c-1 the locks (locks.ts).
+// the room of a lesson (rooms-pick.ts), task 5.4c-1 the locks (locks.ts), task
+// 5.5a-2a the lessons of a pattern on its dates (dated.ts).
 export {
   dayEndsAfterMidnight,
   dayTimes,
@@ -207,8 +208,28 @@ export {
   type Weights,
 } from './preferences.js';
 export {
+  datedPublishResults,
   publishRefusals,
   startChoices,
+  type DatedPublishInput,
+  type DatedPublishResults,
+  type NeedsTeacher,
+  type NeedsTeacherReason,
   type PublishResults,
   type StartChoices,
 } from './publish.js';
+export {
+  addDays,
+  datedId,
+  datedPattern,
+  patternIdOf,
+  type DatedBlock,
+  type DatedCancelled,
+  type DatedCancelReason,
+  type DatedDay,
+  type DatedEntry,
+  type DatedLesson,
+  type DatedNoTutor,
+  type DatedPattern,
+  type DatedPatternInput,
+} from './dated.js';
