@@ -159,21 +159,31 @@ export function pinnedPlacements(input: {
  * edge/timetable, Structure, the Homework slot row: "A Tutor of two classes
  * cannot have both pinned at the same time; the load step lists this." The
  * `teacher_double` results of the pins' check whose lessons are all Tutor rows
- * (`isTutorRow`) of two classes or more.
+ * (`isTutorRow`) of two classes or more. A Tutor lesson the teacher holds in
+ * another branch's published pattern (busy elsewhere, `fixed`, named in
+ * `elsewhereTutor`) counts as a class of its own (task 5.4b-1, the From
+ * 5.3b-2 line: "a Tutor of classes in two branches is listed too").
  */
 export function tutorPinClashes(
   results: readonly RuleResult[],
   placements: readonly Placement[],
   tutorRow: (rowId: string) => boolean,
+  elsewhereTutor: ReadonlySet<string> = new Set(),
 ): RuleResult[] {
   const byLesson = new Map(placements.map((one) => [one.id, one]));
   return results.filter((result) => {
     if (result.rule !== 'teacher_double') return false;
     const lessons = result.lessonIds.map((id) => byLesson.get(id));
-    const classes = new Set(lessons.map((one) => one?.classId ?? null));
+    const classes = new Set(
+      lessons.map((one) => (one?.fixed === true ? `elsewhere:${one.id}` : (one?.classId ?? null))),
+    );
     return (
       lessons.every(
-        (one) => one !== undefined && one.loadRowId !== null && tutorRow(one.loadRowId),
+        (one) =>
+          one !== undefined &&
+          (one.fixed
+            ? elsewhereTutor.has(one.id)
+            : one.loadRowId !== null && tutorRow(one.loadRowId)),
       ) &&
       !classes.has(null) &&
       classes.size > 1

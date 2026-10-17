@@ -130,8 +130,10 @@ export {
   overlappingPairs,
 } from './check.js';
 export {
+  elsewherePlacement,
   factsFromData,
   patternModel,
+  type ElsewhereLessonData,
   type PatternAt,
   type PatternFactsData,
   type PatternModel,
@@ -140,6 +142,7 @@ export {
 } from './facts-data.js';
 export {
   blockPlacements,
+  checkedPlacements,
   patternPlacements,
   slotAt,
   type BlockLesson,

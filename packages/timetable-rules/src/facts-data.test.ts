@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { checkTimetable } from './check.js';
-import { factsFromData, patternModel } from './facts-data.js';
+import { checkCandidates, checkTimetable } from './check.js';
+import { elsewherePlacement, factsFromData, patternModel } from './facts-data.js';
+import { checkedPlacements } from './pattern-place.js';
 import type { Facts, Placement } from './placement.js';
 import { BRANCH, JUNIOR, patternData, SENIOR } from './testing/pattern-fixture.js';
 
@@ -136,5 +137,97 @@ describe('patternModel', () => {
 
   it('throws for a row that is not in the data', () => {
     expect(() => model.rowOf('nowhere')).toThrow();
+  });
+});
+
+describe('the lessons of other branches (task 5.4b-1)', () => {
+  // 06, Teachers who work in several branches: "One clash check", "Busy
+  // elsewhere" (fixed, with the travel time around them), "Two drafts at once".
+  const SOUTH = 'branch-south';
+  const senior1 = slot(SENIOR, 1);
+  const elsewhere = {
+    id: 'south-1',
+    teacherId: 't1',
+    branchId: SOUTH,
+    weekday: 1,
+    start: senior1.start,
+    end: senior1.end,
+    tutorLesson: false,
+  };
+  const withSouth = patternModel({
+    ...data,
+    busyElsewhere: [elsewhere],
+    travel: [{ branchA: BRANCH, branchB: SOUTH, minutes: 30 }],
+    branches: [{ id: SOUTH, name: 'South' }],
+  });
+  const lesson = (weekday: number, position: number) =>
+    withSouth.placementOf(withSouth.rowOf('math-7a'), {
+      id: 'mine',
+      blockId: 'block-mine',
+      weekday,
+      start: slot(SENIOR, position).start,
+      end: slot(SENIOR, position).end,
+      roomId: null,
+    });
+
+  it('builds a fixed placement with the teacher, times and branch only', () => {
+    expect(withSouth.fixed).toEqual([
+      expect.objectContaining({
+        id: 'south-1',
+        branchId: SOUTH,
+        day: '1',
+        teacherIds: ['t1'],
+        classIds: [],
+        subjectId: null,
+        roomId: null,
+        fixed: true,
+      }),
+    ]);
+    expect(checkedPlacements(withSouth, []).map((one) => one.id)).toEqual(['south-1']);
+  });
+
+  it('blocks a lesson at the same time as the teacher’s lesson elsewhere, and one within the travel time', () => {
+    const same = checkCandidates(withSouth.fixed, withSouth.facts, [lesson(1, 1)]);
+    expect(same.map((one) => one.rule)).toContain('teacher_double');
+    const blocked = (results: readonly { severity: string }[]) =>
+      results.filter((one) => one.severity === 'blocked');
+    const next = checkCandidates(withSouth.fixed, withSouth.facts, [lesson(1, 3)]);
+    expect(blocked(next)).toEqual([
+      expect.objectContaining({ rule: 'travel_time', lessonIds: ['south-1', 'mine'] }),
+    ]);
+    expect(blocked(checkCandidates(withSouth.fixed, withSouth.facts, [lesson(2, 1)]))).toEqual([]);
+  });
+
+  it('reports nothing made of lessons elsewhere only', () => {
+    const twice = patternModel({
+      ...data,
+      busyElsewhere: [elsewhere, { ...elsewhere, id: 'south-2' }],
+    });
+    // Two lessons elsewhere at once are the other branch's clash; only the
+    // load warnings of the empty draft remain.
+    expect(
+      checkTimetable(twice.fixed, twice.facts).filter((one) => one.lessonIds.length > 0),
+    ).toEqual([]);
+  });
+
+  it('warns of a draft of another branch with the teacher at that time, and blocks nothing', () => {
+    const drafted = patternModel({
+      ...data,
+      otherDrafts: [elsewherePlacement(elsewhere, false)],
+    });
+    const results = checkCandidates([], drafted.facts, [
+      drafted.placementOf(drafted.rowOf('math-7a'), {
+        id: 'mine',
+        blockId: 'block-mine',
+        weekday: 1,
+        start: senior1.start,
+        end: senior1.end,
+        roomId: null,
+      }),
+    ]);
+    expect(results.filter((one) => one.rule === 'other_draft')).toEqual([
+      expect.objectContaining({ severity: 'warning', detail: { branchId: SOUTH } }),
+    ]);
+    expect(results.some((one) => one.severity === 'blocked')).toBe(false);
   });
 });

@@ -700,6 +700,180 @@ describe('the grid of a draft', () => {
     });
   });
 
+  // Task 5.4b-1: 06, Teachers who work in several branches: "One clash check.
+  // A teacher cannot be in two lessons at once, counted across all branches
+  // by clock time"; "Busy elsewhere ... They cannot be moved from here, and
+  // the generator treats them, and the travel time around them, as fixed";
+  // "Travel time ... This is blocked in the grid, in the generator and on the
+  // server"; "Two drafts at once ... each grid warns".
+  describe('the lessons of other branches', () => {
+    /**
+     * Two scenes; teacher A of the first also works in the second, which has a
+     * lesson of teacher A on Monday at the position named, written straight
+     * into its pattern (the teacher has no hours there on Monday, and the
+     * hours of two branches never overlap), then published unless said.
+     */
+    async function twoBranches(position: number, status: 'published' | 'draft' = 'published') {
+      const s = await scene();
+      const other = await scene();
+      await t.database.migrator
+        .insertInto('staff_branches')
+        .values({ staff_id: s.teacherA, branch_id: other.branch, is_main: false })
+        .execute();
+      await load.profile(s.teacherA, [{ subject: other.subject, grades: [7] }]);
+      await t.database.migrator
+        .updateTable('teaching_load_rows')
+        .set({ teacher_id: s.teacherA })
+        .where('id', '=', other.rowB)
+        .execute();
+      const times = [
+        [480, 525],
+        [525, 535],
+        [535, 580],
+      ][position - 1] ?? [535, 580];
+      const [start = 0, end = 0] = times;
+      const block = await t.database.migrator
+        .insertInto('pattern_blocks')
+        .values({
+          branch_id: other.branch,
+          version_id: other.version,
+          weekday: 1,
+          slot_position: position,
+          start_minutes: start,
+          end_minutes: end,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      const entry = await t.database.migrator
+        .insertInto('pattern_entries')
+        .values({
+          branch_id: other.branch,
+          version_id: other.version,
+          block_id: block.id,
+          weekday: 1,
+          start_minutes: start,
+          end_minutes: end,
+          load_row_id: other.rowB,
+          teacher_id: s.teacherA,
+          room_id: other.roomB,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      if (status === 'published') {
+        await load.setVersion(other.version, 'published');
+      }
+      return { s, other, block: block.id, entry: entry.id };
+    }
+
+    const travel = async (a: string, b: string, minutes: number) => {
+      const [low = '', high = ''] = [a, b].sort();
+      await t.database.migrator
+        .insertInto('travel_times')
+        .values({ branch_low: low, branch_high: high, minutes })
+        .onConflict((conflict) =>
+          conflict.columns(['branch_low', 'branch_high']).doUpdateSet({ minutes }),
+        )
+        .execute();
+    };
+
+    it('refuses a move onto the teacher’s lesson in another branch, naming the rule and changing nothing (Done when)', async () => {
+      const { s, other } = await twoBranches(3);
+      const own = await placed(s.branch, s.version, s.rowA, 2, 1);
+      const before = await patternRows([s.version, other.version]);
+      expect(blockedRules(await move(s.branch, s.version, own.id, 1, 3))).toEqual([
+        'teacher_double',
+      ]);
+      expect(blockedRules(await place(s.branch, s.version, s.rowA, 1, 3))).toEqual([
+        'teacher_double',
+      ]);
+      expect(await patternRows([s.version, other.version])).toEqual(before);
+      // Another weekday is free.
+      gridOf(await move(s.branch, s.version, own.id, 2, 3));
+    });
+
+    it('refuses a move within the travel time of the lesson elsewhere, and with no travel time set (Done when)', async () => {
+      const { s, other } = await twoBranches(1);
+      const own = await placed(s.branch, s.version, s.rowA, 2, 1);
+      // 08:00–08:45 in the other branch, then 08:55–09:40 here: 10 minutes.
+      expect(blockedRules(await move(s.branch, s.version, own.id, 1, 3))).toEqual([
+        'travel_time_not_set',
+      ]);
+      await travel(s.branch, other.branch, 30);
+      expect(blockedRules(await move(s.branch, s.version, own.id, 1, 3))).toEqual(['travel_time']);
+      await travel(s.branch, other.branch, 10);
+      gridOf(await move(s.branch, s.version, own.id, 1, 3));
+    });
+
+    it('answers the lesson elsewhere with its weekday, times and branch only, to the Academic Vice Principal of the branch', async () => {
+      const { s, other, entry } = await twoBranches(3);
+      await viceIn(s.branch);
+      await placed(s.branch, s.version, s.rowA, 2, 1);
+      const response = await grid(s.branch, s.version, t.vicePrincipal);
+      const answer = gridOf(response);
+      expect(answer.facts.busyElsewhere).toEqual([
+        {
+          id: entry,
+          teacherId: s.teacherA,
+          branchId: other.branch,
+          weekday: 1,
+          start: 535,
+          end: 580,
+          tutorLesson: false,
+        },
+      ]);
+      const branch = await t.database.migrator
+        .selectFrom('branches')
+        .select('name')
+        .where('id', '=', other.branch)
+        .executeTakeFirstOrThrow();
+      expect(answer.facts.branches).toEqual([{ id: other.branch, name: branch.name }]);
+      // Nothing else of the other branch: its classes, rows, rooms and subject.
+      const text = JSON.stringify(response.body);
+      for (const id of [
+        other.classA,
+        other.classB,
+        other.rowA,
+        other.rowB,
+        other.roomA,
+        other.roomB,
+        other.version,
+      ]) {
+        expect(text).not.toContain(id);
+      }
+      expect(answer.facts.otherDrafts).toEqual([]);
+    });
+
+    it('keeps the lesson elsewhere out of reach: a move, a swap and a remove naming it answer 404 and change nothing', async () => {
+      // Review correction 1: "They cannot be moved from here".
+      const { s, other, block, entry } = await twoBranches(3);
+      const own = await placed(s.branch, s.version, s.rowA, 2, 1);
+      const before = await patternRows([s.version, other.version]);
+      for (const id of [block, entry]) {
+        refusedWith(await move(s.branch, s.version, id, 2, 3), 404, 'not_found');
+        refusedWith(await drop(s.branch, s.version, id), 404, 'not_found');
+        refusedWith(await swap(s.branch, s.version, own.id, id), 404, 'not_found');
+      }
+      expect(await patternRows([s.version, other.version])).toEqual(before);
+    });
+
+    it('saves a lesson at the time another branch’s draft plans the teacher, with the other-draft warning', async () => {
+      const { s, other } = await twoBranches(3, 'draft');
+      const { answer, id } = await placed(s.branch, s.version, s.rowA, 1, 3);
+      const lesson = answer.blocks.find((one) => one.id === id)?.lessons[0]?.id;
+      expect(answer.results).toContainEqual(
+        expect.objectContaining({
+          rule: 'other_draft',
+          severity: 'warning',
+          weekday: 1,
+          detail: { branchId: other.branch },
+        }),
+      );
+      expect(answer.results.find((one) => one.rule === 'other_draft')?.lessonIds).toContain(lesson);
+      expect(answer.facts.busyElsewhere).toEqual([]);
+      expect(answer.facts.branches.map((one) => one.id)).toEqual([other.branch]);
+    });
+  });
+
   describe('a write and another write at the same moment', () => {
     /** How many connections to the test database wait for a lock right now. */
     async function waitingForALock(): Promise<number> {

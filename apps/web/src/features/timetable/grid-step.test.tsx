@@ -258,7 +258,9 @@ const GRID: GridAnswer = {
         block: [ROW_GROUP],
       },
     ],
+    busyElsewhere: [],
     otherDrafts: [],
+    branches: [],
   },
   results: [],
 };

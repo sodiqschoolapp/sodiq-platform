@@ -47,6 +47,24 @@ export interface PatternRowData {
   readonly block: readonly string[];
 }
 
+/**
+ * A lesson of a teacher of the draft in the published pattern of another
+ * branch (task 5.4b-1): busy elsewhere (06, Teachers who work in several
+ * branches). Its weekday, times and branch only, no class, subject or room
+ * (decision 2); `tutorLesson` for the load step's list of a Tutor of classes in
+ * two branches.
+ */
+export interface ElsewhereLessonData {
+  /** The other branch's pattern entry. */
+  readonly id: string;
+  readonly teacherId: string;
+  readonly branchId: string;
+  readonly weekday: number;
+  readonly start: number;
+  readonly end: number;
+  readonly tutorLesson: boolean;
+}
+
 export interface PatternFactsData {
   readonly branchId: string;
   /** The later of the draft's start date and today (`placement.ts`). */
@@ -76,7 +94,46 @@ export interface PatternFactsData {
   }[];
   readonly classDailyLessons: number | null;
   readonly rows: readonly PatternRowData[];
+  /** The teachers' lessons in other branches' published patterns in force on `startDate`. */
+  readonly busyElsewhere: readonly ElsewhereLessonData[];
+  /** The teachers' lessons in other branches' drafts (06, Two drafts at once), for `other_draft`. */
   readonly otherDrafts: readonly Placement[];
+  /** The name of every other branch met in `busyElsewhere` and `otherDrafts`. */
+  readonly branches: readonly { readonly id: string; readonly name: string }[];
+}
+
+/**
+ * A teacher's lesson in another branch as the engine reads it: `fixed` for a
+ * published one (busy elsewhere: in every clash and the travel time, no rule
+ * of its own), not for a draft's (`other_draft` only). A block of its own,
+ * with no class, subject, row or room.
+ */
+export function elsewherePlacement(
+  lesson: Omit<ElsewhereLessonData, 'tutorLesson'>,
+  fixed: boolean,
+): Placement {
+  return {
+    id: lesson.id,
+    kind: 'lesson',
+    branchId: lesson.branchId,
+    day: String(lesson.weekday),
+    start: lesson.start,
+    end: lesson.end,
+    blockId: lesson.id,
+    doublePairId: null,
+    classId: null,
+    groupId: null,
+    classIds: [],
+    studentIds: [],
+    exemptStudentIds: [],
+    subjectId: null,
+    loadRowId: null,
+    teacherIds: [lesson.teacherId],
+    substitute: false,
+    roomId: null,
+    examRooms: [],
+    fixed,
+  };
 }
 
 /** Where a lesson of the pattern sits. */
@@ -92,6 +149,8 @@ export interface PatternAt {
 export interface PatternModel {
   readonly data: PatternFactsData;
   readonly facts: Facts;
+  /** The busy-elsewhere lessons (`busyElsewhere`) as fixed placements, for every check of the pattern. */
+  readonly fixed: readonly Placement[];
   /** A row of the draft; throws for one not in the data (a caller's fault). */
   readonly rowOf: (rowId: string) => PatternRowData;
   readonly unitOf: (unitId: string) => PatternUnitData;
@@ -170,6 +229,7 @@ export function patternModel(data: PatternFactsData): PatternModel {
   return {
     data,
     facts,
+    fixed: data.busyElsewhere.map((lesson) => elsewherePlacement(lesson, true)),
     rowOf: (rowId) => need(rows, rowId, 'load row'),
     unitOf,
     placementOf: (row, at) => {

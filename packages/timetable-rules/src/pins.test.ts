@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { checkTimetable } from './check.js';
 import { dayTimes, type Day, type DaySlotInput } from './day.js';
 import type { EngineDay, EngineTeacher, EngineUnit, Facts, Placement } from './placement.js';
+import { elsewherePlacement } from './facts-data.js';
 import { pinnedPlacements, tutorPinClashes, type Pin, type PinRow, type PinSlot } from './pins.js';
 import { rulesReadiness } from './readiness.js';
 import type { RuleResult } from './rules.js';
@@ -346,6 +347,29 @@ describe('tutorPinClashes', () => {
     expect(
       tutorPinClashes(checkTimetable(set.placements, facts()), set.placements, tutorRow),
     ).toEqual([]);
+  });
+
+  it('lists a Tutor whose pinned lesson meets a Tutor lesson in another branch, and not another lesson there', () => {
+    const set = pinned([pin('p1', 'hw-7a', 5, 5)]);
+    const [hw] = set.placements;
+    if (hw === undefined) throw new Error('no pinned lesson');
+    const elsewhere = elsewherePlacement(
+      {
+        id: 'south-hw',
+        teacherId: hw.teacherIds[0] ?? '',
+        branchId: 'branch-south',
+        weekday: 5,
+        start: hw.start,
+        end: hw.end,
+      },
+      true,
+    );
+    const all = [...set.placements, elsewhere];
+    const results = checkTimetable(all, facts());
+    const clashes = tutorPinClashes(results, all, tutorRow, new Set(['south-hw']));
+    expect(clashes).toHaveLength(1);
+    expect(set.pinsOf(clashes[0]?.lessonIds ?? [])).toEqual(['p1']);
+    expect(tutorPinClashes(results, all, tutorRow)).toEqual([]);
   });
 
   it('lists no clash of a teacher who is not a Tutor of both', () => {

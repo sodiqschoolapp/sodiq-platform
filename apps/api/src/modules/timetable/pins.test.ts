@@ -232,7 +232,12 @@ describe('pinned lessons of step 5', () => {
       const answer = await readiness(s.branch, s.version);
       expect(answer.rules).toMatchObject({ ready: false, confirmed: true });
       expect(answer.rules.conflicts).toEqual([
-        { rule: 'teacher_double', weekday: 2, pinIds: [first.id, second.id].sort() },
+        {
+          rule: 'teacher_double',
+          weekday: 2,
+          pinIds: [first.id, second.id].sort(),
+          elsewhere: false,
+        },
       ]);
       expect(answer.ready).toBe(false);
       await expect(gate(s.branch, s.version)).rejects.toMatchObject({
@@ -260,7 +265,7 @@ describe('pinned lessons of step 5', () => {
         .execute();
       const { id } = await pinned(s.branch, s.version, s.rowA, 3, 1);
       expect((await readiness(s.branch, s.version)).rules.conflicts).toEqual([
-        { rule: 'teacher_unavailable', weekday: 3, pinIds: [id] },
+        { rule: 'teacher_unavailable', weekday: 3, pinIds: [id], elsewhere: false },
       ]);
     });
 
@@ -275,7 +280,7 @@ describe('pinned lessons of step 5', () => {
       const first = await pinned(s.branch, s.version, s.rowA, 4, 1);
       const second = await pinned(s.branch, s.version, s.rowB, 4, 1);
       expect((await readiness(s.branch, s.version)).rules.conflicts).toEqual([
-        { rule: 'room_double', weekday: 4, pinIds: [first.id, second.id].sort() },
+        { rule: 'room_double', weekday: 4, pinIds: [first.id, second.id].sort(), elsewhere: false },
       ]);
     });
 
@@ -286,7 +291,7 @@ describe('pinned lessons of step 5', () => {
       const saturday = await pinned(s.branch, s.version, s.rowB, 6, 1);
       const answer = await readiness(s.branch, s.version);
       expect(answer.rules.conflicts).toEqual([
-        { rule: 'break_slot', weekday: 1, pinIds: [onBreak.id] },
+        { rule: 'break_slot', weekday: 1, pinIds: [onBreak.id], elsewhere: false },
       ]);
       expect(answer.rules.problems).toEqual(
         [past.id, saturday.id].sort().map((pinId) => ({ pinId, problem: 'pin_no_slot' })),
@@ -364,7 +369,12 @@ describe('pinned lessons of step 5', () => {
       const a = await pinned(s.branch, s.version, first, 5, 5);
       const b = await pinned(s.branch, s.version, second, 5, 5);
       const answer = await readiness(s.branch, s.version);
-      const both = { rule: 'teacher_double', weekday: 5, pinIds: [a.id, b.id].sort() };
+      const both = {
+        rule: 'teacher_double',
+        weekday: 5,
+        pinIds: [a.id, b.id].sort(),
+        elsewhere: false,
+      };
       expect(answer.load.tutorPinClashes).toEqual([both]);
       expect(answer.rules.conflicts).toEqual([both]);
       // Two times: nothing to list.
@@ -435,7 +445,7 @@ describe('pinned lessons of step 5', () => {
       const wednesday = await pinned(s.branch, s.version, s.rowA, 3, 1);
       const conflicts = (await readiness(s.branch, s.version)).rules.conflicts;
       expect(conflicts).toEqual([
-        { rule: 'teacher_unavailable', weekday: 3, pinIds: [wednesday.id] },
+        { rule: 'teacher_unavailable', weekday: 3, pinIds: [wednesday.id], elsewhere: false },
       ]);
       expect(conflicts.flatMap((one) => one.pinIds)).not.toContain(monday.id);
     });
@@ -446,7 +456,7 @@ describe('pinned lessons of step 5', () => {
       expect((await readiness(s.branch, s.version)).rules.conflicts).toEqual([]);
       await load.status(s.teacherA, 'left', MONDAY);
       expect((await readiness(s.branch, s.version)).rules.conflicts).toEqual([
-        { rule: 'teacher_inactive', weekday: 1, pinIds: [id] },
+        { rule: 'teacher_inactive', weekday: 1, pinIds: [id], elsewhere: false },
       ]);
     });
 
@@ -470,6 +480,121 @@ describe('pinned lessons of step 5', () => {
         start: 525,
         end: 565,
       });
+    });
+  });
+
+  // Task 5.4b-1 (the From 5.3b-2 line of 5.4b, decision 1 of 5.3b-2, Look
+  // first): the pins are checked against the teachers' lessons in the
+  // published timetable of other branches (06, Teachers who work in several
+  // branches, "One clash check", "Busy elsewhere"; edge/timetable, Generator
+  // and editing: "A blocked conflict stops the run and lists the lessons").
+  describe('the pins and the lessons of other branches', () => {
+    /** A lesson of the teacher on the other scene's row at a weekday and position, its version then published. */
+    async function elsewhere(
+      other: Awaited<ReturnType<typeof scene>>,
+      teacherId: string,
+      rowId: string,
+      weekday: number,
+      position: 1 | 3 | 5,
+    ) {
+      const [start, end] = { 1: [480, 525], 3: [535, 580], 5: [590, 635] }[position];
+      const block = await t.database.migrator
+        .insertInto('pattern_blocks')
+        .values({
+          branch_id: other.branch,
+          version_id: other.version,
+          weekday,
+          slot_position: position,
+          start_minutes: start,
+          end_minutes: end,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await t.database.migrator
+        .insertInto('pattern_entries')
+        .values({
+          branch_id: other.branch,
+          version_id: other.version,
+          block_id: block.id,
+          weekday,
+          start_minutes: start,
+          end_minutes: end,
+          load_row_id: rowId,
+          teacher_id: teacherId,
+        })
+        .execute();
+      await load.setVersion(other.version, 'published');
+    }
+
+    const linkTo = (staffId: string, branch: string) =>
+      t.database.migrator
+        .insertInto('staff_branches')
+        .values({ staff_id: staffId, branch_id: branch, is_main: false })
+        .execute();
+
+    it('lists a pin at the time of the teacher’s lesson in another branch, and step 5 is not ready', async () => {
+      const s = await scene();
+      const other = await scene();
+      await linkTo(s.teacherA, other.branch);
+      await load.profile(s.teacherA, [{ subject: other.subject, grades: [7] }]);
+      await t.database.migrator
+        .updateTable('teaching_load_rows')
+        .set({ teacher_id: s.teacherA })
+        .where('id', '=', other.rowB)
+        .execute();
+      await elsewhere(other, s.teacherA, other.rowB, 2, 3);
+      const { id } = await pinned(s.branch, s.version, s.rowA, 2, 3);
+      const answer = await readiness(s.branch, s.version);
+      expect(answer.rules.conflicts).toEqual([
+        { rule: 'teacher_double', weekday: 2, pinIds: [id], elsewhere: true },
+      ]);
+      expect(answer.rules.ready).toBe(false);
+      await expect(gate(s.branch, s.version)).rejects.toMatchObject({ status: 409 });
+      // Another weekday meets nothing elsewhere.
+      readinessOf(await remove(`/api/timetable/versions/${s.version}/pins/${id}`, s.branch));
+      await pinned(s.branch, s.version, s.rowA, 3, 3);
+      expect((await readiness(s.branch, s.version)).rules.conflicts).toEqual([]);
+    });
+
+    it('lists a Tutor whose pinned lesson meets a Tutor lesson in another branch in the load step', async () => {
+      const s = await scene();
+      const other = await scene();
+      const tutorSubject = await load.tutorSubject({ grades: [7] });
+      const tutor = await load.tutorSubjectHolder(s.branch, tutorSubject, [7]);
+      await linkTo(tutor.staffId, other.branch);
+      await load.classes.tutorRow(
+        s.branch,
+        s.classA,
+        await load.classes.role(tutor.accountId, s.branch, 'tutor'),
+      );
+      await load.classes.tutorRow(
+        other.branch,
+        other.classA,
+        await load.classes.role(tutor.accountId, other.branch, 'tutor'),
+      );
+      await hours(s.branch, tutor.staffId, [1, 2, 3, 4, 5]);
+      const row = (branch: string, version: string, classId: string) =>
+        load.row({
+          branch_id: branch,
+          version_id: version,
+          class_id: classId,
+          subject_id: tutorSubject,
+          teacher_id: tutor.staffId,
+          lessons_per_week: 1,
+        });
+      const own = await row(s.branch, s.version, s.classA);
+      await elsewhere(
+        other,
+        tutor.staffId,
+        await row(other.branch, other.version, other.classA),
+        5,
+        5,
+      );
+      const { id } = await pinned(s.branch, s.version, own, 5, 5);
+      const answer = await readiness(s.branch, s.version);
+      const clash = { rule: 'teacher_double', weekday: 5, pinIds: [id], elsewhere: true };
+      expect(answer.load.tutorPinClashes).toEqual([clash]);
+      expect(answer.rules.conflicts).toEqual([clash]);
     });
   });
 

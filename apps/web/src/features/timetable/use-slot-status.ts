@@ -2,6 +2,7 @@ import type { GridAnswer } from '@sodiq/shared';
 import {
   blockPlacements,
   checkCandidates,
+  checkedPlacements,
   patternPlacements,
   slotStatus,
   WEEK_COUNT_RULES,
@@ -177,7 +178,7 @@ export function cellStatus(
   if (drop.kind === 'no_slot') return { status: 'blocked', rule: null, drop };
   const changed = drop.kind === 'move' ? [drop.to] : drop.changed;
   const results: RuleResult[] = checkCandidates(
-    patternPlacements(model, all),
+    checkedPlacements(model, all),
     model.facts,
     patternPlacements(model, changed),
   ).filter((one) => !WEEK_COUNT_RULES.includes(one.rule));

@@ -39777,6 +39777,7 @@ export interface operations {
                                 rule: string;
                                 weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
                                 pinIds: string[];
+                                elsewhere: boolean;
                             }[];
                         };
                         teachers: {
@@ -39919,6 +39920,7 @@ export interface operations {
                                 rule: string;
                                 weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
                                 pinIds: string[];
+                                elsewhere: boolean;
                             }[];
                             problems: {
                                 /** Format: uuid */
@@ -40136,6 +40138,7 @@ export interface operations {
                                 rule: string;
                                 weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
                                 pinIds: string[];
+                                elsewhere: boolean;
                             }[];
                         };
                         teachers: {
@@ -40278,6 +40281,7 @@ export interface operations {
                                 rule: string;
                                 weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
                                 pinIds: string[];
+                                elsewhere: boolean;
                             }[];
                             problems: {
                                 /** Format: uuid */
@@ -40510,6 +40514,7 @@ export interface operations {
                                 rule: string;
                                 weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
                                 pinIds: string[];
+                                elsewhere: boolean;
                             }[];
                         };
                         teachers: {
@@ -40652,6 +40657,7 @@ export interface operations {
                                 rule: string;
                                 weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
                                 pinIds: string[];
+                                elsewhere: boolean;
                             }[];
                             problems: {
                                 /** Format: uuid */
@@ -40885,6 +40891,7 @@ export interface operations {
                                 rule: string;
                                 weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
                                 pinIds: string[];
+                                elsewhere: boolean;
                             }[];
                         };
                         teachers: {
@@ -41027,6 +41034,7 @@ export interface operations {
                                 rule: string;
                                 weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
                                 pinIds: string[];
+                                elsewhere: boolean;
                             }[];
                             problems: {
                                 /** Format: uuid */
@@ -41253,6 +41261,7 @@ export interface operations {
                                 rule: string;
                                 weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
                                 pinIds: string[];
+                                elsewhere: boolean;
                             }[];
                         };
                         teachers: {
@@ -41395,6 +41404,7 @@ export interface operations {
                                 rule: string;
                                 weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
                                 pinIds: string[];
+                                elsewhere: boolean;
                             }[];
                             problems: {
                                 /** Format: uuid */
@@ -41613,6 +41623,7 @@ export interface operations {
                                 rule: string;
                                 weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
                                 pinIds: string[];
+                                elsewhere: boolean;
                             }[];
                         };
                         teachers: {
@@ -41755,6 +41766,7 @@ export interface operations {
                                 rule: string;
                                 weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
                                 pinIds: string[];
+                                elsewhere: boolean;
                             }[];
                             problems: {
                                 /** Format: uuid */
@@ -42088,6 +42100,18 @@ export interface operations {
                                 mixedBlock: boolean;
                                 block: string[];
                             }[];
+                            busyElsewhere: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                teacherId: string;
+                                /** Format: uuid */
+                                branchId: string;
+                                weekday: number;
+                                start: number;
+                                end: number;
+                                tutorLesson: boolean;
+                            }[];
                             otherDrafts: {
                                 id: string;
                                 /** @enum {string} */
@@ -42120,6 +42144,11 @@ export interface operations {
                                     students: number;
                                 }[];
                                 fixed: boolean;
+                            }[];
+                            branches: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
                             }[];
                         };
                         results: {
@@ -42466,6 +42495,18 @@ export interface operations {
                                 mixedBlock: boolean;
                                 block: string[];
                             }[];
+                            busyElsewhere: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                teacherId: string;
+                                /** Format: uuid */
+                                branchId: string;
+                                weekday: number;
+                                start: number;
+                                end: number;
+                                tutorLesson: boolean;
+                            }[];
                             otherDrafts: {
                                 id: string;
                                 /** @enum {string} */
@@ -42498,6 +42539,11 @@ export interface operations {
                                     students: number;
                                 }[];
                                 fixed: boolean;
+                            }[];
+                            branches: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
                             }[];
                         };
                         results: {
@@ -42841,6 +42887,18 @@ export interface operations {
                                 mixedBlock: boolean;
                                 block: string[];
                             }[];
+                            busyElsewhere: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                teacherId: string;
+                                /** Format: uuid */
+                                branchId: string;
+                                weekday: number;
+                                start: number;
+                                end: number;
+                                tutorLesson: boolean;
+                            }[];
                             otherDrafts: {
                                 id: string;
                                 /** @enum {string} */
@@ -42873,6 +42931,11 @@ export interface operations {
                                     students: number;
                                 }[];
                                 fixed: boolean;
+                            }[];
+                            branches: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
                             }[];
                         };
                         results: {
@@ -43218,6 +43281,18 @@ export interface operations {
                                 mixedBlock: boolean;
                                 block: string[];
                             }[];
+                            busyElsewhere: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                teacherId: string;
+                                /** Format: uuid */
+                                branchId: string;
+                                weekday: number;
+                                start: number;
+                                end: number;
+                                tutorLesson: boolean;
+                            }[];
                             otherDrafts: {
                                 id: string;
                                 /** @enum {string} */
@@ -43250,6 +43325,11 @@ export interface operations {
                                     students: number;
                                 }[];
                                 fixed: boolean;
+                            }[];
+                            branches: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
                             }[];
                         };
                         results: {
@@ -43588,6 +43668,18 @@ export interface operations {
                                 mixedBlock: boolean;
                                 block: string[];
                             }[];
+                            busyElsewhere: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                teacherId: string;
+                                /** Format: uuid */
+                                branchId: string;
+                                weekday: number;
+                                start: number;
+                                end: number;
+                                tutorLesson: boolean;
+                            }[];
                             otherDrafts: {
                                 id: string;
                                 /** @enum {string} */
@@ -43620,6 +43712,11 @@ export interface operations {
                                     students: number;
                                 }[];
                                 fixed: boolean;
+                            }[];
+                            branches: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
                             }[];
                         };
                         results: {

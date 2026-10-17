@@ -102,11 +102,16 @@ export async function checkPins(
     day: (rowId, weekday) => pattern.dayOfRow(rowOf(rowId), weekday),
     placement: (rowId, slot) => pattern.placementOf(rowOf(rowId), slot),
   });
-  const results = checkTimetable(set.placements, pattern.facts);
+  // The pins among themselves and against the teachers' lessons in other
+  // branches (busy elsewhere, task 5.4b-1: the From 5.3b-2 line of 5.4b).
+  const placements = [...set.placements, ...pattern.model.fixed];
+  const elsewhere = new Set(pattern.model.fixed.map((one) => one.id));
+  const results = checkTimetable(placements, pattern.facts);
   const conflictOf = (result: RuleResult) => ({
     rule: result.rule,
     weekday: weekdaySchema.parse(Number(result.day)),
     pinIds: set.pinsOf(result.lessonIds),
+    elsewhere: result.lessonIds.some((id) => elsewhere.has(id)),
   });
   const answerOfRow = new Map(answers.map((answer) => [answer.id, answer]));
   return {
@@ -133,11 +138,18 @@ export async function checkPins(
     results,
     problems: set.problems,
     conflictOf,
-    tutorClashes: tutorPinClashes(results, set.placements, (rowId) => {
-      const row = rowOf(rowId);
-      const unit = load.units.get(row.class_id ?? row.group_id ?? '');
-      const subject = load.subjects.get(row.subject_id);
-      return unit !== undefined && subject !== undefined && isTutorRow(unit.unit, subject);
-    }).map(conflictOf),
+    tutorClashes: tutorPinClashes(
+      results,
+      placements,
+      (rowId) => {
+        const row = rowOf(rowId);
+        const unit = load.units.get(row.class_id ?? row.group_id ?? '');
+        const subject = load.subjects.get(row.subject_id);
+        return unit !== undefined && subject !== undefined && isTutorRow(unit.unit, subject);
+      },
+      new Set(
+        pattern.data.busyElsewhere.filter((one) => one.tutorLesson).map((one) => one.id),
+      ),
+    ).map(conflictOf),
   };
 }
