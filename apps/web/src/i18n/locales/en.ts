@@ -2363,6 +2363,7 @@ export const en = {
       timetable_version: 'Timetable version',
       teaching_load_row: 'Teaching load row',
       timetable_pin: 'Pinned lesson',
+      pattern_block: 'Lesson of the weekly pattern',
     },
     actions: {
       auth: {
@@ -2599,6 +2600,12 @@ export const en = {
       timetable_pin: {
         create: 'Lesson of a draft pinned',
         delete: 'Pin of a draft removed',
+      },
+      pattern_block: {
+        create: 'Lesson placed in the grid of a draft',
+        move: 'Lesson moved in the grid of a draft',
+        swap: 'Two lessons swapped in the grid of a draft',
+        delete: 'Lesson removed from the grid of a draft',
       },
       teaching_load: {
         create: 'Teaching load row added',

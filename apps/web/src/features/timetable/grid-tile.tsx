@@ -20,12 +20,12 @@ export const unitText = (row: Row): string =>
 
 /** The data a dragged tile carries. */
 export interface TileData {
-  readonly [key: string]: unknown;
   readonly blockId: string;
 }
 
-export const isTileData = (data: Record<string | symbol, unknown>): data is TileData =>
-  typeof data.blockId === 'string';
+export const isTileData = (
+  data: Record<string | symbol, unknown>,
+): data is Record<string | symbol, unknown> & TileData => typeof data.blockId === 'string';
 
 /**
  * A placed block on the board (06, Editing in the grid; task 5.4a): each of
@@ -62,7 +62,7 @@ export function GridTile({
     if (!editable || own === null) return undefined;
     return draggable({
       element: own,
-      getInitialData: (): TileData => ({ blockId: block.id }),
+      getInitialData: () => ({ blockId: block.id }),
       onDragStart: () => {
         setDragging(true);
       },

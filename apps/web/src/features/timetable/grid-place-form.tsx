@@ -86,7 +86,9 @@ export function GridPlaceForm({
         slotPosition: chosen?.position ?? wholeNumber(''),
       };
     },
-    save: onPlace,
+    save: async (record: PlaceRecord) => {
+      await onPlace(record);
+    },
   });
   const where = t('timetable.grid.slotAt', {
     weekday: weekdayName(language, weekdaySchema.parse(cell.weekday)),

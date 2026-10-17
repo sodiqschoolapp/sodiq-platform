@@ -384,7 +384,7 @@ describe('the grid of step 7', () => {
     expect(busy?.querySelector('[data-reason]')?.textContent).toContain(
       en.timetable.rule.teacher_double,
     );
-    const free = dialog.querySelector<HTMLElement>('[data-move-cell="3:5"] button');
+    const free = dialog.querySelector<HTMLButtonElement>('[data-move-cell="3:5"] button');
     expect(free?.disabled).toBe(false);
     if (free === null || free === undefined) throw new Error('No free slot.');
     fireEvent.click(free);

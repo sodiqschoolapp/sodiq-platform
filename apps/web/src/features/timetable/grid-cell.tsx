@@ -8,12 +8,13 @@ import type { BoardCell, CellStatus } from './use-slot-status';
 
 /** The data of a cell a tile is dropped on. */
 export interface CellData {
-  readonly [key: string]: unknown;
   readonly weekday: number;
   readonly position: number;
 }
 
-export const isCellData = (data: Record<string | symbol, unknown>): data is CellData =>
+export const isCellData = (
+  data: Record<string | symbol, unknown>,
+): data is Record<string | symbol, unknown> & CellData =>
   typeof data.weekday === 'number' && typeof data.position === 'number';
 
 const SHOWN: Record<CellStatus['status'], string> = {
@@ -72,7 +73,7 @@ export function GridCell({
     if (!editable || own === null) return undefined;
     return dropTargetForElements({
       element: own,
-      getData: (): CellData => ({ weekday: cell.weekday, position: cell.position }),
+      getData: () => ({ weekday: cell.weekday, position: cell.position }),
       onDragEnter: () => {
         setOver(true);
       },

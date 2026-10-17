@@ -2382,6 +2382,7 @@ export const uz: Texts<'one' | 'other'> = {
       group: 'Guruh',
       timetable_version: 'Dars jadvali versiyasi',
       timetable_pin: 'Qotirilgan dars',
+      pattern_block: 'Haftalik shablon darsi',
       teaching_load_row: 'Oʻquv yuklamasi qatori',
     },
     actions: {
@@ -2619,6 +2620,12 @@ export const uz: Texts<'one' | 'other'> = {
       timetable_pin: {
         create: 'Qoralama darsi qotirildi',
         delete: 'Qoralama darsining qotirilishi olib tashlandi',
+      },
+      pattern_block: {
+        create: 'Dars qoralama jadvaliga qoʻyildi',
+        move: 'Dars qoralama jadvalida koʻchirildi',
+        swap: 'Ikki dars qoralama jadvalida oʻrin almashtirildi',
+        delete: 'Dars qoralama jadvalidan olib tashlandi',
       },
       teaching_load: {
         create: 'Oʻquv yuklamasi qatori qoʻshildi',

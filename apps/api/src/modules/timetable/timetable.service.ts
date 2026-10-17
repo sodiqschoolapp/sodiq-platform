@@ -1953,11 +1953,7 @@ export class Timetable {
    * class). Another branch's or unknown: 404; a closed year:
    * `timetable_year_closed`; not a draft: `version_not_draft`.
    */
-  async lockDraft(
-    transaction: Transaction,
-    branchId: string,
-    id: string,
-  ): Promise<VersionRow> {
+  async lockDraft(transaction: Transaction, branchId: string, id: string): Promise<VersionRow> {
     const named = await transaction
       .selectFrom('timetable_versions')
       .select('academic_year_id')
@@ -1990,11 +1986,7 @@ export class Timetable {
   }
 
   /** A version of the branch, read without a lock; 404 otherwise. */
-  async findVersion(
-    transaction: Transaction,
-    branchId: string,
-    id: string,
-  ): Promise<VersionRow> {
+  async findVersion(transaction: Transaction, branchId: string, id: string): Promise<VersionRow> {
     const found = await transaction
       .selectFrom('timetable_versions')
       .select('id')

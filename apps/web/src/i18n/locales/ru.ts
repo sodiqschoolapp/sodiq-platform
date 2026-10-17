@@ -2477,6 +2477,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       group: 'Группа',
       timetable_version: 'Версия расписания',
       timetable_pin: 'Закреплённый урок',
+      pattern_block: 'Урок недельного шаблона',
       teaching_load_row: 'Строка учебной нагрузки',
     },
     actions: {
@@ -2714,6 +2715,12 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       timetable_pin: {
         create: 'Урок черновика закреплён',
         delete: 'Закрепление урока черновика снято',
+      },
+      pattern_block: {
+        create: 'Урок поставлен в сетку черновика',
+        move: 'Урок перемещён в сетке черновика',
+        swap: 'Два урока поменяны местами в сетке черновика',
+        delete: 'Урок убран из сетки черновика',
       },
       teaching_load: {
         create: 'Добавлена строка учебной нагрузки',
