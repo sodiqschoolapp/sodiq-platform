@@ -8,7 +8,7 @@ import {
 } from '@sodiq/shared';
 import { lockedBy, patternModel, type PatternBlock, type Suggestion } from '@sodiq/timetable-rules';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiFailure } from '@/api/failure';
 import { useConfirm } from '@/components/confirm-dialog';
@@ -27,6 +27,24 @@ import { GridCell, isCellData } from './grid-cell';
 import { GridClockBoard } from './grid-clock-board';
 import { GridLocks } from './grid-locks';
 import { GridConflicts } from './grid-conflicts';
+import {
+  dropped,
+  EMPTY_HISTORY,
+  nextStep,
+  placedAgain,
+  recorded,
+  renamed,
+  rowsOfStep,
+  stepOf,
+  stillApplies,
+  taken,
+  writeOf,
+  type Direction,
+  type GridHistory,
+  type Step,
+  type StepKind,
+  type StepWrite,
+} from './grid-history';
 import { GridMoveDialog } from './grid-move-dialog';
 import { GridPlaceForm } from './grid-place-form';
 import { GridRoomPicker } from './grid-room-picker';
@@ -79,6 +97,9 @@ import {
  *
  * Task 5.4b-2b: "Suggest a place" on a tile and on a "To place" entry, applied
  * through the rearrange route, which checks it again.
+ *
+ * Task 5.4c-2: Undo and Redo (and Ctrl+Z, Ctrl+Shift+Z, Ctrl+Y) over the
+ * page's own grid changes (`grid-history.ts`), each taken through the routes.
  */
 const GRID_VIEWS = ['class', 'teacher', 'room'] as const;
 
@@ -86,12 +107,30 @@ type GridView = (typeof GRID_VIEWS)[number];
 
 const gridViewOf = (value: string): GridView => GRID_VIEWS.find((one) => one === value) ?? 'class';
 
+/** A step whose blocks changed since the board was read again (decision 3). */
+class ChangedSince extends Error {}
+
+const FIELD_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
+
+/** The direction a key asks for: Ctrl+Z undo, Ctrl+Shift+Z and Ctrl+Y redo (Cmd on a Mac). */
+function directionOf(event: KeyboardEvent): Direction | null {
+  if (!(event.ctrlKey || event.metaKey) || event.altKey) return null;
+  const key = event.key.toLowerCase();
+  if (key === 'z') return event.shiftKey ? 'redo' : 'undo';
+  return key === 'y' && !event.shiftKey ? 'redo' : null;
+}
+
 export function GridStep({
   versionId,
   canEdit,
+  history,
+  onHistory,
 }: {
   versionId: string;
   canEdit: boolean;
+  /** Task 5.4c-2: kept by the builder page for this version (decision 6). */
+  history: GridHistory;
+  onHistory: Dispatch<SetStateAction<GridHistory>>;
 }): React.JSX.Element {
   const { t, i18n } = useTranslation();
   const language = i18n.language;
@@ -117,6 +156,9 @@ export function GridStep({
   const [rooming, setRooming] = useState<{ blockId: string; lessonId: string } | null>(null);
   /** The block whose "Suggest a place" is open. */
   const [suggesting, setSuggesting] = useState<PatternBlock | null>(null);
+  /** The last undo or redo was dropped: its lessons changed since (decision 3). */
+  const [changedSince, setChangedSince] = useState(false);
+  const [placed, setPlaced] = useState(false);
 
   const model = useMemo(() => (data === undefined ? null : patternModel(data.facts)), [data]);
   const chosen = data?.classes.find((one) => one.id === classId) ?? data?.classes[0];
@@ -192,6 +234,14 @@ export function GridStep({
     queryClient.setQueryData(gridQuery(branchId, versionId).queryKey, answer);
     return invalidateTimetable(queryClient);
   };
+  /** Task 5.4c-2: a write of the page becomes a step of the history, then the answer is shown. */
+  const recordedAnswer = (kind: StepKind, before: readonly PatternBlock[], answer: GridAnswer) => {
+    const step = stepOf(kind, before, answer.blocks);
+    if (step !== null) {
+      onHistory((current) => recorded(current, step));
+    }
+    return answered(answer);
+  };
   const write = useMutation({
     mutationFn: (drop: Drop) => {
       if (drop.kind === 'move') {
@@ -212,11 +262,17 @@ export function GridStep({
       }
       throw new Error('Only a move or a swap is sent.');
     },
-    onSuccess: answered,
+    // The board before the write, for the step it makes (task 5.4c-2).
+    onMutate: () => all,
+    onSuccess: (answer, drop, before) =>
+      drop.kind === 'move' || drop.kind === 'place' || drop.kind === 'swap'
+        ? recordedAnswer(drop.kind, before ?? [], answer)
+        : answered(answer),
   });
   const remove = useMutation({
     mutationFn: (blockId: string) => removeBlock(versionId, blockId),
-    onSuccess: answered,
+    onMutate: () => all,
+    onSuccess: (answer, _blockId, before) => recordedAnswer('remove', before ?? [], answer),
   });
   const room = useMutation({
     mutationFn: (input: { blockId: string; lessonId: string; roomId: string }) =>
@@ -224,14 +280,104 @@ export function GridStep({
         lessonId: input.lessonId,
         roomId: input.roomId,
       }),
-    onSuccess: answered,
+    onMutate: () => all,
+    onSuccess: (answer, _input, before) => recordedAnswer('room', before ?? [], answer),
   });
   const rearrange = useMutation({
     mutationFn: (suggestion: Suggestion) => {
       if (model === null) throw new Error('The grid is not read yet.');
       return rearrangeBlocks(versionId, rearrangeOf(model, suggestion));
     },
-    onSuccess: answered,
+    onMutate: () => all,
+    onSuccess: (answer, _suggestion, before) => recordedAnswer('suggestion', before ?? [], answer),
+  });
+  /** The write of a step by the route of its kind (decision 5). */
+  const sent = (write: StepWrite): Promise<GridAnswer> => {
+    switch (write.route) {
+      case 'move':
+        return moveBlock(versionId, write.blockId, write.body);
+      case 'swap':
+        return swapBlocks(versionId, write.body);
+      case 'room':
+        return changeLessonRoom(versionId, write.blockId, write.body);
+      case 'place':
+        return placeBlock(versionId, write.body);
+      case 'remove':
+        return removeBlock(versionId, write.blockId);
+      case 'rearrange':
+        return rearrangeBlocks(versionId, write.body);
+    }
+  };
+  // Task 5.4c-2: an undo or a redo reads the board again, drops a step whose
+  // lessons changed since (decision 3), and sends the rest through the routes,
+  // which check it with the rule engine; a refusal keeps the step.
+  const stepping = useMutation({
+    mutationFn: async (
+      direction: Direction,
+    ): Promise<{ answer: GridAnswer; before: readonly PatternBlock[]; step: Step }> => {
+      const step = nextStep(history, direction);
+      if (step === undefined) throw new Error('Nothing to take.');
+      const fresh = await queryClient.fetchQuery({
+        ...gridQuery(branchId, versionId),
+        staleTime: 0,
+      });
+      if (!stillApplies(patternModel(fresh.facts), fresh.blocks, step, direction)) {
+        throw new ChangedSince();
+      }
+      const answer = await sent(writeOf(step, direction, fresh.blocks));
+      return { answer, before: fresh.blocks, step };
+    },
+    onSuccess: ({ answer, before, step }, direction) => {
+      onHistory((current) =>
+        placedAgain(step, direction, before, answer.blocks).reduce(
+          (next, ids) => renamed(next, ids.from, ids.to),
+          taken(current, direction),
+        ),
+      );
+      return answered(answer);
+    },
+    onError: (error, direction) => {
+      if (error instanceof ChangedSince) {
+        onHistory((current) => dropped(current, direction));
+        setChangedSince(true);
+      } else if (error instanceof ApiFailure && error.code === 'draft_edit_locked') {
+        // Decision 6: the draft is another account's now.
+        onHistory(EMPTY_HISTORY);
+      }
+    },
+  });
+  const go = (direction: Direction) => {
+    if (stepping.isPending || nextStep(history, direction) === undefined) return;
+    setRefusal(null);
+    setPlaced(false);
+    setChangedSince(false);
+    stepping.mutate(direction);
+  };
+  const editLock = data?.version.editLock ?? null;
+  useEffect(() => {
+    // Decision 6: an answer naming another holder clears the history.
+    if (editLock !== null && !editLock.mine) onHistory(EMPTY_HISTORY);
+  }, [editLock, onHistory]);
+  useEffect(() => {
+    if (!editable) return undefined;
+    const onKey = (event: KeyboardEvent) => {
+      const direction = directionOf(event);
+      if (direction === null) return;
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        (target.isContentEditable || FIELD_TAGS.has(target.tagName))
+      ) {
+        return;
+      }
+      if (document.querySelector('[role="dialog"]') !== null) return;
+      event.preventDefault();
+      go(direction);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+    };
   });
   // Task 5.4c-1: the locks of the draft.
   const lock = useMutation({
@@ -242,7 +388,6 @@ export function GridStep({
     mutationFn: (lockId: string) => deleteLock(versionId, lockId),
     onSuccess: answered,
   });
-  const [placed, setPlaced] = useState(false);
 
   /** The refusal with the rules of the engine named, for `pattern_blocked`. */
   const failureText = (error: unknown): string | undefined => {
@@ -332,6 +477,15 @@ export function GridStep({
       .filter((row) => row !== undefined)
       .map((row) => `${nameOf(row.subject.names, language)}, ${unitText(row)}`)
       .join('; ');
+  /** A step named by its kind and its first lesson. */
+  const stepName = (step: Step) =>
+    t(`timetable.grid.history.kinds.${step.kind}`, {
+      lesson: lessonName({
+        lessons: rowsOfStep(step).map((loadRowId) => ({ id: loadRowId, loadRowId, roomId: null })),
+      }),
+    });
+  const undoStep = nextStep(history, 'undo');
+  const redoStep = nextStep(history, 'redo');
   const removeAsked = async (block: PatternBlock) => {
     setRefusal(null);
     setPlaced(false);
@@ -416,9 +570,44 @@ export function GridStep({
             rearrange.isSuccess ||
             lock.isSuccess ||
             unlock.isSuccess ||
+            stepping.isSuccess ||
             placed
           }
         />
+        {editable && (
+          <div className="flex gap-2" data-history="">
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={undoStep === undefined || stepping.isPending}
+              aria-label={
+                undoStep === undefined
+                  ? t('timetable.grid.history.undo')
+                  : t('timetable.grid.history.undoStep', { step: stepName(undoStep) })
+              }
+              onClick={() => {
+                go('undo');
+              }}
+            >
+              {t('timetable.grid.history.undo')}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={redoStep === undefined || stepping.isPending}
+              aria-label={
+                redoStep === undefined
+                  ? t('timetable.grid.history.redo')
+                  : t('timetable.grid.history.redoStep', { step: stepName(redoStep) })
+              }
+              onClick={() => {
+                go('redo');
+              }}
+            >
+              {t('timetable.grid.history.redo')}
+            </Button>
+          </div>
+        )}
       </div>
       {!data.editable && <p className="text-sm">{t('timetable.grid.readOnly')}</p>}
       {data.editable && canEdit && !wide && (
@@ -435,6 +624,15 @@ export function GridStep({
       <FailureAlert error={rearrange.error} text={failureText(rearrange.error)} />
       <FailureAlert error={lock.error} />
       <FailureAlert error={unlock.error} />
+      {changedSince && (
+        <Alert variant="destructive" data-refusal="">
+          <AlertDescription>{t('timetable.grid.history.changedSince')}</AlertDescription>
+        </Alert>
+      )}
+      <FailureAlert
+        error={stepping.error instanceof ChangedSince ? null : stepping.error}
+        text={failureText(stepping.error)}
+      />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="grid min-w-0 content-start gap-4">
           {view === 'room' && chosenRoom === undefined && (
@@ -585,7 +783,8 @@ export function GridStep({
               cell={adding}
               failureText={failureText}
               onPlace={async (record: PlaceRecord) => {
-                await answered(await placeBlock(versionId, record));
+                const before = all;
+                await recordedAnswer('place', before, await placeBlock(versionId, record));
                 setAdding(null);
                 setPlaced(true);
               }}

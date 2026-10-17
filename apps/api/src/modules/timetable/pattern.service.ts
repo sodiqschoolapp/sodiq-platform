@@ -163,19 +163,28 @@ export class TimetablePattern {
         }
         const { model } = state.pattern;
         // Task 5.4b-2a: a room chosen in the picker is a room of the branch.
-        if (
-          input.roomId !== undefined &&
-          !model.data.rooms.some((one) => one.id === input.roomId)
-        ) {
+        if (input.roomId !== undefined && !this.isRoomOf(state, input.roomId)) {
           throw notFound();
         }
         // One builder of a new block (task 5.4b-2b, review correction 2).
         const fresh = newBlockOf(model, row.id);
-        const lessons = fresh.lessons.map((lesson) =>
-          lesson.loadRowId === row.id && input.roomId !== undefined
+        // Task 5.4c-2: the undo of a removal gives each lesson its room back.
+        const rooms = input.rooms ?? [];
+        for (const room of rooms) {
+          if (
+            !fresh.lessons.some((lesson) => lesson.loadRowId === room.loadRowId) ||
+            (room.roomId !== null && !this.isRoomOf(state, room.roomId))
+          ) {
+            throw notFound();
+          }
+        }
+        const lessons = fresh.lessons.map((lesson) => {
+          const room = rooms.find((one) => one.loadRowId === lesson.loadRowId);
+          if (room !== undefined) return { ...lesson, roomId: room.roomId };
+          return lesson.loadRowId === row.id && input.roomId !== undefined
             ? { ...lesson, roomId: input.roomId }
-            : lesson,
-        );
+            : lesson;
+        });
         const placed = blockAt(model, { id: fresh.id, lessons }, input.weekday, input.slotPosition);
         this.refuseBlocked(state, [placed]);
         await this.insertBlock(transaction, access, state, placed, requestId);
@@ -283,7 +292,11 @@ export class TimetablePattern {
         const block = this.blockOf(state, blockId);
         const lesson = block.lessons.find((one) => one.id === input.lessonId);
         const { model } = state.pattern;
-        if (lesson === undefined || !model.data.rooms.some((one) => one.id === input.roomId)) {
+        // Task 5.4c-2 (decision 7): `null` gives back "no room" on an undo.
+        if (
+          lesson === undefined ||
+          (input.roomId !== null && !this.isRoomOf(state, input.roomId))
+        ) {
           throw notFound();
         }
         if (lesson.roomId === input.roomId) {
@@ -328,7 +341,10 @@ export class TimetablePattern {
    * three blocks moved, at most one of them new, with the rooms the suggestion
    * gives, checked together by the rule engine as a move is (`refuseBlocked`)
    * and written in one transaction with the clash constraints checked at the
-   * commit. A change at its block's own slot and rooms writes nothing.
+   * commit. A change at its block's own slot and rooms writes nothing. Task
+   * 5.4c-2: a block of `remove` is removed in the same transaction (the undo of
+   * a suggestion that created it); the moved blocks are checked without it, so
+   * a block can go back into its slot.
    */
   rearrange(
     access: Access,
@@ -362,7 +378,7 @@ export class TimetablePattern {
           for (const room of rooms) {
             if (
               !block.lessons.some((lesson) => lesson.loadRowId === room.loadRowId) ||
-              !model.data.rooms.some((one) => one.id === room.roomId)
+              (room.roomId !== null && !this.isRoomOf(state, room.roomId))
             ) {
               throw notFound();
             }
@@ -381,24 +397,32 @@ export class TimetablePattern {
             from.slotPosition !== to.slotPosition ||
             from.lessons.some((lesson, index) => lesson.roomId !== to.lessons[index]?.roomId),
         );
-        if (effective.length === 0) {
+        const removed = (input.remove ?? []).map((blockId) => this.blockOf(state, blockId));
+        if (effective.length === 0 && removed.length === 0) {
           return this.gridOf(transaction, state);
         }
         // Task 5.4c-1, decision 8: an applied suggestion leaves a locked lesson
-        // where it is and moves nothing into a locked day (From 5.4b-2b line).
+        // where it is and moves nothing into a locked day (From 5.4b-2b line);
+        // task 5.4c-2: nor does its undo remove a locked lesson.
         if (
-          effective.some(({ from, to }) => lockedBy(model, state.locks, from ?? to, to).length > 0)
+          effective.some(
+            ({ from, to }) => lockedBy(model, state.locks, from ?? to, to).length > 0,
+          ) ||
+          removed.some((block) => lockedBy(model, state.locks, block, block).length > 0)
         ) {
           throw refused('pattern_locked');
         }
+        const kept = state.blocks.filter((block) => !removed.some((one) => one.id === block.id));
         this.refuseBlocked(
-          state,
+          { ...state, blocks: kept },
           effective.map((one) => one.to),
         );
         await deferPatternClashes(transaction);
         // At most one new block (`rearrangeRecordSchema`); the others keep their ids.
         const others = (blockId: string) =>
-          effective.filter((one) => one.to.id !== blockId).map((one) => one.to.id);
+          [...effective.map((one) => one.to.id), ...removed.map((one) => one.id)].filter(
+            (one) => one !== blockId,
+          );
         const fresh = effective.find((one) => one.from === null);
         const freshId =
           fresh === undefined
@@ -411,6 +435,25 @@ export class TimetablePattern {
                 requestId,
                 others(fresh.to.id),
               );
+        const withFresh = (blockIds: readonly string[]) =>
+          blockIds.map((blockId) =>
+            fresh !== undefined && blockId === fresh.to.id ? (freshId ?? blockId) : blockId,
+          );
+        for (const block of removed) {
+          await this.audit.record(transaction, {
+            branchId,
+            actorId: access.accountId,
+            assignmentId: access.assignmentId,
+            action: 'pattern_block.delete',
+            record: { type: 'pattern_block', id: block.id },
+            oldValue: {
+              ...this.removedValue(state, block),
+              rearrangedWith: withFresh(others(block.id)),
+            },
+            requestId,
+          });
+          await transaction.deleteFrom('pattern_blocks').where('id', '=', block.id).execute();
+        }
         for (const { from, to } of effective) {
           if (from === null) continue;
           if (from.weekday !== to.weekday || from.slotPosition !== to.slotPosition) {
@@ -431,9 +474,7 @@ export class TimetablePattern {
               loadRowId: lesson.loadRowId,
               roomId: lesson.roomId,
             }));
-          const rearrangedWith = others(to.id).map((blockId) =>
-            fresh !== undefined && blockId === fresh.to.id ? (freshId ?? blockId) : blockId,
-          );
+          const rearrangedWith = withFresh(others(to.id));
           await this.audit.record(transaction, {
             branchId,
             actorId: access.accountId,
@@ -463,27 +504,13 @@ export class TimetablePattern {
         const version = await this.timetable.lockDraft(transaction, access, id, requestId);
         const state = await this.stateOf(transaction, version, access.accountId);
         const block = this.blockOf(state, blockId);
-        const { model } = state.pattern;
         await this.audit.record(transaction, {
           branchId,
           actorId: access.accountId,
           assignmentId: access.assignmentId,
           action: 'pattern_block.delete',
           record: { type: 'pattern_block', id: block.id },
-          oldValue: {
-            versionId: id,
-            ...this.slotOf(block),
-            lessons: block.lessons.map((lesson) => ({
-              id: lesson.id,
-              loadRowId: lesson.loadRowId,
-              teacherId: model.rowOf(lesson.loadRowId).teacherId,
-              roomId: lesson.roomId,
-            })),
-            // Task 5.4c-1: a lock of the block goes with it (decision 7).
-            locks: state.locks
-              .filter((lock) => lock.kind === 'block' && lock.blockId === block.id)
-              .map((lock) => lock.id),
-          },
+          oldValue: this.removedValue(state, block),
           requestId,
         });
         await transaction.deleteFrom('pattern_blocks').where('id', '=', block.id).execute();
@@ -671,6 +698,30 @@ export class TimetablePattern {
       readLocks(transaction, version.id),
     ]);
     return { accountId, version, rows, load, pattern, blocks, locks };
+  }
+
+  /** A room of the branch, as the grid's facts hold them. */
+  private isRoomOf(state: PatternState, roomId: string): boolean {
+    return state.pattern.model.data.rooms.some((one) => one.id === roomId);
+  }
+
+  /** What the audit entry of a removed block keeps: its slot, every lesson and its locks. */
+  private removedValue(state: PatternState, block: PatternBlock) {
+    const { model } = state.pattern;
+    return {
+      versionId: state.version.id,
+      ...this.slotOf(block),
+      lessons: block.lessons.map((lesson) => ({
+        id: lesson.id,
+        loadRowId: lesson.loadRowId,
+        teacherId: model.rowOf(lesson.loadRowId).teacherId,
+        roomId: lesson.roomId,
+      })),
+      // Task 5.4c-1: a lock of the block goes with it (decision 7).
+      locks: state.locks
+        .filter((lock) => lock.kind === 'block' && lock.blockId === block.id)
+        .map((lock) => lock.id),
+    };
   }
 
   /** A block of the state's version; another version's, another branch's or unknown: 404. */

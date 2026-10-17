@@ -166,3 +166,24 @@ describe('addedResults', () => {
     ).toEqual([result({ roomId: 'y' })]);
   });
 });
+
+// Task 5.4c-2 (decision 7): an undo gives back "no room"; a lesson without a
+// room takes no room rule, so the change refuses nothing.
+describe('roomChange to no room', () => {
+  it('accepts no room for a lesson in a room another lesson also holds', () => {
+    const model = withRooms([]);
+    const mine = block('a', 'math-7a', 'r7b');
+    const change = roomChange(model, [mine, block('b', 'sci-7b', 'r7b')], mine, 'a:l', null);
+    expect(change.roomId).toBeNull();
+    expect(change.accepted).toBe(true);
+    expect(change.blocked).toEqual([]);
+  });
+
+  it('checks the way back into a taken room as any room change', () => {
+    const model = withRooms([]);
+    const mine = block('a', 'math-7a', null);
+    const change = roomChange(model, [mine, block('b', 'sci-7b', 'r7b')], mine, 'a:l', 'r7b');
+    expect(change.accepted).toBe(false);
+    expect(change.blocked.map((one) => one.rule)).toEqual(['room_double']);
+  });
+});

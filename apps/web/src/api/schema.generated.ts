@@ -43497,6 +43497,12 @@ export interface operations {
                     slotPosition: number;
                     /** Format: uuid */
                     roomId?: string;
+                    rooms?: {
+                        /** Format: uuid */
+                        loadRowId: string;
+                        /** Format: uuid */
+                        roomId: string | null;
+                    }[];
                 };
             };
         };
@@ -44387,9 +44393,10 @@ export interface operations {
                             /** Format: uuid */
                             loadRowId: string;
                             /** Format: uuid */
-                            roomId: string;
+                            roomId: string | null;
                         }[];
                     }[];
+                    remove?: string[];
                 };
             };
         };
@@ -45275,7 +45282,7 @@ export interface operations {
                     /** Format: uuid */
                     lessonId: string;
                     /** Format: uuid */
-                    roomId: string;
+                    roomId: string | null;
                 };
             };
         };

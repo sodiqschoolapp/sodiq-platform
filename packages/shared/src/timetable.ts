@@ -788,17 +788,35 @@ export const REARRANGE_BLOCKS_MAX = 3;
 const REARRANGE_ROOMS_MAX = 20;
 
 /**
+ * The room of each lesson of a block, by load row; `null` is no room (task
+ * 5.4c-2: an undo gives back a lesson that had none; the picker never sends it).
+ */
+const blockRoomsSchema = z
+  .array(z.strictObject({ loadRowId: z.uuid(), roomId: z.uuid().nullable() }))
+  .max(REARRANGE_ROOMS_MAX)
+  .refine((rooms) => new Set(rooms.map((one) => one.loadRowId)).size === rooms.length, {
+    message: 'One room per load row.',
+  });
+
+/**
  * A lesson placed by clicking an empty slot: a load row (with its whole block),
  * a weekday and a slot position; task 5.4b-2a: the room of the chosen row's
  * lesson from the room picker (the other lessons of its block take their new
- * lesson's room).
+ * lesson's room); task 5.4c-2: or the room of every lesson by load row, for
+ * the undo of a removal.
  */
-export const placeRecordSchema = z.strictObject({
-  loadRowId: z.uuid(),
-  weekday: weekdaySchema,
-  slotPosition: slotPositionSchema,
-  roomId: z.uuid().optional(),
-});
+export const placeRecordSchema = z
+  .strictObject({
+    loadRowId: z.uuid(),
+    weekday: weekdaySchema,
+    slotPosition: slotPositionSchema,
+    roomId: z.uuid().optional(),
+    rooms: blockRoomsSchema.optional(),
+  })
+  .refine((place) => place.roomId === undefined || place.rooms === undefined, {
+    message: 'A room or the rooms of the block.',
+    path: ['rooms'],
+  });
 
 export type PlaceRecord = z.infer<typeof placeRecordSchema>;
 
@@ -821,7 +839,11 @@ export const swapRecordSchema = z
 export type SwapRecord = z.infer<typeof swapRecordSchema>;
 
 /** The room of one lesson of a block, from the room picker (task 5.4b-2a). */
-export const lessonRoomRecordSchema = z.strictObject({ lessonId: z.uuid(), roomId: z.uuid() });
+export const lessonRoomRecordSchema = z.strictObject({
+  lessonId: z.uuid(),
+  /** Task 5.4c-2: `null` gives back "no room" on an undo; the picker never sends it. */
+  roomId: z.uuid().nullable(),
+});
 
 export type LessonRoomRecord = z.infer<typeof lessonRoomRecordSchema>;
 
@@ -837,29 +859,36 @@ export const rearrangeChangeSchema = z
     loadRowId: z.uuid().optional(),
     weekday: weekdaySchema,
     slotPosition: slotPositionSchema,
-    rooms: z
-      .array(z.strictObject({ loadRowId: z.uuid(), roomId: z.uuid() }))
-      .max(REARRANGE_ROOMS_MAX)
-      .optional(),
+    rooms: blockRoomsSchema.optional(),
   })
   .refine((change) => (change.blockId === undefined) !== (change.loadRowId === undefined), {
     message: 'A block or a load row.',
     path: ['blockId'],
-  })
-  .refine(
-    (change) =>
-      new Set((change.rooms ?? []).map((one) => one.loadRowId)).size ===
-      (change.rooms ?? []).length,
-    { message: 'One room per load row.', path: ['rooms'] },
-  );
+  });
 
 export const rearrangeRecordSchema = z
-  .strictObject({ changes: z.array(rearrangeChangeSchema).min(1).max(REARRANGE_BLOCKS_MAX) })
+  .strictObject({
+    changes: z.array(rearrangeChangeSchema).max(REARRANGE_BLOCKS_MAX),
+    /**
+     * Task 5.4c-2: a block removed in the same transaction, for the undo of a
+     * suggestion that created it (From 5.4b-2b line: "the rearrange route,
+     * widened").
+     */
+    remove: z.array(z.uuid()).max(1).optional(),
+  })
   .refine(
     (record) => {
-      const blocks = record.changes.flatMap((one) =>
-        one.blockId === undefined ? [] : [one.blockId],
-      );
+      const total = record.changes.length + (record.remove ?? []).length;
+      return total >= 1 && total <= REARRANGE_BLOCKS_MAX;
+    },
+    { message: 'One to three blocks.', path: ['changes'] },
+  )
+  .refine(
+    (record) => {
+      const blocks = [
+        ...record.changes.flatMap((one) => (one.blockId === undefined ? [] : [one.blockId])),
+        ...(record.remove ?? []),
+      ];
       return new Set(blocks).size === blocks.length;
     },
     { message: 'Each block once.', path: ['changes'] },

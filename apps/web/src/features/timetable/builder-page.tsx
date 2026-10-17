@@ -40,6 +40,7 @@ import {
 import { gridMarkText } from './grid-conflicts';
 import { EditLockBanner, useEditLock } from './edit-lock';
 import { GridStep } from './grid-step';
+import { useGridHistory } from './use-grid-history';
 import { RulesStep } from './rules-step';
 import {
   confirmTemplates,
@@ -111,6 +112,8 @@ export function BuilderPage(): React.JSX.Element {
   const canEdit = writable && can('edit') && !editLock.othersEditing;
   const years = useQuery({ ...yearsQuery(branchId), enabled: branchId !== null && canEdit });
   const step: BuiltStep = search.step ?? 'templates';
+  // Task 5.4c-2: the undo and redo of the grid outlive a visit to another step.
+  const [gridHistory, setGridHistory] = useGridHistory(chosen?.id ?? null);
 
   const refresh = () => invalidateTimetable(queryClient);
   const confirm = useMutation({
@@ -516,7 +519,15 @@ export function BuilderPage(): React.JSX.Element {
       />
     );
   } else if (step === 'grid') {
-    panel = <GridStep key={chosen.id} versionId={chosen.id} canEdit={canEdit} />;
+    panel = (
+      <GridStep
+        key={chosen.id}
+        versionId={chosen.id}
+        canEdit={canEdit}
+        history={gridHistory}
+        onHistory={setGridHistory}
+      />
+    );
   } else {
     panel = <p className="text-sm text-muted-foreground">{t('timetable.builder.laterText')}</p>;
   }
