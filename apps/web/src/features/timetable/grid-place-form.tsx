@@ -1,7 +1,7 @@
 import { placeRecordSchema, weekdaySchema, type GridAnswer, type PlaceRecord } from '@sodiq/shared';
 import { roomChoices, type PatternBlock, type PatternModel } from '@sodiq/timetable-rules';
 import { useTranslation } from 'react-i18next';
-import { SelectField } from '@/components/field';
+import { CHECKED, CheckboxField, SelectField } from '@/components/field';
 import { SECTION_TITLE } from '@/components/ui/control';
 import { wholeNumber } from '@/components/form/form-messages';
 import { RecordForm } from '@/components/form/record-form';
@@ -59,7 +59,8 @@ const placedCount = (grid: GridAnswer, rowId: string): number =>
  * The form of an empty slot: one row of the class, placed there with its
  * whole block; task 5.4b-2a: the room of the row's lesson from the rooms free
  * in that slot, best fit first (`roomChoices`, decision 4), or, left as it is,
- * the room its new lesson takes (`roomOfNew`).
+ * the room its new lesson takes (`roomOfNew`); task 5.4c-3a: as a double lesson
+ * when every row of its block allows doubles (decision 4).
  */
 export function GridPlaceForm({
   grid,
@@ -92,9 +93,12 @@ export function GridPlaceForm({
       ? []
       : roomChoices(model, all, placed, `new:${rowId}`, (id) => names.get(id)?.name ?? id);
   };
+  /** Every row of the block allows double lessons. */
+  const doublesOf = (rowId: string) =>
+    rowId !== '' && model.rowOf(rowId).block.every((id) => model.rowOf(id).doubleLessons);
   const form = useRecordForm({
     schema: placeRecordSchema,
-    initial: { loadRowId: '', roomId: '' },
+    initial: { loadRowId: '', roomId: '', double: '' },
     read: (typed) => {
       const chosen = offered.find((one) => one.row.id === typed.loadRowId);
       const room = roomsFor(chosen?.row.id ?? '').find((one) => one.roomId === typed.roomId);
@@ -103,6 +107,7 @@ export function GridPlaceForm({
         weekday: weekdaySchema.parse(cell.weekday),
         slotPosition: chosen?.position ?? wholeNumber(''),
         ...(room === undefined ? {} : { roomId: room.roomId }),
+        ...(typed.double === CHECKED && doublesOf(chosen?.row.id ?? '') ? { double: true } : {}),
       };
     },
     save: async (record: PlaceRecord) => {
@@ -156,6 +161,9 @@ export function GridPlaceForm({
           {...boundRoom}
           value={rooms.some((one) => one.roomId === boundRoom.value) ? boundRoom.value : ''}
         />
+        {offered.some((one) => one.row.id === bound.value) && doublesOf(bound.value) && (
+          <CheckboxField label={t('timetable.grid.placeDouble')} {...form.bind('double')} />
+        )}
       </RecordForm>
     </section>
   );

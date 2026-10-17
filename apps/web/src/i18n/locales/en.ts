@@ -3005,6 +3005,8 @@ export const en = {
       two_grade_slot:
         'A lesson of a group of two grades is only in a lesson slot that the day templates of both grades have, with the same start and end time.',
       double_apart: 'The two lessons of a double lesson are in consecutive lesson slots.',
+      double_not_allowed:
+        'A double lesson only for a teaching load row that allows double lessons.',
       teacher_branch: 'A teacher teaches only in a branch they work in.',
       teacher_inactive: 'Inactive teachers cannot be used.',
       teacher_subject: 'The teacher must have that subject in their profile.',
@@ -3129,6 +3131,10 @@ export const en = {
       placedInFull_other: '{{count}} lesson rows placed in full',
       place: 'Place',
       placeLesson: 'Place {{lesson}}',
+      double: 'Double',
+      placeDouble: 'Double lesson',
+      roomBothHalves: 'The room changes for both lessons of the double.',
+      freeSlotsOnly: 'A double lesson is moved as a pair: only free slots are shown.',
       suggest: 'Suggest a place',
       suggestTitle: 'A place for {{lesson}}',
       history: {

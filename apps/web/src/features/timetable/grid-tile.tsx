@@ -176,6 +176,11 @@ export function GridTile({
           </div>
         );
       })}
+      {block.doublePairId !== null && (
+        <p className="font-semibold text-muted-foreground" data-tile-double={block.doublePairId}>
+          {t('timetable.grid.double')}
+        </p>
+      )}
       {locked && (
         <p className="inline-flex items-center gap-1 text-muted-foreground" data-tile-locked="">
           <LockIcon className="size-4 shrink-0" />

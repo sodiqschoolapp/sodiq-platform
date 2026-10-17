@@ -145,6 +145,7 @@ const GRID: GridAnswer = {
       start: 480,
       end: 525,
       lessons: [{ id: uid(1000), loadRowId: ROW_OXFORD, roomId: ROOM }],
+      doublePairId: null,
     },
     {
       id: BLOCK_PRINCETON,
@@ -153,6 +154,7 @@ const GRID: GridAnswer = {
       start: 530,
       end: 575,
       lessons: [{ id: uid(1001), loadRowId: ROW_PRINCETON, roomId: null }],
+      doublePairId: null,
     },
     {
       id: BLOCK_GROUP,
@@ -161,6 +163,7 @@ const GRID: GridAnswer = {
       start: 480,
       end: 525,
       lessons: [{ id: uid(1002), loadRowId: ROW_GROUP, roomId: null }],
+      doublePairId: null,
     },
   ],
   facts: {
@@ -246,6 +249,7 @@ const GRID: GridAnswer = {
         roomType: null,
         lessonsPerWeek: 3,
         mixedBlock: false,
+        doubleLessons: false,
         block: [ROW_OXFORD],
       },
       {
@@ -258,6 +262,7 @@ const GRID: GridAnswer = {
         roomType: null,
         lessonsPerWeek: 3,
         mixedBlock: false,
+        doubleLessons: false,
         block: [ROW_PRINCETON],
       },
       {
@@ -270,6 +275,7 @@ const GRID: GridAnswer = {
         roomType: null,
         lessonsPerWeek: 2,
         mixedBlock: false,
+        doubleLessons: false,
         block: [ROW_GROUP],
       },
     ],
@@ -405,7 +411,6 @@ describe('the grid of step 7', () => {
     expect(oxford?.textContent).toContain('Mathematics');
     expect(oxford?.textContent).toContain('Karimova Aziza');
     expect(oxford?.textContent).toContain('Room 12');
-    expect(tile(BLOCK_PRINCETON)).toBeNull();
     expect(cellOf(2, 1)?.contains(tile(BLOCK_GROUP))).toBe(true);
     fireEvent.change(screen.getByLabelText(en.timetable.grid.class), {
       target: { value: PRINCETON },
@@ -1036,6 +1041,7 @@ describe('Suggest a place', () => {
       { ...oxford },
       {
         ...GRID.blocks[2],
+        doublePairId: null,
         id: BLOCK_GROUP,
         weekday: 1,
         slotPosition: 3,
@@ -1609,5 +1615,152 @@ describe('undo and redo', () => {
   it('speaks Russian and Uzbek', () => {
     expect(ru.timetable.grid.history.undo).not.toBe(en.timetable.grid.history.undo);
     expect(uz.timetable.grid.history.changedSince).toContain('oʻ');
+  });
+});
+
+// Task 5.4c-3a: double lessons (edge/timetable, Structure: "Two linked lessons
+// in consecutive lesson slots with the same teacher and room. They are moved,
+// cancelled and substituted together").
+describe('double lessons', () => {
+  const SECOND_HALF = uid(810);
+  const PAIR = uid(811);
+  /** Oxford's mathematics allows doubles. */
+  const ALLOWED: GridAnswer = {
+    ...GRID,
+    facts: {
+      ...GRID.facts,
+      rows: GRID.facts.rows.map((one) =>
+        one.id === ROW_OXFORD ? { ...one, doubleLessons: true } : one,
+      ),
+    },
+  };
+  /** Oxford's mathematics as a double on Wednesday 08:00 and 08:50. */
+  const PAIRED: GridAnswer = {
+    ...ALLOWED,
+    blocks: [
+      {
+        id: BLOCK_OXFORD,
+        weekday: 3,
+        slotPosition: 1,
+        start: 480,
+        end: 525,
+        lessons: [{ id: uid(1000), loadRowId: ROW_OXFORD, roomId: ROOM }],
+        doublePairId: PAIR,
+      },
+      {
+        id: SECOND_HALF,
+        weekday: 3,
+        slotPosition: 3,
+        start: 530,
+        end: 575,
+        lessons: [{ id: uid(1010), loadRowId: ROW_OXFORD, roomId: ROOM }],
+        doublePairId: PAIR,
+      },
+      ...GRID.blocks.slice(1),
+    ],
+  };
+
+  it('marks both halves on the board', async () => {
+    await openGrid({ grid: PAIRED });
+    expect(tile(BLOCK_OXFORD)?.querySelector('[data-tile-double]')?.textContent).toBe(
+      en.timetable.grid.double,
+    );
+    expect(tile(SECOND_HALF)?.querySelector('[data-tile-double]')).not.toBeNull();
+  });
+
+  it('places an entry of "To place" as a double, the last slot of a day marked as having no place', async () => {
+    const calls = await openGrid({ grid: ALLOWED });
+    const entry = panel()?.querySelector<HTMLElement>(`[data-to-place="${ROW_OXFORD}"]`);
+    if (entry === null || entry === undefined) throw new Error('No entry.');
+    // Princeton's row does not allow doubles: no switch there.
+    const princeton = panel()?.querySelector<HTMLElement>(`[data-to-place="${ROW_PRINCETON}"]`);
+    expect(
+      princeton === null || princeton === undefined
+        ? null
+        : within(princeton).queryByRole('checkbox'),
+    ).toBeNull();
+    fireEvent.click(within(entry).getByRole('checkbox', { name: en.timetable.grid.placeDouble }));
+    fireEvent.click(within(entry).getByRole('button', { name: en.timetable.grid.place }));
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog.querySelector<HTMLButtonElement>('[data-move-cell="3:5"] button')?.disabled).toBe(
+      true,
+    );
+    const free = dialog.querySelector<HTMLButtonElement>('[data-move-cell="3:1"] button');
+    if (free === null) throw new Error('No free slot.');
+    fireEvent.click(free);
+    await waitFor(() => {
+      expect(calls.find((call) => call.route.endsWith('/pattern'))?.body).toEqual({
+        loadRowId: ROW_OXFORD,
+        weekday: 3,
+        slotPosition: 1,
+        double: true,
+      });
+    });
+  });
+
+  it('moves a double by its second half, the first half going before it', async () => {
+    const calls = await openGrid({
+      grid: PAIRED,
+      extra: {
+        [`POST /api/timetable/versions/${VERSION.id}/pattern/${SECOND_HALF}/move`]: () =>
+          json(PAIRED),
+      },
+    });
+    const own = tile(SECOND_HALF);
+    if (own === null) throw new Error('No tile.');
+    fireEvent.click(within(own).getByRole('button', { name: en.timetable.grid.move }));
+    const dialog = await screen.findByRole('dialog');
+    // The first lesson slot has no slot before it for the first half.
+    expect(dialog.querySelector<HTMLButtonElement>('[data-move-cell="4:1"] button')?.disabled).toBe(
+      true,
+    );
+    const free = dialog.querySelector<HTMLButtonElement>('[data-move-cell="4:5"] button');
+    if (free === null) throw new Error('No free slot.');
+    fireEvent.click(free);
+    await waitFor(() => {
+      expect(calls.find((call) => call.route.endsWith(`${SECOND_HALF}/move`))?.body).toEqual({
+        weekday: 4,
+        slotPosition: 5,
+      });
+    });
+  });
+
+  it('marks blocked a swap that would take one half away', () => {
+    const model = patternModel(PAIRED.facts);
+    const board = boardOf(PAIRED, model, OXFORD);
+    const group = PAIRED.blocks.find((one) => one.id === BLOCK_GROUP);
+    const half = board.cellAt(3, 3);
+    if (group === undefined || half === null) throw new Error('No cell.');
+    expect(cellStatus(model, board, PAIRED.blocks, group, half)).toMatchObject({
+      status: 'blocked',
+      rule: 'double_apart',
+      drop: { kind: 'swap' },
+    });
+  });
+
+  it('says that a room change takes both halves', async () => {
+    await openGrid({ grid: PAIRED });
+    const own = tile(BLOCK_OXFORD);
+    if (own === null) throw new Error('No tile.');
+    fireEvent.click(within(own).getByRole('button', { name: /Room of Mathematics/ }));
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog.textContent).toContain(en.timetable.grid.roomBothHalves);
+  });
+
+  it('suggests free slots only for a double and applies one by the move route', async () => {
+    const calls = await openGrid({ grid: PAIRED });
+    const own = tile(BLOCK_OXFORD);
+    if (own === null) throw new Error('No tile.');
+    fireEvent.click(within(own).getByRole('button', { name: en.timetable.grid.suggest }));
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog.textContent).toContain(en.timetable.grid.freeSlotsOnly);
+    expect(dialog.querySelector('[data-suggestion="rearrangement"]')).toBeNull();
+    const first = dialog.querySelector<HTMLButtonElement>('[data-suggestion="free"] button');
+    if (first === null) throw new Error('No suggestion.');
+    fireEvent.click(first);
+    await waitFor(() => {
+      expect(calls.find((call) => call.route.endsWith(`${BLOCK_OXFORD}/move`))).toBeDefined();
+    });
+    expect(calls.find((call) => call.route.endsWith('/rearrange'))).toBeUndefined();
   });
 });

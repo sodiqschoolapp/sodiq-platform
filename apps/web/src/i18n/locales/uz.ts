@@ -3032,6 +3032,8 @@ export const uz: Texts<'one' | 'other'> = {
       two_grade_slot:
         'Ikki parallel guruhining darsi faqat ikkala parallelning kun shablonlarida bir xil boshlanish va tugash vaqti bilan bor dars slotida boʻladi.',
       double_apart: 'Juft darsning ikki darsi ketma-ket dars slotlarida.',
+      double_not_allowed:
+        'Juft dars faqat juft darslarga ruxsat berilgan oʻquv yuklamasi qatori uchun.',
       teacher_branch: 'Oʻqituvchi faqat oʻzi ishlaydigan filialda dars beradi.',
       teacher_inactive: 'Faol boʻlmagan oʻqituvchilardan foydalanib boʻlmaydi.',
       teacher_subject: 'Oʻqituvchining profilida bu fan boʻlishi kerak.',
@@ -3155,6 +3157,10 @@ export const uz: Texts<'one' | 'other'> = {
       placedInFull_other: '{{count}} ta qator toʻliq joylashtirilgan',
       place: 'Joylashtirish',
       placeLesson: '{{lesson}} darsini joylashtirish',
+      double: 'Juft',
+      placeDouble: 'Juft dars',
+      roomBothHalves: 'Xona juft darsning ikkala darsi uchun oʻzgaradi.',
+      freeSlotsOnly: 'Juft dars juftligicha koʻchiriladi: faqat boʻsh slotlar koʻrsatiladi.',
       suggest: 'Joy taklif qilish',
       suggestTitle: '{{lesson}} uchun joy',
       history: {

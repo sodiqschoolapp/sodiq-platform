@@ -3,7 +3,12 @@ import { classDisplayName, type GridAnswer } from '@sodiq/shared';
 import type { PatternModel } from '@sodiq/timetable-rules';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { SECTION_TITLE, SUBSECTION_TITLE } from '@/components/ui/control';
+import {
+  CHECKBOX,
+  CHECKBOX_TARGET,
+  SECTION_TITLE,
+  SUBSECTION_TITLE,
+} from '@/components/ui/control';
 import { Button } from '@/components/ui/button';
 import { nameOf } from '@/features/setup/setup-api';
 import { SubjectSwatch } from '@/features/setup/subject-colour';
@@ -15,6 +20,8 @@ type Row = GridAnswer['rows'][number];
 /** The data a "To place" entry carries while it is dragged. */
 export interface PlaceData {
   readonly placeRowId: string;
+  /** Task 5.4c-3a: placed as a double lesson. */
+  readonly placeDouble?: boolean;
 }
 
 export const isPlaceData = (
@@ -30,6 +37,8 @@ export interface ToPlaceEntry {
   readonly classIds: readonly string[];
   /** A half of a mixed split: placed with its pair (5.4c). */
   readonly mixed: boolean;
+  /** Every row of the block allows double lessons (task 5.4c-3a, decision 4). */
+  readonly doubles: boolean;
 }
 
 const placedOf = (grid: GridAnswer, rowId: string): number =>
@@ -71,7 +80,13 @@ export function toPlace(
         }),
       ),
     ];
-    entries.push({ rowId: row.id, rows, classIds, mixed: row.mixedBlock });
+    entries.push({
+      rowId: row.id,
+      rows,
+      classIds,
+      mixed: row.mixedBlock,
+      doubles: block.every((id) => model.rowOf(id).doubleLessons),
+    });
   }
   const order = new Map(grid.classes.map((one, index) => [one.id, index]));
   const rank = (entry: ToPlaceEntry) => order.get(entry.classIds[0] ?? '') ?? grid.classes.length;
@@ -91,21 +106,23 @@ function Entry({
   onBoard: boolean;
   editable: boolean;
   highlighted: boolean;
-  onPlace: () => void;
+  onPlace: (double: boolean) => void;
   onSuggest: () => void;
 }): React.JSX.Element {
   const { t, i18n } = useTranslation();
   const language = i18n.language;
   const element = useRef<HTMLLIElement>(null);
   const [dragging, setDragging] = useState(false);
+  const [double, setDouble] = useState(false);
   const canDrag = editable && onBoard && !entry.mixed;
+  const asDouble = entry.doubles && double;
 
   useEffect(() => {
     const own = element.current;
     if (!canDrag || own === null) return undefined;
     return draggable({
       element: own,
-      getInitialData: () => ({ placeRowId: entry.rowId }),
+      getInitialData: () => ({ placeRowId: entry.rowId, placeDouble: asDouble }),
       onDragStart: () => {
         setDragging(true);
       },
@@ -113,7 +130,7 @@ function Entry({
         setDragging(false);
       },
     });
-  }, [canDrag, entry.rowId]);
+  }, [canDrag, entry.rowId, asDouble]);
 
   useEffect(() => {
     if (highlighted) element.current?.scrollIntoView?.({ block: 'nearest' });
@@ -146,13 +163,35 @@ function Entry({
         <span className="text-muted-foreground">{t('timetable.grid.mixedLater')}</span>
       ) : (
         editable && (
-          <div>
-            <Button type="button" variant="ghost" size="sm" onClick={onPlace}>
+          <div className="flex flex-wrap items-center gap-x-2">
+            {entry.doubles && (
+              <label className={CHECKBOX_TARGET}>
+                <input
+                  type="checkbox"
+                  className={CHECKBOX}
+                  checked={double}
+                  onChange={(event) => {
+                    setDouble(event.target.checked);
+                  }}
+                />
+                {t('timetable.grid.placeDouble')}
+              </label>
+            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                onPlace(asDouble);
+              }}
+            >
               {t('timetable.grid.place')}
             </Button>
-            <Button type="button" variant="ghost" size="sm" onClick={onSuggest}>
-              {t('timetable.grid.suggest')}
-            </Button>
+            {!asDouble && (
+              <Button type="button" variant="ghost" size="sm" onClick={onSuggest}>
+                {t('timetable.grid.suggest')}
+              </Button>
+            )}
           </div>
         )
       )}
@@ -176,7 +215,7 @@ export function GridToPlace({
   classId: string;
   editable: boolean;
   highlightRowId: string | null;
-  onPlace: (entry: ToPlaceEntry) => void;
+  onPlace: (entry: ToPlaceEntry, double: boolean) => void;
   /** "Suggest a place" for the entry's block (task 5.4b-2b). */
   onSuggest: (entry: ToPlaceEntry) => void;
 }): React.JSX.Element {
@@ -206,8 +245,8 @@ export function GridToPlace({
                   onBoard={entry.classIds.includes(classId)}
                   editable={editable}
                   highlighted={entry.rows.some(({ row }) => row.id === highlightRowId)}
-                  onPlace={() => {
-                    onPlace(entry);
+                  onPlace={(double) => {
+                    onPlace(entry, double);
                   }}
                   onSuggest={() => {
                     onSuggest(entry);

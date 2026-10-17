@@ -600,3 +600,67 @@ test('an Academic Vice Principal undoes and redoes a move, and undoes a removal'
   await expect(cell(2, 1).locator('[data-block]')).toContainText('Geometry');
   await expect(redo).toHaveAccessibleName(new RegExp(`^${history.redo}: removing Geometry`));
 });
+
+// Task 5.4c-3a: edge/timetable, Structure: "Two linked lessons in consecutive
+// lesson slots with the same teacher and room. They are moved, cancelled and
+// substituted together." The scene's day has three lesson slots, 08:00, 08:45
+// and 09:30.
+test('an Academic Vice Principal places, moves and removes a double lesson as one', async ({
+  page,
+}) => {
+  const account = accountOf('draftGridDouble');
+  await page.goto('/sign-in');
+  await languageChooser(page).selectOption('en');
+  await signIn(page, en, account.login, account.password);
+  await changeFirstPassword(page, en, account);
+  await expect(heading(page, en.setUp.title)).toBeVisible();
+  await page.getByRole('button', { name: en.setUp.start, exact: true }).click();
+  const key = await page.locator('dd').innerText();
+  await page.getByLabel(en.setUp.code, { exact: true }).fill(codeNow(key));
+  await page.getByRole('button', { name: en.setUp.confirm, exact: true }).click();
+  await page.getByRole('checkbox', { name: en.setUp.saved }).check();
+  await page.getByRole('button', { name: en.setUp.continue, exact: true }).click();
+  await expect(heading(page, en.home.title)).toBeVisible();
+
+  await page.goto('/timetable/builder');
+  await expect(heading(page, en.timetable.builder.title)).toBeVisible();
+  await page.locator('[data-step="grid"] button').click();
+  await expect(page.locator('[data-board]')).toBeVisible();
+  const cell = (weekday: number, position: number) =>
+    page.locator(`[data-cell="${String(weekday)}:${String(position)}"]`);
+  const doubles = page.locator('[data-tile-double]');
+
+  // 7 Oxford's Geometry from "To place" as a double on Wednesday at 08:00.
+  const entry = page.locator('[aria-labelledby="grid-to-place"] [data-to-place]').first();
+  await expect(entry).toContainText('Geometry');
+  await entry.getByRole('checkbox', { name: en.timetable.grid.placeDouble }).check();
+  await entry.getByRole('button', { name: en.timetable.grid.place, exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  // The last slot of the day has no slot after it for the second half.
+  await expect(dialog.locator('[data-move-cell="3:3"] button')).toBeDisabled();
+  await dialog.locator('[data-move-cell="3:1"] button').click();
+  await expect(cell(3, 1).locator('[data-tile-double]')).toBeVisible();
+  await expect(cell(3, 2).locator('[data-tile-double]')).toBeVisible();
+  await expect(doubles).toHaveCount(2);
+  const first = (await cell(3, 1).locator('[data-block]').getAttribute('data-block')) ?? '';
+  const second = (await cell(3, 2).locator('[data-block]').getAttribute('data-block')) ?? '';
+  await screenshot(page, 'grid-double');
+
+  // Dragged by its first half to Thursday at 08:45: the second half goes to 09:30.
+  await cell(3, 1).locator(`[data-block="${first}"]`).dragTo(cell(4, 2));
+  await expect(cell(4, 2).locator(`[data-block="${first}"]`)).toBeVisible();
+  await expect(cell(4, 3).locator(`[data-block="${second}"]`)).toBeVisible();
+  await expect(cell(3, 1).locator('[data-block]')).toHaveCount(0);
+
+  // Removed by its second half: both go.
+  await cell(4, 3)
+    .locator(`[data-block="${second}"]`)
+    .getByRole('button', { name: en.timetable.grid.remove })
+    .click();
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: en.timetable.grid.remove })
+    .click();
+  await expect(doubles).toHaveCount(0);
+  await expect(cell(4, 2).locator('[data-block]')).toHaveCount(0);
+});

@@ -72,6 +72,7 @@ export type AccountKey =
   | 'draftLockHolder'
   | 'draftLockTaker'
   | 'draftGridUndo'
+  | 'draftGridDouble'
   | 'whoTeacher'
   | 'whoHeadTutor'
   | 'whoHeadTeacher';
