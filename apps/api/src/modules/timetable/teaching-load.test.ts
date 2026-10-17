@@ -101,6 +101,8 @@ describe('draft versions and the teaching load', () => {
     Promise.all([
       t.database.migrator.selectFrom('timetable_versions').selectAll().orderBy('id').execute(),
       t.database.migrator.selectFrom('teaching_load_rows').selectAll().orderBy('id').execute(),
+      // Task 5.3b-2: the copy writes pins and the row delete removes them.
+      t.database.migrator.selectFrom('timetable_pins').selectAll().orderBy('id').execute(),
       t.database.migrator.selectFrom('staff_statuses').selectAll().orderBy('id').execute(),
       // The vacancy delete removes the record and its rows (permission review, S3).
       t.database.migrator.selectFrom('staff').select('id').orderBy('id').execute(),
@@ -119,6 +121,19 @@ describe('draft versions and the teaching load', () => {
         .execute(),
       t.auditCount(),
     ]);
+
+  /** A pin of a row written by the migrator (task 5.3b-2), so a wrong copy or delete would touch it. */
+  const pinRow = (branch: string, version: string, row: string) =>
+    t.database.migrator
+      .insertInto('timetable_pins')
+      .values({
+        branch_id: branch,
+        version_id: version,
+        load_row_id: row,
+        weekday: 1,
+        slot_position: 1,
+      })
+      .execute();
 
   /** How many connections to the test database wait for a lock right now. */
   async function waitingForALock(): Promise<number> {
@@ -259,6 +274,20 @@ describe('draft versions and the teaching load', () => {
 
     it("answers another branch's and an unknown year or source 404, changing nothing", async () => {
       const southern = await load.version(t.south, southYear);
+      // Task 5.3b-2 (permission review, M1): a pinned row on the source, so a copy across branches would write pins.
+      const southClass = await load.classes.schoolClass(t.south, southYear);
+      const southTeacher = await load.teacher(t.south, { subjects: [{ subject, grades: [7] }] });
+      await pinRow(
+        t.south,
+        southern,
+        await load.row({
+          branch_id: t.south,
+          version_id: southern,
+          class_id: southClass,
+          subject_id: subject,
+          teacher_id: southTeacher.staffId,
+        }),
+      );
       for (const fields of [
         { academicYearId: southYear },
         { academicYearId: UNKNOWN },
@@ -507,6 +536,9 @@ describe('draft versions and the teaching load', () => {
         subject_id: subject,
         teacher_id: southTeacher.staffId,
       });
+      // Task 5.3b-2 (permission review, M1): pinned rows in both branches, so a wrong cascade would remove pins.
+      await pinRow(t.north, version.id, row.id);
+      await pinRow(t.south, southVersion, southRow);
       const other = await fitting();
       const base = { classId: other.classId, teacherId: other.teacher };
       const attempts: (() => Promise<Response>)[] = [];
@@ -578,6 +610,7 @@ describe('draft versions and the teaching load', () => {
       );
       const southClass = await load.classes.schoolClass(t.south, southYear);
       const southGroup = await load.classes.group(t.south, southYear, subject, [southClass]);
+      await pinRow(t.north, version.id, row.id);
       const second = await draft();
       const teachers = (query: string, cookie = t.vicePrincipal) =>
         get(`/api/timetable/versions/${version.id}/load/teachers?${query}`, cookie);

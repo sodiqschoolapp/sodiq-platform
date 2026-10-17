@@ -474,6 +474,35 @@ describe('pinned lessons of step 5', () => {
   });
 
   describe('the pin routes', () => {
+    /** The kit's Academic Vice Principal, given the role in a branch of a scene too. */
+    const viceIn = async (branch: string) => {
+      const vice = await t.database.migrator
+        .selectFrom('assignments')
+        .select('account_id')
+        .where('id', '=', t.viceAssignment)
+        .executeTakeFirstOrThrow();
+      return load.classes.role(vice.account_id, branch, 'academic_vice_principal');
+    };
+
+    it('lets the Academic Vice Principal of the branch add and remove a pin, the audit naming the assignment', async () => {
+      const s = await scene();
+      const assignment = await viceIn(s.branch);
+      const added = readinessOf(await addPin(s.branch, s.version, s.rowA, 1, 1, t.vicePrincipal));
+      const pin = added.rules.pins[0];
+      if (pin === undefined) throw new Error('The pin was not answered.');
+      const [created] = await t.entries('timetable_pin.create', pin.id);
+      expect(created).toMatchObject({ assignment_id: assignment });
+      readinessOf(
+        await remove(
+          `/api/timetable/versions/${s.version}/pins/${pin.id}`,
+          s.branch,
+          t.vicePrincipal,
+        ),
+      );
+      const [deleted] = await t.entries('timetable_pin.delete', pin.id);
+      expect(deleted).toMatchObject({ assignment_id: assignment });
+    });
+
     it('refuses a pin already there, one over the lessons per week and a half of a mixed split', async () => {
       const s = await scene();
       await pinned(s.branch, s.version, s.rowA, 1, 1);
@@ -652,10 +681,18 @@ describe('pinned lessons of step 5', () => {
             .where('version_id', 'in', [s.version, other.version])
             .orderBy('id')
             .execute(),
+          t.database.migrator
+            .selectFrom('timetable_versions')
+            .selectAll()
+            .where('id', 'in', [s.version, other.version, sameBranch])
+            .orderBy('id')
+            .execute(),
           t.auditCount(),
         ]);
+      // Permission review, S1: the Academic Vice Principal of the branch too.
+      await viceIn(s.branch);
       const before = await rows();
-      for (const cookie of [t.admin]) {
+      for (const cookie of [t.vicePrincipal, t.admin]) {
         // Version: another branch's, an unknown one.
         for (const version of [other.version, UNKNOWN]) {
           refusedWith(await addPin(s.branch, version, s.rowA, 2, 1, cookie), 404, 'not_found');
@@ -670,6 +707,21 @@ describe('pinned lessons of step 5', () => {
           refusedWith(await addPin(s.branch, s.version, row, 2, 1, cookie), 404, 'not_found');
         }
         refusedWith(await addPin(s.branch, sameBranch, s.rowA, 2, 1, cookie), 404, 'not_found');
+        // Permission review, S2: pin ids in the confirm body, another branch's and an unknown
+        // one: a snapshot compared with the stored pins, never looked up, so 409.
+        const { weights } = (await readiness(s.branch, s.version)).rules;
+        for (const pins of [[ownPin.id, otherPin.id], [UNKNOWN]]) {
+          refusedWith(
+            await post(
+              `/api/timetable/versions/${s.version}/rules/confirm`,
+              s.branch,
+              { weights, pins },
+              cookie,
+            ),
+            409,
+            'pins_changed',
+          );
+        }
         // Pin: another branch's, another version's of the branch, an unknown one.
         for (const [version, pin] of [
           [s.version, otherPin.id],

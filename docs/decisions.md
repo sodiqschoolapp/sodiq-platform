@@ -267,6 +267,8 @@ Plan approved on pull request #129 with corrections 1 to 3; decisions 1 to 11 co
 | The 5.3b-1 confirm tests send `{ weights, pins }` and expect the pins in the answer and the stored confirmation; every 5.3b-1 assertion is kept | Review correction 2: the requirement grew |
 | The table of step 1 in the readiness answer carries the slots of each template (position, kind, times), so the form offers only the lesson slots of a row's grades | Found in the build: the form needs the positions; the two-grade filter is `sharedLessonSlots` of the rule engine |
 | The add form is in the step 5 panel, not in a side panel | Found in the build: the weights form of step 5 sits there too; a pin has three fields |
+| A pin id of another branch or an unknown one in the confirm body answers 409 `pins_changed`, not 404: the ids are a snapshot compared with the stored pins, never looked up | Permission review, should-fix 2 |
+| The row delete and the copy keep their 404 tests with pinned rows in both branches, `timetable_pins` in their `rowsOf` | Permission review, must-fix 1 (`.claude/rules/api.md`, the widening rule) |
 
 ## 17 October 2026: the draft builder, step 5: rules, weights and the gate (task 5.3b-1)
 
