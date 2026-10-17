@@ -578,7 +578,7 @@ How to read the task lines:
   - From 5.4a (pull request #130, decisions 8, 10 and 14): the grid refuses a half of a mixed split (`pattern_mixed_block`); the pairing of mixed halves is built here on the routes of `apps/api/src/modules/timetable/pattern.service.ts`.
   - From 3.4b (pull request #100, decision 12, Look first): the halves of a split marked `mixed_block` meet in different slots; the pairing of two subjects' halves slot by slot (boys have physical education while girls have technology, and the reverse in another slot; `edge/timetable`, Structure) is placed and kept here.
 
-- [ ] **5.5a-1 Publish: the route, its checks and one at a time**
+- [x] **5.5a-1 Publish: the route, its checks and one at a time** (pull request #139)
   - Read: `06` (Editing in the grid, Rules, How surprises are prevented), `edge/timetable` (Versions and drafts, Generator and editing).
   - Build: the publish route and step 8 of the builder; the start date rules (tomorrow at the earliest, next Monday by default, quarter shortcuts); every check of the pattern that blocks a publish; "deliberately short" with a reason on a load row; one publish at a time; a publish that fails changes nothing; the mark "out of date" written by a publish.
   - Done when: two publishes at the same moment are tested, and a refused publish is shown to change nothing.

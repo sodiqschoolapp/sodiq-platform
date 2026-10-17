@@ -246,6 +246,24 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 17 October 2026: publish, the route, its checks and one at a time (task 5.5a-1)
+
+Plan approved on pull request #139 with corrections 1 and 2; decisions 1 to 15 confirmed there, decision 16 added by correction 1. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** 5.5a is split into 5.5a-1 (the route and its pattern checks, the lock), 5.5a-2 (the dated check of every date and the impact preview) and 5.5a-3 (out-of-date drafts and the chain question) | Decision 1 |
+| **Look first** (a test changed by a requirement). `teaching-load.database.test.ts` no longer expects the status of a version to have no update grant: publish writes it, and `timetable_versions_status` lets a draft only be published (`publish.database.test.ts`). Two fixtures that put a published version back to a draft (`readiness.test.ts`, `teaching-load.test.ts`) go through `LoadKit.setVersion`, which writes `draft` and `archived` past the trigger | 0073; the requirement that only drafts are written ended with publish |
+| One publish at a time for the whole school (an advisory lock taken first), stricter than one per branch | Decision 2; "The first to publish stands" (`06`, Two drafts at once) holds at the same moment |
+| A publish on or before the start of a published version of the year is refused `version_later_published` until 5.5a-3 asks its question | Decision 3 |
+| A publish marks every other draft of the branch and year out of date unless the published version is in its chain of sources; a copy of a marked draft carries the mark | Decisions 4 and 14 |
+| Steps 1 to 4 and 7 are required, not step 5; the rows and the conflicts refuse by their own codes | Decision 5 with spec review should-fix 5 |
+| The start is tomorrow at the earliest, read on the moment of the saving transaction; a changed date is saved in the publish with the Tutor rows following, and a refused publish keeps the old date; the default is the later of next Monday and the year's first day | Decisions 6, 7 and 15 |
+| "Deliberately short" is `short_reason` (1 to 500 characters) on the load row, copied with the row | Decision 8 |
+| The weights count as `quarterWeightsMissing` counts (`subject-weights.ts`, one function for both); the quarters touched end on or after the start | Decision 10 |
+| Warnings never stop a publish; one 409 `publish_blocked` lists every refusal; the check is a `view` route | Decisions 11 to 13 |
+| A repeat that waits for the first request with the same key has no time limit of its own: it waits until the first commits or rolls back, then gets the stored answer or runs again | Decision 16 (review correction 1); the publish lock and the draft locks already order the waits |
+
 ## 17 October 2026: the grid, mixed pairings (task 5.4c-3b)
 
 Plan approved on pull request #138 with corrections 1 to 4; decisions 1 to 10 confirmed there. Flagged on issue #42.

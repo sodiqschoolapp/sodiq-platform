@@ -281,7 +281,10 @@ export function LoadPage(): React.JSX.Element {
     t('timetable.load.versionOption', {
       number: one.number,
       year: one.yearName,
-      status: t(`timetable.load.statuses.${one.status}`),
+      // Task 5.5a-1, decision 4: a draft that a publish marked says so.
+      status: one.outOfDate
+        ? t('timetable.load.statuses.outOfDate')
+        : t(`timetable.load.statuses.${one.status}`),
     });
 
   const header = (

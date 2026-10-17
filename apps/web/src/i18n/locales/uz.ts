@@ -393,6 +393,8 @@ export const uz: Texts<'one' | 'other'> = {
     lock_taken: 'Bu qulf allaqachon qoʻyilgan.',
     timetable_busy:
       'Shu paytda dars jadvalining boshqa oʻzgarishi saqlanayotgan edi. Qayta urinib koʻring.',
+    publish_blocked:
+      'Qoralamani hali eʼlon qilib boʻlmaydi. 8-qadam barcha sabablarni koʻrsatadi; ularni hal qilib, qayta eʼlon qiling.',
     draft_not_ready:
       'Qoralamaning bir qadami tayyor emas. Avval tayyor emas deb belgilangan qadamlarni tugating.',
     load_unit_year:
@@ -2624,6 +2626,8 @@ export const uz: Texts<'one' | 'other'> = {
         preferences: 'Qoralamaning afzalliklar vaznlari oʻzgartirildi',
         rules_confirm: 'Qoralamaning qoidalari tasdiqlandi',
         edit_lock: 'Dars jadvali qoralamasi tahrirlash uchun olindi',
+        publish: 'Dars jadvali versiyasi eʼlon qilindi',
+        out_of_date: 'Eʼlon tufayli qoralama eskirgan deb belgilandi',
       },
       timetable_lock: {
         create: 'Qoralama qulfi qoʻyildi',
@@ -3236,7 +3240,50 @@ export const uz: Texts<'one' | 'other'> = {
       teacher_unavailable_later: '{{date}} dan boshlab.',
       class_free_period: 'Boʻsh vaqt {{time}}.',
     },
+    publish: {
+      startsOn: 'Boshlanish sanasi',
+      shortcuts: 'Boshlanish sanasi uchun tezkor tugmalar',
+      defaultStart: 'Odatiy boshlanish: {{date}}',
+      quarterStart: 'Chorak boshi: {{date}}',
+      nothingRefused: 'Eʼlon qilishga hech narsa toʻsqinlik qilmaydi.',
+      refusalsTitle_one: 'Eʼlon qilib boʻlmasligining {{count}} sababi',
+      refusalsTitle_other: 'Eʼlon qilib boʻlmasligining {{count}} sababi',
+      warningsTitle_one: '{{count}} ogohlantirish',
+      warningsTitle_other: '{{count}} ogohlantirish',
+      openGrid: 'Jadvalni ochish',
+      action: 'Eʼlon qilish',
+      confirmTitle: '{{number}}-versiya eʼlon qilinsinmi?',
+      confirmText: 'U {{date}} dan filialning dars jadvali boʻladi va endi tahrirlanmaydi.',
+      published: 'Eʼlon qilingan, {{date}} dan amal qiladi.',
+      notDraft: 'Faqat qoralamani eʼlon qilish mumkin.',
+      placedOf_one: '{{count}} ta darsdan {{placed}} tasi qoʻyilgan',
+      placedOf_other: '{{count}} ta darsdan {{placed}} tasi qoʻyilgan',
+      refusals: {
+        version_start_too_early:
+          'Boshlanish sanasi eng erta ertaga. Bugungi oʻzgarish — bir kunlik oʻzgarish.',
+        version_start_outside_year: 'Boshlanish sanasi oʻquv yilidan tashqarida.',
+        version_later_published:
+          '{{number}}-versiya shu yoki keyingi sanadan allaqachon eʼlon qilingan. Hozircha oldingi sanani tanlang.',
+        draft_out_of_date:
+          'Bu qoralama boshlangandan keyin boshqa versiya eʼlon qilindi. Avval qoralamani yangilang.',
+        draft_not_ready: '«{{step}}» qadami tayyor emas.',
+        load_problem: '{{row}}: {{problem}}',
+        load_problem_row: 'Yuklama qatori: {{problem}}',
+        load_mismatch:
+          '{{row}}: {{numbers}}. Ularni qoʻying yoki qatorni sababi bilan ataylab kam deb belgilang.',
+        load_mismatch_row:
+          'Yuklama qatori: {{numbers}}. Ularni qoʻying yoki qatorni sababi bilan ataylab kam deb belgilang.',
+        pattern_blocked_any: 'Bir dars dars jadvali qoidasini buzadi.',
+        year_quarters: 'Oʻquv yilida sanasi belgilangan toʻrtta chorak yoʻq.',
+        subject_daily_weights: '{{subject}} fanining bu filialda kunlik taqsimoti yoʻq.',
+        subject_daily_weights_any: 'Yuklamadagi bir fanning bu filialda kunlik taqsimoti yoʻq.',
+        subject_quarter_weights: '{{subject}} fanining {{quarter}}-chorak taqsimoti yoʻq.',
+        subject_quarter_weights_any: 'Yuklamadagi bir fanning {{quarter}}-chorak taqsimoti yoʻq.',
+      },
+    },
     builder: {
+      notPublished: 'Eʼlon qilinmagan',
+      outOfDate: 'Bu qoralama boshlangandan keyin boshqa versiya eʼlon qilindi.',
       title: 'Qoralama yigʻuvchi',
       noVersion: 'Avval oʻquv yuklamasi sahifasida qoralama boshlang.',
       later: 'Hali mavjud emas',
@@ -3341,6 +3388,7 @@ export const uz: Texts<'one' | 'other'> = {
         draft: 'Qoralama',
         published: 'Eʼlon qilingan',
         archived: 'Arxivda',
+        outOfDate: 'Qoralama, eskirgan',
       },
       startsOn: 'Boshlanish sanasi',
       startsOnText: '{{date}} dan boshlanadi',
@@ -3401,6 +3449,9 @@ export const uz: Texts<'one' | 'other'> = {
       noRoom: 'Maxsus xona kerak emas',
       roomTypeOption: 'Istalgan: {{type}}',
       doubleLessons: 'Juft darslarga ruxsat',
+      shortReason: 'Ataylab kam: sababi',
+      shortReasonNote:
+        'Qatorga haftalik darslardan kamroq dars ataylab qoʻyilgan boʻlsa, toʻldiring.',
       yes: 'Ha',
       no: 'Yoʻq',
       none: 'Yoʻq',

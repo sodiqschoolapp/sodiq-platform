@@ -99,6 +99,7 @@ const version = (n: number, fields: Partial<TimetableVersion> = {}): TimetableVe
   fromVersion: null,
   rows: 0,
   leftRows: 0,
+  outOfDate: false,
   editLock: null,
   ...fields,
 });
@@ -123,6 +124,7 @@ const row = (n: number, fields: Partial<LoadRow> = {}): LoadRow => ({
   roomType: null,
   doubleLessons: false,
   mixedBlock: false,
+  shortReason: null,
   block: [],
   unplaced: 0,
   problems: [],
@@ -393,6 +395,8 @@ describe('the teaching load page', () => {
         roomId: LAB.id,
         roomType: null,
         doubleLessons: false,
+        // Task 5.5a-1: a new row is not marked deliberately short.
+        shortReason: null,
         mixedBlock: false,
       });
     });

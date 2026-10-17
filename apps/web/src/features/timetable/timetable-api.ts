@@ -5,6 +5,7 @@ import {
   loadSchema,
   loadTeachersSchema,
   loadTotalsSchema,
+  publishCheckSchema,
   timetableVersionListSchema,
   timetableVersionSchema,
   type LessonRoomRecord,
@@ -303,3 +304,38 @@ export const deleteLock = (versionId: string, lockId: string) =>
       params: { header: branchHeader(), path: { id: versionId, lockId } },
     }),
   ).then((answer) => gridSchema.parse(answer));
+
+/** What a publish on a date would refuse and warn (task 5.5a-1), written nowhere. */
+export const publishCheckQuery = (
+  branchId: string | null,
+  versionId: string | null,
+  startsOn: string | null,
+) =>
+  queryOptions({
+    queryKey: [...timetableKey(branchId), 'load', versionId, 'publish-check', startsOn],
+    queryFn: async () =>
+      publishCheckSchema.parse(
+        await answerOf(
+          api.GET('/api/timetable/versions/{id}/publish-check', {
+            params: {
+              header: branchHeader(),
+              path: { id: versionId ?? '' },
+              query: { startsOn: startsOn ?? '' },
+            },
+          }),
+        ),
+      ),
+    enabled: branchId !== null && versionId !== null && startsOn !== null,
+  });
+
+/** The publish of a draft from a start date (task 5.5a-1); `key` makes a repeat harmless. */
+export const publishVersion = (versionId: string, startsOn: string, key: string) =>
+  answerOf(
+    api.POST('/api/timetable/versions/{id}/publish', {
+      params: {
+        header: { ...branchHeader(), 'Idempotency-Key': key },
+        path: { id: versionId },
+      },
+      body: { startsOn },
+    }),
+  ).then((answer) => timetableVersionSchema.parse(answer));

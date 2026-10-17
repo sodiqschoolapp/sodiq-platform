@@ -381,6 +381,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       'Этот черновик редактирует другой человек. Вы сможете перехватить его, когда он будет неактивен 5 минут.',
     lock_taken: 'Этот замок уже установлен.',
     timetable_busy: 'В это время сохранялось другое изменение расписания. Попробуйте ещё раз.',
+    publish_blocked:
+      'Черновик пока нельзя опубликовать. Шаг 8 перечисляет все причины; устраните их и опубликуйте снова.',
     draft_not_ready: 'Шаг черновика не готов. Сначала завершите шаги, отмеченные как не готовые.',
     load_unit_year:
       'Этот класс или группа из другого учебного года, чем версия. Выберите класс или группу года версии.',
@@ -2719,6 +2721,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         preferences: 'Изменены веса предпочтений черновика',
         rules_confirm: 'Подтверждены правила черновика',
         edit_lock: 'Черновик расписания взят на редактирование',
+        publish: 'Опубликована версия расписания',
+        out_of_date: 'Черновик отмечен устаревшим после публикации',
       },
       timetable_lock: {
         create: 'Установлен замок черновика',
@@ -3384,7 +3388,59 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       teacher_unavailable_later: 'С {{date}}.',
       class_free_period: 'Свободный урок {{time}}.',
     },
+    publish: {
+      startsOn: 'Дата начала',
+      shortcuts: 'Быстрый выбор даты начала',
+      defaultStart: 'Обычное начало: {{date}}',
+      quarterStart: 'Начало четверти: {{date}}',
+      nothingRefused: 'Ничто не мешает публикации.',
+      refusalsTitle_one: '{{count}} причина, по которой нельзя опубликовать',
+      refusalsTitle_few: '{{count}} причины, по которым нельзя опубликовать',
+      refusalsTitle_many: '{{count}} причин, по которым нельзя опубликовать',
+      refusalsTitle_other: '{{count}} причины, по которым нельзя опубликовать',
+      warningsTitle_one: '{{count}} предупреждение',
+      warningsTitle_few: '{{count}} предупреждения',
+      warningsTitle_many: '{{count}} предупреждений',
+      warningsTitle_other: '{{count}} предупреждения',
+      openGrid: 'Открыть сетку',
+      action: 'Опубликовать',
+      confirmTitle: 'Опубликовать версию {{number}}?',
+      confirmText: 'С {{date}} она станет расписанием филиала, и её больше нельзя будет изменить.',
+      published: 'Опубликована, действует с {{date}}.',
+      notDraft: 'Опубликовать можно только черновик.',
+      placedOf_one: 'Поставлено {{placed}} из {{count}} урока',
+      placedOf_few: 'Поставлено {{placed}} из {{count}} уроков',
+      placedOf_many: 'Поставлено {{placed}} из {{count}} уроков',
+      placedOf_other: 'Поставлено {{placed}} из {{count}} урока',
+      refusals: {
+        version_start_too_early:
+          'Дата начала — не раньше завтрашнего дня. Изменение на сегодня — изменение на один день.',
+        version_start_outside_year: 'Дата начала вне учебного года.',
+        version_later_published:
+          'Версия {{number}} уже опубликована с этой или более поздней даты. Пока выберите более раннюю дату.',
+        draft_out_of_date:
+          'После начала этого черновика была опубликована другая версия. Сначала обновите черновик.',
+        draft_not_ready: 'Шаг «{{step}}» не готов.',
+        load_problem: '{{row}}: {{problem}}',
+        load_problem_row: 'Строка нагрузки: {{problem}}',
+        load_mismatch:
+          '{{row}}: {{numbers}}. Поставьте их или отметьте строку как намеренно меньшую с причиной.',
+        load_mismatch_row:
+          'Строка нагрузки: {{numbers}}. Поставьте их или отметьте строку как намеренно меньшую с причиной.',
+        pattern_blocked_any: 'Урок нарушает правило расписания.',
+        year_quarters: 'В учебном году нет четырёх четвертей с датами.',
+        subject_daily_weights:
+          'У предмета «{{subject}}» нет дневного распределения в этом филиале.',
+        subject_daily_weights_any: 'У предмета нагрузки нет дневного распределения в этом филиале.',
+        subject_quarter_weights:
+          'У предмета «{{subject}}» нет распределения на {{quarter}}-ю четверть.',
+        subject_quarter_weights_any:
+          'У предмета нагрузки нет распределения на {{quarter}}-ю четверть.',
+      },
+    },
     builder: {
+      notPublished: 'Не опубликовано',
+      outOfDate: 'После начала этого черновика была опубликована другая версия.',
       title: 'Конструктор черновика',
       noVersion: 'Сначала начните черновик на странице учебной нагрузки.',
       later: 'Пока недоступно',
@@ -3501,6 +3557,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         draft: 'Черновик',
         published: 'Опубликована',
         archived: 'В архиве',
+        outOfDate: 'Черновик, устарел',
       },
       startsOn: 'Дата начала',
       startsOnText: 'Начинается {{date}}',
@@ -3561,6 +3618,9 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       noRoom: 'Без особого кабинета',
       roomTypeOption: 'Любой: {{type}}',
       doubleLessons: 'Сдвоенные уроки разрешены',
+      shortReason: 'Намеренно меньше: причина',
+      shortReasonNote:
+        'Заполните, если в строке намеренно поставлено меньше уроков, чем уроков в неделю.',
       yes: 'Да',
       no: 'Нет',
       none: 'Нет',

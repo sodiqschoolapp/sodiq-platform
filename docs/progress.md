@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 17 October 2026: task 5.5a-1 Publish: the route, its checks and one at a time
+
+- Step 8 of the builder publishes a draft: the start date (tomorrow at the earliest, the later of next Monday and the year's first day by default, the coming quarters as shortcuts), every reason it cannot be published and the warnings (`GET …/publish-check`), Publish after a confirmation (`POST …/publish`, with a request key). Refused: a start before tomorrow or outside the year, a published version starting on or after it, a draft out of date, steps 1 to 4 not ready, a load row problem, a blocked result of the pattern, a difference from the load (unless "deliberately short" with a reason, a new field of the load row), a year without four dated quarters, a graded subject without its distributions for the quarters touched. One refusal answer lists them all (`publish_blocked`).
+- 0073: the status (draft to published only), `out_of_date_at` (a publish marks the other drafts of the branch and year that do not descend from it; a copy carries the mark), `short_reason`; the edit lock and the mark are frozen on a published version. One school-wide publish lock; the drafts of the year are locked in id order before `lockDraft`. A refused publish changes nothing.
+- 5.5a is split: 5.5a-2 (dated checks and the impact preview) and 5.5a-3 (out-of-date drafts and the chain) follow.
+- Left out: 5.5a-2, 5.5a-3, dated lessons (5.5b), journals, notices and withdraw (5.5c), the handbook (paused). A repeat that waits for the first request with the same key has no time limit of its own (decision 16; the open line of 0.4b is closed).
+
+The next sessions must know:
+
+- A publish writes the pattern (Tutor rows follow) and then the status in one transaction: `set constraints all immediate` runs the deferred pattern checks while it is still a draft.
+- `LoadKit.setVersion` writes `draft` and `archived` past the status trigger, for the states earlier tests stand on.
+- Until 5.5a-2 the publish check reads each other branch's version in force on the start date only, and `class_group_subjects` and `department_move_loads` keep their readers.
+- The next task is 5.5a-2.
+
 ## 17 October 2026: task 5.4c-3b Grid: mixed pairings
 
 - A half of a mixed split is placed in the grid "Paired with" a half of another subject's mixed split of the same class, one block of two lessons (boys' physical education with girls' technology, the reverse in another slot), or as its whole split; from "To place", the Place form, "Suggest a place" and as a double; undo and redo place a pairing again with its partner. No migration.
@@ -1920,7 +1934,7 @@ Left out, with the task that brings it:
 - Jobs that carry the branch, audit in the transaction: 0.5.
 - The full branch record and the right to create and edit branches: 1.1. The application user can only read `branches`.
 - How long request keys are kept, and the cleanup job: 8.3c. The application user has no delete right on `request_keys`.
-- A time limit for a repeat that waits for the first request with the same key (it waits until that one commits or rolls back): decide with publish, 5.5a.
+- A time limit for a repeat that waits for the first request with the same key (it waits until that one commits or rolls back): decide with publish, 5.5a. Decided in 5.5a-1 (decision 16): none of its own.
 - A lint rule that stops business code from importing `src/testing` (still open from 0.4a).
 - Not fixed from the review, by choice: the application user may rewrite the stored answer of a key (a database rule against it would need a trigger); `request-key.test.ts` has tests that build on the row of the first test; `import x = require(...)` and an inline `eslint-disable` are not refused by the import rule.
 

@@ -3177,6 +3177,12 @@ try {
      * id and phone given) of both subjects.
      */
     mixed?: { readonly staffId: string; readonly phone: string };
+    /**
+     * Task 5.5a-1: a draft that can be published: four dated quarters, one
+     * lesson a week per row (each placed), and Geometry's distributions in
+     * the branch.
+     */
+    publishable?: boolean;
   }) => {
     const gridBranch = await insertBranch(migrator, scene.branch);
     const gridVice = await create(scene.vice[0], scene.vice[1]);
@@ -3198,15 +3204,24 @@ try {
         })
         .returning('id')
         .executeTakeFirstOrThrow();
-      await transaction
+      const quarters = await transaction
         .insertInto('quarters')
         .values(
           [1, 2, 3, 4].map((number) => ({
             branch_id: gridBranch,
             academic_year_id: year.id,
             number,
+            ...(scene.publishable === true
+              ? {
+                  start_date: isoDate(new Date(yearStart.getTime() + (number - 1) * 91 * dayMs)),
+                  end_date: isoDate(
+                    new Date(yearStart.getTime() + (number === 4 ? 364 : number * 91 - 1) * dayMs),
+                  ),
+                }
+              : {}),
           })),
         )
+        .returning('id')
         .execute();
       const classes = [];
       for (const name of ['Oxford', 'Princeton']) {
@@ -3383,7 +3398,7 @@ try {
             class_id: one.id,
             subject_id: geometry.id,
             teacher_id: person.id,
-            lessons_per_week: 3,
+            lessons_per_week: scene.publishable === true ? 1 : 3,
             double_lessons: scene.doubleLessons ?? false,
           })
           .returning('id')
@@ -3414,6 +3429,31 @@ try {
             load_row_id: row.id,
             teacher_id: person.id,
           })
+          .execute();
+      }
+      if (scene.publishable === true) {
+        await transaction
+          .insertInto('subject_daily_weights')
+          .values({
+            branch_id: gridBranch,
+            subject_id: geometry.id,
+            attendance: 20,
+            classwork: 40,
+            homework: 40,
+          })
+          .execute();
+        await transaction
+          .insertInto('subject_quarter_weights')
+          .values(
+            quarters.map((quarter) => ({
+              branch_id: gridBranch,
+              subject_id: geometry.id,
+              quarter_id: quarter.id,
+              attendance: 20,
+              classwork: 40,
+              homework: 40,
+            })),
+          )
           .execute();
       }
       if (scene.mixed !== undefined) {
@@ -3646,6 +3686,18 @@ try {
     mixed: { staffId: 'S-269338', phone: '+998935557338' },
   });
   seeded.draftGridMixed = { login: mixedVice.login, password: mixedVice.firstPassword };
+
+  // Publish (task 5.5a-1): the same scene in a branch of its own, one lesson a
+  // week per row, with four dated quarters and Geometry's distributions.
+  const publishVice = await gridScene({
+    branch: 'Grid publish browser test branch',
+    vice: ['Gulnora', 'Rahimova'],
+    staffId: 'S-269339',
+    phone: '+998935557339',
+    rooms: [],
+    publishable: true,
+  });
+  seeded.draftPublish = { login: publishVice.login, password: publishVice.firstPassword };
 
   // The department move (task 3.4c): a branch of its own with a year around
   // today, 7 Oxford, the attendance-only subject Cosmology of STEAM and a

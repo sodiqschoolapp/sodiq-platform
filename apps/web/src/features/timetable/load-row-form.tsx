@@ -6,6 +6,7 @@ import {
   loadRowEditSchema,
   loadRowRecordSchema,
   ROOM_TYPES,
+  SHORT_REASON_MAX,
   type InstructionLanguage,
   type LoadRow,
   type LoadRowEdit,
@@ -21,7 +22,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CHECKED, CheckboxField, NumberField, SelectField } from '@/components/field';
+import { CHECKED, CheckboxField, Field, NumberField, SelectField } from '@/components/field';
 import type { FormSchema } from '@/components/form/form-messages';
 import { wholeNumber } from '@/components/form/form-messages';
 import { RecordForm } from '@/components/form/record-form';
@@ -115,6 +116,7 @@ export function LoadRowForm({
             : '',
       doubleLessons: row?.doubleLessons === true ? CHECKED : '',
       mixedBlock: row?.mixedBlock === true ? CHECKED : '',
+      shortReason: row?.shortReason ?? '',
     },
     read: (typed) => {
       const fields = {
@@ -125,6 +127,8 @@ export function LoadRowForm({
         lessonsPerWeek: wholeNumber(typed.lessonsPerWeek),
         ...roomOf(typed.room),
         doubleLessons: typed.doubleLessons === CHECKED,
+        // Task 5.5a-1, decision 8: "deliberately short" is its reason; none is not short.
+        shortReason: typed.shortReason.trim() === '' ? null : typed.shortReason,
       };
       if (row !== null) {
         return (row.unit.kind === 'group' && isSplit(row.unit.id)) || row.mixedBlock
@@ -362,6 +366,12 @@ export function LoadRowForm({
         {...form.bind('room')}
       />
       <CheckboxField label={t('timetable.load.doubleLessons')} {...form.bind('doubleLessons')} />
+      <Field
+        label={t('timetable.load.shortReason')}
+        note={t('timetable.load.shortReasonNote')}
+        maxLength={SHORT_REASON_MAX}
+        {...form.bind('shortReason')}
+      />
       {split && (
         <CheckboxField
           label={t('timetable.load.mixedBlock')}

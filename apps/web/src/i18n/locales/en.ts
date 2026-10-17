@@ -385,6 +385,8 @@ export const en = {
       'Someone else is editing this draft. You can take over once they have been inactive for 5 minutes.',
     lock_taken: 'This lock is already set.',
     timetable_busy: 'Another change of the timetable was being saved. Try again.',
+    publish_blocked:
+      'The draft cannot be published yet. Step 8 lists every reason; settle them and publish again.',
     draft_not_ready: 'A step of the draft is not ready. Finish the steps marked not ready first.',
     load_unit_year:
       "That class or group is of another academic year than the version. Choose one of the version's year.",
@@ -2604,6 +2606,8 @@ export const en = {
         preferences: 'Preference weights of a draft changed',
         rules_confirm: 'Rules of a draft confirmed',
         edit_lock: 'Draft timetable version taken for editing',
+        publish: 'Timetable version published',
+        out_of_date: 'Draft marked out of date by a publish',
       },
       timetable_lock: {
         create: 'Lock of a draft set',
@@ -3210,7 +3214,53 @@ export const en = {
       teacher_unavailable_later: 'From {{date}}.',
       class_free_period: 'Free slot {{time}}.',
     },
+    publish: {
+      startsOn: 'Start date',
+      shortcuts: 'Start date shortcuts',
+      defaultStart: 'Usual start: {{date}}',
+      quarterStart: 'Quarter start: {{date}}',
+      nothingRefused: 'Nothing stops the publish.',
+      refusalsTitle_one: '{{count}} reason it cannot be published',
+      refusalsTitle_other: '{{count}} reasons it cannot be published',
+      warningsTitle_one: '{{count}} warning',
+      warningsTitle_other: '{{count}} warnings',
+      openGrid: 'Open the grid',
+      action: 'Publish',
+      confirmTitle: 'Publish version {{number}}?',
+      confirmText:
+        'It becomes the timetable of the branch from {{date}} and can no longer be edited.',
+      published: 'Published, valid from {{date}}.',
+      notDraft: 'Only a draft can be published.',
+      placedOf_one: '{{placed}} of {{count}} lesson placed',
+      placedOf_other: '{{placed}} of {{count}} lessons placed',
+      refusals: {
+        version_start_too_early:
+          'The start date is tomorrow at the earliest. A change for today is a one-day change.',
+        version_start_outside_year: 'The start date is outside the academic year.',
+        version_later_published:
+          'Version {{number}} is already published from this date or a later one. Choose an earlier date for now.',
+        draft_out_of_date:
+          'Another version was published after this draft was started. Bring the draft up to date first.',
+        draft_not_ready: 'Step "{{step}}" is not ready.',
+        load_problem: '{{row}}: {{problem}}',
+        load_problem_row: 'A row of the load: {{problem}}',
+        load_mismatch:
+          '{{row}}: {{numbers}}. Place them, or mark the row deliberately short with a reason.',
+        load_mismatch_row:
+          'A row of the load: {{numbers}}. Place them, or mark the row deliberately short with a reason.',
+        pattern_blocked_any: 'A lesson breaks a rule of the timetable.',
+        year_quarters: 'The academic year does not have four dated quarters.',
+        subject_daily_weights: '{{subject}} has no daily distribution in this branch.',
+        subject_daily_weights_any:
+          'A subject of the load has no daily distribution in this branch.',
+        subject_quarter_weights: '{{subject}} has no distribution for quarter {{quarter}}.',
+        subject_quarter_weights_any:
+          'A subject of the load has no distribution for quarter {{quarter}}.',
+      },
+    },
     builder: {
+      notPublished: 'Not published',
+      outOfDate: 'Another version was published after this draft was started.',
       title: 'Draft builder',
       noVersion: 'Start a draft on the teaching load page first.',
       later: 'Not yet available',
@@ -3315,6 +3365,7 @@ export const en = {
         draft: 'Draft',
         published: 'Published',
         archived: 'Archived',
+        outOfDate: 'Draft, out of date',
       },
       startsOn: 'Start date',
       startsOnText: 'Starts on {{date}}',
@@ -3375,6 +3426,9 @@ export const en = {
       noRoom: 'No special room',
       roomTypeOption: 'Any {{type}}',
       doubleLessons: 'Double lessons allowed',
+      shortReason: 'Deliberately short: reason',
+      shortReasonNote:
+        'Fill in when the row has fewer lessons placed than its lessons per week on purpose.',
       yes: 'Yes',
       no: 'No',
       none: 'None',

@@ -40,6 +40,7 @@ const VERSION: TimetableVersion = {
   fromVersion: null,
   rows: 1,
   leftRows: 0,
+  outOfDate: false,
   editLock: null,
 };
 
@@ -64,6 +65,7 @@ const ROW: LoadRow = {
   roomType: null,
   doubleLessons: false,
   mixedBlock: false,
+  shortReason: null,
   block: [],
   unplaced: 0,
   problems: [],
@@ -163,6 +165,8 @@ async function openPage(
     pinned?: (body: unknown) => DraftReadiness;
     unpinned?: DraftReadiness;
     path?: string;
+    /** More answers of the fake API (task 5.5a-1: the publish routes). */
+    extra?: Parameters<typeof fakeApi>[0];
   } = {},
 ) {
   let answer = options.answer ?? readiness();
@@ -197,6 +201,7 @@ async function openPage(
             return json(answer);
           },
         }),
+    ...options.extra,
   });
   renderApp(options.path ?? '/timetable/builder', 'en');
   await screen.findByRole('heading', { name: en.timetable.builder.title });
@@ -208,7 +213,7 @@ const stepMark = (key: string): string =>
 
 // docs/spec/06-timetable.md, Building a timetable; task 5.3a, pull request #127.
 describe('the draft builder', () => {
-  it('marks each step from the readiness, steps 6 and 8 as not yet available, and the grid open (5.4a)', async () => {
+  it('marks each step from the readiness, step 6 as not yet available, and the grid and publish open (5.4a, 5.5a-1)', async () => {
     await openPage({
       answer: readiness({
         teachers: { ready: false, teachers: [FIGURES] },
@@ -221,12 +226,15 @@ describe('the draft builder', () => {
     expect(stepMark('teachers')).toContain(en.timetable.builder.notReady);
     expect(stepMark('rooms')).toContain(en.timetable.builder.ready);
     expect(stepMark('rules')).toContain(en.timetable.builder.notReady);
-    for (const key of ['generate', 'publish']) {
-      expect(stepMark(key)).toContain(en.timetable.builder.later);
-      expect(
-        document.querySelector<HTMLButtonElement>(`[data-step="${key}"] button`)?.disabled,
-      ).toBe(true);
-    }
+    expect(stepMark('generate')).toContain(en.timetable.builder.later);
+    expect(
+      document.querySelector<HTMLButtonElement>('[data-step="generate"] button')?.disabled,
+    ).toBe(true);
+    // Task 5.5a-1: step 8 opens for a draft, marked not published.
+    expect(stepMark('publish')).toContain(en.timetable.builder.notPublished);
+    expect(
+      document.querySelector<HTMLButtonElement>('[data-step="publish"] button')?.disabled,
+    ).toBe(false);
     // Task 5.4a: step 7 opens for any draft; its mark comes with the conflict panel (decision 13).
     expect(stepMark('grid')).toContain(en.timetable.builder.byHand);
     expect(document.querySelector<HTMLButtonElement>('[data-step="grid"] button')?.disabled).toBe(
@@ -688,5 +696,88 @@ describe('pinSlots', () => {
     expect(pinSlots([ninth, tenth], [9], 1).map((slot) => slot.position)).toEqual([1, 3, 5]);
     expect(pinSlots([ninth], [9, 10], 1)).toEqual([]);
     expect(pinSlots([ninth, tenth], [9], 2)).toEqual([]);
+  });
+
+  // Task 5.5a-1, pull request #139: step 8 (06, Editing in the grid: "Publish:
+  // confirm the start date set at step 1, or change it ... A draft with errors
+  // cannot be published").
+  describe('step 8, review and publish', () => {
+    const CHECK = {
+      startsOn: '2026-10-19',
+      earliest: '2026-10-11',
+      defaultStart: '2026-10-12',
+      quarterStarts: ['2026-11-02', '2027-01-11'],
+      refusals: [],
+      warnings: [],
+      canPublish: true,
+    };
+    const checkRoute = `GET /api/timetable/versions/${VERSION.id}/publish-check`;
+    const publishRoute = `POST /api/timetable/versions/${VERSION.id}/publish`;
+
+    it('lists every reason the draft cannot be published, with the row named, and keeps Publish off', async () => {
+      await openPage({
+        path: `/timetable/builder?version=${VERSION.id}&step=publish`,
+        extra: {
+          [checkRoute]: () =>
+            json({
+              ...CHECK,
+              canPublish: false,
+              refusals: [
+                {
+                  code: 'load_mismatch',
+                  loadRowId: ROW.id,
+                  result: {
+                    rule: 'load_mismatch',
+                    severity: 'warning',
+                    weekday: null,
+                    lessonIds: [],
+                    detail: { loadRowId: ROW.id, placed: 3, lessonsPerWeek: 4 },
+                  },
+                },
+                { code: 'year_quarters' },
+              ],
+            }),
+        },
+      });
+      const list = await waitFor(() => {
+        const found = document.querySelector('[data-refusals]');
+        if (found === null) throw new Error('No list yet.');
+        return found;
+      });
+      const items = [...list.querySelectorAll('li')].map((item) => item.textContent);
+      expect(items).toEqual([
+        `7 Oxford, Mathematics: 3 of 4 lessons placed. Place them, or mark the row deliberately short with a reason.`,
+        en.timetable.publish.refusals.year_quarters,
+      ]);
+      expect(screen.getByRole('button', { name: en.timetable.publish.action })).toHaveProperty(
+        'disabled',
+        true,
+      );
+    });
+
+    it('checks the date chosen by a shortcut and publishes on it after the confirmation', async () => {
+      const calls = await openPage({
+        path: `/timetable/builder?version=${VERSION.id}&step=publish`,
+        extra: {
+          [checkRoute]: () => json(CHECK),
+          [publishRoute]: () => json({ ...VERSION, status: 'published', startsOn: '2026-11-02' }),
+        },
+      });
+      await screen.findByText(en.timetable.publish.nothingRefused);
+      fireEvent.click(screen.getByRole('button', { name: 'Quarter start: 2 November 2026' }));
+      await waitFor(() => {
+        expect(
+          calls.filter((call) => call.route === checkRoute).map((call) => call.query),
+        ).toContain('?startsOn=2026-11-02');
+      });
+      fireEvent.click(await screen.findByRole('button', { name: en.timetable.publish.action }));
+      const dialog = await screen.findByRole('alertdialog');
+      fireEvent.click(within(dialog).getByRole('button', { name: en.timetable.publish.action }));
+      await waitFor(() => {
+        expect(calls.find((call) => call.route === publishRoute)?.body).toEqual({
+          startsOn: '2026-11-02',
+        });
+      });
+    });
   });
 });

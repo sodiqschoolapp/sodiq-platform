@@ -74,6 +74,7 @@ export type AccountKey =
   | 'draftGridUndo'
   | 'draftGridDouble'
   | 'draftGridMixed'
+  | 'draftPublish'
   | 'whoTeacher'
   | 'whoHeadTutor'
   | 'whoHeadTeacher';
