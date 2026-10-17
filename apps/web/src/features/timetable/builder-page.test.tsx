@@ -207,7 +207,7 @@ const stepMark = (key: string): string =>
 
 // docs/spec/06-timetable.md, Building a timetable; task 5.3a, pull request #127.
 describe('the draft builder', () => {
-  it('marks each step from the readiness, and steps 6 to 8 as not yet available', async () => {
+  it('marks each step from the readiness, steps 6 and 8 as not yet available, and the grid open (5.4a)', async () => {
     await openPage({
       answer: readiness({
         teachers: { ready: false, teachers: [FIGURES] },
@@ -220,12 +220,17 @@ describe('the draft builder', () => {
     expect(stepMark('teachers')).toContain(en.timetable.builder.notReady);
     expect(stepMark('rooms')).toContain(en.timetable.builder.ready);
     expect(stepMark('rules')).toContain(en.timetable.builder.notReady);
-    for (const key of ['generate', 'grid', 'publish']) {
+    for (const key of ['generate', 'publish']) {
       expect(stepMark(key)).toContain(en.timetable.builder.later);
       expect(
         document.querySelector<HTMLButtonElement>(`[data-step="${key}"] button`)?.disabled,
       ).toBe(true);
     }
+    // Task 5.4a: step 7 opens for any draft; its mark comes with the conflict panel (decision 13).
+    expect(stepMark('grid')).toContain(en.timetable.builder.byHand);
+    expect(document.querySelector<HTMLButtonElement>('[data-step="grid"] button')?.disabled).toBe(
+      false,
+    );
     expect(document.querySelector('[data-ready]')?.textContent).toBe(
       'Not ready for generation: 3 steps are not ready',
     );

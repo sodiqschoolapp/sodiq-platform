@@ -524,7 +524,7 @@ How to read the task lines:
   - From 5.3a (pull request #127, decisions 2 and 3): readiness is `draftReady` over the steps' checks of `packages/timetable-rules/src/readiness.ts`, computed on each read by `GET api/timetable/versions/:id/readiness`. Facts are read on the dates of decision 2: templates weekday by weekday from the later of the start date and today, availability from the one entry in force on that date.
   - From 5.3b-1 (pull request #128, decisions 2, 6 and 9): step 5 is `rulesReadiness` (the weights stored against `timetable_versions.rules_confirmed`); the pins join that check and the stored confirmation, and the confirm route (`POST …/rules/confirm`, which carries what the person sees) carries the pins too. The panel is `apps/web/src/features/timetable/rules-step.tsx`.
 
-- [ ] **5.4a Grid: board and drag**
+- [x] **5.4a Grid: board and drag**
   - Read: `06` (Editing in the grid), `12`.
   - Build: the board with Pragmatic drag and drop; move and swap; live conflict marking from the rule engine; the server refuses what the grid refuses.
   - Done when: Playwright moves a lesson, sees a blocked move refused with the rule named, and the same move is refused when the API is called directly.
@@ -534,12 +534,14 @@ How to read the task lines:
   - Read: `06` (Editing in the grid, Teachers who work in several branches, Views and outputs).
   - Build: views by class, teacher and room on a clock axis; the "to place" panel; the conflict panel; grey "busy in another branch" blocks; the warning when another branch's draft uses the same teacher.
   - Done when: every item of the "Editing in the grid" list is present.
+  - From 5.4a (pull request #130, decisions 7 and 13): the room picker of a lesson ("The room picker lists only rooms that are free in that slot, best fit first") and "Suggest a place" belong to the "to place" panel built here; a new lesson takes its row's room, else a class row's main classroom, else none (`roomOfNew` of `packages/timetable-rules/src/facts-data.ts`). Step 7's readiness mark ("The conflict panel shows no errors") comes with the conflict panel: the grid answer already carries every result of the draft (`GET api/timetable/versions/:id/grid`, `results`), and numbers of a result shown there take keys of their own with plural forms. The views by teacher and room read the same answer; a block occupies a cell by clock time (`boardOf` of `apps/web/src/features/timetable/use-slot-status.ts`).
   - From 5.3b-2 (pull request #129, decision 1, Look first): `edge/timetable`, Generator and editing: "Before generating, the locked and pinned lessons are checked on their own. A blocked conflict stops the run and lists the lessons." The pins are checked among themselves in one branch for now; this task adds the published lessons of other branches as busy-elsewhere placements (`fixed`) to `pattern-facts.ts` (`apps/api/src/modules/timetable`), the reader every pattern check uses, so the pins' check of step 5 (`checkPins`) counts them and the travel time around them, and a Tutor of classes in two branches is listed too. The teacher's other branches (`branchIds`) and `otherDrafts` are read there as well.
 
 - [ ] **5.4c Grid: locks and the draft edit lock**
   - Read: `06` (Editing in the grid, Auto-generation), `edge/timetable` (Generator and editing).
   - Build: locks on a lesson, class, teacher or day; undo; the edit lock on a draft that is released after 5 minutes without activity.
   - Done when: a second Academic Vice Principal can take over a draft and the first is told.
+  - From 5.4a (pull request #130, decisions 8, 10 and 14): the grid refuses a half of a mixed split (`pattern_mixed_block`) and no route writes `pattern_blocks.double_pair_id`; the pairing of mixed halves, the double lessons placed and moved together (`edge/timetable`, Structure, Double lessons), undo and the edit lock are built here on the routes of `apps/api/src/modules/timetable/pattern.service.ts`.
   - From 3.4b (pull request #100, decision 12, Look first): the halves of a split marked `mixed_block` meet in different slots; the pairing of two subjects' halves slot by slot (boys have physical education while girls have technology, and the reverse in another slot; `edge/timetable`, Structure) is placed and kept here.
 
 - [ ] **5.5a Publish: preview and checks**

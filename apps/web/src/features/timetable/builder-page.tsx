@@ -31,7 +31,13 @@ import { useView } from '@/features/access/use-view';
 import { nameOf, yearsQuery } from '@/features/setup/setup-api';
 import { TemplateTableView } from '@/features/setup/template-table';
 import { schoolDateText, weekdayName } from '@/lib/dates';
-import { BUILDER_STEPS, type BuilderSearch, type BuilderStep } from './builder-search';
+import {
+  BUILDER_STEPS,
+  READINESS_STEPS,
+  type BuilderSearch,
+  type BuilderStep,
+} from './builder-search';
+import { GridStep } from './grid-step';
 import { RulesStep } from './rules-step';
 import {
   confirmTemplates,
@@ -42,7 +48,7 @@ import {
 } from './timetable-api';
 import { comingQuarterStarts, StartForm } from './version-form';
 
-/** The eight steps of `06`, Building a timetable; 1 to 5 are built (tasks 5.3a and 5.3b-1). */
+/** The eight steps of `06`, Building a timetable; 1 to 5 and 7 are built (tasks 5.3a, 5.3b-1 and 5.4a). */
 const STEPS = [
   'templates',
   'load',
@@ -61,6 +67,11 @@ const BUILT = BUILDER_STEPS;
 type BuiltStep = BuilderStep;
 
 const isBuilt = (step: StepKey): step is BuiltStep => (BUILT as readonly string[]).includes(step);
+
+type ReadyStep = (typeof READINESS_STEPS)[number];
+
+const hasReadiness = (step: StepKey): step is ReadyStep =>
+  (READINESS_STEPS as readonly string[]).includes(step);
 
 /** The class or group of a row as a person reads it. */
 const unitText = (row: LoadRow): string =>
@@ -165,19 +176,22 @@ export function BuilderPage(): React.JSX.Element {
     });
 
   const stepReady = (key: StepKey, data: DraftReadiness | undefined): boolean | null =>
-    !isBuilt(key) || data === undefined ? null : data[key].ready;
+    !hasReadiness(key) || data === undefined ? null : data[key].ready;
 
   const markText = (key: StepKey, data: DraftReadiness | undefined): string =>
     !isBuilt(key)
       ? t('timetable.builder.later')
-      : data === undefined
-        ? ''
-        : data[key].ready
-          ? t('timetable.builder.ready')
-          : t('timetable.builder.notReady');
+      : !hasReadiness(key)
+        ? t('timetable.builder.byHand')
+        : data === undefined
+          ? ''
+          : data[key].ready
+            ? t('timetable.builder.ready')
+            : t('timetable.builder.notReady');
 
   const data = readiness.data;
-  const notReady = data === undefined ? 0 : BUILT.filter((key) => !data[key].ready).length;
+  const notReady =
+    data === undefined ? 0 : READINESS_STEPS.filter((key) => !data[key].ready).length;
 
   let panel;
   if (readiness.isError) {
@@ -489,6 +503,8 @@ export function BuilderPage(): React.JSX.Element {
         onChanged={refresh}
       />
     );
+  } else if (step === 'grid') {
+    panel = <GridStep key={chosen.id} versionId={chosen.id} canEdit={canEdit} />;
   } else {
     panel = <p className="text-sm text-muted-foreground">{t('timetable.builder.laterText')}</p>;
   }
@@ -519,7 +535,7 @@ export function BuilderPage(): React.JSX.Element {
           {data !== undefined && !data.ready && (
             <p className="text-sm" data-reason="notReadySteps">
               {t('timetable.builder.rulesStep.notReadySteps', {
-                steps: BUILT.filter((key) => !data[key].ready)
+                steps: READINESS_STEPS.filter((key) => !data[key].ready)
                   .map((key) => t(`timetable.builder.steps.${key}`))
                   .join(', '),
               })}

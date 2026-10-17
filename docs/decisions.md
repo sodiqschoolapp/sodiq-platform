@@ -246,6 +246,28 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 17 October 2026: the grid, board and drag (task 5.4a)
+
+Plan approved on pull request #130 with corrections 1 to 3; decisions 1 to 17 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** New dependency `@atlaskit/pragmatic-drag-and-drop` 4.0.0 (Apache-2.0, Atlassian), the core package only | Decision 1; `13`, Timetable board |
+| **Look first.** The grid answer carries the engine's input as data (`PatternFactsData`: member ids with no names, availability, profiles, rooms of the branch); one converter, `patternModel`, builds `Facts` in the browser and on the server | Decision 2; `14`, Timetable, One rule engine |
+| **Look first.** Busy-elsewhere lessons of other branches and `other_draft` are not in the facts yet; 5.4b adds them to `pattern-facts.ts` | Decision 12 of the plan (3 of the review); departs for now from `.claude/rules/timetable.md`, "counts all branches", as 5.3b-2 decision 1 |
+| The board shows one class at a time on its own slots; a block occupies a cell by clock time, a group block on the board of every class it draws from | Decision 3, review correction 2 |
+| Only blocked results refuse; warnings are saved and shown; a write checks the changed blocks' lessons only (`checkCandidates`) | Decisions 4 and 5 |
+| More lessons than the load is the `load_mismatch` warning, never a refusal; the add form lists rows with lessons left first | Decision 6; `06`, Rules, last row |
+| A new lesson takes its row's room, else a class row's main classroom, else none; the room picker and "Suggest a place" are 5.4b's | Decision 7 |
+| A group row is placed and moved with its whole block; a half of a mixed split is refused `pattern_mixed_block` (5.4c); a two-grade row takes its lowest grade's slot and the engine names `two_grade_slot` | Decisions 8 and 9 |
+| No route writes a double pair; pins are not checked against placed lessons; step 7 opens for any draft and its mark comes with the conflict panel; undo and the edit lock are 5.4c; two writes are kept apart by `lockDraft` | Decisions 10 to 14 |
+| The 0.2-second target is measured at the real size by 5.12; a published or archived version is read only | Decisions 15 and 16 |
+| The clash constraints map to `pattern_clash`, a deadlock to `timetable_busy`; a swap defers the clash constraints to the commit | Decision 17 |
+| A slot position past the day, or a day with no lessons, is `pattern_no_slot`; a break is placed for the engine, which names `break_slot` | Found in the build: as pins read a slot (`slotAt`), so the grid and the API give the same answer |
+| `teacher_week_load` and `load_mismatch` are left out of a slot's status while dragging (`WEEK_COUNT_RULES`); they still show on the board and are saved | Found in the build: a row short of its load would warn on every slot alike |
+| The generated test of `14` runs 200 random sequences of up to 30 places, moves and swaps through `blockPlacements` and `checkCandidates` | Review correction 1 |
+| The Move button of a tile lists every slot with the drag's marks, by keyboard and tap; at phone width the grid is view only | Review correction 3; `12`, Devices |
+
 ## 17 October 2026: the draft builder, step 5: pinned lessons (task 5.3b-2)
 
 Plan approved on pull request #129 with corrections 1 to 3; decisions 1 to 11 confirmed there. Flagged on issue #42.

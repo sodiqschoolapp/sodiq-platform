@@ -1,5 +1,6 @@
 import {
   draftReadinessSchema,
+  gridSchema,
   loadRowSchema,
   loadSchema,
   loadTeachersSchema,
@@ -8,8 +9,11 @@ import {
   timetableVersionSchema,
   type LoadRowEdit,
   type LoadRowRecord,
+  type MoveRecord,
   type PinRecord,
+  type PlaceRecord,
   type PreferenceWeights,
+  type SwapRecord,
   type TimetableVersionCreate,
   type TimetableVersionEdit,
 } from '@sodiq/shared';
@@ -200,3 +204,53 @@ export const deletePin = (versionId: string, pinId: string) =>
       params: { header: branchHeader(), path: { id: versionId, pinId } },
     }),
   ).then((answer) => draftReadinessSchema.parse(answer));
+
+/** Step 7: the board of a version (task 5.4a): its rows, blocks, the engine's input and the results now. */
+export const gridQuery = (branchId: string | null, versionId: string | null) =>
+  queryOptions({
+    queryKey: [...timetableKey(branchId), 'load', versionId, 'grid'],
+    queryFn: async () =>
+      gridSchema.parse(
+        await answerOf(
+          api.GET('/api/timetable/versions/{id}/grid', {
+            params: { header: branchHeader(), path: { id: versionId ?? '' } },
+          }),
+        ),
+      ),
+    enabled: branchId !== null && versionId !== null,
+  });
+
+/** Step 7: a load row placed at a slot with its whole block. */
+export const placeBlock = (versionId: string, record: PlaceRecord) =>
+  answerOf(
+    api.POST('/api/timetable/versions/{id}/pattern', {
+      params: { header: branchHeader(), path: { id: versionId } },
+      body: record,
+    }),
+  ).then((answer) => gridSchema.parse(answer));
+
+/** Step 7: a block moved whole to a weekday and slot. */
+export const moveBlock = (versionId: string, blockId: string, record: MoveRecord) =>
+  answerOf(
+    api.POST('/api/timetable/versions/{id}/pattern/{blockId}/move', {
+      params: { header: branchHeader(), path: { id: versionId, blockId } },
+      body: record,
+    }),
+  ).then((answer) => gridSchema.parse(answer));
+
+/** Step 7: two blocks exchange their slots. */
+export const swapBlocks = (versionId: string, record: SwapRecord) =>
+  answerOf(
+    api.POST('/api/timetable/versions/{id}/pattern/swap', {
+      params: { header: branchHeader(), path: { id: versionId } },
+      body: record,
+    }),
+  ).then((answer) => gridSchema.parse(answer));
+
+/** Step 7: a block removed with its lessons. */
+export const removeBlock = (versionId: string, blockId: string) =>
+  answerOf(
+    api.DELETE('/api/timetable/versions/{id}/pattern/{blockId}', {
+      params: { header: branchHeader(), path: { id: versionId, blockId } },
+    }),
+  ).then((answer) => gridSchema.parse(answer));

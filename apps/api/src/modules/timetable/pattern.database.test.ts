@@ -493,6 +493,121 @@ describe('the pattern of a timetable version in the database', () => {
     });
   });
 
+  // Task 5.4a: the grid moves a block by an update of pattern_blocks whose
+  // time cascades to its entries and classes; every guard of 0058 holds on
+  // that path too, and a swap defers the clash constraints to the commit.
+  describe('a block moved by the grid (task 5.4a)', () => {
+    const moveBlock = (block: string, slot: Slot) =>
+      inBranch(north, (transaction) =>
+        transaction
+          .updateTable('pattern_blocks')
+          .set({ weekday: slot.weekday ?? 1, start_minutes: slot.start, end_minutes: slot.end })
+          .where('id', '=', block)
+          .execute(),
+      );
+
+    it('refuses a move that puts the teacher in two lessons at once', async () => {
+      const busy = await teacher();
+      await place({ weekday: 2, start: 480, end: 525 }, [
+        { row: await row({ classId: await schoolClass() }, { teacher: busy }) },
+      ]);
+      const moved = await place({ weekday: 2, start: 540, end: 585 }, [
+        { row: await row({ classId: await schoolClass() }, { teacher: busy }) },
+      ]);
+      expect(
+        await refusal(moveBlock(moved.block, { weekday: 2, start: 500, end: 545 })),
+      ).toMatchObject({ code: EXCLUSION_VIOLATION, constraint: 'pattern_entries_teacher_excl' });
+    });
+
+    it('refuses a move into a room that is not shared and already in use', async () => {
+      const room = await kit.room(north);
+      await place({ weekday: 2, start: 600, end: 645 }, [
+        { row: await row({ classId: await schoolClass() }), roomId: room },
+      ]);
+      const moved = await place({ weekday: 2, start: 660, end: 705 }, [
+        { row: await row({ classId: await schoolClass() }), roomId: room },
+      ]);
+      expect(
+        await refusal(moveBlock(moved.block, { weekday: 2, start: 620, end: 665 })),
+      ).toMatchObject({ code: EXCLUSION_VIOLATION, constraint: 'pattern_entries_room_excl' });
+    });
+
+    it('refuses a move that gives a class two blocks at once', async () => {
+      const oxford = await schoolClass();
+      const art = await kit.load.classes.subject({ grades: [7, 9, 10] });
+      await place({ weekday: 2, start: 720, end: 765 }, [{ row: await row({ classId: oxford }) }]);
+      const moved = await place({ weekday: 2, start: 780, end: 825 }, [
+        { row: await row({ classId: oxford, subjectId: art }) },
+      ]);
+      expect(
+        await refusal(moveBlock(moved.block, { weekday: 2, start: 740, end: 785 })),
+      ).toMatchObject({ code: EXCLUSION_VIOLATION, constraint: 'pattern_block_classes_excl' });
+    });
+
+    it('refuses a move into a shared room already holding its number of lessons', async () => {
+      const hall = await kit.room(north, { most: 2 });
+      for (let one = 0; one < 2; one += 1) {
+        await place({ weekday: 4, start: 540, end: 585 }, [
+          { row: await row({ classId: await schoolClass() }), roomId: hall },
+        ]);
+      }
+      const moved = await place({ weekday: 4, start: 600, end: 645 }, [
+        { row: await row({ classId: await schoolClass() }), roomId: hall },
+      ]);
+      expect(
+        await refusal(moveBlock(moved.block, { weekday: 4, start: 560, end: 605 })),
+      ).toMatchObject({ code: CHECK_VIOLATION, constraint: 'pattern_room_shared_full' });
+    });
+
+    it('lets a swap pass through a clash when the constraints are deferred, and refuses one still clashing at the commit', async () => {
+      const busy = await teacher();
+      const a = await place({ weekday: 5, start: 480, end: 525 }, [
+        { row: await row({ classId: await schoolClass() }, { teacher: busy }) },
+      ]);
+      const b = await place({ weekday: 5, start: 540, end: 585 }, [
+        { row: await row({ classId: await schoolClass() }, { teacher: busy }) },
+      ]);
+      const swap = (third: boolean) =>
+        inBranch(north, async (transaction) => {
+          await sql`set constraints pattern_entries_teacher_excl, pattern_entries_room_excl, pattern_block_classes_excl deferred`.execute(
+            transaction,
+          );
+          await transaction
+            .updateTable('pattern_blocks')
+            .set({ start_minutes: 540, end_minutes: 585 })
+            .where('id', '=', a.block)
+            .execute();
+          await transaction
+            .updateTable('pattern_blocks')
+            .set({ start_minutes: third ? 500 : 480, end_minutes: third ? 545 : 525 })
+            .where('id', '=', b.block)
+            .execute();
+        });
+      // Without the deferral the first update is refused at once.
+      expect(await refusal(moveBlock(a.block, { weekday: 5, start: 540, end: 585 }))).toMatchObject(
+        {
+          constraint: 'pattern_entries_teacher_excl',
+        },
+      );
+      // A swap whose second block still meets the first at the commit.
+      expect(await refusal(swap(true))).toMatchObject({
+        code: EXCLUSION_VIOLATION,
+        constraint: 'pattern_entries_teacher_excl',
+      });
+      await swap(false);
+      const starts = await database.migrator
+        .selectFrom('pattern_entries')
+        .select(['block_id', 'start_minutes'])
+        .where('block_id', 'in', [a.block, b.block])
+        .orderBy('start_minutes')
+        .execute();
+      expect(starts).toEqual([
+        { block_id: b.block, start_minutes: 480 },
+        { block_id: a.block, start_minutes: 540 },
+      ]);
+    });
+  });
+
   describe('double lessons (pattern_double_pair)', () => {
     it('refuses a third block in a pair, and a pair on two weekdays', async () => {
       const pair = '00000000-0000-7000-8000-000000000011';

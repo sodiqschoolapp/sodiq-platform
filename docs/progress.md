@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 17 October 2026: task 5.4a Grid: board and drag
+
+- Built step 7 of the builder (`/timetable/builder?step=grid`): the board of one class (weekdays across, its lesson slots down), with drag (Pragmatic drag and drop), move, swap, place from an empty slot and remove; while a lesson is moved every slot shows free, warning or blocked with the rule, and the Move button gives the same list by keyboard and touch. Read only for the Principal, a version that is not a draft, and at phone width.
+- Routes `GET …/grid`, `POST …/pattern`, `POST …/pattern/:blockId/move`, `POST …/pattern/swap`, `DELETE …/pattern/:blockId` (`timetable` view and edit), audit `pattern_block.create`, `.move`, `.swap`, `.delete`; a blocked rule refuses with `pattern_blocked` and the rules in `details`. No migration.
+- The engine has the pattern facts as data (`facts-data.ts`, `patternModel`), the lessons of a block at a slot (`pattern-place.ts`, used by the pins too), `checkCandidates` and `WEEK_COUNT_RULES`; every rule code has its text in three languages.
+- Left out: the "to place" panel, the room picker, "Suggest a place", the conflict panel and step 7's mark, the views by teacher and room, busy-elsewhere blocks and the other-draft warning (5.4b); locks, undo, the edit lock, mixed halves and double pairs (5.4c); the handbook (paused).
+
+The next sessions must know:
+
+- The grid answer carries the engine's input as data (`PatternFactsData`); the browser and the server build `Facts` with the one converter `patternModel`. A fact added to `readPatternFacts` reaches the grid with nothing else to change.
+- A write of the pattern goes through `TimetablePattern` (`pattern.service.ts`): `lockDraft`, `checkCandidates` on the changed blocks, then the write; a swap defers the clash constraints to the commit (`pattern-queries.ts`).
+- The next task is 5.4b.
+
 ## 17 October 2026: task 5.3b-2 Draft builder, step 5: pinned lessons
 
 - Built pinned lessons in step 5 of the builder: `timetable_pins` (0070: a load row, a weekday, a slot position; drafts only, no update, removed with the row), routes `POST …/pins` and `DELETE …/pins/:pinId` under `timetable` `edit`, audit `timetable_pin.create` and `.delete`; the panel lists, adds and removes pins and shows their conflicts.

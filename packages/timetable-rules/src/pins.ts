@@ -13,6 +13,7 @@
  * split marked mixed block meet in different slots and are not pinned here.
  */
 import type { Day } from './day.js';
+import { slotAt } from './pattern-place.js';
 import type { Placement } from './placement.js';
 import type { RuleResult } from './rules.js';
 
@@ -108,9 +109,7 @@ export function pinnedPlacements(input: {
       const [first] = pins;
       if (first === undefined) continue;
       const row = rowOf(first.loadRowId);
-      const slot = input
-        .day(row.id, first.weekday)
-        ?.slots.find((one) => one.position === first.slotPosition);
+      const slot = slotAt(input.day(row.id, first.weekday), first.slotPosition);
       if (slot === undefined) {
         for (const pin of pins) problems.push({ pinId: pin.id, problem: 'pin_no_slot' });
         continue;

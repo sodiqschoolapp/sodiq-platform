@@ -798,9 +798,24 @@ export function checkCandidate(
   candidate: Placement,
   options: CheckOptions = {},
 ): RuleResult[] {
-  const others = placements.filter((one) => one.id !== candidate.id);
-  return checkTimetable([...others, candidate], facts, options).filter((result) =>
-    result.lessonIds.includes(candidate.id),
+  return checkCandidates(placements, facts, [candidate], options);
+}
+
+/**
+ * The results that name any of several placements placed together among the
+ * others (replacing those of the same ids): a block of several lessons, or the
+ * two blocks of a swap (task 5.4a, decision 5).
+ */
+export function checkCandidates(
+  placements: readonly Placement[],
+  facts: Facts,
+  candidates: readonly Placement[],
+  options: CheckOptions = {},
+): RuleResult[] {
+  const ids = new Set(candidates.map((one) => one.id));
+  const others = placements.filter((one) => !ids.has(one.id));
+  return checkTimetable([...others, ...candidates], facts, options).filter((result) =>
+    result.lessonIds.some((id) => ids.has(id)),
   );
 }
 

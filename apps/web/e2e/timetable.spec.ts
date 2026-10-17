@@ -229,3 +229,81 @@ test('an Academic Vice Principal confirms the day templates of a draft in the bu
   await expect(page.locator('[data-step="load"]')).toContainText(builder.notReady);
   await expect(page.locator('[data-ready]')).toHaveAttribute('data-ready', 'false');
 });
+
+// docs/spec/06-timetable.md, Editing in the grid ("While dragging, each slot
+// shows free, warning or blocked, with the reason"); 14, Timetable, One rule
+// engine ("The same checking code runs in the browser while dragging and on
+// the server when saving"); task 5.4a, pull request #130. Done when: a lesson
+// is moved, a blocked move is refused with the rule named, and the same move
+// is refused when the API is called directly. All names are invented.
+test('an Academic Vice Principal drags a lesson in the grid, and a blocked slot is refused here and by the API', async ({
+  page,
+}) => {
+  const account = accountOf('draftGrid');
+  await page.goto('/sign-in');
+  await languageChooser(page).selectOption('en');
+  await signIn(page, en, account.login, account.password);
+  await changeFirstPassword(page, en, account);
+  await expect(heading(page, en.setUp.title)).toBeVisible();
+  await page.getByRole('button', { name: en.setUp.start, exact: true }).click();
+  const key = await page.locator('dd').innerText();
+  await page.getByLabel(en.setUp.code, { exact: true }).fill(codeNow(key));
+  await page.getByRole('button', { name: en.setUp.confirm, exact: true }).click();
+  await page.getByRole('checkbox', { name: en.setUp.saved }).check();
+  await page.getByRole('button', { name: en.setUp.continue, exact: true }).click();
+  await expect(heading(page, en.home.title)).toBeVisible();
+
+  await page.goto('/timetable/builder');
+  await expect(heading(page, en.timetable.builder.title)).toBeVisible();
+  const gridRead = page.waitForRequest((request) => request.url().endsWith('/grid'));
+  await page.locator('[data-step="grid"] button').click();
+  const branchId = (await gridRead).headers()['x-branch-id'] ?? '';
+  const versionId = new URL(page.url()).searchParams.get('version') ?? '';
+  const board = page.locator('[data-board]');
+  await expect(board).toBeVisible();
+
+  const cell = (weekday: number, position: number) =>
+    page.locator(`[data-cell="${String(weekday)}:${String(position)}"]`);
+  // 7 Oxford's Geometry on Monday at 08:00, moved to Tuesday at 08:00.
+  const lesson = cell(1, 1).locator('[data-block]');
+  await expect(lesson).toContainText('Geometry');
+  const blockId = (await lesson.getAttribute('data-block')) ?? '';
+  await lesson.dragTo(cell(2, 1));
+  await expect(cell(2, 1).locator(`[data-block="${blockId}"]`)).toBeVisible();
+  await expect(cell(1, 1).locator('[data-block]')).toHaveCount(0);
+  await expect(page.getByRole('status').filter({ hasText: en.form.saved })).toBeVisible();
+  await screenshot(page, 'grid-moved');
+
+  // Monday at 08:45 the same teacher has 7 Princeton: the slot shows blocked
+  // with the rule while the lesson is dragged, and the drop is refused.
+  const moved = cell(2, 1).locator(`[data-block="${blockId}"]`);
+  await moved.hover();
+  await page.mouse.down();
+  await cell(1, 2).hover();
+  await cell(1, 2).hover({ position: { x: 20, y: 20 } });
+  await expect(cell(1, 2)).toHaveAttribute('data-status', 'blocked');
+  await expect(cell(1, 2).locator('[data-reason="teacher_double"]')).toContainText(
+    en.timetable.rule.teacher_double,
+  );
+  await screenshot(page, 'grid-blocked');
+  await page.mouse.up();
+  await expect(page.locator('[data-refusal]')).toContainText(en.timetable.rule.teacher_double);
+  await expect(cell(2, 1).locator(`[data-block="${blockId}"]`)).toBeVisible();
+
+  // The same move sent to the API directly is refused with the same rule.
+  const answer = await page.request.post(
+    `/api/timetable/versions/${versionId}/pattern/${blockId}/move`,
+    {
+      headers: { 'X-Branch-Id': branchId },
+      data: { weekday: 1, slotPosition: 2 },
+    },
+  );
+  expect(answer.status()).toBe(409);
+  const body = (await answer.json()) as {
+    error: { code: string; details?: { code: string }[] };
+  };
+  expect(body.error.code).toBe('pattern_blocked');
+  expect(body.error.details?.map((detail) => detail.code)).toEqual(['teacher_double']);
+  await page.reload();
+  await expect(cell(2, 1).locator(`[data-block="${blockId}"]`)).toBeVisible();
+});

@@ -176,7 +176,7 @@ const storedOfLeft = (left: LeftRow): StoredLoadRow => ({
 });
 
 /** A version with its year and branch, as the routes read it. */
-interface VersionRow extends WeightColumns {
+export interface VersionRow extends WeightColumns {
   id: string;
   branch_id: string;
   academic_year_id: string;
@@ -1910,7 +1910,7 @@ export class Timetable {
     return row;
   }
 
-  private rowsOf(transaction: Transaction, versionId: string): Promise<StoredLoadRow[]> {
+  rowsOf(transaction: Transaction, versionId: string): Promise<StoredLoadRow[]> {
     return transaction
       .selectFrom('teaching_load_rows')
       .select(ROW_COLUMNS)
@@ -1953,11 +1953,7 @@ export class Timetable {
    * class). Another branch's or unknown: 404; a closed year:
    * `timetable_year_closed`; not a draft: `version_not_draft`.
    */
-  private async lockDraft(
-    transaction: Transaction,
-    branchId: string,
-    id: string,
-  ): Promise<VersionRow> {
+  async lockDraft(transaction: Transaction, branchId: string, id: string): Promise<VersionRow> {
     const named = await transaction
       .selectFrom('timetable_versions')
       .select('academic_year_id')
@@ -1990,11 +1986,7 @@ export class Timetable {
   }
 
   /** A version of the branch, read without a lock; 404 otherwise. */
-  private async findVersion(
-    transaction: Transaction,
-    branchId: string,
-    id: string,
-  ): Promise<VersionRow> {
+  async findVersion(transaction: Transaction, branchId: string, id: string): Promise<VersionRow> {
     const found = await transaction
       .selectFrom('timetable_versions')
       .select('id')
@@ -2007,7 +1999,7 @@ export class Timetable {
     return this.versionRow(transaction, id);
   }
 
-  private versionRow(transaction: Transaction, id: string): Promise<VersionRow> {
+  versionRow(transaction: Transaction, id: string): Promise<VersionRow> {
     return transaction
       .selectFrom('timetable_versions')
       .innerJoin('academic_years', 'academic_years.id', 'timetable_versions.academic_year_id')
@@ -2033,7 +2025,7 @@ export class Timetable {
       .executeTakeFirstOrThrow();
   }
 
-  private async contextOf(transaction: Transaction, version: VersionRow): Promise<VersionContext> {
+  async contextOf(transaction: Transaction, version: VersionRow): Promise<VersionContext> {
     const today = await this.todayIn(transaction, version.branch_id);
     return {
       branchId: version.branch_id,
@@ -2095,7 +2087,7 @@ export class Timetable {
       ]);
   }
 
-  private async answerOf(transaction: Transaction, id: string): Promise<TimetableVersion> {
+  async answerOf(transaction: Transaction, id: string): Promise<TimetableVersion> {
     const rows = await this.versionsIn(transaction)
       .where('timetable_versions.id', '=', id)
       .execute();

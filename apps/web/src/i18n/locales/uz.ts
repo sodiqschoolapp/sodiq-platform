@@ -378,6 +378,16 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu darsda haftalik darslar sonicha qotirilgan slot bor. Avval qotirishni olib tashlang yoki haftalik darslar sonini oshiring.',
     pin_mixed_block:
       'Aralash boʻlinmaning yarmini qotirib boʻlmaydi: uning yarmlari turli slotlarda oʻtadi.',
+    pattern_blocked:
+      'Bu darsni bu yerga qoʻyib boʻlmaydi: uni dars jadvalining qoidasi taqiqlaydi. Boʻsh yoki ogohlantirishli slotni tanlang.',
+    pattern_no_slot:
+      'Bu kunda sinf yoki guruh uchun bunday dars sloti yoʻq. Uning kunidagi slotni tanlang.',
+    pattern_mixed_block:
+      'Aralash boʻlinmaning yarmi bu yerda hozircha qoʻyilmaydi: uning yarmlari turli slotlarda oʻtadi.',
+    pattern_clash:
+      'Bu vaqtda oʻqituvchi, xona yoki sinf boshqa dars bilan band. Jadvalni yangilang va boshqa slotni tanlang.',
+    timetable_busy:
+      'Shu paytda dars jadvalining boshqa oʻzgarishi saqlanayotgan edi. Qayta urinib koʻring.',
     draft_not_ready:
       'Qoralamaning bir qadami tayyor emas. Avval tayyor emas deb belgilangan qadamlarni tugating.',
     load_unit_year:
@@ -2372,6 +2382,7 @@ export const uz: Texts<'one' | 'other'> = {
       group: 'Guruh',
       timetable_version: 'Dars jadvali versiyasi',
       timetable_pin: 'Qotirilgan dars',
+      pattern_block: 'Haftalik shablon darsi',
       teaching_load_row: 'Oʻquv yuklamasi qatori',
     },
     actions: {
@@ -2609,6 +2620,12 @@ export const uz: Texts<'one' | 'other'> = {
       timetable_pin: {
         create: 'Qoralama darsi qotirildi',
         delete: 'Qoralama darsining qotirilishi olib tashlandi',
+      },
+      pattern_block: {
+        create: 'Dars qoralama jadvaliga qoʻyildi',
+        move: 'Dars qoralama jadvalida koʻchirildi',
+        swap: 'Ikki dars qoralama jadvalida oʻrin almashtirildi',
+        delete: 'Dars qoralama jadvalidan olib tashlandi',
       },
       teaching_load: {
         create: 'Oʻquv yuklamasi qatori qoʻshildi',
@@ -3010,6 +3027,26 @@ export const uz: Texts<'one' | 'other'> = {
         'Oʻqituvchining bir filialdagi darsi va boshqa filialdagi keyingi darsi orasida shu ikki filial uchun belgilangan yoʻl vaqtidan kam boʻlmagan vaqt bor.',
       travel_time_not_set:
         'Oʻqituvchining bir kunda ikki filialda darsi faqat ular orasidagi yoʻl vaqti belgilangan boʻlsa boʻladi.',
+      outside_year: 'Dars oʻquv yilidan tashqarida qoʻyilmaydi.',
+      vacation: 'Dars taʼtil kunida, barcha choraklardan tashqarida qoʻyilmaydi.',
+      substitute_vacancy: 'Vakansiya hech qachon oʻrinbosar boʻlmaydi.',
+      substitute_language: 'Oʻrinbosar sinf yoki guruh tilida dars bera olishi kerak.',
+      teacher_unavailable_later:
+        'Oʻqituvchining keyingi mavjudlik yozuvi baʼzi sanalarda bu darsni qamramaydi.',
+      room_under_repair: 'Xona taʼmirda.',
+      invigilator_vacancy: 'Nazoratchi — xodim, hech qachon vakansiya emas.',
+      invigilator_inactive: 'Faol boʻlmagan xodim nazoratchi boʻla olmaydi.',
+      invigilator_unavailable: 'Imtihon vaqtida nazoratchi oʻz mavjudligidan tashqarida.',
+      invigilator_subject: 'Nazoratchining profilida imtihon fani yoʻq.',
+      room_capacity: 'Xona sigʻimi sinf yoki guruhdan kichik.',
+      teacher_week_load: 'Oʻqituvchining haftalik darslari shartnoma yuklamasidan koʻp.',
+      teacher_day_load:
+        'Oʻqituvchining bir kundagi darslari uning kunlik eng koʻp darslar sonidan koʻp.',
+      class_day_load: 'Sinfning bir kundagi darslari sozlamalardagi kunlik eng koʻp sondan koʻp.',
+      subject_twice: 'Sinfda bir kunda bitta fan ikki marta.',
+      class_free_period: 'Sinf kunining oʻrtasida boʻsh dars.',
+      load_mismatch: 'Haftada qoʻyilgan darslar soni oʻquv yuklamasidan farq qiladi.',
+      other_draft: 'Oʻqituvchi shu vaqtda boshqa filial qoralamasida ham rejalashtirilgan.',
     },
     preference: {
       class_no_gaps: 'Sinfning birinchi va oxirgi darsi orasida boʻsh dars sloti yoʻq',
@@ -3023,10 +3060,44 @@ export const uz: Texts<'one' | 'other'> = {
         'Toʻliq boʻlmagan stavkadagi oʻqituvchining darslari imkon qadar kam kunlarga tushadi',
       teacher_preferred_times: 'Oʻqituvchining afzal koʻrgan kunlari va slotlari hisobga olinadi',
     },
+    grid: {
+      class: 'Sinf',
+      slot: 'Slot',
+      slotNumber: '{{position}}-slot',
+      noSlot: 'Dars sloti yoʻq',
+      noRoom: 'Xonasiz',
+      add: 'Dars qoʻshish',
+      addAt: 'Dars qoʻshish: {{weekday}}, {{time}}',
+      placeTitle: 'Dars: {{where}}',
+      slotAt: '{{weekday}}, {{time}}',
+      lesson: 'Dars',
+      choose: 'Tanlang',
+      rowOption_one: '{{subject}}, {{unit}}: {{count}} darsdan {{placed}} tasi qoʻyilgan',
+      rowOption_other: '{{subject}}, {{unit}}: {{count}} darsdan {{placed}} tasi qoʻyilgan',
+      move: 'Koʻchirish',
+      moveTitle: 'Koʻchirish: {{lesson}}',
+      close: 'Yopish',
+      remove: 'Olib tashlash',
+      removeTitle: 'Bu dars qoralamadan olib tashlansinmi?',
+      status: {
+        free: 'Boʻsh',
+        warning: 'Ogohlantirish',
+        blocked: 'Taqiqlangan',
+      },
+      noSlotHere: 'Bu darsning shu vaqtda sloti yoʻq.',
+      refused: 'Bu darsni bu yerga qoʻyib boʻlmaydi: {{rule}}',
+      blockedBy: 'Taqiqlaydi: {{rules}}',
+      otherRule: 'Dars jadvalining qoidasi.',
+      readOnly: 'Bu versiya qoralama emas: jadval faqat oʻqish uchun.',
+      phoneView: 'Jadval planshet yoki kompyuterda tahrirlanadi.',
+      noClassesTitle: 'Hali qoʻyiladigan narsa yoʻq',
+      noClasses: 'Avval oʻquv yuklamasi sahifasida qatorlar qoʻshing.',
+    },
     builder: {
       title: 'Qoralama yigʻuvchi',
       noVersion: 'Avval oʻquv yuklamasi sahifasida qoralama boshlang.',
       later: 'Hali mavjud emas',
+      byHand: 'Qoʻlda tuziladi',
       ready: 'Tayyor',
       notReady: 'Tayyor emas',
       startPast: 'Boshlanish sanasi oʻtib ketdi. Yangi boshlanish sanasini tanlang.',
