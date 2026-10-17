@@ -10,6 +10,7 @@ import { teacherProblems, type LoadProblem, type LoadUnit } from './load.js';
 import type {
   CheckOptions,
   EngineDay,
+  EngineLoadRow,
   EngineTeacher,
   EngineUnit,
   Facts,
@@ -269,9 +270,13 @@ function checkSharedRooms(placements: readonly Placement[], facts: Facts, result
  * groups or parts of one split are in the same slot, so that every student of
  * the class has a lesson at that time"; edge/timetable, Structure: "A block is
  * valid when every student of its classes is in exactly one of its lessons").
- * Twice is `student_double`.
+ * Twice is `student_double`. Task 5.4c-3b (decision 6, review correction 1):
+ * a block of the pattern holds the rows of one block of the load, or a
+ * pairing of two mixed halves that are each other's partners; any other set
+ * of rows (a pairing whose mark was cleared since) leaves a split apart.
  */
 function checkBlocks(placements: readonly Placement[], facts: Facts, results: Results): void {
+  const loadRows = new Map(facts.loadRows.map((row) => [row.id, row]));
   const blocks = groupBy(
     placements.filter((one) => one.kind === 'lesson' && one.blockId !== null),
     (one) => [`${one.day}|${one.blockId ?? ''}`],
@@ -285,6 +290,11 @@ function checkBlocks(placements: readonly Placement[], facts: Facts, results: Re
       });
       continue;
     }
+    if (!rowsTogether(block, loadRows)) {
+      results.add('split_apart', first.day, block, {
+        rows: new Set(block.map((one) => one.loadRowId)).size,
+      });
+    }
     const exempt = new Set(block.flatMap((one) => one.exemptStudentIds));
     const placed = new Set(block.flatMap((one) => one.studentIds));
     const classIds = new Set(block.flatMap((one) => one.classIds));
@@ -295,6 +305,34 @@ function checkBlocks(placements: readonly Placement[], facts: Facts, results: Re
       results.add('split_apart', first.day, block, { students: new Set(missing).size });
     }
   }
+}
+
+/**
+ * Whether the lessons of a block are the rows of one block of the load, or a
+ * pairing of two partners (task 5.4c-3b); `true` when a row is not known so
+ * (a lesson of no row, a row without `block`).
+ */
+function rowsTogether(
+  block: readonly Placement[],
+  loadRows: ReadonlyMap<string, EngineLoadRow>,
+): boolean {
+  const ids = [...new Set(block.map((one) => one.loadRowId))];
+  const rows: EngineLoadRow[] = [];
+  for (const id of ids) {
+    const row = id === null ? undefined : loadRows.get(id);
+    if (row?.block === undefined) return true;
+    rows.push(row);
+  }
+  const [first, second] = rows;
+  if (first?.block === undefined) return true;
+  const own = first.block;
+  if (rows.length === own.length && rows.every((row) => own.includes(row.id))) return true;
+  return (
+    rows.length === 2 &&
+    second !== undefined &&
+    first.partners?.includes(second.id) === true &&
+    second.partners?.includes(first.id) === true
+  );
 }
 
 // --- The day --------------------------------------------------------------
@@ -694,12 +732,24 @@ function checkLoadWarnings(placements: readonly Placement[], facts: Facts, resul
     if (limit !== null && blocks.size > limit) {
       results.add('class_day_load', day, list, { classId, lessons: blocks.size, limit });
     }
-    // A double pair counts once; two single lessons warn (decision 9).
+    // A double pair counts once; two single lessons warn (decision 9). Task
+    // 5.4c-3b (decision 2, review correction 3): per student, so the halves
+    // of a mixed split in two slots of one day are once each.
     for (const [subjectId, ofSubject] of groupBy(list, (one) =>
       one.subjectId === null ? [] : [one.subjectId],
     )) {
-      const units = new Set(ofSubject.map((one) => one.doublePairId ?? one.blockId ?? one.id));
-      if (units.size > 1) {
+      const unitsOf = new Map<string, Set<string>>();
+      for (const one of ofSubject) {
+        const exempt = new Set(one.exemptStudentIds);
+        const members = one.studentIds.filter((studentId) => !exempt.has(studentId));
+        // A lesson with no members on the reading date stands for its whole unit.
+        for (const studentId of members.length === 0 ? [''] : members) {
+          const units = unitsOf.get(studentId) ?? new Set<string>();
+          units.add(one.doublePairId ?? one.blockId ?? one.id);
+          unitsOf.set(studentId, units);
+        }
+      }
+      if ([...unitsOf.values()].some((units) => units.size > 1)) {
         results.add('subject_twice', day, ofSubject, { classId, subjectId });
       }
     }
