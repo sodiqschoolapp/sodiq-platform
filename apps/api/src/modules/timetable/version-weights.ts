@@ -2,9 +2,11 @@
  * The weights of the preferences of a version and their confirmation (task
  * 5.3b-1, pull request #128): the eight `weight_<code>` columns of
  * `timetable_versions` (db/migrations/0069) and `rules_confirmed`, the
- * weights as confirmed, by code.
+ * weights as confirmed, by code. Task 5.3b-2 (decision 7): the confirmation
+ * also holds the ids of the pins confirmed, under `pins`.
  */
 import { PREFERENCE_CODES, preferenceWeightsSchema, type PreferenceWeights } from '@sodiq/shared';
+import { z } from 'zod';
 
 /** The columns of the weights, as the version rows carry them. */
 export interface WeightColumns {
@@ -63,8 +65,33 @@ export function weightColumnsOf(weights: PreferenceWeights): WeightColumns {
  * (permission review, should-fix 2), never as a fault.
  */
 export function confirmedWeightsOf(stored: unknown): Partial<PreferenceWeights> | null {
-  return stored === null ? null : preferenceWeightsSchema.partial().parse(stored);
+  if (stored === null) {
+    return null;
+  }
+  const weights = Object.entries(z.looseObject({}).parse(stored)).filter(([key]) => key !== 'pins');
+  return preferenceWeightsSchema.partial().parse(Object.fromEntries(weights));
 }
+
+/**
+ * The ids of the pins confirmed, sorted; `null` when never confirmed. A
+ * confirmation stored before pins existed has no `pins` and reads as none
+ * (decision 7, read loosely as the weights).
+ */
+export function confirmedPinsOf(stored: unknown): string[] | null {
+  if (stored === null) {
+    return null;
+  }
+  const { pins } = z.looseObject({ pins: z.array(z.uuid()).optional() }).parse(stored);
+  return [...(pins ?? [])].sort();
+}
+
+/** What `rules_confirmed` stores: the weights by code and the sorted pin ids. */
+export const confirmationOf = (weights: PreferenceWeights, pins: readonly string[]): string =>
+  JSON.stringify({ ...weights, pins: [...new Set(pins)].sort() });
+
+/** Whether two lists of pin ids hold the same pins. */
+export const samePins = (a: readonly string[], b: readonly string[]): boolean =>
+  [...new Set(a)].sort().join(',') === [...new Set(b)].sort().join(',');
 
 /** Whether the weights confirmed (or sent) are the weights stored, code by code. */
 export const sameWeights = (a: Partial<PreferenceWeights>, b: PreferenceWeights): boolean =>

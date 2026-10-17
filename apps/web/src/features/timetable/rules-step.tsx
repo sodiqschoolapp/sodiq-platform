@@ -17,6 +17,7 @@ import { useRecordForm } from '@/components/form/use-record-form';
 import { StatusMark } from '@/components/status-mark';
 import { Button } from '@/components/ui/button';
 import { SECTION_TITLE } from '@/components/ui/control';
+import { PinsSection } from './pins-section';
 import { confirmRules, saveWeights } from './timetable-api';
 
 type Typed = Record<PreferenceCode, string>;
@@ -44,15 +45,19 @@ const readTyped = (typed: Typed): Record<PreferenceCode, number | string | undef
  * of each preference from 0 (not used) to 10, and the confirmation of the
  * weights shown. Confirm is off while the form holds weights not saved
  * (decision 9); without `timetable` `edit` the weights are shown only.
+ * Task 5.3b-2: the pinned lessons, which the confirmation covers.
  */
 export function RulesStep({
   versionId,
   rules,
+  cells,
   canEdit,
   onChanged,
 }: {
   versionId: string;
   rules: DraftReadiness['rules'];
+  /** The table of step 1, whose slots a pin names. */
+  cells: DraftReadiness['templates']['cells'];
   canEdit: boolean;
   onChanged: () => Promise<unknown>;
 }): React.JSX.Element {
@@ -68,7 +73,12 @@ export function RulesStep({
     followInitial: true,
   });
   const confirm = useMutation({
-    mutationFn: () => confirmRules(versionId, rules.weights),
+    mutationFn: () =>
+      confirmRules(
+        versionId,
+        rules.weights,
+        rules.pins.map((pin) => pin.id),
+      ),
     onSuccess: onChanged,
   });
   const options = Array.from({ length: PREFERENCE_WEIGHT_MAX + 1 }, (_, weight) => ({
@@ -120,6 +130,13 @@ export function RulesStep({
           </dl>
         )}
       </section>
+      <PinsSection
+        versionId={versionId}
+        rules={rules}
+        cells={cells}
+        canEdit={canEdit}
+        onChanged={onChanged}
+      />
       <div className="flex flex-wrap items-center gap-3">
         <StatusMark
           done={rules.confirmed}
@@ -132,7 +149,9 @@ export function RulesStep({
                       .map((code) => t(`timetable.preference.${code}`))
                       .join('; '),
                   })
-                : t('timetable.builder.notConfirmed')
+                : rules.pinsChanged
+                  ? t('timetable.builder.rulesStep.pinsChangedSince')
+                  : t('timetable.builder.notConfirmed')
           }
         />
         {canEdit && !rules.confirmed && (

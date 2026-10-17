@@ -8,6 +8,7 @@ import {
   timetableVersionSchema,
   type LoadRowEdit,
   type LoadRowRecord,
+  type PinRecord,
   type PreferenceWeights,
   type TimetableVersionCreate,
   type TimetableVersionEdit,
@@ -167,11 +168,35 @@ export const saveWeights = (versionId: string, weights: PreferenceWeights) =>
     }),
   ).then((answer) => draftReadinessSchema.parse(answer));
 
-/** Step 5 confirmed: the weights the person sees (task 5.3b-1, decision 9). */
-export const confirmRules = (versionId: string, weights: PreferenceWeights) =>
+/**
+ * Step 5 confirmed: the weights and the pins the person sees (task 5.3b-1,
+ * decision 9; task 5.3b-2, decision 7).
+ */
+export const confirmRules = (
+  versionId: string,
+  weights: PreferenceWeights,
+  pins: readonly string[],
+) =>
   answerOf(
     api.POST('/api/timetable/versions/{id}/rules/confirm', {
       params: { header: branchHeader(), path: { id: versionId } },
-      body: { weights },
+      body: { weights, pins: [...pins] },
+    }),
+  ).then((answer) => draftReadinessSchema.parse(answer));
+
+/** Step 5: a lesson pinned to a weekday and a slot position (task 5.3b-2). */
+export const createPin = (versionId: string, pin: PinRecord) =>
+  answerOf(
+    api.POST('/api/timetable/versions/{id}/pins', {
+      params: { header: branchHeader(), path: { id: versionId } },
+      body: pin,
+    }),
+  ).then((answer) => draftReadinessSchema.parse(answer));
+
+/** Step 5: a pin removed (task 5.3b-2). */
+export const deletePin = (versionId: string, pinId: string) =>
+  answerOf(
+    api.DELETE('/api/timetable/versions/{id}/pins/{pinId}', {
+      params: { header: branchHeader(), path: { id: versionId, pinId } },
     }),
   ).then((answer) => draftReadinessSchema.parse(answer));

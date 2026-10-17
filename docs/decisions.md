@@ -246,6 +246,30 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 17 October 2026: the draft builder, step 5: pinned lessons (task 5.3b-2)
+
+Plan approved on pull request #129 with corrections 1 to 3; decisions 1 to 11 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** The pins are checked among themselves in one branch for now; busy-elsewhere lessons of other branches and the travel time around them join through `pattern-facts.ts` in 5.4b (From lines on 5.4b, 5.10, 5.11). Only blocked results stop step 5 | Decision 1; departs for now from `.claude/rules/timetable.md` ("counts all branches"); `edge/timetable`, Generator and editing |
+| A pin is a load row, a weekday and a slot position (breaks counted, as `pattern_blocks.slot_position`), with no room and no time of its own; its room is the row's one room, its time read from the template in force on each check | Decision 2; `06`, Model, Slot |
+| A create refuses only a wrong row (404), a duplicate (`pin_taken`), a block over its lessons per week (`pin_over_load`) and a half of a mixed split (`pin_mixed_block`); a clash and a break are saved and listed with the engine's rule, a weekday with no lessons or a position past the day's end as `pin_no_slot` | Decision 3 with review correction 1 |
+| A pin of a group row holds its whole block in that slot; a mixed split is not pinned here (5.4c) | Decision 4; `edge/timetable`, Structure |
+| A block has at most as many distinct pinned slots, over all its rows, as its lessons per week; a later load edit that leaves more is a problem of step 5 | Decision 5 |
+| Pins are added and removed under `timetable` `edit` | Decision 6 |
+| `rules_confirmed` holds the sorted pin ids under `pins`; the confirm carries the pins shown and is refused `pins_changed` otherwise; a confirmation with no `pins` reads as none | Decision 7 |
+| The Tutor of two classes is listed in the load step from the same `teacher_double` result, which blocks only step 5 | Decision 8 |
+| A copy takes the pins of the rows it takes, listed in its audit entry, not the confirmation | Decision 9 |
+| A two-grade group's pin takes its time from the lowest grade's template | Decision 10 |
+| `timetable_pins_slot_key` includes `branch_id`; `teaching_load_rows_version_key` is added in one step | Decision 11 |
+| The pattern facts pass the load rows, so `load_mismatch` warns for a row not fully pinned and blocks nothing | Review correction 3 |
+| The 5.3b-1 confirm tests send `{ weights, pins }` and expect the pins in the answer and the stored confirmation; every 5.3b-1 assertion is kept | Review correction 2: the requirement grew |
+| The table of step 1 in the readiness answer carries the slots of each template (position, kind, times), so the form offers only the lesson slots of a row's grades | Found in the build: the form needs the positions; the two-grade filter is `sharedLessonSlots` of the rule engine |
+| The add form is in the step 5 panel, not in a side panel | Found in the build: the weights form of step 5 sits there too; a pin has three fields |
+| A pin id of another branch or an unknown one in the confirm body answers 409 `pins_changed`, not 404: the ids are a snapshot compared with the stored pins, never looked up | Permission review, should-fix 2 |
+| The row delete and the copy keep their 404 tests with pinned rows in both branches, `timetable_pins` in their `rowsOf` | Permission review, must-fix 1 (`.claude/rules/api.md`, the widening rule) |
+
 ## 17 October 2026: the draft builder, step 5: rules, weights and the gate (task 5.3b-1)
 
 Plan approved on pull request #128 with corrections 1 and 2; decisions 1 to 9 confirmed there. Flagged on issue #42.

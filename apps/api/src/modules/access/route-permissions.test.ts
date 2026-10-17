@@ -525,6 +525,15 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     branch: 'request',
     roles: ['super_admin', 'academic_vice_principal'],
   },
+  // Task 5.3b-2: pinned lessons of step 5, under timetable edit (decision 6).
+  'POST /api/timetable/versions/:id/pins': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'DELETE /api/timetable/versions/:id/pins/:pinId': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
   'GET /api/timetable/versions/:id/load/teachers': {
     branch: 'request',
     roles: ['super_admin', 'principal', 'academic_vice_principal'],

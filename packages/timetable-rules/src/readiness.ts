@@ -6,7 +6,9 @@
  * and passes them in; nothing here reads a clock or a table.
  */
 import { ROOM_PROBLEMS, type LoadProblem } from './load.js';
+import type { PinProblem } from './pins.js';
 import { PREFERENCES, type Preference, type Weights } from './preferences.js';
+import type { RuleResult } from './rules.js';
 
 /** A slot of a cell's day: its kind and its clock minutes. */
 export type CellSlot = readonly [kind: 'lesson' | 'break', start: number, end: number];
@@ -192,28 +194,61 @@ export function roomsReadiness(input: {
 
 export interface RulesReadiness {
   readonly ready: boolean;
+  /** The weights and the pins stored now are the ones confirmed. */
   readonly confirmed: boolean;
   /** The preferences whose weight differs from the confirmed one (none while nothing is confirmed). */
   readonly changed: Preference[];
+  /** A pin was added or removed since the confirmation (false while nothing is confirmed). */
+  readonly pinsChanged: boolean;
+  /** The blocked results of the pins checked on their own; warnings are not listed. */
+  readonly conflicts: RuleResult[];
+  readonly problems: PinProblem[];
 }
 
 /**
  * Step 5: "Confirmed" (task 5.3b-1, decision 2): ready while the weights
  * confirmed equal the weights stored now; a later change of a weight makes it
- * not ready with no write.
+ * not ready with no write. Task 5.3b-2: the confirmation covers the pins (their
+ * ids, decision 7), and a blocked result of the pins checked on their own, or
+ * a pin problem, makes it not ready (edge/timetable, Generator and editing: "A
+ * blocked conflict stops the run and lists the lessons").
  */
 export function rulesReadiness(input: {
   readonly weights: Weights;
   /** A preference missing from the confirmed weights (added later) counts as changed. */
   readonly confirmed: Partial<Weights> | null;
+  readonly pins?: {
+    /** The ids of the pins stored now. */
+    readonly ids: readonly string[];
+    /** The ids confirmed; `null` with no confirmation; a confirmation made before pins is `[]`. */
+    readonly confirmed: readonly string[] | null;
+    /** What `checkTimetable` gives for the pins on their own. */
+    readonly results: readonly RuleResult[];
+    readonly problems: readonly PinProblem[];
+  };
 }): RulesReadiness {
   const { confirmed } = input;
+  const pins = input.pins ?? { ids: [], confirmed: [], results: [], problems: [] };
   const changed =
     confirmed === null
       ? []
       : PREFERENCES.filter((preference) => input.weights[preference] !== confirmed[preference]);
-  const ready = confirmed !== null && changed.length === 0;
-  return { ready, confirmed: ready, changed };
+  const sortedIds = (ids: readonly string[]) => [...new Set(ids)].sort().join(',');
+  const pinsChanged =
+    confirmed !== null &&
+    pins.confirmed !== null &&
+    sortedIds(pins.ids) !== sortedIds(pins.confirmed);
+  const done =
+    confirmed !== null && pins.confirmed !== null && changed.length === 0 && !pinsChanged;
+  const conflicts = pins.results.filter((result) => result.severity === 'blocked');
+  return {
+    ready: done && conflicts.length === 0 && pins.problems.length === 0,
+    confirmed: done,
+    changed,
+    pinsChanged,
+    conflicts,
+    problems: [...pins.problems],
+  };
 }
 
 /** Ready for generation: every step is ready (steps 1 to 5; task 5.3b-1). */

@@ -16,7 +16,9 @@ import {
   type LoadTeachers,
   type LoadTeachersQuery,
   type LoadTotals,
+  type PinRecord,
   type PreferenceWeightsBody,
+  type RulesConfirmBody,
   type TimetableVersion,
   type TimetableVersionCreate,
   type TimetableVersionEdit,
@@ -76,11 +78,15 @@ import {
 } from './load-facts.js';
 import { blockRowOf, readBlockGroups } from './load-blocks.js';
 import { auditOf, followChanged, followVersion } from './tutor-lessons.js';
+import { checkPins, pinRowsOf, readPins, type StoredPin } from './pins-check.js';
 import { dayOf, loadStore } from '../setup/day-template-state.js';
 import { confirmedCellsOf, templateCellsOf, type StoredCells } from './template-cells.js';
 import { isWithdrawn } from '../setup/dated-rows.js';
 import {
+  confirmationOf,
+  confirmedPinsOf,
   confirmedWeightsOf,
+  samePins,
   sameWeights,
   WEIGHT_COLUMNS,
   weightColumnsOf,
@@ -89,6 +95,14 @@ import {
 } from './version-weights.js';
 
 const refused = (code: ErrorCode): ApiException => new ApiException(code, 409);
+
+/** A pin as its audit entries keep it. */
+const pinFieldsOf = (versionId: string, pin: StoredPin) => ({
+  versionId,
+  loadRowId: pin.load_row_id,
+  weekday: pin.weekday,
+  slotPosition: pin.slot_position,
+});
 
 /**
  * Task 3.6c-2, decision 1: nobody names the teacher of a Tutor row
@@ -435,8 +449,21 @@ export class Timetable {
             })
             .returning('id')
             .executeTakeFirstOrThrow();
+          // Task 5.3b-2, decision 9: the pins of the rows the copy takes, on their new rows.
+          const sourcePins =
+            source === undefined
+              ? []
+              : (await readPins(transaction, source.id)).filter((pin) =>
+                  copied.some((row) => row.id === pin.load_row_id),
+                );
+          const copiedPins: {
+            sourcePinId: string;
+            loadRowId: string;
+            weekday: number;
+            slotPosition: number;
+          }[] = [];
           for (const row of copied) {
-            await transaction
+            const inserted = await transaction
               .insertInto('teaching_load_rows')
               .values({
                 branch_id: branchId,
@@ -451,7 +478,26 @@ export class Timetable {
                 double_lessons: row.double_lessons,
                 mixed_block: row.mixed_block,
               })
-              .execute();
+              .returning('id')
+              .executeTakeFirstOrThrow();
+            for (const pin of sourcePins.filter((one) => one.load_row_id === row.id)) {
+              await transaction
+                .insertInto('timetable_pins')
+                .values({
+                  branch_id: branchId,
+                  version_id: created.id,
+                  load_row_id: inserted.id,
+                  weekday: pin.weekday,
+                  slot_position: pin.slot_position,
+                })
+                .execute();
+              copiedPins.push({
+                sourcePinId: pin.id,
+                loadRowId: inserted.id,
+                weekday: pin.weekday,
+                slotPosition: pin.slot_position,
+              });
+            }
           }
           await this.audit.record(transaction, {
             branchId,
@@ -465,6 +511,7 @@ export class Timetable {
               startsOn: input.startsOn,
               fromVersionId: source?.id ?? null,
               copiedRows: copied.map((row) => row.id),
+              copiedPins,
               leftRows: left as unknown as JsonValue,
               weights: source === undefined ? null : weightsOf(source),
             },
@@ -1021,9 +1068,23 @@ export class Timetable {
       rooms: rooms.map((room) => ({ type: room.type, closed: room.status === 'closed' })),
     });
     const weights = weightsOf(version);
+    const pins = await checkPins(
+      transaction,
+      context,
+      rows,
+      facts,
+      answers,
+      await readPins(transaction, version.id),
+    );
     const rules = rulesReadiness({
       weights,
       confirmed: confirmedWeightsOf(version.rules_confirmed),
+      pins: {
+        ids: pins.ids,
+        confirmed: confirmedPinsOf(version.rules_confirmed),
+        results: pins.results,
+        problems: pins.problems,
+      },
     });
     const holds = (teacher: { id: string }) =>
       teachers.noHours.includes(teacher.id) || teachers.over.includes(teacher.id);
@@ -1047,6 +1108,7 @@ export class Timetable {
         problemRows: answers.filter((row) => problemRows.has(row.id)),
         leftRows: load.leftRows,
         classesOver: totals.classes.filter((one) => load.classesOver.includes(one.id)),
+        tutorPinClashes: pins.tutorClashes,
       },
       teachers: {
         ready: teachers.ready,
@@ -1076,6 +1138,10 @@ export class Timetable {
         confirmed: rules.confirmed,
         weights,
         changed: rules.changed,
+        pins: pins.answers,
+        pinsChanged: rules.pinsChanged,
+        conflicts: rules.conflicts.map(pins.conflictOf),
+        problems: rules.problems,
       },
     };
   }
@@ -1149,12 +1215,13 @@ export class Timetable {
   /**
    * Step 5 confirmed (task 5.3b-1, decisions 2 and 9): the weights the person
    * sees, refused when they are not the ones stored; a confirm of the weights
-   * already confirmed writes nothing.
+   * already confirmed writes nothing. Task 5.3b-2, decision 7: the pins too,
+   * by their ids, refused with `pins_changed`.
    */
   confirmRules(
     access: Access,
     id: string,
-    input: PreferenceWeightsBody,
+    input: RulesConfirmBody,
     requestId: string,
   ): Promise<DraftReadiness> {
     const branchId = branchOf(access);
@@ -1166,11 +1233,21 @@ export class Timetable {
           if (!sameWeights(weights, input.weights)) {
             throw refused('preferences_changed');
           }
+          const pins = (await readPins(transaction, id)).map((pin) => pin.id).sort();
+          if (!samePins(pins, input.pins)) {
+            throw refused('pins_changed');
+          }
           const before = confirmedWeightsOf(version.rules_confirmed);
-          if (before === null || !sameWeights(before, weights)) {
+          const pinsBefore = confirmedPinsOf(version.rules_confirmed);
+          if (
+            before === null ||
+            pinsBefore === null ||
+            !sameWeights(before, weights) ||
+            !samePins(pinsBefore, pins)
+          ) {
             await transaction
               .updateTable('timetable_versions')
-              .set({ rules_confirmed: JSON.stringify(weights) })
+              .set({ rules_confirmed: confirmationOf(weights, pins) })
               .where('id', '=', id)
               .execute();
             await this.audit.record(transaction, {
@@ -1179,11 +1256,127 @@ export class Timetable {
               assignmentId: access.assignmentId,
               action: 'timetable_version.rules_confirm',
               record: { type: 'timetable_version', id },
-              oldValue: before,
-              newValue: weights,
+              oldValue: before === null ? null : { ...before, pins: pinsBefore ?? [] },
+              newValue: { ...weights, pins },
               requestId,
             });
           }
+          return this.readinessOf(transaction, branchId, await this.versionRow(transaction, id));
+        }),
+      LOAD_REFUSALS,
+    );
+  }
+
+  /**
+   * A pinned lesson of step 5 (task 5.3b-2, decisions 2 to 6): a row of the
+   * draft at a weekday and a slot position. Refused only when it means
+   * nothing: a row of another version (404), a slot it already holds
+   * (`pin_taken`), a block whose distinct pinned slots would pass its lessons
+   * per week (`pin_over_load`), a half of a mixed split (`pin_mixed_block`). A
+   * clash, a break or a day with no lessons is saved and listed by readiness.
+   */
+  createPin(
+    access: Access,
+    id: string,
+    input: PinRecord,
+    requestId: string,
+  ): Promise<DraftReadiness> {
+    const branchId = branchOf(access);
+    return refusingConstraints(
+      () =>
+        this.transactions.run(access.branchIds, async (transaction) => {
+          await this.lockDraft(transaction, branchId, id);
+          // Read after the lock of the draft, in statements of their own, so
+          // two pins added at the same moment are counted one after the other.
+          const rows = await this.rowsOf(transaction, id);
+          const row = rows.find((one) => one.id === input.loadRowId);
+          if (row === undefined) {
+            throw notFound();
+          }
+          if (row.mixed_block) {
+            throw refused('pin_mixed_block');
+          }
+          const pins = await readPins(transaction, id);
+          if (
+            pins.some(
+              (pin) =>
+                pin.load_row_id === row.id &&
+                pin.weekday === input.weekday &&
+                pin.slot_position === input.slotPosition,
+            )
+          ) {
+            throw refused('pin_taken');
+          }
+          const groups = await readBlockGroups(
+            transaction,
+            rows.map((one) => one.group_id),
+          );
+          const block = new Set(pinRowsOf(rows, groups).get(row.id)?.block ?? [row.id]);
+          const slots = new Set(
+            [
+              ...pins.filter((pin) => block.has(pin.load_row_id)),
+              {
+                weekday: input.weekday,
+                slot_position: input.slotPosition,
+              },
+            ].map((pin) => `${pin.weekday}:${pin.slot_position}`),
+          );
+          if (slots.size > row.lessons_per_week) {
+            throw refused('pin_over_load');
+          }
+          const created = await transaction
+            .insertInto('timetable_pins')
+            .values({
+              branch_id: branchId,
+              version_id: id,
+              load_row_id: row.id,
+              weekday: input.weekday,
+              slot_position: input.slotPosition,
+            })
+            .returning('id')
+            .executeTakeFirstOrThrow();
+          await this.audit.record(transaction, {
+            branchId,
+            actorId: access.accountId,
+            assignmentId: access.assignmentId,
+            action: 'timetable_pin.create',
+            record: { type: 'timetable_pin', id: created.id },
+            newValue: { versionId: id, ...input },
+            requestId,
+          });
+          return this.readinessOf(transaction, branchId, await this.versionRow(transaction, id));
+        }),
+      LOAD_REFUSALS,
+    );
+  }
+
+  /** A pin of a draft removed (decision 6); the whole pin is kept in the audit entry. */
+  deletePin(access: Access, id: string, pinId: string, requestId: string): Promise<DraftReadiness> {
+    const branchId = branchOf(access);
+    return refusingConstraints(
+      () =>
+        this.transactions.run(access.branchIds, async (transaction) => {
+          await this.lockDraft(transaction, branchId, id);
+          const pin = await transaction
+            .selectFrom('timetable_pins')
+            .select(['id', 'load_row_id', 'weekday', 'slot_position'])
+            .where('id', '=', pinId)
+            .where('version_id', '=', id)
+            .where('branch_id', '=', branchId)
+            .executeTakeFirst();
+          if (pin === undefined) {
+            throw notFound();
+          }
+          await this.audit.record(transaction, {
+            branchId,
+            actorId: access.accountId,
+            assignmentId: access.assignmentId,
+            action: 'timetable_pin.delete',
+            record: { type: 'timetable_pin', id: pinId },
+            oldValue: pinFieldsOf(id, pin),
+            requestId,
+          });
+          await transaction.deleteFrom('timetable_pins').where('id', '=', pinId).execute();
           return this.readinessOf(transaction, branchId, await this.versionRow(transaction, id));
         }),
       LOAD_REFUSALS,
@@ -1403,13 +1596,23 @@ export class Timetable {
         this.transactions.run(access.branchIds, async (transaction) => {
           await this.lockDraft(transaction, branchId, id);
           const before = await this.rowOf(transaction, id, rowId);
+          // Task 5.3b-2: the cascade removes the row's pins; the entry keeps them.
+          const pins = (await readPins(transaction, id)).filter((pin) => pin.load_row_id === rowId);
           await this.audit.record(transaction, {
             branchId,
             actorId: access.accountId,
             assignmentId: access.assignmentId,
             action: 'teaching_load.delete',
             record: { type: 'teaching_load_row', id: rowId },
-            oldValue: { versionId: id, ...fieldsOf(before) },
+            oldValue: {
+              versionId: id,
+              ...fieldsOf(before),
+              pins: pins.map((pin) => ({
+                id: pin.id,
+                weekday: pin.weekday,
+                slotPosition: pin.slot_position,
+              })),
+            },
             requestId,
           });
           await transaction.deleteFrom('teaching_load_rows').where('id', '=', rowId).execute();

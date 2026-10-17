@@ -9,7 +9,10 @@ import {
   loadTeachersQuerySchema,
   loadTeachersSchema,
   loadTotalsSchema,
+  pinParamsSchema,
+  pinRecordSchema,
   preferenceWeightsBodySchema,
+  rulesConfirmBodySchema,
   timetableVersionCreateSchema,
   timetableVersionEditSchema,
   timetableVersionListSchema,
@@ -24,7 +27,9 @@ import {
   type LoadTeachers,
   type LoadTeachersQuery,
   type LoadTotals,
+  type PinRecord,
   type PreferenceWeightsBody,
+  type RulesConfirmBody,
   type TimetableVersion,
   type TimetableVersionCreate,
   type TimetableVersionEdit,
@@ -138,7 +143,10 @@ export class TimetableController {
     return this.timetable.saveWeights(access, params.id, body, requestId);
   }
 
-  /** Step 5 confirmed: the weights the person sees (task 5.3b-1, decisions 2 and 9). */
+  /**
+   * Step 5 confirmed: the weights and the pins the person sees (task 5.3b-1,
+   * decisions 2 and 9; task 5.3b-2, decision 7).
+   */
   @Post('versions/:id/rules/confirm')
   @HttpCode(200)
   @Requires('timetable', 'edit')
@@ -146,10 +154,36 @@ export class TimetableController {
   confirmRules(
     @CurrentAccess() access: Access,
     @ValidParams(timetableVersionParamsSchema) params: TimetableVersionParams,
-    @ValidBody(preferenceWeightsBodySchema) body: PreferenceWeightsBody,
+    @ValidBody(rulesConfirmBodySchema) body: RulesConfirmBody,
     @RequestId() requestId: string,
   ): Promise<DraftReadiness> {
     return this.timetable.confirmRules(access, params.id, body, requestId);
+  }
+
+  /** Step 5: a pinned lesson added (task 5.3b-2, decisions 3 to 6); answers the readiness. */
+  @Post('versions/:id/pins')
+  @HttpCode(200)
+  @Requires('timetable', 'edit')
+  @Returns(draftReadinessSchema)
+  createPin(
+    @CurrentAccess() access: Access,
+    @ValidParams(timetableVersionParamsSchema) params: TimetableVersionParams,
+    @ValidBody(pinRecordSchema) body: PinRecord,
+    @RequestId() requestId: string,
+  ): Promise<DraftReadiness> {
+    return this.timetable.createPin(access, params.id, body, requestId);
+  }
+
+  /** Step 5: a pinned lesson removed (task 5.3b-2, decision 6), under `edit`; answers the readiness. */
+  @Delete('versions/:id/pins/:pinId')
+  @Requires('timetable', 'edit')
+  @Returns(draftReadinessSchema)
+  deletePin(
+    @CurrentAccess() access: Access,
+    @ValidParams(pinParamsSchema) params: { id: string; pinId: string },
+    @RequestId() requestId: string,
+  ): Promise<DraftReadiness> {
+    return this.timetable.deletePin(access, params.id, params.pinId, requestId);
   }
 
   /** The teachers and vacancies a row may take (decision 2), by the rules of the create. */

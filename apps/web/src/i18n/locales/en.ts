@@ -365,6 +365,12 @@ export const en = {
     version_copy_year:
       'That version is of another academic year. Copy a version of the same year, or start empty.',
     preferences_changed: 'The weights changed since you opened them. Read them again and confirm.',
+    pins_changed: 'The pinned lessons changed since you opened them. Read them again and confirm.',
+    pin_taken: 'This lesson is already pinned to that day and slot.',
+    pin_over_load:
+      'This lesson already has as many pinned slots as lessons per week. Remove a pin or raise the lessons per week first.',
+    pin_mixed_block:
+      'A half of a mixed split cannot be pinned: its halves meet in different slots.',
     draft_not_ready: 'A step of the draft is not ready. Finish the steps marked not ready first.',
     load_unit_year:
       "That class or group is of another academic year than the version. Choose one of the version's year.",
@@ -2347,6 +2353,7 @@ export const en = {
       group: 'Group',
       timetable_version: 'Timetable version',
       teaching_load_row: 'Teaching load row',
+      timetable_pin: 'Pinned lesson',
     },
     actions: {
       auth: {
@@ -2579,6 +2586,10 @@ export const en = {
         templates_confirm: 'Day templates of a draft confirmed',
         preferences: 'Preference weights of a draft changed',
         rules_confirm: 'Rules of a draft confirmed',
+      },
+      timetable_pin: {
+        create: 'Lesson of a draft pinned',
+        delete: 'Pin of a draft removed',
       },
       teaching_load: {
         create: 'Teaching load row added',
@@ -3032,7 +3043,32 @@ export const en = {
         changedSince: 'Weights changed since the confirmation: {{names}}',
         saveFirst: 'Save the weights before confirming.',
         notReadySteps: 'Steps not ready: {{steps}}',
+        pinsChangedSince: 'Pinned lessons changed since the confirmation',
       },
+      pins: {
+        title: 'Pinned lessons',
+        none: 'No lesson is pinned.',
+        unit: 'Class or group',
+        subject: 'Subject',
+        teacher: 'Teacher',
+        weekday: 'Day',
+        slot: 'Slot',
+        remove: 'Remove',
+        conflicts: 'Conflicts of the pinned lessons',
+        add: 'Pin a lesson',
+        row: 'Lesson',
+        choose: 'Choose',
+        slotOption: '{{position}}. {{time}}',
+        slotMissing: '{{position}}: not in the day',
+        pinText: '{{unit}}, {{subject}}, {{weekday}}, slot {{position}}',
+        otherRule: 'A fixed rule is broken',
+        problems: {
+          pin_no_slot: 'The day has no such slot',
+          pin_over_load: 'More pinned slots than lessons per week',
+          pin_mixed_block: 'A half of a mixed split cannot be pinned',
+        },
+      },
+      tutorPinClashes: 'A Tutor of two classes with both pinned at the same time',
       stepsLabel: 'Steps',
       stepNumber: '{{number}}.',
       steps: {

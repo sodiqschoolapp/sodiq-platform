@@ -30,7 +30,7 @@ import {
 import { useView } from '@/features/access/use-view';
 import { nameOf, yearsQuery } from '@/features/setup/setup-api';
 import { TemplateTableView } from '@/features/setup/template-table';
-import { schoolDateText } from '@/lib/dates';
+import { schoolDateText, weekdayName } from '@/lib/dates';
 import { BUILDER_STEPS, type BuilderSearch, type BuilderStep } from './builder-search';
 import { RulesStep } from './rules-step';
 import {
@@ -321,6 +321,34 @@ export function BuilderPage(): React.JSX.Element {
             </ul>
           </section>
         )}
+        {data.load.tutorPinClashes.length > 0 && (
+          <section aria-labelledby="tutor-pin-clashes" className="grid gap-2">
+            <h3 id="tutor-pin-clashes" className={SECTION_TITLE}>
+              {t('timetable.builder.tutorPinClashes')}
+            </h3>
+            <ul className="grid gap-1">
+              {data.load.tutorPinClashes.map((clash) => (
+                <li key={clash.pinIds.join(',')} data-tutor-clash={clash.pinIds.join(',')}>
+                  {clash.pinIds
+                    .map((id) => data.rules.pins.find((pin) => pin.id === id))
+                    .filter((pin) => pin !== undefined)
+                    .map((pin) =>
+                      t('timetable.builder.pins.pinText', {
+                        unit:
+                          pin.unit.kind === 'class'
+                            ? classDisplayName(pin.unit.grades[0] ?? 0, pin.unit.name)
+                            : pin.unit.name,
+                        subject: nameOf(pin.subject.names, language),
+                        weekday: weekdayName(language, pin.weekday),
+                        position: pin.slotPosition,
+                      }),
+                    )
+                    .join('; ')}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
         {data.load.classesOver.length > 0 && (
           <section aria-labelledby="classes-over" className="grid gap-2">
             <h3 id="classes-over" className={SECTION_TITLE}>
@@ -456,6 +484,7 @@ export function BuilderPage(): React.JSX.Element {
         key={chosen.id}
         versionId={chosen.id}
         rules={data.rules}
+        cells={data.templates.cells}
         canEdit={canEdit}
         onChanged={refresh}
       />

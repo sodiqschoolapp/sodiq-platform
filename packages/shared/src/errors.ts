@@ -506,6 +506,14 @@ export const ERROR_CODES = [
   'version_copy_year',
   /** The weights confirmed are not the weights stored now (task 5.3b-1, decision 9). */
   'preferences_changed',
+  /** The pins confirmed are not the pins stored now (task 5.3b-2, decision 7). */
+  'pins_changed',
+  /** The load row is already pinned to that weekday and slot (task 5.3b-2). */
+  'pin_taken',
+  /** The block of the row already has as many pinned slots as lessons per week (task 5.3b-2, decision 5). */
+  'pin_over_load',
+  /** A row of a split marked mixed block cannot be pinned (task 5.3b-2, decision 4). */
+  'pin_mixed_block',
   /** A step of the draft builder is not ready, so the draft cannot move to generation (task 5.3b-1, decision 6). */
   'draft_not_ready',
   /** The class or group of a load row is of another academic year than the version (task 3.4a). */

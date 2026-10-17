@@ -79,6 +79,13 @@ export async function templateCellsOf(
           start: timed.day.start,
           end: timed.day.end,
           lessonSlots: lessonSlotsOf(timed.day),
+          // Task 5.3b-2: the slots, for the slot of a pin.
+          slots: timed.day.slots.map((slot) => ({
+            position: slot.position,
+            kind: slot.kind,
+            start: slot.start,
+            end: slot.end,
+          })),
         },
       });
     }

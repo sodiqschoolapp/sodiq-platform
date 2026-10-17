@@ -3,7 +3,8 @@
 // 1.4 the calendar (what a grade has on a date), task 3.4a the rules of one
 // teaching load row, task 3.4b the blocks and weekly totals of a load, task
 // 5.2 every rule of a placed timetable (check.ts), task 5.3a the readiness of
-// the draft builder, task 5.3b-1 its step 5 (preferences.ts).
+// the draft builder, task 5.3b-1 its step 5 (preferences.ts), task 5.3b-2
+// the pinned lessons (pins.ts).
 export {
   dayEndsAfterMidnight,
   dayTimes,
@@ -107,6 +108,17 @@ export type {
   Facts,
   Placement,
 } from './placement.js';
+export {
+  PIN_PROBLEMS,
+  pinnedPlacements,
+  tutorPinClashes,
+  type Pin,
+  type PinnedLessons,
+  type PinProblem,
+  type PinProblemCode,
+  type PinRow,
+  type PinSlot,
+} from './pins.js';
 export { tutorAt, type TutorRow } from './tutors.js';
 export { checkCandidate, checkTeacherTime, checkTimetable, overlappingPairs } from './check.js';
 export {

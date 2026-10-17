@@ -902,6 +902,16 @@ export interface TimeClaims {
   teacher_id: string | null;
 }
 
+export interface TimetablePins {
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  load_row_id: string;
+  slot_position: number;
+  version_id: string;
+  weekday: number;
+}
+
 export interface TimetableVersions {
   academic_year_id: string;
   branch_id: string;
@@ -1005,6 +1015,7 @@ export interface DB {
   subjects: Subjects;
   teaching_load_rows: TeachingLoadRows;
   time_claims: TimeClaims;
+  timetable_pins: TimetablePins;
   timetable_versions: TimetableVersions;
   travel_times: TravelTimes;
 }
