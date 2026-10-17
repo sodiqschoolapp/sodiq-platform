@@ -246,6 +246,24 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 17 October 2026: the grid, the edit lock and locks (task 5.4c-1)
+
+Plan approved on pull request #135 with corrections 1 to 5; decisions 1 to 12 confirmed there, 13 removed by correction 2. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** 5.4c is split into 5.4c-1 (the edit lock and locks), 5.4c-2 (undo and redo) and 5.4c-3 (double lessons and mixed blocks) | Decision 1; three write paths of their own |
+| The edit lock covers every write of the draft, steps 1 to 7, publish and generation included (From lines on 5.5a and 5.11), and is held by an account | Decision 2, review correction 5; `06`: "one edits at a time" |
+| Activity is a write, or the holder's "still here" after a key or pointer, at most once a minute; a reader's activity never takes the lock | Decision 3, review correction 1 |
+| Take over only once the lock is free (5 minutes); no release route; the first write takes a free lock; the earlier holder's next write is refused `draft_edit_locked` | Decisions 4 and 5 |
+| The notice goes on a takeover from another account only, to that account | Decision 6 |
+| Locks are per draft, not copied, and a block lock goes with its block (named in the removal's audit entry) | Decision 7 |
+| A lock binds Regenerate, "Suggest a place" and the rearrange route (`pattern_locked`); a hand move, room change or removal of a locked lesson is allowed; no suggestion moves a block into a locked day | Decision 8 |
+| A teacher lock covers that teacher's or vacancy's rows of this draft; load edits are not refused by locks | Decisions 9 and 10 |
+| Viewers read the draft again after a key or pointer, at most every 30 seconds, never on a timer alone | Decision 11 with `.claude/rules/web.md` ("Nothing calls the API on a timer without asking") |
+| Audit kinds `timetable_version.edit_lock` (each change of holder), `timetable_lock.create`, `timetable_lock.delete` | Decision 12 |
+| The holder is named as the audit log names actors (`audit_names`); an account with no staff record by its login | Found in the build: the notice needs a name |
+
 ## 17 October 2026: the grid, "Suggest a place" (task 5.4b-2b)
 
 Plan approved on pull request #134 with corrections 1 to 3; decisions 1 to 10 confirmed there (4 changed by correction 1). Flagged on issue #42.

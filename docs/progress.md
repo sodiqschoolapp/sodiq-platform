@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 17 October 2026: task 5.4c-1 Grid: the edit lock and locks
+
+- One person edits a draft at a time: every draft write takes the edit lock (`lockDraft`, stored as `edit_holder_id` and `edit_seen_at` on `timetable_versions`, 0072), kept by the holder's writes and "still here" calls after a key or pointer; after 5 minutes without activity another account takes over and the earlier holder gets `timetable.draft_taken_over`. Others see a banner with the holder and Take over; the page is read only.
+- Locks of a lesson (its block), class, teacher or weekday (`timetable_locks`, 0072; routes `POST/DELETE …/locks`); `lockedBy` of `packages/timetable-rules/src/locks.ts`; "Suggest a place" and the rearrange route (`pattern_locked`) leave locked lessons in place; hand moves are allowed (decision 8).
+- 5.4c is split into 5.4c-1, 5.4c-2 (undo and redo) and 5.4c-3 (double lessons and mixed blocks).
+- Left out: undo and redo (5.4c-2); doubles and mixed pairing (5.4c-3); Regenerate reading the locks (5.10, 5.11); live updates (8.3b, deferred); the handbook (paused). The browser test was not run here (the installed Chromium does not match Playwright 1.63); CI runs it.
+
+The next sessions must know:
+
+- Every draft write calls `Timetable.lockDraft(transaction, access, id, requestId)`; `lockDraftRow` is the row lock alone (`requireReady`). A test that writes one draft as two accounts calls `LoadKit.freeEditLock` between them.
+- A takeover sends a notification: an API test kit whose routes take over a lock needs `dayTemplatesKit({ jobs: true })`.
+- The next task is 5.4c-2.
+
 ## 17 October 2026: task 5.4b-2b Grid: "Suggest a place"
 
 - A tile of the class board and an entry of "To place" have "Suggest a place": up to five free slots, fewest warnings first (a slot held only by its room is offered with another room, after the others), or, when none is free, up to three rearrangements of two or three blocks. The search is `suggestPlaces` of `packages/timetable-rules/src/suggest.ts`, run in the browser with a budget of 2,000 checks; each trial is the route's own check.

@@ -549,7 +549,7 @@ How to read the task lines:
   - Done when: "Suggest a place" on a selected lesson shows the best free slots or a swap of two or three lessons, and applying it is checked by the rule engine and refused by the API like a move.
   - From 5.4b-2a (pull request #133, decision 1, Look first): split from 5.4b-2. "Suggest a place" belongs to the "to place" panel (From 5.4a, pull request #130, decisions 7 and 13): a new block is built as `newBlockOf` (`apps/web/src/features/timetable/use-slot-status.ts`) and its slots are marked by `cellStatus`; every check of the pattern passes `checkedPlacements` (`packages/timetable-rules/src/pattern-place.ts`), so the suggestions count the teachers' lessons in other branches (From 5.4b-1, pull request #132). A suggestion that changes a room uses `roomChange` (`packages/timetable-rules/src/rooms-pick.ts`).
 
-- [ ] **5.4c-1 Grid: the edit lock and locks**
+- [x] **5.4c-1 Grid: the edit lock and locks** (pull request #135)
   - Read: `06` (Editing in the grid, Auto-generation), `edge/timetable` (Generator and editing).
   - Build: the edit lock on a draft, taken by the first write and released after 5 minutes without activity, with "Take over" and a notice to the earlier holder; locks on a lesson, class, teacher or day, kept by "Suggest a place" and the rearrange route and stored for "Regenerate".
   - Done when: a second Academic Vice Principal can take over a draft and the first is told.
