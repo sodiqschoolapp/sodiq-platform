@@ -262,6 +262,7 @@ describe('the routes that work without sign-in', () => {
       'POST /api/setup/subjects/export',
       'POST /api/timetable/versions',
       'POST /api/timetable/versions/:id/load',
+      'POST /api/timetable/versions/:id/rules/confirm',
       'POST /api/timetable/versions/:id/templates/confirm',
       'PUT /api/auth/language',
       'PUT /api/auth/photo',
@@ -293,6 +294,7 @@ describe('the routes that work without sign-in', () => {
       'PUT /api/setup/subjects/:id/daily-weights',
       'PUT /api/setup/subjects/:id/quarter-weights/:quarterId',
       'PUT /api/setup/travel-times',
+      'PUT /api/timetable/versions/:id/preferences',
     ]);
   });
 });

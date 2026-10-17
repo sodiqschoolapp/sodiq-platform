@@ -9,8 +9,10 @@ import {
   UNKNOWN,
   type DayTemplatesKit,
 } from '../../testing/day-templates-kit.js';
+import { Transactions } from '../../database/transactions.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
+import { Timetable } from './timetable.service.js';
 
 const refusedWith = (response: Response, status: number, code: string) => {
   expect(response.status, JSON.stringify(response.body)).toBe(status);
@@ -40,7 +42,7 @@ const WEDNESDAY = '2026-10-14';
 // date". Task 5.3a, pull request #127, with corrections 1 and 2 of its
 // review. The clock stands at 23:55 on Saturday 10 October 2026 in Tashkent;
 // a draft starts on Monday 12 October, and its week runs to Friday 16.
-describe('the readiness of a draft, steps 1 to 4', () => {
+describe('the readiness of a draft, steps 1 to 5', () => {
   let t: DayTemplatesKit;
   let load: LoadKit;
 
@@ -61,6 +63,13 @@ describe('the readiness of a draft, steps 1 to 4', () => {
     readinessOf(await get(`/api/timetable/versions/${version}/readiness`, branch));
   const confirm = async (branch: string, version: string) =>
     readinessOf(await post(`/api/timetable/versions/${version}/templates/confirm`, branch));
+  /** Step 5 confirmed as it stands (task 5.3b-1), so that `ready` turns on steps 1 to 4. */
+  const confirmRules = async (branch: string, version: string) => {
+    const { weights } = (await readiness(branch, version)).rules;
+    return readinessOf(
+      await post(`/api/timetable/versions/${version}/rules/confirm`, branch, { weights }),
+    );
+  };
 
   /** Hours of a person in the branch from a date, on the weekdays named, `until` its end. */
   async function hours(
@@ -170,8 +179,18 @@ describe('the readiness of a draft, steps 1 to 4', () => {
       }),
     ]);
     expect(before.rooms).toEqual({ ready: true, rows: [], classesWithoutRoom: [] });
-    const after = await confirm(s.branch, s.version);
-    expect(after.templates).toMatchObject({ ready: true, confirmed: true, changed: [] });
+    const confirmed = await confirm(s.branch, s.version);
+    expect(confirmed.templates).toMatchObject({ ready: true, confirmed: true, changed: [] });
+    // Task 5.3b-1 (review correction 1): steps 1 to 4 each ready on their own;
+    // the draft is ready once step 5 is confirmed too.
+    expect(
+      [confirmed.templates, confirmed.load, confirmed.teachers, confirmed.rooms].map(
+        (step) => step.ready,
+      ),
+    ).toEqual([true, true, true, true]);
+    expect(confirmed.rules.ready).toBe(false);
+    expect(confirmed.ready).toBe(false);
+    const after = await confirmRules(s.branch, s.version);
     expect(after.ready).toBe(true);
     expect(await readiness(s.branch, s.version)).toEqual(after);
   });
@@ -409,9 +428,13 @@ describe('the readiness of a draft, steps 1 to 4', () => {
     const northYear = await load.classes.year(t.north, 'planned', '2027-09-01', '2028-05-31');
     await load.classes.schoolClass(t.north, northYear, { grade: 7 });
     await confirm(s.branch, s.version);
+    await confirmRules(s.branch, s.version);
     const found = await readiness(s.branch, s.version);
     expect(found.rooms.ready).toBe(true);
     expect(found.rooms.classesWithoutRoom.map((one) => one.id)).toEqual([bare]);
+    expect(
+      [found.templates, found.load, found.teachers, found.rooms].map((step) => step.ready),
+    ).toEqual([true, true, true, true]);
     expect(found.ready).toBe(true);
   });
 
@@ -508,5 +531,239 @@ describe('the readiness of a draft, steps 1 to 4', () => {
       403,
       'permission_denied',
     );
+  });
+
+  // Step 5 (task 5.3b-1, pull request #128): "Reviews the fixed rules, sets
+  // the weight of each preference ... Ready when: Confirmed." Decisions 2, 3,
+  // 5, 6, 7 and 9.
+  describe('step 5, the weights and their confirmation', () => {
+    const DEFAULTS = {
+      class_no_gaps: 5,
+      teacher_few_gaps: 5,
+      subject_spread: 5,
+      demanding_early: 5,
+      class_even_days: 5,
+      main_room: 5,
+      part_time_few_days: 5,
+      teacher_preferred_times: 5,
+    };
+    const saveWeights = (branch: string, version: string, weights: object, cookie = t.admin) =>
+      t.put(`/api/timetable/versions/${version}/preferences`, branch, { weights }, cookie);
+    const confirmWeights = (branch: string, version: string, weights: object, cookie = t.admin) =>
+      post(`/api/timetable/versions/${version}/rules/confirm`, branch, { weights }, cookie);
+    const stored = (version: string) =>
+      t.database.migrator
+        .selectFrom('timetable_versions')
+        .selectAll()
+        .where('id', '=', version)
+        .executeTakeFirstOrThrow();
+
+    it('starts at 5 for every preference, not confirmed', async () => {
+      const s = await scene();
+      expect((await readiness(s.branch, s.version)).rules).toEqual({
+        ready: false,
+        confirmed: false,
+        weights: DEFAULTS,
+        changed: [],
+      });
+    });
+
+    it('saves the weights in one audited write, and a save of the same weights writes nothing', async () => {
+      const s = await scene();
+      const weights = { ...DEFAULTS, subject_spread: 8, main_room: 0, teacher_preferred_times: 10 };
+      const saved = readinessOf(await saveWeights(s.branch, s.version, weights));
+      expect(saved.rules).toMatchObject({ ready: false, weights });
+      expect((await stored(s.version)).weight_main_room).toBe(0);
+      readinessOf(await saveWeights(s.branch, s.version, weights));
+      const entries = await t.entries('timetable_version.preferences', s.version);
+      expect(entries).toHaveLength(1);
+      expect(entries[0]).toMatchObject({ old_value: DEFAULTS, new_value: weights });
+    });
+
+    it('refuses a body that does not give eight whole weights from 0 to 10', async () => {
+      const s = await scene();
+      const count = await t.auditCount();
+      const seven = Object.fromEntries(
+        Object.entries(DEFAULTS).filter(([code]) => code !== 'main_room'),
+      );
+      for (const weights of [
+        seven,
+        { ...DEFAULTS, main_room: 11 },
+        { ...DEFAULTS, main_room: -1 },
+        { ...DEFAULTS, main_room: 2.5 },
+        { ...DEFAULTS, lunch_late: 3 },
+      ]) {
+        refusedWith(await saveWeights(s.branch, s.version, weights), 400, 'validation_failed');
+        refusedWith(await confirmWeights(s.branch, s.version, weights), 400, 'validation_failed');
+      }
+      expect(await t.auditCount()).toBe(count);
+      expect((await stored(s.version)).weight_main_room).toBe(5);
+    });
+
+    it('confirms the weights shown in one audited write, and a second confirm writes nothing', async () => {
+      const s = await scene();
+      const done = readinessOf(await confirmWeights(s.branch, s.version, DEFAULTS));
+      expect(done.rules).toEqual({ ready: true, confirmed: true, weights: DEFAULTS, changed: [] });
+      expect((await stored(s.version)).rules_confirmed).toEqual(DEFAULTS);
+      readinessOf(await confirmWeights(s.branch, s.version, DEFAULTS));
+      const entries = await t.entries('timetable_version.rules_confirm', s.version);
+      expect(entries).toHaveLength(1);
+      expect(entries[0]).toMatchObject({ old_value: null, new_value: DEFAULTS });
+    });
+
+    it('refuses to confirm weights other than the ones stored, writing nothing (decision 9)', async () => {
+      const s = await scene();
+      readinessOf(await saveWeights(s.branch, s.version, { ...DEFAULTS, main_room: 2 }));
+      const count = await t.auditCount();
+      refusedWith(await confirmWeights(s.branch, s.version, DEFAULTS), 409, 'preferences_changed');
+      expect(await t.auditCount()).toBe(count);
+      expect((await stored(s.version)).rules_confirmed).toBeNull();
+    });
+
+    it('is not ready again once a weight changed after the confirmation, and names it', async () => {
+      const s = await scene();
+      readinessOf(await confirmWeights(s.branch, s.version, DEFAULTS));
+      const changed = readinessOf(
+        await saveWeights(s.branch, s.version, { ...DEFAULTS, class_even_days: 1 }),
+      );
+      expect(changed.rules).toMatchObject({
+        ready: false,
+        confirmed: false,
+        changed: ['class_even_days'],
+      });
+      expect(changed.ready).toBe(false);
+      const again = readinessOf(
+        await confirmWeights(s.branch, s.version, { ...DEFAULTS, class_even_days: 1 }),
+      );
+      expect(again.rules.ready).toBe(true);
+      const entries = await t.entries('timetable_version.rules_confirm', s.version);
+      expect(entries.map((entry) => entry.old_value)).toEqual([null, DEFAULTS]);
+    });
+
+    it('refuses both writes on a version that is not a draft and in a closed year, changing nothing', async () => {
+      const published = await scene();
+      await load.setVersion(published.version, 'published');
+      const closed = await scene();
+      await load.classes.setYear(closed.year, 'closed');
+      for (const [s, code] of [
+        [published, 'version_not_draft'],
+        [closed, 'timetable_year_closed'],
+      ] as const) {
+        const before = await stored(s.version);
+        const count = await t.auditCount();
+        refusedWith(
+          await saveWeights(s.branch, s.version, { ...DEFAULTS, main_room: 1 }),
+          409,
+          code,
+        );
+        refusedWith(await confirmWeights(s.branch, s.version, DEFAULTS), 409, code);
+        expect(await stored(s.version)).toEqual(before);
+        expect(await t.auditCount()).toBe(count);
+      }
+    });
+
+    it('lets a copy take the weights of its source, unconfirmed (decision 5)', async () => {
+      const s = await scene();
+      const weights = { ...DEFAULTS, demanding_early: 9 };
+      readinessOf(await saveWeights(s.branch, s.version, weights));
+      readinessOf(await confirmWeights(s.branch, s.version, weights));
+      const copied = await post('/api/timetable/versions', s.branch, {
+        academicYearId: s.year,
+        startsOn: MONDAY,
+        copyFrom: s.version,
+      });
+      expect(copied.status, JSON.stringify(copied.body)).toBe(201);
+      const copy = (copied.body as { id: string }).id;
+      expect((await readiness(s.branch, copy)).rules).toEqual({
+        ready: false,
+        confirmed: false,
+        weights,
+        changed: [],
+      });
+      const created = await t.entries('timetable_version.create', copy);
+      expect(z.object({ weights: z.unknown() }).parse(created[0]?.new_value).weights).toEqual(
+        weights,
+      );
+    });
+
+    // The gate (decision 6): the run route of 5.11 calls it first.
+    it('keeps a draft from generation until steps 1 to 5 are ready', async () => {
+      const s = await scene();
+      const gate = () =>
+        t.app
+          .get(Transactions)
+          .run([s.branch], (transaction) =>
+            t.app.get(Timetable).requireReady(transaction, s.branch, s.version),
+          );
+      const first = await confirm(s.branch, s.version);
+      expect(
+        [first.templates, first.load, first.teachers, first.rooms].map((step) => step.ready),
+      ).toEqual([true, true, true, true]);
+      const refused = await gate().then(
+        () => undefined,
+        (error: unknown) => error,
+      );
+      expect(refused).toMatchObject({
+        code: 'draft_not_ready',
+        details: [expect.objectContaining({ path: 'rules', code: 'draft_not_ready' })],
+      });
+      expect((refused as { getStatus: () => number }).getStatus()).toBe(409);
+      readinessOf(await confirmWeights(s.branch, s.version, DEFAULTS));
+      await expect(gate()).resolves.toBeUndefined();
+      // Permission review, should-fix 1: the gate locks a draft, so a published version is refused.
+      await load.setVersion(s.version, 'published');
+      await expect(gate()).rejects.toMatchObject({ code: 'version_not_draft' });
+    });
+
+    it("answers 404 for another branch's version and an unknown one, changing nothing, and 403 to the Principal and a Teacher", async () => {
+      // A branch has one current year: the one of an earlier test, or a new one.
+      const yearOf = async (branch: string) =>
+        (
+          await t.database.migrator
+            .selectFrom('academic_years')
+            .select('id')
+            .where('branch_id', '=', branch)
+            .where('status', '=', 'current')
+            .executeTakeFirst()
+        )?.id ?? (await load.classes.year(branch));
+      const southern = await load.version(t.south, await yearOf(t.south), { startsOn: TOMORROW });
+      const northern = await load.version(t.north, await yearOf(t.north), { startsOn: MONDAY });
+      readinessOf(await saveWeights(t.south, southern, { ...DEFAULTS, main_room: 3 }));
+      readinessOf(await confirmWeights(t.south, southern, { ...DEFAULTS, main_room: 3 }));
+      const rows = () =>
+        Promise.all([
+          t.database.migrator.selectFrom('timetable_versions').selectAll().orderBy('id').execute(),
+          t.auditCount(),
+        ]);
+      const before = await rows();
+      for (const cookie of [t.vicePrincipal, t.admin]) {
+        for (const id of [southern, UNKNOWN]) {
+          refusedWith(
+            await saveWeights(t.north, id, { ...DEFAULTS, main_room: 9 }, cookie),
+            404,
+            'not_found',
+          );
+          refusedWith(
+            await confirmWeights(t.north, id, { ...DEFAULTS, main_room: 3 }, cookie),
+            404,
+            'not_found',
+          );
+        }
+      }
+      for (const cookie of [t.principal, t.teacher]) {
+        refusedWith(
+          await saveWeights(t.north, northern, DEFAULTS, cookie),
+          403,
+          'permission_denied',
+        );
+        refusedWith(
+          await confirmWeights(t.north, northern, DEFAULTS, cookie),
+          403,
+          'permission_denied',
+        );
+      }
+      expect(await rows()).toEqual(before);
+      readinessOf(await saveWeights(t.north, northern, DEFAULTS, t.vicePrincipal));
+    });
   });
 });

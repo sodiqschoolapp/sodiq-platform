@@ -6,6 +6,7 @@
  * and passes them in; nothing here reads a clock or a table.
  */
 import { ROOM_PROBLEMS, type LoadProblem } from './load.js';
+import { PREFERENCES, type Preference, type Weights } from './preferences.js';
 
 /** A slot of a cell's day: its kind and its clock minutes. */
 export type CellSlot = readonly [kind: 'lesson' | 'break', start: number, end: number];
@@ -189,6 +190,32 @@ export function roomsReadiness(input: {
   return { ready: closed.length === 0 && typeNone.length === 0, closed, typeNone };
 }
 
-/** Ready for generation: every step is ready (5.3b adds step 5). */
+export interface RulesReadiness {
+  readonly ready: boolean;
+  readonly confirmed: boolean;
+  /** The preferences whose weight differs from the confirmed one (none while nothing is confirmed). */
+  readonly changed: Preference[];
+}
+
+/**
+ * Step 5: "Confirmed" (task 5.3b-1, decision 2): ready while the weights
+ * confirmed equal the weights stored now; a later change of a weight makes it
+ * not ready with no write.
+ */
+export function rulesReadiness(input: {
+  readonly weights: Weights;
+  /** A preference missing from the confirmed weights (added later) counts as changed. */
+  readonly confirmed: Partial<Weights> | null;
+}): RulesReadiness {
+  const { confirmed } = input;
+  const changed =
+    confirmed === null
+      ? []
+      : PREFERENCES.filter((preference) => input.weights[preference] !== confirmed[preference]);
+  const ready = confirmed !== null && changed.length === 0;
+  return { ready, confirmed: ready, changed };
+}
+
+/** Ready for generation: every step is ready (steps 1 to 5; task 5.3b-1). */
 export const draftReady = (steps: readonly { readonly ready: boolean }[]): boolean =>
   steps.every((step) => step.ready);

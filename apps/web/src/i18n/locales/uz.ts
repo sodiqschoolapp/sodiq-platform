@@ -369,6 +369,10 @@ export const uz: Texts<'one' | 'other'> = {
       'Boshlanish sanasi oʻquv yilidan tashqarida. Yil ichidagi sanani tanlang.',
     version_copy_year:
       'Bu versiya boshqa oʻquv yiliga tegishli. Shu yilning versiyasidan nusxa oling yoki boʻsh boshlang.',
+    preferences_changed:
+      'Siz ochganingizdan keyin vaznlar oʻzgardi. Ularni qayta oʻqing va tasdiqlang.',
+    draft_not_ready:
+      'Qoralamaning bir qadami tayyor emas. Avval tayyor emas deb belgilangan qadamlarni tugating.',
     load_unit_year:
       'Bu sinf yoki guruh versiyadan boshqa oʻquv yiliga tegishli. Versiya yilidagisini tanlang.',
     load_unit_archived: 'Bu sinf yoki guruh arxivda. Faolini tanlang yoki avval uni tiklang.',
@@ -2591,6 +2595,8 @@ export const uz: Texts<'one' | 'other'> = {
         create: 'Dars jadvali qoralamasi yaratildi',
         edit: 'Dars jadvali qoralamasi oʻzgartirildi',
         templates_confirm: 'Qoralamaning kun shablonlari tasdiqlandi',
+        preferences: 'Qoralamaning afzalliklar vaznlari oʻzgartirildi',
+        rules_confirm: 'Qoralamaning qoidalari tasdiqlandi',
       },
       teaching_load: {
         create: 'Oʻquv yuklamasi qatori qoʻshildi',
@@ -2956,6 +2962,55 @@ export const uz: Texts<'one' | 'other'> = {
     title: 'Dars jadvali',
     loadLink: 'Oʻquv yuklamasi',
     builderLink: 'Qoralama yigʻuvchi',
+    rule: {
+      teacher_double: 'Oʻqituvchi bir vaqtda ikkita darsda boʻla olmaydi.',
+      room_double:
+        'Xona umumiy deb belgilanmagan boʻlsa, unda bir vaqtda ikkita dars boʻla olmaydi.',
+      room_shared_full: 'Umumiy xonada bir vaqtda uning eng koʻp sonidan ortiq dars boʻlmaydi.',
+      room_shared_capacity:
+        'Umumiy xonada bir vaqtda boʻlayotgan barcha darslarning oʻquvchilari birgalikda uning sigʻimiga sigʻadi.',
+      class_double: 'Sinfda bir vaqtda ikkita dars boʻla olmaydi.',
+      student_double: 'Hech bir oʻquvchi bir vaqtda ikkita darsda boʻla olmaydi.',
+      split_apart:
+        'Bir boʻlinishning barcha guruhlari yoki qismlari bir slotda, shunda sinfning har bir oʻquvchisida bu vaqtda dars boʻladi.',
+      day_off: 'Dam olish kunida dars boʻlmaydi.',
+      not_working_day: 'Ish kuni boʻlmagan kunda dars boʻlmaydi.',
+      no_template: 'Kun shabloni yoʻq kunda dars boʻlmaydi.',
+      exam_week: 'Oddiy darssiz imtihon haftasining kunida dars boʻlmaydi.',
+      not_a_slot:
+        'Dars kun shablonining aynan bitta dars slotini egallaydi: hech qachon ikki slotni yoki qoʻlda kiritilgan vaqtni emas.',
+      break_slot: 'Darsni tanaffus yoki tushlik slotiga qoʻyib boʻlmaydi.',
+      two_grade_slot:
+        'Ikki parallel guruhining darsi faqat ikkala parallelning kun shablonlarida bir xil boshlanish va tugash vaqti bilan bor dars slotida boʻladi.',
+      double_apart: 'Juft darsning ikki darsi ketma-ket dars slotlarida.',
+      teacher_branch: 'Oʻqituvchi faqat oʻzi ishlaydigan filialda dars beradi.',
+      teacher_inactive: 'Faol boʻlmagan oʻqituvchilardan foydalanib boʻlmaydi.',
+      teacher_subject: 'Oʻqituvchining profilida bu fan boʻlishi kerak.',
+      teacher_grade:
+        'Oʻqituvchining profilida sinf yoki guruhning har bir paralleli boʻlishi kerak.',
+      teacher_language:
+        'Fan til qoidasidan tashqarida boʻlmasa, oʻqituvchi sinf yoki guruh tilida dars bera olishi kerak.',
+      teacher_unavailable:
+        'Oʻqituvchini uning bandlik jadvalidagi kun va soatlardan tashqariga qoʻyib boʻlmaydi.',
+      subject_inactive: 'Faol boʻlmagan fanlardan foydalanib boʻlmaydi.',
+      room_inactive: 'Faol boʻlmagan xonalardan foydalanib boʻlmaydi.',
+      travel_time:
+        'Oʻqituvchining bir filialdagi darsi va boshqa filialdagi keyingi darsi orasida shu ikki filial uchun belgilangan yoʻl vaqtidan kam boʻlmagan vaqt bor.',
+      travel_time_not_set:
+        'Oʻqituvchining bir kunda ikki filialda darsi faqat ular orasidagi yoʻl vaqti belgilangan boʻlsa boʻladi.',
+    },
+    preference: {
+      class_no_gaps: 'Sinfning birinchi va oxirgi darsi orasida boʻsh dars sloti yoʻq',
+      teacher_few_gaps: 'Oʻqituvchining darslari orasida boʻsh slotlar kam',
+      subject_spread:
+        'Bir fan darslari hafta boʻyicha taqsimlangan va juft dars ruxsat etilmagan boʻlsa, kuniga ikki marta boʻlmaydi',
+      demanding_early: 'Murakkab fanlar kunning birinchi slotlarida',
+      class_even_days: 'Sinfda har kuni darslar soni taxminan bir xil',
+      main_room: 'Fanga maxsus xona kerak boʻlmasa, sinf oʻz asosiy xonasida qoladi',
+      part_time_few_days:
+        'Toʻliq boʻlmagan stavkadagi oʻqituvchining darslari imkon qadar kam kunlarga tushadi',
+      teacher_preferred_times: 'Oʻqituvchining afzal koʻrgan kunlari va slotlari hisobga olinadi',
+    },
     builder: {
       title: 'Qoralama yigʻuvchi',
       noVersion: 'Avval oʻquv yuklamasi sahifasida qoralama boshlang.',
@@ -2996,6 +3051,15 @@ export const uz: Texts<'one' | 'other'> = {
       readyForGeneration: 'Yaratishga tayyor',
       notReadyForGeneration_one: 'Yaratishga tayyor emas: {{count}} ta qadam tayyor emas',
       notReadyForGeneration_other: 'Yaratishga tayyor emas: {{count}} ta qadam tayyor emas',
+      rulesStep: {
+        fixedRules: 'Oʻzgarmas qoidalar',
+        weights: 'Afzalliklar vaznlari',
+        weightOption0: '0: hisobga olinmaydi',
+        confirm: 'Qoidalarni tasdiqlash',
+        changedSince: 'Tasdiqlangandan keyin vaznlar oʻzgardi: {{names}}',
+        saveFirst: 'Tasdiqlashdan oldin vaznlarni saqlang.',
+        notReadySteps: 'Tayyor boʻlmagan qadamlar: {{steps}}',
+      },
       stepsLabel: 'Qadamlar',
       stepNumber: '{{number}}.',
       steps: {

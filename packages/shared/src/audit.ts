@@ -180,6 +180,9 @@ export const AUDIT_ACTION_GROUPS = {
     'timetable_version.create',
     'timetable_version.edit',
     'timetable_version.templates_confirm',
+    // Task 5.3b-1: step 5 of the builder.
+    'timetable_version.preferences',
+    'timetable_version.rules_confirm',
     'teaching_load.create',
     'teaching_load.edit',
     'teaching_load.delete',

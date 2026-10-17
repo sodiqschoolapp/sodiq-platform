@@ -270,6 +270,8 @@ const MESSAGE: Record<ErrorCode, string> = {
   version_start_past: 'The start date is before today.',
   version_start_outside_year: 'The start date is outside the academic year.',
   version_copy_year: 'The version copied is of another academic year.',
+  preferences_changed: 'The weights changed since they were read.',
+  draft_not_ready: 'A step of the draft is not ready.',
   load_unit_year: 'The class or group is of another academic year.',
   load_unit_archived: 'The class or group is archived.',
   load_group_subject: "The subject is not the group's.",

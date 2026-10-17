@@ -1,4 +1,4 @@
-import { Controller, Delete, Get, HttpCode, Patch, Post } from '@nestjs/common';
+import { Controller, Delete, Get, HttpCode, Patch, Post, Put } from '@nestjs/common';
 import {
   draftReadinessSchema,
   loadRowEditSchema,
@@ -9,6 +9,7 @@ import {
   loadTeachersQuerySchema,
   loadTeachersSchema,
   loadTotalsSchema,
+  preferenceWeightsBodySchema,
   timetableVersionCreateSchema,
   timetableVersionEditSchema,
   timetableVersionListSchema,
@@ -23,6 +24,7 @@ import {
   type LoadTeachers,
   type LoadTeachersQuery,
   type LoadTotals,
+  type PreferenceWeightsBody,
   type TimetableVersion,
   type TimetableVersionCreate,
   type TimetableVersionEdit,
@@ -97,8 +99,8 @@ export class TimetableController {
   }
 
   /**
-   * The readiness of steps 1 to 4 of the draft builder (task 5.3a, pull
-   * request #127): computed on each read, never refusing.
+   * The readiness of steps 1 to 5 of the draft builder (tasks 5.3a, pull
+   * request #127, and 5.3b-1): computed on each read, never refusing.
    */
   @Get('versions/:id/readiness')
   @Requires('timetable', 'view')
@@ -121,6 +123,33 @@ export class TimetableController {
     @RequestId() requestId: string,
   ): Promise<DraftReadiness> {
     return this.timetable.confirmTemplates(access, params.id, requestId);
+  }
+
+  /** Step 5: the weights of the preferences (task 5.3b-1, decisions 3 and 7). */
+  @Put('versions/:id/preferences')
+  @Requires('timetable', 'edit')
+  @Returns(draftReadinessSchema)
+  saveWeights(
+    @CurrentAccess() access: Access,
+    @ValidParams(timetableVersionParamsSchema) params: TimetableVersionParams,
+    @ValidBody(preferenceWeightsBodySchema) body: PreferenceWeightsBody,
+    @RequestId() requestId: string,
+  ): Promise<DraftReadiness> {
+    return this.timetable.saveWeights(access, params.id, body, requestId);
+  }
+
+  /** Step 5 confirmed: the weights the person sees (task 5.3b-1, decisions 2 and 9). */
+  @Post('versions/:id/rules/confirm')
+  @HttpCode(200)
+  @Requires('timetable', 'edit')
+  @Returns(draftReadinessSchema)
+  confirmRules(
+    @CurrentAccess() access: Access,
+    @ValidParams(timetableVersionParamsSchema) params: TimetableVersionParams,
+    @ValidBody(preferenceWeightsBodySchema) body: PreferenceWeightsBody,
+    @RequestId() requestId: string,
+  ): Promise<DraftReadiness> {
+    return this.timetable.confirmRules(access, params.id, body, requestId);
   }
 
   /** The teachers and vacancies a row may take (decision 2), by the rules of the create. */

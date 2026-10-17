@@ -246,6 +246,25 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 17 October 2026: the draft builder, step 5: rules, weights and the gate (task 5.3b-1)
+
+Plan approved on pull request #128 with corrections 1 and 2; decisions 1 to 9 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** Task 5.3b split into 5.3b-1 (step 5's fixed rules, weights, confirmation and the gate) and 5.3b-2 (pinned lessons, their check on their own, the Tutor-of-two-classes list, the pins in the confirmation), with its own Done when | Decision 1: pins need the engine's whole pattern input read from the database, which no API code builds yet |
+| Step 5 is ready while the weights confirmed equal the weights stored now; only the confirmation is stored (`rules_confirmed`) | Decision 2; `06`, step 5: "Confirmed"; as 5.3a decision 3 |
+| A weight is a whole number from 0 (not used) to 10, starting at 5 | Decision 3; `06` names no scale |
+| The fixed rules shown are `FIXED_RULES`: the blocked codes a weekly pattern can break, less the dated-only, one-day-change and exam-only codes; each text states the rule in the words of its row in `06`, Rules, with no numbers | Decision 4 and review correction 2 |
+| A copy takes its source's weights, not their confirmation | Decision 5 |
+| The gate is `requireReady` (409 `draft_not_ready`, one detail per step) and step 6 kept closed; 5.11's run route calls it first | Decision 6 |
+| The weights and the confirm are draft writes under `timetable` `edit`, audited, none when nothing changes | Decision 7 |
+| Eight `weight_<code>` columns of `timetable_versions` (0069), each with a range check, and `rules_confirmed`, guarded by a new update trigger running `timetable_versions_draft()`; a new version may insert the weights, never a confirmation | Decision 8 |
+| Confirm carries the weights the person sees and is refused with `preferences_changed` when the stored ones differ; the page keeps Confirm off while a weight is not saved | Decision 9 |
+| The 5.3a readiness assertions confirm step 5 in their setup and still assert each of steps 1 to 4 ready on its own | Review correction 1: the requirement grew, the test is not weakened |
+| `requireReady` locks the draft as a write does (`lockDraft`), so no save commits between the check and the run, and refuses a version that is not a draft | Permission review, should-fix 1 |
+| A stored confirmation is read loosely: a preference added after it counts as changed, never as a fault | Permission review, should-fix 2 |
+
 ## 17 October 2026: the draft builder, steps 1 to 4 (task 5.3a)
 
 Plan approved on pull request #127 with corrections 1 to 3; decisions 1 to 13 confirmed there. Flagged on issue #42.

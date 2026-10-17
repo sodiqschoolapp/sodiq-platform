@@ -1,4 +1,11 @@
-import type { AcademicYear, DraftReadiness, LoadRow, TimetableVersion } from '@sodiq/shared';
+import type {
+  AcademicYear,
+  DraftReadiness,
+  LoadRow,
+  PreferenceWeights,
+  TimetableVersion,
+} from '@sodiq/shared';
+import { FIXED_RULES } from '@sodiq/timetable-rules';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
@@ -78,6 +85,17 @@ const FIGURES: DraftReadiness['teachers']['teachers'][number] = {
   over: false,
 };
 
+const WEIGHTS: PreferenceWeights = {
+  class_no_gaps: 5,
+  teacher_few_gaps: 5,
+  subject_spread: 5,
+  demanding_early: 5,
+  class_even_days: 5,
+  main_room: 5,
+  part_time_few_days: 5,
+  teacher_preferred_times: 5,
+};
+
 const readiness = (fields: Partial<DraftReadiness> = {}): DraftReadiness => ({
   ready: false,
   templates: {
@@ -95,6 +113,8 @@ const readiness = (fields: Partial<DraftReadiness> = {}): DraftReadiness => ({
     teachers: [FIGURES],
   },
   rooms: { ready: true, rows: [], classesWithoutRoom: [] },
+  // Task 5.3b-1 (review correction 1): step 5, not confirmed yet.
+  rules: { ready: false, confirmed: false, weights: WEIGHTS, changed: [] },
   ...fields,
 });
 
@@ -112,6 +132,8 @@ async function openPage(
     session?: ReturnType<typeof sessionOf>;
     answer?: DraftReadiness;
     confirmed?: DraftReadiness;
+    saved?: (body: unknown) => DraftReadiness;
+    rulesConfirmed?: DraftReadiness;
     path?: string;
   } = {},
 ) {
@@ -122,6 +144,14 @@ async function openPage(
     [`GET /api/timetable/versions/${VERSION.id}/readiness`]: () => json(answer),
     [`POST /api/timetable/versions/${VERSION.id}/templates/confirm`]: () => {
       answer = options.confirmed ?? answer;
+      return json(answer);
+    },
+    [`PUT /api/timetable/versions/${VERSION.id}/preferences`]: (body) => {
+      answer = options.saved?.(body) ?? answer;
+      return json(answer);
+    },
+    [`POST /api/timetable/versions/${VERSION.id}/rules/confirm`]: () => {
+      answer = options.rulesConfirmed ?? answer;
       return json(answer);
     },
     'GET /api/setup/academic-years': () => json({ years: [YEAR] }),
@@ -136,7 +166,7 @@ const stepMark = (key: string): string =>
 
 // docs/spec/06-timetable.md, Building a timetable; task 5.3a, pull request #127.
 describe('the draft builder', () => {
-  it('marks each step from the readiness, and steps 5 to 8 as not yet available', async () => {
+  it('marks each step from the readiness, and steps 6 to 8 as not yet available', async () => {
     await openPage({
       answer: readiness({
         teachers: { ready: false, teachers: [FIGURES] },
@@ -148,14 +178,18 @@ describe('the draft builder', () => {
     expect(stepMark('load')).toContain(en.timetable.builder.ready);
     expect(stepMark('teachers')).toContain(en.timetable.builder.notReady);
     expect(stepMark('rooms')).toContain(en.timetable.builder.ready);
-    for (const key of ['rules', 'generate', 'grid', 'publish']) {
+    expect(stepMark('rules')).toContain(en.timetable.builder.notReady);
+    for (const key of ['generate', 'grid', 'publish']) {
       expect(stepMark(key)).toContain(en.timetable.builder.later);
       expect(
         document.querySelector<HTMLButtonElement>(`[data-step="${key}"] button`)?.disabled,
       ).toBe(true);
     }
     expect(document.querySelector('[data-ready]')?.textContent).toBe(
-      'Not ready for generation: 2 steps are not ready',
+      'Not ready for generation: 3 steps are not ready',
+    );
+    expect(document.querySelector('[data-reason="notReadySteps"]')?.textContent).toBe(
+      'Steps not ready: Period and day templates, Teachers, Rules',
     );
   });
 
@@ -238,6 +272,95 @@ describe('the draft builder', () => {
     expect(within(teacherRow).getByRole('link').getAttribute('href')).toBe(
       `/people/staff?open=${ROW.teacher.id}`,
     );
+  });
+});
+
+// Step 5 (task 5.3b-1, pull request #128): the fixed rules, the weights and
+// the confirmation of the weights shown (decisions 2, 3, 4 and 9).
+describe('step 5 of the draft builder', () => {
+  const STEP_FIVE = `/timetable/builder?version=${VERSION.id}&step=rules`;
+  const weightSelects = () =>
+    document.querySelectorAll('[aria-labelledby="preference-weights"] select');
+  const select = (code: keyof PreferenceWeights) =>
+    screen.getByLabelText<HTMLSelectElement>(en.timetable.preference[code]);
+
+  it('lists the fixed rules of the rule engine and a weight from 0 to 10 for each preference', async () => {
+    await openPage({ path: STEP_FIVE });
+    await waitFor(() => {
+      expect(document.querySelectorAll('[data-rule]')).toHaveLength(FIXED_RULES.length);
+    });
+    expect(document.querySelector('[data-rule="teacher_double"]')?.textContent).toBe(
+      'A teacher cannot be in two lessons at the same time.',
+    );
+    expect(select('main_room').value).toBe('5');
+    expect([...select('main_room').options].map((option) => option.textContent)).toEqual([
+      en.timetable.builder.rulesStep.weightOption0,
+      ...Array.from({ length: 10 }, (_, index) => String(index + 1)),
+    ]);
+    expect(weightSelects()).toHaveLength(8);
+  });
+
+  it('saves all eight weights, keeps Confirm off while a weight is not saved, then confirms the weights shown', async () => {
+    const changed = { ...WEIGHTS, main_room: 0 };
+    const calls = await openPage({
+      path: STEP_FIVE,
+      saved: () =>
+        readiness({ rules: { ready: false, confirmed: false, weights: changed, changed: [] } }),
+      rulesConfirmed: readiness({
+        rules: { ready: true, confirmed: true, weights: changed, changed: [] },
+      }),
+    });
+    await waitFor(() => {
+      expect(weightSelects()).toHaveLength(8);
+    });
+    fireEvent.change(select('main_room'), { target: { value: '0' } });
+    const confirmButton = screen.getByRole<HTMLButtonElement>('button', {
+      name: en.timetable.builder.rulesStep.confirm,
+    });
+    expect(confirmButton.disabled).toBe(true);
+    expect(document.querySelector('[data-reason="saveFirst"]')).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(
+        screen.getByRole<HTMLButtonElement>('button', {
+          name: en.timetable.builder.rulesStep.confirm,
+        }).disabled,
+      ).toBe(false);
+    });
+    expect(calls.find((call) => call.route.startsWith('PUT'))?.body).toEqual({ weights: changed });
+    fireEvent.click(screen.getByRole('button', { name: en.timetable.builder.rulesStep.confirm }));
+    await waitFor(() => {
+      expect(stepMark('rules')).toContain(en.timetable.builder.ready);
+    });
+    expect(calls.find((call) => call.route.endsWith('/rules/confirm'))?.body).toEqual({
+      weights: changed,
+    });
+  });
+
+  it('names the weights changed since the confirmation, and shows the Principal the weights only', async () => {
+    await openPage({
+      path: STEP_FIVE,
+      session: principal(),
+      answer: readiness({
+        rules: {
+          ready: false,
+          confirmed: false,
+          weights: { ...WEIGHTS, subject_spread: 0 },
+          changed: ['subject_spread'],
+        },
+      }),
+    });
+    await screen.findByText(
+      `Weights changed since the confirmation: ${en.timetable.preference.subject_spread}`,
+    );
+    expect(weightSelects()).toHaveLength(0);
+    expect(document.querySelector('[data-preference="subject_spread"] dd')?.textContent).toBe(
+      en.timetable.builder.rulesStep.weightOption0,
+    );
+    expect(
+      screen.queryByRole('button', { name: en.timetable.builder.rulesStep.confirm }),
+    ).toBeNull();
+    expect(screen.queryByRole('button', { name: en.form.save })).toBeNull();
   });
 });
 
