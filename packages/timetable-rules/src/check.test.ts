@@ -930,6 +930,50 @@ describe('the teacher, the subject and the room', () => {
     ).toEqual(['teacher_unavailable']);
   });
 
+  it('lists a dated lesson under a later availability entry as a warning by date at publish (task 5.5a-2a, decision 6)', () => {
+    // Fridays end at 10:00 from 7 December; 4 December is a Friday before it.
+    const partTime = teacher('t9', {
+      availability: [
+        { branchId: A, validFrom: '2026-09-01', validUntil: '2026-12-07', ranges: week(480, 900) },
+        {
+          branchId: A,
+          validFrom: '2026-12-07',
+          validUntil: null,
+          ranges: [
+            ...week(480, 900).filter((one) => one.weekday !== 5),
+            { weekday: 5, start: 480, end: 600 },
+          ],
+        },
+      ],
+    });
+    const f = facts({ mode: 'dated', teachers: new Map([['t9', partTime]]) });
+    const late = { ...L4, teacherIds: ['t9'], day: '2026-12-11' };
+    expect(checkTimetable([place(late)], f, { availabilityFrom: '2026-11-16' })).toEqual([
+      expect.objectContaining({
+        rule: 'teacher_unavailable_later',
+        severity: 'warning',
+        day: '2026-12-11',
+        detail: { date: '2026-12-11' },
+      }),
+    ]);
+    // Without the option (a one-day change), the same lesson is blocked.
+    expect(codes(checkTimetable([place(late)], f))).toEqual(['teacher_unavailable']);
+    // Under the entry in force on the start date, it stays blocked.
+    expect(codes(checkTimetable([place(late)], f, { availabilityFrom: '2026-12-07' }))).toEqual([
+      'teacher_unavailable',
+    ]);
+    // Another lesson of the same call, outside the start date's entry, stays blocked.
+    const early = place({ ...L1, teacherIds: ['t9'], day: '2026-11-21' });
+    expect(
+      checkTimetable([place(late), early], f, { availabilityFrom: '2026-11-16' }).map(
+        (one) => `${one.severity} ${one.rule} ${one.day}`,
+      ),
+    ).toEqual([
+      'blocked teacher_unavailable 2026-11-21',
+      'warning teacher_unavailable_later 2026-12-11',
+    ]);
+  });
+
   it('refuses a teacher with no hours in the lesson branch, or outside them', () => {
     const f = facts({
       teachers: new Map([

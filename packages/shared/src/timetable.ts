@@ -721,6 +721,8 @@ export const ruleResultSchema = z.object({
   weekday: weekdaySchema.nullable(),
   lessonIds: z.array(z.string()),
   detail: z.record(z.string(), z.union([z.number(), z.string()])).optional(),
+  /** A result of a date (task 5.5a-2a): its school date; `weekday` is the date's. */
+  date: schoolDateSchema.optional(),
 });
 
 export type RuleResultAnswer = z.infer<typeof ruleResultSchema>;
@@ -949,6 +951,9 @@ export const patternBlockParamsSchema = z.object({ id: z.uuid(), blockId: z.uuid
  * blocked unless the year has four dated quarters and every subject in the
  * load has its journal type and, if it is graded, its daily distribution and
  * its quarterly distribution for each quarter the version touches").
+ * Task 5.5a-2a: `date_blocked`, a blocked result that only a date of the
+ * version shows (`edge/timetable`, "The pattern is valid but one date is
+ * not": "A blocked conflict on any date stops the save and is listed by date").
  */
 export const PUBLISH_REFUSALS = [
   'version_start_too_early',
@@ -958,6 +963,7 @@ export const PUBLISH_REFUSALS = [
   'draft_not_ready',
   'load_problem',
   'pattern_blocked',
+  'date_blocked',
   'load_mismatch',
   'year_quarters',
   'subject_daily_weights',
@@ -982,13 +988,44 @@ export const publishRefusalSchema = z.object({
   /** `subject_daily_weights` and `subject_quarter_weights`: the subject; the second also its quarter, 1 to 4. */
   subjectId: z.uuid().optional(),
   quarter: z.int().min(1).max(4).optional(),
-  /** `pattern_blocked` and `load_mismatch`: the result of the rule engine. */
+  /** `pattern_blocked`, `date_blocked` and `load_mismatch`: the result of the rule engine. */
   result: ruleResultSchema.optional(),
   /** `version_later_published`: the number of the published version. */
   versionNumber: z.int().min(1).optional(),
 });
 
 export type PublishRefusal = z.infer<typeof publishRefusalSchema>;
+
+/** A lesson of a date created as cancelled at publish (task 5.5a-2a): its pattern entries. */
+export const cancelledLessonSchema = z.object({
+  date: schoolDateSchema,
+  reason: z.enum(['not_in_template', 'day_off']),
+  entryIds: z.array(z.uuid()),
+});
+
+export type CancelledLesson = z.infer<typeof cancelledLessonSchema>;
+
+/**
+ * Why a dated lesson is "needs a teacher" at publish (task 5.5a-2a): a Tutor
+ * row with no Tutor on the date, or whose Tutor of the date clashes
+ * (decision 11); a worked weekday the teacher is not available on
+ * (decision 9); a teacher inactive or left from a date after the start
+ * (decision 10).
+ */
+export const NEEDS_TEACHER_REASONS = [
+  'no_tutor',
+  'tutor_clash',
+  'not_available_real_day',
+  'teacher_out',
+] as const;
+
+export const needsTeacherSchema = z.object({
+  date: schoolDateSchema,
+  entryId: z.uuid(),
+  reason: z.enum(NEEDS_TEACHER_REASONS),
+});
+
+export type NeedsTeacherAnswer = z.infer<typeof needsTeacherSchema>;
 
 /** The start date a publish is checked on. */
 export const publishCheckQuerySchema = z.object({ startsOn: schoolDateSchema });
@@ -1011,6 +1048,15 @@ export const publishCheckSchema = z.object({
   quarterStarts: z.array(schoolDateSchema),
   refusals: z.array(publishRefusalSchema),
   warnings: z.array(ruleResultSchema),
+  /**
+   * Task 5.5a-2a, decision 7: the lessons the day's template cannot hold, a
+   * group of two grades on a date off for one of them; created as cancelled,
+   * never refusing (`edge/timetable`, "The pattern is valid but one date is
+   * not", first exception). An exam week's cancelled lessons are not listed.
+   */
+  cancelledLessons: z.array(cancelledLessonSchema),
+  /** Decisions 9 to 11: lessons that will be "needs a teacher", listed, not refused. */
+  needsTeacher: z.array(needsTeacherSchema),
   canPublish: z.boolean(),
 });
 

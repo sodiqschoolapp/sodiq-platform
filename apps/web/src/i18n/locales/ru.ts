@@ -3412,6 +3412,28 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       placedOf_few: 'Поставлено {{placed}} из {{count}} уроков',
       placedOf_many: 'Поставлено {{placed}} из {{count}} уроков',
       placedOf_other: 'Поставлено {{placed}} из {{count}} урока',
+      busyIn: 'урок в филиале {{branch}}',
+      busyInAnother: 'урок в другом филиале',
+      cancelledTitle_one: '{{count}} урок, который не помещается в день',
+      cancelledTitle_few: '{{count}} урока, которые не помещаются в день',
+      cancelledTitle_many: '{{count}} уроков, которые не помещаются в день',
+      cancelledTitle_other: '{{count}} урока, которые не помещаются в день',
+      cancelledNote: 'Они создаются отменёнными и не мешают публикации.',
+      cancelled: {
+        not_in_template: 'нет в шаблоне дня',
+        day_off: 'выходной для одного из его классов',
+      },
+      needsTeacherTitle_one: '{{count}} урок останется без учителя',
+      needsTeacherTitle_few: '{{count}} урока останутся без учителя',
+      needsTeacherTitle_many: '{{count}} уроков останутся без учителя',
+      needsTeacherTitle_other: '{{count}} урока останутся без учителя',
+      needsTeacherNote: 'Они отмечаются «нужен учитель» и не мешают публикации.',
+      needsTeacher: {
+        no_tutor: 'у класса нет тьютора в этот день',
+        tutor_clash: 'тьютор класса в этот день занят в это время',
+        not_available_real_day: 'учитель недоступен в этот день недели',
+        teacher_out: 'учитель в этот день уже не работает',
+      },
       refusals: {
         version_start_too_early:
           'Дата начала — не раньше завтрашнего дня. Изменение на сегодня — изменение на один день.',
@@ -3427,6 +3449,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
           '{{row}}: {{numbers}}. Поставьте их или отметьте строку как намеренно меньшую с причиной.',
         load_mismatch_row:
           'Строка нагрузки: {{numbers}}. Поставьте их или отметьте строку как намеренно меньшую с причиной.',
+        date_blocked: '{{date}}: {{rule}}',
         pattern_blocked_any: 'Урок нарушает правило расписания.',
         year_quarters: 'В учебном году нет четырёх четвертей с датами.',
         subject_daily_weights:

@@ -3258,6 +3258,25 @@ export const uz: Texts<'one' | 'other'> = {
       notDraft: 'Faqat qoralamani eʼlon qilish mumkin.',
       placedOf_one: '{{count}} ta darsdan {{placed}} tasi qoʻyilgan',
       placedOf_other: '{{count}} ta darsdan {{placed}} tasi qoʻyilgan',
+      busyIn: '{{branch}} filialida darsi bor',
+      busyInAnother: 'boshqa filialda darsi bor',
+      cancelledTitle_one: 'Kunga sigʻmaydigan {{count}} dars',
+      cancelledTitle_other: 'Kunga sigʻmaydigan {{count}} dars',
+      cancelledNote: 'Ular bekor qilingan holda yaratiladi va eʼlon qilishga toʻsqinlik qilmaydi.',
+      cancelled: {
+        not_in_template: 'kun shablonida yoʻq',
+        day_off: 'sinflaridan biri uchun dam olish kuni',
+      },
+      needsTeacherTitle_one: '{{count}} dars oʻqituvchisiz qoladi',
+      needsTeacherTitle_other: '{{count}} dars oʻqituvchisiz qoladi',
+      needsTeacherNote:
+        'Ular «oʻqituvchi kerak» deb belgilanadi va eʼlon qilishga toʻsqinlik qilmaydi.',
+      needsTeacher: {
+        no_tutor: 'shu kuni sinfning tyutori yoʻq',
+        tutor_clash: 'shu kuni sinf tyutori bu vaqtda band',
+        not_available_real_day: 'oʻqituvchi haftaning shu kunida ishlamaydi',
+        teacher_out: 'shu kuni oʻqituvchi endi ishlamaydi',
+      },
       refusals: {
         version_start_too_early:
           'Boshlanish sanasi eng erta ertaga. Bugungi oʻzgarish — bir kunlik oʻzgarish.',
@@ -3273,6 +3292,7 @@ export const uz: Texts<'one' | 'other'> = {
           '{{row}}: {{numbers}}. Ularni qoʻying yoki qatorni sababi bilan ataylab kam deb belgilang.',
         load_mismatch_row:
           'Yuklama qatori: {{numbers}}. Ularni qoʻying yoki qatorni sababi bilan ataylab kam deb belgilang.',
+        date_blocked: '{{date}}: {{rule}}',
         pattern_blocked_any: 'Bir dars dars jadvali qoidasini buzadi.',
         year_quarters: 'Oʻquv yilida sanasi belgilangan toʻrtta chorak yoʻq.',
         subject_daily_weights: '{{subject}} fanining bu filialda kunlik taqsimoti yoʻq.',

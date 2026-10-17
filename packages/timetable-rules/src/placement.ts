@@ -203,4 +203,13 @@ export interface Facts {
  */
 export interface CheckOptions {
   readonly noSubjectTeacherFree?: boolean;
+  /**
+   * A publish (task 5.5a-2a, decision 6): the version's start date. In dated
+   * mode a lesson outside the hours of the availability entry in force on its
+   * date is `teacher_unavailable_later` (a warning, `detail.date`) when that
+   * entry is not the one in force on this date, and `teacher_unavailable`
+   * when it is (06, Rules, availability row: "dates on which a later entry
+   * applies are checked at publish and listed as warnings by date").
+   */
+  readonly availabilityFrom?: string;
 }

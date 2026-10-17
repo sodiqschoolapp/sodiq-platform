@@ -3233,6 +3233,24 @@ export const en = {
       notDraft: 'Only a draft can be published.',
       placedOf_one: '{{placed}} of {{count}} lesson placed',
       placedOf_other: '{{placed}} of {{count}} lessons placed',
+      busyIn: 'with a lesson in {{branch}}',
+      busyInAnother: 'with a lesson in another branch',
+      cancelledTitle_one: '{{count}} lesson the day cannot hold',
+      cancelledTitle_other: '{{count}} lessons the day cannot hold',
+      cancelledNote: 'They are created as cancelled and do not stop the publish.',
+      cancelled: {
+        not_in_template: "not in the day's template",
+        day_off: 'a day off for one of its grades',
+      },
+      needsTeacherTitle_one: '{{count}} lesson will need a teacher',
+      needsTeacherTitle_other: '{{count}} lessons will need a teacher',
+      needsTeacherNote: 'They are marked "needs a teacher" and do not stop the publish.',
+      needsTeacher: {
+        no_tutor: 'the class has no Tutor on that date',
+        tutor_clash: "the class's Tutor on that date is busy at that time",
+        not_available_real_day: 'the teacher is not available on that day of the week',
+        teacher_out: 'the teacher is no longer active on that date',
+      },
       refusals: {
         version_start_too_early:
           'The start date is tomorrow at the earliest. A change for today is a one-day change.',
@@ -3248,6 +3266,7 @@ export const en = {
           '{{row}}: {{numbers}}. Place them, or mark the row deliberately short with a reason.',
         load_mismatch_row:
           'A row of the load: {{numbers}}. Place them, or mark the row deliberately short with a reason.',
+        date_blocked: '{{date}}: {{rule}}',
         pattern_blocked_any: 'A lesson breaks a rule of the timetable.',
         year_quarters: 'The academic year does not have four dated quarters.',
         subject_daily_weights: '{{subject}} has no daily distribution in this branch.',

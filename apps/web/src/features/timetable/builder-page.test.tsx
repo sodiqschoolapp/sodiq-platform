@@ -709,6 +709,8 @@ describe('pinSlots', () => {
       quarterStarts: ['2026-11-02', '2027-01-11'],
       refusals: [],
       warnings: [],
+      cancelledLessons: [],
+      needsTeacher: [],
       canPublish: true,
     };
     const checkRoute = `GET /api/timetable/versions/${VERSION.id}/publish-check`;
@@ -753,6 +755,69 @@ describe('pinSlots', () => {
         'disabled',
         true,
       );
+    });
+
+    // Task 5.5a-2a, pull request #140: what a date of the version shows.
+    it('lists a refusal and a warning by date, the lessons the day cannot hold and those that need a teacher', async () => {
+      const entry = '0199a000-0000-7000-8000-000000000950';
+      await openPage({
+        path: `/timetable/builder?version=${VERSION.id}&step=publish`,
+        extra: {
+          [checkRoute]: () =>
+            json({
+              ...CHECK,
+              canPublish: false,
+              refusals: [
+                {
+                  code: 'date_blocked',
+                  result: {
+                    rule: 'teacher_double',
+                    severity: 'blocked',
+                    weekday: 1,
+                    date: '2026-11-16',
+                    lessonIds: [entry],
+                    detail: { branchId: '0199a000-0000-7000-8000-000000000951' },
+                  },
+                },
+              ],
+              warnings: [
+                {
+                  rule: 'teacher_unavailable_later',
+                  severity: 'warning',
+                  weekday: 1,
+                  date: '2027-01-11',
+                  lessonIds: [entry],
+                  detail: { date: '2027-01-11' },
+                },
+              ],
+              cancelledLessons: [
+                { date: '2026-11-23', reason: 'not_in_template', entryIds: [entry] },
+              ],
+              needsTeacher: [
+                { date: '2026-11-21', entryId: entry, reason: 'not_available_real_day' },
+              ],
+            }),
+        },
+      });
+      const refusals = await waitFor(() => {
+        const found = document.querySelector('[data-refusals]');
+        if (found === null) throw new Error('No list yet.');
+        return found;
+      });
+      expect([...refusals.querySelectorAll('li')].map((item) => item.textContent)).toEqual([
+        `16 November 2026: ${en.timetable.rule.teacher_double}. ${en.timetable.publish.busyInAnother}`,
+      ]);
+      expect(document.querySelector('[data-date="2027-01-11"]')?.textContent).toBe(
+        `11 January 2027: ${en.timetable.rule.teacher_unavailable_later}`,
+      );
+      expect(document.querySelector('[data-cancelled] li')?.textContent).toBe(
+        `23 November 2026: ${en.timetable.publish.cancelled.not_in_template}`,
+      );
+      expect(document.querySelector('[data-needs-teacher] li')?.textContent).toBe(
+        `21 November 2026: ${en.timetable.publish.needsTeacher.not_available_real_day}`,
+      );
+      screen.getByRole('heading', { name: '1 lesson the day cannot hold' });
+      screen.getByRole('heading', { name: '1 lesson will need a teacher' });
     });
 
     it('checks the date chosen by a shortcut and publishes on it after the confirmation', async () => {

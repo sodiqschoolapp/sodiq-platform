@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { publishRefusals, startChoices } from './publish.js';
+import type { DatedLesson } from './dated.js';
+import {
+  datedPublishResults,
+  publishRefusals,
+  startChoices,
+  type DatedPublishInput,
+} from './publish.js';
 import type { RuleResult } from './rules.js';
 
 const year = {
@@ -86,5 +92,178 @@ describe('publishRefusals', () => {
       mismatched: [mismatch],
       warnings: [],
     });
+  });
+});
+
+describe('datedPublishResults (task 5.5a-2a)', () => {
+  const lessonOf = (
+    entryId: string,
+    date: string,
+    extra: Partial<DatedLesson> = {},
+  ): DatedLesson => ({
+    entryId,
+    date,
+    tutorFollowed: false,
+    placement: {
+      id: `${entryId}@${date}`,
+      kind: 'lesson',
+      branchId: 'a',
+      day: date,
+      start: 480,
+      end: 525,
+      blockId: `b-${entryId}@${date}`,
+      doublePairId: null,
+      classId: '7a',
+      groupId: null,
+      classIds: ['7a'],
+      studentIds: [],
+      exemptStudentIds: [],
+      subjectId: 'math',
+      loadRowId: 'row',
+      teacherIds: ['t1'],
+      substitute: false,
+      roomId: null,
+      examRooms: [],
+      fixed: false,
+    },
+    ...extra,
+  });
+  const result = (
+    rule: RuleResult['rule'],
+    day: string,
+    lessonIds: string[],
+    detail?: Record<string, string | number>,
+  ): RuleResult => ({
+    rule,
+    severity: rule === 'teacher_unavailable_later' ? 'warning' : 'blocked',
+    day,
+    lessonIds,
+    ...(detail === undefined ? {} : { detail }),
+  });
+  const FIXED: Record<string, string> = {
+    'pattern-b': 'branch-b',
+    'claim-b': 'branch-b',
+    'claim-c': 'branch-c',
+  };
+  const base = (extra: Partial<DatedPublishInput>): DatedPublishInput => ({
+    patternBlocked: [],
+    dated: [],
+    lessons: new Map(),
+    tutorNeeds: [],
+    fixedBranch: (id) => FIXED[id] ?? null,
+    followsOther: () => false,
+    outOnStart: () => false,
+    ...extra,
+  });
+
+  it('leaves out a date that repeats a pattern refusal, and keeps one against another branch', () => {
+    const e1 = lessonOf('e1', '2026-11-16');
+    const e1Later = lessonOf('e1', '2026-12-07');
+    const found = datedPublishResults(
+      base({
+        // The pattern refuses e1 against branch B.
+        patternBlocked: [result('teacher_double', '1', ['e1', 'pattern-b'])],
+        dated: [
+          result('teacher_double', '2026-11-16', ['e1@2026-11-16', 'claim-b']),
+          // A date shows e1 against branch C (review correction 1).
+          result('teacher_double', '2026-12-07', ['e1@2026-12-07', 'claim-c']),
+        ],
+        lessons: new Map([
+          [e1.placement.id, e1],
+          [e1Later.placement.id, e1Later],
+        ]),
+      }),
+    );
+    expect(found.blocked.map((one) => one.day)).toEqual(['2026-12-07']);
+  });
+
+  it('keeps two dated results that differ only in their detail (.claude/rules/timetable.md)', () => {
+    const e1 = lessonOf('e1', '2026-11-16');
+    const found = datedPublishResults(
+      base({
+        patternBlocked: [result('split_apart', '1', ['e1'], { slots: 2 })],
+        dated: [result('split_apart', '2026-11-16', ['e1@2026-11-16'], { students: 3 })],
+        lessons: new Map([[e1.placement.id, e1]]),
+      }),
+    );
+    expect(found.blocked).toHaveLength(1);
+    // The same detail on a date is a repeat; the date itself is not part of the key.
+    expect(
+      datedPublishResults(
+        base({
+          patternBlocked: [result('split_apart', '1', ['e1'], { slots: 2 })],
+          dated: [
+            result('split_apart', '2026-11-16', ['e1@2026-11-16'], {
+              slots: 2,
+              date: '2026-11-16',
+            }),
+          ],
+          lessons: new Map([[e1.placement.id, e1]]),
+        }),
+      ).blocked,
+    ).toEqual([]);
+  });
+
+  it('keeps the Tutor lessons found "needs a teacher" before', () => {
+    const found = datedPublishResults(
+      base({
+        tutorNeeds: [
+          { date: '2026-11-30', entryId: 'tut', reason: 'no_tutor' },
+          { date: '2026-11-23', entryId: 'tut', reason: 'tutor_clash' },
+        ],
+      }),
+    );
+    expect(found.needsTeacher).toEqual([
+      { date: '2026-11-23', entryId: 'tut', reason: 'tutor_clash' },
+      { date: '2026-11-30', entryId: 'tut', reason: 'no_tutor' },
+    ]);
+  });
+
+  it('lists a worked Saturday outside the hours of the real day as needs a teacher', () => {
+    const saturday = lessonOf('e1', '2026-11-21');
+    const monday = lessonOf('e1', '2026-11-23');
+    const found = datedPublishResults(
+      base({
+        dated: [
+          result('teacher_unavailable', '2026-11-21', ['e1@2026-11-21']),
+          result('teacher_unavailable', '2026-11-23', ['e1@2026-11-23']),
+        ],
+        lessons: new Map([
+          [saturday.placement.id, saturday],
+          [monday.placement.id, monday],
+        ]),
+        followsOther: (date) => date === '2026-11-21',
+      }),
+    );
+    expect(found.needsTeacher).toEqual([
+      { date: '2026-11-21', entryId: 'e1', reason: 'not_available_real_day' },
+    ]);
+    expect(found.blocked.map((one) => one.day)).toEqual(['2026-11-23']);
+  });
+
+  it('lists a teacher out from a date after the start as needs a teacher; out on the start stays refused', () => {
+    const lesson = lessonOf('e1', '2026-12-07');
+    const dated = [result('teacher_inactive', '2026-12-07', ['e1@2026-12-07'])];
+    const lessons = new Map([[lesson.placement.id, lesson]]);
+    expect(datedPublishResults(base({ dated, lessons })).needsTeacher).toEqual([
+      { date: '2026-12-07', entryId: 'e1', reason: 'teacher_out' },
+    ]);
+    const outBefore = datedPublishResults(base({ dated, lessons, outOnStart: () => true }));
+    expect(outBefore.needsTeacher).toEqual([]);
+    expect(outBefore.blocked).toHaveLength(1);
+  });
+
+  it('keeps only the later-availability warnings', () => {
+    const found = datedPublishResults(
+      base({
+        dated: [
+          result('teacher_unavailable_later', '2026-12-11', ['e1@2026-12-11'], {
+            date: '2026-12-11',
+          }),
+          { ...result('subject_twice', '2026-12-11', ['e1@2026-12-11']), severity: 'warning' },
+        ],
+      }),
+    );
+    expect(found.warnings.map((one) => one.rule)).toEqual(['teacher_unavailable_later']);
   });
 });
