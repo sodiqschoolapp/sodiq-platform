@@ -109,20 +109,89 @@ export function checkedPlacements(
 export const NEW_BLOCK_ID = 'new';
 
 /**
+ * The halves a half of a mixed split may be paired with (task 5.4c-3b,
+ * decision 5; `partnersIn`): those that share no student with it first
+ * (a sort only; the engine's `split_apart` and `student_double` decide), then
+ * by id. Empty for a row that is not a mixed half.
+ */
+export function mixedPartners(model: PatternModel, rowId: string): string[] {
+  const row = model.rowOf(rowId);
+  const partners = model.facts.loadRows.find((one) => one.id === rowId)?.partners ?? [];
+  const students = new Set(model.unitOf(row.groupId ?? row.classId ?? '').studentIds);
+  const shares = (id: string) => {
+    const other = model.rowOf(id);
+    return model
+      .unitOf(other.groupId ?? other.classId ?? '')
+      .studentIds.some((student) => students.has(student));
+  };
+  return [...partners.filter((id) => !shares(id)), ...partners.filter(shares)];
+}
+
+/** The refusal of a block of a row and a partner (task 5.4c-3b, decision 7). */
+export type PairingProblem = 'pattern_mixed_partner';
+
+/**
+ * Whether `partnerRowId` may be paired with `rowId` in one block: `null`, or
+ * `pattern_mixed_partner` when the row is not a mixed half, or the partner is
+ * the row itself or not among its partners. The same answer whichever row
+ * comes first.
+ */
+export function pairingProblem(
+  model: PatternModel,
+  rowId: string,
+  partnerRowId: string,
+): PairingProblem | null {
+  const partners = model.facts.loadRows.find((one) => one.id === rowId)?.partners ?? [];
+  return partners.includes(partnerRowId) ? null : 'pattern_mixed_partner';
+}
+
+/** The two rows of a pairing, sorted, when `rowIds` are exactly two partners; else `null`. */
+export function pairingOf(
+  model: PatternModel,
+  rowIds: readonly string[],
+): readonly [string, string] | null {
+  const [a, b] = [...new Set(rowIds)].sort();
+  if (a === undefined || b === undefined || rowIds.length !== 2) return null;
+  return pairingProblem(model, a, b) === null ? [a, b] : null;
+}
+
+/**
+ * The rows a place or rearrange body names to build a block of these rows
+ * again (task 5.4c-3b): the two rows of a pairing as `loadRowId` and
+ * `partnerRowId`, else the first row, whose whole block it is.
+ */
+export function placeRowsOf(
+  model: PatternModel,
+  rowIds: readonly string[],
+): { readonly loadRowId: string; readonly partnerRowId?: string } {
+  const pairing = pairingOf(model, rowIds);
+  if (pairing !== null) return { loadRowId: pairing[0], partnerRowId: pairing[1] };
+  return { loadRowId: rowIds[0] ?? '' };
+}
+
+/**
  * The block of a load row not placed yet, as the place route builds it: one
  * lesson per row of its block, each in its row's room, else a class row's
  * main classroom (`roomOfNew`); it sits at no slot until it is placed. The
  * one builder of a new block for the grid, "Suggest a place" and the routes
- * (task 5.4b-2b, review correction 2).
+ * (task 5.4b-2b, review correction 2). Task 5.4c-3b: with `partnerRowId`, the
+ * pairing of a mixed half with a partner (`pairingProblem` first): one lesson
+ * per row, sorted by row id, the same block whichever row is passed first;
+ * without one, a mixed half takes its whole split, as every split does.
  */
-export function newBlockOf(model: PatternModel, rowId: string): PatternBlock {
+export function newBlockOf(
+  model: PatternModel,
+  rowId: string,
+  partnerRowId?: string,
+): PatternBlock {
+  const rows = partnerRowId === undefined ? model.rowOf(rowId).block : [rowId, partnerRowId].sort();
   return {
     id: NEW_BLOCK_ID,
     weekday: 0,
     slotPosition: 0,
     start: 0,
     end: 0,
-    lessons: model.rowOf(rowId).block.map((id) => ({
+    lessons: rows.map((id) => ({
       id: `new:${id}`,
       loadRowId: id,
       roomId: model.roomOfNew(model.rowOf(id)),
@@ -138,10 +207,14 @@ export const NEW_SECOND_HALF_ID = `${NEW_BLOCK_ID}:2`;
  * The two halves of a double lesson of a load row not placed yet (task
  * 5.4c-3a): two blocks of `newBlockOf`, with ids of their own and lesson ids
  * of their own (one id twice would be one lesson to `checkCandidates`), the
- * first half first.
+ * first half first. Task 5.4c-3b: with `partnerRowId`, a double of a pairing.
  */
-export function newPairOf(model: PatternModel, rowId: string): [PatternBlock, PatternBlock] {
-  const first = newBlockOf(model, rowId);
+export function newPairOf(
+  model: PatternModel,
+  rowId: string,
+  partnerRowId?: string,
+): [PatternBlock, PatternBlock] {
+  const first = newBlockOf(model, rowId, partnerRowId);
   return [
     { ...first, doublePairId: NEW_BLOCK_ID },
     {

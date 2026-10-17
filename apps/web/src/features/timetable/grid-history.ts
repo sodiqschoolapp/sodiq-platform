@@ -6,7 +6,12 @@ import {
   type RearrangeRecord,
   type SwapRecord,
 } from '@sodiq/shared';
-import { newBlockOf, type PatternBlock, type PatternModel } from '@sodiq/timetable-rules';
+import {
+  newBlockOf,
+  placeRowsOf,
+  type PatternBlock,
+  type PatternModel,
+} from '@sodiq/timetable-rules';
 
 /**
  * Undo and redo of the grid (06, Editing in the grid: "Undo and redo"; task
@@ -159,7 +164,9 @@ export function movesOf(
  * Whether the board still holds every block of the step as the direction
  * finds it (decision 3): a block in the same slot with the same rooms, a
  * removed block still absent, and a block to place again built by the rule
- * engine (`newBlockOf`) from the same load rows, so a load edit since is seen.
+ * engine (`newBlockOf`) from the same load rows, so a load edit since is seen;
+ * task 5.4c-3b: a pairing with its partner (`placeRowsOf`), so a pairing whose
+ * rows no longer pair is not placed again.
  */
 export function stillApplies(
   model: PatternModel,
@@ -174,10 +181,10 @@ export function stillApplies(
     }
     if (to === null) return true;
     if (blocks.some((one) => one.id === to.blockId)) return false;
-    const [first] = rowsOf(to);
-    if (first === undefined) return false;
+    if (rowsOf(to).length === 0) return false;
     try {
-      const fresh = newBlockOf(model, first);
+      const rows = placeRowsOf(model, rowsOf(to));
+      const fresh = newBlockOf(model, rows.loadRowId, rows.partnerRowId);
       return (
         fresh.lessons
           .map((lesson) => lesson.loadRowId)
@@ -211,13 +218,16 @@ const roomsOf = (state: BlockState) =>
 /**
  * The write of a step in a direction. The room route names a lesson by its
  * id, read from the board now (`blocks`), so a block placed again since still
- * works.
+ * works. Task 5.4c-3b: a block placed again names its rows as the rule engine
+ * builds it (`placeRowsOf` of `model`): both rows of a pairing.
  */
 export function writeOf(
   step: Step,
   direction: Direction,
   blocks: readonly PatternBlock[],
+  model: PatternModel,
 ): StepWrite {
+  const rowsToPlace = (state: BlockState) => placeRowsOf(model, rowsOf(state));
   const moves = movesOf(step, direction);
   const [first, second] = moves;
   if (first === undefined) throw new Error('A step changes a block.');
@@ -240,7 +250,7 @@ export function writeOf(
         return {
           route: 'place',
           body: {
-            loadRowId: earlier.rooms[0]?.loadRowId ?? '',
+            ...rowsToPlace(earlier),
             ...slotOf(earlier),
             rooms: roomsOf(earlier),
             double: true,
@@ -278,7 +288,7 @@ export function writeOf(
     if (from === null && to !== null) {
       return {
         route: 'place',
-        body: { loadRowId: to.rooms[0]?.loadRowId ?? '', ...slotOf(to), rooms: roomsOf(to) },
+        body: { ...rowsToPlace(to), ...slotOf(to), rooms: roomsOf(to) },
       };
     }
     if (from !== null && to !== null && step.kind === 'move') {
@@ -293,7 +303,7 @@ export function writeOf(
     if (to === null) {
       if (from !== null) remove.push(from.blockId);
     } else if (from === null) {
-      changes.push({ loadRowId: to.rooms[0]?.loadRowId ?? '', ...slotOf(to), rooms: roomsOf(to) });
+      changes.push({ ...rowsToPlace(to), ...slotOf(to), rooms: roomsOf(to) });
     } else {
       changes.push({ blockId: from.blockId, ...slotOf(to), rooms: roomsOf(to) });
     }

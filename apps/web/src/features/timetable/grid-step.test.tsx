@@ -288,6 +288,70 @@ const GRID: GridAnswer = {
   results: [],
 };
 
+// Task 5.4c-3b: Oxford's English and mathematics split into boys (3001) and
+// girls (3002), each split marked mixed.
+const ROW_ENG_BOYS = uid(710);
+const ROW_ENG_GIRLS = uid(711);
+const ROW_MATH_BOYS = uid(712);
+const ROW_MATH_GIRLS = uid(713);
+const MIXED = [
+  { row: ROW_ENG_BOYS, group: uid(110), name: '7-E-B', subject: ENGLISH, student: uid(3001) },
+  { row: ROW_ENG_GIRLS, group: uid(111), name: '7-E-G', subject: ENGLISH, student: uid(3002) },
+  { row: ROW_MATH_BOYS, group: uid(112), name: '7-M-B', subject: MATH, student: uid(3001) },
+  { row: ROW_MATH_GIRLS, group: uid(113), name: '7-M-G', subject: MATH, student: uid(3002) },
+];
+const MIXED_GRID: GridAnswer = {
+  ...GRID,
+  rows: [
+    ...GRID.rows,
+    ...MIXED.map((one) => {
+      const like = GRID.rows.find((row) => row.subject.id === one.subject);
+      if (like === undefined) throw new Error('A row of the subject.');
+      return {
+        ...like,
+        id: one.row,
+        unit: unit(one.group, one.name, 'group'),
+        lessonsPerWeek: 2,
+        mixedBlock: true,
+      };
+    }),
+  ],
+  facts: {
+    ...GRID.facts,
+    units: [
+      ...GRID.facts.units,
+      ...MIXED.map((one) => ({
+        id: one.group,
+        kind: 'group' as const,
+        grades: [7],
+        language: 'uz',
+        tutorOnStart: null,
+        classIds: [OXFORD],
+        studentIds: [one.student],
+        mainRoomId: null,
+      })),
+    ],
+    rows: [
+      ...GRID.facts.rows,
+      ...MIXED.map((one) => ({
+        id: one.row,
+        classId: null,
+        groupId: one.group,
+        subjectId: one.subject,
+        // The boys' halves Tosheva's, the girls' Karimova's: no pairing or split clashes.
+        teacherId: one.row === ROW_ENG_BOYS || one.row === ROW_MATH_BOYS ? TOSHEVA : KARIMOVA,
+        roomId: null,
+        roomType: null,
+        lessonsPerWeek: 2,
+        mixedBlock: true,
+        doubleLessons: false,
+        block:
+          one.subject === ENGLISH ? [ROW_ENG_BOYS, ROW_ENG_GIRLS] : [ROW_MATH_BOYS, ROW_MATH_GIRLS],
+      })),
+    ],
+  },
+};
+
 const vice = () =>
   sessionOf({
     assignments: [{ role: 'academic_vice_principal', branchId: NORTH.id }],
@@ -797,17 +861,77 @@ describe('the panels of the grid', () => {
     expect(document.querySelector('[data-board]')?.getAttribute('data-board')).toBe(PRINCETON);
   });
 
-  it('lists a half of a mixed split without a way to place it', async () => {
-    await openGrid({
-      grid: {
-        ...GRID,
-        rows: GRID.rows.map((row) => (row.id === ROW_GROUP ? { ...row, mixedBlock: true } : row)),
-      },
+  // Task 5.4c-3b: a half of a mixed split is an entry of its own, placed
+  // "Paired with" a half of another subject's mixed split, or as its whole split.
+  it('places a half of a mixed split from "To place" paired with a partner, those sharing no student first', async () => {
+    const calls = await openGrid({ grid: MIXED_GRID });
+    const entry = panel()?.querySelector<HTMLElement>(`[data-to-place="${ROW_ENG_BOYS}"]`);
+    if (entry === null || entry === undefined) throw new Error('No entry.');
+    // Each half has an entry of its own.
+    expect(panel()?.querySelector(`[data-to-place="${ROW_ENG_GIRLS}"]`)).not.toBeNull();
+    const select = within(entry).getByLabelText(en.timetable.grid.pairedWith);
+    expect([...select.querySelectorAll('option')].map((one) => one.textContent)).toEqual([
+      en.timetable.grid.wholeSplit,
+      'Mathematics, 7-M-G: 0 of 2 lessons placed',
+      'Mathematics, 7-M-B: 0 of 2 lessons placed',
+    ]);
+    fireEvent.change(select, { target: { value: ROW_MATH_GIRLS } });
+    expect(entry.className).toContain('cursor-grab');
+    fireEvent.click(within(entry).getByRole('button', { name: en.timetable.grid.place }));
+    const dialog = await screen.findByRole('dialog');
+    const free = dialog.querySelector<HTMLButtonElement>('[data-move-cell="3:5"] button');
+    if (free === null) throw new Error('No free slot.');
+    fireEvent.click(free);
+    await waitFor(() => {
+      expect(calls.find((call) => call.route.endsWith('/pattern'))?.body).toEqual({
+        loadRowId: ROW_ENG_BOYS,
+        partnerRowId: ROW_MATH_GIRLS,
+        weekday: 3,
+        slotPosition: 5,
+      });
     });
-    const mixed = panel()?.querySelector<HTMLElement>(`[data-to-place="${ROW_GROUP}"]`);
-    expect(mixed?.textContent).toContain(en.timetable.grid.mixedLater);
-    expect(mixed?.querySelector('button')).toBeNull();
-    expect(mixed?.className).not.toContain('cursor-grab');
+  });
+
+  it('places a half of a mixed split left "The whole split" with its own split', async () => {
+    const calls = await openGrid({ grid: MIXED_GRID });
+    const entry = panel()?.querySelector<HTMLElement>(`[data-to-place="${ROW_ENG_GIRLS}"]`);
+    if (entry === null || entry === undefined) throw new Error('No entry.');
+    fireEvent.click(within(entry).getByRole('button', { name: en.timetable.grid.place }));
+    const dialog = await screen.findByRole('dialog');
+    const free = dialog.querySelector<HTMLButtonElement>('[data-move-cell="3:5"] button');
+    if (free === null) throw new Error('No free slot.');
+    fireEvent.click(free);
+    await waitFor(() => {
+      expect(calls.find((call) => call.route.endsWith('/pattern'))?.body).toEqual({
+        loadRowId: ROW_ENG_BOYS,
+        weekday: 3,
+        slotPosition: 5,
+      });
+    });
+  });
+
+  it('offers both halves of a mixed split in an empty slot and sends the partner chosen', async () => {
+    const calls = await openGrid({ grid: MIXED_GRID });
+    const empty = cellOf(4, 3);
+    if (empty === null) throw new Error('No cell.');
+    fireEvent.click(within(empty).getByRole('button', { name: /Add a lesson/ }));
+    const form = await screen.findByRole('form');
+    const select = within(form).getByLabelText(en.timetable.grid.lesson);
+    const options = [...select.querySelectorAll('option')].map((one) => one.textContent);
+    expect(options).toContain('English, 7-E-B: 0 of 2 lessons placed');
+    expect(options).toContain('English, 7-E-G: 0 of 2 lessons placed');
+    fireEvent.change(select, { target: { value: ROW_ENG_GIRLS } });
+    const partner = within(form).getByLabelText(en.timetable.grid.pairedWith);
+    fireEvent.change(partner, { target: { value: ROW_MATH_BOYS } });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(calls.find((call) => call.route.endsWith('/pattern'))?.body).toEqual({
+        loadRowId: ROW_ENG_GIRLS,
+        partnerRowId: ROW_MATH_BOYS,
+        weekday: 4,
+        slotPosition: 3,
+      });
+    });
   });
 
   it('lists only the rooms free at the lesson’s time, best fit first, and saves the one chosen', async () => {
@@ -934,6 +1058,28 @@ describe('the panels of the grid', () => {
     const [only] = conflicts();
     expect(only?.textContent).toContain('In a draft of Riverside');
     expect(only?.querySelector('button')).toBeNull();
+  });
+
+  // Task 5.4c-3b (review correction 2): a block that is neither one split nor
+  // a pairing has a text of its own, not the count of students without a lesson.
+  it('names a block of halves that no longer pair as a split apart, with its own text', async () => {
+    await openGrid({
+      grid: {
+        ...GRID,
+        results: [
+          {
+            rule: 'split_apart',
+            severity: 'blocked',
+            weekday: 2,
+            lessonIds: [uid(1002)],
+            detail: { rows: 2 },
+          },
+        ],
+      },
+    });
+    const [only] = conflicts();
+    expect(only?.textContent).toContain(en.timetable.conflict.splitRows);
+    expect(only?.textContent).not.toContain('no lesson at this time');
   });
 
   it('marks step 7 with its errors and warnings, apart from the gate of generation', async () => {

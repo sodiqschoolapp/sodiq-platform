@@ -156,6 +156,14 @@ export interface EngineLoadRow {
   readonly deliberatelyShort: boolean;
   /** "Whether double lessons are allowed" (05, Teaching load; task 5.4c-3a). */
   readonly doubleLessons: boolean;
+  /**
+   * The rows of its block, the row included (`PatternRowData.block`), and the
+   * mixed halves it may be paired with (task 5.4c-3b): a pattern block holds
+   * the rows of one block or a pairing of two partners (`checkBlocks`). Given in
+   * pattern mode; a row without them is not checked so (dated lessons, 5.5b).
+   */
+  readonly block?: readonly string[];
+  readonly partners?: readonly string[];
 }
 
 export interface Facts {

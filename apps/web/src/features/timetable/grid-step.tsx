@@ -78,14 +78,23 @@ import {
   newBlockOf,
   newPairOf,
   NEW_BLOCK_ID,
+  placeRowsOf,
   useSlotStatuses,
   type BoardCell,
   type Drop,
 } from './use-slot-status';
 
-/** A block not placed yet: the first half of a new double (task 5.4c-3a), or a single one. */
-const newOf = (model: PatternModel, rowId: string, double: boolean): PatternBlock =>
-  double ? newPairOf(model, rowId)[0] : newBlockOf(model, rowId);
+/**
+ * A block not placed yet: the first half of a new double (task 5.4c-3a), or a
+ * single one; task 5.4c-3b: a pairing with `partnerRowId`.
+ */
+const newOf = (
+  model: PatternModel,
+  rowId: string,
+  double: boolean,
+  partnerRowId?: string,
+): PatternBlock =>
+  double ? newPairOf(model, rowId, partnerRowId)[0] : newBlockOf(model, rowId, partnerRowId);
 
 /**
  * Step 7 of the builder, the grid (06, Editing in the grid; task 5.4a, pull
@@ -265,8 +274,12 @@ export function GridStep({
         return swapBlocks(versionId, { blockIds: [drop.block.id, drop.other.id] });
       }
       if (drop.kind === 'place') {
+        if (model === null) throw new Error('The grid is not read yet.');
         return placeBlock(versionId, {
-          loadRowId: drop.block.lessons[0]?.loadRowId ?? '',
+          ...placeRowsOf(
+            model,
+            drop.block.lessons.map((lesson) => lesson.loadRowId),
+          ),
           weekday: weekdaySchema.parse(drop.to.weekday),
           slotPosition: drop.to.slotPosition,
           ...(drop.double ? { double: true } : {}),
@@ -345,10 +358,11 @@ export function GridStep({
         ...gridQuery(branchId, versionId),
         staleTime: 0,
       });
-      if (!stillApplies(patternModel(fresh.facts), fresh.blocks, step, direction)) {
+      const freshModel = patternModel(fresh.facts);
+      if (!stillApplies(freshModel, fresh.blocks, step, direction)) {
         throw new ChangedSince();
       }
-      const answer = await sent(writeOf(step, direction, fresh.blocks));
+      const answer = await sent(writeOf(step, direction, fresh.blocks, freshModel));
       return { answer, before: fresh.blocks, step };
     },
     onSuccess: ({ answer, before, step }, direction) => {
@@ -446,7 +460,9 @@ export function GridStep({
       onDragStart: ({ source }) => {
         const data = source.data;
         if (isPlaceData(data) && model !== null) {
-          setMoving(newOf(model, data.placeRowId, data.placeDouble === true));
+          setMoving(
+            newOf(model, data.placeRowId, data.placeDouble === true, data.placePartnerRowId),
+          );
           setRefusal(null);
           return;
         }
@@ -461,7 +477,7 @@ export function GridStep({
         if (target === undefined || !isCellData(target)) return;
         const block =
           isPlaceData(data) && model !== null
-            ? newOf(model, data.placeRowId, data.placeDouble === true)
+            ? newOf(model, data.placeRowId, data.placeDouble === true, data.placePartnerRowId)
             : isTileData(data)
               ? all.find((one) => one.id === data.blockId)
               : undefined;
@@ -826,21 +842,21 @@ export function GridStep({
               classId={chosen.id}
               editable={editable}
               highlightRowId={shownRow}
-              onPlace={(entry, double) => {
+              onPlace={(entry, double, partnerRowId) => {
                 setRefusal(null);
                 setPlaced(false);
                 setAdding(null);
                 if (!entry.classIds.includes(chosen.id)) {
                   setClassId(entry.classIds[0] ?? chosen.id);
                 }
-                setMoving(newOf(model, entry.rowId, double));
+                setMoving(newOf(model, entry.rowId, double, partnerRowId));
                 setMenuOpen(true);
               }}
-              onSuggest={(entry) => {
+              onSuggest={(entry, partnerRowId) => {
                 setRefusal(null);
                 setPlaced(false);
                 setAdding(null);
-                setSuggesting(newBlockOf(model, entry.rowId));
+                setSuggesting(newBlockOf(model, entry.rowId, partnerRowId));
               }}
             />
           )}

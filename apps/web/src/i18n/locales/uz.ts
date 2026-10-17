@@ -382,8 +382,8 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu darsni bu yerga qoʻyib boʻlmaydi: uni dars jadvalining qoidasi taqiqlaydi. Boʻsh yoki ogohlantirishli slotni tanlang.',
     pattern_no_slot:
       'Bu kunda sinf yoki guruh uchun bunday dars sloti yoʻq. Uning kunidagi slotni tanlang.',
-    pattern_mixed_block:
-      'Aralash boʻlinmaning yarmi bu yerda hozircha qoʻyilmaydi: uning yarmlari turli slotlarda oʻtadi.',
+    pattern_mixed_partner:
+      'Bu yarmni bunisi bilan juftlab boʻlmaydi: shu sinfning boshqa fan aralash boʻlinmasidan yarmni tanlang.',
     pattern_clash:
       'Bu vaqtda oʻqituvchi, xona yoki sinf boshqa dars bilan band. Jadvalni yangilang va boshqa slotni tanlang.',
     pattern_locked:
@@ -3189,7 +3189,8 @@ export const uz: Texts<'one' | 'other'> = {
       noWarnings: 'Ogohlantirish yoʻq',
       movesTo: '{{lesson}}: {{from}} → {{to}}',
       placedAt: '{{lesson}}: {{to}} ga qoʻyiladi',
-      mixedLater: 'Boʻlinmaning ikkinchi yarmi bilan birga joylashtiriladi.',
+      pairedWith: 'Juftligi',
+      wholeSplit: 'Butun boʻlinma',
       changeRoom: 'Xona',
       roomOf: '{{subject}}, {{unit}} xonasi',
       roomTitle: '{{lesson}} uchun xona',
@@ -3218,6 +3219,8 @@ export const uz: Texts<'one' | 'other'> = {
       room_shared_full_other: 'Xonada bir vaqtda {{count}} ta dars oʻtadi.',
       room_capacity_one: '{{students}} oʻquvchi, xonaga {{count}} kishi sigʻadi.',
       room_capacity_other: '{{students}} oʻquvchi, xonaga {{count}} kishi sigʻadi.',
+      splitRows:
+        'Bu darslar bitta boʻlinma ham, ikki aralash boʻlinma yarmlarining juftligi ham emas: boʻlinma yarmlarini birga qoʻying.',
       split_apart_one: '{{count}} oʻquvchida bu vaqtda dars yoʻq.',
       split_apart_other: '{{count}} oʻquvchida bu vaqtda dars yoʻq.',
       travel_time_one: 'Darslar orasida {{gap}} daqiqa, {{count}} daqiqa kerak.',

@@ -68,6 +68,9 @@ function handFacts(): Facts {
       lessonsPerWeek: one.lessonsPerWeek,
       deliberatelyShort: false,
       doubleLessons: one.doubleLessons,
+      // Task 5.4c-3b: the rows of its block and its partners (none in the fixture).
+      block: one.block,
+      partners: [],
     })),
     otherDrafts: [],
   };

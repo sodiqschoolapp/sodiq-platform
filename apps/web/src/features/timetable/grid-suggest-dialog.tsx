@@ -1,6 +1,7 @@
 import { weekdaySchema, type GridAnswer, type RearrangeRecord } from '@sodiq/shared';
 import {
   otherHalf,
+  placeRowsOf,
   suggestPlaces,
   type PatternBlock,
   type PatternModel,
@@ -24,7 +25,8 @@ import { ruleText } from './rule-text';
 
 /**
  * The record of the rearrange route for a suggestion (task 5.4b-2b): each
- * block at its new weekday and slot, a new one by its first row, with the
+ * block at its new weekday and slot, a new one by its first row (task 5.4c-3b:
+ * a pairing by both rows, `placeRowsOf`), with the
  * rooms of its lessons that differ from where they are now (a new block: from
  * the rooms `newBlockOf` gave it).
  */
@@ -42,7 +44,12 @@ export function rearrangeOf(model: PatternModel, suggestion: Suggestion): Rearra
         );
       const at = { weekday: weekdaySchema.parse(to.weekday), slotPosition: to.slotPosition };
       const which =
-        from === null ? { loadRowId: to.lessons[0]?.loadRowId ?? '' } : { blockId: to.id };
+        from === null
+          ? placeRowsOf(
+              model,
+              to.lessons.map((lesson) => lesson.loadRowId),
+            )
+          : { blockId: to.id };
       return rooms.length === 0 ? { ...which, ...at } : { ...which, ...at, rooms };
     }),
   };

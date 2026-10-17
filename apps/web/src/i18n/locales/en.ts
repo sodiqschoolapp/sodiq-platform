@@ -375,8 +375,8 @@ export const en = {
       'This lesson cannot go there: a rule of the timetable blocks it. Choose a slot marked free or warning.',
     pattern_no_slot:
       'That day has no such lesson slot for this class or group. Choose a slot of its day.',
-    pattern_mixed_block:
-      'A half of a mixed split is not placed here yet: its halves meet in different slots.',
+    pattern_mixed_partner:
+      "That half cannot be paired with this one: choose a half of another subject's mixed split of the same class.",
     pattern_clash:
       'Another lesson already holds that teacher, room or class at that time. Reload the grid and choose another slot.',
     pattern_locked:
@@ -3163,7 +3163,8 @@ export const en = {
       noWarnings: 'No warnings',
       movesTo: '{{lesson}}: {{from}} → {{to}}',
       placedAt: '{{lesson}}: placed on {{to}}',
-      mixedLater: 'Placed together with the other half of its split.',
+      pairedWith: 'Paired with',
+      wholeSplit: 'The whole split',
       changeRoom: 'Room',
       roomOf: 'Room of {{subject}}, {{unit}}',
       roomTitle: 'Room for {{lesson}}',
@@ -3192,6 +3193,8 @@ export const en = {
       room_shared_full_other: 'The room holds {{count}} lessons at once.',
       room_capacity_one: '{{students}} students, room for {{count}}.',
       room_capacity_other: '{{students}} students, room for {{count}}.',
+      splitRows:
+        'These lessons are not one split, nor a pairing of the halves of two mixed splits: place the halves of a split together.',
       split_apart_one: '{{count}} student has no lesson at this time.',
       split_apart_other: '{{count}} students have no lesson at this time.',
       travel_time_one: '{{gap}} minutes between the lessons, {{count}} minute needed.',

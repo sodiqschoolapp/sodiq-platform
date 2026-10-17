@@ -811,11 +811,14 @@ const blockRoomsSchema = z
  * lesson's room); task 5.4c-2: or the room of every lesson by load row, for
  * the undo of a removal; task 5.4c-3a: `double` places a double lesson, the
  * slot taking its first half and the next lesson slot its second (the rooms
- * apply to both halves).
+ * apply to both halves); task 5.4c-3b: `partnerRowId` pairs a half of a mixed
+ * split with a half of another subject's mixed split of the same class in one
+ * block (without it, a mixed half takes its whole split).
  */
 export const placeRecordSchema = z
   .strictObject({
     loadRowId: z.uuid(),
+    partnerRowId: z.uuid().optional(),
     weekday: weekdaySchema,
     slotPosition: slotPositionSchema,
     roomId: z.uuid().optional(),
@@ -860,12 +863,14 @@ export type LessonRoomRecord = z.infer<typeof lessonRoomRecordSchema>;
  * A suggestion of "Suggest a place" applied (task 5.4b-2b): one to three
  * changes, each a stored block moved (`blockId`) or a new block of a load row
  * placed (`loadRowId`, at most one), at a weekday and slot, with the rooms its
- * lessons take (by load row) where they change.
+ * lessons take (by load row) where they change; task 5.4c-3b: a new block of a
+ * pairing names its partner row (`partnerRowId`, with `loadRowId` only).
  */
 export const rearrangeChangeSchema = z
   .strictObject({
     blockId: z.uuid().optional(),
     loadRowId: z.uuid().optional(),
+    partnerRowId: z.uuid().optional(),
     weekday: weekdaySchema,
     slotPosition: slotPositionSchema,
     rooms: blockRoomsSchema.optional(),
@@ -873,6 +878,10 @@ export const rearrangeChangeSchema = z
   .refine((change) => (change.blockId === undefined) !== (change.loadRowId === undefined), {
     message: 'A block or a load row.',
     path: ['blockId'],
+  })
+  .refine((change) => change.partnerRowId === undefined || change.loadRowId !== undefined, {
+    message: 'A partner of a new block only.',
+    path: ['partnerRowId'],
   });
 
 export const rearrangeRecordSchema = z

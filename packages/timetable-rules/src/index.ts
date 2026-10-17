@@ -133,6 +133,7 @@ export {
 export {
   elsewherePlacement,
   factsFromData,
+  partnersIn,
   patternModel,
   type ElsewhereLessonData,
   type PatternAt,
@@ -147,13 +148,18 @@ export {
   checkedPlacements,
   NEW_BLOCK_ID,
   NEW_SECOND_HALF_ID,
+  mixedPartners,
   newBlockOf,
   newPairOf,
   otherHalf,
   pairAt,
+  pairingOf,
+  pairingProblem,
   patternPlacements,
+  placeRowsOf,
   slotAt,
   type BlockLesson,
+  type PairingProblem,
   type PatternBlock,
 } from './pattern-place.js';
 export {

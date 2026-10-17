@@ -1,6 +1,6 @@
 import { draggable } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { classDisplayName, type GridAnswer } from '@sodiq/shared';
-import type { PatternModel } from '@sodiq/timetable-rules';
+import { mixedPartners, type PatternModel } from '@sodiq/timetable-rules';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -9,6 +9,7 @@ import {
   SECTION_TITLE,
   SUBSECTION_TITLE,
 } from '@/components/ui/control';
+import { SelectField } from '@/components/field';
 import { Button } from '@/components/ui/button';
 import { nameOf } from '@/features/setup/setup-api';
 import { SubjectSwatch } from '@/features/setup/subject-colour';
@@ -22,21 +23,30 @@ export interface PlaceData {
   readonly placeRowId: string;
   /** Task 5.4c-3a: placed as a double lesson. */
   readonly placeDouble?: boolean;
+  /** Task 5.4c-3b: the partner of a mixed half, placed with it in one block. */
+  readonly placePartnerRowId?: string;
 }
 
 export const isPlaceData = (
   data: Record<string | symbol, unknown>,
 ): data is Record<string | symbol, unknown> & PlaceData => typeof data.placeRowId === 'string';
 
-/** An entry of the panel: one block of the load (a row, or the groups of a split placed together). */
+/**
+ * An entry of the panel: one block of the load (a row, or the groups of a
+ * split placed together); task 5.4c-3b (decision 9): a half of a mixed split
+ * has an entry of its own, placed with a partner or as its whole split.
+ */
 export interface ToPlaceEntry {
   /** The first row of the block, the one the place route is sent. */
   readonly rowId: string;
   readonly rows: readonly { row: Row; placed: number }[];
   /** The classes the block occupies; it is listed under the first. */
   readonly classIds: readonly string[];
-  /** A half of a mixed split: placed with its pair (5.4c). */
-  readonly mixed: boolean;
+  /**
+   * A half of a mixed split: the halves it may be paired with (`mixedPartners`),
+   * those with lessons left first; empty for any other entry.
+   */
+  readonly partners: readonly { row: Row; placed: number }[];
   /** Every row of the block allows double lessons (task 5.4c-3a, decision 4). */
   readonly doubles: boolean;
 }
@@ -61,10 +71,10 @@ export function toPlace(
   const rowsById = new Map(grid.rows.map((row) => [row.id, row]));
   for (const row of grid.rows) {
     const block = model.rowOf(row.id).block;
-    const key = block.join(',');
+    const key = row.mixedBlock ? row.id : block.join(',');
     if (seen.has(key)) continue;
     seen.add(key);
-    const rows = block.flatMap((id) => {
+    const rows = (row.mixedBlock ? [row.id] : block).flatMap((id) => {
       const one = rowsById.get(id);
       return one === undefined ? [] : [{ row: one, placed: placedOf(grid, id) }];
     });
@@ -80,11 +90,16 @@ export function toPlace(
         }),
       ),
     ];
+    const partners = mixedPartners(model, row.id).flatMap((id) => {
+      const one = rowsById.get(id);
+      return one === undefined ? [] : [{ row: one, placed: placedOf(grid, id) }];
+    });
+    const left = (one: { row: Row; placed: number }) => one.placed < one.row.lessonsPerWeek;
     entries.push({
       rowId: row.id,
       rows,
       classIds,
-      mixed: row.mixedBlock,
+      partners: [...partners.filter(left), ...partners.filter((one) => !left(one))],
       doubles: block.every((id) => model.rowOf(id).doubleLessons),
     });
   }
@@ -96,6 +111,7 @@ export function toPlace(
 /** One entry: draggable onto the board it can go on, with a Place button that works by keyboard and touch. */
 function Entry({
   entry,
+  model,
   onBoard,
   editable,
   highlighted,
@@ -103,26 +119,38 @@ function Entry({
   onSuggest,
 }: {
   entry: ToPlaceEntry;
+  model: PatternModel;
   onBoard: boolean;
   editable: boolean;
   highlighted: boolean;
-  onPlace: (double: boolean) => void;
-  onSuggest: () => void;
+  onPlace: (double: boolean, partnerRowId: string | undefined) => void;
+  onSuggest: (partnerRowId: string | undefined) => void;
 }): React.JSX.Element {
   const { t, i18n } = useTranslation();
   const language = i18n.language;
   const element = useRef<HTMLLIElement>(null);
   const [dragging, setDragging] = useState(false);
   const [double, setDouble] = useState(false);
-  const canDrag = editable && onBoard && !entry.mixed;
-  const asDouble = entry.doubles && double;
+  const [partner, setPartner] = useState('');
+  // A partner no longer offered falls back to the whole split.
+  const partnerRowId = entry.partners.some((one) => one.row.id === partner) ? partner : undefined;
+  const doubles =
+    partnerRowId === undefined
+      ? entry.doubles
+      : [entry.rowId, partnerRowId].every((id) => model.rowOf(id).doubleLessons);
+  const canDrag = editable && onBoard;
+  const asDouble = doubles && double;
 
   useEffect(() => {
     const own = element.current;
     if (!canDrag || own === null) return undefined;
     return draggable({
       element: own,
-      getInitialData: () => ({ placeRowId: entry.rowId, placeDouble: asDouble }),
+      getInitialData: () => ({
+        placeRowId: entry.rowId,
+        placeDouble: asDouble,
+        ...(partnerRowId === undefined ? {} : { placePartnerRowId: partnerRowId }),
+      }),
       onDragStart: () => {
         setDragging(true);
       },
@@ -130,7 +158,7 @@ function Entry({
         setDragging(false);
       },
     });
-  }, [canDrag, entry.rowId, asDouble]);
+  }, [canDrag, entry.rowId, asDouble, partnerRowId]);
 
   useEffect(() => {
     if (highlighted) element.current?.scrollIntoView?.({ block: 'nearest' });
@@ -159,41 +187,66 @@ function Entry({
           })}
         </span>
       ))}
-      {entry.mixed ? (
-        <span className="text-muted-foreground">{t('timetable.grid.mixedLater')}</span>
-      ) : (
-        editable && (
-          <div className="flex flex-wrap items-center gap-x-2">
-            {entry.doubles && (
-              <label className={CHECKBOX_TARGET}>
-                <input
-                  type="checkbox"
-                  className={CHECKBOX}
-                  checked={double}
-                  onChange={(event) => {
-                    setDouble(event.target.checked);
-                  }}
-                />
-                {t('timetable.grid.placeDouble')}
-              </label>
-            )}
+      {editable && entry.partners.length > 0 && (
+        <SelectField
+          label={t('timetable.grid.pairedWith')}
+          name={`partner-${entry.rowId}`}
+          value={partnerRowId ?? ''}
+          options={[
+            { value: '', label: t('timetable.grid.wholeSplit') },
+            ...entry.partners.map(({ row, placed }) => ({
+              value: row.id,
+              label: t('timetable.grid.rowOption', {
+                subject: nameOf(row.subject.names, language),
+                unit: unitText(row),
+                placed,
+                count: row.lessonsPerWeek,
+              }),
+            })),
+          ]}
+          onChange={(event) => {
+            setPartner(event.target.value);
+          }}
+        />
+      )}
+      {editable && (
+        <div className="flex flex-wrap items-center gap-x-2">
+          {doubles && (
+            <label className={CHECKBOX_TARGET}>
+              <input
+                type="checkbox"
+                className={CHECKBOX}
+                checked={double}
+                onChange={(event) => {
+                  setDouble(event.target.checked);
+                }}
+              />
+              {t('timetable.grid.placeDouble')}
+            </label>
+          )}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              onPlace(asDouble, partnerRowId);
+            }}
+          >
+            {t('timetable.grid.place')}
+          </Button>
+          {!asDouble && (
             <Button
               type="button"
               variant="ghost"
               size="sm"
               onClick={() => {
-                onPlace(asDouble);
+                onSuggest(partnerRowId);
               }}
             >
-              {t('timetable.grid.place')}
+              {t('timetable.grid.suggest')}
             </Button>
-            {!asDouble && (
-              <Button type="button" variant="ghost" size="sm" onClick={onSuggest}>
-                {t('timetable.grid.suggest')}
-              </Button>
-            )}
-          </div>
-        )
+          )}
+        </div>
       )}
     </li>
   );
@@ -215,9 +268,9 @@ export function GridToPlace({
   classId: string;
   editable: boolean;
   highlightRowId: string | null;
-  onPlace: (entry: ToPlaceEntry, double: boolean) => void;
-  /** "Suggest a place" for the entry's block (task 5.4b-2b). */
-  onSuggest: (entry: ToPlaceEntry) => void;
+  onPlace: (entry: ToPlaceEntry, double: boolean, partnerRowId: string | undefined) => void;
+  /** "Suggest a place" for the entry's block (task 5.4b-2b), a pairing with its partner (5.4c-3b). */
+  onSuggest: (entry: ToPlaceEntry, partnerRowId: string | undefined) => void;
 }): React.JSX.Element {
   const { t } = useTranslation();
   const { entries, complete } = toPlace(grid, model);
@@ -242,14 +295,15 @@ export function GridToPlace({
                 <Entry
                   key={entry.rowId}
                   entry={entry}
+                  model={model}
                   onBoard={entry.classIds.includes(classId)}
                   editable={editable}
                   highlighted={entry.rows.some(({ row }) => row.id === highlightRowId)}
-                  onPlace={(double) => {
-                    onPlace(entry, double);
+                  onPlace={(double, partnerRowId) => {
+                    onPlace(entry, double, partnerRowId);
                   }}
-                  onSuggest={() => {
-                    onSuggest(entry);
+                  onSuggest={(partnerRowId) => {
+                    onSuggest(entry, partnerRowId);
                   }}
                 />
               ))}

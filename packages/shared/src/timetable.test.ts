@@ -178,3 +178,33 @@ describe('the bodies of an undo', () => {
     ).toBe(true);
   });
 });
+
+// Task 5.4c-3b: the partner of a mixed half in one block.
+describe('the partner of a pairing', () => {
+  const ROW = '0190a3c4-0000-7000-8000-000000000020';
+  const PARTNER = '0190a3c4-0000-7000-8000-000000000021';
+  const BLOCK = '0190a3c4-0000-7000-8000-000000000022';
+  const at = { weekday: 1, slotPosition: 2 };
+
+  it('places a row with a partner row, or with none', () => {
+    expect(
+      placeRecordSchema.safeParse({ loadRowId: ROW, partnerRowId: PARTNER, ...at }).success,
+    ).toBe(true);
+    expect(placeRecordSchema.safeParse({ loadRowId: ROW, partnerRowId: 'x', ...at }).success).toBe(
+      false,
+    );
+  });
+
+  it('takes a partner in a rearrange change of a new block only', () => {
+    expect(
+      rearrangeRecordSchema.safeParse({
+        changes: [{ loadRowId: ROW, partnerRowId: PARTNER, ...at }],
+      }).success,
+    ).toBe(true);
+    expect(
+      rearrangeRecordSchema.safeParse({
+        changes: [{ blockId: BLOCK, partnerRowId: PARTNER, ...at }],
+      }).success,
+    ).toBe(false);
+  });
+});

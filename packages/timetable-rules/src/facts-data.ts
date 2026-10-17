@@ -189,6 +189,31 @@ function need<T>(map: ReadonlyMap<string, T>, id: string, kind: string): T {
   return found;
 }
 
+/**
+ * The rows a half of a mixed split may be paired with in one block (task
+ * 5.4c-3b, decision 5; edge/timetable, Structure: "A mixed block is allowed:
+ * boys have physical education while girls have technology, and the reverse
+ * in another slot"): rows marked mixed whose group is a split (a group of one
+ * class) of the same class, of another subject; sorted by id. Empty for a row
+ * that is not a mixed half.
+ */
+export function partnersIn(data: PatternFactsData, row: PatternRowData): string[] {
+  const units = new Map(data.units.map((unit) => [unit.id, unit]));
+  const splitClass = (one: PatternRowData): string | null => {
+    if (!one.mixedBlock || one.groupId === null) return null;
+    const classIds = units.get(one.groupId)?.classIds ?? [];
+    return classIds.length === 1 ? (classIds[0] ?? null) : null;
+  };
+  const own = splitClass(row);
+  if (own === null) return [];
+  return data.rows
+    .filter(
+      (one) => one.id !== row.id && one.subjectId !== row.subjectId && splitClass(one) === own,
+    )
+    .map((one) => one.id)
+    .sort();
+}
+
 /** The engine's input of a draft's pattern from its data. */
 export function factsFromData(data: PatternFactsData): Facts {
   const days = new Map(data.days.map((one) => [`${one.grade}:${one.weekday}`, one.day]));
@@ -202,6 +227,8 @@ export function factsFromData(data: PatternFactsData): Facts {
     // Stored with publish (5.5a).
     deliberatelyShort: false,
     doubleLessons: row.doubleLessons,
+    block: row.block,
+    partners: partnersIn(data, row),
   }));
   return {
     mode: 'pattern',

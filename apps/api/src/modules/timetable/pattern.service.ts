@@ -24,6 +24,7 @@ import {
   newPairOf,
   otherHalf,
   pairAt,
+  pairingProblem,
   patternPlacements,
   roomChange,
   roomLessons,
@@ -178,7 +179,9 @@ export class TimetablePattern {
    * A load row placed at a slot with its whole block (decision 8); refused when
    * blocked. Task 5.4c-3a: `double` places a double lesson, the first half at
    * the slot and the second in the next lesson slot (`pairAt`), both checked
-   * together and written with one pair id.
+   * together and written with one pair id. Task 5.4c-3b: `partnerRowId` pairs
+   * a mixed half with a half of another subject's mixed split of the same
+   * class in one block; a mixed half alone takes its whole split.
    */
   place(access: Access, id: string, input: PlaceRecord, requestId: string): Promise<GridAnswer> {
     return refusingPattern(() =>
@@ -189,16 +192,15 @@ export class TimetablePattern {
         if (row === undefined) {
           throw notFound();
         }
-        if (row.mixed_block) {
-          throw refused('pattern_mixed_block');
-        }
         const { model } = state.pattern;
+        this.checkPartner(state, row.id, input.partnerRowId);
         // Task 5.4b-2a: a room chosen in the picker is a room of the branch.
         if (input.roomId !== undefined && !this.isRoomOf(state, input.roomId)) {
           throw notFound();
         }
-        // One builder of a new block (task 5.4b-2b, review correction 2).
-        const fresh = newBlockOf(model, row.id);
+        // One builder of a new block (task 5.4b-2b, review correction 2); task
+        // 5.4c-3b: a pairing with its partner, else a mixed half's whole split.
+        const fresh = newBlockOf(model, row.id, input.partnerRowId);
         // Task 5.4c-2: the undo of a removal gives each lesson its room back.
         const rooms = input.rooms ?? [];
         for (const room of rooms) {
@@ -218,7 +220,7 @@ export class TimetablePattern {
         });
         if (input.double === true) {
           const doublePairId = randomUUID();
-          const [first, second] = newPairOf(model, row.id);
+          const [first, second] = newPairOf(model, row.id, input.partnerRowId);
           const pair = pairAt(
             model,
             [
@@ -473,10 +475,8 @@ export class TimetablePattern {
             if (row === undefined) {
               throw notFound();
             }
-            if (row.mixed_block) {
-              throw refused('pattern_mixed_block');
-            }
-            block = newBlockOf(model, row.id);
+            this.checkPartner(state, row.id, change.partnerRowId);
+            block = newBlockOf(model, row.id, change.partnerRowId);
           }
           const rooms = change.rooms ?? [];
           for (const room of rooms) {
@@ -820,6 +820,21 @@ export class TimetablePattern {
       readLocks(transaction, version.id),
     ]);
     return { accountId, version, rows, load, pattern, blocks, locks };
+  }
+
+  /**
+   * The partner of a new block (task 5.4c-3b, decision 7): a row of the
+   * version, else 404 (another branch's, another draft's or unknown), that
+   * pairs with the row (`pairingProblem`), else `pattern_mixed_partner`.
+   */
+  private checkPartner(state: PatternState, rowId: string, partnerRowId: string | undefined): void {
+    if (partnerRowId === undefined) return;
+    if (!state.rows.some((one) => one.id === partnerRowId)) {
+      throw notFound();
+    }
+    if (pairingProblem(state.pattern.model, rowId, partnerRowId) !== null) {
+      throw refused('pattern_mixed_partner');
+    }
   }
 
   /** A room of the branch, as the grid's facts hold them. */
