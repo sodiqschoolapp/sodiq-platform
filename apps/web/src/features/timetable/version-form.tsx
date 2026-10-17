@@ -9,8 +9,10 @@ import {
 import { weekdayOf } from '@sodiq/timetable-rules';
 import { useTranslation } from 'react-i18next';
 import { DateField, SelectField } from '@/components/field';
+import { Button } from '@/components/ui/button';
+import { schoolDateText } from '@/lib/dates';
 import { RecordForm } from '@/components/form/record-form';
-import { useRecordForm } from '@/components/form/use-record-form';
+import { useRecordForm, type FieldBinding } from '@/components/form/use-record-form';
 
 /** The Monday after `today` (`06`, Building a timetable, step 1: "next Monday by default"). */
 export function nextMonday(today: string): string {
@@ -25,6 +27,64 @@ const defaultStart = (today: string, year: AcademicYear | undefined): string => 
   const monday = nextMonday(today);
   return year !== undefined && year.startDate > monday ? year.startDate : monday;
 };
+
+/** A first day of a quarter offered as a start date. */
+export interface QuarterStart {
+  number: number;
+  date: string;
+}
+
+/**
+ * The first day of each quarter of the year on or after today (`06`,
+ * Building a timetable, step 1: "the first day of a coming quarter as a
+ * shortcut"; task 5.3a, decision 6). A quarter that starts today is offered
+ * too, as 3.4a decision 5 allows a start today; a quarter with no dates never.
+ */
+export function comingQuarterStarts(year: AcademicYear | undefined, today: string): QuarterStart[] {
+  return (year?.quarters ?? []).flatMap((quarter) =>
+    quarter.startDate !== null && quarter.startDate >= today
+      ? [{ number: quarter.number, date: quarter.startDate }]
+      : [],
+  );
+}
+
+/** The quarter shortcuts beside a start date field: a click puts the date in the field. */
+function QuarterShortcuts({
+  starts,
+  field,
+}: {
+  starts: readonly QuarterStart[];
+  field: FieldBinding;
+}) {
+  const { t, i18n } = useTranslation();
+  if (starts.length === 0) {
+    return null;
+  }
+  return (
+    <div
+      role="group"
+      aria-label={t('timetable.load.quarterShortcuts')}
+      className="flex flex-wrap gap-2"
+    >
+      {starts.map((start) => (
+        <Button
+          key={start.number}
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={() => {
+            field.onChange({ target: { value: start.date } });
+          }}
+        >
+          {t('timetable.load.quarterShortcut', {
+            number: start.number,
+            date: schoolDateText(start.date, i18n.language),
+          })}
+        </Button>
+      ))}
+    </div>
+  );
+}
 
 interface NewDraftFormProps {
   /** The planned and current years of the branch. */
@@ -62,6 +122,7 @@ export function NewDraftForm({ years, versions, today, onSave, onCancel }: NewDr
     save: onSave,
   });
   const yearId = form.bind('academicYearId').value;
+  const startField = form.bind('startsOn');
   const copyField = form.bind('copyFrom');
   const sameYear = versions.filter((version) => version.academicYearId === yearId);
   // A copy of another year's version is not offered (decision 10).
@@ -75,7 +136,14 @@ export function NewDraftForm({ years, versions, today, onSave, onCancel }: NewDr
         options={years.map((year) => ({ value: year.id, label: year.name }))}
         {...form.bind('academicYearId')}
       />
-      <DateField label={t('timetable.load.startsOn')} {...form.bind('startsOn')} />
+      <DateField label={t('timetable.load.startsOn')} {...startField} />
+      <QuarterShortcuts
+        starts={comingQuarterStarts(
+          years.find((year) => year.id === yearId),
+          today,
+        )}
+        field={startField}
+      />
       <SelectField
         label={t('timetable.load.copyFrom')}
         options={[
@@ -94,12 +162,14 @@ export function NewDraftForm({ years, versions, today, onSave, onCancel }: NewDr
 
 interface StartFormProps {
   version: TimetableVersion;
+  /** The first days of the coming quarters of the draft's year (`comingQuarterStarts`). */
+  quarterStarts?: readonly QuarterStart[];
   onSave: (edit: TimetableVersionEdit) => Promise<void>;
   onCancel: () => void;
 }
 
 /** The intended start date of a draft (decision 5). */
-export function StartForm({ version, onSave, onCancel }: StartFormProps) {
+export function StartForm({ version, quarterStarts = [], onSave, onCancel }: StartFormProps) {
   const { t } = useTranslation();
   const form = useRecordForm({
     schema: timetableVersionEditSchema,
@@ -109,6 +179,7 @@ export function StartForm({ version, onSave, onCancel }: StartFormProps) {
   return (
     <RecordForm form={form} label={t('timetable.load.changeStart')} onCancel={onCancel}>
       <DateField label={t('timetable.load.startsOn')} {...form.bind('startsOn')} />
+      <QuarterShortcuts starts={quarterStarts} field={form.bind('startsOn')} />
     </RecordForm>
   );
 }

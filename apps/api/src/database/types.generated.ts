@@ -912,6 +912,7 @@ export interface TimetableVersions {
   number: number;
   starts_on: string;
   status: Generated<string>;
+  templates_confirmed: Json | null;
 }
 
 export interface TravelTimes {

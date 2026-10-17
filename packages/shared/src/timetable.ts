@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { academicYearStatusSchema, schoolDateSchema } from './academic-year.js';
+import { tableCellSchema } from './day-templates.js';
 import { instructionLanguageSchema } from './settings.js';
-import { roomTypeSchema } from './setup.js';
+import { roomTypeSchema, weekdaySchema } from './setup.js';
 
 /**
  * Draft timetable versions and their teaching load (docs/spec/05-classes-groups-subjects.md,
@@ -298,3 +299,60 @@ export const loadTotalsSchema = z.object({
 });
 
 export type LoadTotals = z.infer<typeof loadTotalsSchema>;
+
+/** A cell of the table of step 1, named by its weekday and grade. */
+export const readinessCellKeySchema = z.object({ weekday: weekdaySchema, grade: z.int() });
+
+/** A teacher or vacancy of step 3, with the figures of the totals and the daily maximum. */
+const readinessTeacherSchema = loadTotalsSchema.shape.teachers.element.extend({
+  /** The most lessons per day of the record (`null`: not set); shown, never refusing. */
+  dailyLessons: z.int().min(1).nullable(),
+  /** No hours entry in force in the branch. */
+  noHours: z.boolean(),
+  /** More lessons in the draft than free slots in the branch. */
+  over: z.boolean(),
+});
+
+/**
+ * The readiness of steps 1 to 4 of the draft builder (06, Building a
+ * timetable; task 5.3a, pull request #127), read on each request from the
+ * draft and the data in force (decision 3): ready for generation when every
+ * step is ready (5.3b adds step 5).
+ */
+export const draftReadinessSchema = z.object({
+  ready: z.boolean(),
+  /** Step 1: the start date and the table of templates per weekday and grade. */
+  templates: z.object({
+    ready: z.boolean(),
+    startsOn: schoolDateSchema,
+    /** Decision 5: the start date is before today. */
+    startPast: z.boolean(),
+    /** Each read on the weekday's first date on or after the later of the start date and today (decision 2). */
+    cells: z.array(tableCellSchema.extend({ date: schoolDateSchema })),
+    confirmed: z.boolean(),
+    changed: z.array(readinessCellKeySchema),
+    missing: z.array(readinessCellKeySchema),
+  }),
+  /** Step 2: the teaching load. */
+  load: z.object({
+    ready: z.boolean(),
+    rows: z.int().min(0),
+    /** The rows with a problem of step 2 (every problem but the room problems). */
+    problemRows: z.array(loadRowSchema),
+    leftRows: z.int().min(0),
+    classesOver: loadTotalsSchema.shape.classes,
+  }),
+  /** Step 3: every teacher and vacancy of the draft, those that hold the step back first. */
+  teachers: z.object({
+    ready: z.boolean(),
+    teachers: z.array(readinessTeacherSchema),
+  }),
+  /** Step 4: the rows whose room need nothing meets, and the classes with no main classroom. */
+  rooms: z.object({
+    ready: z.boolean(),
+    rows: z.array(loadRowSchema.extend({ reason: z.enum(['load_room_closed', 'room_type_none']) })),
+    classesWithoutRoom: z.array(z.object({ id: z.uuid(), name: z.string(), grade: z.int() })),
+  }),
+});
+
+export type DraftReadiness = z.infer<typeof draftReadinessSchema>;

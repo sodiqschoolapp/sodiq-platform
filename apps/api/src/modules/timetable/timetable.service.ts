@@ -3,8 +3,10 @@ import {
   academicYearName,
   academicYearStatusSchema,
   loadProblemSchema,
+  readinessCellKeySchema,
   schoolDateOf,
   timetableVersionStatusSchema,
+  type DraftReadiness,
   type ErrorCode,
   type ErrorDetail,
   type Load,
@@ -24,22 +26,27 @@ import {
   blockOf,
   blockProblems,
   classWeekLessons,
-  firstOn,
+  draftReady,
   freeSlots,
   isTutorRow,
   lessonIntervals,
   loadBlocks,
+  loadReadiness,
   loadRowProblems,
   refusingProblems,
   ROOM_PROBLEMS,
+  roomsReadiness,
   splitAndWhole,
   splitClassOf,
   TEACHER_PROBLEMS,
   teacherProblems,
+  teachersReadiness,
+  templatesReadiness,
   teacherWeekLessons,
   weekDaysOf,
   weekLessonSlots,
   type BlockProblem,
+  type TemplateCell,
   type WeekDay,
   type LoadProblem,
 } from '@sodiq/timetable-rules';
@@ -68,6 +75,7 @@ import {
 import { blockRowOf, readBlockGroups } from './load-blocks.js';
 import { auditOf, followChanged, followVersion } from './tutor-lessons.js';
 import { dayOf, loadStore } from '../setup/day-template-state.js';
+import { confirmedCellsOf, templateCellsOf, type StoredCells } from './template-cells.js';
 import { isWithdrawn } from '../setup/dated-rows.js';
 
 const refused = (code: ErrorCode): ApiException => new ApiException(code, 409);
@@ -153,6 +161,7 @@ interface VersionRow {
   starts_on: string;
   from_version_id: string | null;
   left_rows: unknown;
+  templates_confirmed: unknown;
   start_date: string;
   end_date: string;
   year_status: string;
@@ -673,177 +682,375 @@ export class Timetable {
       const version = await this.findVersion(transaction, branchId, id);
       const context = await this.contextOf(transaction, version);
       const rows = await this.rowsOf(transaction, id);
-      const groups = await readBlockGroups(
-        transaction,
-        rows.map((row) => row.group_id),
-      );
-      const totalsRows = rows.map((row) => ({
-        classId: row.class_id,
-        groupId: row.group_id,
-        subjectId: row.subject_id,
-        teacherId: row.teacher_id,
-        lessonsPerWeek: row.lessons_per_week,
-      }));
-      const classLessons = classWeekLessons(
-        totalsRows,
-        new Map([...groups].map(([groupId, group]) => [groupId, group.classIds])),
-      );
-      const classIds = [...classLessons.keys()].sort();
-      const classes =
-        classIds.length === 0
-          ? []
-          : await transaction
-              .selectFrom('classes')
-              .select(['id', 'name', 'grade'])
-              .where('id', 'in', classIds)
-              .where('branch_id', '=', branchId)
-              .execute();
-      const branch = await transaction
-        .selectFrom('branches')
-        .select('working_weekdays')
-        .where('id', '=', branchId)
-        .executeTakeFirstOrThrow();
-      const store = await loadStore(transaction);
-      const assignments = store.assignments.filter((row) => !isWithdrawn(row));
-      const weeks = new Map<number, WeekDay[]>();
-      const weekOf = (grade: number): WeekDay[] => {
-        const known = weeks.get(grade);
-        if (known !== undefined) {
-          return known;
-        }
-        const days = weekDaysOf(
-          grade,
-          context.statusOn,
-          branch.working_weekdays,
-          { assignments },
-          (templateId, date) => dayOf(store, templateId, date)?.day ?? null,
-        );
-        weeks.set(grade, days);
-        return days;
-      };
-
-      const teacherLessons = teacherWeekLessons(totalsRows);
-      const teacherIds = [...teacherLessons.keys()].sort();
-      const teachers = await readTeacherFacts(transaction, context, teacherIds);
-      const gradeOfClass = new Map(classes.map((row) => [row.id, row.grade]));
-      const gradesOf = (teacherId: string): number[] => [
-        ...new Set(
-          rows
-            .filter((row) => row.teacher_id === teacherId)
-            .flatMap((row) =>
-              row.class_id !== null
-                ? [gradeOfClass.get(row.class_id)].filter((one): one is number => one !== undefined)
-                : row.group_id === null
-                  ? []
-                  : [...(groups.get(row.group_id)?.grades ?? [])],
-            ),
-        ),
-      ];
-      const [contracts, entries, ranges, elsewhere] =
-        teacherIds.length === 0
-          ? [[], [], [], []]
-          : await Promise.all([
-              transaction
-                .selectFrom('staff')
-                .select(['id', 'weekly_lessons'])
-                .where('id', 'in', teacherIds)
-                .execute(),
-              transaction
-                .selectFrom('staff_availability')
-                .select(['id', 'staff_id', 'valid_from', 'valid_until'])
-                .where('staff_id', 'in', teacherIds)
-                .where('branch_id', '=', branchId)
-                .execute(),
-              transaction
-                .selectFrom('staff_availability_ranges')
-                .select(['entry_id', 'weekday', 'start_minutes', 'end_minutes'])
-                .where('staff_id', 'in', teacherIds)
-                .where('branch_id', '=', branchId)
-                .execute(),
-              sql<{ teacher_id: string; branch_id: string; lessons: number; draft: boolean }>`
-                select teacher_id, branch_id, lessons, draft
-                from teacher_load_elsewhere(
-                  ${branchId}::uuid, ${sql.val(teacherIds)}::uuid[], ${context.statusOn}::date
-                )
-              `
-                .execute(transaction)
-                .then((result) => result.rows),
-            ]);
-      const branchNames = new Map(
-        elsewhere.length === 0
-          ? []
-          : (
-              await transaction
-                .selectFrom('branches')
-                .select(['id', 'name'])
-                .where('id', 'in', [...new Set(elsewhere.map((row) => row.branch_id))])
-                .execute()
-            ).map((row) => [row.id, row.name]),
-      );
-      const freeSlotsOf = (teacherId: string): number | null => {
-        const grades = gradesOf(teacherId);
-        let any = false;
-        let sum = 0;
-        for (const weekday of [...branch.working_weekdays].sort((a, b) => a - b)) {
-          const date = firstOn(context.statusOn, weekday);
-          const entry = entries.find(
-            (one) => one.staff_id === teacherId && one.valid_from <= date && date < one.valid_until,
-          );
-          if (entry === undefined) continue;
-          any = true;
-          const slots = grades.flatMap((grade) => {
-            const day = weekOf(grade).find((one) => one.weekday === weekday)?.day ?? null;
-            return day === null ? [] : lessonIntervals(day);
-          });
-          const hours = ranges
-            .filter((range) => range.entry_id === entry.id && range.weekday === weekday)
-            .map((range) => ({ start: range.start_minutes, end: range.end_minutes }));
-          sum += freeSlots(slots, hours);
-        }
-        return any ? sum : null;
-      };
-
-      return {
-        classes: classes
-          .map((row) => ({
-            id: row.id,
-            name: row.name,
-            grade: row.grade,
-            lessons: classLessons.get(row.id) ?? 0,
-            lessonSlots: weekLessonSlots(weekOf(row.grade)),
-          }))
-          .sort(
-            (a, b) => a.grade - b.grade || a.name.localeCompare(b.name) || a.id.localeCompare(b.id),
-          ),
-        teachers: teacherIds
-          .map((teacherId) => {
-            const teacher = teachers.get(teacherId);
-            return {
-              id: teacherId,
-              kind: teacher?.kind ?? 'vacancy',
-              name: teacher?.name ?? null,
-              lessons: teacherLessons.get(teacherId) ?? 0,
-              freeSlots: freeSlotsOf(teacherId),
-              elsewhere: elsewhere
-                .filter((row) => row.teacher_id === teacherId)
-                .map((row) => ({
-                  branchId: row.branch_id,
-                  branchName: branchNames.get(row.branch_id) ?? '',
-                  lessons: row.lessons,
-                  draft: row.draft,
-                }))
-                .sort((a, b) => a.branchName.localeCompare(b.branchName)),
-              contract: contracts.find((row) => row.id === teacherId)?.weekly_lessons ?? null,
-            };
-          })
-          .sort(
-            (a, b) =>
-              (a.kind === b.kind ? 0 : a.kind === 'person' ? -1 : 1) ||
-              (a.name ?? '').localeCompare(b.name ?? '') ||
-              a.id.localeCompare(b.id),
-          ),
-      };
+      return (await this.totalsOf(transaction, branchId, context, rows)).totals;
     });
+  }
+
+  /**
+   * The weekly totals of the rows of a version, as the totals route and the
+   * readiness of steps 2 and 3 read them (task 5.3a): templates weekday by
+   * weekday from the later of the start date and today, the hours of the one
+   * entry in force on that date (decision 2), and each record's most lessons
+   * per day.
+   */
+  private async totalsOf(
+    transaction: Transaction,
+    branchId: string,
+    context: VersionContext,
+    rows: readonly StoredLoadRow[],
+  ): Promise<{ totals: LoadTotals; dailyLessons: Map<string, number | null> }> {
+    const groups = await readBlockGroups(
+      transaction,
+      rows.map((row) => row.group_id),
+    );
+    const totalsRows = rows.map((row) => ({
+      classId: row.class_id,
+      groupId: row.group_id,
+      subjectId: row.subject_id,
+      teacherId: row.teacher_id,
+      lessonsPerWeek: row.lessons_per_week,
+    }));
+    const classLessons = classWeekLessons(
+      totalsRows,
+      new Map([...groups].map(([groupId, group]) => [groupId, group.classIds])),
+    );
+    const classIds = [...classLessons.keys()].sort();
+    const classes =
+      classIds.length === 0
+        ? []
+        : await transaction
+            .selectFrom('classes')
+            .select(['id', 'name', 'grade'])
+            .where('id', 'in', classIds)
+            .where('branch_id', '=', branchId)
+            .execute();
+    const branch = await transaction
+      .selectFrom('branches')
+      .select('working_weekdays')
+      .where('id', '=', branchId)
+      .executeTakeFirstOrThrow();
+    const store = await loadStore(transaction);
+    const assignments = store.assignments.filter((row) => !isWithdrawn(row));
+    const weeks = new Map<number, WeekDay[]>();
+    const weekOf = (grade: number): WeekDay[] => {
+      const known = weeks.get(grade);
+      if (known !== undefined) {
+        return known;
+      }
+      const days = weekDaysOf(
+        grade,
+        context.statusOn,
+        branch.working_weekdays,
+        { assignments },
+        (templateId, date) => dayOf(store, templateId, date)?.day ?? null,
+      );
+      weeks.set(grade, days);
+      return days;
+    };
+
+    const teacherLessons = teacherWeekLessons(totalsRows);
+    const teacherIds = [...teacherLessons.keys()].sort();
+    const teachers = await readTeacherFacts(transaction, context, teacherIds);
+    const gradeOfClass = new Map(classes.map((row) => [row.id, row.grade]));
+    const gradesOf = (teacherId: string): number[] => [
+      ...new Set(
+        rows
+          .filter((row) => row.teacher_id === teacherId)
+          .flatMap((row) =>
+            row.class_id !== null
+              ? [gradeOfClass.get(row.class_id)].filter((one): one is number => one !== undefined)
+              : row.group_id === null
+                ? []
+                : [...(groups.get(row.group_id)?.grades ?? [])],
+          ),
+      ),
+    ];
+    const [contracts, entries, ranges, elsewhere] =
+      teacherIds.length === 0
+        ? [[], [], [], []]
+        : await Promise.all([
+            transaction
+              .selectFrom('staff')
+              .select(['id', 'weekly_lessons', 'daily_lessons'])
+              .where('id', 'in', teacherIds)
+              .execute(),
+            transaction
+              .selectFrom('staff_availability')
+              .select(['id', 'staff_id', 'valid_from', 'valid_until'])
+              .where('staff_id', 'in', teacherIds)
+              .where('branch_id', '=', branchId)
+              .execute(),
+            transaction
+              .selectFrom('staff_availability_ranges')
+              .select(['entry_id', 'weekday', 'start_minutes', 'end_minutes'])
+              .where('staff_id', 'in', teacherIds)
+              .where('branch_id', '=', branchId)
+              .execute(),
+            sql<{ teacher_id: string; branch_id: string; lessons: number; draft: boolean }>`
+              select teacher_id, branch_id, lessons, draft
+              from teacher_load_elsewhere(
+                ${branchId}::uuid, ${sql.val(teacherIds)}::uuid[], ${context.statusOn}::date
+              )
+            `
+              .execute(transaction)
+              .then((result) => result.rows),
+          ]);
+    const branchNames = new Map(
+      elsewhere.length === 0
+        ? []
+        : (
+            await transaction
+              .selectFrom('branches')
+              .select(['id', 'name'])
+              .where('id', 'in', [...new Set(elsewhere.map((row) => row.branch_id))])
+              .execute()
+          ).map((row) => [row.id, row.name]),
+    );
+    const freeSlotsOf = (teacherId: string): number | null => {
+      const grades = gradesOf(teacherId);
+      // Task 5.3a, decision 2: the one entry in force on the later of the
+      // start date and today, for every weekday (06, Rules, availability row).
+      const entry = entries.find(
+        (one) =>
+          one.staff_id === teacherId &&
+          one.valid_from <= context.statusOn &&
+          context.statusOn < one.valid_until,
+      );
+      let any = false;
+      let sum = 0;
+      for (const weekday of [...branch.working_weekdays].sort((a, b) => a - b)) {
+        if (entry === undefined) continue;
+        any = true;
+        const slots = grades.flatMap((grade) => {
+          const day = weekOf(grade).find((one) => one.weekday === weekday)?.day ?? null;
+          return day === null ? [] : lessonIntervals(day);
+        });
+        const hours = ranges
+          .filter((range) => range.entry_id === entry.id && range.weekday === weekday)
+          .map((range) => ({ start: range.start_minutes, end: range.end_minutes }));
+        sum += freeSlots(slots, hours);
+      }
+      return any ? sum : null;
+    };
+
+    const totals: LoadTotals = {
+      classes: classes
+        .map((row) => ({
+          id: row.id,
+          name: row.name,
+          grade: row.grade,
+          lessons: classLessons.get(row.id) ?? 0,
+          lessonSlots: weekLessonSlots(weekOf(row.grade)),
+        }))
+        .sort(
+          (a, b) => a.grade - b.grade || a.name.localeCompare(b.name) || a.id.localeCompare(b.id),
+        ),
+      teachers: teacherIds
+        .map((teacherId) => {
+          const teacher = teachers.get(teacherId);
+          return {
+            id: teacherId,
+            kind: teacher?.kind ?? 'vacancy',
+            name: teacher?.name ?? null,
+            lessons: teacherLessons.get(teacherId) ?? 0,
+            freeSlots: freeSlotsOf(teacherId),
+            elsewhere: elsewhere
+              .filter((row) => row.teacher_id === teacherId)
+              .map((row) => ({
+                branchId: row.branch_id,
+                branchName: branchNames.get(row.branch_id) ?? '',
+                lessons: row.lessons,
+                draft: row.draft,
+              }))
+              .sort((a, b) => a.branchName.localeCompare(b.branchName)),
+            contract: contracts.find((row) => row.id === teacherId)?.weekly_lessons ?? null,
+          };
+        })
+        .sort(
+          (a, b) =>
+            (a.kind === b.kind ? 0 : a.kind === 'person' ? -1 : 1) ||
+            (a.name ?? '').localeCompare(b.name ?? '') ||
+            a.id.localeCompare(b.id),
+        ),
+    };
+    return {
+      totals,
+      dailyLessons: new Map(contracts.map((row) => [row.id, row.daily_lessons])),
+    };
+  }
+
+  /**
+   * The readiness of steps 1 to 4 of a version of the branch (task 5.3a,
+   * pull request #127): computed on each read (decision 3).
+   */
+  readiness(access: Access, id: string): Promise<DraftReadiness> {
+    const branchId = branchOf(access);
+    return this.transactions.run(access.branchIds, async (transaction) => {
+      const version = await this.findVersion(transaction, branchId, id);
+      return this.readinessOf(transaction, branchId, version);
+    });
+  }
+
+  /**
+   * Step 1: the table of templates in force for the week from the later of
+   * the start date and today stored as confirmed (decisions 3 and 12). A draft
+   * write; a confirm of the table already confirmed writes nothing.
+   */
+  confirmTemplates(access: Access, id: string, requestId: string): Promise<DraftReadiness> {
+    const branchId = branchOf(access);
+    return refusingConstraints(
+      () =>
+        this.transactions.run(access.branchIds, async (transaction) => {
+          const version = await this.lockDraft(transaction, branchId, id);
+          const context = await this.contextOf(transaction, version);
+          const drawn = await templateCellsOf(
+            transaction,
+            branchId,
+            version.academic_year_id,
+            context.statusOn,
+          );
+          const before = confirmedCellsOf(version.templates_confirmed);
+          const unchanged =
+            before !== null &&
+            templatesReadiness({
+              startsOn: context.statusOn,
+              today: context.statusOn,
+              cells: drawn.cells,
+              confirmed: before,
+            }).confirmed;
+          if (!unchanged) {
+            const stored: StoredCells = { from: context.statusOn, cells: drawn.cells };
+            await transaction
+              .updateTable('timetable_versions')
+              .set({ templates_confirmed: JSON.stringify(stored) })
+              .where('id', '=', id)
+              .execute();
+            const summary = (cells: readonly TemplateCell[]) =>
+              cells.map((cell) => ({
+                weekday: cell.weekday,
+                grade: cell.grade,
+                templateId: cell.template?.id ?? null,
+              }));
+            const previous =
+              version.templates_confirmed === null
+                ? null
+                : z.object({ from: z.string() }).parse(version.templates_confirmed).from;
+            await this.audit.record(transaction, {
+              branchId,
+              actorId: access.accountId,
+              assignmentId: access.assignmentId,
+              action: 'timetable_version.templates_confirm',
+              record: { type: 'timetable_version', id },
+              oldValue: before === null ? null : { from: previous, cells: summary(before) },
+              newValue: { from: context.statusOn, cells: summary(drawn.cells) },
+              requestId,
+            });
+          }
+          return this.readinessOf(transaction, branchId, await this.versionRow(transaction, id));
+        }),
+      LOAD_REFUSALS,
+    );
+  }
+
+  /** The readiness of a version, read in the transaction of the request (decision 2 for the dates). */
+  private async readinessOf(
+    transaction: Transaction,
+    branchId: string,
+    version: VersionRow,
+  ): Promise<DraftReadiness> {
+    const context = await this.contextOf(transaction, version);
+    const today = await this.todayIn(transaction, branchId);
+    const rows = await this.rowsOf(transaction, version.id);
+    const left = leftRowsOf(version.left_rows);
+    const facts = await LoadFacts.of(transaction, context, rows, {
+      versionRows: rows,
+      unplaced: true,
+    });
+    const answers = this.sorted(rows.map((row) => facts.answerOf(row, facts.problemsOf(row))));
+    const [drawn, { totals, dailyLessons }, rooms, roomless] = await Promise.all([
+      templateCellsOf(transaction, branchId, version.academic_year_id, context.statusOn),
+      this.totalsOf(transaction, branchId, context, rows),
+      transaction
+        .selectFrom('rooms')
+        .select(['type', 'status'])
+        .where('branch_id', '=', branchId)
+        .execute(),
+      transaction
+        .selectFrom('classes')
+        .select(['id', 'name', 'grade'])
+        .where('branch_id', '=', branchId)
+        .where('academic_year_id', '=', version.academic_year_id)
+        .where('archived_at', 'is', null)
+        .where('main_room_id', 'is', null)
+        .orderBy('grade')
+        .orderBy('name')
+        .orderBy('id')
+        .execute(),
+    ]);
+
+    const templates = templatesReadiness({
+      startsOn: version.starts_on,
+      today,
+      cells: drawn.cells,
+      confirmed: confirmedCellsOf(version.templates_confirmed),
+    });
+    const load = loadReadiness({
+      rows: answers,
+      leftRows: left.length,
+      classes: totals.classes,
+    });
+    const teachers = teachersReadiness(totals.teachers);
+    const roomRows = roomsReadiness({
+      rows: answers,
+      rooms: rooms.map((room) => ({ type: room.type, closed: room.status === 'closed' })),
+    });
+    const holds = (teacher: { id: string }) =>
+      teachers.noHours.includes(teacher.id) || teachers.over.includes(teacher.id);
+    const problemRows = new Set(load.rows);
+    const closed = new Set(roomRows.closed);
+    const typeNone = new Set(roomRows.typeNone);
+    return {
+      ready: draftReady([templates, load, teachers, roomRows]),
+      templates: {
+        ready: templates.ready,
+        startsOn: version.starts_on,
+        startPast: templates.startPast,
+        cells: drawn.answer,
+        confirmed: templates.confirmed,
+        changed: z.array(readinessCellKeySchema).parse(templates.changed),
+        missing: z.array(readinessCellKeySchema).parse(templates.missing),
+      },
+      load: {
+        ready: load.ready,
+        rows: rows.length,
+        problemRows: answers.filter((row) => problemRows.has(row.id)),
+        leftRows: load.leftRows,
+        classesOver: totals.classes.filter((one) => load.classesOver.includes(one.id)),
+      },
+      teachers: {
+        ready: teachers.ready,
+        teachers: [
+          ...totals.teachers.filter(holds),
+          ...totals.teachers.filter((teacher) => !holds(teacher)),
+        ].map((teacher) => ({
+          ...teacher,
+          dailyLessons: dailyLessons.get(teacher.id) ?? null,
+          noHours: teachers.noHours.includes(teacher.id),
+          over: teachers.over.includes(teacher.id),
+        })),
+      },
+      rooms: {
+        ready: roomRows.ready,
+        rows: answers.flatMap((row): DraftReadiness['rooms']['rows'] =>
+          closed.has(row.id)
+            ? [{ ...row, reason: 'load_room_closed' as const }]
+            : typeNone.has(row.id)
+              ? [{ ...row, reason: 'room_type_none' as const }]
+              : [],
+        ),
+        classesWithoutRoom: roomless,
+      },
+    };
   }
 
   /** A row of a draft: every rule of the engine (decision 7); the first problem is the refusal. */
@@ -1474,6 +1681,7 @@ export class Timetable {
         'timetable_versions.starts_on',
         'timetable_versions.from_version_id',
         'timetable_versions.left_rows',
+        'timetable_versions.templates_confirmed',
         'academic_years.start_date',
         'academic_years.end_date',
         'academic_years.status as year_status',

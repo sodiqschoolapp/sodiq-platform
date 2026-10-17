@@ -41,7 +41,7 @@ import {
   loadQuery,
   versionsQuery,
 } from './timetable-api';
-import { NewDraftForm, StartForm } from './version-form';
+import { comingQuarterStarts, NewDraftForm, StartForm } from './version-form';
 
 /** The class or group of a row as a person reads it: "7 Oxford", or the group's name. */
 const unitText = (row: LoadRow): string =>
@@ -421,6 +421,10 @@ export function LoadPage(): React.JSX.Element {
             <StartForm
               key={chosen.id}
               version={chosen}
+              quarterStarts={comingQuarterStarts(
+                years.data?.years.find((year) => year.id === chosen.academicYearId),
+                versions.data.today,
+              )}
               onSave={async (edit) => {
                 await start.mutateAsync(edit);
               }}

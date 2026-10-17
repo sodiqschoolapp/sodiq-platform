@@ -35,6 +35,8 @@ interface TemplateTableViewProps {
   caption: string;
   /** The date under the table, where no Date field above names it (the preview). */
   showDate?: boolean;
+  /** The grades shown, 1 to 11 unless said (the draft builder shows the grades of its classes). */
+  grades?: readonly number[];
 }
 
 /**
@@ -48,6 +50,7 @@ export function TemplateTableView({
   changed = [],
   caption,
   showDate = false,
+  grades = GRADES,
 }: TemplateTableViewProps) {
   const { t, i18n } = useTranslation();
   const isChanged = (weekday: number, grade: number) =>
@@ -65,7 +68,7 @@ export function TemplateTableView({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {GRADES.map((grade) => (
+          {grades.map((grade) => (
             <TableRow key={grade}>
               <TableHead scope="row">{t('setup.templateTable.gradeNumber', { grade })}</TableHead>
               {table.weekdays.map((weekday) => {

@@ -30,6 +30,8 @@ import { GroupPlacementPage } from '@/features/classes/group-placement-page';
 import { GroupsPage } from '@/features/classes/groups-page';
 import { LoadPage } from '@/features/timetable/load-page';
 import { loadSearch } from '@/features/timetable/load-search';
+import { BuilderPage } from '@/features/timetable/builder-page';
+import { builderSearch } from '@/features/timetable/builder-search';
 import { TimetablePage } from '@/features/timetable/timetable-page';
 import { HeadTeachersPage } from '@/features/people/head-teachers-page';
 import { NeverUsedPage } from '@/features/people/never-used-page';
@@ -288,6 +290,14 @@ const loadRoute = createRoute({
   component: guarded('timetable', LoadPage),
 });
 
+/** The draft builder, steps 1 to 4 (task 5.3a). */
+const builderRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/timetable/builder',
+  validateSearch: builderSearch,
+  component: guarded('timetable', BuilderPage),
+});
+
 /** People (task 2.2a): the entry of the menu item and the staff list. */
 const peopleRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -465,6 +475,7 @@ const routeTree = rootRoute.addChildren([
     groupsRoute,
     groupPlacementRoute,
     timetableRoute,
+    builderRoute,
     loadRoute,
     peopleRoute,
     staffRoute,

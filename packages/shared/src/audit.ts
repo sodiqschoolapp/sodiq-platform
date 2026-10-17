@@ -179,6 +179,7 @@ export const AUDIT_ACTION_GROUPS = {
   timetable: [
     'timetable_version.create',
     'timetable_version.edit',
+    'timetable_version.templates_confirm',
     'teaching_load.create',
     'teaching_load.edit',
     'teaching_load.delete',

@@ -65,6 +65,7 @@ export type AccountKey =
   | 'branchMoves'
   | 'teachingLoad'
   | 'teachingBlocks'
+  | 'draftBuilder'
   | 'whoTeacher'
   | 'whoHeadTutor'
   | 'whoHeadTeacher';
