@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 17 October 2026: task 5.4b-1 Grid: other branches and the views
+
+- Every pattern check (grid moves, the write routes, the pins' check of step 5) counts the teachers' lessons in other branches' published patterns as busy-elsewhere placements (`fixed`) with the travel time around them, and warns `other_draft` for other branches' drafts; 0071 adds `timetable_busy_elsewhere` and `timetable_drafts_elsewhere` (times and branch only).
+- The grid has views by class, teacher and room; teacher and room views are on a clock axis, read only, with grey "Busy elsewhere" blocks in the teacher view and a button to the class board. No new route, no new audit kind.
+- 5.4b is split; 5.4b-2 has the "to place" panel, the room picker, "Suggest a place", the conflict panel and step 7's mark.
+- Left out: those panels (5.4b-2); later versions of other branches by date (5.5a); locks, undo, the edit lock (5.4c); the handbook (paused).
+
+The next sessions must know:
+
+- A check of the pattern takes its placements from `checkedPlacements(model, blocks)`, never `patternPlacements` alone, or busy-elsewhere lessons are missed.
+- A result may name a lesson of another branch (`lessonIds`); `facts.branches` gives its name.
+- The next task is 5.4b-2.
+
 ## 17 October 2026: task 5.4a Grid: board and drag
 
 - Built step 7 of the builder (`/timetable/builder?step=grid`): the board of one class (weekdays across, its lesson slots down), with drag (Pragmatic drag and drop), move, swap, place from an empty slot and remove; while a lesson is moved every slot shows free, warning or blocked with the rule, and the Move button gives the same list by keyboard and touch. Read only for the Principal, a version that is not a draft, and at phone width.
