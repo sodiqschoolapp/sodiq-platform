@@ -147,6 +147,14 @@ export interface RuleResult {
   readonly detail?: Readonly<Record<string, number | string>>;
 }
 
+/**
+ * The results a move or a swap within the week cannot change: they count the
+ * lessons of a week, not where they sit (task 5.4a). The grid leaves them out
+ * of a slot's status while dragging, or every slot of a row short of its
+ * load would show the same warning.
+ */
+export const WEEK_COUNT_RULES: readonly RuleCode[] = ['teacher_week_load', 'load_mismatch'];
+
 /** What a slot shows while dragging (06, Editing in the grid: "free, warning or blocked"). */
 export type SlotStatus = 'free' | 'warning' | 'blocked';
 

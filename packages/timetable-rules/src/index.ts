@@ -90,6 +90,7 @@ export {
   RULE_ORDER,
   slotStatus,
   WARNINGS,
+  WEEK_COUNT_RULES,
   type FixedRule,
   type RuleCode,
   type RuleResult,

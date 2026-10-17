@@ -15,6 +15,7 @@
     "api:types": "openapi-typescript ../api/openapi.generated.json --output src/api/schema.generated.ts"
   },
   "dependencies": {
+    "@atlaskit/pragmatic-drag-and-drop": "4.0.0",
     "@base-ui/react": "^1.8.0",
     "@fontsource-variable/bitter": "5.3.0",
     "@fontsource-variable/golos-text": "5.3.0",
