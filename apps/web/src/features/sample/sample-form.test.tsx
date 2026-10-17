@@ -207,7 +207,11 @@ describe('the Save button of a record form', () => {
     expect((await within(panel).findByRole('alert')).textContent).toBe(en.problems.noAnswer);
     expect(field(panel, en.sample.score).value).toBe('90');
     expect(within(panel).getByRole('status').textContent).toBe('');
-    expect(banner().textContent).toBe(en.unsent.failed);
+    // The banner follows the failed save a moment after the alert (CI of
+    // pull request #127 read "Changes not saved" in between).
+    await waitFor(() => {
+      expect(banner().textContent).toBe(en.unsent.failed);
+    });
   });
 });
 
