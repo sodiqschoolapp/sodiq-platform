@@ -1,5 +1,7 @@
 import {
+  blockOf,
   firstOn,
+  patternModel,
   templateFor,
   type AvailabilityEntry,
   type Day,
@@ -7,11 +9,14 @@ import {
   type EngineRoom,
   type EngineTeacher,
   type Facts,
+  type PatternFactsData,
+  type PatternModel,
   type Placement,
 } from '@sodiq/timetable-rules';
 import type { Transaction } from '../../database/transactions.js';
 import { isWithdrawn } from '../setup/dated-rows.js';
 import { dayOf, loadStore } from '../setup/day-template-state.js';
+import { blockRowOf } from './load-blocks.js';
 import type { LoadFacts, StoredLoadRow, VersionContext } from './load-facts.js';
 
 /**
@@ -38,9 +43,15 @@ import type { LoadFacts, StoredLoadRow, VersionContext } from './load-facts.js';
  * a `load_mismatch` warning for every row with fewer pinned lessons than its
  * load, which no blocked list reads ("a warning while editing a draft", 06,
  * Rules, last row).
+ *
+ * Task 5.4a: the facts are built as data (`PatternFactsData`) and turned into
+ * the engine's input by `patternModel` of the rule engine, the one converter
+ * the grid calls too (decision 2); the grid gets `data` as it is.
  */
 export interface PatternFacts {
   readonly facts: Facts;
+  readonly data: PatternFactsData;
+  readonly model: PatternModel;
   /** The lesson of a load row at a time of the pattern, as `checkTimetable` reads it. */
   readonly placementOf: (
     row: StoredLoadRow,
@@ -202,44 +213,21 @@ export async function readPatternFacts(
   }
 
   const engineRooms = new Map<string, EngineRoom>(
-    rooms.map((room) => [
-      room.id,
-      {
-        id: room.id,
-        status:
-          room.status === 'closed'
-            ? 'closed'
-            : room.status === 'under_repair'
-              ? 'under_repair'
-              : 'in_use',
-        shared: room.shared,
-        lessonsAtOnce: room.max_simultaneous_lessons ?? 1,
-        capacity: room.capacity,
-      },
-    ]),
+    rooms.map((room) => [room.id, engineRoomOf(room)]),
   );
 
   const store = await loadStore(transaction);
   const weekly = { assignments: store.assignments.filter((row) => !isWithdrawn(row)) };
-  const days = new Map<string, EngineDay>();
   const dayFor = (grade: number, weekday: number): EngineDay => {
-    const key = `${grade}:${weekday}`;
-    const known = days.get(key);
-    if (known !== undefined) return known;
-    let found: EngineDay;
     if (!branch.working_weekdays.includes(weekday)) {
-      found = { lessons: false, reason: 'not_working_day' };
-    } else {
-      const date = firstOn(statusOn, weekday);
-      const templateId = templateFor(grade, date, weekly);
-      const timed = templateId === null ? null : dayOf(store, templateId, date);
-      found =
-        timed === null
-          ? { lessons: false, reason: 'no_template' }
-          : { lessons: true, day: timed.day, noRegularLessons: false };
+      return { lessons: false, reason: 'not_working_day' };
     }
-    days.set(key, found);
-    return found;
+    const date = firstOn(statusOn, weekday);
+    const templateId = templateFor(grade, date, weekly);
+    const timed = templateId === null ? null : dayOf(store, templateId, date);
+    return timed === null
+      ? { lessons: false, reason: 'no_template' }
+      : { lessons: true, day: timed.day, noRegularLessons: false };
   };
 
   const unitOf = (row: StoredLoadRow) => {
@@ -249,105 +237,137 @@ export async function readPatternFacts(
     }
     return unit;
   };
-  const travelKey = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
-  const travelMinutes = new Map(
-    travel.map((row) => [travelKey(row.branch_low, row.branch_high), row.minutes]),
+  const units = [...new Map(rows.map((row) => [unitOf(row).id, unitOf(row)])).values()].sort(
+    (a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
   );
+  const mainRooms =
+    classIds.length === 0
+      ? []
+      : await transaction
+          .selectFrom('classes')
+          .select(['id', 'main_room_id'])
+          .where('id', 'in', classIds)
+          .execute();
+  const mainRoomOf = new Map(mainRooms.map((one) => [one.id, one.main_room_id]));
+  // A main classroom a new lesson may take is read as every room the rows name.
+  const moreRoomIds = [
+    ...new Set(
+      mainRooms
+        .map((one) => one.main_room_id)
+        .filter((id): id is string => id !== null && !engineRooms.has(id)),
+    ),
+  ].sort();
+  if (moreRoomIds.length > 0) {
+    const more = await transaction
+      .selectFrom('rooms')
+      .select(['id', 'status', 'shared', 'max_simultaneous_lessons', 'capacity'])
+      .where('id', 'in', moreRoomIds)
+      .where('branch_id', '=', branchId)
+      .execute();
+    for (const room of more) {
+      engineRooms.set(room.id, engineRoomOf(room));
+    }
+  }
+  const grades = [...new Set(units.flatMap((unit) => unit.unit.grades))].sort((a, b) => a - b);
+  const blockRows = rows.map(blockRowOf);
 
-  const facts: Facts = {
-    mode: 'pattern',
+  const data: PatternFactsData = {
+    branchId,
     startDate: statusOn,
     versionEnd: year.end_date,
-    teachers,
-    subjects: new Map(
-      [...load.subjects.values()].map((subject) => [
-        subject.id,
-        {
-          id: subject.id,
-          active: !subject.archived,
-          languageRule: subject.languageRule,
-          tutorSubject: subject.tutorSubject,
-        },
-      ]),
-    ),
-    rooms: engineRooms,
-    units: new Map(
-      rows.map((row) => {
-        const unit = unitOf(row);
-        return [
-          unit.id,
-          {
-            id: unit.id,
-            kind: unit.unit.kind,
-            grades: unit.unit.grades,
-            language: unit.unit.language,
-            tutorOnStart: unit.unit.tutorOnStart,
-          },
-        ];
-      }),
-    ),
-    classStudents: (classId) => classStudents.get(classId) ?? [],
-    dayOf: (_branchId, grade, day) => dayFor(grade, Number(day)),
-    years: new Map([
-      [
-        branchId,
-        {
-          firstDate: year.start_date,
-          lastDate: year.end_date,
-          quarters: quarters.flatMap((quarter) =>
-            quarter.start_date === null || quarter.end_date === null
-              ? []
-              : [{ firstDate: quarter.start_date, lastDate: quarter.end_date }],
-          ),
-        },
-      ],
-    ]),
-    travelMinutes: (a, b) => (a === b ? 0 : (travelMinutes.get(travelKey(a, b)) ?? null)),
-    classDailyLessons: () => settings?.class_daily_lessons ?? null,
-    loadRows: rows.map((row) => ({
-      id: row.id,
-      lessonsPerWeek: row.lessons_per_week,
-      // Stored with publish (5.5a).
-      deliberatelyShort: false,
-    })),
-    otherDrafts: [],
-  };
-
-  return {
-    facts,
-    placementOf: (row, at) => {
-      const group = row.group_id === null ? undefined : load.groups.get(row.group_id);
-      const classes = row.class_id !== null ? [row.class_id] : [...(group?.classIds ?? [])];
+    teachers: [...teachers.values()],
+    subjects: [...load.subjects.values()]
+      .map((subject) => ({
+        id: subject.id,
+        active: !subject.archived,
+        languageRule: subject.languageRule,
+        tutorSubject: subject.tutorSubject,
+      }))
+      .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)),
+    rooms: [...engineRooms.values()],
+    units: units.map((unit) => {
+      const group = unit.unit.kind === 'group' ? load.groups.get(unit.id) : undefined;
       return {
-        id: at.id,
-        kind: 'lesson',
-        branchId,
-        day: String(at.weekday),
-        start: at.start,
-        end: at.end,
-        blockId: at.blockId,
-        doublePairId: null,
+        id: unit.id,
+        kind: unit.unit.kind,
+        grades: unit.unit.grades,
+        language: unit.unit.language,
+        tutorOnStart: unit.unit.tutorOnStart,
+        classIds: unit.unit.kind === 'class' ? [unit.id] : [...(group?.classIds ?? [])],
+        studentIds:
+          unit.unit.kind === 'class'
+            ? (classStudents.get(unit.id) ?? [])
+            : (groupStudents.get(unit.id) ?? []),
+        mainRoomId: unit.unit.kind === 'class' ? (mainRoomOf.get(unit.id) ?? null) : null,
+      };
+    }),
+    classStudents: classIds.map((classId) => ({
+      classId,
+      studentIds: classStudents.get(classId) ?? [],
+    })),
+    days: grades.flatMap((grade) =>
+      [1, 2, 3, 4, 5, 6, 7].map((weekday) => ({ grade, weekday, day: dayFor(grade, weekday) })),
+    ),
+    year: {
+      firstDate: year.start_date,
+      lastDate: year.end_date,
+      quarters: quarters.flatMap((quarter) =>
+        quarter.start_date === null || quarter.end_date === null
+          ? []
+          : [{ firstDate: quarter.start_date, lastDate: quarter.end_date }],
+      ),
+    },
+    travel: travel.map((row) => ({
+      branchA: row.branch_low,
+      branchB: row.branch_high,
+      minutes: row.minutes,
+    })),
+    classDailyLessons: settings?.class_daily_lessons ?? null,
+    rows: rows.map((row) => {
+      const block = row.group_id === null ? [] : blockOf(row.id, blockRows, load.groups);
+      return {
+        id: row.id,
         classId: row.class_id,
         groupId: row.group_id,
-        classIds: classes,
-        studentIds:
-          row.class_id !== null
-            ? (classStudents.get(row.class_id) ?? [])
-            : (groupStudents.get(row.group_id ?? '') ?? []),
-        exemptStudentIds: [],
         subjectId: row.subject_id,
-        loadRowId: row.id,
-        teacherIds: [row.teacher_id],
-        substitute: false,
+        teacherId: row.teacher_id,
         roomId: row.room_id,
-        examRooms: [],
-        fixed: false,
+        lessonsPerWeek: row.lessons_per_week,
+        mixedBlock: row.mixed_block,
+        block: block.length === 0 ? [row.id] : block.map((one) => one.id).sort(),
       };
-    },
-    dayOfRow: (row, weekday) => {
-      const grade = Math.min(...unitOf(row).unit.grades);
-      const day = dayFor(grade, weekday);
-      return day.lessons ? day.day : null;
-    },
+    }),
+    otherDrafts: [],
+  };
+  const model = patternModel(data);
+
+  return {
+    facts: model.facts,
+    data,
+    model,
+    placementOf: (row, at) =>
+      model.placementOf(model.rowOf(row.id), { ...at, roomId: row.room_id }),
+    dayOfRow: (row, weekday) => model.dayOfRows([model.rowOf(row.id)], weekday),
+  };
+}
+
+function engineRoomOf(room: {
+  id: string;
+  status: string;
+  shared: boolean;
+  max_simultaneous_lessons: number | null;
+  capacity: number;
+}): EngineRoom {
+  return {
+    id: room.id,
+    status:
+      room.status === 'closed'
+        ? 'closed'
+        : room.status === 'under_repair'
+          ? 'under_repair'
+          : 'in_use',
+    shared: room.shared,
+    lessonsAtOnce: room.max_simultaneous_lessons ?? 1,
+    capacity: room.capacity,
   };
 }

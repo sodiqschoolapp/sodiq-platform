@@ -514,6 +514,16 @@ export const ERROR_CODES = [
   'pin_over_load',
   /** A row of a split marked mixed block cannot be pinned (task 5.3b-2, decision 4). */
   'pin_mixed_block',
+  /** A blocked rule of the timetable refuses the lesson at that slot; the rules are in the details (task 5.4a, decision 4). */
+  'pattern_blocked',
+  /** The weekday has no slot at that position for the grades of the lesson (task 5.4a). */
+  'pattern_no_slot',
+  /** A half of a split marked mixed block is placed in the grid with locks, later (task 5.4a, decision 8). */
+  'pattern_mixed_block',
+  /** The database refused a clash of the weekly pattern that the rule engine let through (task 5.4a, decision 17). */
+  'pattern_clash',
+  /** Another change of the timetable held what this one needed; it can be sent again (task 5.4a, decision 17). */
+  'timetable_busy',
   /** A step of the draft builder is not ready, so the draft cannot move to generation (task 5.3b-1, decision 6). */
   'draft_not_ready',
   /** The class or group of a load row is of another academic year than the version (task 3.4a). */
@@ -674,6 +684,14 @@ export const errorDetailSchema = z.object({
       firstDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
       lastDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     })
+    .optional(),
+  /**
+   * A blocked result of the rule engine on a `pattern_blocked` (task 5.4a):
+   * `code` is the rule (`timetable.rule.<code>`); its weekday, `null` when it
+   * names the week; the lessons involved, a lesson not saved yet named `new:<load row>`.
+   */
+  rule: z
+    .object({ weekday: z.int().min(1).max(7).nullable(), lessonIds: z.array(z.string()) })
     .optional(),
   /** The number of items a list of details leaves out, on its detail `more` (`year_cut_holds`, task 3.6b-2). */
   more: z.int().min(1).optional(),

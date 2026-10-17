@@ -3,6 +3,7 @@ import { academicYearStatusSchema, schoolDateSchema } from './academic-year.js';
 import { tableCellSchema } from './day-templates.js';
 import { instructionLanguageSchema } from './settings.js';
 import { roomTypeSchema, weekdaySchema } from './setup.js';
+import { subjectColourSchema } from './subjects.js';
 
 /**
  * Draft timetable versions and their teaching load (docs/spec/05-classes-groups-subjects.md,
@@ -501,3 +502,232 @@ export const draftReadinessSchema = z.object({
 });
 
 export type DraftReadiness = z.infer<typeof draftReadinessSchema>;
+
+/**
+ * The grid of step 7 (06, Editing in the grid; task 5.4a, pull request #130):
+ * the lessons of a draft's weekly pattern placed, moved, swapped and removed
+ * by hand, each write checked by the rule engine on the server as the grid
+ * checks it while dragging (14, Timetable, One rule engine).
+ */
+
+/** The rule engine's input of the pattern as data (`PatternFactsData` of packages/timetable-rules, decision 2). */
+const engineDaySchema = z.union([
+  z.object({
+    lessons: z.literal(true),
+    day: z.object({
+      start: z.int(),
+      end: z.int(),
+      slots: z.array(
+        z.object({
+          position: z.int().min(1),
+          kind: z.enum(['lesson', 'break']),
+          start: z.int(),
+          end: z.int(),
+          lessonNumber: z.int().min(1).nullable(),
+        }),
+      ),
+    }),
+    noRegularLessons: z.boolean(),
+  }),
+  z.object({
+    lessons: z.literal(false),
+    reason: z.enum(['day_off', 'not_working_day', 'no_template']),
+  }),
+]);
+
+const datedRangeSchema = z.object({
+  validFrom: schoolDateSchema,
+  validUntil: schoolDateSchema.nullable(),
+});
+
+/** A lesson of another branch or draft as the engine reads it (busy elsewhere, 5.4b). */
+const enginePlacementSchema = z.object({
+  id: z.string(),
+  kind: z.enum(['lesson', 'exam']),
+  branchId: z.uuid(),
+  day: z.string(),
+  start: z.int(),
+  end: z.int(),
+  blockId: z.string().nullable(),
+  doublePairId: z.string().nullable(),
+  classId: z.uuid().nullable(),
+  groupId: z.uuid().nullable(),
+  classIds: z.array(z.uuid()),
+  studentIds: z.array(z.uuid()),
+  exemptStudentIds: z.array(z.uuid()),
+  subjectId: z.uuid().nullable(),
+  loadRowId: z.uuid().nullable(),
+  teacherIds: z.array(z.uuid()),
+  substitute: z.boolean(),
+  roomId: z.uuid().nullable(),
+  examRooms: z.array(z.object({ roomId: z.uuid(), students: z.int().min(0) })),
+  fixed: z.boolean(),
+});
+
+export const patternFactsDataSchema = z.object({
+  branchId: z.uuid(),
+  startDate: schoolDateSchema,
+  versionEnd: schoolDateSchema,
+  teachers: z.array(
+    z.object({
+      id: z.uuid(),
+      vacancy: z.boolean(),
+      out: z.boolean(),
+      branchIds: z.array(z.uuid()),
+      subjects: z.array(z.object({ subjectId: z.uuid(), grades: z.array(z.int()) })),
+      languages: z.array(z.string()),
+      availability: z.array(
+        datedRangeSchema.extend({
+          branchId: z.uuid(),
+          ranges: z.array(
+            z.object({ weekday: z.int().min(1).max(7), start: z.int(), end: z.int() }),
+          ),
+        }),
+      ),
+      weeklyLessons: z.int().nullable(),
+      dailyLessons: z.int().nullable(),
+    }),
+  ),
+  subjects: z.array(
+    z.object({
+      id: z.uuid(),
+      active: z.boolean(),
+      languageRule: z.boolean(),
+      tutorSubject: z.boolean(),
+    }),
+  ),
+  rooms: z.array(
+    z.object({
+      id: z.uuid(),
+      status: z.enum(['in_use', 'under_repair', 'closed']),
+      shared: z.boolean(),
+      lessonsAtOnce: z.int().min(1),
+      capacity: z.int().min(0),
+    }),
+  ),
+  units: z.array(
+    z.object({
+      id: z.uuid(),
+      kind: z.enum(['class', 'group']),
+      grades: z.array(z.int()),
+      language: z.string(),
+      tutorOnStart: z.uuid().nullable(),
+      classIds: z.array(z.uuid()),
+      /** Ids of the members on the reading date; no names (decision 2). */
+      studentIds: z.array(z.uuid()),
+      mainRoomId: z.uuid().nullable(),
+    }),
+  ),
+  classStudents: z.array(z.object({ classId: z.uuid(), studentIds: z.array(z.uuid()) })),
+  days: z.array(z.object({ grade: z.int(), weekday: z.int().min(1).max(7), day: engineDaySchema })),
+  year: z.object({
+    firstDate: schoolDateSchema,
+    lastDate: schoolDateSchema,
+    quarters: z.array(z.object({ firstDate: schoolDateSchema, lastDate: schoolDateSchema })),
+  }),
+  travel: z.array(z.object({ branchA: z.uuid(), branchB: z.uuid(), minutes: z.int().min(0) })),
+  classDailyLessons: z.int().nullable(),
+  rows: z.array(
+    z.object({
+      id: z.uuid(),
+      classId: z.uuid().nullable(),
+      groupId: z.uuid().nullable(),
+      subjectId: z.uuid(),
+      teacherId: z.uuid(),
+      roomId: z.uuid().nullable(),
+      lessonsPerWeek: z.int().min(1),
+      mixedBlock: z.boolean(),
+      block: z.array(z.uuid()),
+    }),
+  ),
+  otherDrafts: z.array(enginePlacementSchema),
+});
+
+export type PatternFactsDataAnswer = z.infer<typeof patternFactsDataSchema>;
+
+/**
+ * A result of the rule engine (`RuleResult`): the rule (`RULE_ORDER`, its text
+ * `timetable.rule.<code>`), its severity, its weekday (`null` when it names the
+ * week: `teacher_week_load`, `load_mismatch`), the lessons involved and the
+ * numbers that explain it.
+ */
+export const ruleResultSchema = z.object({
+  rule: z.string().regex(/^[a-z_]+$/),
+  severity: z.enum(['blocked', 'warning']),
+  weekday: weekdaySchema.nullable(),
+  lessonIds: z.array(z.string()),
+  detail: z.record(z.string(), z.union([z.number(), z.string()])).optional(),
+});
+
+export type RuleResultAnswer = z.infer<typeof ruleResultSchema>;
+
+/** A placed block: a weekday, the position of its slot (breaks counted), its minutes, one lesson per load row. */
+export const gridBlockSchema = z.object({
+  id: z.uuid(),
+  weekday: weekdaySchema,
+  slotPosition: z.int().min(1).max(PIN_SLOT_POSITION_MAX),
+  start: z.int(),
+  end: z.int(),
+  lessons: z.array(z.object({ id: z.uuid(), loadRowId: z.uuid(), roomId: z.uuid().nullable() })),
+});
+
+export type GridBlock = z.infer<typeof gridBlockSchema>;
+
+/** A load row as a tile shows it. */
+export const gridRowSchema = z.object({
+  id: z.uuid(),
+  unit: loadUnitSchema,
+  subject: loadRowSchema.shape.subject.extend({ colour: subjectColourSchema }),
+  teacher: loadTeacherSchema,
+  lessonsPerWeek: z.int().min(1).max(LOAD_LESSONS_MAX),
+  mixedBlock: z.boolean(),
+});
+
+export type GridRow = z.infer<typeof gridRowSchema>;
+
+export const gridSchema = z.object({
+  version: timetableVersionSchema,
+  /** A draft is edited; a published or archived version is read only (decision 16). */
+  editable: z.boolean(),
+  /** Every class the rows occupy, a class a group draws from included (review correction 2). */
+  classes: z.array(z.object({ id: z.uuid(), name: z.string(), grade: z.int() })),
+  rows: z.array(gridRowSchema),
+  rooms: z.array(z.object({ id: z.uuid(), name: z.string() })),
+  blocks: z.array(gridBlockSchema),
+  facts: patternFactsDataSchema,
+  /** Every result of the draft's pattern now (the conflict panel of 5.4b lists them). */
+  results: z.array(ruleResultSchema),
+});
+
+export type GridAnswer = z.infer<typeof gridSchema>;
+
+const slotPositionSchema = z.int().min(1).max(PIN_SLOT_POSITION_MAX);
+
+/** A lesson placed by clicking an empty slot: a load row (with its whole block), a weekday and a slot position. */
+export const placeRecordSchema = z.strictObject({
+  loadRowId: z.uuid(),
+  weekday: weekdaySchema,
+  slotPosition: slotPositionSchema,
+});
+
+export type PlaceRecord = z.infer<typeof placeRecordSchema>;
+
+/** A block moved to a weekday and a slot position. */
+export const moveRecordSchema = z.strictObject({
+  weekday: weekdaySchema,
+  slotPosition: slotPositionSchema,
+});
+
+export type MoveRecord = z.infer<typeof moveRecordSchema>;
+
+/** Two blocks that exchange their slots. */
+export const swapRecordSchema = z
+  .strictObject({ blockIds: z.tuple([z.uuid(), z.uuid()]) })
+  .refine((swap) => swap.blockIds[0] !== swap.blockIds[1], {
+    message: 'Two different blocks.',
+    path: ['blockIds'],
+  });
+
+export type SwapRecord = z.infer<typeof swapRecordSchema>;
+
+export const patternBlockParamsSchema = z.object({ id: z.uuid(), blockId: z.uuid() });

@@ -378,6 +378,15 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu darsda haftalik darslar sonicha qotirilgan slot bor. Avval qotirishni olib tashlang yoki haftalik darslar sonini oshiring.',
     pin_mixed_block:
       'Aralash boʻlinmaning yarmini qotirib boʻlmaydi: uning yarmlari turli slotlarda oʻtadi.',
+    pattern_blocked:
+      'Bu darsni bu yerga qoʻyib boʻlmaydi: uni dars jadvalining qoidasi taqiqlaydi. Boʻsh yoki ogohlantirishli slotni tanlang.',
+    pattern_no_slot:
+      'Bu kunda sinf yoki guruh uchun bunday dars sloti yoʻq. Uning kunidagi slotni tanlang.',
+    pattern_mixed_block:
+      'Aralash boʻlinmaning yarmi bu yerda hozircha qoʻyilmaydi: uning yarmlari turli slotlarda oʻtadi.',
+    pattern_clash:
+      'Bu vaqtda oʻqituvchi, xona yoki sinf boshqa dars bilan band. Jadvalni yangilang va boshqa slotni tanlang.',
+    timetable_busy: 'Shu paytda dars jadvalining boshqa oʻzgarishi saqlanayotgan edi. Qayta urinib koʻring.',
     draft_not_ready:
       'Qoralamaning bir qadami tayyor emas. Avval tayyor emas deb belgilangan qadamlarni tugating.',
     load_unit_year:
@@ -3010,6 +3019,24 @@ export const uz: Texts<'one' | 'other'> = {
         'Oʻqituvchining bir filialdagi darsi va boshqa filialdagi keyingi darsi orasida shu ikki filial uchun belgilangan yoʻl vaqtidan kam boʻlmagan vaqt bor.',
       travel_time_not_set:
         'Oʻqituvchining bir kunda ikki filialda darsi faqat ular orasidagi yoʻl vaqti belgilangan boʻlsa boʻladi.',
+      outside_year: 'Dars oʻquv yilidan tashqarida qoʻyilmaydi.',
+      vacation: 'Dars taʼtil kunida, barcha choraklardan tashqarida qoʻyilmaydi.',
+      substitute_vacancy: 'Vakansiya hech qachon oʻrinbosar boʻlmaydi.',
+      substitute_language: 'Oʻrinbosar sinf yoki guruh tilida dars bera olishi kerak.',
+      teacher_unavailable_later: 'Oʻqituvchining keyingi mavjudlik yozuvi baʼzi sanalarda bu darsni qamramaydi.',
+      room_under_repair: 'Xona taʼmirda.',
+      invigilator_vacancy: 'Nazoratchi — xodim, hech qachon vakansiya emas.',
+      invigilator_inactive: 'Faol boʻlmagan xodim nazoratchi boʻla olmaydi.',
+      invigilator_unavailable: 'Imtihon vaqtida nazoratchi oʻz mavjudligidan tashqarida.',
+      invigilator_subject: 'Nazoratchining profilida imtihon fani yoʻq.',
+      room_capacity: 'Xona sigʻimi sinf yoki guruhdan kichik.',
+      teacher_week_load: 'Oʻqituvchining haftalik darslari shartnoma yuklamasidan koʻp.',
+      teacher_day_load: 'Oʻqituvchining bir kundagi darslari uning kunlik eng koʻp darslar sonidan koʻp.',
+      class_day_load: 'Sinfning bir kundagi darslari sozlamalardagi kunlik eng koʻp sondan koʻp.',
+      subject_twice: 'Sinfda bir kunda bitta fan ikki marta.',
+      class_free_period: 'Sinf kunining oʻrtasida boʻsh dars.',
+      load_mismatch: 'Haftada qoʻyilgan darslar soni oʻquv yuklamasidan farq qiladi.',
+      other_draft: 'Oʻqituvchi shu vaqtda boshqa filial qoralamasida ham rejalashtirilgan.',
     },
     preference: {
       class_no_gaps: 'Sinfning birinchi va oxirgi darsi orasida boʻsh dars sloti yoʻq',

@@ -371,6 +371,15 @@ export const en = {
       'This lesson already has as many pinned slots as lessons per week. Remove a pin or raise the lessons per week first.',
     pin_mixed_block:
       'A half of a mixed split cannot be pinned: its halves meet in different slots.',
+    pattern_blocked:
+      'This lesson cannot go there: a rule of the timetable blocks it. Choose a slot marked free or warning.',
+    pattern_no_slot:
+      'That day has no such lesson slot for this class or group. Choose a slot of its day.',
+    pattern_mixed_block:
+      'A half of a mixed split is not placed here yet: its halves meet in different slots.',
+    pattern_clash:
+      'Another lesson already holds that teacher, room or class at that time. Reload the grid and choose another slot.',
+    timetable_busy: 'Another change of the timetable was being saved. Try again.',
     draft_not_ready: 'A step of the draft is not ready. Finish the steps marked not ready first.',
     load_unit_year:
       "That class or group is of another academic year than the version. Choose one of the version's year.",
@@ -2983,6 +2992,24 @@ export const en = {
         "Between a teacher's lesson in one branch and their next lesson in another branch there is at least the travel time set for those two branches.",
       travel_time_not_set:
         'A teacher has lessons in two branches on one day only when the travel time between those branches is set.',
+      outside_year: 'No lesson outside the academic year.',
+      vacation: 'No lesson on a day of a vacation, outside every quarter.',
+      substitute_vacancy: 'A vacancy is never a substitute.',
+      substitute_language: 'The substitute should be able to teach in the language of the class or group.',
+      teacher_unavailable_later: 'A later availability entry of the teacher does not cover this lesson on some dates.',
+      room_under_repair: 'The room is under repair.',
+      invigilator_vacancy: 'An invigilator is a staff member, never a vacancy.',
+      invigilator_inactive: 'An inactive staff member cannot invigilate.',
+      invigilator_unavailable: 'The invigilator is outside their availability at the time of the exam.',
+      invigilator_subject: 'The invigilator does not have the subject of the exam in their profile.',
+      room_capacity: 'Room capacity is smaller than the class or group.',
+      teacher_week_load: 'Teacher’s weekly lessons exceed the contract load.',
+      teacher_day_load: 'A teacher has more lessons in a day than the teacher’s most lessons per day.',
+      class_day_load: 'A class has more lessons in a day than the daily maximum in settings.',
+      subject_twice: 'The same subject twice in one day for a class.',
+      class_free_period: 'A free period in the middle of a class’s day.',
+      load_mismatch: 'Lessons placed per week differ from the teaching load.',
+      other_draft: 'The teacher is also planned at that time in a draft of another branch.',
     },
     preference: {
       class_no_gaps: 'A class has no empty lesson slot between its first and last lesson',

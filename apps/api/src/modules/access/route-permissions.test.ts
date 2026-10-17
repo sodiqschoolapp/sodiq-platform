@@ -534,6 +534,27 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     branch: 'request',
     roles: ['super_admin', 'academic_vice_principal'],
   },
+  // Task 5.4a: the grid of step 7, read under timetable view, written under edit.
+  'GET /api/timetable/versions/:id/grid': {
+    branch: 'request',
+    roles: ['super_admin', 'principal', 'academic_vice_principal'],
+  },
+  'POST /api/timetable/versions/:id/pattern': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'POST /api/timetable/versions/:id/pattern/swap': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'POST /api/timetable/versions/:id/pattern/:blockId/move': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'DELETE /api/timetable/versions/:id/pattern/:blockId': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
   'GET /api/timetable/versions/:id/load/teachers': {
     branch: 'request',
     roles: ['super_admin', 'principal', 'academic_vice_principal'],

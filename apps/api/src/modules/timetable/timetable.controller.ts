@@ -1,6 +1,15 @@
 import { Controller, Delete, Get, HttpCode, Patch, Post, Put } from '@nestjs/common';
 import {
   draftReadinessSchema,
+  gridSchema,
+  moveRecordSchema,
+  patternBlockParamsSchema,
+  placeRecordSchema,
+  swapRecordSchema,
+  type GridAnswer,
+  type MoveRecord,
+  type PlaceRecord,
+  type SwapRecord,
   loadRowEditSchema,
   loadRowParamsSchema,
   loadRowRecordSchema,
@@ -40,6 +49,7 @@ import { RequestId } from '../../http/request-id.js';
 import { Returns, ReturnsNothing, ValidBody, ValidParams, ValidQuery } from '../../http/schemas.js';
 import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
+import { TimetablePattern } from './pattern.service.js';
 import { Timetable } from './timetable.service.js';
 
 /**
@@ -50,7 +60,10 @@ import { Timetable } from './timetable.service.js';
  */
 @Controller('timetable')
 export class TimetableController {
-  constructor(private readonly timetable: Timetable) {}
+  constructor(
+    private readonly timetable: Timetable,
+    private readonly pattern: TimetablePattern,
+  ) {}
 
   @Get('versions')
   @Requires('timetable', 'view')
@@ -184,6 +197,74 @@ export class TimetableController {
     @RequestId() requestId: string,
   ): Promise<DraftReadiness> {
     return this.timetable.deletePin(access, params.id, params.pinId, requestId);
+  }
+
+  /**
+   * Step 7: the board of a version (task 5.4a, pull request #130): its rows,
+   * placed blocks, the rule engine's input as data and every result now;
+   * read only for a version that is not a draft (decision 16).
+   */
+  @Get('versions/:id/grid')
+  @Requires('timetable', 'view')
+  @Returns(gridSchema)
+  grid(
+    @CurrentAccess() access: Access,
+    @ValidParams(timetableVersionParamsSchema) params: TimetableVersionParams,
+  ): Promise<GridAnswer> {
+    return this.pattern.grid(access, params.id);
+  }
+
+  /** Step 7: a load row placed at a slot with its whole block; a blocked rule refuses (`pattern_blocked`). */
+  @Post('versions/:id/pattern')
+  @Requires('timetable', 'edit')
+  @Returns(gridSchema, 201)
+  placeBlock(
+    @CurrentAccess() access: Access,
+    @ValidParams(timetableVersionParamsSchema) params: TimetableVersionParams,
+    @ValidBody(placeRecordSchema) body: PlaceRecord,
+    @RequestId() requestId: string,
+  ): Promise<GridAnswer> {
+    return this.pattern.place(access, params.id, body, requestId);
+  }
+
+  /** Step 7: two blocks exchange their slots, checked as one change. */
+  @Post('versions/:id/pattern/swap')
+  @HttpCode(200)
+  @Requires('timetable', 'edit')
+  @Returns(gridSchema)
+  swapBlocks(
+    @CurrentAccess() access: Access,
+    @ValidParams(timetableVersionParamsSchema) params: TimetableVersionParams,
+    @ValidBody(swapRecordSchema) body: SwapRecord,
+    @RequestId() requestId: string,
+  ): Promise<GridAnswer> {
+    return this.pattern.swap(access, params.id, body, requestId);
+  }
+
+  /** Step 7: a block moved whole to a weekday and slot. */
+  @Post('versions/:id/pattern/:blockId/move')
+  @HttpCode(200)
+  @Requires('timetable', 'edit')
+  @Returns(gridSchema)
+  moveBlock(
+    @CurrentAccess() access: Access,
+    @ValidParams(patternBlockParamsSchema) params: { id: string; blockId: string },
+    @ValidBody(moveRecordSchema) body: MoveRecord,
+    @RequestId() requestId: string,
+  ): Promise<GridAnswer> {
+    return this.pattern.move(access, params.id, params.blockId, body, requestId);
+  }
+
+  /** Step 7: a block removed with its lessons. */
+  @Delete('versions/:id/pattern/:blockId')
+  @Requires('timetable', 'edit')
+  @Returns(gridSchema)
+  removeBlock(
+    @CurrentAccess() access: Access,
+    @ValidParams(patternBlockParamsSchema) params: { id: string; blockId: string },
+    @RequestId() requestId: string,
+  ): Promise<GridAnswer> {
+    return this.pattern.remove(access, params.id, params.blockId, requestId);
   }
 
   /** The teachers and vacancies a row may take (decision 2), by the rules of the create. */

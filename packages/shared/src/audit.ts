@@ -186,6 +186,11 @@ export const AUDIT_ACTION_GROUPS = {
     // Task 5.3b-2: pinned lessons of step 5.
     'timetable_pin.create',
     'timetable_pin.delete',
+    // Task 5.4a: lessons of the weekly pattern placed, moved, swapped and removed in the grid.
+    'pattern_block.create',
+    'pattern_block.move',
+    'pattern_block.swap',
+    'pattern_block.delete',
     'teaching_load.create',
     'teaching_load.edit',
     'teaching_load.delete',
