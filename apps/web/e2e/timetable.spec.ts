@@ -646,14 +646,15 @@ test('an Academic Vice Principal places, moves and removes a double lesson as on
   const second = (await cell(3, 2).locator('[data-block]').getAttribute('data-block')) ?? '';
   await screenshot(page, 'grid-double');
 
-  // Dragged by its first half to Thursday at 08:45: the second half goes to 09:30.
-  await cell(3, 1).locator(`[data-block="${first}"]`).dragTo(cell(4, 2));
-  await expect(cell(4, 2).locator(`[data-block="${first}"]`)).toBeVisible();
-  await expect(cell(4, 3).locator(`[data-block="${second}"]`)).toBeVisible();
+  // Dragged by its first half to Thursday at 08:00: the second half goes to 08:45.
+  // The first row: the status lines of a drag make the rows below taller.
+  await cell(3, 1).locator(`[data-block="${first}"]`).dragTo(cell(4, 1));
+  await expect(cell(4, 1).locator(`[data-block="${first}"]`)).toBeVisible();
+  await expect(cell(4, 2).locator(`[data-block="${second}"]`)).toBeVisible();
   await expect(cell(3, 1).locator('[data-block]')).toHaveCount(0);
 
   // Removed by its second half: both go.
-  await cell(4, 3)
+  await cell(4, 2)
     .locator(`[data-block="${second}"]`)
     .getByRole('button', { name: en.timetable.grid.remove })
     .click();
@@ -662,5 +663,5 @@ test('an Academic Vice Principal places, moves and removes a double lesson as on
     .getByRole('button', { name: en.timetable.grid.remove })
     .click();
   await expect(doubles).toHaveCount(0);
-  await expect(cell(4, 2).locator('[data-block]')).toHaveCount(0);
+  await expect(cell(4, 1).locator('[data-block]')).toHaveCount(0);
 });
