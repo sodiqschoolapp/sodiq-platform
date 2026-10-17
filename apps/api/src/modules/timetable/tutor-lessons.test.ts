@@ -90,7 +90,13 @@ describe('Tutor lessons follow the Tutor', () => {
    * version of its own whose load row names `rowTeacherId` (the class's
    * Tutor on 19 October for a Tutor subject).
    */
-  async function lesson(input: {
+  async function lesson(input: Parameters<typeof lessonWriter>[0]): Promise<string> {
+    const write = await lessonWriter(input);
+    return app.get(Transactions).run([input.branch ?? north], write);
+  }
+
+  /** The version of `lesson`, then the write of the lesson in a transaction given later. */
+  async function lessonWriter(input: {
     classId: string;
     date: string;
     start: string;
@@ -100,7 +106,7 @@ describe('Tutor lessons follow the Tutor', () => {
     rowTeacherId?: string;
     branch?: string;
     cancel?: boolean;
-  }): Promise<string> {
+  }): Promise<(transaction: Transaction) => Promise<string>> {
     const branch = input.branch ?? north;
     const year = branch === north ? northYear : southYear;
     const subjectId = input.subjectId ?? tutorSubject;
@@ -114,7 +120,7 @@ describe('Tutor lessons follow the Tutor', () => {
     ]);
     const from = source.lessons[0];
     if (from === undefined) throw new Error('No source for the lesson.');
-    return app.get(Transactions).run([branch], async (transaction) => {
+    return async (transaction) => {
       const block = await transaction
         .insertInto('lesson_blocks')
         .values({
@@ -148,7 +154,7 @@ describe('Tutor lessons follow the Tutor', () => {
         .returning('id')
         .executeTakeFirstOrThrow();
       return row.id;
-    });
+    };
   }
 
   /** The Tutor lesson of a class tutored by `tutor` on 19 October. */
@@ -885,6 +891,193 @@ describe('Tutor lessons follow the Tutor', () => {
       // Without the acting row, the end's follow would set 21 October to
       // need a teacher.
       expect(await teachersOf([inside, after])).toEqual([acting.staffId, null]);
+    });
+
+    /** The account a held give names as its giver. */
+    const giver = async () =>
+      (
+        await database.migrator
+          .selectFrom('accounts')
+          .select('id')
+          .orderBy('id')
+          .executeTakeFirstOrThrow()
+      ).id;
+
+    /** The give route held open: the Tutor row, then its follow. */
+    const heldGive = async (
+      classId: string,
+      assignmentId: string,
+      from: Date,
+      extra: { kind?: 'tutor' | 'acting'; until?: Date } = {},
+    ) => {
+      const givenBy = await giver();
+      return holdOpen(async (transaction) => {
+        await transaction
+          .insertInto('class_tutors')
+          .values({
+            branch_id: north,
+            class_id: classId,
+            assignment_id: assignmentId,
+            kind: extra.kind ?? 'tutor',
+            valid_from: from,
+            own_until: extra.until ?? null,
+            given_by: givenBy,
+          })
+          .execute();
+        await followTutors(transaction, [classId], from);
+      });
+    };
+
+    /** A class whose Tutor A ends on 26 October, written by the migrator. */
+    async function endingClass() {
+      const own = await tutoredClass();
+      const end = new Date('2026-10-26T00:00:00+05:00');
+      await database.migrator
+        .updateTable('class_tutors')
+        .set({ valid_until: end, own_until: end, end_cause: 'ended' })
+        .where('id', '=', own.rowId)
+        .execute();
+      return own;
+    }
+
+    const claimsOf = (ids: readonly string[]) =>
+      database.migrator
+        .selectFrom('time_claims')
+        .select(['lesson_id', 'teacher_id'])
+        .where('lesson_id', 'in', ids)
+        .where('kind', '=', 'lesson')
+        .orderBy('lesson_id')
+        .execute();
+
+    // A lesson of the new Tutor written by another transaction at the same
+    // moment is not seen by the follow's clash check: the time-claim
+    // exclusion keeps the Tutor from being booked twice.
+    it('a give that waited for a lesson write of the new Tutor sets the clashing lesson to need a teacher', async () => {
+      const own = await endingClass();
+      const a = own.tutor.staffId;
+      const tutored = await tutorLesson(own.classId, a, '2026-10-28');
+      const b = await tutorPerson();
+      const other = await newClass();
+      const write = await lessonWriter({
+        classId: other,
+        date: '2026-10-28',
+        start: '09:00',
+        end: '09:45',
+        teacherId: b.staffId,
+        subjectId: subject,
+      });
+      let written = '';
+      const held = await holdOpen(async (transaction) => {
+        written = await write(transaction);
+      });
+      const sent = give(own.classId, b.assignmentId, '2026-10-26').then((response) => response);
+      await untilWaiting();
+      held.release();
+      expect(await held.done).toBeUndefined();
+      expect((await sent).status).toBe(201);
+      expect(await teacherOf(tutored)).toBeNull();
+      expect(await claimsOf([tutored, written])).toEqual(
+        [
+          { lesson_id: tutored, teacher_id: null },
+          { lesson_id: written, teacher_id: b.staffId },
+        ].sort((x, y) => x.lesson_id.localeCompare(y.lesson_id)),
+      );
+      expect((await entry('class.tutor_given', own.classId)).new_value).toMatchObject({
+        tutorLessons: { moved: [], needsTeacher: [{ lessonId: tutored, from: a }] },
+      });
+    });
+
+    it('a lesson write of the new Tutor that waited for a give is refused by the exclusion', async () => {
+      const own = await endingClass();
+      const a = own.tutor.staffId;
+      const tutored = await tutorLesson(own.classId, a, '2026-10-28');
+      const b = await tutorPerson();
+      const other = await newClass();
+      const write = await lessonWriter({
+        classId: other,
+        date: '2026-10-28',
+        start: '09:00',
+        end: '09:45',
+        teacherId: b.staffId,
+        subjectId: subject,
+      });
+      const held = await heldGive(
+        own.classId,
+        b.assignmentId,
+        new Date('2026-10-26T00:00:00+05:00'),
+      );
+      const sent = app
+        .get(Transactions)
+        .run([north], write)
+        .catch((error: unknown) => error as { constraint?: string });
+      await untilWaiting();
+      held.release();
+      expect(await held.done).toBeUndefined();
+      expect(await sent).toMatchObject({ constraint: 'time_claims_teacher_excl' });
+      expect(await teacherOf(tutored)).toBe(b.staffId);
+      expect(
+        await database.migrator
+          .selectFrom('lessons')
+          .select('id')
+          .where('class_id', '=', other)
+          .execute(),
+      ).toEqual([]);
+    });
+
+    // A main give from 26 October and an acting give from 19 October to 2
+    // November: the follow that commits last reads the other's row after its
+    // lessons' locks. 21 October is the acting Tutor's alone, 28 October the
+    // acting Tutor's over the main one, 11 November the main Tutor's.
+    it('an acting give that waited for a main give reads the main row', async () => {
+      const own = await endingClass();
+      const a = own.tutor.staffId;
+      const ids: string[] = [];
+      for (const date of ['2026-10-21', '2026-10-28', '2026-11-11']) {
+        ids.push(await tutorLesson(own.classId, a, date));
+      }
+      const main = await tutorPerson();
+      const acting = await tutorPerson();
+      const held = await heldGive(
+        own.classId,
+        main.assignmentId,
+        new Date('2026-10-26T00:00:00+05:00'),
+      );
+      const sent = give(own.classId, acting.assignmentId, '2026-10-19', {
+        kind: 'acting',
+        until: '2026-11-09',
+      }).then((response) => response);
+      await untilWaiting();
+      held.release();
+      expect(await held.done).toBeUndefined();
+      expect((await sent).status).toBe(201);
+      // Without the main row, the acting give's follow would set 11 November
+      // to need a teacher.
+      expect(await teachersOf(ids)).toEqual([acting.staffId, acting.staffId, main.staffId]);
+    });
+
+    it('a main give that waited for an acting give reads the acting row', async () => {
+      const own = await endingClass();
+      const a = own.tutor.staffId;
+      const ids: string[] = [];
+      for (const date of ['2026-10-21', '2026-10-28', '2026-11-11']) {
+        ids.push(await tutorLesson(own.classId, a, date));
+      }
+      const main = await tutorPerson();
+      const acting = await tutorPerson();
+      const held = await heldGive(
+        own.classId,
+        acting.assignmentId,
+        new Date('2026-10-19T00:00:00+05:00'),
+        { kind: 'acting', until: new Date('2026-11-09T00:00:00+05:00') },
+      );
+      const sent = give(own.classId, main.assignmentId, '2026-10-26').then((response) => response);
+      await untilWaiting();
+      held.release();
+      expect(await held.done).toBeUndefined();
+      expect((await sent).status).toBe(201);
+      // Without the acting row, the main give's follow would give 28 October
+      // to the main Tutor.
+      expect(await teachersOf(ids)).toEqual([acting.staffId, acting.staffId, main.staffId]);
     });
   });
 
