@@ -616,6 +616,8 @@ describe('pinned lessons of step 5', () => {
     it('lets the Academic Vice Principal of the branch add and remove a pin, the audit naming the assignment', async () => {
       const s = await scene();
       const assignment = await viceIn(s.branch);
+      // Task 5.4c-1: the edit lock the scene's writes took is let go for this account.
+      await load.freeEditLock(s.version);
       const added = readinessOf(await addPin(s.branch, s.version, s.rowA, 1, 1, t.vicePrincipal));
       const pin = added.rules.pins[0];
       if (pin === undefined) throw new Error('The pin was not answered.');
@@ -820,6 +822,8 @@ describe('pinned lessons of step 5', () => {
         ]);
       // Permission review, S1: the Academic Vice Principal of the branch too.
       await viceIn(s.branch);
+      // Task 5.4c-1: the edit lock the writes above took is let go for the next account.
+      await load.freeEditLock(s.version);
       const before = await rows();
       for (const cookie of [t.vicePrincipal, t.admin]) {
         // Version: another branch's, an unknown one.

@@ -38,6 +38,7 @@ import {
   type BuilderStep,
 } from './builder-search';
 import { gridMarkText } from './grid-conflicts';
+import { EditLockBanner, useEditLock } from './edit-lock';
 import { GridStep } from './grid-step';
 import { RulesStep } from './rules-step';
 import {
@@ -105,7 +106,9 @@ export function BuilderPage(): React.JSX.Element {
     list[0];
   const readiness = useQuery(readinessQuery(branchId, chosen?.id ?? null));
   const writable = chosen?.status === 'draft' && chosen.yearStatus !== 'closed';
-  const canEdit = writable && can('edit');
+  // Task 5.4c-1: one edits at a time; the others read.
+  const editLock = useEditLock(writable ? chosen : undefined, writable && can('edit'));
+  const canEdit = writable && can('edit') && !editLock.othersEditing;
   const years = useQuery({ ...yearsQuery(branchId), enabled: branchId !== null && canEdit });
   const step: BuiltStep = search.step ?? 'templates';
 
@@ -521,6 +524,11 @@ export function BuilderPage(): React.JSX.Element {
   return (
     <>
       {header}
+      {editLock.othersEditing && (
+        <div className="mb-6">
+          <EditLockBanner version={chosen} take={editLock.take} />
+        </div>
+      )}
       <section className={`${PANEL} mb-6 grid gap-4 p-6`}>
         <div className="flex flex-wrap items-end gap-4">
           <div className="min-w-64">

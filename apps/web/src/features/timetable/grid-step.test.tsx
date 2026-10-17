@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import { uz } from '@/i18n/locales/uz';
-import { fakeApi, json, NORTH, renderApp, sessionOf } from '@/testing/render-app';
+import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
 import { setWindowWidth } from '@/testing/window-width';
 import { rearrangeOf } from './grid-suggest-dialog';
 import { boardOf, cellStatus, newBlockOf } from './use-slot-status';
@@ -25,6 +25,7 @@ const VERSION: TimetableVersion = {
   fromVersion: null,
   rows: 3,
   leftRows: 0,
+  editLock: null,
 };
 
 const OXFORD = uid(101);
@@ -38,6 +39,7 @@ const ROW_OXFORD = uid(700);
 const ROW_PRINCETON = uid(701);
 const ROW_GROUP = uid(702);
 const BLOCK_OXFORD = uid(800);
+const LOCK = uid(1900);
 const BLOCK_PRINCETON = uid(801);
 const BLOCK_GROUP = uid(802);
 const ROOM = uid(900);
@@ -276,6 +278,7 @@ const GRID: GridAnswer = {
     branches: [],
   },
   pins: [],
+  locks: [],
   results: [],
 };
 
@@ -299,6 +302,10 @@ async function openGrid(
     placed?: () => Response;
     roomed?: () => Response;
     rearranged?: () => Response;
+    /** The version as the list answers it (task 5.4c-1: its edit lock). */
+    version?: TimetableVersion;
+    /** "Take over" and "still here" (task 5.4c-1). */
+    tookLock?: () => Response;
     /** Step 7's mark of the readiness answer (task 5.4b-2a). */
     gridMark?: { ready: boolean; blocked: number; warnings: number };
     /** Every step 1 to 5 ready. */
@@ -308,7 +315,8 @@ async function openGrid(
   const language = options.language ?? 'en';
   const calls = fakeApi({
     'GET /api/auth/session': () => json({ ...(options.session ?? vice()), language }),
-    'GET /api/timetable/versions': () => json({ versions: [VERSION], today: '2026-10-10' }),
+    'GET /api/timetable/versions': () =>
+      json({ versions: [options.version ?? VERSION], today: '2026-10-10' }),
     [`GET /api/timetable/versions/${VERSION.id}/readiness`]: () =>
       json({
         ready: false,
@@ -363,6 +371,11 @@ async function openGrid(
       options.roomed?.() ?? json(options.grid ?? GRID),
     [`POST /api/timetable/versions/${VERSION.id}/pattern/rearrange`]: () =>
       options.rearranged?.() ?? json(options.grid ?? GRID),
+    [`POST /api/timetable/versions/${VERSION.id}/edit-lock`]: () =>
+      options.tookLock?.() ?? json(options.version ?? VERSION),
+    [`POST /api/timetable/versions/${VERSION.id}/locks`]: () => json(options.grid ?? GRID, 201),
+    [`DELETE /api/timetable/versions/${VERSION.id}/locks/${LOCK}`]: () =>
+      json(options.grid ?? GRID),
   });
   renderApp(`/timetable/builder?version=${VERSION.id}&step=grid`, language);
   await waitFor(() => {
@@ -1110,5 +1123,134 @@ describe('Suggest a place', () => {
       within(own as HTMLElement).queryByRole('button', { name: en.timetable.grid.suggest }),
     ).toBeNull();
     expect(screen.queryByRole('button', { name: en.timetable.grid.suggest })).toBeNull();
+  });
+});
+
+// Task 5.4c-1: the edit lock of a draft (06, Editing in the grid: "Several
+// people can view a draft; one edits at a time") and the locks of the grid.
+describe('the edit lock and the locks', () => {
+  const HELD: TimetableVersion = {
+    ...VERSION,
+    editLock: {
+      holder: { id: uid(1901), name: 'Tosheva Malika' },
+      seenAt: '2026-10-10T18:50:00Z',
+      mine: false,
+    },
+  };
+  const MINE: TimetableVersion = {
+    ...VERSION,
+    editLock: {
+      holder: { id: uid(1902), name: 'Saidova Dilnoza' },
+      seenAt: '2026-10-10T18:50:00Z',
+      mine: true,
+    },
+  };
+  const lockCalls = (calls: readonly { route: string }[]) =>
+    calls.filter((call) => call.route.endsWith('/edit-lock'));
+
+  it('names who edits the draft, leaves the grid read only, and takes over on request', async () => {
+    const calls = await openGrid({ version: HELD });
+    const banner = document.querySelector<HTMLElement>('[data-edit-lock]');
+    if (banner === null) throw new Error('No banner.');
+    expect(banner.textContent).toContain('Tosheva Malika');
+    const own = tile(BLOCK_OXFORD);
+    if (own === null) throw new Error('No tile.');
+    expect(within(own).queryByRole('button', { name: en.timetable.grid.move })).toBeNull();
+    expect(within(own).queryByRole('button', { name: en.timetable.grid.lock })).toBeNull();
+    fireEvent.click(within(banner).getByRole('button', { name: en.timetable.editLock.takeOver }));
+    await waitFor(() => {
+      expect(lockCalls(calls)).toHaveLength(1);
+    });
+  });
+
+  it('says why a take over before 5 minutes is refused', async () => {
+    await openGrid({ version: HELD, tookLock: () => refusal('draft_edit_locked', 409) });
+    const banner = document.querySelector<HTMLElement>('[data-edit-lock]');
+    if (banner === null) throw new Error('No banner.');
+    fireEvent.click(within(banner).getByRole('button', { name: en.timetable.editLock.takeOver }));
+    expect(await screen.findByText(en.errors.draft_edit_locked)).toBeTruthy();
+  });
+
+  it('keeps the holder’s lock on a key or a pointer at most once a minute', async () => {
+    const calls = await openGrid({ version: MINE });
+    expect(document.querySelector('[data-edit-lock]')).toBeNull();
+    fireEvent.keyDown(window, { key: 'a' });
+    fireEvent.pointerDown(window);
+    fireEvent.keyDown(window, { key: 'b' });
+    await waitFor(() => {
+      expect(lockCalls(calls)).toHaveLength(1);
+    });
+  });
+
+  it('never takes a free lock on a key or a pointer (review correction 1)', async () => {
+    const calls = await openGrid();
+    fireEvent.keyDown(window, { key: 'a' });
+    fireEvent.pointerDown(window);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(lockCalls(calls)).toHaveLength(0);
+  });
+
+  it('locks a lesson from its tile, shows it locked, and unlocks it', async () => {
+    const calls = await openGrid();
+    const own = tile(BLOCK_OXFORD);
+    if (own === null) throw new Error('No tile.');
+    fireEvent.click(within(own).getByRole('button', { name: en.timetable.grid.lock }));
+    await waitFor(() => {
+      expect(calls.find((call) => call.route.endsWith('/locks'))?.body).toEqual({
+        kind: 'block',
+        blockId: BLOCK_OXFORD,
+      });
+    });
+  });
+
+  it('shows a locked lesson with Unlock, lists the lock, and suggests no place for it', async () => {
+    const calls = await openGrid({
+      grid: { ...GRID, locks: [{ id: LOCK, kind: 'block', blockId: BLOCK_OXFORD }] },
+    });
+    const own = tile(BLOCK_OXFORD);
+    if (own === null) throw new Error('No tile.');
+    expect(own.querySelector('[data-tile-locked]')).not.toBeNull();
+    expect(document.querySelector(`[data-lock="${LOCK}"]`)?.textContent).toContain('Mathematics');
+    fireEvent.click(within(own).getByRole('button', { name: en.timetable.grid.suggest }));
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog.querySelector('[data-suggest-locked]')).not.toBeNull();
+    expect(dialog.querySelector('[data-suggestion]')).toBeNull();
+    fireEvent.click(within(dialog).getByRole('button', { name: en.timetable.grid.close }));
+    fireEvent.click(within(own).getByRole('button', { name: en.timetable.grid.unlock }));
+    await waitFor(() => {
+      expect(
+        calls.some(
+          (call) => call.route === `DELETE /api/timetable/versions/${VERSION.id}/locks/${LOCK}`,
+        ),
+      ).toBe(true);
+    });
+  });
+
+  it('locks the class shown, a day and a teacher from the panel', async () => {
+    const calls = await openGrid();
+    const locks = document.querySelector<HTMLElement>('[data-locks]');
+    if (locks === null) throw new Error('No panel.');
+    const sent = () =>
+      calls.filter((call) => call.route.endsWith('/locks')).map((call) => call.body);
+    const click = async (name: string, count: number) => {
+      await waitFor(() => {
+        expect(within(locks).getByRole('button', { name })).toHaveProperty('disabled', false);
+      });
+      fireEvent.click(within(locks).getByRole('button', { name }));
+      await waitFor(() => {
+        expect(sent()).toHaveLength(count);
+      });
+    };
+    await click(en.timetable.grid.lockClass, 1);
+    fireEvent.change(within(locks).getByLabelText(en.timetable.grid.lockDayLabel), {
+      target: { value: '2' },
+    });
+    await click(en.timetable.grid.lockDay, 2);
+    await click(en.timetable.grid.lockTeacher, 3);
+    expect(sent()).toEqual([
+      { kind: 'class', classId: OXFORD },
+      { kind: 'day', weekday: 2 },
+      { kind: 'teacher', teacherId: KARIMOVA },
+    ]);
   });
 });

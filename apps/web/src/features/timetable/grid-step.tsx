@@ -1,6 +1,12 @@
 import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
-import { classDisplayName, weekdaySchema, type GridAnswer, type PlaceRecord } from '@sodiq/shared';
-import { patternModel, type PatternBlock, type Suggestion } from '@sodiq/timetable-rules';
+import {
+  classDisplayName,
+  weekdaySchema,
+  type GridAnswer,
+  type PlaceRecord,
+  type TimetableLockRecord,
+} from '@sodiq/shared';
+import { lockedBy, patternModel, type PatternBlock, type Suggestion } from '@sodiq/timetable-rules';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -19,6 +25,7 @@ import { weekdayName } from '@/lib/dates';
 import { SM, useMinWidth } from '@/lib/use-min-width';
 import { GridCell, isCellData } from './grid-cell';
 import { GridClockBoard } from './grid-clock-board';
+import { GridLocks } from './grid-locks';
 import { GridConflicts } from './grid-conflicts';
 import { GridMoveDialog } from './grid-move-dialog';
 import { GridPlaceForm } from './grid-place-form';
@@ -31,6 +38,8 @@ import {
   gridQuery,
   invalidateTimetable,
   changeLessonRoom,
+  createLock,
+  deleteLock,
   moveBlock,
   placeBlock,
   rearrangeBlocks,
@@ -224,6 +233,15 @@ export function GridStep({
     },
     onSuccess: answered,
   });
+  // Task 5.4c-1: the locks of the draft.
+  const lock = useMutation({
+    mutationFn: (record: TimetableLockRecord) => createLock(versionId, record),
+    onSuccess: answered,
+  });
+  const unlock = useMutation({
+    mutationFn: (lockId: string) => deleteLock(versionId, lockId),
+    onSuccess: answered,
+  });
   const [placed, setPlaced] = useState(false);
 
   /** The refusal with the rules of the engine named, for `pattern_blocked`. */
@@ -392,7 +410,13 @@ export function GridStep({
         )}
         <SavedSign
           saved={
-            write.isSuccess || remove.isSuccess || room.isSuccess || rearrange.isSuccess || placed
+            write.isSuccess ||
+            remove.isSuccess ||
+            room.isSuccess ||
+            rearrange.isSuccess ||
+            lock.isSuccess ||
+            unlock.isSuccess ||
+            placed
           }
         />
       </div>
@@ -409,6 +433,8 @@ export function GridStep({
       <FailureAlert error={remove.error} />
       <FailureAlert error={room.error} text={failureText(room.error)} />
       <FailureAlert error={rearrange.error} text={failureText(rearrange.error)} />
+      <FailureAlert error={lock.error} />
+      <FailureAlert error={unlock.error} />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="grid min-w-0 content-start gap-4">
           {view === 'room' && chosenRoom === undefined && (
@@ -504,6 +530,22 @@ export function GridStep({
                                   setPlaced(false);
                                   setSuggesting(block);
                                 }}
+                                locked={lockedBy(model, data.locks, block).length > 0}
+                                ownLock={data.locks.some(
+                                  (one) => one.kind === 'block' && one.blockId === block.id,
+                                )}
+                                onLock={() => {
+                                  setRefusal(null);
+                                  setPlaced(false);
+                                  const own = data.locks.find(
+                                    (one) => one.kind === 'block' && one.blockId === block.id,
+                                  );
+                                  if (own === undefined) {
+                                    lock.mutate({ kind: 'block', blockId: block.id });
+                                  } else {
+                                    unlock.mutate(own.id);
+                                  }
+                                }}
                               />
                             ))}
                             {editable && blocks.length === 0 && (
@@ -576,6 +618,27 @@ export function GridStep({
                 setPlaced(false);
                 setAdding(null);
                 setSuggesting(newBlockOf(model, entry.rowId));
+              }}
+            />
+          )}
+          {view === 'class' && (
+            <GridLocks
+              grid={data}
+              classId={chosen.id}
+              weekdays={board.weekdays}
+              teachers={teachers}
+              lessonName={lessonName}
+              editable={editable}
+              pending={lock.isPending || unlock.isPending}
+              onLock={(record) => {
+                setRefusal(null);
+                setPlaced(false);
+                lock.mutate(record);
+              }}
+              onUnlock={(lockId) => {
+                setRefusal(null);
+                setPlaced(false);
+                unlock.mutate(lockId);
               }}
             />
           )}

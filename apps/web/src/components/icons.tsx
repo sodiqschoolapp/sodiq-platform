@@ -28,6 +28,7 @@ import ExpandMoreSvg from '@material-symbols/svg-500/rounded/keyboard_arrow_down
 import FeedbackSvg from '@material-symbols/svg-500/rounded/feedback-fill.svg?react';
 import InfoSvg from '@material-symbols/svg-500/rounded/info-fill.svg?react';
 import LanguageSvg from '@material-symbols/svg-500/rounded/language-fill.svg?react';
+import LockSvg from '@material-symbols/svg-500/rounded/lock-fill.svg?react';
 import NotificationsSvg from '@material-symbols/svg-500/rounded/notifications-fill.svg?react';
 import RadioButtonUncheckedSvg from '@material-symbols/svg-500/rounded/radio_button_unchecked-fill.svg?react';
 import SearchSvg from '@material-symbols/svg-500/rounded/search-fill.svg?react';
@@ -90,6 +91,7 @@ export const ExpandMoreIcon = icon(ExpandMoreSvg);
 export const FeedbackIcon = icon(FeedbackSvg);
 export const InfoIcon = icon(InfoSvg);
 export const LanguageIcon = icon(LanguageSvg);
+export const LockIcon = icon(LockSvg);
 export const NotificationsIcon = icon(NotificationsSvg);
 export const RadioButtonUncheckedIcon = icon(RadioButtonUncheckedSvg);
 export const SearchIcon = icon(SearchSvg);

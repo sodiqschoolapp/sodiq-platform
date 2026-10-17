@@ -49,6 +49,16 @@ export const NOTIFICATION_KINDS = {
     mergedName: relativeName,
     fullName: relativeName,
   }),
+  /**
+   * Another person took over the edit lock of a draft this account held, after
+   * 5 minutes without activity (`edge/timetable`, Generator and editing: "the
+   * earlier holder is told"; task 5.4c-1, decision 6): the draft's number and
+   * the new holder's name.
+   */
+  'timetable.draft_taken_over': z.strictObject({
+    number: z.string().regex(/^[1-9][0-9]{0,3}$/),
+    name: relativeName,
+  }),
 } as const satisfies Record<string, z.ZodType>;
 
 export type NotificationKind = keyof typeof NOTIFICATION_KINDS;

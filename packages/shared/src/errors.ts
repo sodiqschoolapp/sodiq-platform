@@ -522,6 +522,12 @@ export const ERROR_CODES = [
   'pattern_mixed_block',
   /** The database refused a clash of the weekly pattern that the rule engine let through (task 5.4a, decision 17). */
   'pattern_clash',
+  /** A lock holds a lesson that the applied suggestion moves, or keeps it out of a locked day (task 5.4c-1, decision 8). */
+  'pattern_locked',
+  /** Another account holds the draft's edit lock and was active in the last 5 minutes (task 5.4c-1, edge/timetable, Generator and editing). */
+  'draft_edit_locked',
+  /** The draft already has that lock (task 5.4c-1). */
+  'lock_taken',
   /** Another change of the timetable held what this one needed; it can be sent again (task 5.4a, decision 17). */
   'timetable_busy',
   /** A step of the draft builder is not ready, so the draft cannot move to generation (task 5.3b-1, decision 6). */

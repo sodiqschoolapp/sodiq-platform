@@ -10,12 +10,15 @@ import {
   type PlaceRecord,
   type RearrangeRecord,
   type SwapRecord,
+  type TimetableLock,
+  type TimetableLockRecord,
 } from '@sodiq/shared';
 import {
   blockPlacements,
   checkCandidates,
   checkedPlacements,
   checkTimetable,
+  lockedBy,
   newBlockOf,
   patternPlacements,
   roomChange,
@@ -31,7 +34,7 @@ import { branchOf } from '../classes/classes.service.js';
 import { notFound, refusingConstraints } from '../setup/setup-refusals.js';
 import { LOAD_REFUSALS, LoadFacts, type StoredLoadRow } from './load-facts.js';
 import { readPatternFacts, type PatternFacts } from './pattern-facts.js';
-import { deferPatternClashes, readBlocks } from './pattern-queries.js';
+import { deferPatternClashes, readBlocks, readLocks } from './pattern-queries.js';
 import { readPins } from './pins-check.js';
 import { blockedRefusal, resultAnswerOf } from './rule-answers.js';
 import { Timetable, type VersionRow } from './timetable.service.js';
@@ -66,13 +69,30 @@ async function refusingPattern<T>(work: () => Promise<T>): Promise<T> {
 
 const refused = (code: ErrorCode): ApiException => new ApiException(code, 409);
 
+/** A lock as its audit entry records it: its kind and target, without its id. */
+function lockRecordOf(lock: TimetableLock): TimetableLockRecord {
+  switch (lock.kind) {
+    case 'block':
+      return { kind: lock.kind, blockId: lock.blockId };
+    case 'class':
+      return { kind: lock.kind, classId: lock.classId };
+    case 'teacher':
+      return { kind: lock.kind, teacherId: lock.teacherId };
+    case 'day':
+      return { kind: lock.kind, weekday: lock.weekday };
+  }
+}
+
 /** What a write reads of its draft: the rows, the engine's input and the placed blocks. */
 interface PatternState {
+  /** The account of the request, for the version's edit lock in the answer (task 5.4c-1). */
+  readonly accountId: string;
   readonly version: VersionRow;
   readonly rows: StoredLoadRow[];
   readonly load: LoadFacts;
   readonly pattern: PatternFacts;
   readonly blocks: PatternBlock[];
+  readonly locks: TimetableLock[];
 }
 
 /** A block at a weekday and slot, with the minutes of that slot; `pattern_no_slot` without one. */
@@ -110,7 +130,7 @@ export class TimetablePattern {
     const branchId = branchOf(access);
     return this.transactions.run(access.branchIds, async (transaction) => {
       const version = await this.timetable.findVersion(transaction, branchId, id);
-      return this.gridOf(transaction, await this.stateOf(transaction, version));
+      return this.gridOf(transaction, await this.stateOf(transaction, version, access.accountId));
     });
   }
 
@@ -121,7 +141,7 @@ export class TimetablePattern {
    */
   readiness(access: Access, id: string): Promise<DraftReadiness> {
     return this.timetable.readiness(access, id, async (transaction, version) => {
-      const { pattern, blocks } = await this.stateOf(transaction, version);
+      const { pattern, blocks } = await this.stateOf(transaction, version, access.accountId);
       const results = checkTimetable(checkedPlacements(pattern.model, blocks), pattern.model.facts);
       const blocked = results.filter((one) => one.severity === 'blocked').length;
       return { ready: blocked === 0, blocked, warnings: results.length - blocked };
@@ -130,11 +150,10 @@ export class TimetablePattern {
 
   /** A load row placed at a slot with its whole block (decision 8); refused when blocked. */
   place(access: Access, id: string, input: PlaceRecord, requestId: string): Promise<GridAnswer> {
-    const branchId = branchOf(access);
     return refusingPattern(() =>
       this.transactions.run(access.branchIds, async (transaction) => {
-        const version = await this.timetable.lockDraft(transaction, branchId, id);
-        const state = await this.stateOf(transaction, version);
+        const version = await this.timetable.lockDraft(transaction, access, id, requestId);
+        const state = await this.stateOf(transaction, version, access.accountId);
         const row = state.rows.find((one) => one.id === input.loadRowId);
         if (row === undefined) {
           throw notFound();
@@ -160,7 +179,7 @@ export class TimetablePattern {
         const placed = blockAt(model, { id: fresh.id, lessons }, input.weekday, input.slotPosition);
         this.refuseBlocked(state, [placed]);
         await this.insertBlock(transaction, access, state, placed, requestId);
-        return this.gridAfter(transaction, version);
+        return this.gridAfter(transaction, version, access.accountId);
       }),
     );
   }
@@ -176,8 +195,8 @@ export class TimetablePattern {
     const branchId = branchOf(access);
     return refusingPattern(() =>
       this.transactions.run(access.branchIds, async (transaction) => {
-        const version = await this.timetable.lockDraft(transaction, branchId, id);
-        const state = await this.stateOf(transaction, version);
+        const version = await this.timetable.lockDraft(transaction, access, id, requestId);
+        const state = await this.stateOf(transaction, version, access.accountId);
         const block = this.blockOf(state, blockId);
         if (block.weekday === input.weekday && block.slotPosition === input.slotPosition) {
           return this.gridOf(transaction, state);
@@ -195,7 +214,7 @@ export class TimetablePattern {
           newValue: { versionId: id, ...this.slotOf(moved) },
           requestId,
         });
-        return this.gridAfter(transaction, version);
+        return this.gridAfter(transaction, version, access.accountId);
       }),
     );
   }
@@ -209,8 +228,8 @@ export class TimetablePattern {
     const branchId = branchOf(access);
     return refusingPattern(() =>
       this.transactions.run(access.branchIds, async (transaction) => {
-        const version = await this.timetable.lockDraft(transaction, branchId, id);
-        const state = await this.stateOf(transaction, version);
+        const version = await this.timetable.lockDraft(transaction, access, id, requestId);
+        const state = await this.stateOf(transaction, version, access.accountId);
         const [a, b] = input.blockIds.map((blockId) => this.blockOf(state, blockId));
         if (a === undefined || b === undefined) {
           throw notFound();
@@ -238,7 +257,7 @@ export class TimetablePattern {
             requestId,
           });
         }
-        return this.gridAfter(transaction, version);
+        return this.gridAfter(transaction, version, access.accountId);
       }),
     );
   }
@@ -259,8 +278,8 @@ export class TimetablePattern {
     const branchId = branchOf(access);
     return refusingPattern(() =>
       this.transactions.run(access.branchIds, async (transaction) => {
-        const version = await this.timetable.lockDraft(transaction, branchId, id);
-        const state = await this.stateOf(transaction, version);
+        const version = await this.timetable.lockDraft(transaction, access, id, requestId);
+        const state = await this.stateOf(transaction, version, access.accountId);
         const block = this.blockOf(state, blockId);
         const lesson = block.lessons.find((one) => one.id === input.lessonId);
         const { model } = state.pattern;
@@ -299,7 +318,7 @@ export class TimetablePattern {
           },
           requestId,
         });
-        return this.gridAfter(transaction, version);
+        return this.gridAfter(transaction, version, access.accountId);
       }),
     );
   }
@@ -320,8 +339,8 @@ export class TimetablePattern {
     const branchId = branchOf(access);
     return refusingPattern(() =>
       this.transactions.run(access.branchIds, async (transaction) => {
-        const version = await this.timetable.lockDraft(transaction, branchId, id);
-        const state = await this.stateOf(transaction, version);
+        const version = await this.timetable.lockDraft(transaction, access, id, requestId);
+        const state = await this.stateOf(transaction, version, access.accountId);
         const { model } = state.pattern;
         const changes = input.changes.map((change) => {
           let from: PatternBlock | null = null;
@@ -364,6 +383,13 @@ export class TimetablePattern {
         );
         if (effective.length === 0) {
           return this.gridOf(transaction, state);
+        }
+        // Task 5.4c-1, decision 8: an applied suggestion leaves a locked lesson
+        // where it is and moves nothing into a locked day (From 5.4b-2b line).
+        if (
+          effective.some(({ from, to }) => lockedBy(model, state.locks, from ?? to, to).length > 0)
+        ) {
+          throw refused('pattern_locked');
         }
         this.refuseBlocked(
           state,
@@ -424,7 +450,7 @@ export class TimetablePattern {
             requestId,
           });
         }
-        return this.gridAfter(transaction, version);
+        return this.gridAfter(transaction, version, access.accountId);
       }),
     );
   }
@@ -434,8 +460,8 @@ export class TimetablePattern {
     const branchId = branchOf(access);
     return refusingPattern(() =>
       this.transactions.run(access.branchIds, async (transaction) => {
-        const version = await this.timetable.lockDraft(transaction, branchId, id);
-        const state = await this.stateOf(transaction, version);
+        const version = await this.timetable.lockDraft(transaction, access, id, requestId);
+        const state = await this.stateOf(transaction, version, access.accountId);
         const block = this.blockOf(state, blockId);
         const { model } = state.pattern;
         await this.audit.record(transaction, {
@@ -453,11 +479,113 @@ export class TimetablePattern {
               teacherId: model.rowOf(lesson.loadRowId).teacherId,
               roomId: lesson.roomId,
             })),
+            // Task 5.4c-1: a lock of the block goes with it (decision 7).
+            locks: state.locks
+              .filter((lock) => lock.kind === 'block' && lock.blockId === block.id)
+              .map((lock) => lock.id),
           },
           requestId,
         });
         await transaction.deleteFrom('pattern_blocks').where('id', '=', block.id).execute();
-        return this.gridAfter(transaction, version);
+        return this.gridAfter(transaction, version, access.accountId);
+      }),
+    );
+  }
+
+  /**
+   * A lock of the draft (task 5.4c-1; 06, Auto-generation: "A lesson, a class,
+   * a teacher or a day can be locked"): a block of this version, a class of the
+   * branch, or a teacher or vacancy working in the branch, else 404; a lock the
+   * draft already has: `lock_taken`.
+   */
+  createLock(
+    access: Access,
+    id: string,
+    input: TimetableLockRecord,
+    requestId: string,
+  ): Promise<GridAnswer> {
+    const branchId = branchOf(access);
+    return refusingPattern(() =>
+      this.transactions.run(access.branchIds, async (transaction) => {
+        const version = await this.timetable.lockDraft(transaction, access, id, requestId);
+        const state = await this.stateOf(transaction, version, access.accountId);
+        const target = {
+          block_id: input.kind === 'block' ? input.blockId : null,
+          class_id: input.kind === 'class' ? input.classId : null,
+          teacher_id: input.kind === 'teacher' ? input.teacherId : null,
+          weekday: input.kind === 'day' ? input.weekday : null,
+        };
+        if (input.kind === 'block') {
+          this.blockOf(state, input.blockId);
+        } else if (input.kind === 'class') {
+          const found = await transaction
+            .selectFrom('classes')
+            .select('id')
+            .where('id', '=', input.classId)
+            .where('branch_id', '=', branchId)
+            .executeTakeFirst();
+          if (found === undefined) throw notFound();
+        } else if (input.kind === 'teacher') {
+          const found = await transaction
+            .selectFrom('staff_branches')
+            .select('staff_id')
+            .where('staff_id', '=', input.teacherId)
+            .where('branch_id', '=', branchId)
+            .executeTakeFirst();
+          if (found === undefined) throw notFound();
+        }
+        const taken = state.locks.some(
+          (lock) =>
+            lock.kind === input.kind &&
+            ((lock.kind === 'block' && lock.blockId === target.block_id) ||
+              (lock.kind === 'class' && lock.classId === target.class_id) ||
+              (lock.kind === 'teacher' && lock.teacherId === target.teacher_id) ||
+              (lock.kind === 'day' && lock.weekday === target.weekday)),
+        );
+        if (taken) {
+          throw refused('lock_taken');
+        }
+        const created = await transaction
+          .insertInto('timetable_locks')
+          .values({ branch_id: branchId, version_id: id, kind: input.kind, ...target })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await this.audit.record(transaction, {
+          branchId,
+          actorId: access.accountId,
+          assignmentId: access.assignmentId,
+          action: 'timetable_lock.create',
+          record: { type: 'timetable_lock', id: created.id },
+          newValue: { versionId: id, ...input },
+          requestId,
+        });
+        return this.gridAfter(transaction, version, access.accountId);
+      }),
+    );
+  }
+
+  /** A lock of the draft removed; another version's, another branch's or unknown: 404. */
+  deleteLock(access: Access, id: string, lockId: string, requestId: string): Promise<GridAnswer> {
+    const branchId = branchOf(access);
+    return refusingPattern(() =>
+      this.transactions.run(access.branchIds, async (transaction) => {
+        const version = await this.timetable.lockDraft(transaction, access, id, requestId);
+        const state = await this.stateOf(transaction, version, access.accountId);
+        const lock = state.locks.find((one) => one.id === lockId);
+        if (lock === undefined) {
+          throw notFound();
+        }
+        await this.audit.record(transaction, {
+          branchId,
+          actorId: access.accountId,
+          assignmentId: access.assignmentId,
+          action: 'timetable_lock.delete',
+          record: { type: 'timetable_lock', id: lock.id },
+          oldValue: { versionId: id, ...lockRecordOf(lock) },
+          requestId,
+        });
+        await transaction.deleteFrom('timetable_locks').where('id', '=', lock.id).execute();
+        return this.gridAfter(transaction, version, access.accountId);
       }),
     );
   }
@@ -529,12 +657,20 @@ export class TimetablePattern {
     return block.id;
   }
 
-  private async stateOf(transaction: Transaction, version: VersionRow): Promise<PatternState> {
+  private async stateOf(
+    transaction: Transaction,
+    version: VersionRow,
+    accountId: string,
+  ): Promise<PatternState> {
     const context = await this.timetable.contextOf(transaction, version);
     const rows = await this.timetable.rowsOf(transaction, version.id);
     const load = await LoadFacts.of(transaction, context, rows, { versionRows: rows });
     const pattern = await readPatternFacts(transaction, context, rows, load);
-    return { version, rows, load, pattern, blocks: await readBlocks(transaction, version.id) };
+    const [blocks, locks] = await Promise.all([
+      readBlocks(transaction, version.id),
+      readLocks(transaction, version.id),
+    ]);
+    return { accountId, version, rows, load, pattern, blocks, locks };
   }
 
   /** A block of the state's version; another version's, another branch's or unknown: 404. */
@@ -581,12 +717,16 @@ export class TimetablePattern {
     };
   }
 
-  private async gridAfter(transaction: Transaction, version: VersionRow): Promise<GridAnswer> {
-    return this.gridOf(transaction, await this.stateOf(transaction, version));
+  private async gridAfter(
+    transaction: Transaction,
+    version: VersionRow,
+    accountId: string,
+  ): Promise<GridAnswer> {
+    return this.gridOf(transaction, await this.stateOf(transaction, version, accountId));
   }
 
   private async gridOf(transaction: Transaction, state: PatternState): Promise<GridAnswer> {
-    const { version, rows, load, pattern, blocks } = state;
+    const { accountId, version, rows, load, pattern, blocks, locks } = state;
     const pins = await readPins(transaction, version.id);
     const answers = rows.map((row) => load.answerOf(row, []));
     const classIds = [...new Set(pattern.data.classStudents.map((one) => one.classId))];
@@ -630,7 +770,7 @@ export class TimetablePattern {
     const colourOf = new Map(colours.map((one) => [one.id, one.colour]));
     // Parsed, so the readonly data of the engine becomes the answer's shape.
     return gridSchema.parse({
-      version: await this.timetable.answerOf(transaction, version.id),
+      version: await this.timetable.answerOf(transaction, version.id, accountId),
       editable: version.status === 'draft' && version.year_status !== 'closed',
       classes,
       rows: answers.map((answer) => ({
@@ -652,6 +792,7 @@ export class TimetablePattern {
         weekday: pin.weekday,
         slotPosition: pin.slot_position,
       })),
+      locks,
       results: checkTimetable(checkedPlacements(pattern.model, blocks), pattern.model.facts).map(
         resultAnswerOf,
       ),

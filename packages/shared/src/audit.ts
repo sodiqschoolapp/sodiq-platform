@@ -195,6 +195,10 @@ export const AUDIT_ACTION_GROUPS = {
     'pattern_entry.room',
     // Task 5.4b-2b: a suggestion of "Suggest a place" applied, two or three blocks changed together.
     'pattern_block.rearrange',
+    // Task 5.4c-1: the edit lock of a draft changed holder; locks of the grid.
+    'timetable_version.edit_lock',
+    'timetable_lock.create',
+    'timetable_lock.delete',
     'teaching_load.create',
     'teaching_load.edit',
     'teaching_load.delete',

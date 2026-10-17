@@ -62,7 +62,9 @@ import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
+import { Notifications } from '../notifications/notifications.service.js';
 import { changesOf, notFound, refusingConstraints } from '../setup/setup-refusals.js';
+import { accountNames, editLockFresh } from './edit-lock.js';
 import {
   LOAD_REFUSALS,
   LoadFacts,
@@ -189,6 +191,8 @@ export interface VersionRow extends WeightColumns {
   left_rows: unknown;
   templates_confirmed: unknown;
   rules_confirmed: unknown;
+  edit_holder_id: string | null;
+  edit_seen_at: Date | null;
   start_date: string;
   end_date: string;
   year_status: string;
@@ -300,6 +304,7 @@ export class Timetable {
   constructor(
     private readonly transactions: Transactions,
     private readonly audit: Audit,
+    private readonly notifications: Notifications,
   ) {}
 
   /** The versions of the branch, newest year first, by number. */
@@ -311,7 +316,7 @@ export class Timetable {
         .orderBy('timetable_versions.number', 'desc')
         .execute();
       return {
-        versions: await this.answersOf(transaction, rows),
+        versions: await this.answersOf(transaction, rows, access.accountId),
         today: await this.todayIn(transaction, branchId),
       };
     });
@@ -519,7 +524,7 @@ export class Timetable {
             },
             requestId,
           });
-          return this.answerOf(transaction, created.id);
+          return this.answerOf(transaction, created.id, access.accountId);
         }),
       LOAD_REFUSALS,
     );
@@ -536,7 +541,7 @@ export class Timetable {
     return refusingConstraints(
       () =>
         this.transactions.run(access.branchIds, async (transaction) => {
-          const version = await this.lockDraft(transaction, branchId, id);
+          const version = await this.lockDraft(transaction, access, id, requestId);
           const before = {
             startsOn: version.starts_on,
             leftRows: leftRowsOf(version.left_rows).length,
@@ -547,7 +552,7 @@ export class Timetable {
           };
           const changes = changesOf(before, after);
           if (changes === null) {
-            return this.answerOf(transaction, id);
+            return this.answerOf(transaction, id, access.accountId);
           }
           if (after.startsOn !== before.startsOn) {
             await this.checkStart(transaction, branchId, after.startsOn, {
@@ -588,7 +593,7 @@ export class Timetable {
             },
             requestId,
           });
-          return this.answerOf(transaction, id);
+          return this.answerOf(transaction, id, access.accountId);
         }),
       LOAD_REFUSALS,
     );
@@ -608,7 +613,7 @@ export class Timetable {
       });
       const stored = leftRowsOf(version.left_rows);
       return {
-        version: await this.answerOf(transaction, id),
+        version: await this.answerOf(transaction, id, access.accountId),
         rows: this.sorted(rows.map((row) => facts.answerOf(row, facts.problemsOf(row)))),
         leftRows: left.map((row, index) => facts.answerOf(row, stored[index]?.problems ?? [])),
       };
@@ -973,7 +978,7 @@ export class Timetable {
     return refusingConstraints(
       () =>
         this.transactions.run(access.branchIds, async (transaction) => {
-          const version = await this.lockDraft(transaction, branchId, id);
+          const version = await this.lockDraft(transaction, access, id, requestId);
           const context = await this.contextOf(transaction, version);
           const drawn = await templateCellsOf(
             transaction,
@@ -1165,7 +1170,7 @@ export class Timetable {
    * the load commits between the check and the run.
    */
   async requireReady(transaction: Transaction, branchId: string, id: string): Promise<void> {
-    const version = await this.lockDraft(transaction, branchId, id);
+    const version = await this.lockDraftRow(transaction, branchId, id);
     const readiness = await this.readinessOf(transaction, branchId, version);
     if (!readiness.ready) {
       const steps = (['templates', 'load', 'teachers', 'rooms', 'rules'] as const).filter(
@@ -1198,7 +1203,7 @@ export class Timetable {
     return refusingConstraints(
       () =>
         this.transactions.run(access.branchIds, async (transaction) => {
-          const version = await this.lockDraft(transaction, branchId, id);
+          const version = await this.lockDraft(transaction, access, id, requestId);
           const before = weightsOf(version);
           if (!sameWeights(before, input.weights)) {
             await transaction
@@ -1239,7 +1244,7 @@ export class Timetable {
     return refusingConstraints(
       () =>
         this.transactions.run(access.branchIds, async (transaction) => {
-          const version = await this.lockDraft(transaction, branchId, id);
+          const version = await this.lockDraft(transaction, access, id, requestId);
           const weights = weightsOf(version);
           if (!sameWeights(weights, input.weights)) {
             throw refused('preferences_changed');
@@ -1296,7 +1301,7 @@ export class Timetable {
     return refusingConstraints(
       () =>
         this.transactions.run(access.branchIds, async (transaction) => {
-          await this.lockDraft(transaction, branchId, id);
+          await this.lockDraft(transaction, access, id, requestId);
           // Read after the lock of the draft, in statements of their own, so
           // two pins added at the same moment are counted one after the other.
           const rows = await this.rowsOf(transaction, id);
@@ -1367,7 +1372,7 @@ export class Timetable {
     return refusingConstraints(
       () =>
         this.transactions.run(access.branchIds, async (transaction) => {
-          await this.lockDraft(transaction, branchId, id);
+          await this.lockDraft(transaction, access, id, requestId);
           const pin = await transaction
             .selectFrom('timetable_pins')
             .select(['id', 'load_row_id', 'weekday', 'slot_position'])
@@ -1400,7 +1405,7 @@ export class Timetable {
     return refusingConstraints(
       () =>
         this.transactions.run(access.branchIds, async (transaction) => {
-          const version = await this.lockDraft(transaction, branchId, id);
+          const version = await this.lockDraft(transaction, access, id, requestId);
           const context = await this.contextOf(transaction, version);
           const unit = await this.unitOf(transaction, context, input.classId, input.groupId);
           await lockSubjects(transaction, [input.subjectId]);
@@ -1508,7 +1513,7 @@ export class Timetable {
     return refusingConstraints(
       () =>
         this.transactions.run(access.branchIds, async (transaction) => {
-          const version = await this.lockDraft(transaction, branchId, id);
+          const version = await this.lockDraft(transaction, access, id, requestId);
           const context = await this.contextOf(transaction, version);
           const before = await this.rowOf(transaction, id, rowId);
           // Task 3.6c-2, decision 1: nobody names the teacher of a Tutor row;
@@ -1617,7 +1622,7 @@ export class Timetable {
     return refusingConstraints(
       () =>
         this.transactions.run(access.branchIds, async (transaction) => {
-          await this.lockDraft(transaction, branchId, id);
+          await this.lockDraft(transaction, access, id, requestId);
           const before = await this.rowOf(transaction, id, rowId);
           // Task 5.3b-2: the cascade removes the row's pins; the entry keeps them.
           const pins = (await readPins(transaction, id)).filter((pin) => pin.load_row_id === rowId);
@@ -1976,7 +1981,7 @@ export class Timetable {
    * class). Another branch's or unknown: 404; a closed year:
    * `timetable_year_closed`; not a draft: `version_not_draft`.
    */
-  async lockDraft(transaction: Transaction, branchId: string, id: string): Promise<VersionRow> {
+  async lockDraftRow(transaction: Transaction, branchId: string, id: string): Promise<VersionRow> {
     const named = await transaction
       .selectFrom('timetable_versions')
       .select('academic_year_id')
@@ -2006,6 +2011,73 @@ export class Timetable {
       throw refused('version_not_draft');
     }
     return version;
+  }
+
+  /**
+   * A draft write (task 5.4c-1): the draft locked as `lockDraftRow` locks it,
+   * then its edit lock taken by the account of the request (`06`, Editing in
+   * the grid: "Several people can view a draft; one edits at a time"; decision
+   * 2). The lock is the caller's when it holds it, or when nobody was active
+   * on it in the last `DRAFT_EDIT_LOCK_MINUTES` (`edge/timetable`, Generator
+   * and editing); otherwise `draft_edit_locked`. Compared with the moment of
+   * the transaction (`CLAUDE.md`, State from stored moments); the holder's
+   * own refresh is not audited, a change of holder is, and the earlier holder
+   * of a lock taken over is told (decision 6).
+   */
+  async lockDraft(
+    transaction: Transaction,
+    access: Access,
+    id: string,
+    requestId: string,
+  ): Promise<VersionRow> {
+    const version = await this.lockDraftRow(transaction, branchOf(access), id);
+    const moment = await transactionMoment(transaction);
+    const holder = version.edit_holder_id;
+    const me = access.accountId;
+    if (holder !== me && holder !== null && editLockFresh(version.edit_seen_at, moment)) {
+      throw refused('draft_edit_locked');
+    }
+    await transaction
+      .updateTable('timetable_versions')
+      .set({ edit_holder_id: me, edit_seen_at: moment })
+      .where('id', '=', id)
+      .execute();
+    if (holder === me) {
+      return { ...version, edit_seen_at: moment };
+    }
+    await this.audit.record(transaction, {
+      branchId: version.branch_id,
+      actorId: me,
+      assignmentId: access.assignmentId,
+      action: 'timetable_version.edit_lock',
+      record: { type: 'timetable_version', id },
+      oldValue: {
+        holderId: holder,
+        seenAt: version.edit_seen_at === null ? null : version.edit_seen_at.toISOString(),
+      },
+      newValue: { holderId: me },
+      requestId,
+    });
+    if (holder !== null) {
+      await this.notifications.send(transaction, {
+        kind: 'timetable.draft_taken_over',
+        data: {
+          number: String(version.number),
+          name: (await accountNames(transaction, [me])).get(me) ?? '',
+        },
+        branchId: version.branch_id,
+        accountIds: [holder],
+      });
+    }
+    return { ...version, edit_holder_id: me, edit_seen_at: moment };
+  }
+
+  /** "Take over", or the holder's "still here" (task 5.4c-1): the draft's edit lock taken or kept. */
+  takeEditLock(access: Access, id: string, requestId: string): Promise<TimetableVersion> {
+    return this.transactions.run(access.branchIds, async (transaction) => {
+      await this.lockDraft(transaction, access, id, requestId);
+      return this.answerOf(transaction, id, access.accountId);
+    });
   }
 
   /** A version of the branch, read without a lock; 404 otherwise. */
@@ -2038,6 +2110,8 @@ export class Timetable {
         'timetable_versions.left_rows',
         'timetable_versions.templates_confirmed',
         'timetable_versions.rules_confirmed',
+        'timetable_versions.edit_holder_id',
+        'timetable_versions.edit_seen_at',
         ...WEIGHT_COLUMNS,
         'academic_years.start_date',
         'academic_years.end_date',
@@ -2100,6 +2174,8 @@ export class Timetable {
         'timetable_versions.starts_on',
         'timetable_versions.from_version_id',
         'timetable_versions.left_rows',
+        'timetable_versions.edit_holder_id',
+        'timetable_versions.edit_seen_at',
         'academic_years.start_date',
         'academic_years.end_date',
         'academic_years.status as year_status',
@@ -2110,11 +2186,15 @@ export class Timetable {
       ]);
   }
 
-  async answerOf(transaction: Transaction, id: string): Promise<TimetableVersion> {
+  async answerOf(
+    transaction: Transaction,
+    id: string,
+    accountId: string,
+  ): Promise<TimetableVersion> {
     const rows = await this.versionsIn(transaction)
       .where('timetable_versions.id', '=', id)
       .execute();
-    const [answer] = await this.answersOf(transaction, rows);
+    const [answer] = await this.answersOf(transaction, rows, accountId);
     if (answer === undefined) {
       throw notFound();
     }
@@ -2131,12 +2211,22 @@ export class Timetable {
       starts_on: string;
       from_version_id: string | null;
       left_rows: unknown;
+      edit_holder_id: string | null;
+      edit_seen_at: Date | null;
       start_date: string;
       end_date: string;
       year_status: string;
       rows: number;
     }[],
+    accountId: string,
   ): Promise<TimetableVersion[]> {
+    const moment = await transactionMoment(transaction);
+    const holderOf = (row: (typeof rows)[number]) =>
+      row.edit_holder_id !== null && editLockFresh(row.edit_seen_at, moment)
+        ? row.edit_holder_id
+        : null;
+    const holders = [...new Set(rows.map(holderOf).filter((one): one is string => one !== null))];
+    const names = await accountNames(transaction, holders);
     const sources = [
       ...new Set(rows.map((row) => row.from_version_id).filter((id): id is string => id !== null)),
     ];
@@ -2168,6 +2258,14 @@ export class Timetable {
             : { id: row.from_version_id, number: fromNumber },
         rows: row.rows,
         leftRows: leftRowsOf(row.left_rows).length,
+        editLock: ((holder) =>
+          holder === null || row.edit_seen_at === null
+            ? null
+            : {
+                holder: { id: holder, name: names.get(holder) ?? '' },
+                seenAt: row.edit_seen_at.toISOString(),
+                mine: holder === accountId,
+              })(holderOf(row)),
       };
     });
   }

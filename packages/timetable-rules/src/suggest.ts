@@ -20,6 +20,9 @@
  *   draft that block a slot are moved to slots of their own templates, at most
  *   three blocks in all with the selected one; a block holding a pin of step 5
  *   (decision 9) and a lesson of another branch (decision 6) are never moved.
+ * - Locks (task 5.4c-1, decision 8): a block a lock holds (`lockedBy`) is
+ *   never moved, as the selected block or as a blocker, and no block is moved
+ *   into a locked day.
  *   Fewer blocks first, then fewer warnings; at most `REARRANGEMENTS_SHOWN`.
  *
  * The search stops after `SUGGEST_BUDGET` checks (decision 4) and returns what
@@ -34,6 +37,7 @@ import {
   patternPlacements,
   type PatternBlock,
 } from './pattern-place.js';
+import { lockedBy, type PatternLock } from './locks.js';
 import type { Pin } from './pins.js';
 import { roomChoices } from './rooms-pick.js';
 import { WEEK_COUNT_RULES, type RuleCode, type RuleResult } from './rules.js';
@@ -72,11 +76,15 @@ export interface Suggestions {
   readonly rearrangements: Suggestion[];
   /** The budget ran out before every slot was tried. */
   readonly cutShort: boolean;
+  /** The selected block is held by a lock: nothing is searched (task 5.4c-1). */
+  readonly locked: boolean;
 }
 
 export interface SuggestOptions {
   /** The pins of step 5: a block holding one at its slot is never moved as a blocker. */
   readonly pins?: readonly Pick<Pin, 'loadRowId' | 'weekday' | 'slotPosition'>[];
+  /** The locks of the draft (task 5.4c-1): a block they hold stays where it is. */
+  readonly locks?: readonly PatternLock[];
   readonly budget?: number;
 }
 
@@ -130,6 +138,13 @@ export function suggestPlaces(
   };
   const blockedOf = (results: readonly RuleResult[]) =>
     results.filter((one) => one.severity === 'blocked');
+  const locks = options.locks ?? [];
+  /** A lock holds the block where it is, or keeps it out of the cell's weekday. */
+  const held = (one: PatternBlock, to?: PatternBlock) => lockedBy(model, locks, one, to).length > 0;
+  // A new block of a locked class or teacher is held too: nothing places it.
+  if (held(block)) {
+    return { free: [], rearrangements: [], cutShort: false, locked: true };
+  }
 
   // A lesson of the draft's stored blocks, by id, for the blockers of a slot.
   const blockOfLesson = new Map<string, PatternBlock>();
@@ -159,7 +174,7 @@ export function suggestPlaces(
       const named = result.lessonIds
         .map((id) => blockOfLesson.get(id))
         .filter((one): one is PatternBlock => one !== undefined && !changedIds.has(one.id));
-      if (named.length === 0 || named.some(pinned)) return null;
+      if (named.length === 0 || named.some(pinned) || named.some((one) => held(one))) return null;
       for (const one of named) found.set(one.id, one);
     }
     return [...found.values()];
@@ -167,7 +182,9 @@ export function suggestPlaces(
 
   const free: Suggestion[] = [];
   const rearrangements: Suggestion[] = [];
-  const cells = slotsOf(model, block).filter((one) => from === null || !sameSlot(one, from));
+  const cells = slotsOf(model, block).filter(
+    (one) => (from === null || !sameSlot(one, from)) && !held(block, one),
+  );
   const blockedCells: { cell: PatternBlock; blocked: RuleResult[] }[] = [];
   let cutShort = false;
   try {
@@ -219,6 +236,7 @@ export function suggestPlaces(
       .slice(0, REARRANGEMENTS_SHOWN)
       .map(({ one }) => one),
     cutShort,
+    locked: false,
   };
 
   /**
@@ -251,7 +269,9 @@ export function suggestPlaces(
 
   /** The cells of a blocker, the one with the clock time the selected block leaves first (a plain swap). */
   function cellsOfBlocker(blocker: PatternBlock): PatternBlock[] {
-    const cellsOf = slotsOf(model, blocker).filter((one) => !sameSlot(one, blocker));
+    const cellsOf = slotsOf(model, blocker).filter(
+      (one) => !sameSlot(one, blocker) && !held(blocker, one),
+    );
     if (from === null) return cellsOf;
     const swap = cellsOf.findIndex(
       (one) => one.weekday === from.weekday && one.start === from.start && one.end === from.end,

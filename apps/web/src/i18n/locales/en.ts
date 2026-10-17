@@ -379,6 +379,11 @@ export const en = {
       'A half of a mixed split is not placed here yet: its halves meet in different slots.',
     pattern_clash:
       'Another lesson already holds that teacher, room or class at that time. Reload the grid and choose another slot.',
+    pattern_locked:
+      'A locked lesson stays where it is. Unlock it first, or choose another suggestion.',
+    draft_edit_locked:
+      'Someone else is editing this draft. You can take over once they have been inactive for 5 minutes.',
+    lock_taken: 'This lock is already set.',
     timetable_busy: 'Another change of the timetable was being saved. Try again.',
     draft_not_ready: 'A step of the draft is not ready. Finish the steps marked not ready first.',
     load_unit_year:
@@ -2363,6 +2368,7 @@ export const en = {
       timetable_version: 'Timetable version',
       teaching_load_row: 'Teaching load row',
       timetable_pin: 'Pinned lesson',
+      timetable_lock: 'Lock of a draft',
       pattern_block: 'Lesson of the weekly pattern',
       pattern_entry: 'Lesson of a pattern block',
     },
@@ -2597,6 +2603,11 @@ export const en = {
         templates_confirm: 'Day templates of a draft confirmed',
         preferences: 'Preference weights of a draft changed',
         rules_confirm: 'Rules of a draft confirmed',
+        edit_lock: 'Draft timetable version taken for editing',
+      },
+      timetable_lock: {
+        create: 'Lock of a draft set',
+        delete: 'Lock of a draft removed',
       },
       timetable_pin: {
         create: 'Lesson of a draft pinned',
@@ -2963,6 +2974,10 @@ export const en = {
         merged:
           'The parent records {{keptName}} and {{mergedName}} were merged in another branch; the name {{fullName}} stays.',
       },
+      timetable: {
+        draft_taken_over:
+          '{{name}} took over draft {{number}} of the timetable after 5 minutes without activity. Your saved changes are kept.',
+      },
     },
   },
   timetable: {
@@ -3039,7 +3054,28 @@ export const en = {
       part_time_few_days: "A part-time teacher's lessons fall on as few days as possible",
       teacher_preferred_times: "A teacher's preferred days and slots are respected",
     },
+    editLock: {
+      held: '{{name}} is editing this draft (last active {{time}}). You can take over after 5 minutes without activity.',
+      someone: 'Another person',
+      takeOver: 'Take over',
+    },
     grid: {
+      locks: 'Locks',
+      noLocks:
+        'A locked lesson stays where it is when a place is suggested or the timetable is generated again.',
+      lockedTile: 'Locked',
+      lockClass: 'Lock this class',
+      lockDay: 'Lock the day',
+      lockTeacher: 'Lock the teacher',
+      lockDayLabel: 'Day',
+      lockTeacherLabel: 'Teacher',
+      lock: 'Lock',
+      unlock: 'Unlock',
+      lockedLesson: 'Lesson: {{lesson}}',
+      lockedClass: 'Class: {{name}}',
+      lockedTeacher: 'Teacher: {{name}}',
+      lockedDay: 'Day: {{day}}',
+      lockedSuggest: 'This lesson is locked, so no place is suggested. Unlock it first.',
       view: 'View',
       views: {
         class: 'By class',

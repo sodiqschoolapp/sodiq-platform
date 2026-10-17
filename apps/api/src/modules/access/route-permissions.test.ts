@@ -552,6 +552,19 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     branch: 'request',
     roles: ['super_admin', 'academic_vice_principal'],
   },
+  // Task 5.4c-1: the edit lock of a draft and the locks of the grid, under timetable edit.
+  'POST /api/timetable/versions/:id/edit-lock': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'POST /api/timetable/versions/:id/locks': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'DELETE /api/timetable/versions/:id/locks/:lockId': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
   'POST /api/timetable/versions/:id/pattern/:blockId/move': {
     branch: 'request',
     roles: ['super_admin', 'academic_vice_principal'],

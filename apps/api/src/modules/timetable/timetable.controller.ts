@@ -8,6 +8,10 @@ import {
   lessonRoomRecordSchema,
   swapRecordSchema,
   rearrangeRecordSchema,
+  timetableLockParamsSchema,
+  timetableLockRecordSchema,
+  type TimetableLockParams,
+  type TimetableLockRecord,
   type GridAnswer,
   type MoveRecord,
   type PlaceRecord,
@@ -175,6 +179,48 @@ export class TimetableController {
     @RequestId() requestId: string,
   ): Promise<DraftReadiness> {
     return this.timetable.confirmRules(access, params.id, body, requestId);
+  }
+
+  /**
+   * The draft's edit lock taken or kept (task 5.4c-1): "Take over" once the
+   * holder was inactive for 5 minutes, and the holder's "still here" while
+   * the builder is in use; another account active on it: `draft_edit_locked`.
+   */
+  @Post('versions/:id/edit-lock')
+  @HttpCode(200)
+  @Requires('timetable', 'edit')
+  @Returns(timetableVersionSchema)
+  takeEditLock(
+    @CurrentAccess() access: Access,
+    @ValidParams(timetableVersionParamsSchema) params: TimetableVersionParams,
+    @RequestId() requestId: string,
+  ): Promise<TimetableVersion> {
+    return this.timetable.takeEditLock(access, params.id, requestId);
+  }
+
+  /** Step 7: a lesson, class, teacher or weekday locked (task 5.4c-1); answers the grid. */
+  @Post('versions/:id/locks')
+  @Requires('timetable', 'edit')
+  @Returns(gridSchema, 201)
+  createLock(
+    @CurrentAccess() access: Access,
+    @ValidParams(timetableVersionParamsSchema) params: TimetableVersionParams,
+    @ValidBody(timetableLockRecordSchema) body: TimetableLockRecord,
+    @RequestId() requestId: string,
+  ): Promise<GridAnswer> {
+    return this.pattern.createLock(access, params.id, body, requestId);
+  }
+
+  /** Step 7: a lock removed (task 5.4c-1); answers the grid. */
+  @Delete('versions/:id/locks/:lockId')
+  @Requires('timetable', 'edit')
+  @Returns(gridSchema)
+  deleteLock(
+    @CurrentAccess() access: Access,
+    @ValidParams(timetableLockParamsSchema) params: TimetableLockParams,
+    @RequestId() requestId: string,
+  ): Promise<GridAnswer> {
+    return this.pattern.deleteLock(access, params.id, params.lockId, requestId);
   }
 
   /** Step 5: a pinned lesson added (task 5.3b-2, decisions 3 to 6); answers the readiness. */

@@ -1,3 +1,4 @@
+import { timetableLockSchema, type TimetableLock } from '@sodiq/shared';
 import { sql } from 'kysely';
 import type { PatternBlock } from '@sodiq/timetable-rules';
 import type { Transaction } from '../../database/transactions.js';
@@ -47,4 +48,39 @@ export async function readBlocks(
       .filter((entry) => entry.block_id === block.id)
       .map((entry) => ({ id: entry.id, loadRowId: entry.load_row_id, roomId: entry.room_id })),
   }));
+}
+
+/** The locks of a version (task 5.4c-1), oldest first. */
+export async function readLocks(
+  transaction: Transaction,
+  versionId: string,
+): Promise<TimetableLock[]> {
+  const rows = await transaction
+    .selectFrom('timetable_locks')
+    .select(['id', 'kind', 'block_id', 'class_id', 'teacher_id', 'weekday'])
+    .where('version_id', '=', versionId)
+    .orderBy('created_at')
+    .orderBy('id')
+    .execute();
+  return rows.map((row) => timetableLockSchema.parse(lockOf(row)));
+}
+
+function lockOf(row: {
+  id: string;
+  kind: string;
+  block_id: string | null;
+  class_id: string | null;
+  teacher_id: string | null;
+  weekday: number | null;
+}) {
+  switch (row.kind) {
+    case 'block':
+      return { id: row.id, kind: row.kind, blockId: row.block_id };
+    case 'class':
+      return { id: row.id, kind: row.kind, classId: row.class_id };
+    case 'teacher':
+      return { id: row.id, kind: row.kind, teacherId: row.teacher_id };
+    default:
+      return { id: row.id, kind: row.kind, weekday: row.weekday };
+  }
 }

@@ -446,3 +446,79 @@ test('an Academic Vice Principal applies a suggested place, and the API refuses 
   await page.reload();
   await expect(cell(1, 3).locator(`[data-block="${blockId}"]`)).toBeVisible();
 });
+
+/** The first sign-in of a seeded Academic Vice Principal: the forced change and the second step. */
+async function firstSignInWithStep(page: Page, account: { login: string; password: string }) {
+  await page.goto('/sign-in');
+  await languageChooser(page).selectOption('en');
+  await signIn(page, en, account.login, account.password);
+  await changeFirstPassword(page, en, account);
+  await expect(heading(page, en.setUp.title)).toBeVisible();
+  await page.getByRole('button', { name: en.setUp.start, exact: true }).click();
+  const key = await page.locator('dd').innerText();
+  await page.getByLabel(en.setUp.code, { exact: true }).fill(codeNow(key));
+  await page.getByRole('button', { name: en.setUp.confirm, exact: true }).click();
+  await page.getByRole('checkbox', { name: en.setUp.saved }).check();
+  await page.getByRole('button', { name: en.setUp.continue, exact: true }).click();
+  await expect(heading(page, en.home.title)).toBeVisible();
+}
+
+// docs/spec/edge-cases/timetable.md, Generator and editing: "The person
+// editing a draft closes the laptop. The edit lock is released after 5 minutes
+// without activity. Another Academic Vice Principal can take over; the earlier
+// holder is told." Task 5.4c-1, pull request #135. The seed leaves the lock
+// with the first Academic Vice Principal, last active 10 minutes ago; the
+// second applies a suggested place, which takes the lock over; the first finds
+// the notice, the draft read only with the new holder named, and a Take over
+// refused while the new holder is active. Two accounts, used by this test only.
+test('a second Academic Vice Principal takes over a draft and the first is told', async ({
+  browser,
+}) => {
+  test.setTimeout(120_000);
+  const taker = accountOf('draftLockTaker');
+  const holder = accountOf('draftLockHolder');
+
+  const takerContext = await browser.newContext();
+  const takerPage = await takerContext.newPage();
+  await firstSignInWithStep(takerPage, taker);
+  await takerPage.goto('/timetable/builder');
+  await expect(heading(takerPage, en.timetable.builder.title)).toBeVisible();
+  await takerPage.locator('[data-step="grid"] button').click();
+  await expect(takerPage.locator('[data-board]')).toBeVisible();
+  await expect(takerPage.locator('[data-edit-lock]')).toHaveCount(0);
+  const cell = (page: Page, weekday: number, position: number) =>
+    page.locator(`[data-cell="${String(weekday)}:${String(position)}"]`);
+  const lesson = cell(takerPage, 1, 1).locator('[data-block]');
+  const blockId = (await lesson.getAttribute('data-block')) ?? '';
+  await lesson.getByRole('button', { name: en.timetable.grid.suggest }).click();
+  const free = takerPage.getByRole('dialog').locator('[data-suggestion="free"]');
+  await free.first().getByRole('button').click();
+  await expect(cell(takerPage, 1, 3).locator(`[data-block="${blockId}"]`)).toBeVisible();
+
+  const holderContext = await browser.newContext();
+  const page = await holderContext.newPage();
+  await firstSignInWithStep(page, holder);
+  const bell = page.getByRole('button', { name: 'Notifications, 1 unread', exact: true });
+  await expect(bell).toBeVisible({ timeout: 20_000 });
+  await bell.click();
+  const notices = page.getByRole('dialog', { name: en.notifications.title });
+  await expect(notices.getByRole('listitem').first()).toContainText(taker.login);
+  await expect(notices.getByRole('listitem').first()).toContainText('took over draft 1');
+  await notices.getByRole('button', { name: en.notifications.close, exact: true }).click();
+
+  await page.goto('/timetable/builder');
+  await expect(heading(page, en.timetable.builder.title)).toBeVisible();
+  await page.locator('[data-step="grid"] button').click();
+  await expect(page.locator('[data-board]')).toBeVisible();
+  const banner = page.locator('[data-edit-lock]');
+  await expect(banner).toContainText(taker.login);
+  await expect(
+    cell(page, 1, 3).getByRole('button', { name: en.timetable.grid.move, exact: true }),
+  ).toHaveCount(0);
+  await screenshot(page, 'grid-edit-lock');
+  await banner.getByRole('button', { name: en.timetable.editLock.takeOver }).click();
+  await expect(page.getByText(en.errors.draft_edit_locked)).toBeVisible();
+
+  await takerContext.close();
+  await holderContext.close();
+});

@@ -237,6 +237,19 @@ export class LoadKit {
     return row.id;
   }
 
+  /**
+   * The draft's edit lock let go (task 5.4c-1), as 5 minutes without activity
+   * would: a test that writes one draft as two accounts in turn frees it
+   * between them.
+   */
+  async freeEditLock(id: string): Promise<void> {
+    await this.migrator
+      .updateTable('timetable_versions')
+      .set({ edit_holder_id: null, edit_seen_at: null })
+      .where('id', '=', id)
+      .execute();
+  }
+
   async setVersion(id: string, status: 'draft' | 'published' | 'archived'): Promise<void> {
     await this.migrator
       .updateTable('timetable_versions')
