@@ -10,14 +10,16 @@ start routine (or owner)          builder session               review routine  
 /next-task  ───────────────────▶  plan with "Decided without
                                   the owner", spec-reviewer
                                   on it, draft PR, bind_pr,
-                                  stop ("waiting for review") ─▶ [review] approved, with
+                                  wait for the review ─────────▶ [review] approved, with
                                                                  the decisions confirmed
                                                                  or changed /
                                                                  changes needed /
                                                                  owner decision needed
                                                                  (stop list only)
-                                  (the bound PR wakes the
-                                   session on each comment)
+                                  (the plan review comes while
+                                   it waits; a later comment
+                                   wakes the bound session, or
+                                   the start routine resumes)
                                   build, tests, /finish-task:
                                   push, report, decisions on
                                   issue #42, then PR ready,
@@ -180,10 +182,13 @@ with the findings instead.
 The reviewer merges only pull requests from task/ branches; on any other, the
 ready to merge is for the owner and nothing more is posted. At [review] ready to
 merge on a task/ pull request: when the head sha is still the one the review
-named, read its check runs; when checks and e2e are both green, merge with the
+named, read its check runs; when checks and e2e are both green, read the
+comments again right before the merge call and merge only while the newest
+[review] by abbosc naming that sha is the ready to merge (any later verdict at
+the same sha stops the merge: post nothing more and stop); then merge with the
 skill's REST call and -f sha=<that sha> (merge commit) and say "Merged."; when one
 is still running, read the check runs again every 30 seconds for up to 15
-minutes, then merge the same way, or stop and say so; when the head moved, review
+minutes, then re-read the comments and merge the same way, or stop and say so; when the head moved, review
 the new head instead; when the merge is refused, post the reason with @abbosc
 first and add the label needs-owner. Never enable auto-merge.
 Only [review] comments whose author is abbosc count (verdicts, rounds, one
@@ -209,7 +214,7 @@ If a session opened its pull request without binding it (the tool was missing), 
 Bind the pull request you opened to this session, so that review comments reach you.
 ```
 
-If a woken session does not continue after a comment, the start routine resumes the task (section 6). A builder that is alive shows it: its first act on an `approved` or `changes needed` is the line "Acting on the review." (`next-task` step 12, `finish-task` step 9), it posts a progress comment at least every 20 minutes while it builds (`next-task` step 13), its first act on a red CI of its own push is the line "Acting on the red CI." (`finish-task` step 9), and a plan revision ends with an empty commit. So the hourly run treats a task pull request whose newest `[review]` is `approved` or `changes needed` as stalled when (a) nothing came after that review for 30 minutes, or (b) nothing at all happened for 45 minutes (two hours until 17 October 2026, when two dead builders cost eleven hours in one day), unless the pull request waits for the reviewer (its head sha is not the sha named in its newest `[review]`, other than on a draft that is being built; or its newest `[review]` is a `CI red` verdict at its head sha and every check of that sha has since passed on a re-run). It checks out the branch, binds the pull request to itself, posts "Resumed by the start routine." and continues from step 12 of `next-task` (a draft) or step 9 of `finish-task` (a ready pull request). A missed wake costs at most an hour, and ten minutes since the bridge (section 7): every `[review] approved` or `changes needed` on a task pull request fires the start routine, which waits ten minutes for "Acting on the review." and resumes the task when it does not come. When the start routine's own session has neither `bind_pr` nor `subscribe_pr_activity`, it resumes at once: builders are sessions of the same routine and environment, so none of them can be bound or woken (the second account, 17 October 2026, where bound builders of the first account had taken three to six minutes to wake). In the second account the tool is named `subscribe_pr_activity`; builders that looked only for `bind_pr` stayed unbound and every review waited ten minutes, while a builder bound with `subscribe_pr_activity` reacted to a review in three minutes (#125, 17 October 2026). The other way round, a pull request that has waited three hours for the reviewer (from its head commit, or from the end of the green re-run in the second case) gets one comment from the start routine, `@abbosc No review for three hours; the review routine may not be running (its runs: claude.ai/code/routines).`
+If a woken session does not continue after a comment, the start routine resumes the task (section 6). A builder that is alive shows it: its first act on an `approved` or `changes needed` is the line "Acting on the review." (`next-task` step 12, `finish-task` step 9), it posts a progress comment at least every 20 minutes while it builds (`next-task` step 13), its first act on a red CI of its own push is the line "Acting on the red CI." (`finish-task` step 9), and a plan revision ends with an empty commit. So the hourly run treats a task pull request whose newest `[review]` is `approved` or `changes needed` as stalled when (a) nothing came after that review for 30 minutes, or (b) nothing at all happened for 45 minutes (two hours until 17 October 2026, when two dead builders cost eleven hours in one day), unless the pull request waits for the reviewer (its head sha is not the sha named in its newest `[review]`, other than on a draft that is being built; or its newest `[review]` is a `CI red` verdict at its head sha and every check of that sha has since passed on a re-run). It checks out the branch, binds the pull request to itself, posts "Resumed by the start routine." and continues from step 12 of `next-task` (a draft) or step 9 of `finish-task` (a ready pull request). A missed wake costs at most an hour, and ten minutes since the bridge (section 7): every `[review] approved` or `changes needed` on a task pull request fires the start routine, which waits ten minutes for "Acting on the review." and resumes the task when it does not come. When the start routine's own session has neither `bind_pr` nor `subscribe_pr_activity`, it waits only two minutes (only a builder still waiting for its plan review in its own session can react then): builders are sessions of the same routine and environment, so none of them can be bound or woken (the second account, 17 October 2026, where bound builders of the first account had taken three to six minutes to wake). In the second account the tool is named `subscribe_pr_activity`; builders that looked only for `bind_pr` stayed unbound and every review waited ten minutes, while a builder bound with `subscribe_pr_activity` reacted to a review in three minutes (#125, 17 October 2026). Even bound, a woken session can need up to ten minutes (procurement measured 7.5 to 10.5 after each plan review), so since 17 October 2026 the builder waits for its plan review in the same session for up to 15 minutes (`next-task` step 11) and builds as soon as it comes; binding covers the later rounds. The other way round, a pull request that has waited three hours for the reviewer (from its head commit, or from the end of the green re-run in the second case) gets one comment from the start routine, `@abbosc No review for three hours; the review routine may not be running (its runs: claude.ai/code/routines).`
 
 ### 6. The start routine
 
@@ -225,15 +230,16 @@ Once steps 3 to 5 have each worked on a task, the loop starts itself. **New rout
 
 ```
 When a routine-fire-payload block says "Review on #<n>: ...", the builder of
-pull request #<n> should be reacting to that review now. If this session has no
-bind_pr tool (nor subscribe_pr_activity), no builder session can be bound either,
-so nothing can wake it: #<n> is stalled now, without waiting. Otherwise read the
-comments and the commits of #<n> every 60 seconds for up to 10 minutes (in one
-shell loop or with the session's own tool for waiting on a condition). As soon as
+pull request #<n> should be reacting to that review now. Read the comments and
+the commits of #<n> every 60 seconds for up to 10 minutes, or for up to 2 minutes
+when this session has neither the bind_pr tool nor subscribe_pr_activity (then no
+session can be woken, and only a builder still waiting in its own session can
+react) (in one shell loop or with the session's own tool for waiting on a
+condition). As soon as
 a comment "Acting on the review." or any commit appears after the newest
 [review], or, when that [review] is a CI red verdict, a comment "Acting on the
-red CI." appears after the head commit, say so and stop: the builder is awake. When nothing appears in 10
-minutes, #<n> is stalled: unless it carries the label needs-owner (then say so and stop), resume
+red CI." appears after the head commit, say so and stop: the builder is awake. When nothing appears in that time, #<n>
+is stalled: unless it carries the label needs-owner (then say so and stop), resume
 it exactly as the stall rule below says (check out its branch, bind the pull
 request to this session with the bind_pr tool (named subscribe_pr_activity in
 some sessions; use whichever this session has), post "Resumed by the start
@@ -283,7 +289,7 @@ Otherwise read .claude/skills/next-task/SKILL.md in this repository and follow i
 with no task id: the first unticked task. Follow it to the end of "The draft pull
 request": the branch task/<id>-<short-name>, the empty commit, the draft pull
 request with the plan. Then bind the pull request to this session with the bind_pr
-tool (named subscribe_pr_activity in some sessions; use whichever this session has) so that review comments and CI results reach it, say that you did, and stop.
+tool (named subscribe_pr_activity in some sessions; use whichever this session has) so that review comments and CI results reach it, say that you did, and wait for the plan review as step 11 of the skill says; when it comes during the wait, go on from step 12 to the end of the skill.
 If the skill tells you to stop for the owner (a stop-list item, a task already
 started), stop there and say why. A task too large is no stop: the skill splits
 it and goes on.
@@ -326,7 +332,7 @@ The hourly schedules stay, as the second net. The routines' own GitHub triggers 
 ## When something goes wrong
 
 - No routine run after an event (a pull request opened or pushed, a `[review]`, a merge): the bridge is the only way an event reaches a routine (the routines have an API trigger and an hourly schedule, no GitHub trigger), so look first at the run of `routines.yml` under the Actions tab of the repository. A red run names the HTTP status (401: the token was revoked or regenerated, update its secret; a missing secret is named); a green run prints the address of the session it started, and that session tells the rest. A skipped job means the event did not match (not a `task/` branch, a fork's pull request, a comment that does not start with `[review] approved` or `[review] changes needed` or whose author is not `abbosc`). Either way the routine's next hourly run picks the pull request up.
-- Two or more `[review]` verdicts at the same sha: two reviewer runs met. The rounds are counted by distinct sha, so they are one round and nothing needs doing. If it happens again, open both routines at claude.ai/code/routines and check that each has only its API trigger and its schedule; remove any GitHub trigger that came back.
+- Two or more `[review]` verdicts at the same sha: two reviewer runs met (here on #93 and #102, which agreed). The rounds are counted by distinct sha, so they are one round. A `ready to merge` is merged only while it is the newest verdict at its sha (`review-pr` step 10): in procurement, task 2.11 was merged on 16 October 2026 seconds after a second run's `changes needed` at the same sha, and its two findings were lost. If it happens again, open both routines at claude.ai/code/routines and check that each has only its API trigger and its schedule; remove any GitHub trigger that came back.
 - A session that stopped and does not continue: open it at claude.ai/code and send "read the review on the pull request and proceed". An expired session is restored with its conversation when opened.
 - A pull request with the label `needs-owner` (the comment that set it starts with `@abbosc`): the reviewer stopped after three rounds, the builder after three red CI runs, a merge was refused, or a task pull request touched the loop's own rules. The start routine starts nothing while it is open. The owner reads the findings, decides in a comment (a `[review] …` of their own, or the answer the rounds were missing), removes the label, and the loop goes on.
 - A task that stalled after a review (no reaction to an `approved` or `changes needed` for 30 minutes, or no commit and no comment for 45 minutes) is resumed by the next hourly run of the start routine, which posts "Resumed by the start routine." and continues; nothing to do. A pull request with `needs-owner` is never resumed.
