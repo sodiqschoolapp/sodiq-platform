@@ -2383,6 +2383,7 @@ export const uz: Texts<'one' | 'other'> = {
       timetable_version: 'Dars jadvali versiyasi',
       timetable_pin: 'Qotirilgan dars',
       pattern_block: 'Haftalik shablon darsi',
+      pattern_entry: 'Shablon blokidagi dars',
       teaching_load_row: 'Oʻquv yuklamasi qatori',
     },
     actions: {
@@ -2626,6 +2627,9 @@ export const uz: Texts<'one' | 'other'> = {
         move: 'Dars qoralama jadvalida koʻchirildi',
         swap: 'Ikki dars qoralama jadvalida oʻrin almashtirildi',
         delete: 'Dars qoralama jadvalidan olib tashlandi',
+      },
+      pattern_entry: {
+        room: 'Qoralama jadvalidagi dars xonasi oʻzgartirildi',
       },
       teaching_load: {
         create: 'Oʻquv yuklamasi qatori qoʻshildi',

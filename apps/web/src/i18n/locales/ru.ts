@@ -2478,6 +2478,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       timetable_version: 'Версия расписания',
       timetable_pin: 'Закреплённый урок',
       pattern_block: 'Урок недельного шаблона',
+      pattern_entry: 'Урок блока шаблона',
       teaching_load_row: 'Строка учебной нагрузки',
     },
     actions: {
@@ -2721,6 +2722,9 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         move: 'Урок перемещён в сетке черновика',
         swap: 'Два урока поменяны местами в сетке черновика',
         delete: 'Урок убран из сетки черновика',
+      },
+      pattern_entry: {
+        room: 'Изменён кабинет урока в сетке черновика',
       },
       teaching_load: {
         create: 'Добавлена строка учебной нагрузки',

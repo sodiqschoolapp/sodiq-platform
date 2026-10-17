@@ -2364,6 +2364,7 @@ export const en = {
       teaching_load_row: 'Teaching load row',
       timetable_pin: 'Pinned lesson',
       pattern_block: 'Lesson of the weekly pattern',
+      pattern_entry: 'Lesson of a pattern block',
     },
     actions: {
       auth: {
@@ -2606,6 +2607,9 @@ export const en = {
         move: 'Lesson moved in the grid of a draft',
         swap: 'Two lessons swapped in the grid of a draft',
         delete: 'Lesson removed from the grid of a draft',
+      },
+      pattern_entry: {
+        room: 'Room of a lesson changed in the grid of a draft',
       },
       teaching_load: {
         create: 'Teaching load row added',

@@ -5,10 +5,12 @@ import {
   moveRecordSchema,
   patternBlockParamsSchema,
   placeRecordSchema,
+  lessonRoomRecordSchema,
   swapRecordSchema,
   type GridAnswer,
   type MoveRecord,
   type PlaceRecord,
+  type LessonRoomRecord,
   type SwapRecord,
   loadRowEditSchema,
   loadRowParamsSchema,
@@ -127,7 +129,7 @@ export class TimetableController {
     @CurrentAccess() access: Access,
     @ValidParams(timetableVersionParamsSchema) params: TimetableVersionParams,
   ): Promise<DraftReadiness> {
-    return this.timetable.readiness(access, params.id);
+    return this.pattern.readiness(access, params.id);
   }
 
   /** Step 1: the table of templates in force stored as confirmed (decisions 3 and 12). */
@@ -253,6 +255,20 @@ export class TimetableController {
     @RequestId() requestId: string,
   ): Promise<GridAnswer> {
     return this.pattern.move(access, params.id, params.blockId, body, requestId);
+  }
+
+  /** Step 7: the room of one lesson of a block, from the room picker (task 5.4b-2a); a blocked rule refuses. */
+  @Post('versions/:id/pattern/:blockId/room')
+  @HttpCode(200)
+  @Requires('timetable', 'edit')
+  @Returns(gridSchema)
+  lessonRoom(
+    @CurrentAccess() access: Access,
+    @ValidParams(patternBlockParamsSchema) params: { id: string; blockId: string },
+    @ValidBody(lessonRoomRecordSchema) body: LessonRoomRecord,
+    @RequestId() requestId: string,
+  ): Promise<GridAnswer> {
+    return this.pattern.room(access, params.id, params.blockId, body, requestId);
   }
 
   /** Step 7: a block removed with its lessons. */

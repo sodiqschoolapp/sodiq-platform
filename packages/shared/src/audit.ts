@@ -191,6 +191,8 @@ export const AUDIT_ACTION_GROUPS = {
     'pattern_block.move',
     'pattern_block.swap',
     'pattern_block.delete',
+    // Task 5.4b-2a: the room of a lesson of the weekly pattern, from the room picker.
+    'pattern_entry.room',
     'teaching_load.create',
     'teaching_load.edit',
     'teaching_load.delete',

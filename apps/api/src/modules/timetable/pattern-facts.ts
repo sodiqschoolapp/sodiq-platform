@@ -8,11 +8,11 @@ import {
   type AvailabilityEntry,
   type Day,
   type EngineDay,
-  type EngineRoom,
   type EngineTeacher,
   type Facts,
   type PatternFactsData,
   type PatternModel,
+  type PatternRoomData,
   type Placement,
 } from '@sodiq/timetable-rules';
 import type { Transaction } from '../../database/transactions.js';
@@ -79,9 +79,6 @@ export async function readPatternFacts(
 ): Promise<PatternFacts> {
   const { branchId, statusOn } = context;
   const teacherIds = [...new Set(rows.map((row) => row.teacher_id))].sort();
-  const roomIds = [
-    ...new Set(rows.map((row) => row.room_id).filter((id): id is string => id !== null)),
-  ].sort();
   const groupIds = [
     ...new Set(rows.map((row) => row.group_id).filter((id): id is string => id !== null)),
   ].sort();
@@ -142,14 +139,14 @@ export async function readPatternFacts(
             .where('staff_id', 'in', teacherIds)
             .where('branch_id', '=', branchId)
             .execute(),
-      roomIds.length === 0
-        ? Promise.resolve([])
-        : transaction
-            .selectFrom('rooms')
-            .select(['id', 'status', 'shared', 'max_simultaneous_lessons', 'capacity'])
-            .where('id', 'in', roomIds)
-            .where('branch_id', '=', branchId)
-            .execute(),
+      // Task 5.4b-2a, decision 12: every room of the branch, so that any room a
+      // lesson may be put in is known (an entry's room is a room of its branch, 0058).
+      transaction
+        .selectFrom('rooms')
+        .select(['id', 'type', 'status', 'shared', 'max_simultaneous_lessons', 'capacity'])
+        .where('branch_id', '=', branchId)
+        .orderBy('id')
+        .execute(),
     ]);
   const [classMembers, groupMembers] = await Promise.all([
     classIds.length === 0
@@ -254,10 +251,6 @@ export async function readPatternFacts(
     });
   }
 
-  const engineRooms = new Map<string, EngineRoom>(
-    rooms.map((room) => [room.id, engineRoomOf(room)]),
-  );
-
   const store = await loadStore(transaction);
   const weekly = { assignments: store.assignments.filter((row) => !isWithdrawn(row)) };
   const dayFor = (grade: number, weekday: number): EngineDay => {
@@ -291,25 +284,6 @@ export async function readPatternFacts(
           .where('id', 'in', classIds)
           .execute();
   const mainRoomOf = new Map(mainRooms.map((one) => [one.id, one.main_room_id]));
-  // A main classroom a new lesson may take is read as every room the rows name.
-  const moreRoomIds = [
-    ...new Set(
-      mainRooms
-        .map((one) => one.main_room_id)
-        .filter((id): id is string => id !== null && !engineRooms.has(id)),
-    ),
-  ].sort();
-  if (moreRoomIds.length > 0) {
-    const more = await transaction
-      .selectFrom('rooms')
-      .select(['id', 'status', 'shared', 'max_simultaneous_lessons', 'capacity'])
-      .where('id', 'in', moreRoomIds)
-      .where('branch_id', '=', branchId)
-      .execute();
-    for (const room of more) {
-      engineRooms.set(room.id, engineRoomOf(room));
-    }
-  }
   const grades = [...new Set(units.flatMap((unit) => unit.unit.grades))].sort((a, b) => a - b);
   const blockRows = rows.map(blockRowOf);
 
@@ -326,7 +300,7 @@ export async function readPatternFacts(
         tutorSubject: subject.tutorSubject,
       }))
       .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)),
-    rooms: [...engineRooms.values()],
+    rooms: rooms.map(roomDataOf),
     units: units.map((unit) => {
       const group = unit.unit.kind === 'group' ? load.groups.get(unit.id) : undefined;
       return {
@@ -374,6 +348,7 @@ export async function readPatternFacts(
         subjectId: row.subject_id,
         teacherId: row.teacher_id,
         roomId: row.room_id,
+        roomType: row.room_type,
         lessonsPerWeek: row.lessons_per_week,
         mixedBlock: row.mixed_block,
         block: block.length === 0 ? [row.id] : block.map((one) => one.id).sort(),
@@ -409,15 +384,17 @@ interface ElsewhereRow {
   readonly tutor_lesson?: boolean;
 }
 
-function engineRoomOf(room: {
+function roomDataOf(room: {
   id: string;
+  type: string;
   status: string;
   shared: boolean;
   max_simultaneous_lessons: number | null;
   capacity: number;
-}): EngineRoom {
+}): PatternRoomData {
   return {
     id: room.id,
+    type: room.type,
     status:
       room.status === 'closed'
         ? 'closed'
