@@ -277,7 +277,8 @@ const MESSAGE: Record<ErrorCode, string> = {
   pin_mixed_block: 'A half of a split marked mixed block cannot be pinned.',
   pattern_blocked: 'A blocked rule refuses the lesson at that slot.',
   pattern_no_slot: 'The weekday has no slot at that position for the lesson.',
-  pattern_mixed_block: 'A half of a split marked mixed block is not placed in the grid yet.',
+  pattern_mixed_partner:
+    "The partner is not a half of another subject's mixed split of the same class.",
   pattern_clash: 'The database refused a clash of the weekly pattern.',
   pattern_locked: 'A lock holds a lesson the change would move.',
   draft_edit_locked: 'Another person is editing this draft.',

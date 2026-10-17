@@ -382,8 +382,8 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu darsni bu yerga qoʻyib boʻlmaydi: uni dars jadvalining qoidasi taqiqlaydi. Boʻsh yoki ogohlantirishli slotni tanlang.',
     pattern_no_slot:
       'Bu kunda sinf yoki guruh uchun bunday dars sloti yoʻq. Uning kunidagi slotni tanlang.',
-    pattern_mixed_block:
-      'Aralash boʻlinmaning yarmi bu yerda hozircha qoʻyilmaydi: uning yarmlari turli slotlarda oʻtadi.',
+    pattern_mixed_partner:
+      'Bu yarmni bunisi bilan juftlab boʻlmaydi: shu sinfning boshqa fan aralash boʻlinmasidan yarmni tanlang.',
     pattern_clash:
       'Bu vaqtda oʻqituvchi, xona yoki sinf boshqa dars bilan band. Jadvalni yangilang va boshqa slotni tanlang.',
     pattern_locked:

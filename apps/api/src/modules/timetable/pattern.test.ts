@@ -440,14 +440,13 @@ describe('the grid of a draft', () => {
       ]);
     });
 
-    it('refuses a half of a mixed split, changing nothing', async () => {
+    it('places a half of a mixed split with no partner as its whole split (task 5.4c-3b, decision 4)', async () => {
       const s = await scene();
       const pe = await load.classes.subject({ grades: [7] });
       const halves = [
         await load.classes.group(s.branch, s.year, pe, [s.classA]),
         await load.classes.group(s.branch, s.year, pe, [s.classA]),
       ];
-      const coach = await teacher(s.branch, pe);
       const rows: string[] = [];
       for (const group of halves) {
         rows.push(
@@ -456,19 +455,16 @@ describe('the grid of a draft', () => {
             version_id: s.version,
             group_id: group,
             subject_id: pe,
-            teacher_id: coach,
+            teacher_id: await teacher(s.branch, pe),
             lessons_per_week: 2,
             mixed_block: true,
           }),
         );
       }
-      const before = await patternRows([s.version]);
-      refusedWith(
-        await place(s.branch, s.version, rows[0] ?? '', 1, 1),
-        409,
-        'pattern_mixed_block',
-      );
-      expect(await patternRows([s.version])).toEqual(before);
+      const answer = gridOf(await place(s.branch, s.version, rows[0] ?? '', 1, 1), 201);
+      expect(
+        answer.blocks.map((one) => one.lessons.map((lesson) => lesson.loadRowId).sort()),
+      ).toEqual([[...rows].sort()]);
     });
 
     it('swaps two blocks whose teacher would clash halfway, checked at the commit', async () => {
@@ -936,6 +932,350 @@ describe('the grid of a draft', () => {
           expect(entry, action).toMatchObject({ assignment_id: assignment });
         }
       }
+    });
+  });
+
+  // Task 5.4c-3b: edge/timetable, Structure: "A mixed block is allowed: boys
+  // have physical education while girls have technology, and the reverse in
+  // another slot." A pairing is one block of two lessons (decision 3).
+  describe('mixed pairings', () => {
+    const placeWith = (
+      branch: string,
+      version: string,
+      loadRowId: string,
+      partnerRowId: string | undefined,
+      weekday: number,
+      slotPosition: number,
+      extra: object = {},
+      cookie = t.admin,
+    ) =>
+      post(
+        `/api/timetable/versions/${version}/pattern`,
+        branch,
+        {
+          loadRowId,
+          ...(partnerRowId === undefined ? {} : { partnerRowId }),
+          weekday,
+          slotPosition,
+          ...extra,
+        },
+        cookie,
+      );
+    const rearrange = (branch: string, version: string, body: object, cookie = t.admin) =>
+      post(`/api/timetable/versions/${version}/pattern/rearrange`, branch, body, cookie);
+    const rowsOfBlock = (block: GridAnswer['blocks'][number]) =>
+      block.lessons.map((lesson) => lesson.loadRowId).sort();
+    const blockAt = (answer: GridAnswer, weekday: number, slotPosition: number) => {
+      const found = answer.blocks.filter(
+        (one) => one.weekday === weekday && one.slotPosition === slotPosition,
+      );
+      const [block] = found;
+      if (block === undefined || found.length !== 1) throw new Error('One block there.');
+      return block;
+    };
+
+    /**
+     * The scene with class A's physical education and technology split into
+     * two groups each and marked mixed: one coach for both physical education
+     * halves (3.4b decision 12), a technology teacher for each half.
+     */
+    async function mixed() {
+      const s = await scene();
+      const pe = await load.classes.subject({ grades: [7] });
+      const tech = await load.classes.subject({ grades: [7] });
+      const coach = await teacher(s.branch, pe);
+      const techA = await teacher(s.branch, tech);
+      const techB = await teacher(s.branch, tech);
+      const half = async (subject: string, teacherId: string, extra: object = {}) =>
+        load.row({
+          branch_id: s.branch,
+          version_id: s.version,
+          group_id: await load.classes.group(s.branch, s.year, subject, [s.classA]),
+          subject_id: subject,
+          teacher_id: teacherId,
+          lessons_per_week: 2,
+          mixed_block: true,
+          ...extra,
+        });
+      const peBoys = await half(pe, coach);
+      const peGirls = await half(pe, coach);
+      const techBoys = await half(tech, techA);
+      const techGirls = await half(tech, techB);
+      return { ...s, pe, tech, coach, techA, techB, peBoys, peGirls, techBoys, techGirls };
+    }
+
+    it('places both pairings on Monday, each one audited block of two lessons, with no result between them (Done when)', async () => {
+      const s = await mixed();
+      const first = await placeWith(s.branch, s.version, s.peBoys, s.techGirls, 1, 1);
+      const x = blockAt(gridOf(first, 201), 1, 1);
+      expect(rowsOfBlock(x)).toEqual([s.peBoys, s.techGirls].sort());
+      const answer = gridOf(await placeWith(s.branch, s.version, s.techBoys, s.peGirls, 1, 3), 201);
+      const y = blockAt(answer, 1, 3);
+      expect(rowsOfBlock(y)).toEqual([s.peGirls, s.techBoys].sort());
+      const [entry] = await t.entries('pattern_block.create', x.id);
+      expect(entry).toMatchObject({
+        request_id: first.headers['x-request-id'],
+        new_value: {
+          versionId: s.version,
+          weekday: 1,
+          slotPosition: 1,
+          lessons: expect.arrayContaining([
+            expect.objectContaining({ loadRowId: s.peBoys, teacherId: s.coach }),
+            expect.objectContaining({ loadRowId: s.techGirls, teacherId: s.techB }),
+          ]) as unknown,
+        },
+      });
+      const stored = await t.database.migrator
+        .selectFrom('pattern_entries')
+        .select(['block_id', 'load_row_id'])
+        .where('version_id', '=', s.version)
+        .execute();
+      expect(stored).toHaveLength(4);
+      // No split apart, no student twice, no subject twice on Monday (decision 2).
+      expect(
+        answer.results.filter((one) => one.rule !== 'load_mismatch').map((one) => one.rule),
+      ).toEqual([]);
+    });
+
+    it('puts the room chosen on the lesson of the row sent, whichever row sorts first', async () => {
+      const s = await mixed();
+      const spare = await load.classes.room(s.branch);
+      // Send the row that sorts second, so the room is not the first lesson's by accident.
+      const [low, high] = [s.peBoys, s.techGirls].sort();
+      if (low === undefined || high === undefined) throw new Error('Two rows.');
+      const block = blockAt(
+        gridOf(await placeWith(s.branch, s.version, high, low, 2, 1, { roomId: spare }), 201),
+        2,
+        1,
+      );
+      expect(block.lessons.find((one) => one.loadRowId === high)?.roomId).toBe(spare);
+      expect(block.lessons.find((one) => one.loadRowId === low)?.roomId).toBeNull();
+    });
+
+    it('places a mixed half without a partner as its whole split', async () => {
+      const s = await mixed();
+      await t.database.migrator
+        .updateTable('teaching_load_rows')
+        .set({ teacher_id: await teacher(s.branch, s.pe) })
+        .where('id', '=', s.peGirls)
+        .execute();
+      const answer = gridOf(await placeWith(s.branch, s.version, s.peBoys, undefined, 1, 1), 201);
+      expect(rowsOfBlock(blockAt(answer, 1, 1))).toEqual([s.peBoys, s.peGirls].sort());
+    });
+
+    it('refuses the whole split of a mixed half with one coach for both halves as a teacher clash', async () => {
+      const s = await mixed();
+      const before = await patternRows([s.version]);
+      expect(
+        blockedRules(await placeWith(s.branch, s.version, s.peBoys, undefined, 1, 1)),
+      ).toContain('teacher_double');
+      expect(await patternRows([s.version])).toEqual(before);
+    });
+
+    it('moves, re-rooms and removes a pairing as one block', async () => {
+      const s = await mixed();
+      const x = blockAt(
+        gridOf(await placeWith(s.branch, s.version, s.peBoys, s.techGirls, 1, 1), 201),
+        1,
+        1,
+      );
+      const moved = gridOf(await move(s.branch, s.version, x.id, 3, 5));
+      expect(rowsOfBlock(blockAt(moved, 3, 5))).toEqual(rowsOfBlock(x));
+      const lesson = x.lessons.find((one) => one.loadRowId === s.techGirls);
+      const roomed = gridOf(
+        await post(`/api/timetable/versions/${s.version}/pattern/${x.id}/room`, s.branch, {
+          lessonId: lesson?.id,
+          roomId: s.roomB,
+        }),
+      );
+      expect(
+        blockAt(roomed, 3, 5).lessons.find((one) => one.loadRowId === s.techGirls)?.roomId,
+      ).toBe(s.roomB);
+      const removed = await drop(s.branch, s.version, x.id);
+      expect(gridOf(removed).blocks).toEqual([]);
+      const entries = await t.database.migrator
+        .selectFrom('pattern_entries')
+        .select('id')
+        .where('version_id', '=', s.version)
+        .execute();
+      expect(entries).toEqual([]);
+    });
+
+    it('places a double of a pairing when both rows allow doubles, and refuses it naming the row that does not', async () => {
+      const s = await mixed();
+      await t.database.migrator
+        .updateTable('teaching_load_rows')
+        .set({ double_lessons: true })
+        .where('id', 'in', [s.peBoys, s.techGirls, s.techBoys])
+        .execute();
+      const answer = gridOf(
+        await placeWith(s.branch, s.version, s.peBoys, s.techGirls, 1, 1, { double: true }),
+        201,
+      );
+      const paired = answer.blocks.filter((one) => one.doublePairId !== null);
+      expect(paired.map((one) => [one.slotPosition, rowsOfBlock(one)])).toEqual([
+        [1, [s.peBoys, s.techGirls].sort()],
+        [3, [s.peBoys, s.techGirls].sort()],
+      ]);
+      expect(answer.results.map((one) => one.rule)).not.toContain('double_apart');
+      const before = await patternRows([s.version]);
+      expect(
+        blockedRules(
+          await placeWith(s.branch, s.version, s.techBoys, s.peGirls, 2, 1, { double: true }),
+        ),
+      ).toContain('double_not_allowed');
+      expect(await patternRows([s.version])).toEqual(before);
+    });
+
+    it('applies a suggestion that places a new pairing through the rearrange route', async () => {
+      const s = await mixed();
+      const answer = gridOf(
+        await rearrange(s.branch, s.version, {
+          changes: [
+            { loadRowId: s.techGirls, partnerRowId: s.peBoys, weekday: 2, slotPosition: 3 },
+          ],
+        }),
+      );
+      expect(rowsOfBlock(blockAt(answer, 2, 3))).toEqual([s.peBoys, s.techGirls].sort());
+    });
+
+    it('refuses a partner that cannot pair, on the place and the rearrange route, changing nothing', async () => {
+      const s = await mixed();
+      const otherHalf = await load.row({
+        branch_id: s.branch,
+        version_id: s.version,
+        group_id: await load.classes.group(s.branch, s.year, s.tech, [s.classB]),
+        subject_id: s.tech,
+        teacher_id: s.techA,
+        lessons_per_week: 2,
+        mixed_block: true,
+      });
+      const before = await patternRows([s.version]);
+      const cases: [string, string][] = [
+        // Its own split's other half, a class row, another class's half, the row itself.
+        [s.peBoys, s.peGirls],
+        [s.peBoys, s.rowA],
+        [s.peBoys, otherHalf],
+        [s.peBoys, s.peBoys],
+        // A partner for a row that is not mixed.
+        [s.rowA, s.peBoys],
+      ];
+      for (const [row, partner] of cases) {
+        refusedWith(
+          await placeWith(s.branch, s.version, row, partner, 1, 1),
+          409,
+          'pattern_mixed_partner',
+        );
+        refusedWith(
+          await rearrange(s.branch, s.version, {
+            changes: [{ loadRowId: row, partnerRowId: partner, weekday: 1, slotPosition: 1 }],
+          }),
+          409,
+          'pattern_mixed_partner',
+        );
+      }
+      expect(await patternRows([s.version])).toEqual(before);
+    });
+
+    it('refuses one teacher for both lessons of a pairing as a teacher clash, changing nothing', async () => {
+      const s = await mixed();
+      // A teacher of both subjects takes boys' physical education and girls' technology.
+      const both = (
+        await load.teacher(s.branch, {
+          subjects: [
+            { subject: s.pe, grades: [7] },
+            { subject: s.tech, grades: [7] },
+          ],
+        })
+      ).staffId;
+      await hours(s.branch, both, [1, 2, 3, 4, 5]);
+      await t.database.migrator
+        .updateTable('teaching_load_rows')
+        .set({ teacher_id: both })
+        .where('id', 'in', [s.peBoys, s.techGirls])
+        .execute();
+      const before = await patternRows([s.version]);
+      expect(
+        blockedRules(await placeWith(s.branch, s.version, s.peBoys, s.techGirls, 1, 1)),
+      ).toContain('teacher_double');
+      expect(await patternRows([s.version])).toEqual(before);
+    });
+
+    it('refuses a partner with a block change in the common error shape', async () => {
+      const s = await mixed();
+      const x = blockAt(
+        gridOf(await placeWith(s.branch, s.version, s.peBoys, s.techGirls, 1, 1), 201),
+        1,
+        1,
+      );
+      refusedWith(
+        await rearrange(s.branch, s.version, {
+          changes: [{ blockId: x.id, partnerRowId: s.peGirls, weekday: 2, slotPosition: 1 }],
+        }),
+        400,
+        'validation_failed',
+      );
+    });
+
+    it("answers 404 to a partner of another branch's, another draft's and an unknown row, on the place and the rearrange route, changing nothing", async () => {
+      const s = await mixed();
+      const other = await mixed();
+      const sameBranch = await load.version(s.branch, s.year, { startsOn: MONDAY });
+      const sameRow = await load.row({
+        branch_id: s.branch,
+        version_id: sameBranch,
+        group_id: await load.classes.group(s.branch, s.year, s.tech, [s.classA]),
+        subject_id: s.tech,
+        teacher_id: s.techB,
+        lessons_per_week: 2,
+        mixed_block: true,
+      });
+      await viceIn(s.branch);
+      await staleEditLock(s.version);
+      const before = await patternRows([s.version, other.version, sameBranch]);
+      for (const cookie of [t.vicePrincipal, t.admin]) {
+        for (const partner of [other.techGirls, UNKNOWN, sameRow]) {
+          refusedWith(
+            await placeWith(s.branch, s.version, s.peBoys, partner, 1, 1, {}, cookie),
+            404,
+            'not_found',
+          );
+          refusedWith(
+            await rearrange(
+              s.branch,
+              s.version,
+              {
+                changes: [
+                  { loadRowId: s.peBoys, partnerRowId: partner, weekday: 1, slotPosition: 1 },
+                ],
+              },
+              cookie,
+            ),
+            404,
+            'not_found',
+          );
+        }
+      }
+      expect(await patternRows([s.version, other.version, sameBranch])).toEqual(before);
+    });
+
+    it('keeps a placed pairing when the mixed mark is cleared, and reports its block as a split apart (decision 6)', async () => {
+      const s = await mixed();
+      const x = blockAt(
+        gridOf(await placeWith(s.branch, s.version, s.peBoys, s.techGirls, 1, 1), 201),
+        1,
+        1,
+      );
+      await t.database.migrator
+        .updateTable('teaching_load_rows')
+        .set({ mixed_block: false })
+        .where('id', 'in', [s.techBoys, s.techGirls])
+        .execute();
+      const answer = gridOf(await grid(s.branch, s.version));
+      expect(answer.blocks.map((one) => one.id)).toEqual([x.id]);
+      expect(answer.results).toContainEqual(
+        expect.objectContaining({ rule: 'split_apart', severity: 'blocked', detail: { rows: 2 } }),
+      );
     });
   });
 
@@ -1647,6 +1987,7 @@ describe('the grid of a draft', () => {
     type Change = {
       blockId?: string;
       loadRowId?: string;
+      partnerRowId?: string;
       weekday: number;
       slotPosition: number;
       rooms?: { loadRowId: string; roomId: string }[];
@@ -1795,7 +2136,7 @@ describe('the grid of a draft', () => {
       });
     });
 
-    it('refuses a half of a mixed split, two changes of one block and two new blocks', async () => {
+    it('refuses a partner that does not pair with a mixed half, two changes of one block and two new blocks', async () => {
       const s = await scene();
       const pe = await load.classes.subject({ grades: [7] });
       const group = await load.classes.group(s.branch, s.year, pe, [s.classA]);
@@ -1812,9 +2153,11 @@ describe('the grid of a draft', () => {
       const a = await placed(s.branch, s.version, s.rowA, 1, 1);
       const before = await patternRows([s.version]);
       refusedWith(
-        await rearrange(s.branch, s.version, [{ loadRowId: half, weekday: 2, slotPosition: 1 }]),
+        await rearrange(s.branch, s.version, [
+          { loadRowId: half, partnerRowId: s.rowA, weekday: 2, slotPosition: 1 },
+        ]),
         409,
-        'pattern_mixed_block',
+        'pattern_mixed_partner',
       );
       refusedWith(
         await rearrange(s.branch, s.version, [

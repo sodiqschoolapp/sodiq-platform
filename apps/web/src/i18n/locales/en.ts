@@ -375,8 +375,8 @@ export const en = {
       'This lesson cannot go there: a rule of the timetable blocks it. Choose a slot marked free or warning.',
     pattern_no_slot:
       'That day has no such lesson slot for this class or group. Choose a slot of its day.',
-    pattern_mixed_block:
-      'A half of a mixed split is not placed here yet: its halves meet in different slots.',
+    pattern_mixed_partner:
+      "That half cannot be paired with this one: choose a half of another subject's mixed split of the same class.",
     pattern_clash:
       'Another lesson already holds that teacher, room or class at that time. Reload the grid and choose another slot.',
     pattern_locked:

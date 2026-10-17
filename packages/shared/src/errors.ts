@@ -518,8 +518,8 @@ export const ERROR_CODES = [
   'pattern_blocked',
   /** The weekday has no slot at that position for the grades of the lesson (task 5.4a). */
   'pattern_no_slot',
-  /** A half of a split marked mixed block is placed in the grid with locks, later (task 5.4a, decision 8). */
-  'pattern_mixed_block',
+  /** The partner named is not a half of another subject's mixed split of the same class (task 5.4c-3b, decision 7). */
+  'pattern_mixed_partner',
   /** The database refused a clash of the weekly pattern that the rule engine let through (task 5.4a, decision 17). */
   'pattern_clash',
   /** A lock holds a lesson that the applied suggestion moves, or keeps it out of a locked day (task 5.4c-1, decision 8). */

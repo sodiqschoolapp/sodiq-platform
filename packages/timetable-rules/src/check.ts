@@ -742,8 +742,9 @@ function checkLoadWarnings(placements: readonly Placement[], facts: Facts, resul
       for (const one of ofSubject) {
         const exempt = new Set(one.exemptStudentIds);
         const members = one.studentIds.filter((studentId) => !exempt.has(studentId));
-        // A lesson with no members on the reading date stands for its whole unit.
-        for (const studentId of members.length === 0 ? [''] : members) {
+        // A lesson with no members on the reading date stands for its class or group.
+        const unit = `unit:${one.groupId ?? one.classId ?? one.id}`;
+        for (const studentId of members.length === 0 ? [unit] : members) {
           const units = unitsOf.get(studentId) ?? new Set<string>();
           units.add(one.doublePairId ?? one.blockId ?? one.id);
           unitsOf.set(studentId, units);
