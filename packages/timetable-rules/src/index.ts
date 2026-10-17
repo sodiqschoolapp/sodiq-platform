@@ -2,7 +2,8 @@
 // Task 1.5 adds the times of a day and the template of a class on a date, task
 // 1.4 the calendar (what a grade has on a date), task 3.4a the rules of one
 // teaching load row, task 3.4b the blocks and weekly totals of a load, task
-// 5.2 every rule of a placed timetable (check.ts).
+// 5.2 every rule of a placed timetable (check.ts), task 5.3a the readiness of
+// the draft builder, task 5.3b-1 its step 5 (preferences.ts).
 export {
   dayEndsAfterMidnight,
   dayTimes,
@@ -82,10 +83,12 @@ export {
   type WeekDay,
 } from './totals.js';
 export {
+  FIXED_RULES,
   RELAXED_WHEN_NO_TEACHER_FREE,
   RULE_ORDER,
   slotStatus,
   WARNINGS,
+  type FixedRule,
   type RuleCode,
   type RuleResult,
   type Severity,
@@ -110,13 +113,22 @@ export {
   draftReady,
   loadReadiness,
   roomsReadiness,
+  rulesReadiness,
   teachersReadiness,
   templatesReadiness,
   type CellKey,
   type CellSlot,
   type LoadReadiness,
   type RoomsReadiness,
+  type RulesReadiness,
   type TeachersReadiness,
   type TemplateCell,
   type TemplatesReadiness,
 } from './readiness.js';
+export {
+  DEFAULT_WEIGHT,
+  MAX_WEIGHT,
+  PREFERENCES,
+  type Preference,
+  type Weights,
+} from './preferences.js';

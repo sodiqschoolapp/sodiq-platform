@@ -504,6 +504,10 @@ export const ERROR_CODES = [
   'version_start_outside_year',
   /** The version copied is of another academic year (task 3.4a, decision 10). */
   'version_copy_year',
+  /** The weights confirmed are not the weights stored now (task 5.3b-1, decision 9). */
+  'preferences_changed',
+  /** A step of the draft builder is not ready, so the draft cannot move to generation (task 5.3b-1, decision 6). */
+  'draft_not_ready',
   /** The class or group of a load row is of another academic year than the version (task 3.4a). */
   'load_unit_year',
   /** The class or group of a load row is archived (task 3.4a). */

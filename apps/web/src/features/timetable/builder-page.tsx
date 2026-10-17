@@ -32,6 +32,7 @@ import { nameOf, yearsQuery } from '@/features/setup/setup-api';
 import { TemplateTableView } from '@/features/setup/template-table';
 import { schoolDateText } from '@/lib/dates';
 import { BUILDER_STEPS, type BuilderSearch, type BuilderStep } from './builder-search';
+import { RulesStep } from './rules-step';
 import {
   confirmTemplates,
   editVersion,
@@ -41,7 +42,7 @@ import {
 } from './timetable-api';
 import { comingQuarterStarts, StartForm } from './version-form';
 
-/** The eight steps of `06`, Building a timetable; 1 to 4 are built (task 5.3a). */
+/** The eight steps of `06`, Building a timetable; 1 to 5 are built (tasks 5.3a and 5.3b-1). */
 const STEPS = [
   'templates',
   'load',
@@ -449,6 +450,16 @@ export function BuilderPage(): React.JSX.Element {
         )}
       </div>
     );
+  } else if (step === 'rules') {
+    panel = (
+      <RulesStep
+        key={chosen.id}
+        versionId={chosen.id}
+        rules={data.rules}
+        canEdit={canEdit}
+        onChanged={refresh}
+      />
+    );
   } else {
     panel = <p className="text-sm text-muted-foreground">{t('timetable.builder.laterText')}</p>;
   }
@@ -474,6 +485,15 @@ export function BuilderPage(): React.JSX.Element {
               {data.ready
                 ? t('timetable.builder.readyForGeneration')
                 : t('timetable.builder.notReadyForGeneration', { count: notReady })}
+            </p>
+          )}
+          {data !== undefined && !data.ready && (
+            <p className="text-sm" data-reason="notReadySteps">
+              {t('timetable.builder.rulesStep.notReadySteps', {
+                steps: BUILT.filter((key) => !data[key].ready)
+                  .map((key) => t(`timetable.builder.steps.${key}`))
+                  .join(', '),
+              })}
             </p>
           )}
         </div>

@@ -8,6 +8,7 @@ import {
   timetableVersionSchema,
   type LoadRowEdit,
   type LoadRowRecord,
+  type PreferenceWeights,
   type TimetableVersionCreate,
   type TimetableVersionEdit,
 } from '@sodiq/shared';
@@ -60,7 +61,7 @@ export const totalsQuery = (branchId: string | null, versionId: string | null) =
     enabled: branchId !== null && versionId !== null,
   });
 
-/** The readiness of steps 1 to 4 of a draft (task 5.3a), read on each request. */
+/** The readiness of steps 1 to 5 of a draft (tasks 5.3a and 5.3b-1), read on each request. */
 export const readinessQuery = (branchId: string | null, versionId: string | null) =>
   queryOptions({
     queryKey: [...timetableKey(branchId), 'load', versionId, 'readiness'],
@@ -154,5 +155,23 @@ export const confirmTemplates = (versionId: string) =>
   answerOf(
     api.POST('/api/timetable/versions/{id}/templates/confirm', {
       params: { header: branchHeader(), path: { id: versionId } },
+    }),
+  ).then((answer) => draftReadinessSchema.parse(answer));
+
+/** Step 5: the weights of the preferences (task 5.3b-1). */
+export const saveWeights = (versionId: string, weights: PreferenceWeights) =>
+  answerOf(
+    api.PUT('/api/timetable/versions/{id}/preferences', {
+      params: { header: branchHeader(), path: { id: versionId } },
+      body: { weights },
+    }),
+  ).then((answer) => draftReadinessSchema.parse(answer));
+
+/** Step 5 confirmed: the weights the person sees (task 5.3b-1, decision 9). */
+export const confirmRules = (versionId: string, weights: PreferenceWeights) =>
+  answerOf(
+    api.POST('/api/timetable/versions/{id}/rules/confirm', {
+      params: { header: branchHeader(), path: { id: versionId } },
+      body: { weights },
     }),
   ).then((answer) => draftReadinessSchema.parse(answer));

@@ -314,10 +314,58 @@ const readinessTeacherSchema = loadTotalsSchema.shape.teachers.element.extend({
 });
 
 /**
- * The readiness of steps 1 to 4 of the draft builder (06, Building a
- * timetable; task 5.3a, pull request #127), read on each request from the
- * draft and the data in force (decision 3): ready for generation when every
- * step is ready (5.3b adds step 5).
+ * The preferences of the generator (06, Auto-generation), in the order of its
+ * table: the same codes as `PREFERENCES` of packages/timetable-rules (a test
+ * of the API compares the two). Task 5.3b-1, decision 3: a weight is a whole
+ * number from 0 (not used) to 10, starting at 5; the database keeps the same
+ * bounds (db/migrations/0069).
+ */
+export const PREFERENCE_CODES = [
+  'class_no_gaps',
+  'teacher_few_gaps',
+  'subject_spread',
+  'demanding_early',
+  'class_even_days',
+  'main_room',
+  'part_time_few_days',
+  'teacher_preferred_times',
+] as const;
+
+export const preferenceCodeSchema = z.enum(PREFERENCE_CODES);
+
+export type PreferenceCode = z.infer<typeof preferenceCodeSchema>;
+
+export const PREFERENCE_WEIGHT_MAX = 10;
+
+const weightSchema = z.int().min(0).max(PREFERENCE_WEIGHT_MAX);
+
+/** A weight for each of the eight preferences, every one required. */
+export const preferenceWeightsSchema = z.strictObject({
+  class_no_gaps: weightSchema,
+  teacher_few_gaps: weightSchema,
+  subject_spread: weightSchema,
+  demanding_early: weightSchema,
+  class_even_days: weightSchema,
+  main_room: weightSchema,
+  part_time_few_days: weightSchema,
+  teacher_preferred_times: weightSchema,
+});
+
+export type PreferenceWeights = z.infer<typeof preferenceWeightsSchema>;
+
+/**
+ * The body of the weights save and of the confirm of step 5: the eight
+ * weights, for the confirm the ones the person sees (decision 9).
+ */
+export const preferenceWeightsBodySchema = z.strictObject({ weights: preferenceWeightsSchema });
+
+export type PreferenceWeightsBody = z.infer<typeof preferenceWeightsBodySchema>;
+
+/**
+ * The readiness of steps 1 to 5 of the draft builder (06, Building a
+ * timetable; tasks 5.3a, pull request #127, and 5.3b-1), read on each request
+ * from the draft and the data in force (decision 3): ready for generation
+ * when every step is ready.
  */
 export const draftReadinessSchema = z.object({
   ready: z.boolean(),
@@ -352,6 +400,14 @@ export const draftReadinessSchema = z.object({
     ready: z.boolean(),
     rows: z.array(loadRowSchema.extend({ reason: z.enum(['load_room_closed', 'room_type_none']) })),
     classesWithoutRoom: z.array(z.object({ id: z.uuid(), name: z.string(), grade: z.int() })),
+  }),
+  /** Step 5: the weights stored now, and whether they are the ones confirmed (task 5.3b-1). */
+  rules: z.object({
+    ready: z.boolean(),
+    confirmed: z.boolean(),
+    weights: preferenceWeightsSchema,
+    /** The preferences whose weight differs from the confirmed one. */
+    changed: z.array(preferenceCodeSchema),
   }),
 });
 

@@ -364,6 +364,8 @@ export const en = {
       'The start date is outside the academic year. Choose a date inside the year.',
     version_copy_year:
       'That version is of another academic year. Copy a version of the same year, or start empty.',
+    preferences_changed: 'The weights changed since you opened them. Read them again and confirm.',
+    draft_not_ready: 'A step of the draft is not ready. Finish the steps marked not ready first.',
     load_unit_year:
       "That class or group is of another academic year than the version. Choose one of the version's year.",
     load_unit_archived:
@@ -2575,6 +2577,8 @@ export const en = {
         create: 'Draft timetable version created',
         edit: 'Draft timetable version changed',
         templates_confirm: 'Day templates of a draft confirmed',
+        preferences: 'Preference weights of a draft changed',
+        rules_confirm: 'Rules of a draft confirmed',
       },
       teaching_load: {
         create: 'Teaching load row added',
@@ -2933,6 +2937,53 @@ export const en = {
     title: 'Timetable',
     loadLink: 'Teaching load',
     builderLink: 'Draft builder',
+    rule: {
+      teacher_double: 'A teacher cannot be in two lessons at the same time.',
+      room_double:
+        'A room cannot hold two lessons at the same time, unless the room is marked as shared.',
+      room_shared_full: 'A shared room holds no more lessons at the same time than its maximum.',
+      room_shared_capacity:
+        'The students of all lessons in a shared room at the same time fit its capacity together.',
+      class_double: 'A class cannot have two lessons at the same time.',
+      student_double: 'No student can be in two lessons at once.',
+      split_apart:
+        'All groups or parts of one split are in the same slot, so that every student of the class has a lesson at that time.',
+      day_off: 'No lesson on a day off.',
+      not_working_day: 'No lesson on a day that is not a working day.',
+      no_template: 'No lesson on a day that has no day template.',
+      exam_week: 'No lesson on a day of an exam week with no regular lessons.',
+      not_a_slot:
+        'A lesson fills exactly one lesson slot of the day template: never across two slots or at a time typed by hand.',
+      break_slot: 'A lesson cannot be placed in a break or lunch slot.',
+      two_grade_slot:
+        'A lesson of a group of two grades is only in a lesson slot that the day templates of both grades have, with the same start and end time.',
+      double_apart: 'The two lessons of a double lesson are in consecutive lesson slots.',
+      teacher_branch: 'A teacher teaches only in a branch they work in.',
+      teacher_inactive: 'Inactive teachers cannot be used.',
+      teacher_subject: 'The teacher must have that subject in their profile.',
+      teacher_grade: 'The teacher must have every grade of the class or group in their profile.',
+      teacher_language:
+        'The teacher must be able to teach in the language of the class or group, unless the subject is outside the language rule.',
+      teacher_unavailable:
+        'A teacher cannot be placed outside the days and hours in their availability.',
+      subject_inactive: 'Inactive subjects cannot be used.',
+      room_inactive: 'Inactive rooms cannot be used.',
+      travel_time:
+        "Between a teacher's lesson in one branch and their next lesson in another branch there is at least the travel time set for those two branches.",
+      travel_time_not_set:
+        'A teacher has lessons in two branches on one day only when the travel time between those branches is set.',
+    },
+    preference: {
+      class_no_gaps: 'A class has no empty lesson slot between its first and last lesson',
+      teacher_few_gaps: 'A teacher has few empty slots between lessons',
+      subject_spread:
+        'Lessons of one subject are spread over the week, and not twice in a day unless a double lesson is allowed',
+      demanding_early: 'Demanding subjects are in the first slots of the day',
+      class_even_days: 'A class has a similar number of lessons each day',
+      main_room: 'A class stays in its main classroom when the subject needs no special room',
+      part_time_few_days: "A part-time teacher's lessons fall on as few days as possible",
+      teacher_preferred_times: "A teacher's preferred days and slots are respected",
+    },
     builder: {
       title: 'Draft builder',
       noVersion: 'Start a draft on the teaching load page first.',
@@ -2973,6 +3024,15 @@ export const en = {
       readyForGeneration: 'Ready for generation',
       notReadyForGeneration_one: 'Not ready for generation: {{count}} step is not ready',
       notReadyForGeneration_other: 'Not ready for generation: {{count}} steps are not ready',
+      rulesStep: {
+        fixedRules: 'Fixed rules',
+        weights: 'Weights of the preferences',
+        weightOption0: '0: not used',
+        confirm: 'Confirm the rules',
+        changedSince: 'Weights changed since the confirmation: {{names}}',
+        saveFirst: 'Save the weights before confirming.',
+        notReadySteps: 'Steps not ready: {{steps}}',
+      },
       stepsLabel: 'Steps',
       stepNumber: '{{number}}.',
       steps: {

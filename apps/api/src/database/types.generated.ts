@@ -910,9 +910,18 @@ export interface TimetableVersions {
   id: Generated<string>;
   left_rows: Generated<Json>;
   number: number;
+  rules_confirmed: Json | null;
   starts_on: string;
   status: Generated<string>;
   templates_confirmed: Json | null;
+  weight_class_even_days: Generated<number>;
+  weight_class_no_gaps: Generated<number>;
+  weight_demanding_early: Generated<number>;
+  weight_main_room: Generated<number>;
+  weight_part_time_few_days: Generated<number>;
+  weight_subject_spread: Generated<number>;
+  weight_teacher_few_gaps: Generated<number>;
+  weight_teacher_preferred_times: Generated<number>;
 }
 
 export interface TravelTimes {

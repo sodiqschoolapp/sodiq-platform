@@ -3,6 +3,7 @@ import {
   draftReady,
   loadReadiness,
   roomsReadiness,
+  rulesReadiness,
   teachersReadiness,
   templatesReadiness,
   type TemplateCell,
@@ -271,5 +272,59 @@ describe('draftReady', () => {
   it('is ready only when every step is', () => {
     expect(draftReady([{ ready: true }, { ready: true }])).toBe(true);
     expect(draftReady([{ ready: true }, { ready: false }])).toBe(false);
+  });
+});
+
+describe('rulesReadiness (step 5)', () => {
+  const weights = {
+    class_no_gaps: 5,
+    teacher_few_gaps: 5,
+    subject_spread: 7,
+    demanding_early: 5,
+    class_even_days: 5,
+    main_room: 0,
+    part_time_few_days: 5,
+    teacher_preferred_times: 10,
+  };
+
+  it('is not ready while never confirmed, and names no change', () => {
+    expect(rulesReadiness({ weights, confirmed: null })).toEqual({
+      ready: false,
+      confirmed: false,
+      changed: [],
+    });
+  });
+
+  it('is ready when the weights are confirmed as they stand', () => {
+    expect(rulesReadiness({ weights, confirmed: { ...weights } })).toEqual({
+      ready: true,
+      confirmed: true,
+      changed: [],
+    });
+  });
+
+  it('is not ready after a weight changed, and names it', () => {
+    expect(rulesReadiness({ weights: { ...weights, main_room: 3 }, confirmed: weights })).toEqual({
+      ready: false,
+      confirmed: false,
+      changed: ['main_room'],
+    });
+  });
+
+  it('names the changes in the order of the preferences', () => {
+    expect(
+      rulesReadiness({
+        weights: { ...weights, teacher_preferred_times: 1, class_no_gaps: 0 },
+        confirmed: weights,
+      }).changed,
+    ).toEqual(['class_no_gaps', 'teacher_preferred_times']);
+  });
+});
+
+describe('draftReady over the five steps', () => {
+  it('is not ready when step 5 alone is not', () => {
+    const ready = { ready: true };
+    expect(draftReady([ready, ready, ready, ready, { ready: false }])).toBe(false);
+    expect(draftReady([ready, ready, ready, ready, ready])).toBe(true);
   });
 });

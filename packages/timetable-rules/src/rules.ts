@@ -86,6 +86,44 @@ export const WARNINGS: readonly RuleCode[] = [
 ];
 
 /**
+ * The fixed rules shown at step 5 of the builder (06, Building a timetable:
+ * "Reviews the fixed rules"; task 5.3b-1, decision 4): the blocked rules a
+ * weekly pattern can break, which the generator never breaks. Left out: the
+ * rules of dated lessons only (`outside_year`, `vacation`), of a one-day
+ * change (`substitute_vacancy`) and of an exam (`invigilator_*`); they are
+ * still checked where they apply.
+ */
+export const FIXED_RULES = [
+  'teacher_double',
+  'room_double',
+  'room_shared_full',
+  'room_shared_capacity',
+  'class_double',
+  'student_double',
+  'split_apart',
+  'day_off',
+  'not_working_day',
+  'no_template',
+  'exam_week',
+  'not_a_slot',
+  'break_slot',
+  'two_grade_slot',
+  'double_apart',
+  'teacher_branch',
+  'teacher_inactive',
+  'teacher_subject',
+  'teacher_grade',
+  'teacher_language',
+  'teacher_unavailable',
+  'subject_inactive',
+  'room_inactive',
+  'travel_time',
+  'travel_time_not_set',
+] as const satisfies readonly RuleCode[];
+
+export type FixedRule = (typeof FIXED_RULES)[number];
+
+/**
  * The blocked rules that a one-day change turns into warnings with a tick
  * when no teacher of the subject is free (`edge/timetable`, After publishing,
  * "No teacher of the subject is free"; review correction 3). Double booking,

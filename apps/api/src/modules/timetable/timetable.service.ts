@@ -16,6 +16,7 @@ import {
   type LoadTeachers,
   type LoadTeachersQuery,
   type LoadTotals,
+  type PreferenceWeightsBody,
   type TimetableVersion,
   type TimetableVersionCreate,
   type TimetableVersionEdit,
@@ -36,6 +37,7 @@ import {
   refusingProblems,
   ROOM_PROBLEMS,
   roomsReadiness,
+  rulesReadiness,
   splitAndWhole,
   splitClassOf,
   TEACHER_PROBLEMS,
@@ -77,6 +79,14 @@ import { auditOf, followChanged, followVersion } from './tutor-lessons.js';
 import { dayOf, loadStore } from '../setup/day-template-state.js';
 import { confirmedCellsOf, templateCellsOf, type StoredCells } from './template-cells.js';
 import { isWithdrawn } from '../setup/dated-rows.js';
+import {
+  confirmedWeightsOf,
+  sameWeights,
+  WEIGHT_COLUMNS,
+  weightColumnsOf,
+  weightsOf,
+  type WeightColumns,
+} from './version-weights.js';
 
 const refused = (code: ErrorCode): ApiException => new ApiException(code, 409);
 
@@ -152,7 +162,7 @@ const storedOfLeft = (left: LeftRow): StoredLoadRow => ({
 });
 
 /** A version with its year and branch, as the routes read it. */
-interface VersionRow {
+interface VersionRow extends WeightColumns {
   id: string;
   branch_id: string;
   academic_year_id: string;
@@ -162,6 +172,7 @@ interface VersionRow {
   from_version_id: string | null;
   left_rows: unknown;
   templates_confirmed: unknown;
+  rules_confirmed: unknown;
   start_date: string;
   end_date: string;
   year_status: string;
@@ -419,6 +430,8 @@ export class Timetable {
               starts_on: input.startsOn,
               from_version_id: source?.id ?? null,
               left_rows: JSON.stringify(left),
+              // Decision 5 of 5.3b-1: a copy takes its source's weights, not their confirmation.
+              ...(source === undefined ? {} : weightColumnsOf(weightsOf(source))),
             })
             .returning('id')
             .executeTakeFirstOrThrow();
@@ -453,6 +466,7 @@ export class Timetable {
               fromVersionId: source?.id ?? null,
               copiedRows: copied.map((row) => row.id),
               leftRows: left as unknown as JsonValue,
+              weights: source === undefined ? null : weightsOf(source),
             },
             requestId,
           });
@@ -1006,13 +1020,18 @@ export class Timetable {
       rows: answers,
       rooms: rooms.map((room) => ({ type: room.type, closed: room.status === 'closed' })),
     });
+    const weights = weightsOf(version);
+    const rules = rulesReadiness({
+      weights,
+      confirmed: confirmedWeightsOf(version.rules_confirmed),
+    });
     const holds = (teacher: { id: string }) =>
       teachers.noHours.includes(teacher.id) || teachers.over.includes(teacher.id);
     const problemRows = new Set(load.rows);
     const closed = new Set(roomRows.closed);
     const typeNone = new Set(roomRows.typeNone);
     return {
-      ready: draftReady([templates, load, teachers, roomRows]),
+      ready: draftReady([templates, load, teachers, roomRows, rules]),
       templates: {
         ready: templates.ready,
         startsOn: version.starts_on,
@@ -1052,7 +1071,121 @@ export class Timetable {
         ),
         classesWithoutRoom: roomless,
       },
+      rules: {
+        ready: rules.ready,
+        confirmed: rules.confirmed,
+        weights,
+        changed: rules.changed,
+      },
     };
+  }
+
+  /**
+   * The gate (task 5.3b-1, decision 6): a draft moves to generation only when
+   * every step of the builder is ready, read in the transaction of the
+   * request. The run route of 5.11 calls it first.
+   */
+  async requireReady(transaction: Transaction, branchId: string, id: string): Promise<void> {
+    const version = await this.findVersion(transaction, branchId, id);
+    const readiness = await this.readinessOf(transaction, branchId, version);
+    if (!readiness.ready) {
+      const steps = (['templates', 'load', 'teachers', 'rooms', 'rules'] as const).filter(
+        (step) => !readiness[step].ready,
+      );
+      throw new ApiException(
+        'draft_not_ready',
+        409,
+        undefined,
+        steps.map((step) => ({
+          path: step,
+          code: 'draft_not_ready',
+          message: 'The step is not ready.',
+        })),
+      );
+    }
+  }
+
+  /**
+   * Step 5: the weights of the preferences (task 5.3b-1, decisions 3 and 7).
+   * A draft write; a save of the weights already stored writes nothing.
+   */
+  saveWeights(
+    access: Access,
+    id: string,
+    input: PreferenceWeightsBody,
+    requestId: string,
+  ): Promise<DraftReadiness> {
+    const branchId = branchOf(access);
+    return refusingConstraints(
+      () =>
+        this.transactions.run(access.branchIds, async (transaction) => {
+          const version = await this.lockDraft(transaction, branchId, id);
+          const before = weightsOf(version);
+          if (!sameWeights(before, input.weights)) {
+            await transaction
+              .updateTable('timetable_versions')
+              .set(weightColumnsOf(input.weights))
+              .where('id', '=', id)
+              .execute();
+            await this.audit.record(transaction, {
+              branchId,
+              actorId: access.accountId,
+              assignmentId: access.assignmentId,
+              action: 'timetable_version.preferences',
+              record: { type: 'timetable_version', id },
+              oldValue: before,
+              newValue: input.weights,
+              requestId,
+            });
+          }
+          return this.readinessOf(transaction, branchId, await this.versionRow(transaction, id));
+        }),
+      LOAD_REFUSALS,
+    );
+  }
+
+  /**
+   * Step 5 confirmed (task 5.3b-1, decisions 2 and 9): the weights the person
+   * sees, refused when they are not the ones stored; a confirm of the weights
+   * already confirmed writes nothing.
+   */
+  confirmRules(
+    access: Access,
+    id: string,
+    input: PreferenceWeightsBody,
+    requestId: string,
+  ): Promise<DraftReadiness> {
+    const branchId = branchOf(access);
+    return refusingConstraints(
+      () =>
+        this.transactions.run(access.branchIds, async (transaction) => {
+          const version = await this.lockDraft(transaction, branchId, id);
+          const weights = weightsOf(version);
+          if (!sameWeights(weights, input.weights)) {
+            throw refused('preferences_changed');
+          }
+          const before = confirmedWeightsOf(version.rules_confirmed);
+          if (before === null || !sameWeights(before, weights)) {
+            await transaction
+              .updateTable('timetable_versions')
+              .set({ rules_confirmed: JSON.stringify(weights) })
+              .where('id', '=', id)
+              .execute();
+            await this.audit.record(transaction, {
+              branchId,
+              actorId: access.accountId,
+              assignmentId: access.assignmentId,
+              action: 'timetable_version.rules_confirm',
+              record: { type: 'timetable_version', id },
+              oldValue: before,
+              newValue: weights,
+              requestId,
+            });
+          }
+          return this.readinessOf(transaction, branchId, await this.versionRow(transaction, id));
+        }),
+      LOAD_REFUSALS,
+    );
   }
 
   /** A row of a draft: every rule of the engine (decision 7); the first problem is the refusal. */
@@ -1684,6 +1817,8 @@ export class Timetable {
         'timetable_versions.from_version_id',
         'timetable_versions.left_rows',
         'timetable_versions.templates_confirmed',
+        'timetable_versions.rules_confirmed',
+        ...WEIGHT_COLUMNS,
         'academic_years.start_date',
         'academic_years.end_date',
         'academic_years.status as year_status',

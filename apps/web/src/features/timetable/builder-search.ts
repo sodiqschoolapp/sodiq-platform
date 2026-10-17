@@ -1,5 +1,5 @@
-/** The steps of the builder that open a panel (task 5.3a): 1 to 4. */
-export const BUILDER_STEPS = ['templates', 'load', 'teachers', 'rooms'] as const;
+/** The steps of the builder that open a panel (tasks 5.3a and 5.3b-1): 1 to 5. */
+export const BUILDER_STEPS = ['templates', 'load', 'teachers', 'rooms', 'rules'] as const;
 
 export type BuilderStep = (typeof BUILDER_STEPS)[number];
 
