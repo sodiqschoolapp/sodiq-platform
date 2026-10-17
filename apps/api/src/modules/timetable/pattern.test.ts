@@ -563,6 +563,280 @@ describe('the grid of a draft', () => {
     });
   });
 
+  // Task 5.4c-3a: double lessons (edge/timetable, Structure: "Two linked lessons
+  // in consecutive lesson slots with the same teacher and room. They are moved,
+  // cancelled and substituted together"). The scene's day is lesson, break,
+  // lesson, break, lesson: positions 1, 3 and 5 are the lesson slots.
+  describe('double lessons', () => {
+    const placeDouble = (
+      branch: string,
+      version: string,
+      loadRowId: string,
+      weekday: number,
+      slotPosition: number,
+      extra: object = {},
+      cookie = t.admin,
+    ) =>
+      post(
+        `/api/timetable/versions/${version}/pattern`,
+        branch,
+        { loadRowId, weekday, slotPosition, double: true, ...extra },
+        cookie,
+      );
+    const roomOf = (
+      branch: string,
+      version: string,
+      blockId: string,
+      lessonId: string,
+      roomId: string,
+    ) =>
+      post(`/api/timetable/versions/${version}/pattern/${blockId}/room`, branch, {
+        lessonId,
+        roomId,
+      });
+    const rearrange = (branch: string, version: string, body: object) =>
+      post(`/api/timetable/versions/${version}/pattern/rearrange`, branch, body);
+    /** The blocks of a pair, the earlier first. */
+    const halves = (answer: GridAnswer) => {
+      const paired = answer.blocks
+        .filter((one) => one.doublePairId !== null)
+        .sort((a, b) => a.weekday - b.weekday || a.start - b.start);
+      const [first, second] = paired;
+      if (first === undefined || second === undefined || paired.length !== 2) {
+        throw new Error('One pair.');
+      }
+      return [first, second] as const;
+    };
+    const slots = (answer: GridAnswer) =>
+      halves(answer).map((one) => [one.weekday, one.slotPosition, one.start, one.end]);
+
+    /** The scene with row A allowing double lessons. */
+    async function doubles() {
+      const s = await scene();
+      await t.database.migrator
+        .updateTable('teaching_load_rows')
+        .set({ double_lessons: true })
+        .where('id', '=', s.rowA)
+        .execute();
+      return s;
+    }
+
+    it('places a double in two audited blocks of one pair, the second half in the next lesson slot over the break', async () => {
+      const s = await doubles();
+      const response = await placeDouble(s.branch, s.version, s.rowA, 1, 1);
+      const answer = gridOf(response, 201);
+      expect(slots(answer)).toEqual([
+        [1, 1, 480, 525],
+        [1, 3, 535, 580],
+      ]);
+      const [first, second] = halves(answer);
+      expect(first.doublePairId).toBe(second.doublePairId);
+      expect([first.lessons[0]?.roomId, second.lessons[0]?.roomId]).toEqual([s.roomA, s.roomA]);
+      const stored = await t.database.migrator
+        .selectFrom('pattern_blocks')
+        .select('double_pair_id')
+        .where('version_id', '=', s.version)
+        .execute();
+      expect(stored.map((one) => one.double_pair_id)).toEqual([
+        first.doublePairId,
+        first.doublePairId,
+      ]);
+      for (const half of [first, second]) {
+        const [entry] = await t.entries('pattern_block.create', half.id);
+        expect(entry).toMatchObject({
+          request_id: response.headers['x-request-id'],
+          new_value: { slotPosition: half.slotPosition, doublePairId: first.doublePairId },
+        });
+      }
+      // No double lesson result of its own: the two lessons are one pair.
+      expect(answer.results.map((one) => one.rule)).not.toContain('double_apart');
+      expect(answer.results.map((one) => one.rule)).not.toContain('subject_twice');
+    });
+
+    it('refuses a double at the last lesson slot as no slot, changing nothing', async () => {
+      const s = await doubles();
+      const before = await patternRows([s.version]);
+      refusedWith(await placeDouble(s.branch, s.version, s.rowA, 1, 5), 409, 'pattern_no_slot');
+      expect(await patternRows([s.version])).toEqual(before);
+    });
+
+    it('refuses a double of a row that does not allow double lessons, naming the rule and changing nothing', async () => {
+      const s = await doubles();
+      const before = await patternRows([s.version]);
+      expect(blockedRules(await placeDouble(s.branch, s.version, s.rowB, 1, 1))).toContain(
+        'double_not_allowed',
+      );
+      expect(await patternRows([s.version])).toEqual(before);
+    });
+
+    it('refuses a double of a split where one group row allows doubles and the other does not', async () => {
+      const s = await doubles();
+      const english = await load.classes.subject({ grades: [7] });
+      const rows: string[] = [];
+      for (const allowed of [true, false]) {
+        rows.push(
+          await load.row({
+            branch_id: s.branch,
+            version_id: s.version,
+            group_id: await load.classes.group(s.branch, s.year, english, [s.classA]),
+            subject_id: english,
+            teacher_id: await teacher(s.branch, english),
+            lessons_per_week: 2,
+            double_lessons: allowed,
+          }),
+        );
+      }
+      const before = await patternRows([s.version]);
+      const refused = await placeDouble(s.branch, s.version, rows[0] ?? '', 2, 1);
+      expect(new Set(blockedRules(refused))).toEqual(new Set(['double_not_allowed']));
+      expect(await patternRows([s.version])).toEqual(before);
+    });
+
+    it('refuses a double that is not a true or false, in the common error shape', async () => {
+      const s = await doubles();
+      refusedWith(
+        await placeDouble(s.branch, s.version, s.rowA, 1, 1, { double: 'yes' }),
+        400,
+        'validation_failed',
+      );
+    });
+
+    it('moves a double by either half, the other half beside it, audited for both', async () => {
+      const s = await doubles();
+      const placedPair = halves(gridOf(await placeDouble(s.branch, s.version, s.rowA, 1, 1), 201));
+      const [first, second] = placedPair;
+      // By the first half, to Tuesday.
+      let answer = gridOf(await move(s.branch, s.version, first.id, 2, 1));
+      expect(slots(answer)).toEqual([
+        [2, 1, 480, 525],
+        [2, 3, 535, 580],
+      ]);
+      // By the second half, to Wednesday's last slot: the first half goes before it.
+      answer = gridOf(await move(s.branch, s.version, second.id, 3, 5));
+      expect(slots(answer)).toEqual([
+        [3, 3, 535, 580],
+        [3, 5, 590, 635],
+      ]);
+      // One lesson slot earlier by the second half: it lands on the first half's slot
+      // (review correction 2), checked at the commit.
+      answer = gridOf(await move(s.branch, s.version, second.id, 3, 3));
+      expect(slots(answer)).toEqual([
+        [3, 1, 480, 525],
+        [3, 3, 535, 580],
+      ]);
+      expect(halves(answer).map((one) => one.id)).toEqual([first.id, second.id]);
+      const entries = await t.entries('pattern_block.move', first.id);
+      expect(entries.at(-1)).toMatchObject({
+        old_value: { weekday: 3, slotPosition: 3, doublePairId: first.doublePairId },
+        new_value: { weekday: 3, slotPosition: 1, doublePairId: first.doublePairId },
+      });
+      expect(await t.entries('pattern_block.move', second.id)).toHaveLength(3);
+    });
+
+    it('moves a double one lesson slot later, the first half onto the second half’s old slot (review correction 2)', async () => {
+      const s = await doubles();
+      const [first] = halves(gridOf(await placeDouble(s.branch, s.version, s.rowA, 4, 1), 201));
+      const answer = gridOf(await move(s.branch, s.version, first.id, 4, 3));
+      expect(slots(answer)).toEqual([
+        [4, 3, 535, 580],
+        [4, 5, 590, 635],
+      ]);
+    });
+
+    it('refuses a move when only the second half clashes, naming the rule and changing nothing', async () => {
+      const s = await doubles();
+      await t.database.migrator
+        .updateTable('teaching_load_rows')
+        .set({ teacher_id: s.teacherA })
+        .where('id', '=', s.rowB)
+        .execute();
+      await placed(s.branch, s.version, s.rowB, 5, 3);
+      const [first] = halves(gridOf(await placeDouble(s.branch, s.version, s.rowA, 1, 1), 201));
+      const before = await patternRows([s.version]);
+      expect(blockedRules(await move(s.branch, s.version, first.id, 5, 1))).toContain(
+        'teacher_double',
+      );
+      expect(await patternRows([s.version])).toEqual(before);
+    });
+
+    it('removes both halves by either one, audited for both', async () => {
+      const s = await doubles();
+      const [first, second] = halves(
+        gridOf(await placeDouble(s.branch, s.version, s.rowA, 1, 1), 201),
+      );
+      const answer = gridOf(await drop(s.branch, s.version, second.id));
+      expect(answer.blocks).toEqual([]);
+      for (const half of [first, second]) {
+        const [entry] = await t.entries('pattern_block.delete', half.id);
+        expect(entry).toMatchObject({
+          old_value: { slotPosition: half.slotPosition, doublePairId: first.doublePairId },
+        });
+      }
+    });
+
+    it('changes the room of the row in both halves, audited for both', async () => {
+      const s = await doubles();
+      const [first, second] = halves(
+        gridOf(await placeDouble(s.branch, s.version, s.rowA, 1, 1), 201),
+      );
+      const lesson = first.lessons[0];
+      if (lesson === undefined) throw new Error('A lesson.');
+      const answer = gridOf(await roomOf(s.branch, s.version, first.id, lesson.id, s.roomB));
+      expect(halves(answer).map((one) => one.lessons[0]?.roomId)).toEqual([s.roomB, s.roomB]);
+      for (const half of [first, second]) {
+        const [entry] = await t.entries('pattern_entry.room', half.lessons[0]?.id);
+        expect(entry).toMatchObject({
+          old_value: { blockId: half.id, roomId: s.roomA, doublePairId: first.doublePairId },
+          new_value: { blockId: half.id, roomId: s.roomB },
+        });
+      }
+    });
+
+    it('refuses a room taken in the slot of the second half only', async () => {
+      const s = await doubles();
+      const [first] = halves(gridOf(await placeDouble(s.branch, s.version, s.rowA, 1, 1), 201));
+      // Class B's lesson in its own room B at the second half's slot.
+      await placed(s.branch, s.version, s.rowB, 1, 3);
+      const lesson = first.lessons[0];
+      if (lesson === undefined) throw new Error('A lesson.');
+      const before = await patternRows([s.version]);
+      expect(blockedRules(await roomOf(s.branch, s.version, first.id, lesson.id, s.roomB))).toEqual(
+        ['room_double'],
+      );
+      expect(await patternRows([s.version])).toEqual(before);
+    });
+
+    it('refuses a swap and a suggestion that move one half alone, naming the rule (decision 6)', async () => {
+      const s = await doubles();
+      const [first] = halves(gridOf(await placeDouble(s.branch, s.version, s.rowA, 1, 1), 201));
+      const single = await placed(s.branch, s.version, s.rowB, 2, 5);
+      const before = await patternRows([s.version]);
+      expect(blockedRules(await swap(s.branch, s.version, first.id, single.id))).toContain(
+        'double_apart',
+      );
+      expect(
+        blockedRules(
+          await rearrange(s.branch, s.version, {
+            changes: [{ blockId: first.id, weekday: 2, slotPosition: 1 }],
+          }),
+        ),
+      ).toContain('double_apart');
+      expect(await patternRows([s.version])).toEqual(before);
+    });
+
+    it('removes both halves when the undo of a suggestion names one', async () => {
+      const s = await doubles();
+      const [first, second] = halves(
+        gridOf(await placeDouble(s.branch, s.version, s.rowA, 1, 1), 201),
+      );
+      const answer = gridOf(
+        await rearrange(s.branch, s.version, { changes: [], remove: [first.id] }),
+      );
+      expect(answer.blocks).toEqual([]);
+      expect(await t.entries('pattern_block.delete', second.id)).toHaveLength(1);
+    });
+  });
+
   describe('who may read and write the grid', () => {
     it('lets the Principal read the grid and refuses every write; a Teacher reads nothing', async () => {
       const s = await scene();

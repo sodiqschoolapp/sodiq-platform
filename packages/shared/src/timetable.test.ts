@@ -137,6 +137,16 @@ describe('the bodies of an undo', () => {
     ).toBe(false);
   });
 
+  // Task 5.4c-3a (review correction 1): a double lesson.
+  it('places a double lesson with true or false only, a single one when left out', () => {
+    for (const double of [true, false, undefined]) {
+      expect(placeRecordSchema.safeParse({ loadRowId: ROW, ...at, double }).success).toBe(true);
+    }
+    for (const double of ['yes', 1, null]) {
+      expect(placeRecordSchema.safeParse({ loadRowId: ROW, ...at, double }).success).toBe(false);
+    }
+  });
+
   it('gives a lesson no room', () => {
     expect(lessonRoomRecordSchema.safeParse({ lessonId: BLOCK, roomId: null }).success).toBe(true);
     expect(lessonRoomRecordSchema.safeParse({ lessonId: BLOCK }).success).toBe(false);

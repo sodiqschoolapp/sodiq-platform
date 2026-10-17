@@ -623,6 +623,36 @@ describe('the pattern of a timetable version in the database', () => {
         await refusal(place({ weekday: 2, start: 750, end: 795, pairId: other }, [])),
       ).toMatchObject({ constraint: 'pattern_double_pair' });
     });
+
+    // Task 5.4c-3a (plan review, should-fix 2): the update branch of the guard.
+    it('refuses a half of a stored pair moved to another weekday, and a third block joined to it', async () => {
+      const pair = '00000000-0000-7000-8000-000000000013';
+      const first = await place({ start: 800, end: 845, pairId: pair }, []);
+      await place({ start: 850, end: 895, pairId: pair }, []);
+      expect(
+        await refusal(
+          inBranch(north, (transaction) =>
+            transaction
+              .updateTable('pattern_blocks')
+              .set({ weekday: 3 })
+              .where('id', '=', first.block)
+              .execute(),
+          ),
+        ),
+      ).toMatchObject({ code: CHECK_VIOLATION, constraint: 'pattern_double_pair' });
+      const single = await place({ start: 900, end: 945 }, []);
+      expect(
+        await refusal(
+          inBranch(north, (transaction) =>
+            transaction
+              .updateTable('pattern_blocks')
+              .set({ double_pair_id: pair })
+              .where('id', '=', single.block)
+              .execute(),
+          ),
+        ),
+      ).toMatchObject({ constraint: 'pattern_double_pair' });
+    });
   });
 
   describe('the classes of a block are the database’s', () => {

@@ -41544,6 +41544,8 @@ export interface operations {
                                 /** Format: uuid */
                                 roomId: string | null;
                             }[];
+                            /** Format: uuid */
+                            doublePairId: string | null;
                         }[];
                         facts: {
                             /** Format: uuid */
@@ -41680,6 +41682,7 @@ export interface operations {
                                 roomType: "classroom" | "laboratory" | "sports_hall" | "hall" | "other" | null;
                                 lessonsPerWeek: number;
                                 mixedBlock: boolean;
+                                doubleLessons: boolean;
                                 block: string[];
                             }[];
                             busyElsewhere: {
@@ -41979,6 +41982,8 @@ export interface operations {
                                 /** Format: uuid */
                                 roomId: string | null;
                             }[];
+                            /** Format: uuid */
+                            doublePairId: string | null;
                         }[];
                         facts: {
                             /** Format: uuid */
@@ -42115,6 +42120,7 @@ export interface operations {
                                 roomType: "classroom" | "laboratory" | "sports_hall" | "hall" | "other" | null;
                                 lessonsPerWeek: number;
                                 mixedBlock: boolean;
+                                doubleLessons: boolean;
                                 block: string[];
                             }[];
                             busyElsewhere: {
@@ -43155,6 +43161,8 @@ export interface operations {
                                 /** Format: uuid */
                                 roomId: string | null;
                             }[];
+                            /** Format: uuid */
+                            doublePairId: string | null;
                         }[];
                         facts: {
                             /** Format: uuid */
@@ -43291,6 +43299,7 @@ export interface operations {
                                 roomType: "classroom" | "laboratory" | "sports_hall" | "hall" | "other" | null;
                                 lessonsPerWeek: number;
                                 mixedBlock: boolean;
+                                doubleLessons: boolean;
                                 block: string[];
                             }[];
                             busyElsewhere: {
@@ -43503,6 +43512,7 @@ export interface operations {
                         /** Format: uuid */
                         roomId: string | null;
                     }[];
+                    double?: boolean;
                 };
             };
         };
@@ -43606,6 +43616,8 @@ export interface operations {
                                 /** Format: uuid */
                                 roomId: string | null;
                             }[];
+                            /** Format: uuid */
+                            doublePairId: string | null;
                         }[];
                         facts: {
                             /** Format: uuid */
@@ -43742,6 +43754,7 @@ export interface operations {
                                 roomType: "classroom" | "laboratory" | "sports_hall" | "hall" | "other" | null;
                                 lessonsPerWeek: number;
                                 mixedBlock: boolean;
+                                doubleLessons: boolean;
                                 block: string[];
                             }[];
                             busyElsewhere: {
@@ -44046,6 +44059,8 @@ export interface operations {
                                 /** Format: uuid */
                                 roomId: string | null;
                             }[];
+                            /** Format: uuid */
+                            doublePairId: string | null;
                         }[];
                         facts: {
                             /** Format: uuid */
@@ -44182,6 +44197,7 @@ export interface operations {
                                 roomType: "classroom" | "laboratory" | "sports_hall" | "hall" | "other" | null;
                                 lessonsPerWeek: number;
                                 mixedBlock: boolean;
+                                doubleLessons: boolean;
                                 block: string[];
                             }[];
                             busyElsewhere: {
@@ -44500,6 +44516,8 @@ export interface operations {
                                 /** Format: uuid */
                                 roomId: string | null;
                             }[];
+                            /** Format: uuid */
+                            doublePairId: string | null;
                         }[];
                         facts: {
                             /** Format: uuid */
@@ -44636,6 +44654,7 @@ export interface operations {
                                 roomType: "classroom" | "laboratory" | "sports_hall" | "hall" | "other" | null;
                                 lessonsPerWeek: number;
                                 mixedBlock: boolean;
+                                doubleLessons: boolean;
                                 block: string[];
                             }[];
                             busyElsewhere: {
@@ -44942,6 +44961,8 @@ export interface operations {
                                 /** Format: uuid */
                                 roomId: string | null;
                             }[];
+                            /** Format: uuid */
+                            doublePairId: string | null;
                         }[];
                         facts: {
                             /** Format: uuid */
@@ -45078,6 +45099,7 @@ export interface operations {
                                 roomType: "classroom" | "laboratory" | "sports_hall" | "hall" | "other" | null;
                                 lessonsPerWeek: number;
                                 mixedBlock: boolean;
+                                doubleLessons: boolean;
                                 block: string[];
                             }[];
                             busyElsewhere: {
@@ -45386,6 +45408,8 @@ export interface operations {
                                 /** Format: uuid */
                                 roomId: string | null;
                             }[];
+                            /** Format: uuid */
+                            doublePairId: string | null;
                         }[];
                         facts: {
                             /** Format: uuid */
@@ -45522,6 +45546,7 @@ export interface operations {
                                 roomType: "classroom" | "laboratory" | "sports_hall" | "hall" | "other" | null;
                                 lessonsPerWeek: number;
                                 mixedBlock: boolean;
+                                doubleLessons: boolean;
                                 block: string[];
                             }[];
                             busyElsewhere: {
@@ -45821,6 +45846,8 @@ export interface operations {
                                 /** Format: uuid */
                                 roomId: string | null;
                             }[];
+                            /** Format: uuid */
+                            doublePairId: string | null;
                         }[];
                         facts: {
                             /** Format: uuid */
@@ -45957,6 +45984,7 @@ export interface operations {
                                 roomType: "classroom" | "laboratory" | "sports_hall" | "hall" | "other" | null;
                                 lessonsPerWeek: number;
                                 mixedBlock: boolean;
+                                doubleLessons: boolean;
                                 block: string[];
                             }[];
                             busyElsewhere: {
