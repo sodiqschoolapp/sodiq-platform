@@ -7,6 +7,7 @@ import {
   loadTotalsSchema,
   timetableVersionListSchema,
   timetableVersionSchema,
+  type LessonRoomRecord,
   type LoadRowEdit,
   type LoadRowRecord,
   type MoveRecord,
@@ -252,5 +253,14 @@ export const removeBlock = (versionId: string, blockId: string) =>
   answerOf(
     api.DELETE('/api/timetable/versions/{id}/pattern/{blockId}', {
       params: { header: branchHeader(), path: { id: versionId, blockId } },
+    }),
+  ).then((answer) => gridSchema.parse(answer));
+
+/** Step 7: the room of one lesson of a block, from the room picker (task 5.4b-2a). */
+export const changeLessonRoom = (versionId: string, blockId: string, record: LessonRoomRecord) =>
+  answerOf(
+    api.POST('/api/timetable/versions/{id}/pattern/{blockId}/room', {
+      params: { header: branchHeader(), path: { id: versionId, blockId } },
+      body: record,
     }),
   ).then((answer) => gridSchema.parse(answer));

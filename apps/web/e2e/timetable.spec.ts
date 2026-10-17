@@ -307,3 +307,78 @@ test('an Academic Vice Principal drags a lesson in the grid, and a blocked slot 
   await page.reload();
   await expect(cell(2, 1).locator(`[data-block="${blockId}"]`)).toBeVisible();
 });
+
+// Task 5.4b-2a (Done when): 06, Editing in the grid: "A side panel lists what
+// still has to be placed ... Lessons are dragged onto the grid"; "The room
+// picker lists only rooms that are free in that slot"; "A conflict panel lists
+// every error and warning in the draft, with a button that jumps to the
+// lesson". The same scene as the drag test, in a branch of its own with two
+// rooms. All names are invented.
+test('an Academic Vice Principal places a lesson from "To place", changes its room and shows a conflict’s lesson', async ({
+  page,
+}) => {
+  const account = accountOf('draftGridPanels');
+  await page.goto('/sign-in');
+  await languageChooser(page).selectOption('en');
+  await signIn(page, en, account.login, account.password);
+  await changeFirstPassword(page, en, account);
+  await expect(heading(page, en.setUp.title)).toBeVisible();
+  await page.getByRole('button', { name: en.setUp.start, exact: true }).click();
+  const key = await page.locator('dd').innerText();
+  await page.getByLabel(en.setUp.code, { exact: true }).fill(codeNow(key));
+  await page.getByRole('button', { name: en.setUp.confirm, exact: true }).click();
+  await page.getByRole('checkbox', { name: en.setUp.saved }).check();
+  await page.getByRole('button', { name: en.setUp.continue, exact: true }).click();
+  await expect(heading(page, en.home.title)).toBeVisible();
+
+  await page.goto('/timetable/builder');
+  await expect(heading(page, en.timetable.builder.title)).toBeVisible();
+  await page.locator('[data-step="grid"] button').click();
+  await expect(page.locator('[data-board]')).toBeVisible();
+  const cell = (weekday: number, position: number) =>
+    page.locator(`[data-cell="${String(weekday)}:${String(position)}"]`);
+
+  // 7 Oxford's Geometry, one of three placed, dragged from the panel to Tuesday 08:00.
+  const entry = page
+    .locator('[data-to-place]')
+    .filter({ hasText: 'Geometry, 7 Oxford: 1 of 3 lessons placed' });
+  await expect(entry).toBeVisible();
+  // A pointer drag in steps: a single jump starts no native drag from the panel.
+  await entry.hover({ position: { x: 12, y: 8 } });
+  await page.mouse.down();
+  await page.mouse.move(600, 300, { steps: 5 });
+  await cell(2, 1).hover();
+  await cell(2, 1).hover({ position: { x: 20, y: 20 } });
+  await page.mouse.up();
+  await expect(cell(2, 1).locator('[data-block]')).toContainText('Geometry');
+  await expect(
+    page
+      .locator('[data-to-place]')
+      .filter({ hasText: 'Geometry, 7 Oxford: 2 of 3 lessons placed' }),
+  ).toBeVisible();
+  await screenshot(page, 'grid-to-place');
+
+  // The room picker of the Monday lesson: both rooms are free; Room 21 is chosen.
+  await cell(1, 1)
+    .getByRole('button', { name: /Room of Geometry/ })
+    .click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.locator('[data-room-choice]')).toHaveCount(2);
+  await dialog
+    .locator('[data-room-choice]')
+    .filter({ hasText: 'Room 21' })
+    .getByRole('button')
+    .click();
+  await expect(cell(1, 1).locator('[data-block]')).toContainText('Room 21');
+
+  // Princeton is short of its load: "Show" on that warning opens its board and focuses its lesson.
+  const warning = page
+    .locator('[data-conflict="load_mismatch"]')
+    .filter({ hasText: '1 of 3 lessons placed.' })
+    .filter({ hasText: 'Princeton' });
+  await warning.getByRole('button', { name: en.timetable.grid.show }).click();
+  const shown = cell(1, 2).locator('[data-block]');
+  await expect(shown).toBeFocused();
+  await expect(shown).toContainText('Princeton');
+  await screenshot(page, 'grid-conflict-shown');
+});

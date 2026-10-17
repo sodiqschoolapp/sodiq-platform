@@ -79,6 +79,8 @@ import {
 import { blockRowOf, readBlockGroups } from './load-blocks.js';
 import { auditOf, followChanged, followVersion } from './tutor-lessons.js';
 import { checkPins, pinRowsOf, readPins, type StoredPin } from './pins-check.js';
+import { blockedRefusal } from './rule-answers.js';
+import { teacherChangeBlocked } from './teacher-check.js';
 import { dayOf, loadStore } from '../setup/day-template-state.js';
 import { confirmedCellsOf, templateCellsOf, type StoredCells } from './template-cells.js';
 import { isWithdrawn } from '../setup/dated-rows.js';
@@ -942,13 +944,22 @@ export class Timetable {
 
   /**
    * The readiness of steps 1 to 4 of a version of the branch (task 5.3a,
-   * pull request #127): computed on each read (decision 3).
+   * pull request #127): computed on each read (decision 3); with `gridOf`,
+   * step 7's mark too (task 5.4b-2a).
    */
-  readiness(access: Access, id: string): Promise<DraftReadiness> {
+  readiness(
+    access: Access,
+    id: string,
+    gridOf?: (transaction: Transaction, version: VersionRow) => Promise<DraftReadiness['grid']>,
+  ): Promise<DraftReadiness> {
     const branchId = branchOf(access);
     return this.transactions.run(access.branchIds, async (transaction) => {
       const version = await this.findVersion(transaction, branchId, id);
-      return this.readinessOf(transaction, branchId, version);
+      const readiness = await this.readinessOf(transaction, branchId, version);
+      // Task 5.4b-2a, decision 7: step 7's mark, read by this route only.
+      return gridOf === undefined
+        ? readiness
+        : { ...readiness, grid: await gridOf(transaction, version) };
     });
   }
 
@@ -1538,6 +1549,17 @@ export class Timetable {
             const teacher = await this.teacherOf(transaction, context, after.teacher_id);
             checked.push(...teacherProblems(unit.unit, subject, teacher));
             this.refuse(checked);
+            // Task 5.4b-2a, review correction 1: the row's placed lessons with the new teacher.
+            const blocked = await teacherChangeBlocked(
+              transaction,
+              context,
+              id,
+              await this.rowsOf(transaction, id),
+              [after],
+            );
+            if (blocked.length > 0) {
+              throw blockedRefusal(blocked);
+            }
           }
           if (after.room_id !== before.room_id) {
             const room = await this.roomOf(transaction, context, after.room_id);
@@ -1584,7 +1606,8 @@ export class Timetable {
           });
           return this.rowAnswer(transaction, context, id, after);
         }),
-      LOAD_REFUSALS,
+      // Task 5.4b-2a, review correction 1: the guard of the placed lessons, after the engine.
+      { ...LOAD_REFUSALS, pattern_entries_teacher_excl: 'pattern_clash' },
     );
   }
 

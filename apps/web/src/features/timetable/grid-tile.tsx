@@ -1,10 +1,12 @@
 import { draggable } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { classDisplayName, type GridAnswer, type RuleResultAnswer } from '@sodiq/shared';
 import type { PatternBlock } from '@sodiq/timetable-rules';
+import { Link } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { WarningIcon } from '@/components/icons';
 import { Button } from '@/components/ui/button';
+import { FOCUS_RING } from '@/components/ui/control';
 import { nameOf } from '@/features/setup/setup-api';
 import { SubjectSwatch } from '@/features/setup/subject-colour';
 import { cn } from '@/lib/utils';
@@ -35,6 +37,10 @@ export const isTileData = (
  * drag and the Move and Remove buttons that work by keyboard and touch
  * (review correction 3). A lesson that a draft of another branch also plans
  * names that branch (06, Two drafts at once; task 5.4b-1).
+ *
+ * Task 5.4b-2a: each lesson has a Room button (the room picker) and a link to
+ * its row in step 2 to change the teacher (decision 9); the tile takes the
+ * focus when the conflict panel shows it.
  */
 export function GridTile({
   block,
@@ -43,8 +49,11 @@ export function GridTile({
   results,
   branchName,
   editable,
+  highlighted = false,
+  versionId,
   onMove,
   onRemove,
+  onRoom,
 }: {
   block: PatternBlock;
   rowsById: ReadonlyMap<string, Row>;
@@ -52,8 +61,12 @@ export function GridTile({
   results: readonly RuleResultAnswer[];
   branchName: (branchId: string) => string;
   editable: boolean;
+  highlighted?: boolean;
+  /** With `onRoom`, the Room button and the teacher link of each lesson (the class board only). */
+  versionId?: string;
   onMove: () => void;
   onRemove: () => void;
+  onRoom?: (lessonId: string) => void;
 }): React.JSX.Element {
   const { t, i18n } = useTranslation();
   const language = i18n.language;
@@ -92,10 +105,14 @@ export function GridTile({
     <div
       ref={element}
       data-block={block.id}
+      data-highlighted={highlighted ? '' : undefined}
+      tabIndex={-1}
       className={cn(
         'grid gap-1 rounded-md bg-card p-1.5 text-left text-xs shadow-sm',
+        FOCUS_RING,
         editable && 'cursor-grab',
         dragging && 'opacity-50',
+        highlighted && 'outline-2 outline-offset-2 outline-ring',
       )}
     >
       {block.lessons.map((lesson) => {
@@ -119,6 +136,31 @@ export function GridTile({
               {unitText(row)} · {teacher}
             </span>
             <span className="text-muted-foreground">{room}</span>
+            {editable && versionId !== undefined && onRoom !== undefined && (
+              <span className="flex flex-wrap items-center gap-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  aria-label={t('timetable.grid.roomOf', {
+                    subject: nameOf(row.subject.names, language),
+                    unit: unitText(row),
+                  })}
+                  onClick={() => {
+                    onRoom(lesson.id);
+                  }}
+                >
+                  {t('timetable.grid.changeRoom')}
+                </Button>
+                <Link
+                  to="/timetable/load"
+                  search={{ version: versionId, open: row.id }}
+                  className="text-link"
+                >
+                  {t('timetable.grid.changeTeacher')}
+                </Link>
+              </span>
+            )}
           </div>
         );
       })}

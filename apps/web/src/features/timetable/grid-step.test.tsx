@@ -171,7 +171,16 @@ const GRID: GridAnswer = {
       languageRule: false,
       tutorSubject: false,
     })),
-    rooms: [{ id: ROOM, status: 'in_use', shared: false, lessonsAtOnce: 1, capacity: 30 }],
+    rooms: [
+      {
+        id: ROOM,
+        type: 'classroom',
+        status: 'in_use',
+        shared: false,
+        lessonsAtOnce: 1,
+        capacity: 30,
+      },
+    ],
     units: [
       {
         id: OXFORD,
@@ -231,6 +240,7 @@ const GRID: GridAnswer = {
         subjectId: MATH,
         teacherId: KARIMOVA,
         roomId: null,
+        roomType: null,
         lessonsPerWeek: 3,
         mixedBlock: false,
         block: [ROW_OXFORD],
@@ -242,6 +252,7 @@ const GRID: GridAnswer = {
         subjectId: MATH,
         teacherId: KARIMOVA,
         roomId: null,
+        roomType: null,
         lessonsPerWeek: 3,
         mixedBlock: false,
         block: [ROW_PRINCETON],
@@ -253,6 +264,7 @@ const GRID: GridAnswer = {
         subjectId: ENGLISH,
         teacherId: TOSHEVA,
         roomId: null,
+        roomType: null,
         lessonsPerWeek: 2,
         mixedBlock: false,
         block: [ROW_GROUP],
@@ -283,6 +295,11 @@ async function openGrid(
     grid?: GridAnswer;
     moved?: () => Response;
     placed?: () => Response;
+    roomed?: () => Response;
+    /** Step 7's mark of the readiness answer (task 5.4b-2a). */
+    gridMark?: { ready: boolean; blocked: number; warnings: number };
+    /** Every step 1 to 5 ready. */
+    allReady?: boolean;
   } = {},
 ) {
   const language = options.language ?? 'en';
@@ -311,9 +328,11 @@ async function openGrid(
         },
         teachers: { ...READINESS_STEP, teachers: [] },
         rooms: { ...READINESS_STEP, rows: [], classesWithoutRoom: [] },
+        ...(options.gridMark === undefined ? {} : { grid: options.gridMark }),
+        ...(options.allReady === true ? { ready: true } : {}),
         rules: {
-          ready: false,
-          confirmed: false,
+          ready: options.allReady === true,
+          confirmed: options.allReady === true,
           weights: {
             class_no_gaps: 5,
             teacher_few_gaps: 5,
@@ -337,6 +356,8 @@ async function openGrid(
       options.moved?.() ?? json(options.grid ?? GRID),
     [`POST /api/timetable/versions/${VERSION.id}/pattern`]: () =>
       options.placed?.() ?? json(options.grid ?? GRID, 201),
+    [`POST /api/timetable/versions/${VERSION.id}/pattern/${BLOCK_OXFORD}/room`]: () =>
+      options.roomed?.() ?? json(options.grid ?? GRID),
   });
   renderApp(`/timetable/builder?version=${VERSION.id}&step=grid`, language);
   await waitFor(() => {
@@ -644,5 +665,261 @@ describe('the status of a slot while a lesson is moved', () => {
         expect(locale.timetable.rule[rule], rule).toBeTruthy();
       }
     }
+  });
+});
+
+const ROOM_14 = uid(901);
+const ROOM_3 = uid(902);
+const NORTH_2 = uid(950);
+const BUSY = uid(1100);
+const DRAFTED = uid(1101);
+
+/** The grid with three rooms; the English group sits on Monday at 08:00 in Room 14. */
+const ROOMS_GRID: GridAnswer = {
+  ...GRID,
+  rooms: [
+    { id: ROOM, name: 'Room 12' },
+    { id: ROOM_14, name: 'Room 14' },
+    { id: ROOM_3, name: 'Room 3' },
+  ],
+  blocks: GRID.blocks.map((block) =>
+    block.id === BLOCK_GROUP
+      ? {
+          ...block,
+          weekday: 1,
+          lessons: block.lessons.map((lesson) => ({ ...lesson, roomId: ROOM_14 })),
+        }
+      : block,
+  ),
+  facts: {
+    ...GRID.facts,
+    rooms: [
+      ...GRID.facts.rooms,
+      {
+        id: ROOM_14,
+        type: 'classroom',
+        status: 'in_use',
+        shared: false,
+        lessonsAtOnce: 1,
+        capacity: 30,
+      },
+      {
+        id: ROOM_3,
+        type: 'classroom',
+        status: 'in_use',
+        shared: false,
+        lessonsAtOnce: 1,
+        capacity: 2,
+      },
+    ],
+  },
+};
+
+const panel = () => document.querySelector<HTMLElement>('[aria-labelledby="grid-to-place"]');
+const conflicts = () => [...document.querySelectorAll<HTMLElement>('[data-conflict]')];
+
+// Task 5.4b-2a: 06, Editing in the grid: "A side panel lists what still has
+// to be placed", "The room picker lists only rooms that are free in that slot,
+// best fit first", "A conflict panel lists every error and warning in the
+// draft, with a button that jumps to the lesson"; step 7, "The conflict panel
+// shows no errors".
+describe('the panels of the grid', () => {
+  it('lists what is left to place by class, and places an entry by keyboard with the slot marks', async () => {
+    const calls = await openGrid();
+    const list = panel();
+    if (list === null) throw new Error('No panel.');
+    const oxford = list.querySelector<HTMLElement>(`[data-to-place="${ROW_OXFORD}"]`);
+    expect(oxford?.textContent).toContain('Mathematics, 7 Oxford: 1 of 3 lessons placed');
+    // The group of two classes is one entry, under its first class.
+    expect(list.querySelectorAll(`[data-to-place="${ROW_GROUP}"]`)).toHaveLength(1);
+    expect(
+      list.querySelector(`[data-to-place-class="${OXFORD}"] [data-to-place="${ROW_GROUP}"]`),
+    ).not.toBeNull();
+    if (oxford === null) throw new Error('No entry.');
+    fireEvent.click(within(oxford).getByRole('button', { name: en.timetable.grid.place }));
+    const dialog = await screen.findByRole('dialog');
+    // Monday 08:50: Karimova teaches Princeton then.
+    const busy = dialog.querySelector<HTMLElement>('[data-move-cell="1:3"]');
+    expect(busy?.querySelector('button')?.disabled).toBe(true);
+    expect(busy?.querySelector('[data-reason]')?.textContent).toContain(
+      en.timetable.rule.teacher_double,
+    );
+    const free = dialog.querySelector<HTMLButtonElement>('[data-move-cell="3:5"] button');
+    if (free === null) throw new Error('No free slot.');
+    fireEvent.click(free);
+    await waitFor(() => {
+      expect(calls.find((call) => call.route.endsWith('/pattern'))?.body).toEqual({
+        loadRowId: ROW_OXFORD,
+        weekday: 3,
+        slotPosition: 5,
+      });
+    });
+  });
+
+  it('switches to the board of an entry of another class before placing it', async () => {
+    await openGrid();
+    const princeton = panel()?.querySelector<HTMLElement>(`[data-to-place="${ROW_PRINCETON}"]`);
+    if (princeton === null || princeton === undefined) throw new Error('No entry.');
+    fireEvent.click(within(princeton).getByRole('button', { name: en.timetable.grid.place }));
+    await screen.findByRole('dialog');
+    expect(document.querySelector('[data-board]')?.getAttribute('data-board')).toBe(PRINCETON);
+  });
+
+  it('lists a half of a mixed split without a way to place it', async () => {
+    await openGrid({
+      grid: {
+        ...GRID,
+        rows: GRID.rows.map((row) => (row.id === ROW_GROUP ? { ...row, mixedBlock: true } : row)),
+      },
+    });
+    const mixed = panel()?.querySelector<HTMLElement>(`[data-to-place="${ROW_GROUP}"]`);
+    expect(mixed?.textContent).toContain(en.timetable.grid.mixedLater);
+    expect(mixed?.querySelector('button')).toBeNull();
+    expect(mixed?.className).not.toContain('cursor-grab');
+  });
+
+  it('lists only the rooms free at the lesson’s time, best fit first, and saves the one chosen', async () => {
+    const calls = await openGrid({ grid: ROOMS_GRID });
+    const own = tile(BLOCK_OXFORD);
+    if (own === null) throw new Error('No tile.');
+    fireEvent.click(within(own).getByRole('button', { name: /Room of Mathematics/ }));
+    const dialog = await screen.findByRole('dialog');
+    const offered = [...dialog.querySelectorAll('[data-room-choice]')].map((one) =>
+      one.getAttribute('data-room-choice'),
+    );
+    // Room 14 holds the English group then; the main classroom, then the closest fit.
+    expect(offered).toEqual([ROOM, ROOM_3]);
+    const small = dialog.querySelector<HTMLButtonElement>(`[data-room-choice="${ROOM_3}"] button`);
+    if (small === null) throw new Error('No room.');
+    fireEvent.click(small);
+    await waitFor(() => {
+      expect(calls.find((call) => call.route.endsWith('/room'))?.body).toEqual({
+        lessonId: uid(1000),
+        roomId: ROOM_3,
+      });
+    });
+  });
+
+  it('lists errors before warnings with their numbers, and shows the lesson of each', async () => {
+    const grid: GridAnswer = {
+      ...GRID,
+      facts: {
+        ...GRID.facts,
+        busyElsewhere: [
+          {
+            id: BUSY,
+            teacherId: KARIMOVA,
+            branchId: NORTH_2,
+            weekday: 1,
+            start: 480,
+            end: 525,
+            tutorLesson: false,
+          },
+        ],
+        branches: [{ id: NORTH_2, name: 'Riverside' }],
+      },
+      results: [
+        {
+          rule: 'load_mismatch',
+          severity: 'warning',
+          weekday: null,
+          lessonIds: [],
+          detail: { loadRowId: ROW_PRINCETON, placed: 0, lessonsPerWeek: 3 },
+        },
+        {
+          rule: 'teacher_double',
+          severity: 'blocked',
+          weekday: 1,
+          lessonIds: [uid(1000), BUSY],
+        },
+      ],
+    };
+    await openGrid({ grid });
+    fireEvent.change(screen.getByLabelText(en.timetable.grid.class), {
+      target: { value: PRINCETON },
+    });
+    const [first, second] = conflicts();
+    expect(first?.getAttribute('data-severity')).toBe('blocked');
+    expect(first?.textContent).toContain(en.timetable.rule.teacher_double);
+    expect(first?.textContent).toContain('Busy in Riverside');
+    expect(second?.querySelector('[data-conflict-numbers]')?.textContent).toBe(
+      '0 of 3 lessons placed.',
+    );
+    if (first === undefined || second === undefined) throw new Error('Two results.');
+    // The lesson of this branch: its class board, its tile focused.
+    expect(within(first).getAllByRole('button', { name: en.timetable.grid.show })).toHaveLength(1);
+    fireEvent.click(within(first).getByRole('button', { name: en.timetable.grid.show }));
+    await waitFor(() => {
+      expect(document.activeElement).toBe(tile(BLOCK_OXFORD));
+    });
+    expect(tile(BLOCK_OXFORD)?.hasAttribute('data-highlighted')).toBe(true);
+    // A row with no lesson placed: its class board and its "To place" entry.
+    fireEvent.click(within(second).getByRole('button', { name: en.timetable.grid.show }));
+    await waitFor(() => {
+      expect(document.querySelector('[data-board]')?.getAttribute('data-board')).toBe(PRINCETON);
+    });
+    expect(
+      panel()
+        ?.querySelector(`[data-to-place="${ROW_PRINCETON}"]`)
+        ?.hasAttribute('data-highlighted'),
+    ).toBe(true);
+  });
+
+  it('names a lesson of another branch’s draft by its branch, with no button for a result of other branches only', async () => {
+    const grid: GridAnswer = {
+      ...GRID,
+      facts: {
+        ...GRID.facts,
+        otherDrafts: [
+          {
+            id: DRAFTED,
+            kind: 'lesson',
+            branchId: NORTH_2,
+            day: '1',
+            start: 480,
+            end: 525,
+            blockId: DRAFTED,
+            doublePairId: null,
+            classId: null,
+            groupId: null,
+            classIds: [],
+            studentIds: [],
+            exemptStudentIds: [],
+            subjectId: null,
+            loadRowId: null,
+            teacherIds: [KARIMOVA],
+            substitute: false,
+            roomId: null,
+            examRooms: [],
+            fixed: false,
+          },
+        ],
+        branches: [{ id: NORTH_2, name: 'Riverside' }],
+      },
+      results: [{ rule: 'other_draft', severity: 'warning', weekday: 1, lessonIds: [DRAFTED] }],
+    };
+    await openGrid({ grid });
+    const [only] = conflicts();
+    expect(only?.textContent).toContain('In a draft of Riverside');
+    expect(only?.querySelector('button')).toBeNull();
+  });
+
+  it('marks step 7 with its errors and warnings, apart from the gate of generation', async () => {
+    await openGrid({ allReady: true, gridMark: { ready: false, blocked: 1, warnings: 2 } });
+    await waitFor(() => {
+      expect(document.querySelector('[data-step="grid"]')?.textContent).toContain(
+        '1 error, 2 warnings',
+      );
+    });
+    expect(screen.getByText(en.timetable.builder.readyForGeneration)).toBeTruthy();
+  });
+
+  it('marks step 7 with no errors in Russian', async () => {
+    await openGrid({ language: 'ru', gridMark: { ready: true, blocked: 0, warnings: 5 } });
+    await waitFor(() => {
+      expect(document.querySelector('[data-step="grid"]')?.textContent).toContain(
+        `${ru.timetable.builder.gridClean}, 5 предупреждений`,
+      );
+    });
   });
 });

@@ -32,6 +32,16 @@ export interface PatternUnitData extends EngineUnit {
   readonly mainRoomId: string | null;
 }
 
+/**
+ * A room of the branch (task 5.4b-2a, decision 12): every room, so that the
+ * engine knows any room a lesson may be put in, with its type for the room
+ * picker's best fit.
+ */
+export interface PatternRoomData extends EngineRoom {
+  /** `rooms.type` (03, rooms: classroom, laboratory, sports hall and so on). */
+  readonly type: string;
+}
+
 /** A load row of the draft as the pattern reads it. */
 export interface PatternRowData {
   readonly id: string;
@@ -41,6 +51,8 @@ export interface PatternRowData {
   readonly teacherId: string;
   /** The row's own room; `null` with a room type or none. */
   readonly roomId: string | null;
+  /** The type of special room the row needs (`load_rows.room_type`); `null` with a room or none (task 5.4b-2a). */
+  readonly roomType: string | null;
   readonly lessonsPerWeek: number;
   readonly mixedBlock: boolean;
   /** The rows of its block, the row included, sorted (`blockOf`); the row alone for a class row. */
@@ -72,7 +84,8 @@ export interface PatternFactsData {
   readonly versionEnd: string;
   readonly teachers: readonly EngineTeacher[];
   readonly subjects: readonly EngineSubject[];
-  readonly rooms: readonly EngineRoom[];
+  /** Every room of the branch and every room a stored entry holds (task 5.4b-2a). */
+  readonly rooms: readonly PatternRoomData[];
   readonly units: readonly PatternUnitData[];
   /** The members of every class of the units, groups' classes included. */
   readonly classStudents: readonly {

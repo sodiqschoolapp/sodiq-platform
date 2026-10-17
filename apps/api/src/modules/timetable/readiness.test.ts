@@ -198,7 +198,12 @@ describe('the readiness of a draft, steps 1 to 5', () => {
     expect(confirmed.ready).toBe(false);
     const after = await confirmRules(s.branch, s.version);
     expect(after.ready).toBe(true);
-    expect(await readiness(s.branch, s.version)).toEqual(after);
+    // Task 5.4b-2a, decision 7: only the readiness route adds step 7's mark; nothing
+    // is placed yet, so the one row short of its load is a warning.
+    expect(await readiness(s.branch, s.version)).toEqual({
+      ...after,
+      grid: { ready: true, blocked: 0, warnings: 1 },
+    });
   });
 
   it('confirms in one audited write, and a second confirm of the same table writes nothing', async () => {

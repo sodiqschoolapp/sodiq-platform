@@ -551,6 +551,11 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     branch: 'request',
     roles: ['super_admin', 'academic_vice_principal'],
   },
+  // Task 5.4b-2a: the room of a lesson, from the room picker.
+  'POST /api/timetable/versions/:id/pattern/:blockId/room': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
   'DELETE /api/timetable/versions/:id/pattern/:blockId': {
     branch: 'request',
     roles: ['super_admin', 'academic_vice_principal'],

@@ -501,6 +501,14 @@ export const draftReadinessSchema = z.object({
     conflicts: z.array(pinConflictSchema),
     problems: z.array(z.object({ pinId: z.uuid(), problem: pinProblemSchema })),
   }),
+  /**
+   * Step 7 (task 5.4b-2a, decision 7): the results of the draft's pattern now;
+   * ready with no blocked one ("The conflict panel shows no errors"). Only the
+   * readiness route reads it; it is not part of `ready`, the gate of generation.
+   */
+  grid: z
+    .object({ ready: z.boolean(), blocked: z.int().min(0), warnings: z.int().min(0) })
+    .optional(),
 });
 
 export type DraftReadiness = z.infer<typeof draftReadinessSchema>;
@@ -598,9 +606,11 @@ export const patternFactsDataSchema = z.object({
       tutorSubject: z.boolean(),
     }),
   ),
+  /** Every room of the branch, with its type; an entry's room is a room of its branch (0058; task 5.4b-2a, decision 12). */
   rooms: z.array(
     z.object({
       id: z.uuid(),
+      type: roomTypeSchema,
       status: z.enum(['in_use', 'under_repair', 'closed']),
       shared: z.boolean(),
       lessonsAtOnce: z.int().min(1),
@@ -637,6 +647,7 @@ export const patternFactsDataSchema = z.object({
       subjectId: z.uuid(),
       teacherId: z.uuid(),
       roomId: z.uuid().nullable(),
+      roomType: roomTypeSchema.nullable(),
       lessonsPerWeek: z.int().min(1),
       mixedBlock: z.boolean(),
       block: z.array(z.uuid()),
@@ -719,11 +730,17 @@ export type GridAnswer = z.infer<typeof gridSchema>;
 
 const slotPositionSchema = z.int().min(1).max(PIN_SLOT_POSITION_MAX);
 
-/** A lesson placed by clicking an empty slot: a load row (with its whole block), a weekday and a slot position. */
+/**
+ * A lesson placed by clicking an empty slot: a load row (with its whole block),
+ * a weekday and a slot position; task 5.4b-2a: the room of the chosen row's
+ * lesson from the room picker (the other lessons of its block take their new
+ * lesson's room).
+ */
 export const placeRecordSchema = z.strictObject({
   loadRowId: z.uuid(),
   weekday: weekdaySchema,
   slotPosition: slotPositionSchema,
+  roomId: z.uuid().optional(),
 });
 
 export type PlaceRecord = z.infer<typeof placeRecordSchema>;
@@ -745,5 +762,10 @@ export const swapRecordSchema = z
   });
 
 export type SwapRecord = z.infer<typeof swapRecordSchema>;
+
+/** The room of one lesson of a block, from the room picker (task 5.4b-2a). */
+export const lessonRoomRecordSchema = z.strictObject({ lessonId: z.uuid(), roomId: z.uuid() });
+
+export type LessonRoomRecord = z.infer<typeof lessonRoomRecordSchema>;
 
 export const patternBlockParamsSchema = z.object({ id: z.uuid(), blockId: z.uuid() });

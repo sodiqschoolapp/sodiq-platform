@@ -2,12 +2,12 @@ import { Injectable } from '@nestjs/common';
 import {
   gridSchema,
   subjectColourSchema,
-  weekdaySchema,
   type ErrorCode,
+  type DraftReadiness,
   type GridAnswer,
+  type LessonRoomRecord,
   type MoveRecord,
   type PlaceRecord,
-  type RuleResultAnswer,
   type SwapRecord,
 } from '@sodiq/shared';
 import {
@@ -16,10 +16,10 @@ import {
   checkedPlacements,
   checkTimetable,
   patternPlacements,
+  roomChange,
   type BlockLesson,
   type PatternBlock,
   type PatternModel,
-  type RuleResult,
 } from '@sodiq/timetable-rules';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
@@ -29,7 +29,8 @@ import { branchOf } from '../classes/classes.service.js';
 import { notFound, refusingConstraints } from '../setup/setup-refusals.js';
 import { LOAD_REFUSALS, LoadFacts, type StoredLoadRow } from './load-facts.js';
 import { readPatternFacts, type PatternFacts } from './pattern-facts.js';
-import { deferPatternClashes } from './pattern-queries.js';
+import { deferPatternClashes, readBlocks } from './pattern-queries.js';
+import { blockedRefusal, resultAnswerOf } from './rule-answers.js';
 import { Timetable, type VersionRow } from './timetable.service.js';
 
 const DEADLOCK = '40P01';
@@ -62,15 +63,6 @@ async function refusingPattern<T>(work: () => Promise<T>): Promise<T> {
 
 const refused = (code: ErrorCode): ApiException => new ApiException(code, 409);
 
-/** A result as the answer and a refusal name it: a weekday, or `null` for the week. */
-export const resultAnswerOf = (result: RuleResult): RuleResultAnswer => ({
-  rule: result.rule,
-  severity: result.severity,
-  weekday: result.day === '' ? null : weekdaySchema.parse(Number(result.day)),
-  lessonIds: [...result.lessonIds],
-  ...(result.detail === undefined ? {} : { detail: { ...result.detail } }),
-});
-
 /** What a write reads of its draft: the rows, the engine's input and the placed blocks. */
 interface PatternState {
   readonly version: VersionRow;
@@ -78,37 +70,6 @@ interface PatternState {
   readonly load: LoadFacts;
   readonly pattern: PatternFacts;
   readonly blocks: PatternBlock[];
-}
-
-/** The placed blocks of a version, each with its lessons (one per load row). */
-async function readBlocks(transaction: Transaction, versionId: string): Promise<PatternBlock[]> {
-  const [blocks, entries] = await Promise.all([
-    transaction
-      .selectFrom('pattern_blocks')
-      .select(['id', 'weekday', 'slot_position', 'start_minutes', 'end_minutes'])
-      .where('version_id', '=', versionId)
-      .orderBy('weekday')
-      .orderBy('start_minutes')
-      .orderBy('id')
-      .execute(),
-    transaction
-      .selectFrom('pattern_entries')
-      .select(['id', 'block_id', 'load_row_id', 'room_id'])
-      .where('version_id', '=', versionId)
-      .orderBy('load_row_id')
-      .orderBy('id')
-      .execute(),
-  ]);
-  return blocks.map((block) => ({
-    id: block.id,
-    weekday: block.weekday,
-    slotPosition: block.slot_position,
-    start: block.start_minutes,
-    end: block.end_minutes,
-    lessons: entries
-      .filter((entry) => entry.block_id === block.id)
-      .map((entry) => ({ id: entry.id, loadRowId: entry.load_row_id, roomId: entry.room_id })),
-  }));
 }
 
 /** A block at a weekday and slot, with the minutes of that slot; `pattern_no_slot` without one. */
@@ -150,6 +111,20 @@ export class TimetablePattern {
     });
   }
 
+  /**
+   * The readiness of the builder with step 7's mark (task 5.4b-2a, decision
+   * 7): ready when no result of the draft's pattern is blocked ("The conflict
+   * panel shows no errors"); warnings are counted and do not stop it.
+   */
+  readiness(access: Access, id: string): Promise<DraftReadiness> {
+    return this.timetable.readiness(access, id, async (transaction, version) => {
+      const { pattern, blocks } = await this.stateOf(transaction, version);
+      const results = checkTimetable(checkedPlacements(pattern.model, blocks), pattern.model.facts);
+      const blocked = results.filter((one) => one.severity === 'blocked').length;
+      return { ready: blocked === 0, blocked, warnings: results.length - blocked };
+    });
+  }
+
   /** A load row placed at a slot with its whole block (decision 8); refused when blocked. */
   place(access: Access, id: string, input: PlaceRecord, requestId: string): Promise<GridAnswer> {
     const branchId = branchOf(access);
@@ -165,10 +140,20 @@ export class TimetablePattern {
           throw refused('pattern_mixed_block');
         }
         const { model } = state.pattern;
+        // Task 5.4b-2a: a room chosen in the picker is a room of the branch.
+        if (
+          input.roomId !== undefined &&
+          !model.data.rooms.some((one) => one.id === input.roomId)
+        ) {
+          throw notFound();
+        }
         const lessons = model.rowOf(row.id).block.map((rowId) => ({
           id: `new:${rowId}`,
           loadRowId: rowId,
-          roomId: model.roomOfNew(model.rowOf(rowId)),
+          roomId:
+            rowId === row.id && input.roomId !== undefined
+              ? input.roomId
+              : model.roomOfNew(model.rowOf(rowId)),
         }));
         const placed = blockAt(model, { id: 'new', lessons }, input.weekday, input.slotPosition);
         this.refuseBlocked(state, [placed]);
@@ -303,6 +288,67 @@ export class TimetablePattern {
     );
   }
 
+  /**
+   * The room of one lesson of a block (task 5.4b-2a, decisions 5 and 10): the
+   * check of the room picker (`roomChange` of the rule engine), so the server
+   * refuses what the picker leaves out; nothing is written when the room is
+   * already the lesson's.
+   */
+  room(
+    access: Access,
+    id: string,
+    blockId: string,
+    input: LessonRoomRecord,
+    requestId: string,
+  ): Promise<GridAnswer> {
+    const branchId = branchOf(access);
+    return refusingPattern(() =>
+      this.transactions.run(access.branchIds, async (transaction) => {
+        const version = await this.timetable.lockDraft(transaction, branchId, id);
+        const state = await this.stateOf(transaction, version);
+        const block = this.blockOf(state, blockId);
+        const lesson = block.lessons.find((one) => one.id === input.lessonId);
+        const { model } = state.pattern;
+        if (lesson === undefined || !model.data.rooms.some((one) => one.id === input.roomId)) {
+          throw notFound();
+        }
+        if (lesson.roomId === input.roomId) {
+          return this.gridOf(transaction, state);
+        }
+        const change = roomChange(model, state.blocks, block, lesson.id, input.roomId);
+        if (!change.accepted) {
+          throw blockedRefusal(change.blocked);
+        }
+        await transaction
+          .updateTable('pattern_entries')
+          .set({ room_id: input.roomId })
+          .where('id', '=', lesson.id)
+          .execute();
+        await this.audit.record(transaction, {
+          branchId,
+          actorId: access.accountId,
+          assignmentId: access.assignmentId,
+          action: 'pattern_entry.room',
+          record: { type: 'pattern_entry', id: lesson.id },
+          oldValue: {
+            versionId: id,
+            blockId: block.id,
+            loadRowId: lesson.loadRowId,
+            roomId: lesson.roomId,
+          },
+          newValue: {
+            versionId: id,
+            blockId: block.id,
+            loadRowId: lesson.loadRowId,
+            roomId: input.roomId,
+          },
+          requestId,
+        });
+        return this.gridAfter(transaction, version);
+      }),
+    );
+  }
+
   /** A block removed with its lessons; the audit entry keeps every lesson it removes. */
   remove(access: Access, id: string, blockId: string, requestId: string): Promise<GridAnswer> {
     const branchId = branchOf(access);
@@ -362,20 +408,7 @@ export class TimetablePattern {
       patternPlacements(model, changed),
     ).filter((result) => result.severity === 'blocked');
     if (blocked.length > 0) {
-      throw new ApiException(
-        'pattern_blocked',
-        409,
-        undefined,
-        blocked.map((result) => {
-          const answer = resultAnswerOf(result);
-          return {
-            path: '',
-            code: result.rule,
-            message: 'A blocked rule of the timetable.',
-            rule: { weekday: answer.weekday, lessonIds: answer.lessonIds },
-          };
-        }),
-      );
+      throw blockedRefusal(blocked);
     }
   }
 

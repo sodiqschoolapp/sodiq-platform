@@ -99,7 +99,11 @@ export function positionFor(
 }
 
 /** A block at the slot of a cell, with its minutes; `null` when its template has no such slot. */
-function blockAt(model: PatternModel, block: PatternBlock, cell: BoardCell): PatternBlock | null {
+export function blockAt(
+  model: PatternModel,
+  block: PatternBlock,
+  cell: BoardCell,
+): PatternBlock | null {
   const position = positionFor(model, block, cell);
   if (position === null) return null;
   const [first] = blockPlacements(model, block, cell.weekday, position) ?? [];
@@ -114,9 +118,33 @@ function blockAt(model: PatternModel, block: PatternBlock, cell: BoardCell): Pat
       };
 }
 
-/** What dropping a block on a cell does: a move, a swap with the block there, or nothing. */
+/** The id of a block not placed yet, dragged or placed from the "To place" panel (task 5.4b-2a). */
+export const NEW_BLOCK_ID = 'new';
+
+/**
+ * The block of a load row not placed yet, as the place route builds it: one
+ * lesson per row of its block, each in its row's room, else a class row's
+ * main classroom (`roomOfNew`); it sits at no slot until it is dropped.
+ */
+export function newBlockOf(model: PatternModel, rowId: string): PatternBlock {
+  return {
+    id: NEW_BLOCK_ID,
+    weekday: 0,
+    slotPosition: 0,
+    start: 0,
+    end: 0,
+    lessons: model.rowOf(rowId).block.map((id) => ({
+      id: `new:${id}`,
+      loadRowId: id,
+      roomId: model.roomOfNew(model.rowOf(id)),
+    })),
+  };
+}
+
+/** What dropping a block on a cell does: a move, a swap with the block there, a place of a new block, or nothing. */
 export type Drop =
   | { readonly kind: 'move'; readonly block: PatternBlock; readonly to: PatternBlock }
+  | { readonly kind: 'place'; readonly block: PatternBlock; readonly to: PatternBlock }
   | {
       readonly kind: 'swap';
       readonly block: PatternBlock;
@@ -132,6 +160,11 @@ export function dropOf(
   block: PatternBlock,
   cell: BoardCell,
 ): Drop {
+  if (block.id === NEW_BLOCK_ID) {
+    // A new block is placed beside whatever is there; the engine names a clash.
+    const to = blockAt(model, block, cell);
+    return to === null ? { kind: 'no_slot' } : { kind: 'place', block, to };
+  }
   const other = board.blocksAt(cell).find((one) => one.id !== block.id);
   if (other === undefined) {
     if (block.weekday === cell.weekday && block.start < cell.end && cell.start < block.end) {
@@ -176,7 +209,7 @@ export function cellStatus(
   const drop = dropOf(model, board, block, cell);
   if (drop.kind === 'same') return { status: 'free', rule: null, drop };
   if (drop.kind === 'no_slot') return { status: 'blocked', rule: null, drop };
-  const changed = drop.kind === 'move' ? [drop.to] : drop.changed;
+  const changed = drop.kind === 'swap' ? drop.changed : [drop.to];
   const results: RuleResult[] = checkCandidates(
     checkedPlacements(model, all),
     model.facts,

@@ -700,6 +700,308 @@ describe('the grid of a draft', () => {
     });
   });
 
+  // Task 5.4b-2a: the room picker (06, Editing in the grid: "The room picker
+  // lists only rooms that are free in that slot, best fit first"), step 7's
+  // mark ("The conflict panel shows no errors") and a teacher change of a row
+  // with placed lessons (review correction 1).
+  describe('the room of a lesson, step 7 and a new teacher', () => {
+    const roomOf = (
+      branch: string,
+      version: string,
+      blockId: string,
+      lessonId: string,
+      roomId: string,
+      cookie = t.admin,
+    ) =>
+      post(
+        `/api/timetable/versions/${version}/pattern/${blockId}/room`,
+        branch,
+        { lessonId, roomId },
+        cookie,
+      );
+    const lessonOf = (answer: GridAnswer, blockId: string) => {
+      const lesson = answer.blocks.find((one) => one.id === blockId)?.lessons[0];
+      if (lesson === undefined) throw new Error('The block has no lesson.');
+      return lesson;
+    };
+    const readiness = async (branch: string, version: string, cookie = t.admin) => {
+      const response = await get(`/api/timetable/versions/${version}/readiness`, branch, cookie);
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      return (response.body as { grid?: unknown; ready: boolean }).grid;
+    };
+    const editRow = (
+      branch: string,
+      version: string,
+      rowId: string,
+      teacherId: string,
+      cookie = t.admin,
+    ) =>
+      t.patch(
+        `/api/timetable/versions/${version}/load/${rowId}`,
+        branch,
+        { teacherId, lessonsPerWeek: 3, roomId: null, roomType: null, doubleLessons: false },
+        cookie,
+      );
+    /** Takes teacher A's Monday hours away, so a Monday lesson of A is blocked (`teacher_unavailable`). */
+    const noMondays = (staffId: string) =>
+      t.database.migrator
+        .deleteFrom('staff_availability_ranges')
+        .where('staff_id', '=', staffId)
+        .where('weekday', '=', 1)
+        .execute();
+
+    it('changes the room of a lesson in one audited write, and refuses a room taken at that time, naming the rule and changing nothing', async () => {
+      const s = await scene();
+      const assignment = await viceIn(s.branch);
+      const a = await placed(s.branch, s.version, s.rowA, 1, 1);
+      const b = await placed(s.branch, s.version, s.rowB, 1, 1);
+      const lesson = lessonOf(b.answer, a.id);
+      const before = await patternRows([s.version]);
+      expect(blockedRules(await roomOf(s.branch, s.version, a.id, lesson.id, s.roomB))).toEqual([
+        'room_double',
+      ]);
+      expect(await patternRows([s.version])).toEqual(before);
+      // A room that is neither a row's room nor a main classroom.
+      const spare = await load.classes.room(s.branch);
+      const response = await roomOf(s.branch, s.version, a.id, lesson.id, spare, t.vicePrincipal);
+      const answer = gridOf(response);
+      expect(lessonOf(answer, a.id).roomId).toBe(spare);
+      expect(answer.rooms.map((room) => room.id)).toContain(spare);
+      expect(answer.facts.rooms.find((room) => room.id === spare)).toMatchObject({
+        type: 'classroom',
+      });
+      const [entry] = await t.entries('pattern_entry.room', lesson.id);
+      expect(entry).toMatchObject({
+        assignment_id: assignment,
+        request_id: response.headers['x-request-id'],
+        old_value: { versionId: s.version, blockId: a.id, loadRowId: s.rowA, roomId: s.roomA },
+        new_value: { versionId: s.version, blockId: a.id, loadRowId: s.rowA, roomId: spare },
+      });
+      // The grid and a move still answer with the lesson in that room.
+      gridOf(await grid(s.branch, s.version));
+      expect(lessonOf(gridOf(await move(s.branch, s.version, a.id, 2, 3)), a.id).roomId).toBe(
+        spare,
+      );
+    });
+
+    it('writes nothing for the room the lesson already has', async () => {
+      const s = await scene();
+      const a = await placed(s.branch, s.version, s.rowA, 1, 1);
+      const before = await patternRows([s.version]);
+      gridOf(await roomOf(s.branch, s.version, a.id, lessonOf(a.answer, a.id).id, s.roomA));
+      expect(await patternRows([s.version])).toEqual(before);
+    });
+
+    it('lets a lesson with a blocked result of its own change room (decision 5)', async () => {
+      const s = await scene();
+      const a = await placed(s.branch, s.version, s.rowA, 1, 1);
+      await noMondays(s.teacherA);
+      expect(gridOf(await grid(s.branch, s.version)).results).toContainEqual(
+        expect.objectContaining({ rule: 'teacher_unavailable', severity: 'blocked' }),
+      );
+      const spare = await load.classes.room(s.branch);
+      const answer = gridOf(
+        await roomOf(s.branch, s.version, a.id, lessonOf(a.answer, a.id).id, spare),
+      );
+      expect(lessonOf(answer, a.id).roomId).toBe(spare);
+    });
+
+    it('places a lesson in the room chosen in the picker, and answers 404 for a room of another branch or an unknown one', async () => {
+      const s = await scene();
+      const other = await scene();
+      const spare = await load.classes.room(s.branch);
+      const response = await post(`/api/timetable/versions/${s.version}/pattern`, s.branch, {
+        loadRowId: s.rowA,
+        weekday: 1,
+        slotPosition: 1,
+        roomId: spare,
+      });
+      const answer = gridOf(response, 201);
+      const block = answer.blocks[0];
+      if (block === undefined) throw new Error('One block.');
+      expect(block.lessons[0]?.roomId).toBe(spare);
+      const [entry] = await t.entries('pattern_block.create', block.id);
+      expect(entry).toMatchObject({ new_value: { lessons: [{ roomId: spare }] } });
+      const before = await patternRows([s.version, other.version]);
+      for (const roomId of [other.roomA, UNKNOWN]) {
+        refusedWith(
+          await post(`/api/timetable/versions/${s.version}/pattern`, s.branch, {
+            loadRowId: s.rowB,
+            weekday: 2,
+            slotPosition: 1,
+            roomId,
+          }),
+          404,
+          'not_found',
+        );
+      }
+      expect(await patternRows([s.version, other.version])).toEqual(before);
+    });
+
+    it("answers 404 for another branch's, another version's and an unknown version, block, lesson and room, changing nothing", async () => {
+      const s = await scene();
+      const other = await scene();
+      const sameBranch = await load.version(s.branch, s.year, { startsOn: MONDAY });
+      const sameBranchRow = await load.row({
+        branch_id: s.branch,
+        version_id: sameBranch,
+        class_id: s.classA,
+        subject_id: s.subject,
+        teacher_id: s.teacherA,
+      });
+      const own = await placed(s.branch, s.version, s.rowA, 1, 1);
+      const second = await placed(s.branch, s.version, s.rowB, 2, 1);
+      const otherBlock = await placed(other.branch, other.version, other.rowA, 1, 1);
+      const sameBranchBlock = await placed(s.branch, sameBranch, sameBranchRow, 1, 3);
+      const lesson = lessonOf(own.answer, own.id).id;
+      const spare = await load.classes.room(s.branch);
+      await viceIn(s.branch);
+      const before = await patternRows([s.version, other.version, sameBranch]);
+      for (const cookie of [t.vicePrincipal, t.admin]) {
+        for (const version of [other.version, UNKNOWN]) {
+          refusedWith(
+            await roomOf(s.branch, version, own.id, lesson, spare, cookie),
+            404,
+            'not_found',
+          );
+        }
+        for (const block of [otherBlock.id, UNKNOWN, sameBranchBlock.id]) {
+          refusedWith(
+            await roomOf(s.branch, s.version, block, lesson, spare, cookie),
+            404,
+            'not_found',
+          );
+        }
+        // A lesson of another block of the draft, of another branch, an unknown one.
+        for (const id of [
+          lessonOf(second.answer, second.id).id,
+          lessonOf(otherBlock.answer, otherBlock.id).id,
+          UNKNOWN,
+        ]) {
+          refusedWith(
+            await roomOf(s.branch, s.version, own.id, id, spare, cookie),
+            404,
+            'not_found',
+          );
+        }
+        for (const roomId of [other.roomB, UNKNOWN]) {
+          refusedWith(
+            await roomOf(s.branch, s.version, own.id, lesson, roomId, cookie),
+            404,
+            'not_found',
+          );
+        }
+      }
+      expect(await patternRows([s.version, other.version, sameBranch])).toEqual(before);
+    });
+
+    it('lets the Academic Vice Principal change a room; the Principal and a Teacher are refused; a published version is read only', async () => {
+      const s = await scene();
+      const a = await placed(s.branch, s.version, s.rowA, 1, 1);
+      const lesson = lessonOf(a.answer, a.id).id;
+      const spare = await load.classes.room(s.branch);
+      const before = await patternRows([s.version]);
+      for (const cookie of [t.principal, t.teacher]) {
+        refusedWith(
+          await roomOf(t.north, s.version, a.id, lesson, spare, cookie),
+          403,
+          'permission_denied',
+        );
+      }
+      expect(await patternRows([s.version])).toEqual(before);
+      await load.setVersion(s.version, 'published');
+      refusedWith(await roomOf(s.branch, s.version, a.id, lesson, spare), 409, 'version_not_draft');
+      expect(await patternRows([s.version])).toEqual(before);
+    });
+
+    it('marks step 7 ready with warnings only, and not ready with a blocked result', async () => {
+      const s = await scene();
+      await placed(s.branch, s.version, s.rowA, 1, 1);
+      // Both rows short of their load: two warnings.
+      expect(await readiness(s.branch, s.version)).toEqual({
+        ready: true,
+        blocked: 0,
+        warnings: 2,
+      });
+      await noMondays(s.teacherA);
+      expect(await readiness(s.branch, s.version)).toEqual({
+        ready: false,
+        blocked: 1,
+        warnings: 2,
+      });
+      // Every role that reads the readiness reads the same mark (permission review, should-fix 3).
+      await viceIn(s.branch);
+      const principal = await t.database.migrator
+        .selectFrom('assignments')
+        .select('account_id')
+        .where('role', '=', 'principal')
+        .where('branch_id', '=', t.north)
+        .executeTakeFirstOrThrow();
+      await load.classes.role(principal.account_id, s.branch, 'principal');
+      for (const cookie of [t.vicePrincipal, t.principal]) {
+        expect(await readiness(s.branch, s.version, cookie)).toEqual({
+          ready: false,
+          blocked: 1,
+          warnings: 2,
+        });
+      }
+    });
+
+    it('answers 404 for a new teacher of another branch or an unknown one on a row with placed lessons, changing nothing (permission review, should-fix 1)', async () => {
+      const s = await scene();
+      const other = await scene();
+      await placed(s.branch, s.version, s.rowB, 1, 1);
+      await viceIn(s.branch);
+      const loadRows = () =>
+        t.database.migrator
+          .selectFrom('teaching_load_rows')
+          .selectAll()
+          .where('version_id', 'in', [s.version, other.version])
+          .orderBy('id')
+          .execute();
+      const before = [await patternRows([s.version, other.version]), await loadRows()];
+      for (const cookie of [t.vicePrincipal, t.admin]) {
+        for (const teacherId of [other.teacherB, UNKNOWN]) {
+          refusedWith(
+            await editRow(s.branch, s.version, s.rowB, teacherId, cookie),
+            404,
+            'not_found',
+          );
+        }
+      }
+      expect([await patternRows([s.version, other.version]), await loadRows()]).toEqual(before);
+    });
+
+    it('refuses a new teacher who is busy at a placed lesson of the row, naming the rule, and gives the lessons to a free one', async () => {
+      const s = await scene();
+      await placed(s.branch, s.version, s.rowA, 1, 1);
+      const b = await placed(s.branch, s.version, s.rowB, 1, 1);
+      const rows = () =>
+        t.database.migrator
+          .selectFrom('teaching_load_rows')
+          .selectAll()
+          .where('version_id', '=', s.version)
+          .orderBy('id')
+          .execute();
+      const before = [await patternRows([s.version]), await rows()];
+      expect(blockedRules(await editRow(s.branch, s.version, s.rowB, s.teacherA))).toEqual([
+        'teacher_double',
+      ]);
+      expect([await patternRows([s.version]), await rows()]).toEqual(before);
+      // Another teacher with hours every day takes the row and its placed lesson.
+      const free = await teacher(s.branch, s.subject);
+      expect((await editRow(s.branch, s.version, s.rowB, free)).status).toBe(200);
+      const entries = await t.database.migrator
+        .selectFrom('pattern_entries')
+        .select('teacher_id')
+        .where('block_id', '=', b.id)
+        .execute();
+      expect(entries).toEqual([{ teacher_id: free }]);
+      const shown = gridOf(await grid(s.branch, s.version));
+      expect(shown.rows.find((row) => row.id === s.rowB)?.teacher.id).toBe(free);
+    });
+  });
+
   // Task 5.4b-1: 06, Teachers who work in several branches: "One clash check.
   // A teacher cannot be in two lessons at once, counted across all branches
   // by clock time"; "Busy elsewhere ... They cannot be moved from here, and
@@ -856,8 +1158,43 @@ describe('the grid of a draft', () => {
         refusedWith(await drop(s.branch, s.version, id), 404, 'not_found');
         refusedWith(await swap(s.branch, s.version, own.id, id), 404, 'not_found');
         refusedWith(await swap(s.branch, s.version, id, own.id), 404, 'not_found');
+        // Task 5.4b-2a: nor is its room changed from here.
+        refusedWith(
+          await post(`/api/timetable/versions/${s.version}/pattern/${id}/room`, s.branch, {
+            lessonId: entry,
+            roomId: s.roomA,
+          }),
+          404,
+          'not_found',
+        );
       }
       expect(await patternRows([s.version, other.version])).toEqual(before);
+    });
+
+    it('refuses a new teacher of a row whose placed lesson meets their lesson in another branch (review correction 1)', async () => {
+      const { s, other } = await twoBranches(3);
+      await placed(s.branch, s.version, s.rowB, 1, 3);
+      const loadRows = () =>
+        t.database.migrator
+          .selectFrom('teaching_load_rows')
+          .selectAll()
+          .where('version_id', 'in', [s.version, other.version])
+          .orderBy('id')
+          .execute();
+      const before = [await patternRows([s.version, other.version]), await loadRows()];
+      const response = await t.patch(
+        `/api/timetable/versions/${s.version}/load/${s.rowB}`,
+        s.branch,
+        {
+          teacherId: s.teacherA,
+          lessonsPerWeek: 3,
+          roomId: null,
+          roomType: null,
+          doubleLessons: false,
+        },
+      );
+      expect(blockedRules(response)).toEqual(['teacher_double']);
+      expect([await patternRows([s.version, other.version]), await loadRows()]).toEqual(before);
     });
 
     it('saves a lesson at the time another branch’s draft plans the teacher, with the other-draft warning', async () => {

@@ -536,12 +536,18 @@ How to read the task lines:
   - Done when: a move onto a time when the teacher has a published lesson in another branch, or within the travel time of one, is refused in the grid and by the API with the rule named, and the teacher view shows that lesson as a grey block with the branch.
   - From 5.3b-2 (pull request #129, decision 1, Look first): `edge/timetable`, Generator and editing: "Before generating, the locked and pinned lessons are checked on their own. A blocked conflict stops the run and lists the lessons." The pins are checked among themselves in one branch for now; this task adds the published lessons of other branches as busy-elsewhere placements (`fixed`) to `pattern-facts.ts` (`apps/api/src/modules/timetable`), the reader every pattern check uses, so the pins' check of step 5 (`checkPins`) counts them and the travel time around them, and a Tutor of classes in two branches is listed too. The teacher's other branches (`branchIds`) and `otherDrafts` are read there as well.
 
-- [ ] **5.4b-2 Grid: "to place" and conflict panels**
+- [x] **5.4b-2a Grid: "to place", the room picker and the conflict panel** (pull request #133)
   - Read: `06` (Editing in the grid, Building a timetable, step 7).
-  - Build: the "to place" panel; the room picker; "Suggest a place"; the conflict panel with a button that jumps to the lesson; step 7's readiness mark.
-  - Done when: every item of the "Editing in the grid" list is present.
+  - Build: the "to place" panel; the room picker; the conflict panel with a button that jumps to the lesson; step 7's readiness mark.
+  - Done when: every item of the Editing in the grid list except "Suggest a place" is present: Playwright drags a block from "To place", changes a room in the picker, and a conflict's "Show" focuses the lesson.
   - From 5.4a (pull request #130, decisions 7 and 13): the room picker of a lesson ("The room picker lists only rooms that are free in that slot, best fit first") and "Suggest a place" belong to the "to place" panel built here; a new lesson takes its row's room, else a class row's main classroom, else none (`roomOfNew` of `packages/timetable-rules/src/facts-data.ts`). Step 7's readiness mark ("The conflict panel shows no errors") comes with the conflict panel: the grid answer already carries every result of the draft (`GET api/timetable/versions/:id/grid`, `results`), and numbers of a result shown there take keys of their own with plural forms. The views by teacher and room read the same answer; a block occupies a cell by clock time (`boardOf` of `apps/web/src/features/timetable/use-slot-status.ts`).
   - From 5.4b-1 (pull request #132, decisions 4 and 7): the grid answer carries the teachers' lessons in other branches (`facts.busyElsewhere`, `fixed`) and the other branches' names (`facts.branches`); results may name a lesson of another branch (`lessonIds`), which the conflict panel names by its branch and never jumps to. Every check of the pattern passes `checkedPlacements` (`packages/timetable-rules/src/pattern-place.ts`), so "Suggest a place" and the room picker count them too.
+
+- [ ] **5.4b-2b Grid: "Suggest a place"**
+  - Read: `06` (Editing in the grid, bullet 4: "\"Suggest a place\" on a selected lesson shows the best free slots, or a swap of two or three lessons that makes room for it"), `edge/timetable` (Structure, Generator and editing).
+  - Build: "Suggest a place" on a lesson of the board or an entry of "To place": the best free slots, else a swap of two or three lessons that makes room; a route that applies a rearrangement of up to three blocks in one check and one transaction.
+  - Done when: "Suggest a place" on a selected lesson shows the best free slots or a swap of two or three lessons, and applying it is checked by the rule engine and refused by the API like a move.
+  - From 5.4b-2a (pull request #133, decision 1, Look first): split from 5.4b-2. "Suggest a place" belongs to the "to place" panel (From 5.4a, pull request #130, decisions 7 and 13): a new block is built as `newBlockOf` (`apps/web/src/features/timetable/use-slot-status.ts`) and its slots are marked by `cellStatus`; every check of the pattern passes `checkedPlacements` (`packages/timetable-rules/src/pattern-place.ts`), so the suggestions count the teachers' lessons in other branches (From 5.4b-1, pull request #132). A suggestion that changes a room uses `roomChange` (`packages/timetable-rules/src/rooms-pick.ts`).
 
 - [ ] **5.4c Grid: locks and the draft edit lock**
   - Read: `06` (Editing in the grid, Auto-generation), `edge/timetable` (Generator and editing).
@@ -620,6 +626,7 @@ How to read the task lines:
   - Done when: each of the four Protection rules has a test.
   - From 2.7 (pull request #77, decision 2; issue #39, item 6): the same forced delete for a building, floor or room that nothing references (`03`, Building, floor, room; spec change of 13 October 2026), with a reason, an audit entry and 30 days to restore; a referenced one stays archive-only.
   - From 5.1a (pull request #107, correction 6): the forced delete of a dated lesson needs a delete grant on `lessons` and `lesson_blocks` (0058 gives none), added with its guard in a migration of its own.
+  - From 5.4b-2a (pull request #133, decision 3): reopening an old version as a new draft ("Restore an earlier version") copies its pattern too; entries whose teacher, room, subject or class is no longer active go to the "to place" list with the reason (`edge/timetable`, Versions and drafts; `edge/academic-year`). The panel is `GridToPlace` (`apps/web/src/features/timetable/grid-to-place.tsx`); today a copy takes the load and the pins only.
 
 - [ ] **5.9 Timetable views, print and export**
   - Read: `06` (Views and outputs), `edge/system-behaviour`.
