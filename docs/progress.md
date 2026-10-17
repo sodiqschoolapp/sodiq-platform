@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 17 October 2026: task 5.4b-2a Grid: "to place", the room picker and the conflict panel
+
+- Step 7 has a "To place" panel (blocks short of their load, dragged or placed with the slot list), a room picker on each lesson and in the place form (rooms free in the slot, best fit first), and a conflict panel with "Show"; the checklist shows step 7's errors and warnings.
+- Route `POST …/pattern/:blockId/room` (audit `pattern_entry.room`); the place route takes a `roomId`; `GET …/readiness` adds `grid`; a teacher change of a row with placed lessons is checked by the rule engine. No migration.
+- 5.4b-2 is split; 5.4b-2b ("Suggest a place") is the next line.
+- Left out: "Suggest a place" (5.4b-2b); locks, undo, the edit lock (5.4c); the "to place" entries of a reopened version (5.8); "deliberately short" (5.5a); the handbook (paused). The browser test was not run here (the installed Chromium does not match Playwright); CI runs it.
+
+The next sessions must know:
+
+- A room of a pattern lesson is checked only through `roomChange` (`packages/timetable-rules/src/rooms-pick.ts`); the picker and the route call it.
+- A new block not placed yet is `newBlockOf` (`use-slot-status.ts`); a drop of it is `place`.
+- The next task is 5.4b-2b.
+
 ## 17 October 2026: task 5.4b-1 Grid: other branches and the views
 
 - Every pattern check (grid moves, the write routes, the pins' check of step 5) counts the teachers' lessons in other branches' published patterns as busy-elsewhere placements (`fixed`) with the travel time around them, and warns `other_draft` for other branches' drafts; 0071 adds `timetable_busy_elsewhere` and `timetable_drafts_elsewhere` (times and branch only).

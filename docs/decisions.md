@@ -246,6 +246,23 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 17 October 2026: the grid, "to place", the room picker and the conflict panel (task 5.4b-2a)
+
+Plan approved on pull request #133 with corrections 1 to 3; decisions 1 to 12 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** 5.4b-2 is split into 5.4b-2a ("to place", the room picker, the conflict panel and step 7's mark) and 5.4b-2b ("Suggest a place" and a route that applies a rearrangement of up to three blocks) | Decision 1; the suggestion is a search and a write route of its own |
+| "To place" lists one entry per block with a row short of its load, by class, the chosen class first; placed by drag or a Place button with the slot list; a half of a mixed split is listed and not placeable | Decisions 2 and 11 of the plan review; `06`, Editing in the grid, bullets 1 and 2 |
+| The "to place" entries of a reopened old version come with 5.8 (a copy takes the load and the pins only) | Decision 3 |
+| A room is offered and saved when `roomChange` of the rule engine adds no blocked result the lesson did not already have; best fit is the row's room, its room type, the main classroom, then the smallest spare capacity, then rooms with a warning, then name; the picker never clears a room | Decisions 4 and 5; one function for the picker and the route |
+| The numbers of a result have keys of their own (`timetable.conflict.<rule>`) with plural forms | Decision 6 |
+| Step 7 is ready with no blocked result; its mark is computed by `GET …/readiness` only (`TimetablePattern.readiness`), never in `readinessOf` or the gate of generation | Decision 7 |
+| "Show" opens the class board of the first lesson of this branch and focuses its tile; a result with no lesson opens its row's "To place" entry; another branch's lesson is named by its branch, with no button | Decision 8 |
+| A teacher is changed from the tile by a link to the row in step 2; the load route checks the row's placed lessons with the new teacher by the rule engine (`teacherChangeBlocked`, `pattern_blocked`) and maps `pattern_entries_teacher_excl` to `pattern_clash` | Decision 9, review correction 1 |
+| The room route is `POST …/pattern/:blockId/room` with `{ lessonId, roomId }`, audit `pattern_entry.room`; it and the place route run in the refusal map of the pattern | Decision 10, review correction 2 |
+| `PatternFactsData.rooms` holds every room of the branch with its type; rows carry `roomType` | Decision 12 |
+
 ## 17 October 2026: the grid, other branches and the views (task 5.4b-1)
 
 Plan approved on pull request #132 with corrections 1 to 3; decisions 1 to 12 confirmed there. Flagged on issue #42.
