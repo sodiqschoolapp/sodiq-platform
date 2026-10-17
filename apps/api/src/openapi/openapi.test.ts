@@ -248,6 +248,8 @@ describe('OpenAPI document', () => {
         '/api/timetable/versions/{id}/pins',
         '/api/timetable/versions/{id}/pins/{pinId}',
         '/api/timetable/versions/{id}/preferences',
+        '/api/timetable/versions/{id}/publish',
+        '/api/timetable/versions/{id}/publish-check',
         '/api/timetable/versions/{id}/readiness',
         '/api/timetable/versions/{id}/rules/confirm',
         '/api/timetable/versions/{id}/templates/confirm',

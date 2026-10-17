@@ -285,30 +285,92 @@ describe('publish', () => {
       .executeTakeFirstOrThrow();
 
   /** Every row a publish writes, in both branches named: what a refused one must leave. */
-  const written = (versions: readonly string[]) =>
-    Promise.all([
+  /**
+   * Every row a publish writes, in every branch of the versions named, each
+   * column: what a refused one must leave as it was (`.claude/rules/api.md`).
+   */
+  const written = async (versions: readonly string[]) => {
+    const branches = (
+      await t.database.migrator
+        .selectFrom('timetable_versions')
+        .select('branch_id')
+        .distinct()
+        .where('id', 'in', versions)
+        .execute()
+    ).map((one) => one.branch_id);
+    return Promise.all([
       t.database.migrator
         .selectFrom('timetable_versions')
         .selectAll()
-        .where('id', 'in', versions)
+        .where('branch_id', 'in', branches)
         .orderBy('id')
         .execute(),
       t.database.migrator
         .selectFrom('teaching_load_rows')
         .selectAll()
-        .where('version_id', 'in', versions)
+        .where('branch_id', 'in', branches)
         .orderBy('id')
         .execute(),
       t.database.migrator
         .selectFrom('pattern_entries')
         .selectAll()
-        .where('version_id', 'in', versions)
+        .where('branch_id', 'in', branches)
         .orderBy('id')
         .execute(),
       t.database.migrator.selectFrom('notifications').selectAll().orderBy('id').execute(),
-      t.database.migrator.selectFrom('request_keys').select('key').orderBy('key').execute(),
+      // A takeover of the edit lock enqueues the delivery of its notice (permission review, should-fix 4).
+      sql<{ id: string; name: string }>`select id, name from pgboss.job order by id`
+        .execute(t.database.migrator)
+        .then((result) => result.rows),
+      t.database.migrator.selectFrom('request_keys').selectAll().orderBy('key').execute(),
       t.auditCount(),
     ]);
+  };
+
+  /**
+   * What a publish of the scene's draft would change besides itself: another
+   * draft to mark, a Tutor row whose Tutor changes on 19 October, and a stale
+   * edit lock to take over.
+   */
+  async function withMoreToChange(s: {
+    branch: string;
+    year: string;
+    classId: string;
+    version: string;
+  }) {
+    await draft(s.branch, s.year);
+    const tutorSubject = await load.tutorSubject({ grades: [7] });
+    const first = await load.teacher(s.branch);
+    const second = await load.teacher(s.branch);
+    const changeover = new Date('2026-10-19T00:00:00+05:00');
+    await load.tutorOf(s.branch, s.classId, first.accountId, { until: changeover });
+    await load.tutorOf(s.branch, s.classId, second.accountId, { from: changeover });
+    const created = await post(`/api/timetable/versions/${s.version}/load`, s.branch, {
+      classId: s.classId,
+      groupId: null,
+      subjectId: tutorSubject,
+      teacherId: null,
+      lessonsPerWeek: 1,
+      roomId: null,
+      roomType: null,
+      doubleLessons: false,
+    });
+    expect(created.status, JSON.stringify(created.body)).toBe(201);
+    const holder = await t.database.migrator
+      .selectFrom('assignments')
+      .select('account_id')
+      .where('role', '=', 'teacher')
+      .where('branch_id', '=', t.north)
+      .executeTakeFirstOrThrow();
+    await t.database.migrator
+      .updateTable('timetable_versions')
+      .set({
+        edit_holder_id: holder.account_id,
+        edit_seen_at: new Date(t.clock.now().getTime() - 10 * 60_000),
+      })
+      .where('id', '=', s.version)
+      .execute();
+  }
 
   describe('a draft that can be published', () => {
     it('offers tomorrow at the earliest, next Monday and the coming quarters, with nothing refused', async () => {
@@ -771,6 +833,59 @@ describe('publish', () => {
   });
 
   describe('a repeat', () => {
+    it('refuses a key of another account, of another date and a missing key, changing nothing (permission review, must-fix 1)', async () => {
+      const s = await scene();
+      await viceIn(s.branch);
+      await load.freeEditLock(s.version);
+      const key = randomUUID();
+      // The Super Admin's key, refused, rolls back with the refusal: it is
+      // used for a refused publish, then sent again by another account.
+      const used = randomUUID();
+      blockedBy(await publish(s.branch, s.version, TODAY, t.admin, used));
+      const before = await written([s.version]);
+      versionOf(await publish(s.branch, s.version, MONDAY, t.admin, key));
+      const after = await written([s.version]);
+      refusedWith(
+        await publish(s.branch, s.version, MONDAY, t.vicePrincipal, key),
+        409,
+        'request_key_reused',
+      );
+      refusedWith(
+        await publish(s.branch, s.version, '2026-10-19', t.admin, key),
+        409,
+        'request_key_reused',
+      );
+      const missing = await request(t.kit.server)
+        .post(`/api/timetable/versions/${s.version}/publish`)
+        .set('Cookie', t.admin)
+        .set(BRANCH_HEADER, s.branch)
+        .send({ startsOn: MONDAY });
+      expect(missing.status, JSON.stringify(missing.body)).toBe(400);
+      expect(await written([s.version])).toEqual(after);
+      expect(after).not.toEqual(before);
+    });
+
+    it('checks the permission and the branch again on a repeat, before the stored answer (permission review, must-fix 1)', async () => {
+      const s = await scene();
+      const theirs = await scene();
+      await load.freeEditLock(s.version);
+      const key = randomUUID();
+      versionOf(await publish(s.branch, s.version, MONDAY, t.admin, key));
+      const after = await written([s.version, theirs.version]);
+      for (const id of [theirs.version, UNKNOWN]) {
+        refusedWith(await publish(s.branch, id, MONDAY, t.admin, key), 404, 'not_found');
+      }
+      const principal = await t.database.migrator
+        .selectFrom('assignments')
+        .select('account_id')
+        .where('role', '=', 'principal')
+        .where('branch_id', '=', t.north)
+        .executeTakeFirstOrThrow();
+      await load.classes.role(principal.account_id, s.branch, 'principal');
+      expect((await publish(s.branch, s.version, MONDAY, t.principal, key)).status).toBe(403);
+      expect(await written([s.version, theirs.version])).toEqual(after);
+    });
+
     it('gets the same answer and publishes once', async () => {
       const s = await scene();
       const key = randomUUID();
@@ -803,11 +918,15 @@ describe('publish', () => {
     it("answers 404 for another branch's version and an unknown one, and changes nothing", async () => {
       const s = await scene();
       const theirs = await scene();
+      await viceIn(s.branch);
+      // Rows a publish would change, in both branches (permission review, must-fix 2).
+      await withMoreToChange(s);
+      await withMoreToChange(theirs);
       const before = await written([s.version, theirs.version]);
-      for (const cookie of [t.admin]) {
+      for (const cookie of [t.admin, t.vicePrincipal]) {
         for (const id of [theirs.version, UNKNOWN]) {
-          refusedWith(await publish(s.branch, id, MONDAY, cookie), 404, 'not_found');
-          refusedWith(await check(s.branch, id, MONDAY, cookie), 404, 'not_found');
+          refusedWith(await publish(s.branch, id, '2026-10-19', cookie), 404, 'not_found');
+          refusedWith(await check(s.branch, id, '2026-10-19', cookie), 404, 'not_found');
         }
       }
       expect(await written([s.version, theirs.version])).toEqual(before);
