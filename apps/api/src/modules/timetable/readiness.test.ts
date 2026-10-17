@@ -142,6 +142,11 @@ describe('the readiness of a draft, steps 1 to 4', () => {
 
   it('reads a complete draft ready once its templates are confirmed', async () => {
     const s = await scene();
+    await t.database.migrator
+      .updateTable('staff')
+      .set({ daily_lessons: 5, weekly_lessons: 18 })
+      .where('id', '=', s.teacher)
+      .execute();
     const before = await readiness(s.branch, s.version);
     expect(before.ready).toBe(false);
     expect(before.templates).toMatchObject({ ready: false, confirmed: false, startPast: false });
@@ -155,7 +160,14 @@ describe('the readiness of a draft, steps 1 to 4', () => {
     expect(before.load).toMatchObject({ ready: true, rows: 1, problemRows: [], leftRows: 0 });
     expect(before.teachers.ready).toBe(true);
     expect(before.teachers.teachers).toEqual([
-      expect.objectContaining({ id: s.teacher, lessons: 3, freeSlots: 15, noHours: false }),
+      expect.objectContaining({
+        id: s.teacher,
+        lessons: 3,
+        freeSlots: 15,
+        noHours: false,
+        dailyLessons: 5,
+        contract: 18,
+      }),
     ]);
     expect(before.rooms).toEqual({ ready: true, rows: [], classesWithoutRoom: [] });
     const after = await confirm(s.branch, s.version);
@@ -344,6 +356,13 @@ describe('the readiness of a draft, steps 1 to 4', () => {
       .set({ room_type: 'laboratory' })
       .where('id', '=', s.row)
       .execute();
+    // Permission review, should-fix 1: another branch's laboratory never counts.
+    const elsewhere = await load.classes.room(t.north);
+    await t.database.migrator
+      .updateTable('rooms')
+      .set({ type: 'laboratory' })
+      .where('id', '=', elsewhere)
+      .execute();
     const none = await readiness(s.branch, s.version);
     expect(none.rooms.ready).toBe(false);
     expect(none.rooms.rows.map((row) => [row.id, row.reason])).toEqual([[s.row, 'room_type_none']]);
@@ -386,9 +405,13 @@ describe('the readiness of a draft, steps 1 to 4', () => {
   it('lists a class with no main classroom and stays ready', async () => {
     const s = await scene();
     const bare = await load.classes.schoolClass(s.branch, s.year, { grade: 7 });
+    // Permission review, should-fix 1: another branch's class without a room is not listed.
+    const northYear = await load.classes.year(t.north, 'planned', '2027-09-01', '2028-05-31');
+    await load.classes.schoolClass(t.north, northYear, { grade: 7 });
     await confirm(s.branch, s.version);
     const found = await readiness(s.branch, s.version);
-    expect(found.rooms).toMatchObject({ ready: true, classesWithoutRoom: [{ id: bare }] });
+    expect(found.rooms.ready).toBe(true);
+    expect(found.rooms.classesWithoutRoom.map((one) => one.id)).toEqual([bare]);
     expect(found.ready).toBe(true);
   });
 
@@ -453,7 +476,12 @@ describe('the readiness of a draft, steps 1 to 4', () => {
         t.database.migrator.selectFrom('teaching_load_rows').selectAll().orderBy('id').execute(),
         t.auditCount(),
       ]);
+    // Permission review, should-fix 3: the other branch's version holds a confirmed table to keep.
+    readinessOf(
+      await post(`/api/timetable/versions/${southern}/templates/confirm`, t.south, {}, t.admin),
+    );
     const before = await rows();
+    expect(before[0].find((one) => one.id === southern)?.templates_confirmed).not.toBeNull();
     for (const cookie of [t.vicePrincipal, t.admin]) {
       for (const id of [southern, UNKNOWN]) {
         refusedWith(

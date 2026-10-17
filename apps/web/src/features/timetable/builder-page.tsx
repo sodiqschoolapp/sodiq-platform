@@ -299,7 +299,7 @@ export function BuilderPage(): React.JSX.Element {
         )}
         {data.load.problemRows.length > 0 && (
           <section aria-labelledby="problem-rows" className="grid gap-2">
-            <h3 id="problem-rows" className="font-semibold">
+            <h3 id="problem-rows" className={SECTION_TITLE}>
               {t('timetable.builder.problemRows')}
             </h3>
             <ul className="grid gap-1">
@@ -322,7 +322,7 @@ export function BuilderPage(): React.JSX.Element {
         )}
         {data.load.classesOver.length > 0 && (
           <section aria-labelledby="classes-over" className="grid gap-2">
-            <h3 id="classes-over" className="font-semibold">
+            <h3 id="classes-over" className={SECTION_TITLE}>
               {t('timetable.builder.classesOver')}
             </h3>
             <ul className="grid gap-1">
@@ -437,7 +437,7 @@ export function BuilderPage(): React.JSX.Element {
         )}
         {data.rooms.classesWithoutRoom.length > 0 && (
           <section aria-labelledby="classes-without-room" className="grid gap-2">
-            <h3 id="classes-without-room" className="font-semibold">
+            <h3 id="classes-without-room" className={SECTION_TITLE}>
               {t('timetable.builder.classesWithoutRoom')}
             </h3>
             <p className="text-sm text-muted-foreground">

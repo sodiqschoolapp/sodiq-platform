@@ -910,6 +910,8 @@ export class Timetable {
             context.statusOn,
           );
           const before = confirmedCellsOf(version.templates_confirmed);
+          // Only whether the table equals the stored one: the start date is
+          // not judged here, so both dates are the date the table is read on.
           const unchanged =
             before !== null &&
             templatesReadiness({
