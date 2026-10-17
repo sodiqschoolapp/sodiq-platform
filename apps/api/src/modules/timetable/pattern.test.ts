@@ -41,7 +41,8 @@ describe('the grid of a draft', () => {
   let load: LoadKit;
 
   beforeAll(async () => {
-    t = await dayTemplatesKit();
+    // Task 5.4c-1: a takeover notifies the earlier holder, through the job queue.
+    t = await dayTemplatesKit({ jobs: true });
     load = new LoadKit(t.database.migrator);
   });
 
@@ -1653,6 +1654,511 @@ describe('the grid of a draft', () => {
       held.release();
       expect(await held.done).toBeUndefined();
       expect(blockedRules(await moving)).toEqual(['teacher_double']);
+    });
+  });
+
+  // Task 5.4c-1: the edit lock of a draft (06, Editing in the grid: "Several
+  // people can view a draft; one edits at a time"; edge/timetable, Generator
+  // and editing: "The edit lock is released after 5 minutes without activity.
+  // Another Academic Vice Principal can take over; the earlier holder is
+  // told.") and the locks of the grid (06, Auto-generation, Locks).
+  describe('the edit lock and the locks of a draft', () => {
+    const MINUTE = 60_000;
+    let vice = '';
+    let admin = '';
+    let viceName = '';
+    let adminName = '';
+
+    const accountOf = async (assignmentId: string) =>
+      (
+        await t.database.migrator
+          .selectFrom('assignments')
+          .select('account_id')
+          .where('id', '=', assignmentId)
+          .executeTakeFirstOrThrow()
+      ).account_id;
+    /** The account linked to a person of the North branch, named "last first" as the audit log names it. */
+    const personOf = async (accountId: string) => {
+      const { staffId } = await load.teacher(t.north, { accountId });
+      const person = await t.database.migrator
+        .selectFrom('staff')
+        .select(['first_name', 'last_name'])
+        .where('id', '=', staffId)
+        .executeTakeFirstOrThrow();
+      return `${person.last_name ?? ''} ${person.first_name ?? ''}`;
+    };
+
+    beforeAll(async () => {
+      vice = await accountOf(t.viceAssignment);
+      admin = await accountOf(t.adminAssignment);
+      viceName = await personOf(vice);
+      adminName = await personOf(admin);
+    });
+
+    const takeLock = (branch: string, version: string, cookie = t.admin) =>
+      post(`/api/timetable/versions/${version}/edit-lock`, branch, {}, cookie);
+    const addLock = (branch: string, version: string, body: object, cookie = t.admin) =>
+      post(`/api/timetable/versions/${version}/locks`, branch, body, cookie);
+    const dropLock = (branch: string, version: string, lockId: string, cookie = t.admin) =>
+      remove(`/api/timetable/versions/${version}/locks/${lockId}`, branch, cookie);
+    const rearrange = (
+      branch: string,
+      version: string,
+      changes: { blockId: string; weekday: number; slotPosition: number }[],
+      cookie = t.admin,
+    ) => post(`/api/timetable/versions/${version}/pattern/rearrange`, branch, { changes }, cookie);
+    const lockRow = (version: string) =>
+      t.database.migrator
+        .selectFrom('timetable_versions')
+        .select(['edit_holder_id', 'edit_seen_at'])
+        .where('id', '=', version)
+        .executeTakeFirstOrThrow();
+    /** The holder was last active `ago` milliseconds before the clock's moment. */
+    const seenAgo = (version: string, ago: number) =>
+      t.database.migrator
+        .updateTable('timetable_versions')
+        .set({ edit_seen_at: new Date(t.clock.now().getTime() - ago) })
+        .where('id', '=', version)
+        .execute();
+    /** The takeover notices of an account in a branch (each scene has a branch of its own). */
+    const noticesOf = (accountId: string, branch: string) =>
+      t.database.migrator
+        .selectFrom('notifications')
+        .select(['kind', 'data', 'branch_id'])
+        .where('account_id', '=', accountId)
+        .where('branch_id', '=', branch)
+        .where('kind', '=', 'timetable.draft_taken_over')
+        .execute();
+    const takeovers = async (version: string) =>
+      (await t.entries('timetable_version.edit_lock', version)).map((entry) => [
+        (entry.old_value as { holderId: string | null }).holderId,
+        (entry.new_value as { holderId: string }).holderId,
+      ]);
+
+    describe('the edit lock', () => {
+      it('is taken by the first write, audited, kept by the holder with no entry, and shown to every reader', async () => {
+        const s = await scene();
+        await viceIn(s.branch);
+        expect(await lockRow(s.version)).toEqual({ edit_holder_id: null, edit_seen_at: null });
+        const response = await place(s.branch, s.version, s.rowA, 1, 1, t.vicePrincipal);
+        expect(gridOf(response, 201).version.editLock).toEqual({
+          holder: { id: vice, name: viceName },
+          seenAt: t.clock.now().toISOString(),
+          mine: true,
+        });
+        const [entry] = await t.entries('timetable_version.edit_lock', s.version);
+        expect(entry).toMatchObject({
+          request_id: response.headers['x-request-id'],
+          old_value: { holderId: null, seenAt: null },
+          new_value: { holderId: vice },
+        });
+        // Two minutes later the holder's write keeps the lock: seen now, no entry.
+        await seenAgo(s.version, 2 * MINUTE);
+        gridOf(await place(s.branch, s.version, s.rowB, 2, 1, t.vicePrincipal), 201);
+        expect(await lockRow(s.version)).toEqual({
+          edit_holder_id: vice,
+          edit_seen_at: t.clock.now(),
+        });
+        expect(await takeovers(s.version)).toEqual([[null, vice]]);
+        // Another reader sees who edits, in the grid and in the list.
+        expect(gridOf(await grid(s.branch, s.version)).version.editLock).toMatchObject({
+          holder: { id: vice, name: viceName },
+          mine: false,
+        });
+        const list = (await get('/api/timetable/versions', s.branch)).body as {
+          versions: { id: string; editLock: unknown }[];
+        };
+        expect(list.versions.find((one) => one.id === s.version)?.editLock).toMatchObject({
+          holder: { id: vice },
+          mine: false,
+        });
+        // Free again after 5 minutes without activity.
+        await seenAgo(s.version, 5 * MINUTE);
+        expect(gridOf(await grid(s.branch, s.version)).version.editLock).toBeNull();
+      });
+
+      it('refuses another account until 5 minutes without activity, then lets it take over and tells the earlier holder', async () => {
+        const s = await scene();
+        await viceIn(s.branch);
+        const a = await placed(s.branch, s.version, s.rowA, 1, 1);
+        await load.freeEditLock(s.version);
+        gridOf(await move(s.branch, s.version, a.id, 2, 1, t.vicePrincipal));
+        await seenAgo(s.version, 5 * MINUTE - 1000);
+        const before = [await patternRows([s.version]), await t.auditCount()];
+        refusedWith(await move(s.branch, s.version, a.id, 3, 1), 409, 'draft_edit_locked');
+        refusedWith(await takeLock(s.branch, s.version), 409, 'draft_edit_locked');
+        refusedWith(await place(s.branch, s.version, s.rowB, 1, 1), 409, 'draft_edit_locked');
+        refusedWith(
+          await post(`/api/timetable/versions/${s.version}/templates/confirm`, s.branch),
+          409,
+          'draft_edit_locked',
+        );
+        expect([await patternRows([s.version]), await t.auditCount()]).toEqual(before);
+        expect(await noticesOf(vice, s.branch)).toEqual([]);
+        // At 5 minutes the lock is free: "Take over".
+        await seenAgo(s.version, 5 * MINUTE);
+        const taken = await takeLock(s.branch, s.version);
+        expect(taken.status, JSON.stringify(taken.body)).toBe(200);
+        expect((taken.body as { editLock: unknown }).editLock).toEqual({
+          holder: { id: admin, name: adminName },
+          seenAt: t.clock.now().toISOString(),
+          mine: true,
+        });
+        const entries = await t.entries('timetable_version.edit_lock', s.version);
+        expect(entries.at(-1)).toMatchObject({
+          request_id: taken.headers['x-request-id'],
+          old_value: { holderId: vice },
+          new_value: { holderId: admin },
+        });
+        expect(await noticesOf(vice, s.branch)).toEqual([
+          {
+            kind: 'timetable.draft_taken_over',
+            data: { number: '1', name: adminName },
+            branch_id: s.branch,
+          },
+        ]);
+        // The earlier holder's next write is refused; what they saved stays.
+        refusedWith(
+          await move(s.branch, s.version, a.id, 3, 1, t.vicePrincipal),
+          409,
+          'draft_edit_locked',
+        );
+        expect(gridOf(await grid(s.branch, s.version)).blocks).toEqual([
+          expect.objectContaining({ id: a.id, weekday: 2, slotPosition: 1 }),
+        ]);
+      });
+
+      it('lets the holder back after it expired with no entry and no notice; a free lock is taken with an entry and no notice', async () => {
+        const s = await scene();
+        await viceIn(s.branch);
+        const taken = await takeLock(s.branch, s.version, t.vicePrincipal);
+        expect(taken.status, JSON.stringify(taken.body)).toBe(200);
+        expect(await takeovers(s.version)).toEqual([[null, vice]]);
+        await seenAgo(s.version, 30 * MINUTE);
+        gridOf(await place(s.branch, s.version, s.rowA, 1, 1, t.vicePrincipal), 201);
+        expect(await takeovers(s.version)).toEqual([[null, vice]]);
+        expect(await lockRow(s.version)).toEqual({
+          edit_holder_id: vice,
+          edit_seen_at: t.clock.now(),
+        });
+        expect(await noticesOf(vice, s.branch)).toEqual([]);
+      });
+
+      it('answers 404 for another branch’s and an unknown version, 403 to the Principal and a Teacher, and refuses a published one', async () => {
+        const s = await scene();
+        const other = await scene();
+        await viceIn(s.branch);
+        const versions = [s.version, other.version];
+        const before = [await patternRows(versions), await t.auditCount()];
+        for (const cookie of [t.vicePrincipal, t.admin]) {
+          for (const version of [other.version, UNKNOWN]) {
+            refusedWith(await takeLock(s.branch, version, cookie), 404, 'not_found');
+          }
+        }
+        for (const cookie of [t.principal, t.teacher]) {
+          refusedWith(await takeLock(t.north, s.version, cookie), 403, 'permission_denied');
+        }
+        expect([await patternRows(versions), await t.auditCount()]).toEqual(before);
+        await load.setVersion(s.version, 'published');
+        refusedWith(await takeLock(s.branch, s.version), 409, 'version_not_draft');
+        expect(await lockRow(s.version)).toEqual({ edit_holder_id: null, edit_seen_at: null });
+      });
+
+      it('keeps the pair of holder and moment together in the database', async () => {
+        const s = await scene();
+        await expect(
+          t.database.migrator
+            .updateTable('timetable_versions')
+            .set({ edit_holder_id: vice })
+            .where('id', '=', s.version)
+            .execute(),
+        ).rejects.toMatchObject({ constraint: 'timetable_versions_edit_lock_check' });
+      });
+    });
+
+    describe('the locks', () => {
+      it('sets and removes a lock of each kind, audited, answered in the grid; a lock set twice is refused', async () => {
+        const s = await scene();
+        await viceIn(s.branch);
+        const a = await placed(s.branch, s.version, s.rowA, 1, 1);
+        await load.freeEditLock(s.version);
+        const bodies = [
+          { kind: 'block', blockId: a.id },
+          { kind: 'class', classId: s.classA },
+          { kind: 'teacher', teacherId: s.teacherB },
+          { kind: 'day', weekday: 3 },
+        ];
+        for (const body of bodies) {
+          const response = await addLock(s.branch, s.version, body, t.vicePrincipal);
+          const answer = gridOf(response, 201);
+          const lock = answer.locks.at(-1);
+          expect(lock).toMatchObject(body);
+          const [entry] = await t.entries('timetable_lock.create', lock?.id);
+          expect(entry).toMatchObject({
+            request_id: response.headers['x-request-id'],
+            new_value: { versionId: s.version, ...body },
+          });
+          const count = await t.auditCount();
+          refusedWith(await addLock(s.branch, s.version, body, t.vicePrincipal), 409, 'lock_taken');
+          expect(await t.auditCount()).toBe(count);
+        }
+        const locks = gridOf(await grid(s.branch, s.version)).locks;
+        expect(locks).toHaveLength(4);
+        for (const lock of locks) {
+          const response = await dropLock(s.branch, s.version, lock.id, t.vicePrincipal);
+          expect(gridOf(response).locks.map((one) => one.id)).not.toContain(lock.id);
+          const [entry] = await t.entries('timetable_lock.delete', lock.id);
+          expect(entry).toMatchObject({ old_value: { versionId: s.version, kind: lock.kind } });
+        }
+      });
+
+      it('keeps a locked lesson out of an applied suggestion for each kind, and lets it be moved by hand', async () => {
+        const s = await scene();
+        const a = await placed(s.branch, s.version, s.rowA, 1, 1);
+        const b = await placed(s.branch, s.version, s.rowB, 2, 1);
+        const kinds = [
+          { kind: 'block', blockId: a.id },
+          { kind: 'class', classId: s.classA },
+          { kind: 'teacher', teacherId: s.teacherA },
+          // The day it is on, and the day it would move to.
+          { kind: 'day', weekday: 1 },
+          { kind: 'day', weekday: 3 },
+        ];
+        for (const body of kinds) {
+          const lock = gridOf(await addLock(s.branch, s.version, body), 201).locks.at(-1);
+          if (lock === undefined) throw new Error('The lock was not answered.');
+          const before = [await patternRows([s.version]), await t.auditCount()];
+          refusedWith(
+            await rearrange(s.branch, s.version, [
+              { blockId: a.id, weekday: 3, slotPosition: 1 },
+              { blockId: b.id, weekday: 3, slotPosition: 3 },
+            ]),
+            409,
+            'pattern_locked',
+          );
+          expect([await patternRows([s.version]), await t.auditCount()]).toEqual(before);
+          gridOf(await dropLock(s.branch, s.version, lock.id));
+        }
+        // With no lock left the same suggestion is applied.
+        gridOf(
+          await rearrange(s.branch, s.version, [
+            { blockId: a.id, weekday: 3, slotPosition: 1 },
+            { blockId: b.id, weekday: 3, slotPosition: 3 },
+          ]),
+        );
+        // Decision 8: a hand move of a locked lesson is saved.
+        gridOf(await addLock(s.branch, s.version, { kind: 'block', blockId: a.id }), 201);
+        expect(gridOf(await move(s.branch, s.version, a.id, 4, 1)).blocks).toContainEqual(
+          expect.objectContaining({ id: a.id, weekday: 4 }),
+        );
+      });
+
+      it('goes with its block, the removal naming it in its audit entry', async () => {
+        const s = await scene();
+        const a = await placed(s.branch, s.version, s.rowA, 1, 1);
+        const lock = gridOf(
+          await addLock(s.branch, s.version, { kind: 'block', blockId: a.id }),
+          201,
+        ).locks[0];
+        expect(gridOf(await drop(s.branch, s.version, a.id)).locks).toEqual([]);
+        const [entry] = await t.entries('pattern_block.delete', a.id);
+        expect(entry).toMatchObject({ old_value: { locks: [lock?.id] } });
+      });
+
+      it('answers 404 for another branch’s, another version’s and an unknown id of the path and the body, changing nothing', async () => {
+        const s = await scene();
+        const other = await scene();
+        const sameBranch = await load.version(s.branch, s.year, { startsOn: MONDAY });
+        const sameBranchRow = await load.row({
+          branch_id: s.branch,
+          version_id: sameBranch,
+          class_id: s.classA,
+          subject_id: s.subject,
+          teacher_id: s.teacherA,
+        });
+        const own = await placed(s.branch, s.version, s.rowA, 1, 1);
+        const otherBlock = await placed(other.branch, other.version, other.rowA, 1, 1);
+        const sameBranchBlock = await placed(s.branch, sameBranch, sameBranchRow, 1, 3);
+        const otherLock = gridOf(
+          await addLock(other.branch, other.version, { kind: 'day', weekday: 2 }),
+          201,
+        ).locks[0];
+        const sameBranchLock = gridOf(
+          await addLock(s.branch, sameBranch, { kind: 'day', weekday: 2 }),
+          201,
+        ).locks[0];
+        if (otherLock === undefined || sameBranchLock === undefined) throw new Error('No lock.');
+        await viceIn(s.branch);
+        await load.freeEditLock(s.version);
+        const versions = [s.version, other.version, sameBranch];
+        const before = [await patternRows(versions), await t.auditCount()];
+        for (const cookie of [t.vicePrincipal, t.admin]) {
+          for (const version of [other.version, UNKNOWN]) {
+            refusedWith(
+              await addLock(s.branch, version, { kind: 'day', weekday: 4 }, cookie),
+              404,
+              'not_found',
+            );
+            refusedWith(await dropLock(s.branch, version, otherLock.id, cookie), 404, 'not_found');
+          }
+          for (const body of [
+            ...[otherBlock.id, UNKNOWN, sameBranchBlock.id].map((blockId) => ({
+              kind: 'block',
+              blockId,
+            })),
+            ...[other.classA, UNKNOWN].map((classId) => ({ kind: 'class', classId })),
+            ...[other.teacherA, UNKNOWN].map((teacherId) => ({ kind: 'teacher', teacherId })),
+          ]) {
+            refusedWith(await addLock(s.branch, s.version, body, cookie), 404, 'not_found');
+          }
+          for (const lockId of [otherLock.id, UNKNOWN, sameBranchLock.id]) {
+            refusedWith(await dropLock(s.branch, s.version, lockId, cookie), 404, 'not_found');
+          }
+        }
+        expect([await patternRows(versions), await t.auditCount()]).toEqual(before);
+        expect(own.id).toBeDefined();
+      });
+
+      it('is refused to the Principal and a Teacher, and on a published version', async () => {
+        const s = await scene();
+        const lock = gridOf(await addLock(s.branch, s.version, { kind: 'day', weekday: 2 }), 201)
+          .locks[0];
+        if (lock === undefined) throw new Error('No lock.');
+        const before = [await patternRows([s.version]), await t.auditCount()];
+        for (const cookie of [t.principal, t.teacher]) {
+          refusedWith(
+            await addLock(t.north, s.version, { kind: 'day', weekday: 3 }, cookie),
+            403,
+            'permission_denied',
+          );
+          refusedWith(
+            await dropLock(t.north, s.version, lock.id, cookie),
+            403,
+            'permission_denied',
+          );
+        }
+        expect([await patternRows([s.version]), await t.auditCount()]).toEqual(before);
+        await load.setVersion(s.version, 'published');
+        const published = await patternRows([s.version]);
+        refusedWith(
+          await addLock(s.branch, s.version, { kind: 'day', weekday: 3 }),
+          409,
+          'version_not_draft',
+        );
+        refusedWith(await dropLock(s.branch, s.version, lock.id), 409, 'version_not_draft');
+        expect(await patternRows([s.version])).toEqual(published);
+      });
+
+      it('holds exactly the target of its kind, once per version, in a draft only (0072)', async () => {
+        const s = await scene();
+        const insert = (values: Record<string, unknown>) =>
+          t.database.migrator
+            .insertInto('timetable_locks')
+            .values({ branch_id: s.branch, version_id: s.version, ...values } as never)
+            .execute();
+        await expect(insert({ kind: 'day' })).rejects.toMatchObject({
+          constraint: 'timetable_locks_target_check',
+        });
+        await expect(insert({ kind: 'day', weekday: 2, class_id: s.classA })).rejects.toMatchObject(
+          { constraint: 'timetable_locks_target_check' },
+        );
+        await insert({ kind: 'day', weekday: 2 });
+        await expect(insert({ kind: 'day', weekday: 2 })).rejects.toMatchObject({
+          constraint: 'timetable_locks_day_key',
+        });
+        await load.setVersion(s.version, 'published');
+        await expect(insert({ kind: 'day', weekday: 3 })).rejects.toMatchObject({
+          constraint: 'pattern_version_draft',
+        });
+      });
+    });
+
+    describe('two accounts taking an expired lock at the same moment', () => {
+      /** How many connections to the test database wait for a lock right now. */
+      async function waitingForALock(): Promise<number> {
+        const found = await sql<{ waiting: number }>`
+          select count(distinct l.pid)::int as waiting
+          from pg_locks l join pg_stat_activity a on a.pid = l.pid
+          where a.datname = current_database() and not l.granted
+        `.execute(t.database.migrator);
+        return found.rows[0]?.waiting ?? 0;
+      }
+
+      // In each order the account whose take commits first holds the lock, and
+      // the other's write waits for the version row, then is refused.
+      for (const order of ['vice first', 'admin first'] as const) {
+        it(`gives the lock to the first and refuses the second with draft_edit_locked (${order})`, async () => {
+          const s = await scene();
+          await viceIn(s.branch);
+          const a = await placed(s.branch, s.version, s.rowA, 1, 1);
+          // A third account held the lock and left 10 minutes ago.
+          const teacher = await accountOf(
+            (
+              await t.database.migrator
+                .selectFrom('assignments')
+                .select('id')
+                .where('role', '=', 'teacher')
+                .where('branch_id', '=', t.north)
+                .executeTakeFirstOrThrow()
+            ).id,
+          );
+          await t.database.migrator
+            .updateTable('timetable_versions')
+            .set({ edit_holder_id: teacher })
+            .where('id', '=', s.version)
+            .execute();
+          await seenAgo(s.version, 10 * MINUTE);
+          const [first, second, secondCookie] =
+            order === 'vice first' ? [vice, admin, t.admin] : [admin, vice, t.vicePrincipal];
+          // The held side does what lockDraft does for the first account: the
+          // year FOR SHARE, the version FOR UPDATE, then the holder and the moment.
+          let release: () => void = () => undefined;
+          const released = new Promise<void>((resolve) => {
+            release = resolve;
+          });
+          let ready: () => void = () => undefined;
+          const isReady = new Promise<void>((resolve) => {
+            ready = resolve;
+          });
+          const done = t.app
+            .get(Transactions)
+            .run([s.branch], async (transaction) => {
+              await transaction
+                .selectFrom('academic_years')
+                .select('id')
+                .where('id', '=', s.year)
+                .forShare()
+                .execute();
+              await transaction
+                .selectFrom('timetable_versions')
+                .select('id')
+                .where('id', '=', s.version)
+                .forUpdate()
+                .execute();
+              await transaction
+                .updateTable('timetable_versions')
+                .set({ edit_holder_id: first, edit_seen_at: t.clock.now() })
+                .where('id', '=', s.version)
+                .execute();
+              ready();
+              await released;
+            })
+            .catch((error: unknown) => error);
+          await Promise.race([isReady, done]);
+          const moving = move(s.branch, s.version, a.id, 2, 1, secondCookie).then(
+            (response) => response,
+          );
+          await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
+          release();
+          expect(await done).toBeUndefined();
+          refusedWith(await moving, 409, 'draft_edit_locked');
+          expect((await lockRow(s.version)).edit_holder_id).toBe(first);
+          expect(second).not.toBe(first);
+          expect(gridOf(await grid(s.branch, s.version)).blocks).toEqual([
+            expect.objectContaining({ id: a.id, weekday: 1, slotPosition: 1 }),
+          ]);
+        });
+      }
     });
   });
 });
