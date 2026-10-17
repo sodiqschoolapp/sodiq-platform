@@ -8,6 +8,7 @@ import {
   otherHalf,
   pairAt,
   patternPlacements,
+  placeRowsOf,
   slotStatus,
   WEEK_COUNT_RULES,
   type PatternBlock,
@@ -123,7 +124,7 @@ export function blockAt(
 }
 
 /** A block not placed yet: one builder for the grid, the routes and "Suggest a place" (task 5.4b-2b). */
-export { NEW_BLOCK_ID, newBlockOf, newPairOf } from '@sodiq/timetable-rules';
+export { NEW_BLOCK_ID, newBlockOf, newPairOf, placeRowsOf } from '@sodiq/timetable-rules';
 
 /**
  * What dropping a block on a cell does: a move, a swap with the block there, a
@@ -162,13 +163,23 @@ export function dropOf(
   if (block.id === NEW_BLOCK_ID) {
     // A new block is placed beside whatever is there; the engine names a clash.
     if (block.doublePairId !== null) {
-      // Task 5.4c-3a: a new double, its first half at the cell (decision 4).
-      const rowId = block.lessons[0]?.loadRowId;
+      // Task 5.4c-3a: a new double, its first half at the cell (decision 4);
+      // task 5.4c-3b: of a pairing, with its partner.
+      const rows = placeRowsOf(
+        model,
+        block.lessons.map((lesson) => lesson.loadRowId),
+      );
       const position = positionFor(model, block, cell);
       const pair =
-        rowId === undefined || position === null
+        rows.loadRowId === '' || position === null
           ? null
-          : pairAt(model, newPairOf(model, rowId), NEW_BLOCK_ID, cell.weekday, position);
+          : pairAt(
+              model,
+              newPairOf(model, rows.loadRowId, rows.partnerRowId),
+              NEW_BLOCK_ID,
+              cell.weekday,
+              position,
+            );
       return pair === null
         ? { kind: 'no_slot' }
         : { kind: 'place', block, to: pair[0], changed: pair, double: true };

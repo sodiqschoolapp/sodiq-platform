@@ -12,6 +12,7 @@ import {
   newPairOf,
   pairingOf,
   pairingProblem,
+  placeRowsOf,
   type PatternBlock,
 } from './pattern-place.js';
 import { patternData, row, ROWS } from './testing/pattern-fixture.js';
@@ -169,6 +170,17 @@ describe('pairingProblem', () => {
     expect(pairingOf(model, ['tech-g', 'pe-b'])).toEqual(['pe-b', 'tech-g']);
     expect(pairingOf(model, PE)).toBeNull();
     expect(pairingOf(model, ['pe-b'])).toBeNull();
+  });
+});
+
+describe('placeRowsOf', () => {
+  it('names both rows of a pairing, and the first row of a block of the load', () => {
+    expect(placeRowsOf(model, ['tech-g', 'pe-b'])).toEqual({
+      loadRowId: 'pe-b',
+      partnerRowId: 'tech-g',
+    });
+    expect(placeRowsOf(model, PE)).toEqual({ loadRowId: 'pe-b' });
+    expect(placeRowsOf(model, ['math-7a'])).toEqual({ loadRowId: 'math-7a' });
   });
 });
 

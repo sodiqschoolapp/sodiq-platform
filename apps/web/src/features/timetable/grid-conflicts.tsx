@@ -50,6 +50,8 @@ export function numbersText(
         : t('timetable.conflict.room_capacity', { count, students });
     }
     case 'split_apart': {
+      // Task 5.4c-3b (review correction 2): a block that is neither one split nor a pairing.
+      if (n('rows') !== null) return t('timetable.conflict.splitRows');
       const count = n('students');
       return count === null ? null : t('timetable.conflict.split_apart', { count });
     }

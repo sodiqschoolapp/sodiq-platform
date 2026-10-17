@@ -3319,7 +3319,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       noWarnings: 'Без предупреждений',
       movesTo: '{{lesson}}: {{from}} → {{to}}',
       placedAt: '{{lesson}}: ставится на {{to}}',
-      mixedLater: 'Ставится вместе со второй половиной деления.',
+      pairedWith: 'В паре с',
+      wholeSplit: 'Всё деление',
       changeRoom: 'Кабинет',
       roomOf: 'Кабинет: {{subject}}, {{unit}}',
       roomTitle: 'Кабинет для урока: {{lesson}}',
@@ -3354,6 +3355,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       room_capacity_few: 'Учеников: {{students}}, кабинет вмещает {{count}}.',
       room_capacity_many: 'Учеников: {{students}}, кабинет вмещает {{count}}.',
       room_capacity_other: 'Учеников: {{students}}, кабинет вмещает {{count}}.',
+      splitRows:
+        'Эти уроки — не одно деление и не пара половин двух смешанных делений: поставьте половины деления вместе.',
       split_apart_one: 'У {{count}} ученика нет урока в это время.',
       split_apart_few: 'У {{count}} учеников нет урока в это время.',
       split_apart_many: 'У {{count}} учеников нет урока в это время.',

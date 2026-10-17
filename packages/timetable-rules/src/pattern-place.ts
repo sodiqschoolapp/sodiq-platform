@@ -156,6 +156,20 @@ export function pairingOf(
 }
 
 /**
+ * The rows a place or rearrange body names to build a block of these rows
+ * again (task 5.4c-3b): the two rows of a pairing as `loadRowId` and
+ * `partnerRowId`, else the first row, whose whole block it is.
+ */
+export function placeRowsOf(
+  model: PatternModel,
+  rowIds: readonly string[],
+): { readonly loadRowId: string; readonly partnerRowId?: string } {
+  const pairing = pairingOf(model, rowIds);
+  if (pairing !== null) return { loadRowId: pairing[0], partnerRowId: pairing[1] };
+  return { loadRowId: rowIds[0] ?? '' };
+}
+
+/**
  * The block of a load row not placed yet, as the place route builds it: one
  * lesson per row of its block, each in its row's room, else a class row's
  * main classroom (`roomOfNew`); it sits at no slot until it is placed. The

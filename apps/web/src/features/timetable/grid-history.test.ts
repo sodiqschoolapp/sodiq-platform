@@ -1,4 +1,9 @@
-import { patternModel, type PatternBlock, type PatternFactsData } from '@sodiq/timetable-rules';
+import {
+  patternModel,
+  type PatternBlock,
+  type PatternFactsData,
+  type PatternRowData,
+} from '@sodiq/timetable-rules';
 import { describe, expect, it } from 'vitest';
 import {
   dropped,
@@ -41,7 +46,7 @@ const block = (
   doublePairId: null,
 });
 
-const row = (id: string, block: string[] = [id]) => ({
+const row = (id: string, block: string[] = [id]): PatternRowData => ({
   id,
   classId: uid(50),
   groupId: null,
@@ -56,7 +61,7 @@ const row = (id: string, block: string[] = [id]) => ({
 });
 
 /** Only what `newBlockOf` reads: the rows and their units. */
-const modelOf = (rows: ReturnType<typeof row>[]) =>
+const modelOf = (rows: PatternRowData[]) =>
   patternModel({
     rows,
     units: [
@@ -89,6 +94,10 @@ const modelOf = (rows: ReturnType<typeof row>[]) =>
 
 const A = block(uid(10), ROW_A, 1, 1, ROOM);
 const B = block(uid(11), ROW_B, 1, 3);
+
+/** The write of a step with a model of the three rows (task 5.4c-3b: `writeOf` reads the rows). */
+const writeIn = (...args: [Step, 'undo' | 'redo', readonly PatternBlock[]]) =>
+  writeOf(...args, modelOf([row(ROW_A), row(ROW_B), row(ROW_C)]));
 
 const stepFrom = (step: Step | null): Step => {
   if (step === null) throw new Error('No step.');
@@ -130,12 +139,12 @@ describe('the step of a write', () => {
 describe('the write of a step', () => {
   it('takes a move back by a move, and does it again by a move', () => {
     const step = stepFrom(stepOf('move', [A], [{ ...A, weekday: 2 }]));
-    expect(writeOf(step, 'undo', [{ ...A, weekday: 2 }])).toEqual({
+    expect(writeIn(step, 'undo', [{ ...A, weekday: 2 }])).toEqual({
       route: 'move',
       blockId: A.id,
       body: { weekday: 1, slotPosition: 1 },
     });
-    expect(writeOf(step, 'redo', [A])).toEqual({
+    expect(writeIn(step, 'redo', [A])).toEqual({
       route: 'move',
       blockId: A.id,
       body: { weekday: 2, slotPosition: 1 },
@@ -148,7 +157,7 @@ describe('the write of a step', () => {
       { ...B, slotPosition: 1 },
     ];
     const step = stepFrom(stepOf('swap', [A, B], after));
-    expect(writeOf(step, 'undo', after)).toEqual({
+    expect(writeIn(step, 'undo', after)).toEqual({
       route: 'swap',
       body: { blockIds: [A.id, B.id] },
     });
@@ -159,7 +168,7 @@ describe('the write of a step', () => {
     const step = stepFrom(stepOf('room', [roomless], [A]));
     // The block was placed again since: its lesson has another id.
     const now = { ...A, lessons: [{ id: uid(99), loadRowId: ROW_A, roomId: ROOM }] };
-    expect(writeOf(step, 'undo', [now])).toEqual({
+    expect(writeIn(step, 'undo', [now])).toEqual({
       route: 'room',
       blockId: A.id,
       body: { lessonId: uid(99), roomId: null },
@@ -168,7 +177,7 @@ describe('the write of a step', () => {
 
   it('takes a removal back by a placement with each room, and a placement back by a removal', () => {
     const step = stepFrom(stepOf('remove', [A, B], [B]));
-    expect(writeOf(step, 'undo', [B])).toEqual({
+    expect(writeIn(step, 'undo', [B])).toEqual({
       route: 'place',
       body: {
         loadRowId: ROW_A,
@@ -177,16 +186,16 @@ describe('the write of a step', () => {
         rooms: [{ loadRowId: ROW_A, roomId: ROOM }],
       },
     });
-    expect(writeOf(step, 'redo', [A, B])).toEqual({ route: 'remove', blockId: A.id });
+    expect(writeIn(step, 'redo', [A, B])).toEqual({ route: 'remove', blockId: A.id });
     const placed = stepFrom(stepOf('place', [B], [A, B]));
-    expect(writeOf(placed, 'undo', [A, B])).toEqual({ route: 'remove', blockId: A.id });
+    expect(writeIn(placed, 'undo', [A, B])).toEqual({ route: 'remove', blockId: A.id });
   });
 
   it('takes an applied suggestion back as one rearrangement, removing the block it created (From 5.4b-2b line)', () => {
     const fresh = block(uid(12), ROW_C, 1, 3);
     const after = [{ ...B, slotPosition: 5 }, fresh];
     const step = stepFrom(stepOf('suggestion', [B], after));
-    expect(writeOf(step, 'undo', after)).toEqual({
+    expect(writeIn(step, 'undo', after)).toEqual({
       route: 'rearrange',
       body: {
         changes: [
@@ -200,7 +209,7 @@ describe('the write of a step', () => {
         remove: [fresh.id],
       },
     });
-    expect(writeOf(step, 'redo', [B])).toEqual({
+    expect(writeIn(step, 'redo', [B])).toEqual({
       route: 'rearrange',
       body: {
         changes: [
@@ -282,7 +291,7 @@ describe('the lists of steps', () => {
     const next = renamed(history, A.id, again.id);
     expect(next.undo[0]?.changes[0]?.after?.blockId).toBe(again.id);
     expect(next.redo[0]?.changes[0]?.before?.blockId).toBe(again.id);
-    expect(writeOf(next.redo[0] ?? removal, 'redo', [again])).toEqual({
+    expect(writeIn(next.redo[0] ?? removal, 'redo', [again])).toEqual({
       route: 'remove',
       blockId: again.id,
     });
@@ -303,11 +312,11 @@ describe('the steps of a double lesson', () => {
   it('takes a placed double back by removing one half, and places it again as a double', () => {
     const step = stepFrom(stepOf('place', [B], [B, first, second]));
     expect(step.changes).toHaveLength(2);
-    expect(writeOf(step, 'undo', [B, first, second])).toEqual({
+    expect(writeIn(step, 'undo', [B, first, second])).toEqual({
       route: 'remove',
       blockId: first.id,
     });
-    expect(writeOf(step, 'redo', [B])).toEqual({
+    expect(writeIn(step, 'redo', [B])).toEqual({
       route: 'place',
       body: {
         loadRowId: ROW_A,
@@ -326,7 +335,7 @@ describe('the steps of a double lesson', () => {
     ];
     const step = stepFrom(stepOf('move', [first, second], moved));
     expect(step.changes).toHaveLength(2);
-    expect(writeOf(step, 'undo', moved)).toEqual({
+    expect(writeIn(step, 'undo', moved)).toEqual({
       route: 'move',
       blockId: first.id,
       body: { weekday: 1, slotPosition: 1 },
@@ -335,7 +344,7 @@ describe('the steps of a double lesson', () => {
 
   it('takes a removed double back by placing it as a double, with its rooms', () => {
     const step = stepFrom(stepOf('remove', [first, second], []));
-    expect(writeOf(step, 'undo', [])).toMatchObject({
+    expect(writeIn(step, 'undo', [])).toMatchObject({
       route: 'place',
       body: { loadRowId: ROW_A, slotPosition: 1, double: true },
     });
@@ -344,7 +353,7 @@ describe('the steps of a double lesson', () => {
   it('gives back the room of both halves through the room route of one', () => {
     const before = [half(first.id, 1, null), half(second.id, 3, null)];
     const step = stepFrom(stepOf('room', before, [first, second]));
-    expect(writeOf(step, 'undo', [first, second])).toEqual({
+    expect(writeIn(step, 'undo', [first, second])).toEqual({
       route: 'room',
       blockId: first.id,
       body: { lessonId: first.lessons[0]?.id, roomId: null },
@@ -365,5 +374,109 @@ describe('the steps of a double lesson', () => {
     const step = stepFrom(stepOf('move', [{ ...single, slotPosition: 3 }], [single]));
     expect(stillApplies(modelOf([row(ROW_A)]), [single], step, 'undo')).toBe(true);
     expect(stillApplies(modelOf([row(ROW_A)]), [first], step, 'undo')).toBe(false);
+  });
+});
+
+// Task 5.4c-3b: a pairing of two mixed halves is placed again with its partner
+// (`placeRowsOf`); a pairing whose rows no longer pair is not.
+describe('the steps of a mixed pairing', () => {
+  const CLASS = uid(50);
+  const PE_BOYS = uid(41);
+  const PE_GIRLS = uid(42);
+  const TECH_GIRLS = uid(43);
+  const half = (id: string, groupId: string, subjectId: string, block: string[], mixed = true) => ({
+    ...row(id, block),
+    classId: null,
+    groupId,
+    subjectId,
+    mixedBlock: mixed,
+  });
+  const group = (id: string) => ({
+    id,
+    kind: 'group' as const,
+    grades: [7],
+    language: 'uz',
+    tutorOnStart: null,
+    classIds: [CLASS],
+    studentIds: [],
+    mainRoomId: null,
+  });
+  const pairingModel = (mixed = true) => {
+    const base = modelOf([
+      half(PE_BOYS, uid(51), uid(61), [PE_BOYS, PE_GIRLS], mixed),
+      half(PE_GIRLS, uid(52), uid(61), [PE_BOYS, PE_GIRLS], mixed),
+      half(TECH_GIRLS, uid(53), uid(62), [TECH_GIRLS], mixed),
+    ]);
+    return patternModel({
+      ...base.data,
+      units: [...base.data.units, group(uid(51)), group(uid(52)), group(uid(53))],
+    });
+  };
+  const pairing: PatternBlock = {
+    id: uid(44),
+    weekday: 1,
+    slotPosition: 1,
+    start: 0,
+    end: 45,
+    lessons: [
+      { id: uid(45), loadRowId: TECH_GIRLS, roomId: ROOM },
+      { id: uid(46), loadRowId: PE_BOYS, roomId: null },
+    ],
+    doublePairId: null,
+  };
+
+  it('places a removed pairing again with its partner, and still applies while the rows pair', () => {
+    const model = pairingModel();
+    const step = stepFrom(stepOf('remove', [pairing], []));
+    expect(stillApplies(model, [], step, 'undo')).toBe(true);
+    expect(writeOf(step, 'undo', [], model)).toEqual({
+      route: 'place',
+      body: {
+        loadRowId: PE_BOYS,
+        partnerRowId: TECH_GIRLS,
+        weekday: 1,
+        slotPosition: 1,
+        rooms: [
+          { loadRowId: TECH_GIRLS, roomId: ROOM },
+          { loadRowId: PE_BOYS, roomId: null },
+        ],
+      },
+    });
+  });
+
+  it('takes a placed pairing back by a removal, and drops its redo once the rows no longer pair (review correction 4)', () => {
+    const step = stepFrom(stepOf('place', [], [pairing]));
+    const cleared = pairingModel(false);
+    // The undo removes the block whatever its rows are now.
+    expect(stillApplies(cleared, [pairing], step, 'undo')).toBe(true);
+    expect(writeOf(step, 'undo', [pairing], cleared)).toEqual({
+      route: 'remove',
+      blockId: pairing.id,
+    });
+    // The redo would place the pairing again: the mark is cleared, so it is dropped.
+    expect(stillApplies(cleared, [], step, 'redo')).toBe(false);
+    expect(stillApplies(pairingModel(), [], step, 'redo')).toBe(true);
+  });
+
+  it('names a new pairing of an applied suggestion by both rows', () => {
+    const model = pairingModel();
+    const step = stepFrom(stepOf('suggestion', [], [pairing]));
+    expect(writeOf(step, 'redo', [], model)).toEqual({
+      route: 'rearrange',
+      body: {
+        changes: [
+          {
+            loadRowId: PE_BOYS,
+            partnerRowId: TECH_GIRLS,
+            weekday: 1,
+            slotPosition: 1,
+            rooms: [
+              { loadRowId: TECH_GIRLS, roomId: ROOM },
+              { loadRowId: PE_BOYS, roomId: null },
+            ],
+          },
+        ],
+      },
+    });
   });
 });

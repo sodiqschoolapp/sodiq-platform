@@ -1,5 +1,10 @@
 import { placeRecordSchema, weekdaySchema, type GridAnswer, type PlaceRecord } from '@sodiq/shared';
-import { roomChoices, type PatternBlock, type PatternModel } from '@sodiq/timetable-rules';
+import {
+  mixedPartners,
+  roomChoices,
+  type PatternBlock,
+  type PatternModel,
+} from '@sodiq/timetable-rules';
 import { useTranslation } from 'react-i18next';
 import { CHECKED, CheckboxField, SelectField } from '@/components/field';
 import { SECTION_TITLE } from '@/components/ui/control';
@@ -20,8 +25,9 @@ type Row = GridAnswer['rows'][number];
  * Editing in the grid: "added by clicking an empty lesson slot and choosing
  * subject, class or group, teacher and room"; task 5.4a, decisions 6 to 8):
  * the class's rows and the rows of groups that draw from it (review
- * correction 2), one per block, not a half of a mixed split, those with
- * lessons left first; each with the position of the slot in its own template.
+ * correction 2), one per block, those with lessons left first; each with the
+ * position of the slot in its own template. Task 5.4c-3b: each half of a mixed
+ * split is offered, placed with a partner or as its whole split.
  */
 export function placeableRows(
   grid: GridAnswer,
@@ -32,11 +38,10 @@ export function placeableRows(
   const seen = new Set<string>();
   const found: { row: Row; placed: number; position: number }[] = [];
   for (const row of grid.rows) {
-    if (row.mixedBlock) continue;
     const engineRow = model.rowOf(row.id);
     const unit = model.unitOf(engineRow.classId ?? engineRow.groupId ?? '');
     if (!unit.classIds.includes(classId)) continue;
-    const blockKey = engineRow.block.join(',');
+    const blockKey = row.mixedBlock ? row.id : engineRow.block.join(',');
     if (seen.has(blockKey)) continue;
     seen.add(blockKey);
     const position = positionFor(
@@ -60,7 +65,8 @@ const placedCount = (grid: GridAnswer, rowId: string): number =>
  * whole block; task 5.4b-2a: the room of the row's lesson from the rooms free
  * in that slot, best fit first (`roomChoices`, decision 4), or, left as it is,
  * the room its new lesson takes (`roomOfNew`); task 5.4c-3a: as a double lesson
- * when every row of its block allows doubles (decision 4).
+ * when every row of its block allows doubles (decision 4); task 5.4c-3b: a
+ * half of a mixed split "Paired with" a partner, or as its whole split.
  */
 export function GridPlaceForm({
   grid,
@@ -85,29 +91,38 @@ export function GridPlaceForm({
   const language = i18n.language;
   const offered = placeableRows(grid, model, classId, cell);
   const names = roomsOf(grid);
+  /** The partner typed when it is one of the row's, else none (the whole split). */
+  const partnerOf = (rowId: string, typed: string): string | undefined =>
+    rowId !== '' && mixedPartners(model, rowId).includes(typed) ? typed : undefined;
   /** The rooms free for the row's new lesson at the cell, best fit first. */
-  const roomsFor = (rowId: string) => {
+  const roomsFor = (rowId: string, partnerRowId: string | undefined) => {
     if (rowId === '') return [];
-    const placed = blockAt(model, newBlockOf(model, rowId), cell);
+    const placed = blockAt(model, newBlockOf(model, rowId, partnerRowId), cell);
     return placed === null
       ? []
       : roomChoices(model, all, placed, `new:${rowId}`, (id) => names.get(id)?.name ?? id);
   };
   /** Every row of the block allows double lessons. */
-  const doublesOf = (rowId: string) =>
-    rowId !== '' && model.rowOf(rowId).block.every((id) => model.rowOf(id).doubleLessons);
+  const doublesOf = (rowId: string, partnerRowId: string | undefined) =>
+    rowId !== '' &&
+    (partnerRowId === undefined ? model.rowOf(rowId).block : [rowId, partnerRowId]).every(
+      (id) => model.rowOf(id).doubleLessons,
+    );
   const form = useRecordForm({
     schema: placeRecordSchema,
-    initial: { loadRowId: '', roomId: '', double: '' },
+    initial: { loadRowId: '', partnerRowId: '', roomId: '', double: '' },
     read: (typed) => {
       const chosen = offered.find((one) => one.row.id === typed.loadRowId);
-      const room = roomsFor(chosen?.row.id ?? '').find((one) => one.roomId === typed.roomId);
+      const rowId = chosen?.row.id ?? '';
+      const partnerRowId = partnerOf(rowId, typed.partnerRowId);
+      const room = roomsFor(rowId, partnerRowId).find((one) => one.roomId === typed.roomId);
       return {
-        loadRowId: chosen?.row.id ?? '',
+        loadRowId: rowId,
+        ...(partnerRowId === undefined ? {} : { partnerRowId }),
         weekday: weekdaySchema.parse(cell.weekday),
         slotPosition: chosen?.position ?? wholeNumber(''),
         ...(room === undefined ? {} : { roomId: room.roomId }),
-        ...(typed.double === CHECKED && doublesOf(chosen?.row.id ?? '') ? { double: true } : {}),
+        ...(typed.double === CHECKED && doublesOf(rowId, partnerRowId) ? { double: true } : {}),
       };
     },
     save: async (record: PlaceRecord) => {
@@ -119,8 +134,12 @@ export function GridPlaceForm({
     time: rangeText(t, cell.start, cell.end),
   });
   const bound = form.bind('loadRowId');
+  const boundPartner = form.bind('partnerRowId');
   const boundRoom = form.bind('roomId');
-  const rooms = roomsFor(offered.some((one) => one.row.id === bound.value) ? bound.value : '');
+  const rowId = offered.some((one) => one.row.id === bound.value) ? bound.value : '';
+  const partners = rowId === '' ? [] : mixedPartners(model, rowId);
+  const partnerRowId = partnerOf(rowId, boundPartner.value);
+  const rooms = roomsFor(rowId, partnerRowId);
   return (
     <section aria-labelledby="grid-place" className="grid gap-3" data-place-form="">
       <h3 id="grid-place" className={SECTION_TITLE}>
@@ -149,6 +168,32 @@ export function GridPlaceForm({
           {...bound}
           value={offered.some((one) => one.row.id === bound.value) ? bound.value : ''}
         />
+        {partners.length > 0 && (
+          <SelectField
+            label={t('timetable.grid.pairedWith')}
+            options={[
+              { value: '', label: t('timetable.grid.wholeSplit') },
+              ...partners.flatMap((id) => {
+                const one = grid.rows.find((each) => each.id === id);
+                return one === undefined
+                  ? []
+                  : [
+                      {
+                        value: id,
+                        label: t('timetable.grid.rowOption', {
+                          subject: nameOf(one.subject.names, language),
+                          unit: unitText(one),
+                          placed: placedCount(grid, id),
+                          count: one.lessonsPerWeek,
+                        }),
+                      },
+                    ];
+              }),
+            ]}
+            {...boundPartner}
+            value={partnerRowId ?? ''}
+          />
+        )}
         <SelectField
           label={t('timetable.grid.room')}
           options={[
@@ -161,7 +206,7 @@ export function GridPlaceForm({
           {...boundRoom}
           value={rooms.some((one) => one.roomId === boundRoom.value) ? boundRoom.value : ''}
         />
-        {offered.some((one) => one.row.id === bound.value) && doublesOf(bound.value) && (
+        {doublesOf(rowId, partnerRowId) && (
           <CheckboxField label={t('timetable.grid.placeDouble')} {...form.bind('double')} />
         )}
       </RecordForm>

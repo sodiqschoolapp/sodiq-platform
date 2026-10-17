@@ -156,6 +156,7 @@ export {
   pairingOf,
   pairingProblem,
   patternPlacements,
+  placeRowsOf,
   slotAt,
   type BlockLesson,
   type PairingProblem,
