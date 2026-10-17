@@ -379,7 +379,8 @@ export const en = {
       'A half of a mixed split is not placed here yet: its halves meet in different slots.',
     pattern_clash:
       'Another lesson already holds that teacher, room or class at that time. Reload the grid and choose another slot.',
-    pattern_locked: 'A locked lesson stays where it is. Unlock it first, or choose another suggestion.',
+    pattern_locked:
+      'A locked lesson stays where it is. Unlock it first, or choose another suggestion.',
     draft_edit_locked:
       'Someone else is editing this draft. You can take over once they have been inactive for 5 minutes.',
     lock_taken: 'This lock is already set.',
@@ -3053,7 +3054,28 @@ export const en = {
       part_time_few_days: "A part-time teacher's lessons fall on as few days as possible",
       teacher_preferred_times: "A teacher's preferred days and slots are respected",
     },
+    editLock: {
+      held: '{{name}} is editing this draft (last active {{time}}). You can take over after 5 minutes without activity.',
+      someone: 'Another person',
+      takeOver: 'Take over',
+    },
     grid: {
+      locks: 'Locks',
+      noLocks:
+        'A locked lesson stays where it is when a place is suggested or the timetable is generated again.',
+      lockedTile: 'Locked',
+      lockClass: 'Lock this class',
+      lockDay: 'Lock the day',
+      lockTeacher: 'Lock the teacher',
+      lockDayLabel: 'Day',
+      lockTeacherLabel: 'Teacher',
+      lock: 'Lock',
+      unlock: 'Unlock',
+      lockedLesson: 'Lesson: {{lesson}}',
+      lockedClass: 'Class: {{name}}',
+      lockedTeacher: 'Teacher: {{name}}',
+      lockedDay: 'Day: {{day}}',
+      lockedSuggest: 'This lesson is locked, so no place is suggested. Unlock it first.',
       view: 'View',
       views: {
         class: 'By class',

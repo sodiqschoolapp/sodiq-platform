@@ -40,6 +40,7 @@ const VERSION: TimetableVersion = {
   fromVersion: null,
   rows: 1,
   leftRows: 0,
+  editLock: null,
 };
 
 // All names are invented.

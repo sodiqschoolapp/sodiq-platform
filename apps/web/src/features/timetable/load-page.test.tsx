@@ -99,6 +99,7 @@ const version = (n: number, fields: Partial<TimetableVersion> = {}): TimetableVe
   fromVersion: null,
   rows: 0,
   leftRows: 0,
+  editLock: null,
   ...fields,
 });
 

@@ -16,6 +16,7 @@ import {
   type PreferenceWeights,
   type RearrangeRecord,
   type SwapRecord,
+  type TimetableLockRecord,
   type TimetableVersionCreate,
   type TimetableVersionEdit,
 } from '@sodiq/shared';
@@ -272,5 +273,33 @@ export const changeLessonRoom = (versionId: string, blockId: string, record: Les
     api.POST('/api/timetable/versions/{id}/pattern/{blockId}/room', {
       params: { header: branchHeader(), path: { id: versionId, blockId } },
       body: record,
+    }),
+  ).then((answer) => gridSchema.parse(answer));
+
+/**
+ * The draft's edit lock taken or kept (task 5.4c-1): "Take over", and the
+ * holder's "still here" after a key or a pointer in the builder.
+ */
+export const takeEditLock = (versionId: string) =>
+  answerOf(
+    api.POST('/api/timetable/versions/{id}/edit-lock', {
+      params: { header: branchHeader(), path: { id: versionId } },
+    }),
+  ).then((answer) => timetableVersionSchema.parse(answer));
+
+/** Step 7: a lesson, class, teacher or weekday locked (task 5.4c-1). */
+export const createLock = (versionId: string, record: TimetableLockRecord) =>
+  answerOf(
+    api.POST('/api/timetable/versions/{id}/locks', {
+      params: { header: branchHeader(), path: { id: versionId } },
+      body: record,
+    }),
+  ).then((answer) => gridSchema.parse(answer));
+
+/** Step 7: a lock removed (task 5.4c-1). */
+export const deleteLock = (versionId: string, lockId: string) =>
+  answerOf(
+    api.DELETE('/api/timetable/versions/{id}/locks/{lockId}', {
+      params: { header: branchHeader(), path: { id: versionId, lockId } },
     }),
   ).then((answer) => gridSchema.parse(answer));

@@ -33,6 +33,7 @@ import { SM, useMinWidth } from '@/lib/use-min-width';
 import { LoadRowForm } from './load-row-form';
 import { LoadRowPanel } from './load-row-panel';
 import { LoadTotalsSection } from './load-totals';
+import { EditLockBanner, useEditLock } from './edit-lock';
 import {
   createLoadRow,
   createVersion,
@@ -81,9 +82,15 @@ export function LoadPage(): React.JSX.Element {
     list[0];
   const load = useQuery(loadQuery(branchId, chosen?.id ?? null));
   const writable = chosen?.status === 'draft' && chosen.yearStatus !== 'closed';
-  const canEdit = writable && can('edit');
-  const canCreate = writable && can('create');
-  const canDelete = writable && can('archive');
+  // Task 5.4c-1: every write of the draft takes its edit lock; while another person edits, the load is read.
+  const editLock = useEditLock(
+    writable ? chosen : undefined,
+    writable && (can('edit') || can('create') || can('archive')),
+  );
+  const free = writable && !editLock.othersEditing;
+  const canEdit = free && can('edit');
+  const canCreate = free && can('create');
+  const canDelete = free && can('archive');
   // The forms' lists: read only by those who change the load.
   const editor = can('create') || can('edit');
   const years = useQuery({ ...yearsQuery(branchId), enabled: branchId !== null && editor });
@@ -380,6 +387,11 @@ export function LoadPage(): React.JSX.Element {
   return (
     <>
       {header}
+      {editLock.othersEditing && (
+        <div className="mb-6">
+          <EditLockBanner version={chosen} take={editLock.take} />
+        </div>
+      )}
       {draftForm}
       <section className={`${PANEL} grid gap-4 p-6`}>
         <div className="flex flex-wrap items-end gap-4">

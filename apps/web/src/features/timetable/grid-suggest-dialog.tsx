@@ -78,8 +78,12 @@ export function GridSuggestDialog({
   const language = i18n.language;
   const open = title !== null && block !== null;
   const found = useMemo(
-    () => (open && block !== null ? suggestPlaces(model, all, block, { pins: grid.pins }) : null),
-    [open, model, all, block, grid.pins],
+    () =>
+      open && block !== null
+        ? // Task 5.4c-1: a locked lesson stays where it is (decision 8).
+          suggestPlaces(model, all, block, { pins: grid.pins, locks: grid.locks })
+        : null,
+    [open, model, all, block, grid.pins, grid.locks],
   );
   const rooms = roomsOf(grid);
   const at = (one: PatternBlock) =>
@@ -172,8 +176,15 @@ export function GridSuggestDialog({
                 </ul>
               </section>
             )}
-            {found.free.length === 0 && found.rearrangements.length === 0 && (
-              <p className="text-sm">{t('timetable.grid.nothingFound')}</p>
+            {found.locked ? (
+              <p className="text-sm" data-suggest-locked="">
+                {t('timetable.grid.lockedSuggest')}
+              </p>
+            ) : (
+              found.free.length === 0 &&
+              found.rearrangements.length === 0 && (
+                <p className="text-sm">{t('timetable.grid.nothingFound')}</p>
+              )
             )}
             {found.cutShort && <p className="text-xs">{t('timetable.grid.searchCut')}</p>}
           </div>

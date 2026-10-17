@@ -3080,7 +3080,28 @@ export const uz: Texts<'one' | 'other'> = {
         'Toʻliq boʻlmagan stavkadagi oʻqituvchining darslari imkon qadar kam kunlarga tushadi',
       teacher_preferred_times: 'Oʻqituvchining afzal koʻrgan kunlari va slotlari hisobga olinadi',
     },
+    editLock: {
+      held: '{{name}} bu qoralamani tahrirlayapti (oxirgi faollik {{time}}). 5 daqiqa faollik boʻlmagach, tahrirni oʻzingizga olishingiz mumkin.',
+      someone: 'Boshqa odam',
+      takeOver: 'Tahrirni olish',
+    },
     grid: {
+      locks: 'Qulflar',
+      noLocks: 'Qulflangan dars joy taklif qilinganda yoki jadval qayta tuzilganda joyida qoladi.',
+      lockedTile: 'Qulflangan',
+      lockClass: 'Bu sinfni qulflash',
+      lockDay: 'Kunni qulflash',
+      lockTeacher: 'Oʻqituvchini qulflash',
+      lockDayLabel: 'Kun',
+      lockTeacherLabel: 'Oʻqituvchi',
+      lock: 'Qulflash',
+      unlock: 'Qulfni ochish',
+      lockedLesson: 'Dars: {{lesson}}',
+      lockedClass: 'Sinf: {{name}}',
+      lockedTeacher: 'Oʻqituvchi: {{name}}',
+      lockedDay: 'Kun: {{day}}',
+      lockedSuggest:
+        'Bu dars qulflangan, shuning uchun joy taklif qilinmaydi. Avval qulfni oching.',
       view: 'Koʻrinish',
       views: {
         class: 'Sinflar boʻyicha',

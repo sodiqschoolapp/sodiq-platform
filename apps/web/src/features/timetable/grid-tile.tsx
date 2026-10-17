@@ -4,7 +4,7 @@ import type { PatternBlock } from '@sodiq/timetable-rules';
 import { Link } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { WarningIcon } from '@/components/icons';
+import { LockIcon, WarningIcon } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { FOCUS_RING } from '@/components/ui/control';
 import { nameOf } from '@/features/setup/setup-api';
@@ -55,6 +55,9 @@ export function GridTile({
   onRemove,
   onRoom,
   onSuggest,
+  locked = false,
+  ownLock = false,
+  onLock,
 }: {
   block: PatternBlock;
   rowsById: ReadonlyMap<string, Row>;
@@ -70,6 +73,12 @@ export function GridTile({
   onRoom?: (lessonId: string) => void;
   /** "Suggest a place" (task 5.4b-2b), on the class board. */
   onSuggest?: () => void;
+  /** A lock holds the block (task 5.4c-1): of the lesson, its class, a teacher or its day. */
+  locked?: boolean;
+  /** The lesson itself is locked: its button unlocks it. */
+  ownLock?: boolean;
+  /** Lock or unlock the lesson (task 5.4c-1), on the class board. */
+  onLock?: () => void;
 }): React.JSX.Element {
   const { t, i18n } = useTranslation();
   const language = i18n.language;
@@ -167,6 +176,12 @@ export function GridTile({
           </div>
         );
       })}
+      {locked && (
+        <p className="inline-flex items-center gap-1 text-muted-foreground" data-tile-locked="">
+          <LockIcon className="size-4 shrink-0" />
+          <span>{t('timetable.grid.lockedTile')}</span>
+        </p>
+      )}
       {rules.length > 0 && (
         <p
           className={cn(
@@ -194,6 +209,11 @@ export function GridTile({
           {onSuggest !== undefined && (
             <Button type="button" variant="ghost" size="sm" onClick={onSuggest}>
               {t('timetable.grid.suggest')}
+            </Button>
+          )}
+          {onLock !== undefined && (
+            <Button type="button" variant="ghost" size="sm" onClick={onLock}>
+              {ownLock ? t('timetable.grid.unlock') : t('timetable.grid.lock')}
             </Button>
           )}
           <Button type="button" variant="destructive" size="sm" onClick={onRemove}>
