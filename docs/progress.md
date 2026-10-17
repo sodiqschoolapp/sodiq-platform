@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 17 October 2026: task 5.5a-2a Publish: the dated check of every date
+
+- Publish checks every date of the version, not only its pattern: `datedPattern` (rule engine) gives the pattern's lessons on each date (calendar, special days, worked Saturdays, exam weeks, vacations, lessons matched by their order in the day), and `dated-check.ts` checks each date with `checkTimetable` in dated mode against the other branches' stored claims (`teacher_claims_elsewhere`). A blocked result only a date shows refuses (`date_blocked`, by date); a later availability entry gives warnings by date (`CheckOptions.availabilityFrom`); lessons the day cannot hold (`cancelledLessons`) and lessons that will need a teacher (`needsTeacher`: no Tutor or a Tutor's clash, a worked weekday off, a teacher out after the start) are listed, never refusing. Step 8 shows them. No migration.
+- 5.5a-2 is split: 5.5a-2b (impact preview, transition week) and 5.5a-2c (`class_group_subjects`, `department_move_loads`) follow.
+- Left out: the preview and the transition week (5.5a-2b); the two readers (5.5a-2c); own exams and stored one-day changes (5.5b); "needs a room" from a room closed after the start (rooms have no dated status yet; room closures later); the handbook (paused).
+
+The next sessions must know:
+
+- Until 5.5b writes dated lessons, the dated check meets another branch only through stored claims (exams today); the tests write the other branch's lessons as 5.5b will.
+- `datedPublishResults` keys a repeat of a pattern refusal by rule, own entries, other branches and detail without the date; a dated answer names own pattern entries and `detail.branchId` only.
+- The next task is 5.5a-2b.
+
 ## 17 October 2026: task 5.5a-1 Publish: the route, its checks and one at a time
 
 - Step 8 of the builder publishes a draft: the start date (tomorrow at the earliest, the later of next Monday and the year's first day by default, the coming quarters as shortcuts), every reason it cannot be published and the warnings (`GET …/publish-check`), Publish after a confirmation (`POST …/publish`, with a request key). Refused: a start before tomorrow or outside the year, a published version starting on or after it, a draft out of date, steps 1 to 4 not ready, a load row problem, a blocked result of the pattern, a difference from the load (unless "deliberately short" with a reason, a new field of the load row), a year without four dated quarters, a graded subject without its distributions for the quarters touched. One refusal answer lists them all (`publish_blocked`).
