@@ -343,7 +343,13 @@ test('an Academic Vice Principal places a lesson from "To place", changes its ro
     .locator('[data-to-place]')
     .filter({ hasText: 'Geometry, 7 Oxford: 1 of 3 lessons placed' });
   await expect(entry).toBeVisible();
-  await entry.dragTo(cell(2, 1));
+  // A pointer drag in steps: a single jump starts no native drag from the panel.
+  await entry.hover({ position: { x: 12, y: 8 } });
+  await page.mouse.down();
+  await page.mouse.move(600, 300, { steps: 5 });
+  await cell(2, 1).hover();
+  await cell(2, 1).hover({ position: { x: 20, y: 20 } });
+  await page.mouse.up();
   await expect(cell(2, 1).locator('[data-block]')).toContainText('Geometry');
   await expect(
     page
