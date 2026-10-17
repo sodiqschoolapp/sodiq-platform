@@ -123,6 +123,14 @@ describe('the grid of a draft', () => {
         .where('version_id', 'in', versions)
         .orderBy('id')
         .execute(),
+      // Written by the trigger of the entries and the cascading key (0058).
+      t.database.migrator
+        .selectFrom('pattern_block_classes')
+        .selectAll()
+        .where('version_id', 'in', versions)
+        .orderBy('block_id')
+        .orderBy('class_id')
+        .execute(),
       t.auditCount(),
     ]);
 
@@ -447,20 +455,16 @@ describe('the grid of a draft', () => {
         weekday: 1,
         slotPosition: 1,
       });
-      const [entry] = await t.entries('pattern_block.swap', a.id);
-      expect(entry).toMatchObject({
-        old_value: {
-          blocks: [
-            { id: a.id, weekday: 1, slotPosition: 1 },
-            { id: b.id, weekday: 1, slotPosition: 3 },
-          ],
-        },
-        new_value: {
-          blocks: [
-            { id: a.id, weekday: 1, slotPosition: 3 },
-            { id: b.id, weekday: 1, slotPosition: 1 },
-          ],
-        },
+      // One entry per block, found from either (permission review, should-fix 1).
+      const [first] = await t.entries('pattern_block.swap', a.id);
+      expect(first).toMatchObject({
+        old_value: { versionId: s.version, swappedWith: b.id, weekday: 1, slotPosition: 1 },
+        new_value: { versionId: s.version, swappedWith: b.id, weekday: 1, slotPosition: 3 },
+      });
+      const [second] = await t.entries('pattern_block.swap', b.id);
+      expect(second).toMatchObject({
+        old_value: { versionId: s.version, swappedWith: a.id, weekday: 1, slotPosition: 3 },
+        new_value: { versionId: s.version, swappedWith: a.id, weekday: 1, slotPosition: 1 },
       });
     });
 
@@ -532,8 +536,11 @@ describe('the grid of a draft', () => {
       const b = await placed(s.branch, s.version, s.rowB, 2, 1);
       for (const cookie of [t.principal, t.teacher]) {
         // The kit's accounts hold their roles in the north branch.
-        const shown = await grid(t.north, UNKNOWN, cookie);
-        expect(shown.status).toBe(cookie === t.principal ? 404 : 403);
+        for (const version of [UNKNOWN, s.version]) {
+          // An unknown version, and one of another branch than the request's.
+          const shown = await grid(t.north, version, cookie);
+          expect(shown.status).toBe(cookie === t.principal ? 404 : 403);
+        }
       }
       const before = await patternRows([s.version]);
       for (const cookie of [t.principal, t.teacher]) {
@@ -544,6 +551,66 @@ describe('the grid of a draft', () => {
         refusedWith(await drop(branch, s.version, a.id, cookie), 403, 'permission_denied');
       }
       expect(await patternRows([s.version])).toEqual(before);
+    });
+
+    it('lets the Academic Vice Principal of the branch move, swap and remove, the audit naming the assignment', async () => {
+      const s = await scene();
+      const assignment = await viceIn(s.branch);
+      const a = await placed(s.branch, s.version, s.rowA, 1, 1);
+      const b = await placed(s.branch, s.version, s.rowB, 2, 1);
+      gridOf(await move(s.branch, s.version, a.id, 3, 1, t.vicePrincipal));
+      gridOf(await swap(s.branch, s.version, a.id, b.id, t.vicePrincipal));
+      gridOf(await drop(s.branch, s.version, a.id, t.vicePrincipal));
+      for (const action of ['pattern_block.move', 'pattern_block.swap', 'pattern_block.delete']) {
+        const [entry] = await t.entries(action, a.id);
+        expect(entry, action).toMatchObject({ assignment_id: assignment });
+      }
+    });
+
+    it('refuses a swap of a block with itself, changing nothing', async () => {
+      const s = await scene();
+      const a = await placed(s.branch, s.version, s.rowA, 1, 1);
+      const before = await patternRows([s.version]);
+      refusedWith(await swap(s.branch, s.version, a.id, a.id), 400, 'validation_failed');
+      expect(await patternRows([s.version])).toEqual(before);
+    });
+
+    it('answers the facts of its own branch only (permission review, should-fix 3)', async () => {
+      const s = await scene();
+      const other = await scene();
+      // Teacher A also works in the other branch, with Saturday hours and a row there
+      // (hours in two branches never overlap).
+      await t.database.migrator
+        .insertInto('staff_branches')
+        .values({ staff_id: s.teacherA, branch_id: other.branch, is_main: false })
+        .execute();
+      await hours(other.branch, s.teacherA, [6]);
+      await load.profile(s.teacherA, [{ subject: other.subject, grades: [7] }]);
+      await t.database.migrator
+        .updateTable('teaching_load_rows')
+        .set({ teacher_id: s.teacherA })
+        .where('id', '=', other.rowB)
+        .execute();
+      await placed(s.branch, s.version, s.rowA, 1, 1);
+      const answer = gridOf(await grid(s.branch, s.version));
+      const branches = answer.facts.teachers.flatMap((one) =>
+        one.availability.map((entry) => entry.branchId),
+      );
+      expect(new Set(branches)).toEqual(new Set([s.branch]));
+      expect(answer.facts.teachers.map((one) => one.id).sort()).toEqual(
+        [s.teacherA, s.teacherB].sort(),
+      );
+      const ownRooms = [s.roomA, s.roomB];
+      expect(answer.facts.rooms.every((room) => ownRooms.includes(room.id))).toBe(true);
+      expect(answer.rooms.every((room) => ownRooms.includes(room.id))).toBe(true);
+      expect(answer.classes.map((one) => one.id).sort()).toEqual([s.classA, s.classB].sort());
+      expect(answer.facts.classStudents.map((one) => one.classId).sort()).toEqual(
+        [s.classA, s.classB].sort(),
+      );
+      expect(answer.blocks.flatMap((one) => one.lessons.map((lesson) => lesson.loadRowId))).toEqual(
+        [s.rowA],
+      );
+      expect(answer.facts.otherDrafts).toEqual([]);
     });
 
     it('lets the Principal of the branch read the board of a draft', async () => {

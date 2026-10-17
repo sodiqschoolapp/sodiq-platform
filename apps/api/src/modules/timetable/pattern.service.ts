@@ -281,22 +281,22 @@ export class TimetablePattern {
         await deferPatternClashes(transaction);
         await this.writeSlot(transaction, movedA);
         await this.writeSlot(transaction, movedB);
-        await this.audit.record(transaction, {
-          branchId,
-          actorId: access.accountId,
-          assignmentId: access.assignmentId,
-          action: 'pattern_block.swap',
-          record: { type: 'pattern_block', id: a.id },
-          oldValue: {
-            versionId: id,
-            blocks: [a, b].map((one) => ({ id: one.id, ...this.slotOf(one) })),
-          },
-          newValue: {
-            versionId: id,
-            blocks: [movedA, movedB].map((one) => ({ id: one.id, ...this.slotOf(one) })),
-          },
-          requestId,
-        });
+        // One entry per block, so the log finds the swap from either (permission review, should-fix 1).
+        for (const [before, after, other] of [
+          [a, movedA, b],
+          [b, movedB, a],
+        ] as const) {
+          await this.audit.record(transaction, {
+            branchId,
+            actorId: access.accountId,
+            assignmentId: access.assignmentId,
+            action: 'pattern_block.swap',
+            record: { type: 'pattern_block', id: before.id },
+            oldValue: { versionId: id, swappedWith: other.id, ...this.slotOf(before) },
+            newValue: { versionId: id, swappedWith: other.id, ...this.slotOf(after) },
+            requestId,
+          });
+        }
         return this.gridAfter(transaction, version);
       }),
     );
