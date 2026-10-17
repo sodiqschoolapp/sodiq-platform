@@ -292,6 +292,9 @@ describe('rulesReadiness (step 5)', () => {
       ready: false,
       confirmed: false,
       changed: [],
+      pinsChanged: false,
+      conflicts: [],
+      problems: [],
     });
   });
 
@@ -300,6 +303,9 @@ describe('rulesReadiness (step 5)', () => {
       ready: true,
       confirmed: true,
       changed: [],
+      pinsChanged: false,
+      conflicts: [],
+      problems: [],
     });
   });
 
@@ -308,6 +314,9 @@ describe('rulesReadiness (step 5)', () => {
       ready: false,
       confirmed: false,
       changed: ['main_room'],
+      pinsChanged: false,
+      conflicts: [],
+      problems: [],
     });
   });
 
@@ -319,6 +328,9 @@ describe('rulesReadiness (step 5)', () => {
       ready: false,
       confirmed: false,
       changed: ['main_room'],
+      pinsChanged: false,
+      conflicts: [],
+      problems: [],
     });
   });
 

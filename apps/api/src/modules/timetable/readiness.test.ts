@@ -63,11 +63,17 @@ describe('the readiness of a draft, steps 1 to 5', () => {
     readinessOf(await get(`/api/timetable/versions/${version}/readiness`, branch));
   const confirm = async (branch: string, version: string) =>
     readinessOf(await post(`/api/timetable/versions/${version}/templates/confirm`, branch));
-  /** Step 5 confirmed as it stands (task 5.3b-1), so that `ready` turns on steps 1 to 4. */
+  /**
+   * Step 5 confirmed as it stands (task 5.3b-1), so that `ready` turns on
+   * steps 1 to 4; task 5.3b-2: with the pins shown (none here).
+   */
   const confirmRules = async (branch: string, version: string) => {
-    const { weights } = (await readiness(branch, version)).rules;
+    const { weights, pins } = (await readiness(branch, version)).rules;
     return readinessOf(
-      await post(`/api/timetable/versions/${version}/rules/confirm`, branch, { weights }),
+      await post(`/api/timetable/versions/${version}/rules/confirm`, branch, {
+        weights,
+        pins: pins.map((pin) => pin.id),
+      }),
     );
   };
 
@@ -365,6 +371,7 @@ describe('the readiness of a draft, steps 1 to 5', () => {
       problemRows: [],
       leftRows: 1,
       classesOver: [],
+      tutorPinClashes: [],
     });
   });
 
@@ -549,8 +556,16 @@ describe('the readiness of a draft, steps 1 to 5', () => {
     };
     const saveWeights = (branch: string, version: string, weights: object, cookie = t.admin) =>
       t.put(`/api/timetable/versions/${version}/preferences`, branch, { weights }, cookie);
+    // Task 5.3b-2 (review correction 2): the confirm carries the pins shown, none here.
     const confirmWeights = (branch: string, version: string, weights: object, cookie = t.admin) =>
-      post(`/api/timetable/versions/${version}/rules/confirm`, branch, { weights }, cookie);
+      post(
+        `/api/timetable/versions/${version}/rules/confirm`,
+        branch,
+        { weights, pins: [] },
+        cookie,
+      );
+    /** What step 5 answers with no pin (task 5.3b-2). */
+    const NO_PINS = { pins: [], pinsChanged: false, conflicts: [], problems: [] };
     const stored = (version: string) =>
       t.database.migrator
         .selectFrom('timetable_versions')
@@ -565,6 +580,7 @@ describe('the readiness of a draft, steps 1 to 5', () => {
         confirmed: false,
         weights: DEFAULTS,
         changed: [],
+        ...NO_PINS,
       });
     });
 
@@ -603,8 +619,14 @@ describe('the readiness of a draft, steps 1 to 5', () => {
     it('confirms the weights shown in one audited write, and a second confirm writes nothing', async () => {
       const s = await scene();
       const done = readinessOf(await confirmWeights(s.branch, s.version, DEFAULTS));
-      expect(done.rules).toEqual({ ready: true, confirmed: true, weights: DEFAULTS, changed: [] });
-      expect((await stored(s.version)).rules_confirmed).toEqual(DEFAULTS);
+      expect(done.rules).toEqual({
+        ready: true,
+        confirmed: true,
+        weights: DEFAULTS,
+        changed: [],
+        ...NO_PINS,
+      });
+      expect((await stored(s.version)).rules_confirmed).toEqual({ ...DEFAULTS, pins: [] });
       readinessOf(await confirmWeights(s.branch, s.version, DEFAULTS));
       const entries = await t.entries('timetable_version.rules_confirm', s.version);
       expect(entries).toHaveLength(1);
@@ -637,7 +659,7 @@ describe('the readiness of a draft, steps 1 to 5', () => {
       );
       expect(again.rules.ready).toBe(true);
       const entries = await t.entries('timetable_version.rules_confirm', s.version);
-      expect(entries.map((entry) => entry.old_value)).toEqual([null, DEFAULTS]);
+      expect(entries.map((entry) => entry.old_value)).toEqual([null, { ...DEFAULTS, pins: [] }]);
     });
 
     it('refuses both writes on a version that is not a draft and in a closed year, changing nothing', async () => {
@@ -679,6 +701,7 @@ describe('the readiness of a draft, steps 1 to 5', () => {
         confirmed: false,
         weights,
         changed: [],
+        ...NO_PINS,
       });
       const created = await t.entries('timetable_version.create', copy);
       expect(z.object({ weights: z.unknown() }).parse(created[0]?.new_value).weights).toEqual(

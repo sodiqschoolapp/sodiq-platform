@@ -371,6 +371,13 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu versiya boshqa oʻquv yiliga tegishli. Shu yilning versiyasidan nusxa oling yoki boʻsh boshlang.',
     preferences_changed:
       'Siz ochganingizdan keyin vaznlar oʻzgardi. Ularni qayta oʻqing va tasdiqlang.',
+    pins_changed:
+      'Siz ochganingizdan keyin qotirilgan darslar oʻzgardi. Ularni qayta oʻqing va tasdiqlang.',
+    pin_taken: 'Bu dars shu kun va shu slotga allaqachon qotirilgan.',
+    pin_over_load:
+      'Bu darsda haftalik darslar sonicha qotirilgan slot bor. Avval qotirishni olib tashlang yoki haftalik darslar sonini oshiring.',
+    pin_mixed_block:
+      'Aralash boʻlinmaning yarmini qotirib boʻlmaydi: uning yarmlari turli slotlarda oʻtadi.',
     draft_not_ready:
       'Qoralamaning bir qadami tayyor emas. Avval tayyor emas deb belgilangan qadamlarni tugating.',
     load_unit_year:
@@ -2364,6 +2371,7 @@ export const uz: Texts<'one' | 'other'> = {
       class: 'Sinf',
       group: 'Guruh',
       timetable_version: 'Dars jadvali versiyasi',
+      timetable_pin: 'Qotirilgan dars',
       teaching_load_row: 'Oʻquv yuklamasi qatori',
     },
     actions: {
@@ -2597,6 +2605,10 @@ export const uz: Texts<'one' | 'other'> = {
         templates_confirm: 'Qoralamaning kun shablonlari tasdiqlandi',
         preferences: 'Qoralamaning afzalliklar vaznlari oʻzgartirildi',
         rules_confirm: 'Qoralamaning qoidalari tasdiqlandi',
+      },
+      timetable_pin: {
+        create: 'Qoralama darsi qotirildi',
+        delete: 'Qoralama darsining qotirilishi olib tashlandi',
       },
       teaching_load: {
         create: 'Oʻquv yuklamasi qatori qoʻshildi',
@@ -3059,7 +3071,32 @@ export const uz: Texts<'one' | 'other'> = {
         changedSince: 'Tasdiqlangandan keyin vaznlar oʻzgardi: {{names}}',
         saveFirst: 'Tasdiqlashdan oldin vaznlarni saqlang.',
         notReadySteps: 'Tayyor boʻlmagan qadamlar: {{steps}}',
+        pinsChangedSince: 'Tasdiqlangandan keyin qotirilgan darslar oʻzgardi',
       },
+      pins: {
+        title: 'Qotirilgan darslar',
+        none: 'Qotirilgan dars yoʻq.',
+        unit: 'Sinf yoki guruh',
+        subject: 'Fan',
+        teacher: 'Oʻqituvchi',
+        weekday: 'Kun',
+        slot: 'Slot',
+        remove: 'Olib tashlash',
+        conflicts: 'Qotirilgan darslar ziddiyatlari',
+        add: 'Darsni qotirish',
+        row: 'Dars',
+        choose: 'Tanlang',
+        slotOption: '{{position}}. {{time}}',
+        slotMissing: '{{position}}: bu kunda yoʻq',
+        pinText: '{{unit}}, {{subject}}, {{weekday}}, {{position}}-slot',
+        otherRule: 'Majburiy qoida buzilgan',
+        problems: {
+          pin_no_slot: 'Bu kunda bunday slot yoʻq',
+          pin_over_load: 'Qotirilgan slotlar haftalik darslardan koʻp',
+          pin_mixed_block: 'Aralash boʻlinmaning yarmini qotirib boʻlmaydi',
+        },
+      },
+      tutorPinClashes: 'Ikkala darsi bir vaqtga qotirilgan ikki sinf tyutori',
       stepsLabel: 'Qadamlar',
       stepNumber: '{{number}}.',
       steps: {

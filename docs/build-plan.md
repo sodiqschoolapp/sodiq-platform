@@ -516,7 +516,7 @@ How to read the task lines:
   - Build: step 5 of the builder: the fixed rules shown, the weight of each preference, the confirmation of step 5; the gate.
   - Done when: a draft cannot move to generation while a readiness check fails.
 
-- [ ] **5.3b-2 Draft builder, step 5: pinned lessons**
+- [x] **5.3b-2 Draft builder, step 5: pinned lessons** (pull request #129)
   - Read: `06` (Building a timetable, Auto-generation, Rules), `edge/timetable` (Structure, the Homework slot row: "A Tutor of two classes cannot have both pinned at the same time"; Generator and editing: "the locked and pinned lessons are checked on their own").
   - Build: pinned lessons (a table per load row, weekday and slot position, its routes and form); the rule engine's input of a weekly pattern read from the database; the pins checked on their own by `checkTimetable`, a blocked result making step 5 not ready and listing the lessons; the confirmation of step 5 covering the pins.
   - Done when: a draft whose pinned lessons have a blocked conflict among themselves, or whose pins changed since the confirmation, cannot move to generation (`requireReady`).
@@ -534,6 +534,7 @@ How to read the task lines:
   - Read: `06` (Editing in the grid, Teachers who work in several branches, Views and outputs).
   - Build: views by class, teacher and room on a clock axis; the "to place" panel; the conflict panel; grey "busy in another branch" blocks; the warning when another branch's draft uses the same teacher.
   - Done when: every item of the "Editing in the grid" list is present.
+  - From 5.3b-2 (pull request #129, decision 1, Look first): `edge/timetable`, Generator and editing: "Before generating, the locked and pinned lessons are checked on their own. A blocked conflict stops the run and lists the lessons." The pins are checked among themselves in one branch for now; this task adds the published lessons of other branches as busy-elsewhere placements (`fixed`) to `pattern-facts.ts` (`apps/api/src/modules/timetable`), the reader every pattern check uses, so the pins' check of step 5 (`checkPins`) counts them and the travel time around them, and a Tutor of classes in two branches is listed too. The teacher's other branches (`branchIds`) and `otherDrafts` are read there as well.
 
 - [ ] **5.4c Grid: locks and the draft edit lock**
   - Read: `06` (Editing in the grid, Auto-generation), `edge/timetable` (Generator and editing).
@@ -621,12 +622,14 @@ How to read the task lines:
   - Build: `apps/solver` in Kotlin with Timefold Solver Community Edition; hard constraints equal to the blocked rules and soft constraints from the preferences table; pinned lessons kept; a time limit of 5 minutes with a first draft in about a minute.
   - Done when: on sample data of one branch the solver returns a draft that the TypeScript rule engine accepts with zero blocked rules.
   - From 5.2 (pull request #109): the re-check of the solver's output is `checkTimetable` in `mode: 'pattern'`; the blocked rules of `RULE_ORDER` (every code not in `WARNINGS`) are the hard constraints to mirror in Kotlin.
+  - From 5.3b-2 (pull request #129, decisions 1 and 2): `edge/timetable`, Generator and editing: "Before generating, the locked and pinned lessons are checked on their own. A blocked conflict stops the run and lists the lessons." The pins are `timetable_pins` (0070): a load row, a weekday and a slot position, breaks counted, as `pattern_blocks.slot_position`; a pin of a group row holds its whole block in that slot. The solver keeps them fixed and treats the busy-elsewhere lessons of other branches, and the travel time around them, as fixed (`06`, Busy elsewhere).
   - From 5.3b-1 (pull request #128, decisions 3 and 8): the weights of the soft constraints are the eight `weight_<code>` columns of `timetable_versions` (codes `PREFERENCES` of `packages/timetable-rules`, in the order of the preferences table of `06`), whole numbers from 0 to 10; 0 means the preference is not used.
 
 - [ ] **5.11 Generation in the product**
   - Read: `06` (Auto-generation, Building a timetable), `edge/timetable` (Generator and editing).
   - Build: step 6 of the builder; the run as a background job on a snapshot; variants with score and comparison; regenerate with locks; generate for chosen classes; place the remaining lessons; lessons not placed listed with the blocking rule named by the rule engine.
   - Done when: a variant from older inputs is marked "inputs changed" and re-checked before use.
+  - From 5.3b-2 (pull request #129, decision 1): `edge/timetable`, Generator and editing: "Before generating, the locked and pinned lessons are checked on their own. A blocked conflict stops the run and lists the lessons." `requireReady` already reads the pins' check (step 5); once 5.4b adds the busy-elsewhere lessons to `pattern-facts.ts`, the check before a run counts them. The locks of 5.4c join the same check before a run.
   - From 5.3b-1 (pull request #128, decision 6): the run route calls `requireReady` of the timetable service first, in the run's transaction (409 `draft_not_ready`, one detail per step not ready).
 
 - [ ] **5.12 Timetable end-to-end tests**

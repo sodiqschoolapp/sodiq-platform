@@ -300,6 +300,14 @@ export const loadTotalsSchema = z.object({
 
 export type LoadTotals = z.infer<typeof loadTotalsSchema>;
 
+/** A slot of a template in the table of step 1: its position (breaks included), kind and clock minutes (task 5.3b-2). */
+export const cellSlotSchema = z.object({
+  position: z.int().min(1),
+  kind: z.enum(['lesson', 'break']),
+  start: z.int(),
+  end: z.int(),
+});
+
 /** A cell of the table of step 1, named by its weekday and grade. */
 export const readinessCellKeySchema = z.object({ weekday: weekdaySchema, grade: z.int() });
 
@@ -362,6 +370,67 @@ export const preferenceWeightsBodySchema = z.strictObject({ weights: preferenceW
 export type PreferenceWeightsBody = z.infer<typeof preferenceWeightsBodySchema>;
 
 /**
+ * The confirm of step 5 (task 5.3b-2, decision 7): the weights and the ids of
+ * the pins the person sees, refused when either is not what is stored.
+ */
+export const rulesConfirmBodySchema = z.strictObject({
+  weights: preferenceWeightsSchema,
+  pins: z.array(z.uuid()).max(2000),
+});
+
+export type RulesConfirmBody = z.infer<typeof rulesConfirmBodySchema>;
+
+/** The last slot position of a day template, as pattern_blocks.slot_position (db/migrations/0058). */
+export const PIN_SLOT_POSITION_MAX = 20;
+
+/**
+ * A pinned lesson (task 5.3b-2, decision 2): a load row of the draft, a
+ * weekday and the position of a slot of the day template, breaks included.
+ */
+export const pinRecordSchema = z.strictObject({
+  loadRowId: z.uuid(),
+  weekday: weekdaySchema,
+  slotPosition: z.int().min(1).max(PIN_SLOT_POSITION_MAX),
+});
+
+export type PinRecord = z.infer<typeof pinRecordSchema>;
+
+export const pinParamsSchema = z.object({ id: z.uuid(), pinId: z.uuid() });
+
+/**
+ * The problems of a pin that give the rule engine nothing to check (`PIN_PROBLEMS`
+ * of packages/timetable-rules; a test of the API compares the two).
+ */
+export const PIN_PROBLEM_CODES = ['pin_no_slot', 'pin_over_load', 'pin_mixed_block'] as const;
+
+export const pinProblemSchema = z.enum(PIN_PROBLEM_CODES);
+
+/** A pin as the builder shows it, with its row and the clock time of its slot today (`null` when the slot is missing). */
+export const pinSchema = z.object({
+  id: z.uuid(),
+  loadRowId: z.uuid(),
+  unit: loadUnitSchema,
+  subject: loadRowSchema.shape.subject,
+  teacher: loadTeacherSchema,
+  weekday: weekdaySchema,
+  slotPosition: z.int().min(1).max(PIN_SLOT_POSITION_MAX),
+  time: z.object({ start: z.int(), end: z.int() }).nullable(),
+});
+
+export type PinAnswer = z.infer<typeof pinSchema>;
+
+/**
+ * A blocked result of the pins checked on their own: the rule (a code of
+ * `RULE_ORDER` of packages/timetable-rules, its text `timetable.rule.<code>`),
+ * the weekday and the pins that put its lessons there.
+ */
+export const pinConflictSchema = z.object({
+  rule: z.string().regex(/^[a-z_]+$/),
+  weekday: weekdaySchema,
+  pinIds: z.array(z.uuid()),
+});
+
+/**
  * The readiness of steps 1 to 5 of the draft builder (06, Building a
  * timetable; tasks 5.3a, pull request #127, and 5.3b-1), read on each request
  * from the draft and the data in force (decision 3): ready for generation
@@ -375,8 +444,20 @@ export const draftReadinessSchema = z.object({
     startsOn: schoolDateSchema,
     /** Decision 5: the start date is before today. */
     startPast: z.boolean(),
-    /** Each read on the weekday's first date on or after the later of the start date and today (decision 2). */
-    cells: z.array(tableCellSchema.extend({ date: schoolDateSchema })),
+    /**
+     * Each read on the weekday's first date on or after the later of the start
+     * date and today (decision 2); task 5.3b-2: with the slots of the template,
+     * breaks included, which a pin names by position.
+     */
+    cells: z.array(
+      tableCellSchema.extend({
+        date: schoolDateSchema,
+        template: tableCellSchema.shape.template
+          .unwrap()
+          .extend({ slots: z.array(cellSlotSchema) })
+          .nullable(),
+      }),
+    ),
     confirmed: z.boolean(),
     changed: z.array(readinessCellKeySchema),
     missing: z.array(readinessCellKeySchema),
@@ -389,6 +470,8 @@ export const draftReadinessSchema = z.object({
     problemRows: z.array(loadRowSchema),
     leftRows: z.int().min(0),
     classesOver: loadTotalsSchema.shape.classes,
+    /** Task 5.3b-2: a Tutor of two classes whose pinned lessons fall at the same time (edge/timetable, Structure). */
+    tutorPinClashes: z.array(pinConflictSchema),
   }),
   /** Step 3: every teacher and vacancy of the draft, those that hold the step back first. */
   teachers: z.object({
@@ -401,13 +484,19 @@ export const draftReadinessSchema = z.object({
     rows: z.array(loadRowSchema.extend({ reason: z.enum(['load_room_closed', 'room_type_none']) })),
     classesWithoutRoom: z.array(z.object({ id: z.uuid(), name: z.string(), grade: z.int() })),
   }),
-  /** Step 5: the weights stored now, and whether they are the ones confirmed (task 5.3b-1). */
+  /** Step 5: the weights and the pins stored now, and whether they are the ones confirmed (tasks 5.3b-1, 5.3b-2). */
   rules: z.object({
     ready: z.boolean(),
     confirmed: z.boolean(),
     weights: preferenceWeightsSchema,
     /** The preferences whose weight differs from the confirmed one. */
     changed: z.array(preferenceCodeSchema),
+    pins: z.array(pinSchema),
+    /** A pin was added or removed since the confirmation. */
+    pinsChanged: z.boolean(),
+    /** The blocked results of the pins checked on their own. */
+    conflicts: z.array(pinConflictSchema),
+    problems: z.array(z.object({ pinId: z.uuid(), problem: pinProblemSchema })),
   }),
 });
 

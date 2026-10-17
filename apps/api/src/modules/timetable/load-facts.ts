@@ -35,6 +35,11 @@ import { blockRowOf, readBlockGroups, readUnplaced } from './load-blocks.js';
  */
 export const LOAD_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   load_version_draft: 'version_not_draft',
+  // Task 5.3b-2: a pin of a row already at that slot; the draft trigger of the
+  // pins (0070) runs pattern_rows_draft().
+  timetable_pins_slot_key: 'pin_taken',
+  pattern_version_draft: 'version_not_draft',
+  pattern_year_closed: 'timetable_year_closed',
   timetable_versions_draft: 'version_not_draft',
   load_year_closed: 'timetable_year_closed',
   version_year_closed: 'timetable_year_closed',

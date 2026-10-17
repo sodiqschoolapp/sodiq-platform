@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 17 October 2026: task 5.3b-2 Draft builder, step 5: pinned lessons
+
+- Built pinned lessons in step 5 of the builder: `timetable_pins` (0070: a load row, a weekday, a slot position; drafts only, no update, removed with the row), routes `POST …/pins` and `DELETE …/pins/:pinId` under `timetable` `edit`, audit `timetable_pin.create` and `.delete`; the panel lists, adds and removes pins and shows their conflicts.
+- The engine reads a weekly pattern from the database for the first time (`pattern-facts.ts`); `pinnedPlacements` (`pins.ts` of the rule engine) places each pinned block, `checkTimetable` checks the pins on their own, and step 5 is ready only with no blocked result, no pin problem and the pins confirmed (`rules_confirmed` holds their ids). The load step lists a Tutor of two classes pinned at the same time.
+- Left out: busy-elsewhere lessons of other branches in the pins' check (5.4b, decision 1, Look first); pins of a mixed split (5.4c); locks (5.4c); the handbook (paused).
+
+The next sessions must know:
+
+- A pattern check reads its facts from `readPatternFacts` (`apps/api/src/modules/timetable/pattern-facts.ts`); what it does not read yet is written at its top.
+- The confirm of step 5 carries `{ weights, pins }`; a new part of step 5 joins `rulesReadiness` and `confirmationOf`.
+- The next task is 5.4a.
+
 ## 17 October 2026: task 5.3b-1 Draft builder, step 5: rules, weights and the gate
 
 - Built step 5 of the builder (`/timetable/builder?step=rules`): the fixed rules (`FIXED_RULES` of the rule engine, texts `timetable.rule.<code>`), a weight from 0 (not used) to 10 for each of the eight preferences of `06`, and the confirm of the weights shown; routes `PUT …/preferences` and `POST …/rules/confirm`, migration 0069 (eight `weight_*` columns and `rules_confirmed` on `timetable_versions`), audit `timetable_version.preferences` and `.rules_confirm`.
