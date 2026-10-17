@@ -1,5 +1,6 @@
-import { Controller, Delete, Get, Patch, Post } from '@nestjs/common';
+import { Controller, Delete, Get, HttpCode, Patch, Post } from '@nestjs/common';
 import {
+  draftReadinessSchema,
   loadRowEditSchema,
   loadRowParamsSchema,
   loadRowRecordSchema,
@@ -13,6 +14,7 @@ import {
   timetableVersionListSchema,
   timetableVersionParamsSchema,
   timetableVersionSchema,
+  type DraftReadiness,
   type Load,
   type LoadRow,
   type LoadRowEdit,
@@ -92,6 +94,33 @@ export class TimetableController {
     @ValidParams(timetableVersionParamsSchema) params: TimetableVersionParams,
   ): Promise<LoadTotals> {
     return this.timetable.totals(access, params.id);
+  }
+
+  /**
+   * The readiness of steps 1 to 4 of the draft builder (task 5.3a, pull
+   * request #127): computed on each read, never refusing.
+   */
+  @Get('versions/:id/readiness')
+  @Requires('timetable', 'view')
+  @Returns(draftReadinessSchema)
+  readiness(
+    @CurrentAccess() access: Access,
+    @ValidParams(timetableVersionParamsSchema) params: TimetableVersionParams,
+  ): Promise<DraftReadiness> {
+    return this.timetable.readiness(access, params.id);
+  }
+
+  /** Step 1: the table of templates in force stored as confirmed (decisions 3 and 12). */
+  @Post('versions/:id/templates/confirm')
+  @HttpCode(200)
+  @Requires('timetable', 'edit')
+  @Returns(draftReadinessSchema)
+  confirmTemplates(
+    @CurrentAccess() access: Access,
+    @ValidParams(timetableVersionParamsSchema) params: TimetableVersionParams,
+    @RequestId() requestId: string,
+  ): Promise<DraftReadiness> {
+    return this.timetable.confirmTemplates(access, params.id, requestId);
   }
 
   /** The teachers and vacancies a row may take (decision 2), by the rules of the create. */

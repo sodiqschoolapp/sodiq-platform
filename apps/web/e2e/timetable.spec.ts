@@ -175,3 +175,57 @@ test('an Academic Vice Principal gives a split its two parts and changes their l
   ).toHaveText(/^4(?!\d)/);
   await screenshot(page, 'weekly-totals');
 });
+
+// 06-timetable.md, Building a timetable, step 1: "confirms the day templates
+// of each weekday in force on that date ... Ready when: The start date is set
+// and the table of templates per weekday and grade is confirmed"; task 5.3a,
+// pull request #127. An Academic Vice Principal starts a draft, opens the
+// builder from the Timetable page, sees step 1 not ready, confirms the
+// templates and sees it ready. All names are invented.
+test('an Academic Vice Principal confirms the day templates of a draft in the builder', async ({
+  page,
+}) => {
+  const account = accountOf('draftBuilder');
+  await page.goto('/sign-in');
+  await languageChooser(page).selectOption('en');
+  await signIn(page, en, account.login, account.password);
+  await changeFirstPassword(page, en, account);
+  await expect(heading(page, en.setUp.title)).toBeVisible();
+  await page.getByRole('button', { name: en.setUp.start, exact: true }).click();
+  const key = await page.locator('dd').innerText();
+  await page.getByLabel(en.setUp.code, { exact: true }).fill(codeNow(key));
+  await page.getByRole('button', { name: en.setUp.confirm, exact: true }).click();
+  await page.getByRole('checkbox', { name: en.setUp.saved }).check();
+  await page.getByRole('button', { name: en.setUp.continue, exact: true }).click();
+  await expect(heading(page, en.home.title)).toBeVisible();
+
+  await page.goto('/timetable/load');
+  const texts = en.timetable.load;
+  await page.getByRole('button', { name: texts.newDraft, exact: true }).click();
+  await page
+    .getByRole('form', { name: texts.newDraftTitle })
+    .getByRole('button', { name: en.form.save, exact: true })
+    .click();
+  await expect(page.getByLabel(texts.version, { exact: true })).toContainText('Version 1');
+
+  await page.goto('/timetable');
+  await page.getByRole('link', { name: en.timetable.builderLink, exact: true }).click();
+  const builder = en.timetable.builder;
+  await expect(heading(page, builder.title)).toBeVisible();
+  const step = page.locator('[data-step="templates"]');
+  await expect(step).toContainText(builder.notReady);
+  await expect(step).toContainText(builder.steps.templates);
+  // The table of grade 7, the one grade with a class, names the template.
+  await expect(page.getByRole('table').getByRole('cell').filter({ hasText: 'Main' })).toHaveCount(
+    5,
+  );
+  await expect(page.getByText(builder.notConfirmed, { exact: true })).toBeVisible();
+  await screenshot(page, 'builder-step-1');
+  await page.getByRole('button', { name: builder.confirm, exact: true }).click();
+  await expect(page.getByText(builder.confirmed, { exact: true })).toBeVisible();
+  await expect(step).not.toContainText(builder.notReady);
+  await expect(step).toContainText(builder.ready);
+  // The load is still empty: the draft is not ready for generation.
+  await expect(page.locator('[data-step="load"]')).toContainText(builder.notReady);
+  await expect(page.locator('[data-ready]')).toHaveAttribute('data-ready', 'false');
+});

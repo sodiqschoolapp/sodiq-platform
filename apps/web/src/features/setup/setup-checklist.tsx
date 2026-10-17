@@ -1,9 +1,9 @@
 import { PERMISSIONS, permits, type ChecklistItem, type ChecklistItemKey } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
 import { Link, type LinkProps } from '@tanstack/react-router';
-import { CheckCircleIcon, RadioButtonUncheckedIcon, InfoIcon } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 import { ErrorState, LoadingOutline } from '@/components/states';
+import { StatusMark } from '@/components/status-mark';
 import { useView } from '@/features/access/use-view';
 import { checklistQuery } from './settings-api';
 import { SECTION_TITLE } from '@/components/ui/control';
@@ -27,25 +27,16 @@ const PAGES: Record<ChecklistItemKey, { to: LinkProps['to']; area: string }> = {
   teachingLoad: { to: '/timetable/load', area: 'timetable' },
 };
 
-/**
- * Done or missing, in words beside the icon: never by colour or shape alone
- * (`12`, Accessibility; issue #39, hand test of 13 October 2026, finding 17).
- */
+/** Done or missing in words; the calendar's count has an icon only. */
 function Mark({ done }: { done: boolean | null }) {
   const { t } = useTranslation();
-  if (done === null) {
-    return <InfoIcon aria-hidden className="size-4 text-muted-foreground" />;
-  }
-  return done ? (
-    <span className="inline-flex items-center gap-1 text-success">
-      <CheckCircleIcon aria-hidden className="size-4" />
-      {t('setup.checklist.done')}
-    </span>
-  ) : (
-    <span className="inline-flex items-center gap-1 text-muted-foreground">
-      <RadioButtonUncheckedIcon aria-hidden className="size-4" />
-      {t('setup.checklist.missing')}
-    </span>
+  return (
+    <StatusMark
+      done={done}
+      {...(done === null
+        ? {}
+        : { text: done ? t('setup.checklist.done') : t('setup.checklist.missing') })}
+    />
   );
 }
 

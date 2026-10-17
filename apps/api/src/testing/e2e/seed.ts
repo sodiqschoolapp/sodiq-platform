@@ -3062,6 +3062,102 @@ try {
   });
   seeded.teachingBlocks = { login: blocksVice.login, password: blocksVice.firstPassword };
 
+  // The Academic Vice Principal of the draft builder test (task 5.3a), in a
+  // branch of its own with a year around today, 7 Oxford, and one default day
+  // template of three 45-minute lessons from the year's start.
+  const builderBranch = await insertBranch(migrator, 'Draft builder browser test branch');
+  const builderVice = await create('Shahlo', 'Ergasheva');
+  await transactions.run([builderBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: builderVice.id,
+      role: 'academic_vice_principal',
+      branchId: builderBranch,
+      givenBy: null,
+    }),
+  );
+  await migrator.transaction().execute(async (transaction) => {
+    const year = await transaction
+      .insertInto('academic_years')
+      .values({
+        branch_id: builderBranch,
+        start_date: startDate,
+        end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('quarters')
+      .values(
+        [1, 2, 3, 4].map((number) => ({
+          branch_id: builderBranch,
+          academic_year_id: year.id,
+          number,
+        })),
+      )
+      .execute();
+    await transaction
+      .insertInto('classes')
+      .values({
+        branch_id: builderBranch,
+        academic_year_id: year.id,
+        grade: 7,
+        name: 'Oxford',
+        language: 'uz',
+        max_size: 25,
+      })
+      .execute();
+    const lesson = await transaction
+      .insertInto('slot_types')
+      .values({ branch_id: builderBranch, name: 'Lesson 45', kind: 'lesson' })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('slot_type_lengths')
+      .values({
+        branch_id: builderBranch,
+        slot_type_id: lesson.id,
+        length_minutes: 45,
+        valid_from: startDate,
+      })
+      .execute();
+    const template = await transaction
+      .insertInto('day_templates')
+      .values({ branch_id: builderBranch, name: 'Main' })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    const version = await transaction
+      .insertInto('day_template_versions')
+      .values({
+        branch_id: builderBranch,
+        day_template_id: template.id,
+        start_minutes: 480,
+        valid_from: startDate,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('day_template_slots')
+      .values(
+        [1, 2, 3].map((position) => ({
+          version_id: version.id,
+          branch_id: builderBranch,
+          position,
+          slot_type_id: lesson.id,
+        })),
+      )
+      .execute();
+    await transaction
+      .insertInto('day_template_assignments')
+      .values({
+        branch_id: builderBranch,
+        level: 'default',
+        day_template_id: template.id,
+        valid_from: startDate,
+      })
+      .execute();
+  });
+  seeded.draftBuilder = { login: builderVice.login, password: builderVice.firstPassword };
+
   // The department move (task 3.4c): a branch of its own with a year around
   // today, 7 Oxford, the attendance-only subject Cosmology of STEAM and a
   // draft whose row of it names a STEAM teacher who no longer has it in the

@@ -508,6 +508,14 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     branch: 'request',
     roles: ['super_admin', 'principal', 'academic_vice_principal'],
   },
+  'GET /api/timetable/versions/:id/readiness': {
+    branch: 'request',
+    roles: ['super_admin', 'principal', 'academic_vice_principal'],
+  },
+  'POST /api/timetable/versions/:id/templates/confirm': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
   'GET /api/timetable/versions/:id/load/teachers': {
     branch: 'request',
     roles: ['super_admin', 'principal', 'academic_vice_principal'],

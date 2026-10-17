@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 17 October 2026: task 5.3a Draft builder, steps 1 to 4
+
+- Built the draft builder (`/timetable/builder`): the checklist of the eight steps of `06`, steps 1 to 4 open, 5 to 8 marked not yet available; the readiness route `GET api/timetable/versions/:id/readiness` and the confirm of step 1's templates table (`POST …/templates/confirm`, migration 0068, audit `timetable_version.templates_confirm`).
+- The step checks are pure functions of `packages/timetable-rules/src/readiness.ts`; the service reads the facts once (`template-cells.ts`, `totalsOf`). The quarter shortcuts are on both start date forms.
+- Decision 2 (Look first): templates weekday by weekday from the later of the start date and today, availability from the one entry in force on that date; the totals of the load page now read hours that way too.
+- 5.3 is split: 5.3b (step 5, pins, the Tutor-of-two-classes list, the gate) is the next line.
+- Left out: step 5 and the gate (5.3b); generation (5.11); the grid (5.4a to 5.4c); publish (5.5a to 5.5c); the handbook (paused).
+
+The next sessions must know:
+
+- A new step check goes into `readiness.ts` of the rule engine and into `draftReady`; the page opens a step listed in `BUILDER_STEPS` (`builder-search.ts`).
+- The confirmed table is compared on template id and slot kinds and times only, never on dates or names (`templatesReadiness`).
+- The next task is 5.3b.
+
 ## 17 October 2026: task 3.6c-2 The owner's answers of 15 October: Tutor lessons follow the Tutor
 
 - Built answer 2 of 15 October and answer 1 of 16 October (issue #42): a Tutor row (Maʼnaviyat soati, the Homework slot) holds the class's Tutor, written by the server; the load routes take no teacher for it and the database refuses another (migration 0067, `load_no_tutor`, `load_tutor_row_teacher`).

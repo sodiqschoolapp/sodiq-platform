@@ -1,4 +1,5 @@
 import {
+  draftReadinessSchema,
   loadRowSchema,
   loadSchema,
   loadTeachersSchema,
@@ -52,6 +53,21 @@ export const totalsQuery = (branchId: string | null, versionId: string | null) =
       loadTotalsSchema.parse(
         await answerOf(
           api.GET('/api/timetable/versions/{id}/totals', {
+            params: { header: branchHeader(), path: { id: versionId ?? '' } },
+          }),
+        ),
+      ),
+    enabled: branchId !== null && versionId !== null,
+  });
+
+/** The readiness of steps 1 to 4 of a draft (task 5.3a), read on each request. */
+export const readinessQuery = (branchId: string | null, versionId: string | null) =>
+  queryOptions({
+    queryKey: [...timetableKey(branchId), 'load', versionId, 'readiness'],
+    queryFn: async () =>
+      draftReadinessSchema.parse(
+        await answerOf(
+          api.GET('/api/timetable/versions/{id}/readiness', {
             params: { header: branchHeader(), path: { id: versionId ?? '' } },
           }),
         ),
@@ -132,3 +148,11 @@ export const deleteLoadRow = (versionId: string, rowId: string) =>
       params: { header: branchHeader(), path: { id: versionId, rowId } },
     }),
   );
+
+/** Step 1: the table of templates in force stored as confirmed (task 5.3a). */
+export const confirmTemplates = (versionId: string) =>
+  answerOf(
+    api.POST('/api/timetable/versions/{id}/templates/confirm', {
+      params: { header: branchHeader(), path: { id: versionId } },
+    }),
+  ).then((answer) => draftReadinessSchema.parse(answer));
