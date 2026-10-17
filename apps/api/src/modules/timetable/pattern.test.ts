@@ -1294,16 +1294,32 @@ describe('the grid of a draft', () => {
 
     it('answers the pins of step 5 with the grid, for the search to leave in place (decision 9)', async () => {
       const s = await scene();
-      await t.database.migrator
-        .insertInto('timetable_pins')
-        .values({
-          branch_id: s.branch,
-          version_id: s.version,
-          load_row_id: s.rowA,
-          weekday: 2,
-          slot_position: 3,
-        })
-        .execute();
+      const other = await scene();
+      const sameBranch = await load.version(s.branch, s.year, { startsOn: MONDAY });
+      const sameBranchRow = await load.row({
+        branch_id: s.branch,
+        version_id: sameBranch,
+        class_id: s.classA,
+        subject_id: s.subject,
+        teacher_id: s.teacherA,
+      });
+      // The pins of another version of the branch and of another branch stay out (permission review, should-fix 1).
+      for (const [branch, version, row] of [
+        [s.branch, s.version, s.rowA],
+        [s.branch, sameBranch, sameBranchRow],
+        [other.branch, other.version, other.rowA],
+      ] as const) {
+        await t.database.migrator
+          .insertInto('timetable_pins')
+          .values({
+            branch_id: branch,
+            version_id: version,
+            load_row_id: row,
+            weekday: 2,
+            slot_position: 3,
+          })
+          .execute();
+      }
       expect(gridOf(await grid(s.branch, s.version)).pins).toEqual([
         { loadRowId: s.rowA, weekday: 2, slotPosition: 3 },
       ]);
@@ -1485,6 +1501,26 @@ describe('the grid of a draft', () => {
               s.branch,
               s.version,
               moved({ rooms: [{ loadRowId: row, roomId: spare }] }),
+              cookie,
+            ),
+            404,
+            'not_found',
+          );
+        }
+        // A room of another branch or an unknown one for a new block (permission review, should-fix 3).
+        for (const roomId of [other.roomB, UNKNOWN]) {
+          refusedWith(
+            await rearrange(
+              s.branch,
+              s.version,
+              [
+                {
+                  loadRowId: s.rowB,
+                  weekday: 2,
+                  slotPosition: 1,
+                  rooms: [{ loadRowId: s.rowB, roomId }],
+                },
+              ],
               cookie,
             ),
             404,

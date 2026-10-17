@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { SUBSECTION_TITLE } from '@/components/ui/control';
+import { SECTION_TITLE } from '@/components/ui/control';
 import { rangeText } from '@/features/setup/templates-api';
 import { weekdayName } from '@/lib/dates';
 import { roomsOf } from './grid-room-picker';
@@ -158,7 +158,7 @@ export function GridSuggestDialog({
           <div className="grid max-h-[60vh] gap-4 overflow-y-auto" data-suggestions="">
             {found.free.length > 0 && (
               <section className="grid gap-1">
-                <h3 className={SUBSECTION_TITLE}>{t('timetable.grid.freeSlots')}</h3>
+                <h3 className={SECTION_TITLE}>{t('timetable.grid.freeSlots')}</h3>
                 <ul className="grid gap-1">
                   {found.free.map((one, index) => item(one, index, 'free'))}
                 </ul>
@@ -166,7 +166,7 @@ export function GridSuggestDialog({
             )}
             {found.rearrangements.length > 0 && (
               <section className="grid gap-1">
-                <h3 className={SUBSECTION_TITLE}>{t('timetable.grid.rearrangements')}</h3>
+                <h3 className={SECTION_TITLE}>{t('timetable.grid.rearrangements')}</h3>
                 <ul className="grid gap-1">
                   {found.rearrangements.map((one, index) => item(one, index, 'rearrange'))}
                 </ul>
