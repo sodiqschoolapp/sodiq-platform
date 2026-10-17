@@ -665,3 +665,76 @@ test('an Academic Vice Principal places, moves and removes a double lesson as on
   await expect(doubles).toHaveCount(0);
   await expect(cell(4, 1).locator('[data-block]')).toHaveCount(0);
 });
+
+// Task 5.4c-3b: edge/timetable, Structure: "A mixed block is allowed: boys
+// have physical education while girls have technology, and the reverse in
+// another slot." 7 Oxford's physical education and technology are split into
+// boys' and girls' groups and marked mixed; each pairing is one block.
+test('an Academic Vice Principal places a mixed split with both pairings', async ({ page }) => {
+  const account = accountOf('draftGridMixed');
+  await page.goto('/sign-in');
+  await languageChooser(page).selectOption('en');
+  await signIn(page, en, account.login, account.password);
+  await changeFirstPassword(page, en, account);
+  await expect(heading(page, en.setUp.title)).toBeVisible();
+  await page.getByRole('button', { name: en.setUp.start, exact: true }).click();
+  const key = await page.locator('dd').innerText();
+  await page.getByLabel(en.setUp.code, { exact: true }).fill(codeNow(key));
+  await page.getByRole('button', { name: en.setUp.confirm, exact: true }).click();
+  await page.getByRole('checkbox', { name: en.setUp.saved }).check();
+  await page.getByRole('button', { name: en.setUp.continue, exact: true }).click();
+  await expect(heading(page, en.home.title)).toBeVisible();
+
+  await page.goto('/timetable/builder');
+  await expect(heading(page, en.timetable.builder.title)).toBeVisible();
+  const gridRead = page.waitForRequest((request) => request.url().endsWith('/grid'));
+  await page.locator('[data-step="grid"] button').click();
+  const branchId = (await gridRead).headers()['x-branch-id'] ?? '';
+  const versionId = new URL(page.url()).searchParams.get('version') ?? '';
+  await expect(page.locator('[data-board]')).toBeVisible();
+  const cell = (weekday: number, position: number) =>
+    page.locator(`[data-cell="${String(weekday)}:${String(position)}"]`);
+  const entries = page.locator('[aria-labelledby="grid-to-place"] [data-to-place]');
+  // The entry's own row comes first; its "Paired with" options name the other groups.
+  const entryOf = (group: string) => entries.filter({ hasText: new RegExp(`^[^,]+, ${group}:`) });
+
+  /** Places the half of `group` paired with the half of `partner` at a cell of the dialog. */
+  const pair = async (group: string, partner: string, at: string) => {
+    const entry = entryOf(group);
+    const select = entry.getByLabel(en.timetable.grid.pairedWith);
+    const value = await select.locator('option', { hasText: partner }).getAttribute('value');
+    await select.selectOption(value ?? '');
+    await entry.getByRole('button', { name: en.timetable.grid.place, exact: true }).click();
+    await page.getByRole('dialog').locator(`[data-move-cell="${at}"] button`).click();
+  };
+
+  // Tuesday 08:00: boys' physical education with girls' technology.
+  const boysPe = (await entryOf('7-PE-B').getAttribute('data-to-place')) ?? '';
+  const girlsPe = (await entryOf('7-PE-G').getAttribute('data-to-place')) ?? '';
+  await pair('7-PE-B', '7-T-G', '2:1');
+  const first = cell(2, 1).locator('[data-block]');
+  await expect(first).toHaveCount(1);
+  await expect(first).toContainText('Physical education');
+  await expect(first).toContainText('Technology');
+  // Tuesday 08:45: the reverse, girls' physical education with boys' technology.
+  await pair('7-T-B', '7-PE-G', '2:2');
+  const second = cell(2, 2).locator('[data-block]');
+  await expect(second).toHaveCount(1);
+  await expect(second).toContainText('Physical education');
+  await expect(second).toContainText('Technology');
+  // Every half is placed: no entry of the four groups is left.
+  for (const group of ['7-PE-B', '7-PE-G', '7-T-B', '7-T-G']) {
+    await expect(entryOf(group)).toHaveCount(0);
+  }
+  await screenshot(page, 'grid-mixed');
+
+  // The API refuses a pairing of the two halves of one split.
+  const refused = await page.request.post(`/api/timetable/versions/${versionId}/pattern`, {
+    headers: { 'X-Branch-Id': branchId },
+    data: { loadRowId: boysPe, partnerRowId: girlsPe, weekday: 3, slotPosition: 1 },
+  });
+  expect(refused.status()).toBe(409);
+  expect(((await refused.json()) as { error: { code: string } }).error.code).toBe(
+    'pattern_mixed_partner',
+  );
+});

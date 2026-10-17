@@ -3171,6 +3171,12 @@ try {
     rooms: readonly string[];
     /** Task 5.4c-3a: the rows allow double lessons. */
     doubleLessons?: boolean;
+    /**
+     * Task 5.4c-3b: 7 Oxford's physical education and technology split into
+     * boys' and girls' groups, marked mixed, with a second teacher (the staff
+     * id and phone given) of both subjects.
+     */
+    mixed?: { readonly staffId: string; readonly phone: string };
   }) => {
     const gridBranch = await insertBranch(migrator, scene.branch);
     const gridVice = await create(scene.vice[0], scene.vice[1]);
@@ -3410,6 +3416,137 @@ try {
           })
           .execute();
       }
+      if (scene.mixed !== undefined) {
+        const [pe, tech] = await Promise.all(
+          (
+            [
+              ['Jismoniy tarbiya', 'Физкультура', 'Physical education', 'orange'],
+              ['Texnologiya', 'Технология', 'Technology', 'teal'],
+            ] as const
+          ).map(([uz, ru, enName, colour]) =>
+            transaction
+              .insertInto('subjects')
+              .values({
+                name_uz: uz,
+                name_ru: ru,
+                name_en: enName,
+                department_id: steam.id,
+                grades: [7],
+                colour,
+                journal_type: 'graded',
+              })
+              .returning('id')
+              .executeTakeFirstOrThrow(),
+          ),
+        );
+        if (pe === undefined || tech === undefined) throw new Error('No mixed subjects.');
+        const second = await transaction
+          .insertInto('staff')
+          .values({
+            kind: 'person',
+            staff_id: scene.mixed.staffId,
+            first_name: 'Nargiza',
+            last_name: 'Tojiyeva',
+            sex: 'female',
+            birth_date: '1990-06-11',
+            phone: scene.mixed.phone,
+            admission_date: '2026-09-01',
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('staff_branches')
+          .values({ staff_id: second.id, branch_id: gridBranch, is_main: true })
+          .execute();
+        await transaction
+          .insertInto('staff_divisions')
+          .values({
+            staff_id: second.id,
+            division_id: academic.id,
+            department_id: steam.id,
+            is_main: true,
+          })
+          .execute();
+        await transaction
+          .insertInto('staff_languages')
+          .values({ staff_id: second.id, language: 'uz' })
+          .execute();
+        await transaction
+          .insertInto('staff_statuses')
+          .values({ staff_id: second.id, status: 'active', valid_from: '2026-09-01' })
+          .execute();
+        await transaction
+          .insertInto('staff_subjects')
+          .values(
+            [person.id, second.id].flatMap((staffId) =>
+              [pe.id, tech.id].map((subjectId) => ({
+                staff_id: staffId,
+                subject_id: subjectId,
+                grades: [7],
+              })),
+            ),
+          )
+          .execute();
+        const secondHours = await transaction
+          .insertInto('staff_availability')
+          .values({ branch_id: gridBranch, staff_id: second.id, valid_from: startDate })
+          .returning(['id', 'valid_until'])
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('staff_availability_ranges')
+          .values(
+            [1, 2, 3, 4, 5].map((weekday) => ({
+              entry_id: secondHours.id,
+              branch_id: gridBranch,
+              staff_id: second.id,
+              weekday,
+              start_minutes: 0,
+              end_minutes: 1440,
+              valid_from: startDate,
+              valid_until: secondHours.valid_until,
+            })),
+          )
+          .execute();
+        const [oxford] = classes;
+        if (oxford === undefined) throw new Error('No Oxford.');
+        // The boys' halves are Aliyeva's, the girls' Tojiyeva's: neither a
+        // split nor a pairing of a boys' and a girls' half has one teacher twice.
+        for (const [name, subjectId, teacherId] of [
+          ['7-PE-B', pe.id, person.id],
+          ['7-PE-G', pe.id, second.id],
+          ['7-T-B', tech.id, person.id],
+          ['7-T-G', tech.id, second.id],
+        ] as const) {
+          const group = await transaction
+            .insertInto('groups')
+            .values({
+              branch_id: gridBranch,
+              academic_year_id: year.id,
+              subject_id: subjectId,
+              name,
+              language: 'uz',
+              max_size: 20,
+            })
+            .returning('id')
+            .executeTakeFirstOrThrow();
+          await transaction
+            .insertInto('group_classes')
+            .values({ group_id: group.id, class_id: oxford.id, branch_id: gridBranch })
+            .execute();
+          await transaction
+            .insertInto('teaching_load_rows')
+            .values({
+              branch_id: gridBranch,
+              version_id: draft.id,
+              group_id: group.id,
+              subject_id: subjectId,
+              teacher_id: teacherId,
+              lessons_per_week: 1,
+              mixed_block: true,
+            })
+            .execute();
+        }
+      }
     });
     return gridVice;
   };
@@ -3497,6 +3634,18 @@ try {
     doubleLessons: true,
   });
   seeded.draftGridDouble = { login: doubleVice.login, password: doubleVice.firstPassword };
+
+  // Mixed pairings (task 5.4c-3b): the same scene in a branch of its own, with
+  // 7 Oxford's physical education and technology split and marked mixed.
+  const mixedVice = await gridScene({
+    branch: 'Grid mixed browser test branch',
+    vice: ['Sabina', 'Nurmatova'],
+    staffId: 'S-269337',
+    phone: '+998935557337',
+    rooms: [],
+    mixed: { staffId: 'S-269338', phone: '+998935557338' },
+  });
+  seeded.draftGridMixed = { login: mixedVice.login, password: mixedVice.firstPassword };
 
   // The department move (task 3.4c): a branch of its own with a year around
   // today, 7 Oxford, the attendance-only subject Cosmology of STEAM and a
