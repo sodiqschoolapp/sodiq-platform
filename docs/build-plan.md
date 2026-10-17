@@ -511,18 +511,24 @@ How to read the task lines:
   - From 3.4b (pull request #100, decisions 4, 5 and 7): the readiness of steps 2 and 3 reads the weekly totals (`totals.ts` of `packages/timetable-rules`: each class's lessons against the lesson slots of its week, each teacher's lessons against the free slots in the branch) and blocks on `load_group_gaps` (students not placed) and the block problems (`load_block_lessons`, `load_block_teacher`, `load_block_mixed`, `load_mixed_not_split`, `load_split_and_whole`), which the load page only shows.
   - From 3.4c (pull request #101, spec review nit 8): the row trigger of 0055 reads the class Tutor of a Tutor subject on the version's start date only, while `department_move_loads` (0057) reads it on the later of the start date, the move's start and today; for a draft whose start date has passed the two differ, and readiness settles one reading for the row checks.
 
-- [ ] **5.3b Draft builder, step 5 and the gate**
-  - Read: `06` (Building a timetable, Auto-generation, Rules), `edge/timetable` (Structure, the Homework slot row: "A Tutor of two classes cannot have both pinned at the same time"; Generator and editing: "the locked and pinned lessons are checked on their own").
-  - Build: step 5 of the builder: the fixed rules shown, the weight of each preference, pinned lessons (stored per load row, weekday and slot, checked on their own by the rule engine), the confirmation of step 5; the gate.
+- [x] **5.3b-1 Draft builder, step 5: rules, weights and the gate** (pull request #128)
+  - Read: `06` (Building a timetable, Auto-generation, Rules), `edge/timetable` (Generator and editing).
+  - Build: step 5 of the builder: the fixed rules shown, the weight of each preference, the confirmation of step 5; the gate.
   - Done when: a draft cannot move to generation while a readiness check fails.
+
+- [ ] **5.3b-2 Draft builder, step 5: pinned lessons**
+  - Read: `06` (Building a timetable, Auto-generation, Rules), `edge/timetable` (Structure, the Homework slot row: "A Tutor of two classes cannot have both pinned at the same time"; Generator and editing: "the locked and pinned lessons are checked on their own").
+  - Build: pinned lessons (a table per load row, weekday and slot position, its routes and form); the rule engine's input of a weekly pattern read from the database; the pins checked on their own by `checkTimetable`, a blocked result making step 5 not ready and listing the lessons; the confirmation of step 5 covering the pins.
+  - Done when: a draft whose pinned lessons have a blocked conflict among themselves, or whose pins changed since the confirmation, cannot move to generation (`requireReady`).
   - From 3.4a (pull request #99, decision 15 and correction 6): the load step's list of a Tutor of two classes whose pinned lessons fall at the same time.
-  - From 5.3a (pull request #127, decisions 2 and 3): readiness is `draftReady` over the steps' checks of `packages/timetable-rules/src/readiness.ts`, computed on each read by `GET api/timetable/versions/:id/readiness`; step 5 adds its check there, and the builder page (`apps/web/src/features/timetable/builder-page.tsx`) opens step 5 (`BUILDER_STEPS`). Facts are read on the dates of decision 2: templates weekday by weekday from the later of the start date and today, availability from the one entry in force on that date.
+  - From 5.3a (pull request #127, decisions 2 and 3): readiness is `draftReady` over the steps' checks of `packages/timetable-rules/src/readiness.ts`, computed on each read by `GET api/timetable/versions/:id/readiness`. Facts are read on the dates of decision 2: templates weekday by weekday from the later of the start date and today, availability from the one entry in force on that date.
+  - From 5.3b-1 (pull request #128, decisions 2, 6 and 9): step 5 is `rulesReadiness` (the weights stored against `timetable_versions.rules_confirmed`); the pins join that check and the stored confirmation, and the confirm route (`POST …/rules/confirm`, which carries what the person sees) carries the pins too. The panel is `apps/web/src/features/timetable/rules-step.tsx`.
 
 - [ ] **5.4a Grid: board and drag**
   - Read: `06` (Editing in the grid), `12`.
   - Build: the board with Pragmatic drag and drop; move and swap; live conflict marking from the rule engine; the server refuses what the grid refuses.
   - Done when: Playwright moves a lesson, sees a blocked move refused with the rule named, and the same move is refused when the API is called directly.
-  - From 5.2 (pull request #109, decisions 5 and 13): the grid and its server check call `checkCandidate` and `checkTimetable` of `packages/timetable-rules` (`check.ts`) with the input `placement.ts` documents (which date each fact is read on); every lesson write calls them, and they call `lessonTimeProblem` on every lesson (the "From 1.5" line of 5.2). A result names its rule code; its texts are the i18n keys `timetable.rule.<code>` added here. `other_draft` reads the other branches' drafts the grid chooses (decision 12).
+  - From 5.2 (pull request #109, decisions 5 and 13): the grid and its server check call `checkCandidate` and `checkTimetable` of `packages/timetable-rules` (`check.ts`) with the input `placement.ts` documents (which date each fact is read on); every lesson write calls them, and they call `lessonTimeProblem` on every lesson (the "From 1.5" line of 5.2). A result names its rule code; its texts are the i18n keys `timetable.rule.<code>`: 5.3b-1 (pull request #128, review correction 2) added those of `FIXED_RULES`, each the rule in the words of its row in `06`, Rules, with no numbers or placeholders; 5.4a adds the others the same way and reuses the key as the name of a result in the conflict list; numbers such as "26 lessons and 24 free slots" are 5.4a's own keys. `other_draft` reads the other branches' drafts the grid chooses (decision 12).
 
 - [ ] **5.4b Grid: panels and views**
   - Read: `06` (Editing in the grid, Teachers who work in several branches, Views and outputs).
@@ -615,11 +621,13 @@ How to read the task lines:
   - Build: `apps/solver` in Kotlin with Timefold Solver Community Edition; hard constraints equal to the blocked rules and soft constraints from the preferences table; pinned lessons kept; a time limit of 5 minutes with a first draft in about a minute.
   - Done when: on sample data of one branch the solver returns a draft that the TypeScript rule engine accepts with zero blocked rules.
   - From 5.2 (pull request #109): the re-check of the solver's output is `checkTimetable` in `mode: 'pattern'`; the blocked rules of `RULE_ORDER` (every code not in `WARNINGS`) are the hard constraints to mirror in Kotlin.
+  - From 5.3b-1 (pull request #128, decisions 3 and 8): the weights of the soft constraints are the eight `weight_<code>` columns of `timetable_versions` (codes `PREFERENCES` of `packages/timetable-rules`, in the order of the preferences table of `06`), whole numbers from 0 to 10; 0 means the preference is not used.
 
 - [ ] **5.11 Generation in the product**
   - Read: `06` (Auto-generation, Building a timetable), `edge/timetable` (Generator and editing).
   - Build: step 6 of the builder; the run as a background job on a snapshot; variants with score and comparison; regenerate with locks; generate for chosen classes; place the remaining lessons; lessons not placed listed with the blocking rule named by the rule engine.
   - Done when: a variant from older inputs is marked "inputs changed" and re-checked before use.
+  - From 5.3b-1 (pull request #128, decision 6): the run route calls `requireReady` of the timetable service first, in the run's transaction (409 `draft_not_ready`, one detail per step not ready).
 
 - [ ] **5.12 Timetable end-to-end tests**
   - Read: `14` (Timetable).

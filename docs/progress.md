@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 17 October 2026: task 5.3b-1 Draft builder, step 5: rules, weights and the gate
+
+- Built step 5 of the builder (`/timetable/builder?step=rules`): the fixed rules (`FIXED_RULES` of the rule engine, texts `timetable.rule.<code>`), a weight from 0 (not used) to 10 for each of the eight preferences of `06`, and the confirm of the weights shown; routes `PUT …/preferences` and `POST …/rules/confirm`, migration 0069 (eight `weight_*` columns and `rules_confirmed` on `timetable_versions`), audit `timetable_version.preferences` and `.rules_confirm`.
+- Readiness has step 5 (`rulesReadiness`); `ready` is `draftReady` over steps 1 to 5. The gate is `requireReady` of the timetable service (409 `draft_not_ready`); a copy takes its source's weights, unconfirmed.
+- 5.3b is split: 5.3b-2 (pinned lessons, their check on their own, the Tutor-of-two-classes list) is the next line.
+- Left out: pins (5.3b-2); the run route that calls `requireReady` (5.11); the solver's use of the weights (5.10); the names of the other rule codes (5.4a); the handbook (paused).
+
+The next sessions must know:
+
+- A new check of step 5 goes into `rulesReadiness` and into what `rules_confirmed` stores; the confirm carries what the person sees and is refused with `preferences_changed` otherwise.
+- The next task is 5.3b-2.
+
 ## 17 October 2026: task 5.3a Draft builder, steps 1 to 4
 
 - Built the draft builder (`/timetable/builder`): the checklist of the eight steps of `06`, steps 1 to 4 open, 5 to 8 marked not yet available; the readiness route `GET api/timetable/versions/:id/readiness` and the confirm of step 1's templates table (`POST …/templates/confirm`, migration 0068, audit `timetable_version.templates_confirm`).

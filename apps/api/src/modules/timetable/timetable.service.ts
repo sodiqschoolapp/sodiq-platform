@@ -1083,10 +1083,12 @@ export class Timetable {
   /**
    * The gate (task 5.3b-1, decision 6): a draft moves to generation only when
    * every step of the builder is ready, read in the transaction of the
-   * request. The run route of 5.11 calls it first.
+   * request. The run route of 5.11 calls it first. The draft is locked as for
+   * a write (permission review, should-fix 1), so no save of a weight or of
+   * the load commits between the check and the run.
    */
   async requireReady(transaction: Transaction, branchId: string, id: string): Promise<void> {
-    const version = await this.findVersion(transaction, branchId, id);
+    const version = await this.lockDraft(transaction, branchId, id);
     const readiness = await this.readinessOf(transaction, branchId, version);
     if (!readiness.ready) {
       const steps = (['templates', 'load', 'teachers', 'rooms', 'rules'] as const).filter(

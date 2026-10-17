@@ -710,6 +710,9 @@ describe('the readiness of a draft, steps 1 to 5', () => {
       expect((refused as { getStatus: () => number }).getStatus()).toBe(409);
       readinessOf(await confirmWeights(s.branch, s.version, DEFAULTS));
       await expect(gate()).resolves.toBeUndefined();
+      // Permission review, should-fix 1: the gate locks a draft, so a published version is refused.
+      await load.setVersion(s.version, 'published');
+      await expect(gate()).rejects.toMatchObject({ code: 'version_not_draft' });
     });
 
     it("answers 404 for another branch's version and an unknown one, changing nothing, and 403 to the Principal and a Teacher", async () => {

@@ -26,6 +26,12 @@ describe('the weights of a version', () => {
     expect(new Set(Object.values(weightColumnsOf(weights))).size).toBe(8);
     expect(confirmedWeightsOf(weights)).toEqual(weights);
     expect(confirmedWeightsOf(null)).toBeNull();
+    // A preference added after the confirmation is missing from it: read, and not the same.
+    const older = Object.fromEntries(
+      Object.entries(weights).filter(([code]) => code !== 'main_room'),
+    );
+    expect(confirmedWeightsOf(older)).toEqual(older);
+    expect(sameWeights(older, weights)).toBe(false);
     expect(sameWeights(weights, { ...weights })).toBe(true);
     expect(sameWeights(weights, { ...weights, teacher_preferred_times: 9 })).toBe(false);
   });

@@ -57,11 +57,15 @@ export function weightColumnsOf(weights: PreferenceWeights): WeightColumns {
   };
 }
 
-/** `rules_confirmed` as stored; `null` when never confirmed. */
-export function confirmedWeightsOf(stored: unknown): PreferenceWeights | null {
-  return stored === null ? null : preferenceWeightsSchema.parse(stored);
+/**
+ * `rules_confirmed` as stored; `null` when never confirmed. A preference
+ * added after the confirmation is missing from it and counts as changed
+ * (permission review, should-fix 2), never as a fault.
+ */
+export function confirmedWeightsOf(stored: unknown): Partial<PreferenceWeights> | null {
+  return stored === null ? null : preferenceWeightsSchema.partial().parse(stored);
 }
 
-/** Whether two sets of weights are equal. */
-export const sameWeights = (a: PreferenceWeights, b: PreferenceWeights): boolean =>
+/** Whether the weights confirmed (or sent) are the weights stored, code by code. */
+export const sameWeights = (a: Partial<PreferenceWeights>, b: PreferenceWeights): boolean =>
   PREFERENCE_CODES.every((code) => a[code] === b[code]);

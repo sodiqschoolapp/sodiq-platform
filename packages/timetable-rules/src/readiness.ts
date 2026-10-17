@@ -204,7 +204,8 @@ export interface RulesReadiness {
  */
 export function rulesReadiness(input: {
   readonly weights: Weights;
-  readonly confirmed: Weights | null;
+  /** A preference missing from the confirmed weights (added later) counts as changed. */
+  readonly confirmed: Partial<Weights> | null;
 }): RulesReadiness {
   const { confirmed } = input;
   const changed =

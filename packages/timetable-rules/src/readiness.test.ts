@@ -311,6 +311,17 @@ describe('rulesReadiness (step 5)', () => {
     });
   });
 
+  it('counts a preference missing from the confirmed weights as changed', () => {
+    const older = Object.fromEntries(
+      Object.entries(weights).filter(([code]) => code !== 'main_room'),
+    );
+    expect(rulesReadiness({ weights, confirmed: older })).toEqual({
+      ready: false,
+      confirmed: false,
+      changed: ['main_room'],
+    });
+  });
+
   it('names the changes in the order of the preferences', () => {
     expect(
       rulesReadiness({
