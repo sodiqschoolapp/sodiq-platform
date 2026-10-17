@@ -255,8 +255,10 @@ describe('the own photo', () => {
       let waited = false;
       for (let tries = 0; tries < 150 && !waited; tries += 1) {
         const found = await sql<{ waiting: number }>`
-          select count(*)::int as waiting from pg_locks
-          where locktype in ('transactionid', 'tuple') and not granted
+          select count(*)::int as waiting
+          from pg_locks l join pg_stat_activity a on a.pid = l.pid
+          where a.datname = current_database() and l.locktype in ('transactionid', 'tuple')
+            and not l.granted
         `.execute(t.database.migrator);
         waited = (found.rows[0]?.waiting ?? 0) > 0;
         if (!waited) {
