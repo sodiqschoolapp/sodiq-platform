@@ -3,7 +3,7 @@ import { classDisplayName, type GridAnswer } from '@sodiq/shared';
 import type { PatternModel } from '@sodiq/timetable-rules';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { SECTION_TITLE } from '@/components/ui/control';
+import { SECTION_TITLE, SUBSECTION_TITLE } from '@/components/ui/control';
 import { Button } from '@/components/ui/button';
 import { nameOf } from '@/features/setup/setup-api';
 import { SubjectSwatch } from '@/features/setup/subject-colour';
@@ -126,7 +126,7 @@ function Entry({
         'grid gap-1 rounded-md bg-card p-1.5 text-xs shadow-sm',
         canDrag && 'cursor-grab',
         dragging && 'opacity-50',
-        highlighted && 'ring-2 ring-primary',
+        highlighted && 'outline-2 outline-offset-2 outline-ring',
       )}
     >
       {entry.rows.map(({ row, placed }) => (
@@ -189,7 +189,7 @@ export function GridToPlace({
         if (own.length === 0) return null;
         return (
           <div key={one.id} className="grid gap-1" data-to-place-class={one.id}>
-            <h4 className="text-sm font-semibold">{classDisplayName(one.grade, one.name)}</h4>
+            <h4 className={SUBSECTION_TITLE}>{classDisplayName(one.grade, one.name)}</h4>
             <ul className="grid gap-1">
               {own.map((entry) => (
                 <Entry

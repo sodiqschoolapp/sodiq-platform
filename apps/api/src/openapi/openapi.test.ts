@@ -240,6 +240,7 @@ describe('OpenAPI document', () => {
         '/api/timetable/versions/{id}/pattern/swap',
         '/api/timetable/versions/{id}/pattern/{blockId}',
         '/api/timetable/versions/{id}/pattern/{blockId}/move',
+        '/api/timetable/versions/{id}/pattern/{blockId}/room',
         '/api/timetable/versions/{id}/pins',
         '/api/timetable/versions/{id}/pins/{pinId}',
         '/api/timetable/versions/{id}/preferences',

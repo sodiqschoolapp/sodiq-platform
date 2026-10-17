@@ -112,7 +112,7 @@ export function GridTile({
         FOCUS_RING,
         editable && 'cursor-grab',
         dragging && 'opacity-50',
-        highlighted && 'ring-2 ring-primary',
+        highlighted && 'outline-2 outline-offset-2 outline-ring',
       )}
     >
       {block.lessons.map((lesson) => {
