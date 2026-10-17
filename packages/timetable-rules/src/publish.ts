@@ -10,8 +10,8 @@
  * publishing, unless the load row is marked 'deliberately short' with a
  * reason".
  */
-import { patternIdOf, type DatedLesson, type DatedNoTutor } from './dated.js';
-import type { RuleCode, RuleResult } from './rules.js';
+import { patternIdOf, type DatedLesson } from './dated.js';
+import type { RuleResult } from './rules.js';
 import { firstOn } from './templates.js';
 import type { EngineYear } from './placement.js';
 
@@ -93,7 +93,12 @@ export interface DatedPublishInput {
   readonly dated: readonly RuleResult[];
   /** The own lessons of the dates by placement id. */
   readonly lessons: ReadonlyMap<string, DatedLesson>;
-  readonly noTutor: readonly DatedNoTutor[];
+  /**
+   * The Tutor lessons already found "needs a teacher": no Tutor on the date,
+   * or a Tutor of the date (not the entry's teacher) who clashes by time or
+   * travel (`checkTeacherTime`, as `followTutors` checks; decision 11).
+   */
+  readonly tutorNeeds: readonly NeedsTeacher[];
   /** The branch of a busy-elsewhere placement, of the pattern or of a date; `null` for an own one. */
   readonly fixedBranch: (id: string) => string | null;
   /** Whether the date follows another weekday than its own (a worked Saturday). */
@@ -101,19 +106,6 @@ export interface DatedPublishInput {
   /** Whether the teacher is inactive or left on the start date already. */
   readonly outOnStart: (teacherId: string) => boolean;
 }
-
-/** The rules of a teacher that a Tutor lesson yields on, to "needs a teacher" (decision 11). */
-const TEACHER_RULES: readonly RuleCode[] = [
-  'teacher_double',
-  'teacher_branch',
-  'teacher_inactive',
-  'teacher_subject',
-  'teacher_grade',
-  'teacher_language',
-  'teacher_unavailable',
-  'travel_time',
-  'travel_time_not_set',
-];
 
 /**
  * The key a dated result repeats a pattern result by (decision 5 with review
@@ -144,8 +136,7 @@ function repeatKey(result: RuleResult, fixedBranch: (id: string) => string | nul
 
 /**
  * What the dated check of a publish does to it. A blocked result is, in this
- * order: "needs a teacher" for a Tutor lesson whose Tutor of the date is not
- * the entry's teacher (decision 11), for a teacher outside their hours on the
+ * order: "needs a teacher" for a teacher outside their hours on the
  * real day of a date that follows another weekday (decision 9), and for a
  * teacher inactive or left from a date after the start (decision 10); left out
  * when it repeats a blocked result of the pattern (decision 5); else a refusal.
@@ -161,8 +152,8 @@ export function datedPublishResults(input: DatedPublishInput): DatedPublishResul
       needs.set(key, { date: lesson.date, entryId: lesson.entryId, reason });
     }
   };
-  for (const one of input.noTutor) {
-    needs.set(`${one.entryId}@${one.date}`, { ...one, reason: 'no_tutor' });
+  for (const one of input.tutorNeeds) {
+    needs.set(`${one.entryId}@${one.date}`, one);
   }
   for (const result of input.dated) {
     if (result.severity !== 'blocked') continue;
@@ -170,12 +161,6 @@ export function datedPublishResults(input: DatedPublishInput): DatedPublishResul
       const lesson = input.lessons.get(id);
       return lesson === undefined ? [] : [lesson];
     });
-    const teacherRule = TEACHER_RULES.includes(result.rule);
-    const followed = own.filter((lesson) => lesson.tutorFollowed);
-    if (teacherRule && followed.length > 0) {
-      followed.forEach((lesson) => need(lesson, 'tutor_clash'));
-      continue;
-    }
     const [first] = own;
     if (
       result.rule === 'teacher_unavailable' &&

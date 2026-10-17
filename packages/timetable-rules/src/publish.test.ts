@@ -149,7 +149,7 @@ describe('datedPublishResults (task 5.5a-2a)', () => {
     patternBlocked: [],
     dated: [],
     lessons: new Map(),
-    noTutor: [],
+    tutorNeeds: [],
     fixedBranch: (id) => FIXED[id] ?? null,
     followsOther: () => false,
     outOnStart: () => false,
@@ -204,20 +204,15 @@ describe('datedPublishResults (task 5.5a-2a)', () => {
     ).toEqual([]);
   });
 
-  it('lists a Tutor lesson whose Tutor of the date clashes as needs a teacher, not a refusal', () => {
-    const tutor = lessonOf('tut', '2026-11-23', { tutorFollowed: true });
-    const other = lessonOf('e2', '2026-11-23');
+  it('keeps the Tutor lessons found "needs a teacher" before', () => {
     const found = datedPublishResults(
       base({
-        dated: [result('teacher_double', '2026-11-23', ['e2@2026-11-23', 'tut@2026-11-23'])],
-        lessons: new Map([
-          [tutor.placement.id, tutor],
-          [other.placement.id, other],
-        ]),
-        noTutor: [{ date: '2026-11-30', entryId: 'tut' }],
+        tutorNeeds: [
+          { date: '2026-11-30', entryId: 'tut', reason: 'no_tutor' },
+          { date: '2026-11-23', entryId: 'tut', reason: 'tutor_clash' },
+        ],
       }),
     );
-    expect(found.blocked).toEqual([]);
     expect(found.needsTeacher).toEqual([
       { date: '2026-11-23', entryId: 'tut', reason: 'tutor_clash' },
       { date: '2026-11-30', entryId: 'tut', reason: 'no_tutor' },

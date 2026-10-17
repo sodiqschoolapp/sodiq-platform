@@ -2,7 +2,9 @@ import { Injectable } from '@nestjs/common';
 import {
   PUBLISH_STEPS,
   timetableVersionSchema,
+  type CancelledLesson,
   type ErrorDetail,
+  type NeedsTeacherAnswer,
   type PublishBody,
   type PublishCheck,
   type PublishRefusal,
@@ -26,6 +28,7 @@ import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { dailyWeightsFit, quarterWeightsFit } from '../setup/subject-weights.js';
 import type { StoredLoadRow } from './load-facts.js';
+import { datedCheck } from './dated-check.js';
 import { refusingPattern, TimetablePattern } from './pattern.service.js';
 import { resultAnswerOf } from './rule-answers.js';
 import { lockSubjects, Timetable, type VersionRow } from './timetable.service.js';
@@ -46,10 +49,12 @@ interface QuarterRow {
   readonly end_date: string | null;
 }
 
-/** What a check found: the refusals and the warnings, on the date checked. */
+/** What a check found: the refusals and the warnings, on the date checked; the lists of the dates (task 5.5a-2a). */
 interface Findings {
   readonly refusals: PublishRefusal[];
   readonly warnings: RuleResultAnswer[];
+  readonly cancelledLessons: CancelledLesson[];
+  readonly needsTeacher: NeedsTeacherAnswer[];
 }
 
 /** A refusal as a detail of `publish_blocked` (decision 12). */
@@ -65,9 +70,11 @@ function detailOf(refusal: PublishRefusal): ErrorDetail {
             : `subjects.${refusal.subjectId}.quarters.${String(refusal.quarter)}`
           : refusal.code === 'pattern_blocked' && refusal.result !== undefined
             ? `pattern.${refusal.result.rule}`
-            : refusal.code.startsWith('version_start')
-              ? 'startsOn'
-              : '';
+            : refusal.code === 'date_blocked' && refusal.result?.date !== undefined
+              ? `dates.${refusal.result.date}.${refusal.result.rule}`
+              : refusal.code.startsWith('version_start')
+                ? 'startsOn'
+                : '';
   return {
     path,
     code: refusal.code,
@@ -76,6 +83,7 @@ function detailOf(refusal: PublishRefusal): ErrorDetail {
     ...(refusal.result === undefined
       ? {}
       : { rule: { weekday: refusal.result.weekday, lessonIds: refusal.result.lessonIds } }),
+    ...(refusal.result?.date === undefined ? {} : { day: refusal.result.date }),
   };
 }
 
@@ -125,6 +133,8 @@ export class TimetablePublish {
         quarterStarts: [...choices.quarterStarts],
         refusals: findings.refusals,
         warnings: findings.warnings,
+        cancelledLessons: findings.cancelledLessons,
+        needsTeacher: findings.needsTeacher,
         canPublish: version.status === 'draft' && findings.refusals.length === 0,
       };
     });
@@ -327,7 +337,7 @@ export class TimetablePublish {
     }));
     if (refusals.length > 0) {
       // Outside the year or before tomorrow, nothing else is read on that date.
-      return { refusals, warnings: [] };
+      return { refusals, warnings: [], cancelledLessons: [], needsTeacher: [] };
     }
     const version: VersionRow = { ...stored, starts_on: startsOn };
     const context = await this.timetable.contextOf(transaction, version);
@@ -399,8 +409,25 @@ export class TimetablePublish {
       });
     }
 
+    // Task 5.5a-2a: every date of the version (decisions 2 to 11).
+    const dated = await datedCheck(transaction, state, startsOn, sorted.blocked);
+    for (const result of dated.blocked) {
+      refusals.push({ code: 'date_blocked', result });
+    }
+
     refusals.push(...(await this.settingsRefusals(transaction, version, rows, quarters, startsOn)));
-    return { refusals, warnings: sorted.warnings.map(resultAnswerOf) };
+    return {
+      refusals,
+      // Decision 6: the later entries by date, in place of the pattern's first dates.
+      warnings: [
+        ...sorted.warnings
+          .filter((one) => one.rule !== 'teacher_unavailable_later')
+          .map(resultAnswerOf),
+        ...dated.warnings,
+      ],
+      cancelledLessons: dated.cancelled,
+      needsTeacher: dated.needsTeacher,
+    };
   }
 
   /**
