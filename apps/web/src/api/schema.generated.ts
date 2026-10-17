@@ -34763,10 +34763,10 @@ export interface operations {
                         moved: {
                             /** Format: uuid */
                             lessonId: string;
-                            /** Format: date-time */
-                            startsAt: string;
-                            /** Format: date-time */
-                            endsAt: string;
+                            /** Format: date */
+                            date: string;
+                            start: string;
+                            end: string;
                             subjectNames: {
                                 uz: string;
                                 ru: string;
@@ -34780,20 +34780,18 @@ export interface operations {
                         needsTeacher: {
                             /** Format: uuid */
                             lessonId: string;
-                            /** Format: date-time */
-                            startsAt: string;
-                            /** Format: date-time */
-                            endsAt: string;
+                            /** Format: date */
+                            date: string;
+                            start: string;
+                            end: string;
                             subjectNames: {
                                 uz: string;
                                 ru: string;
                                 en: string;
                             };
                             clashes: {
-                                /** Format: date-time */
-                                startsAt: string;
-                                /** Format: date-time */
-                                endsAt: string;
+                                start: string;
+                                end: string;
                                 branchName: string | null;
                             }[];
                         }[];

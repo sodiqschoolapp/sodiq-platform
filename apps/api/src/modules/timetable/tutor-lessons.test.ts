@@ -541,6 +541,40 @@ describe('Tutor lessons follow the Tutor', () => {
     });
   });
 
+  // .claude/rules/api.md: a path id of another branch, or unknown, is
+  // answered 404 before anything is written, with Tutor lessons in both
+  // branches that a follow would move (permission review, must-fix 1).
+  describe('the give, the end and the archive of another branch’s or an unknown record', () => {
+    it('answer 404 and write nothing', async () => {
+      const own = await tutoredClass();
+      await tutorLesson(own.classId, own.tutor.staffId, '2026-10-27');
+      const southClass = await newClass(south);
+      const southPerson = await lessons.load.classes.person(south, ['uz']);
+      const southRole = await lessons.load.classes.role(southPerson.accountId, south, 'tutor');
+      const southRow = await lessons.load.classes.tutorRow(south, southClass, southRole);
+      await lesson({
+        classId: southClass,
+        date: '2026-10-27',
+        start: '09:00',
+        end: '09:45',
+        teacherId: southPerson.staffId,
+        rowTeacherId: southPerson.staffId,
+        branch: south,
+      });
+      const b = await tutorPerson();
+      const before = await rowsOf();
+      await give(southClass, b.assignmentId, '2026-10-19').expect(404);
+      await give(UNKNOWN, b.assignmentId, '2026-10-19').expect(404);
+      await give(own.classId, southRole, '2026-10-19').expect(404);
+      await endRow(southClass, southRow, '2026-10-19').expect(404);
+      await endRow(own.classId, southRow, '2026-10-19').expect(404);
+      await endRow(own.classId, UNKNOWN, '2026-10-19').expect(404);
+      await post(`/api/classes/${southClass}/archive`).expect(404);
+      await post(`/api/classes/${UNKNOWN}/archive`).expect(404);
+      expect(await rowsOf()).toEqual(before);
+    });
+  });
+
   describe('the end of the Tutor role', () => {
     it('sets the lessons from the end to need a teacher, and a later end gives them back', async () => {
       const own = await tutoredClass();
@@ -918,6 +952,19 @@ describe('Tutor lessons follow the Tutor', () => {
         )
         .catch((error: unknown) => error as { constraint?: string });
       expect(refused).toMatchObject({ constraint: 'teacher_claims_branch' });
+      // A branch outside the transaction, for a teacher linked to it.
+      const outside = await app
+        .get(Transactions)
+        .run([north], (transaction) =>
+          sql`
+            select * from teacher_claims_elsewhere(
+              ${south}::uuid, ${b.staffId}::uuid,
+              ${at('2026-10-27', '00:00')}::timestamptz, ${at('2026-10-28', '00:00')}::timestamptz
+            )
+          `.execute(transaction),
+        )
+        .catch((error: unknown) => error as { constraint?: string });
+      expect(outside).toMatchObject({ constraint: 'teacher_claims_branch' });
     });
   });
 });
