@@ -1227,7 +1227,8 @@ describe('publish', () => {
         .values({ branch_low: low, branch_high: high, minutes: 30 })
         .execute();
       // The other branch's version from 16 November, as 5.5b will write its
-      // dated lessons: two Mondays at 08:00–08:45 with the same teacher.
+      // dated lessons: two Mondays at 08:00–08:45 with the same teacher, and a
+      // third at 09:00, 15 minutes after the scene's lesson ends.
       const otherYear = await lessons.year(other);
       const otherClass = await lessons.load.classes.schoolClass(other, otherYear.year, {
         grade: 7,
@@ -1240,69 +1241,127 @@ describe('publish', () => {
       );
       const from = source.lessons[0];
       if (from === undefined) throw new Error('No source.');
-      for (const date of ['2026-11-16', '2026-11-23']) {
-        await t.app.get(Transactions).run([other], async (transaction) => {
+      /** A dated lesson of the teacher in a branch, written as 5.5b will write it. */
+      const datedLesson = (
+        branch: string,
+        year: string,
+        quarter: string,
+        lesson: {
+          versionId: string;
+          patternBlockId: string;
+          loadRowId: string;
+          patternEntryId: string;
+        },
+        classId: string,
+        [date, start, end]: readonly [string, string, string],
+      ) =>
+        t.app.get(Transactions).run([branch], async (transaction) => {
           const block = await transaction
             .insertInto('lesson_blocks')
             .values({
-              branch_id: other,
-              academic_year_id: otherYear.year,
-              quarter_id: otherYear.quarters[1] ?? '',
+              branch_id: branch,
+              academic_year_id: year,
+              quarter_id: quarter,
               lesson_date: date,
-              starts_at: at(date, '08:00'),
-              ends_at: at(date, '08:45'),
-              version_id: source.versionId,
-              pattern_block_id: source.patternBlockId,
+              starts_at: at(date, start),
+              ends_at: at(date, end),
+              version_id: lesson.versionId,
+              pattern_block_id: lesson.patternBlockId,
             })
             .returning(['id', 'lesson_date', 'starts_at', 'ends_at'])
             .executeTakeFirstOrThrow();
           await transaction
             .insertInto('lessons')
             .values({
-              branch_id: other,
+              branch_id: branch,
               block_id: block.id,
               lesson_date: block.lesson_date,
               starts_at: block.starts_at,
               ends_at: block.ends_at,
-              class_id: otherClass,
+              class_id: classId,
               subject_id: s.subject,
-              load_row_id: from.loadRowId,
-              pattern_entry_id: from.patternEntryId,
+              load_row_id: lesson.loadRowId,
+              pattern_entry_id: lesson.patternEntryId,
               teacher_id: s.teacherId,
             })
             .execute();
         });
+      for (const when of [
+        ['2026-11-16', '08:00', '08:45'],
+        ['2026-11-23', '08:00', '08:45'],
+        ['2026-11-30', '09:00', '09:45'],
+      ] as const) {
+        await datedLesson(
+          other,
+          otherYear.year,
+          otherYear.quarters[1] ?? '',
+          { ...source, ...from },
+          otherClass,
+          when,
+        );
       }
+      // A lesson of the teacher in the scene's own branch, of an earlier
+      // published version, on 7 December at the same time: the publish
+      // replaces it, so it is no clash (the own branch's claims are left out).
+      const ownClass = await load.classes.schoolClass(s.branch, s.year, {
+        grade: 7,
+        room: await load.classes.room(s.branch),
+      });
+      const ownSource = await lessons.source(
+        s.branch,
+        s.year,
+        [{ classId: ownClass, groupId: null, subjectId: s.subject }],
+        '2026-10-05',
+      );
+      const ownFrom = ownSource.lessons[0];
+      if (ownFrom === undefined) throw new Error('No source.');
+      const ownQuarter = await t.database.migrator
+        .selectFrom('quarters')
+        .select('id')
+        .where('academic_year_id', '=', s.year)
+        .where('number', '=', 2)
+        .executeTakeFirstOrThrow();
+      await datedLesson(s.branch, s.year, ownQuarter.id, { ...ownSource, ...ownFrom }, ownClass, [
+        '2026-12-07',
+        '08:00',
+        '08:45',
+      ]);
       await load.freeEditLock(s.version);
       const [entry] = await entryOf(s.version);
       const answer = checkOf(await check(s.branch, s.version, MONDAY));
       expect(answer.canPublish).toBe(false);
-      expect(answer.refusals).toEqual(
-        ['2026-11-16', '2026-11-23'].map((date) => ({
-          code: 'date_blocked',
-          result: {
-            rule: 'teacher_double',
-            severity: 'blocked',
-            weekday: 1,
-            date,
-            // The own entry, and the other branch by its id only: no lesson,
-            // class, room or claim of that branch (decision 8).
-            lessonIds: [entry],
-            detail: { branchId: other },
-          },
-        })),
-      );
+      // The own entry, and the other branch by its id only: no lesson,
+      // class, room or claim of that branch (decision 8).
+      const dated = (date: string, rule: string, detail: Record<string, string | number>) => ({
+        code: 'date_blocked',
+        result: { rule, severity: 'blocked', weekday: 1, date, lessonIds: [entry], detail },
+      });
+      expect(answer.refusals).toEqual([
+        dated('2026-11-16', 'teacher_double', { branchId: other }),
+        dated('2026-11-23', 'teacher_double', { branchId: other }),
+        dated('2026-11-30', 'travel_time', { minutes: 30, gap: 15, branchId: other }),
+      ]);
       const before = await written([s.version, source.versionId]);
       const refused = await publish(s.branch, s.version, MONDAY);
-      expect(blockedBy(refused)).toEqual([
-        { code: 'date_blocked', path: 'dates.2026-11-16.teacher_double' },
-        { code: 'date_blocked', path: 'dates.2026-11-23.teacher_double' },
-      ]);
-      const details = (refused.body as { error: { details: { day?: string }[] } }).error.details;
-      expect(details.map((one) => one.day)).toEqual(['2026-11-16', '2026-11-23']);
+      refusedWith(refused, 409, 'publish_blocked');
+      // The whole detail of each refusal: the own entry and the date, nothing of the other branch.
+      expect((refused.body as { error: { details: unknown[] } }).error.details).toEqual(
+        [
+          ['2026-11-16', 'teacher_double'],
+          ['2026-11-23', 'teacher_double'],
+          ['2026-11-30', 'travel_time'],
+        ].map(([day = '', rule = '']) => ({
+          path: `dates.${day}.${rule}`,
+          code: 'date_blocked',
+          message: 'A reason the publish is refused.',
+          rule: { weekday: 1, lessonIds: [entry] },
+          day,
+        })),
+      );
       expect(await written([s.version, source.versionId])).toEqual(before);
-      // From 30 November the version is clear of them: a start then publishes.
-      expect(checkOf(await check(s.branch, s.version, '2026-11-30')).refusals).toEqual([]);
+      // From 7 December the version is clear of them, and the own branch's
+      // lesson that day is no clash (it fails with the own claims read).
+      expect(checkOf(await check(s.branch, s.version, '2026-12-07')).refusals).toEqual([]);
     });
 
     it('lists the dates under a later availability entry as warnings and publishes (Done when)', async () => {
