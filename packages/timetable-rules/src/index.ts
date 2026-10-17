@@ -4,7 +4,8 @@
 // teaching load row, task 3.4b the blocks and weekly totals of a load, task
 // 5.2 every rule of a placed timetable (check.ts), task 5.3a the readiness of
 // the draft builder, task 5.3b-1 its step 5 (preferences.ts), task 5.3b-2
-// the pinned lessons (pins.ts).
+// the pinned lessons (pins.ts), task 5.4a the pattern facts as data and the
+// lessons of a block at a slot (facts-data.ts, pattern-place.ts).
 export {
   dayEndsAfterMidnight,
   dayTimes,
@@ -120,7 +121,29 @@ export {
   type PinSlot,
 } from './pins.js';
 export { tutorAt, type TutorRow } from './tutors.js';
-export { checkCandidate, checkTeacherTime, checkTimetable, overlappingPairs } from './check.js';
+export {
+  checkCandidate,
+  checkCandidates,
+  checkTeacherTime,
+  checkTimetable,
+  overlappingPairs,
+} from './check.js';
+export {
+  factsFromData,
+  patternModel,
+  type PatternAt,
+  type PatternFactsData,
+  type PatternModel,
+  type PatternRowData,
+  type PatternUnitData,
+} from './facts-data.js';
+export {
+  blockPlacements,
+  patternPlacements,
+  slotAt,
+  type BlockLesson,
+  type PatternBlock,
+} from './pattern-place.js';
 export {
   draftReady,
   loadReadiness,
