@@ -68,6 +68,7 @@ export type AccountKey =
   | 'draftBuilder'
   | 'draftGrid'
   | 'draftGridPanels'
+  | 'draftGridSuggest'
   | 'whoTeacher'
   | 'whoHeadTutor'
   | 'whoHeadTeacher';
