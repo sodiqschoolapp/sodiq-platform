@@ -55,6 +55,9 @@ export const loadProblemSchema = z.enum(LOAD_PROBLEMS);
 
 export type LoadProblem = z.infer<typeof loadProblemSchema>;
 
+/** "The edit lock is released after 5 minutes without activity" (edge/timetable, Generator and editing; task 5.4c-1). */
+export const DRAFT_EDIT_LOCK_MINUTES = 5;
+
 /** A version as the list shows it. */
 export const timetableVersionSchema = z.object({
   id: z.uuid(),
@@ -68,6 +71,19 @@ export const timetableVersionSchema = z.object({
   fromVersion: z.object({ id: z.uuid(), number: z.int().min(1) }).nullable(),
   rows: z.int().min(0),
   leftRows: z.int().min(0),
+  /**
+   * Who edits the draft now (task 5.4c-1): the account that holds its edit
+   * lock and was active in the last 5 minutes, with its name, and whether it
+   * is the reader's; `null` when the lock is free (`edge/timetable`,
+   * Generator and editing).
+   */
+  editLock: z
+    .object({
+      holder: z.object({ id: z.uuid(), name: z.string() }),
+      seenAt: z.iso.datetime({ offset: true }),
+      mine: z.boolean(),
+    })
+    .nullable(),
 });
 
 export type TimetableVersion = z.infer<typeof timetableVersionSchema>;
@@ -712,6 +728,32 @@ export const gridRowSchema = z.object({
 
 export type GridRow = z.infer<typeof gridRowSchema>;
 
+/** The kinds of lock (06, Auto-generation: "A lesson, a class, a teacher or a day can be locked"). */
+export const TIMETABLE_LOCK_KINDS = ['block', 'class', 'teacher', 'day'] as const;
+
+/** A lock of a draft (task 5.4c-1): a lesson by its block, a class, a teacher or vacancy, or a weekday. */
+export const timetableLockRecordSchema = z.discriminatedUnion('kind', [
+  z.strictObject({ kind: z.literal('block'), blockId: z.uuid() }),
+  z.strictObject({ kind: z.literal('class'), classId: z.uuid() }),
+  z.strictObject({ kind: z.literal('teacher'), teacherId: z.uuid() }),
+  z.strictObject({ kind: z.literal('day'), weekday: weekdaySchema }),
+]);
+
+export type TimetableLockRecord = z.infer<typeof timetableLockRecordSchema>;
+
+export const timetableLockSchema = z.discriminatedUnion('kind', [
+  z.object({ id: z.uuid(), kind: z.literal('block'), blockId: z.uuid() }),
+  z.object({ id: z.uuid(), kind: z.literal('class'), classId: z.uuid() }),
+  z.object({ id: z.uuid(), kind: z.literal('teacher'), teacherId: z.uuid() }),
+  z.object({ id: z.uuid(), kind: z.literal('day'), weekday: weekdaySchema }),
+]);
+
+export type TimetableLock = z.infer<typeof timetableLockSchema>;
+
+export const timetableLockParamsSchema = z.object({ id: z.uuid(), lockId: z.uuid() });
+
+export type TimetableLockParams = z.infer<typeof timetableLockParamsSchema>;
+
 export const gridSchema = z.object({
   version: timetableVersionSchema,
   /** A draft is edited; a published or archived version is read only (decision 16). */
@@ -730,6 +772,8 @@ export const gridSchema = z.object({
       slotPosition: z.int().min(1).max(PIN_SLOT_POSITION_MAX),
     }),
   ),
+  /** The locks of the draft (task 5.4c-1): "Suggest a place" leaves what they hold where it is. */
+  locks: z.array(timetableLockSchema),
   /** Every result of the draft's pattern now (the conflict panel of 5.4b lists them). */
   results: z.array(ruleResultSchema),
 });
@@ -828,3 +872,4 @@ export const rearrangeRecordSchema = z
 export type RearrangeRecord = z.infer<typeof rearrangeRecordSchema>;
 
 export const patternBlockParamsSchema = z.object({ id: z.uuid(), blockId: z.uuid() });
+

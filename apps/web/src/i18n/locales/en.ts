@@ -379,6 +379,10 @@ export const en = {
       'A half of a mixed split is not placed here yet: its halves meet in different slots.',
     pattern_clash:
       'Another lesson already holds that teacher, room or class at that time. Reload the grid and choose another slot.',
+    pattern_locked: 'A locked lesson stays where it is. Unlock it first, or choose another suggestion.',
+    draft_edit_locked:
+      'Someone else is editing this draft. You can take over once they have been inactive for 5 minutes.',
+    lock_taken: 'This lock is already set.',
     timetable_busy: 'Another change of the timetable was being saved. Try again.',
     draft_not_ready: 'A step of the draft is not ready. Finish the steps marked not ready first.',
     load_unit_year:
@@ -2363,6 +2367,7 @@ export const en = {
       timetable_version: 'Timetable version',
       teaching_load_row: 'Teaching load row',
       timetable_pin: 'Pinned lesson',
+      timetable_lock: 'Lock of a draft',
       pattern_block: 'Lesson of the weekly pattern',
       pattern_entry: 'Lesson of a pattern block',
     },
@@ -2597,6 +2602,11 @@ export const en = {
         templates_confirm: 'Day templates of a draft confirmed',
         preferences: 'Preference weights of a draft changed',
         rules_confirm: 'Rules of a draft confirmed',
+        edit_lock: 'Draft timetable version taken for editing',
+      },
+      timetable_lock: {
+        create: 'Lock of a draft set',
+        delete: 'Lock of a draft removed',
       },
       timetable_pin: {
         create: 'Lesson of a draft pinned',
@@ -2962,6 +2972,10 @@ export const en = {
           'The main phone of {{fullName}}, a parent of your students, was changed in another branch.',
         merged:
           'The parent records {{keptName}} and {{mergedName}} were merged in another branch; the name {{fullName}} stays.',
+      },
+      timetable: {
+        draft_taken_over:
+          '{{name}} took over draft {{number}} of the timetable after 5 minutes without activity. Your saved changes are kept.',
       },
     },
   },

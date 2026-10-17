@@ -355,3 +355,75 @@ describe('suggestPlaces: generated drafts', () => {
     );
   });
 });
+
+describe('suggestPlaces: locks (task 5.4c-1)', () => {
+  function crowded() {
+    const model = patternModel(patternData());
+    const all = [
+      ...seniorCells(['5:6']).map(([weekday, position]) =>
+        at(model, `m${weekday}${position}`, ['math-7a'], weekday, position),
+      ),
+      at(model, 'sci', ['sci-7b'], 5, 6),
+    ];
+    return { model, all };
+  }
+
+  it('never moves a locked block as a blocker', () => {
+    const { model, all } = crowded();
+    const unlocked = suggestPlaces(model, all, newBlockOf(model, 'math-7b'));
+    expect(
+      unlocked.rearrangements.some((one) => one.changes.some((change) => change.to.id === 'sci')),
+    ).toBe(true);
+    const { rearrangements } = suggestPlaces(model, all, newBlockOf(model, 'math-7b'), {
+      locks: [{ id: 'l', kind: 'block', blockId: 'sci' }],
+    });
+    for (const one of rearrangements) {
+      expect(one.changes.map((change) => change.to.id)).not.toContain('sci');
+    }
+  });
+
+  it('never moves a blocker of a locked teacher', () => {
+    const { model, all } = crowded();
+    const { rearrangements } = suggestPlaces(model, all, newBlockOf(model, 'math-7b'), {
+      locks: [{ id: 'l', kind: 'teacher', teacherId: 't6' }],
+    });
+    expect(rearrangements.length).toBeGreaterThan(0);
+    for (const one of rearrangements) {
+      expect(one.changes.map((change) => change.to.id)).not.toContain('sci');
+    }
+  });
+
+  it('offers no slot of a locked day, and moves no blocker into it', () => {
+    const { model, all } = crowded();
+    const { rearrangements } = suggestPlaces(model, all, newBlockOf(model, 'math-7b'), {
+      locks: [{ id: 'l', kind: 'day', weekday: 4 }],
+    });
+    expect(rearrangements.length).toBeGreaterThan(0);
+    for (const one of rearrangements) {
+      for (const change of one.changes) expect(change.to.weekday).not.toBe(4);
+    }
+    const free = suggestPlaces(model, [], newBlockOf(model, 'math-7a'), {
+      locks: [{ id: 'l', kind: 'day', weekday: 1 }],
+    }).free;
+    expect(free.length).toBeGreaterThan(0);
+    for (const one of free) expect(one.changes[0]?.to.weekday).not.toBe(1);
+  });
+
+  it('searches nothing for a locked lesson and says so', () => {
+    const model = patternModel(patternData());
+    const a = at(model, 'a', ['math-7a'], 1, 1);
+    for (const lock of [
+      { id: 'l', kind: 'block', blockId: 'a' },
+      { id: 'l', kind: 'class', classId: '7a' },
+      { id: 'l', kind: 'day', weekday: 1 },
+    ] as const) {
+      expect(suggestPlaces(model, [a], a, { locks: [lock] })).toEqual({
+        free: [],
+        rearrangements: [],
+        cutShort: false,
+        locked: true,
+      });
+    }
+    expect(suggestPlaces(model, [a], a).locked).toBe(false);
+  });
+});

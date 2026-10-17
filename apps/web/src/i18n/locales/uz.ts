@@ -386,6 +386,11 @@ export const uz: Texts<'one' | 'other'> = {
       'Aralash boʻlinmaning yarmi bu yerda hozircha qoʻyilmaydi: uning yarmlari turli slotlarda oʻtadi.',
     pattern_clash:
       'Bu vaqtda oʻqituvchi, xona yoki sinf boshqa dars bilan band. Jadvalni yangilang va boshqa slotni tanlang.',
+    pattern_locked:
+      'Qulflangan dars joyida qoladi. Avval qulfni oching yoki boshqa taklifni tanlang.',
+    draft_edit_locked:
+      'Bu qoralamani boshqa odam tahrirlayapti. U 5 daqiqa faol boʻlmagach, tahrirni oʻzingizga olishingiz mumkin.',
+    lock_taken: 'Bu qulf allaqachon qoʻyilgan.',
     timetable_busy:
       'Shu paytda dars jadvalining boshqa oʻzgarishi saqlanayotgan edi. Qayta urinib koʻring.',
     draft_not_ready:
@@ -2382,6 +2387,7 @@ export const uz: Texts<'one' | 'other'> = {
       group: 'Guruh',
       timetable_version: 'Dars jadvali versiyasi',
       timetable_pin: 'Qotirilgan dars',
+      timetable_lock: 'Qoralama qulfi',
       pattern_block: 'Haftalik shablon darsi',
       pattern_entry: 'Shablon blokidagi dars',
       teaching_load_row: 'Oʻquv yuklamasi qatori',
@@ -2617,6 +2623,11 @@ export const uz: Texts<'one' | 'other'> = {
         templates_confirm: 'Qoralamaning kun shablonlari tasdiqlandi',
         preferences: 'Qoralamaning afzalliklar vaznlari oʻzgartirildi',
         rules_confirm: 'Qoralamaning qoidalari tasdiqlandi',
+        edit_lock: 'Dars jadvali qoralamasi tahrirlash uchun olindi',
+      },
+      timetable_lock: {
+        create: 'Qoralama qulfi qoʻyildi',
+        delete: 'Qoralama qulfi olib tashlandi',
       },
       timetable_pin: {
         create: 'Qoralama darsi qotirildi',
@@ -2989,6 +3000,10 @@ export const uz: Texts<'one' | 'other'> = {
           'Oʻquvchilaringiz ota-onasi {{fullName}}ning asosiy telefoni boshqa filialda oʻzgartirildi.',
         merged:
           '{{keptName}} va {{mergedName}} ota-ona yozuvlari boshqa filialda birlashtirildi; {{fullName}} ismi qoldi.',
+      },
+      timetable: {
+        draft_taken_over:
+          '{{name}} 5 daqiqa faollik boʻlmaganidan soʻng dars jadvali {{number}}-qoralamasini tahrirlashni oʻz zimmasiga oldi. Saqlangan oʻzgarishlaringiz qoldi.',
       },
     },
   },

@@ -902,6 +902,18 @@ export interface TimeClaims {
   teacher_id: string | null;
 }
 
+export interface TimetableLocks {
+  block_id: string | null;
+  branch_id: string;
+  class_id: string | null;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  kind: string;
+  teacher_id: string | null;
+  version_id: string;
+  weekday: number | null;
+}
+
 export interface TimetablePins {
   branch_id: string;
   created_at: Generated<Timestamp>;
@@ -916,6 +928,8 @@ export interface TimetableVersions {
   academic_year_id: string;
   branch_id: string;
   created_at: Generated<Timestamp>;
+  edit_holder_id: string | null;
+  edit_seen_at: Timestamp | null;
   from_version_id: string | null;
   id: Generated<string>;
   left_rows: Generated<Json>;
@@ -1015,6 +1029,7 @@ export interface DB {
   subjects: Subjects;
   teaching_load_rows: TeachingLoadRows;
   time_claims: TimeClaims;
+  timetable_locks: TimetableLocks;
   timetable_pins: TimetablePins;
   timetable_versions: TimetableVersions;
   travel_times: TravelTimes;

@@ -411,6 +411,8 @@ describe('draft versions and the teaching load', () => {
         [t.vicePrincipal, t.viceAssignment],
         [t.admin, t.adminAssignment],
       ] as const) {
+        // Task 5.4c-1: the edit lock of the first account is let go for the second.
+        await load.freeEditLock(version.id);
         const own = await fitting();
         const response = await createRow(
           version.id,
@@ -634,6 +636,8 @@ describe('draft versions and the teaching load', () => {
           () => createRow(UNKNOWN, { classId: own.classId, teacherId: own.teacher }, cookie),
           () => remove(`/api/timetable/versions/${version.id}/load/${UNKNOWN}`, cookie),
         ];
+        // Task 5.4c-1: the edit lock the writes above took is let go for this account.
+        await load.freeEditLock(version.id);
         for (const attempt of attempts) {
           const before = await rowsOf();
           refusedWith(await attempt(), 404, 'not_found');

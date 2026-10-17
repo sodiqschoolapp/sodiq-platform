@@ -123,6 +123,19 @@ describe('the grid of a draft', () => {
         .where('version_id', 'in', versions)
         .orderBy('id')
         .execute(),
+      // Task 5.4c-1: every draft write takes the edit lock on the version row, and locks.
+      t.database.migrator
+        .selectFrom('timetable_versions')
+        .selectAll()
+        .where('id', 'in', versions)
+        .orderBy('id')
+        .execute(),
+      t.database.migrator
+        .selectFrom('timetable_locks')
+        .selectAll()
+        .where('version_id', 'in', versions)
+        .orderBy('id')
+        .execute(),
       // Written by the trigger of the entries and the cascading key (0058).
       t.database.migrator
         .selectFrom('pattern_block_classes')
@@ -558,6 +571,8 @@ describe('the grid of a draft', () => {
       const assignment = await viceIn(s.branch);
       const a = await placed(s.branch, s.version, s.rowA, 1, 1);
       const b = await placed(s.branch, s.version, s.rowB, 2, 1);
+      // Task 5.4c-1: the edit lock the writes above took is let go for the next account.
+      await load.freeEditLock(s.version);
       gridOf(await move(s.branch, s.version, a.id, 3, 1, t.vicePrincipal));
       gridOf(await swap(s.branch, s.version, a.id, b.id, t.vicePrincipal));
       gridOf(await drop(s.branch, s.version, a.id, t.vicePrincipal));
@@ -675,6 +690,8 @@ describe('the grid of a draft', () => {
       const otherBlock = await placed(other.branch, other.version, other.rowA, 1, 1);
       const sameBranchBlock = await placed(s.branch, sameBranch, sameBranchRow, 1, 3);
       await viceIn(s.branch);
+      // Task 5.4c-1: the edit lock the writes above took is let go for the next account.
+      await load.freeEditLock(s.version);
       const before = await patternRows([s.version, other.version, sameBranch]);
       for (const cookie of [t.vicePrincipal, t.admin]) {
         for (const version of [other.version, UNKNOWN]) {
@@ -763,6 +780,8 @@ describe('the grid of a draft', () => {
       expect(await patternRows([s.version])).toEqual(before);
       // A room that is neither a row's room nor a main classroom.
       const spare = await load.classes.room(s.branch);
+      // Task 5.4c-1: the edit lock the writes above took is let go for the next account.
+      await load.freeEditLock(s.version);
       const response = await roomOf(s.branch, s.version, a.id, lesson.id, spare, t.vicePrincipal);
       const answer = gridOf(response);
       expect(lessonOf(answer, a.id).roomId).toBe(spare);
@@ -779,6 +798,7 @@ describe('the grid of a draft', () => {
       });
       // The grid and a move still answer with the lesson in that room.
       gridOf(await grid(s.branch, s.version));
+      await load.freeEditLock(s.version);
       expect(lessonOf(gridOf(await move(s.branch, s.version, a.id, 2, 3)), a.id).roomId).toBe(
         spare,
       );
@@ -856,6 +876,8 @@ describe('the grid of a draft', () => {
       const lesson = lessonOf(own.answer, own.id).id;
       const spare = await load.classes.room(s.branch);
       await viceIn(s.branch);
+      // Task 5.4c-1: the edit lock the writes above took is let go for the next account.
+      await load.freeEditLock(s.version);
       const before = await patternRows([s.version, other.version, sameBranch]);
       for (const cookie of [t.vicePrincipal, t.admin]) {
         for (const version of [other.version, UNKNOWN]) {
@@ -910,8 +932,10 @@ describe('the grid of a draft', () => {
       }
       expect(await patternRows([s.version])).toEqual(before);
       await load.setVersion(s.version, 'published');
+      // The version row is compared too (task 5.4c-1), with its new status.
+      const published = await patternRows([s.version]);
       refusedWith(await roomOf(s.branch, s.version, a.id, lesson, spare), 409, 'version_not_draft');
-      expect(await patternRows([s.version])).toEqual(before);
+      expect(await patternRows([s.version])).toEqual(published);
     });
 
     it('marks step 7 ready with warnings only, and not ready with a blocked result', async () => {
@@ -959,6 +983,8 @@ describe('the grid of a draft', () => {
           .where('version_id', 'in', [s.version, other.version])
           .orderBy('id')
           .execute();
+      // Task 5.4c-1: the edit lock the writes above took is let go for the next account.
+      await load.freeEditLock(s.version);
       const before = [await patternRows([s.version, other.version]), await loadRows()];
       for (const cookie of [t.vicePrincipal, t.admin]) {
         for (const teacherId of [other.teacherB, UNKNOWN]) {
@@ -1428,6 +1454,8 @@ describe('the grid of a draft', () => {
         );
       }
       expect(await patternRows([s.version])).toEqual(before);
+      // Task 5.4c-1: the edit lock the writes above took is let go for the next account.
+      await load.freeEditLock(s.version);
       gridOf(
         await rearrange(
           s.branch,
@@ -1464,6 +1492,8 @@ describe('the grid of a draft', () => {
       const sameBranchBlock = await placed(s.branch, sameBranch, sameBranchRow, 1, 3);
       const spare = await load.classes.room(s.branch);
       await viceIn(s.branch);
+      // Task 5.4c-1: the edit lock the writes above took is let go for the next account.
+      await load.freeEditLock(s.version);
       const before = await patternRows([s.version, other.version, sameBranch]);
       const moved = (extra: Partial<Change> = {}): Change[] => [
         { blockId: own.id, weekday: 2, slotPosition: 1, ...extra },

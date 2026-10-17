@@ -549,18 +549,32 @@ How to read the task lines:
   - Done when: "Suggest a place" on a selected lesson shows the best free slots or a swap of two or three lessons, and applying it is checked by the rule engine and refused by the API like a move.
   - From 5.4b-2a (pull request #133, decision 1, Look first): split from 5.4b-2. "Suggest a place" belongs to the "to place" panel (From 5.4a, pull request #130, decisions 7 and 13): a new block is built as `newBlockOf` (`apps/web/src/features/timetable/use-slot-status.ts`) and its slots are marked by `cellStatus`; every check of the pattern passes `checkedPlacements` (`packages/timetable-rules/src/pattern-place.ts`), so the suggestions count the teachers' lessons in other branches (From 5.4b-1, pull request #132). A suggestion that changes a room uses `roomChange` (`packages/timetable-rules/src/rooms-pick.ts`).
 
-- [ ] **5.4c Grid: locks and the draft edit lock**
+- [ ] **5.4c-1 Grid: the edit lock and locks**
   - Read: `06` (Editing in the grid, Auto-generation), `edge/timetable` (Generator and editing).
-  - Build: locks on a lesson, class, teacher or day; undo; the edit lock on a draft that is released after 5 minutes without activity.
+  - Build: the edit lock on a draft, taken by the first write and released after 5 minutes without activity, with "Take over" and a notice to the earlier holder; locks on a lesson, class, teacher or day, kept by "Suggest a place" and the rearrange route and stored for "Regenerate".
   - Done when: a second Academic Vice Principal can take over a draft and the first is told.
-  - From 5.4a (pull request #130, decisions 8, 10 and 14): the grid refuses a half of a mixed split (`pattern_mixed_block`) and no route writes `pattern_blocks.double_pair_id`; the pairing of mixed halves, the double lessons placed and moved together (`edge/timetable`, Structure, Double lessons), undo and the edit lock are built here on the routes of `apps/api/src/modules/timetable/pattern.service.ts`.
-  - From 5.4b-2b (pull request #134, decisions 8 and 9): "Suggest a place" (`suggestPlaces` of `packages/timetable-rules/src/suggest.ts`) never moves a pinned block as a blocker; it and the rearrange route (`POST …/pattern/rearrange`) must leave locked lessons in place too (`06`, Auto-generation, Locks), and undo takes back an applied suggestion as one step.
+  - From 5.4c (pull request #135, decision 1, Look first): split into 5.4c-1, 5.4c-2 and 5.4c-3.
+  - From 5.4b-2b (pull request #134, decisions 8 and 9): "Suggest a place" (`suggestPlaces` of `packages/timetable-rules/src/suggest.ts`) never moves a pinned block as a blocker; it and the rearrange route (`POST …/pattern/rearrange`) must leave locked lessons in place too (`06`, Auto-generation, Locks).
+
+- [ ] **5.4c-2 Grid: undo and redo**
+  - Read: `06` (Editing in the grid), `edge/timetable` (Generator and editing).
+  - Build: undo and redo of the session's own grid changes, each step taken back through the routes and the rule engine; an applied suggestion taken back as one step.
+  - Done when: a move, a room change, a removal and an applied suggestion are undone and redone, and a step refused by the rules is shown and kept.
+  - From 5.4b-2b (pull request #134, decision 8): undo takes back an applied suggestion as one step; a suggestion that created a block is taken back by removing it in the same transaction (the rearrange route, widened).
+  - From 5.4c-1 (pull request #135, decision 2): every step is a draft write and runs under the edit lock (`lockDraft`).
+
+- [ ] **5.4c-3 Grid: double lessons and mixed blocks**
+  - Read: `06` (Editing in the grid), `edge/timetable` (Structure: double lessons, mixed blocks).
+  - Build: double lessons placed and moved together; the pairing of the halves of a mixed split slot by slot.
+  - Done when: a double lesson is placed, moved and removed as one, and a mixed split is placed with both pairings.
+  - From 5.4a (pull request #130, decisions 8, 10 and 14): the grid refuses a half of a mixed split (`pattern_mixed_block`) and no route writes `pattern_blocks.double_pair_id`; the pairing of mixed halves and the double lessons placed and moved together (`edge/timetable`, Structure, Double lessons) are built here on the routes of `apps/api/src/modules/timetable/pattern.service.ts`.
   - From 3.4b (pull request #100, decision 12, Look first): the halves of a split marked `mixed_block` meet in different slots; the pairing of two subjects' halves slot by slot (boys have physical education while girls have technology, and the reverse in another slot; `edge/timetable`, Structure) is placed and kept here.
 
 - [ ] **5.5a Publish: preview and checks**
   - Read: `06` (Editing in the grid, Rules, Changes after publishing, How surprises are prevented), `edge/timetable` (Versions and drafts, After publishing).
   - Build: the impact preview; start date rules; the out-of-date draft check; one publish per branch at a time; a publish that fails changes nothing; quarter shortcuts for the start date; dates under a later availability entry are warnings by date; carry a teacher or room change into later versions.
   - Done when: two publishes at the same moment are tested.
+  - From 5.4c-1 (pull request #135, decision 2 with review correction 5): publish is a draft write and takes `lockDraft`, so it is refused `draft_edit_locked` while another account holds the draft's edit lock (`06`, Editing in the grid: "one edits at a time").
   - From 2.1 (pull request #52, decisions 2, 3 and 14): the publish check of `edge/academic-year`, "Publishing is blocked unless the year has four dated quarters and every subject in the load has its journal type and, if it is graded, its daily distribution and its quarterly distribution for each quarter the version touches. Attendance-only subjects need no weights." The distributions are the branch's (`subject_daily_weights`, `subject_quarter_weights`); a row counts only in the subject's current `weights_round` and, for a quarter, when its rating exam part fits the subject's switch (as `quarterWeightsMissing` in `apps/api/src/modules/setup/subjects.service.ts` counts).
   - From 3.4b (pull request #100, decisions 1 and 4, Look first): publish blocks on every problem of a load row (`loadRowProblems`), the six of 3.4b included (`load_group_gaps` among them), and from the published version in force on a date `class_group_subjects` (0049) reads the subjects of its group rows whose groups draw from the class, in place of the active groups, so that the load is the source of the split and group subjects of a class (`05`, Group).
   - From 3.4c (pull request #101, decision 2, Look first): `department_move_loads` (0057) counts every version of a year that is not closed and ends on or after the start date of a department move; once a published version has a run of its own, a published version whose run ends before the start date no longer counts.
@@ -646,7 +660,8 @@ How to read the task lines:
   - Read: `06` (Auto-generation, Building a timetable), `edge/timetable` (Generator and editing).
   - Build: step 6 of the builder; the run as a background job on a snapshot; variants with score and comparison; regenerate with locks; generate for chosen classes; place the remaining lessons; lessons not placed listed with the blocking rule named by the rule engine.
   - Done when: a variant from older inputs is marked "inputs changed" and re-checked before use.
-  - From 5.3b-2 (pull request #129, decision 1): `edge/timetable`, Generator and editing: "Before generating, the locked and pinned lessons are checked on their own. A blocked conflict stops the run and lists the lessons." `requireReady` already reads the pins' check (step 5); once 5.4b adds the busy-elsewhere lessons to `pattern-facts.ts`, the check before a run counts them. The locks of 5.4c join the same check before a run.
+  - From 5.3b-2 (pull request #129, decision 1): `edge/timetable`, Generator and editing: "Before generating, the locked and pinned lessons are checked on their own. A blocked conflict stops the run and lists the lessons." `requireReady` already reads the pins' check (step 5); once 5.4b adds the busy-elsewhere lessons to `pattern-facts.ts`, the check before a run counts them. The locks of 5.4c-1 (`timetable_locks`, `lockedBy` of `packages/timetable-rules/src/locks.ts`) join the same check before a run, and "Regenerate" changes only what they do not hold.
+  - From 5.4c-1 (pull request #135, decision 2 with review correction 5): a run and the use of a variant are draft writes and take `lockDraft`, so they are refused `draft_edit_locked` while another account holds the draft's edit lock.
   - From 5.3b-1 (pull request #128, decision 6): the run route calls `requireReady` of the timetable service first, in the run's transaction (409 `draft_not_ready`, one detail per step not ready).
 
 - [ ] **5.12 Timetable end-to-end tests**
