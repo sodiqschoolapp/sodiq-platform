@@ -258,7 +258,9 @@ const GRID: GridAnswer = {
         block: [ROW_GROUP],
       },
     ],
+    busyElsewhere: [],
     otherDrafts: [],
+    branches: [],
   },
   results: [],
 };
@@ -491,7 +493,128 @@ describe('the grid of step 7', () => {
   });
 });
 
+const SOUTH = uid(50);
+const ELSEWHERE = uid(5000);
+
+/** The grid with Karimova's lesson in the South branch on Wednesday at 08:05–08:45, a 40-minute slot there. */
+const WITH_ELSEWHERE: GridAnswer = {
+  ...GRID,
+  facts: {
+    ...GRID.facts,
+    busyElsewhere: [
+      {
+        id: ELSEWHERE,
+        teacherId: KARIMOVA,
+        branchId: SOUTH,
+        weekday: 3,
+        start: 485,
+        end: 525,
+        tutorLesson: false,
+      },
+    ],
+    branches: [{ id: SOUTH, name: 'South branch' }],
+  },
+};
+
+const chooseView = (view: string) => {
+  fireEvent.change(screen.getByLabelText(en.timetable.grid.view), { target: { value: view } });
+};
+
+// Task 5.4b-1: 06, Teachers who work in several branches ("Busy elsewhere",
+// "Two drafts at once"); edge/timetable, Structure: "Teacher and room views
+// use a clock axis".
+describe('the views by teacher and room', () => {
+  it('shows a teacher’s lessons on a clock axis, with the lesson elsewhere as a grey block that cannot be moved', async () => {
+    await openGrid({ grid: WITH_ELSEWHERE });
+    chooseView('teacher');
+    const board = await waitFor(() => {
+      const found = document.querySelector<HTMLElement>(`[data-clock-board="${KARIMOVA}"]`);
+      expect(found).not.toBeNull();
+      return found;
+    });
+    if (board === null) throw new Error('No board.');
+    // Both of Karimova's classes, none of Tosheva's group.
+    expect(board.querySelector(`[data-block="${BLOCK_OXFORD}"]`)).not.toBeNull();
+    expect(board.querySelector(`[data-block="${BLOCK_PRINCETON}"]`)).not.toBeNull();
+    expect(board.querySelector(`[data-block="${BLOCK_GROUP}"]`)).toBeNull();
+    const grey = board.querySelector<HTMLElement>(`[data-busy-elsewhere="${ELSEWHERE}"]`);
+    expect(grey?.textContent).toBe('Busy elsewhere: South branch');
+    expect(grey?.closest('[data-clock-cell]')?.getAttribute('data-clock-cell')).toBe('3:485-525');
+    expect(within(board).queryByRole('button', { name: en.timetable.grid.move })).toBeNull();
+    expect(within(board).queryByRole('button', { name: en.timetable.grid.remove })).toBeNull();
+    // The clock axis: 08:00–08:45 and 08:05–08:45 overlap and sit by their real times.
+    const times = [...board.querySelectorAll('tbody th')].map((one) => one.textContent);
+    expect(times.slice(0, 3)).toEqual(['08:00–08:45', '08:05–08:45', '08:50–09:35']);
+  });
+
+  it('opens the class board of a lesson from the teacher view', async () => {
+    await openGrid();
+    chooseView('teacher');
+    const board = await waitFor(() => {
+      const found = document.querySelector<HTMLElement>('[data-clock-board]');
+      expect(found).not.toBeNull();
+      return found;
+    });
+    const princeton = board?.querySelector<HTMLElement>(`[data-block="${BLOCK_PRINCETON}"]`);
+    const cell = princeton?.parentElement;
+    if (cell === null || cell === undefined) throw new Error('No lesson.');
+    fireEvent.click(within(cell).getByRole('button', { name: en.timetable.grid.openClass }));
+    await waitFor(() => {
+      expect(document.querySelector(`[data-board="${PRINCETON}"]`)).not.toBeNull();
+    });
+    expect(tile(BLOCK_PRINCETON)).not.toBeNull();
+  });
+
+  it('shows the lessons in a room', async () => {
+    await openGrid();
+    chooseView('room');
+    const board = await waitFor(() => {
+      const found = document.querySelector<HTMLElement>(`[data-clock-board="${ROOM}"]`);
+      expect(found).not.toBeNull();
+      return found;
+    });
+    expect(board?.querySelector(`[data-block="${BLOCK_OXFORD}"]`)).not.toBeNull();
+    expect(board?.querySelector(`[data-block="${BLOCK_PRINCETON}"]`)).toBeNull();
+  });
+
+  it('names the branch whose draft also plans the teacher on the lesson', async () => {
+    await openGrid({
+      grid: {
+        ...WITH_ELSEWHERE,
+        results: [
+          {
+            rule: 'other_draft',
+            severity: 'warning',
+            weekday: 1,
+            lessonIds: [uid(1000), uid(5001)],
+            detail: { branchId: SOUTH },
+          },
+        ],
+      },
+    });
+    const own = tile(BLOCK_OXFORD);
+    expect(own?.querySelector('[data-tile-rules]')?.textContent).toContain(
+      en.timetable.rule.other_draft,
+    );
+    expect(own?.querySelector('[data-other-draft]')?.textContent).toBe(
+      'Also planned in a draft of South branch.',
+    );
+  });
+});
+
 describe('the status of a slot while a lesson is moved', () => {
+  it('is blocked where the teacher has a lesson in another branch (06, One clash check)', () => {
+    const model = patternModel(WITH_ELSEWHERE.facts);
+    const board = boardOf(WITH_ELSEWHERE, model, OXFORD);
+    const oxford = WITH_ELSEWHERE.blocks[0];
+    const wednesday = board.cellAt(3, 1);
+    if (oxford === undefined || wednesday === null) throw new Error('No cell.');
+    expect(cellStatus(model, board, WITH_ELSEWHERE.blocks, oxford, wednesday)).toMatchObject({
+      status: 'blocked',
+      rule: 'teacher_double',
+    });
+  });
+
   const model = patternModel(GRID.facts);
   const board = boardOf(GRID, model, OXFORD);
   const oxford = GRID.blocks[0];

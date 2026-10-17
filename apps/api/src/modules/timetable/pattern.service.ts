@@ -13,6 +13,7 @@ import {
 import {
   blockPlacements,
   checkCandidates,
+  checkedPlacements,
   checkTimetable,
   patternPlacements,
   type BlockLesson,
@@ -356,7 +357,7 @@ export class TimetablePattern {
   private refuseBlocked(state: PatternState, changed: readonly PatternBlock[]): void {
     const { model } = state.pattern;
     const blocked = checkCandidates(
-      patternPlacements(model, state.blocks),
+      checkedPlacements(model, state.blocks),
       model.facts,
       patternPlacements(model, changed),
     ).filter((result) => result.severity === 'blocked');
@@ -465,7 +466,7 @@ export class TimetablePattern {
       rooms,
       blocks,
       facts: pattern.data,
-      results: checkTimetable(patternPlacements(pattern.model, blocks), pattern.model.facts).map(
+      results: checkTimetable(checkedPlacements(pattern.model, blocks), pattern.model.facts).map(
         resultAnswerOf,
       ),
     });

@@ -162,6 +162,8 @@ export function patternData(rows: readonly PatternRowData[] = ROWS): PatternFact
     travel: [],
     classDailyLessons: null,
     rows,
+    busyElsewhere: [],
     otherDrafts: [],
+    branches: [],
   };
 }

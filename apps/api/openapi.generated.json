@@ -189725,12 +189725,16 @@
                                   "format": "uuid",
                                   "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                                 }
+                              },
+                              "elsewhere": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "rule",
                               "weekday",
-                              "pinIds"
+                              "pinIds",
+                              "elsewhere"
                             ],
                             "additionalProperties": false
                           }
@@ -190493,12 +190497,16 @@
                                   "format": "uuid",
                                   "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                                 }
+                              },
+                              "elsewhere": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "rule",
                               "weekday",
-                              "pinIds"
+                              "pinIds",
+                              "elsewhere"
                             ],
                             "additionalProperties": false
                           }
@@ -191830,12 +191838,16 @@
                                   "format": "uuid",
                                   "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                                 }
+                              },
+                              "elsewhere": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "rule",
                               "weekday",
-                              "pinIds"
+                              "pinIds",
+                              "elsewhere"
                             ],
                             "additionalProperties": false
                           }
@@ -192598,12 +192610,16 @@
                                   "format": "uuid",
                                   "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                                 }
+                              },
+                              "elsewhere": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "rule",
                               "weekday",
-                              "pinIds"
+                              "pinIds",
+                              "elsewhere"
                             ],
                             "additionalProperties": false
                           }
@@ -194007,12 +194023,16 @@
                                   "format": "uuid",
                                   "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                                 }
+                              },
+                              "elsewhere": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "rule",
                               "weekday",
-                              "pinIds"
+                              "pinIds",
+                              "elsewhere"
                             ],
                             "additionalProperties": false
                           }
@@ -194775,12 +194795,16 @@
                                   "format": "uuid",
                                   "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                                 }
+                              },
+                              "elsewhere": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "rule",
                               "weekday",
-                              "pinIds"
+                              "pinIds",
+                              "elsewhere"
                             ],
                             "additionalProperties": false
                           }
@@ -196194,12 +196218,16 @@
                                   "format": "uuid",
                                   "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                                 }
+                              },
+                              "elsewhere": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "rule",
                               "weekday",
-                              "pinIds"
+                              "pinIds",
+                              "elsewhere"
                             ],
                             "additionalProperties": false
                           }
@@ -196962,12 +196990,16 @@
                                   "format": "uuid",
                                   "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                                 }
+                              },
+                              "elsewhere": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "rule",
                               "weekday",
-                              "pinIds"
+                              "pinIds",
+                              "elsewhere"
                             ],
                             "additionalProperties": false
                           }
@@ -198373,12 +198405,16 @@
                                   "format": "uuid",
                                   "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                                 }
+                              },
+                              "elsewhere": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "rule",
                               "weekday",
-                              "pinIds"
+                              "pinIds",
+                              "elsewhere"
                             ],
                             "additionalProperties": false
                           }
@@ -199141,12 +199177,16 @@
                                   "format": "uuid",
                                   "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                                 }
+                              },
+                              "elsewhere": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "rule",
                               "weekday",
-                              "pinIds"
+                              "pinIds",
+                              "elsewhere"
                             ],
                             "additionalProperties": false
                           }
@@ -200488,12 +200528,16 @@
                                   "format": "uuid",
                                   "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                                 }
+                              },
+                              "elsewhere": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "rule",
                               "weekday",
-                              "pinIds"
+                              "pinIds",
+                              "elsewhere"
                             ],
                             "additionalProperties": false
                           }
@@ -201256,12 +201300,16 @@
                                   "format": "uuid",
                                   "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                                 }
+                              },
+                              "elsewhere": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "rule",
                               "weekday",
-                              "pinIds"
+                              "pinIds",
+                              "elsewhere"
                             ],
                             "additionalProperties": false
                           }
@@ -202960,6 +203008,57 @@
                             "additionalProperties": false
                           }
                         },
+                        "busyElsewhere": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "teacherId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "branchId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "weekday": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 7
+                              },
+                              "start": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "end": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "tutorLesson": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "teacherId",
+                              "branchId",
+                              "weekday",
+                              "start",
+                              "end",
+                              "tutorLesson"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
                         "otherDrafts": {
                           "type": "array",
                           "items": {
@@ -203117,6 +203216,27 @@
                             ],
                             "additionalProperties": false
                           }
+                        },
+                        "branches": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          }
                         }
                       },
                       "required": [
@@ -203133,7 +203253,9 @@
                         "travel",
                         "classDailyLessons",
                         "rows",
-                        "otherDrafts"
+                        "busyElsewhere",
+                        "otherDrafts",
+                        "branches"
                       ],
                       "additionalProperties": false
                     },
@@ -204960,6 +205082,57 @@
                             "additionalProperties": false
                           }
                         },
+                        "busyElsewhere": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "teacherId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "branchId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "weekday": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 7
+                              },
+                              "start": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "end": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "tutorLesson": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "teacherId",
+                              "branchId",
+                              "weekday",
+                              "start",
+                              "end",
+                              "tutorLesson"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
                         "otherDrafts": {
                           "type": "array",
                           "items": {
@@ -205117,6 +205290,27 @@
                             ],
                             "additionalProperties": false
                           }
+                        },
+                        "branches": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          }
                         }
                       },
                       "required": [
@@ -205133,7 +205327,9 @@
                         "travel",
                         "classDailyLessons",
                         "rows",
-                        "otherDrafts"
+                        "busyElsewhere",
+                        "otherDrafts",
+                        "branches"
                       ],
                       "additionalProperties": false
                     },
@@ -206921,6 +207117,57 @@
                             "additionalProperties": false
                           }
                         },
+                        "busyElsewhere": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "teacherId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "branchId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "weekday": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 7
+                              },
+                              "start": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "end": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "tutorLesson": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "teacherId",
+                              "branchId",
+                              "weekday",
+                              "start",
+                              "end",
+                              "tutorLesson"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
                         "otherDrafts": {
                           "type": "array",
                           "items": {
@@ -207078,6 +207325,27 @@
                             ],
                             "additionalProperties": false
                           }
+                        },
+                        "branches": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          }
                         }
                       },
                       "required": [
@@ -207094,7 +207362,9 @@
                         "travel",
                         "classDailyLessons",
                         "rows",
-                        "otherDrafts"
+                        "busyElsewhere",
+                        "otherDrafts",
+                        "branches"
                       ],
                       "additionalProperties": false
                     },
@@ -208925,6 +209195,57 @@
                             "additionalProperties": false
                           }
                         },
+                        "busyElsewhere": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "teacherId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "branchId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "weekday": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 7
+                              },
+                              "start": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "end": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "tutorLesson": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "teacherId",
+                              "branchId",
+                              "weekday",
+                              "start",
+                              "end",
+                              "tutorLesson"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
                         "otherDrafts": {
                           "type": "array",
                           "items": {
@@ -209082,6 +209403,27 @@
                             ],
                             "additionalProperties": false
                           }
+                        },
+                        "branches": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          }
                         }
                       },
                       "required": [
@@ -209098,7 +209440,9 @@
                         "travel",
                         "classDailyLessons",
                         "rows",
-                        "otherDrafts"
+                        "busyElsewhere",
+                        "otherDrafts",
+                        "branches"
                       ],
                       "additionalProperties": false
                     },
@@ -210861,6 +211205,57 @@
                             "additionalProperties": false
                           }
                         },
+                        "busyElsewhere": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "teacherId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "branchId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "weekday": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 7
+                              },
+                              "start": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "end": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "tutorLesson": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "teacherId",
+                              "branchId",
+                              "weekday",
+                              "start",
+                              "end",
+                              "tutorLesson"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
                         "otherDrafts": {
                           "type": "array",
                           "items": {
@@ -211018,6 +211413,27 @@
                             ],
                             "additionalProperties": false
                           }
+                        },
+                        "branches": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          }
                         }
                       },
                       "required": [
@@ -211034,7 +211450,9 @@
                         "travel",
                         "classDailyLessons",
                         "rows",
-                        "otherDrafts"
+                        "busyElsewhere",
+                        "otherDrafts",
+                        "branches"
                       ],
                       "additionalProperties": false
                     },

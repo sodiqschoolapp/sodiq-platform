@@ -2,6 +2,7 @@ import type { GridAnswer } from '@sodiq/shared';
 import {
   blockPlacements,
   checkCandidates,
+  checkedPlacements,
   patternPlacements,
   slotStatus,
   WEEK_COUNT_RULES,
@@ -177,7 +178,7 @@ export function cellStatus(
   if (drop.kind === 'no_slot') return { status: 'blocked', rule: null, drop };
   const changed = drop.kind === 'move' ? [drop.to] : drop.changed;
   const results: RuleResult[] = checkCandidates(
-    patternPlacements(model, all),
+    checkedPlacements(model, all),
     model.facts,
     patternPlacements(model, changed),
   ).filter((one) => !WEEK_COUNT_RULES.includes(one.rule));
@@ -208,4 +209,71 @@ export function useSlotStatuses(
     }
     return statuses;
   }, [model, board, all, moving]);
+}
+
+/** A lesson of another branch in a teacher's view (06, Busy elsewhere): grey, never moved from here. */
+export type ElsewhereLesson = GridAnswer['facts']['busyElsewhere'][number];
+
+/** A row of a clock axis: a span of clock minutes. */
+export interface ClockRow {
+  readonly start: number;
+  readonly end: number;
+}
+
+/**
+ * A view by teacher or by room on a clock axis (task 5.4b-1, decision 6;
+ * edge/timetable, Structure: "Teacher and room views use a clock axis when
+ * more than one template is in force"): the weekdays that have lessons, and
+ * one row for each distinct span of the lesson slots of the grades involved
+ * and of the lessons shown, in the order of their start, so that a 40-minute
+ * and a 45-minute lesson that overlap sit in rows by their real times.
+ */
+export interface ClockBoard {
+  readonly weekdays: number[];
+  readonly rows: ClockRow[];
+  readonly blocksAt: (weekday: number, row: ClockRow) => PatternBlock[];
+  readonly elsewhereAt: (weekday: number, row: ClockRow) => ElsewhereLesson[];
+}
+
+const spanKey = (span: ClockRow) => `${String(span.start)}-${String(span.end)}`;
+
+export function clockBoardOf(
+  grid: GridAnswer,
+  model: PatternModel,
+  shows: { readonly lesson: (lesson: PatternBlock['lessons'][number]) => boolean },
+  elsewhere: readonly ElsewhereLesson[],
+  grades: readonly number[],
+): ClockBoard {
+  const blocks = blocksOf(grid).filter((block) => block.lessons.some(shows.lesson));
+  const shownGrades = new Set([
+    ...grades,
+    ...blocks.flatMap((block) =>
+      block.lessons.flatMap((lesson) => {
+        const row = model.rowOf(lesson.loadRowId);
+        return model.unitOf(row.classId ?? row.groupId ?? '').grades;
+      }),
+    ),
+  ]);
+  const spans = new Map<string, ClockRow>();
+  const weekdays = new Set<number>();
+  const add = (weekday: number, span: ClockRow) => {
+    spans.set(spanKey(span), { start: span.start, end: span.end });
+    weekdays.add(weekday);
+  };
+  for (const one of grid.facts.days) {
+    if (!shownGrades.has(one.grade) || !one.day.lessons) continue;
+    for (const slot of one.day.day.slots) {
+      if (slot.kind === 'lesson') add(one.weekday, slot);
+    }
+  }
+  for (const block of blocks) add(block.weekday, block);
+  for (const lesson of elsewhere) add(lesson.weekday, lesson);
+  const at = (weekday: number, row: ClockRow) => (span: { weekday: number } & ClockRow) =>
+    span.weekday === weekday && span.start === row.start && span.end === row.end;
+  return {
+    weekdays: [...weekdays].sort((a, b) => a - b),
+    rows: [...spans.values()].sort((a, b) => a.start - b.start || a.end - b.end),
+    blocksAt: (weekday, row) => blocks.filter(at(weekday, row)),
+    elsewhereAt: (weekday, row) => elsewhere.filter(at(weekday, row)),
+  };
 }

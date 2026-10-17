@@ -83,3 +83,16 @@ export function patternPlacements(
     ),
   );
 }
+
+/**
+ * Every lesson a check of the pattern counts: the stored blocks and the
+ * teachers' lessons in other branches (busy elsewhere, `fixed`; task 5.4b-1).
+ * The grid, the routes and the pins' check pass it as the placements of
+ * `checkTimetable` and `checkCandidates`; a candidate is never a fixed one.
+ */
+export function checkedPlacements(
+  model: PatternModel,
+  blocks: readonly PatternBlock[],
+): Placement[] {
+  return [...patternPlacements(model, blocks), ...model.fixed];
+}

@@ -429,6 +429,8 @@ export const pinConflictSchema = z.object({
   rule: z.string().regex(/^[a-z_]+$/),
   weekday: weekdaySchema,
   pinIds: z.array(z.uuid()),
+  /** A lesson of the teacher in another branch's published timetable is part of it (5.4b-1). */
+  elsewhere: z.boolean(),
 });
 
 /**
@@ -640,7 +642,21 @@ export const patternFactsDataSchema = z.object({
       block: z.array(z.uuid()),
     }),
   ),
+  /** A teacher's lessons in other branches' published patterns: weekday, times, branch only (5.4b-1, decision 2). */
+  busyElsewhere: z.array(
+    z.object({
+      id: z.uuid(),
+      teacherId: z.uuid(),
+      branchId: z.uuid(),
+      weekday: z.int().min(1).max(7),
+      start: z.int(),
+      end: z.int(),
+      tutorLesson: z.boolean(),
+    }),
+  ),
   otherDrafts: z.array(enginePlacementSchema),
+  /** The names of the other branches met. */
+  branches: z.array(z.object({ id: z.uuid(), name: z.string() })),
 });
 
 export type PatternFactsDataAnswer = z.infer<typeof patternFactsDataSchema>;

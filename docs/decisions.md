@@ -246,6 +246,25 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 17 October 2026: the grid, other branches and the views (task 5.4b-1)
+
+Plan approved on pull request #132 with corrections 1 to 3; decisions 1 to 12 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** 5.4b is split into 5.4b-1 (other branches and the views) and 5.4b-2 (the "to place" and conflict panels) | Decision 1; the cross-branch facts change what every pattern check returns |
+| **Look first.** A reader of a branch's grid gets, for the teachers of its load, the weekday and times of their lessons in other branches' published patterns and drafts, with the branch id and name, and nothing else of the other branch | Decision 2; `06`, Busy elsewhere and Two drafts at once |
+| **Look first.** `SECURITY_DEFINER_FUNCTIONS` is widened by `timetable_busy_elsewhere` and `timetable_drafts_elsewhere` (0071), on the model of `teacher_load_elsewhere` | Decision 3; the row filter hides other branches' patterns |
+| Busy elsewhere is the other branch's published version in force on the draft's reading date, of the year that holds it; later versions and one-day changes are checked by date at publish (5.5a's From 5.4b-1 line) | Decision 4 |
+| The drafts counted for `other_draft` start on or before this draft's end and belong to a year that does not end before its reading date | Decision 5 |
+| Teacher and room views always use the clock axis; they are read only, with a button to the class board | Decisions 6 and 9 |
+| Grey busy-elsewhere blocks are in the teacher view; on the class board they show as a blocked slot while moving | Decision 7 |
+| No time-zone conversion; `branchIds` stays this branch | Decisions 8 and 12; `branches.time_zone` is not writable, and `branchIds` is read only for placements that are not fixed |
+| Busy-elsewhere lessons count in a teacher's week and day load; a vacancy is never busy elsewhere | Decisions 10 and 11 |
+| A Tutor lesson elsewhere (`tutor_lesson` of 0071) makes the load step list a Tutor whose pin meets it; a pin conflict carries `elsewhere` | Found in the build: the From 5.3b-2 line ("a Tutor of classes in two branches is listed too"), without naming the other branch's class |
+| Every check of the pattern passes `checkedPlacements` (the blocks and the busy-elsewhere lessons) | Found in the build: one helper for the grid, the routes and the pins' check |
+| A busy-elsewhere or other-draft lesson carries the other branch's pattern entry id (`busyElsewhere[].id`, `otherDrafts[].id`, and in `lessonIds` of results) | Permission review, should-fix 1: a result must name its lessons by a stable id; the id is not personal data, and a move, swap or remove naming it answers 404 (tested) |
+
 ## 17 October 2026: the grid, board and drag (task 5.4a)
 
 Plan approved on pull request #130 with corrections 1 to 3; decisions 1 to 17 confirmed there. Flagged on issue #42.

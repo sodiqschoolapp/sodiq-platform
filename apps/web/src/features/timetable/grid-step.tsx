@@ -18,6 +18,7 @@ import { rangeText } from '@/features/setup/templates-api';
 import { weekdayName } from '@/lib/dates';
 import { SM, useMinWidth } from '@/lib/use-min-width';
 import { GridCell, isCellData } from './grid-cell';
+import { GridClockBoard } from './grid-clock-board';
 import { GridMoveDialog } from './grid-move-dialog';
 import { GridPlaceForm } from './grid-place-form';
 import { GridTile, isTileData, unitText } from './grid-tile';
@@ -34,6 +35,7 @@ import {
   boardOf,
   cellKey,
   cellStatus,
+  clockBoardOf,
   useSlotStatuses,
   type BoardCell,
   type Drop,
@@ -49,7 +51,17 @@ import {
  * refuses the same (14, Timetable, One rule engine). Read only for a version
  * that is not a draft, without `timetable` `edit`, and at phone width (`12`,
  * Devices: "The timetable builder is view only").
+ *
+ * Task 5.4b-1: the views by teacher and by room on a clock axis, read only,
+ * each lesson with a button to its class board (decisions 6 and 9); a
+ * teacher's lessons in other branches as grey blocks there (decision 7).
  */
+const GRID_VIEWS = ['class', 'teacher', 'room'] as const;
+
+type GridView = (typeof GRID_VIEWS)[number];
+
+const gridViewOf = (value: string): GridView => GRID_VIEWS.find((one) => one === value) ?? 'class';
+
 export function GridStep({
   versionId,
   canEdit,
@@ -66,7 +78,10 @@ export function GridStep({
   const grid = useQuery(gridQuery(branchId, versionId));
   const data = grid.data;
   const editable = canEdit && wide && data?.editable === true;
+  const [view, setView] = useState<GridView>('class');
   const [classId, setClassId] = useState<string | null>(null);
+  const [teacherId, setTeacherId] = useState<string | null>(null);
+  const [roomId, setRoomId] = useState<string | null>(null);
   const [moving, setMoving] = useState<PatternBlock | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [adding, setAdding] = useState<BoardCell | null>(null);
@@ -88,6 +103,59 @@ export function GridStep({
     () => new Map((data?.rooms ?? []).map((room) => [room.id, room.name])),
     [data],
   );
+  const teachers = useMemo(
+    () => [
+      ...new Map(
+        (data?.rows ?? []).map((row) => [
+          row.teacher.id,
+          {
+            id: row.teacher.id,
+            name:
+              row.teacher.kind === 'vacancy'
+                ? t('timetable.load.vacancyOption', { name: row.teacher.name ?? '' })
+                : (row.teacher.name ?? ''),
+          },
+        ]),
+      ).values(),
+    ],
+    [data, t],
+  );
+  const chosenTeacher = teachers.find((one) => one.id === teacherId) ?? teachers[0];
+  const chosenRoom = data?.rooms.find((one) => one.id === roomId) ?? data?.rooms[0];
+  const clockBoard = useMemo(() => {
+    if (data === undefined || model === null) return null;
+    if (view === 'teacher' && chosenTeacher !== undefined) {
+      const rows = data.facts.rows.filter((row) => row.teacherId === chosenTeacher.id);
+      return clockBoardOf(
+        data,
+        model,
+        { lesson: (lesson) => model.rowOf(lesson.loadRowId).teacherId === chosenTeacher.id },
+        data.facts.busyElsewhere.filter((one) => one.teacherId === chosenTeacher.id),
+        rows.flatMap((row) => model.unitOf(row.classId ?? row.groupId ?? '').grades),
+      );
+    }
+    if (view === 'room' && chosenRoom !== undefined) {
+      const rows = data.facts.rows.filter((row) => model.roomOfNew(row) === chosenRoom.id);
+      return clockBoardOf(
+        data,
+        model,
+        { lesson: (lesson) => lesson.roomId === chosenRoom.id },
+        [],
+        rows.flatMap((row) => model.unitOf(row.classId ?? row.groupId ?? '').grades),
+      );
+    }
+    return null;
+  }, [data, model, view, chosenTeacher, chosenRoom]);
+  const branchName = (branchId: string) =>
+    data?.facts.branches.find((one) => one.id === branchId)?.name ??
+    t('timetable.grid.unknownBranch');
+  /** The class board a block opens: its first lesson's class, or the first class its group draws from. */
+  const classOf = (block: PatternBlock): string | null => {
+    const first = block.lessons[0];
+    if (first === undefined || model === null) return null;
+    const row = model.rowOf(first.loadRowId);
+    return model.unitOf(row.classId ?? row.groupId ?? '').classIds[0] ?? null;
+  };
 
   const answered = (answer: GridAnswer) => {
     queryClient.setQueryData(gridQuery(branchId, versionId).queryKey, answer);
@@ -205,21 +273,64 @@ export function GridStep({
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-end gap-4">
-        <div className="min-w-48">
+        <div className="min-w-40">
           <SelectField
-            label={t('timetable.grid.class')}
-            name="class"
-            value={chosen.id}
-            options={data.classes.map((one) => ({
-              value: one.id,
-              label: classDisplayName(one.grade, one.name),
+            label={t('timetable.grid.view')}
+            name="view"
+            value={view}
+            options={GRID_VIEWS.map((one) => ({
+              value: one,
+              label: t(`timetable.grid.views.${one}`),
             }))}
             onChange={(event) => {
-              setClassId(event.target.value);
+              setView(gridViewOf(event.target.value));
               setAdding(null);
             }}
           />
         </div>
+        {view === 'class' && (
+          <div className="min-w-48">
+            <SelectField
+              label={t('timetable.grid.class')}
+              name="class"
+              value={chosen.id}
+              options={data.classes.map((one) => ({
+                value: one.id,
+                label: classDisplayName(one.grade, one.name),
+              }))}
+              onChange={(event) => {
+                setClassId(event.target.value);
+                setAdding(null);
+              }}
+            />
+          </div>
+        )}
+        {view === 'teacher' && chosenTeacher !== undefined && (
+          <div className="min-w-48">
+            <SelectField
+              label={t('timetable.grid.teacher')}
+              name="teacher"
+              value={chosenTeacher.id}
+              options={teachers.map((one) => ({ value: one.id, label: one.name }))}
+              onChange={(event) => {
+                setTeacherId(event.target.value);
+              }}
+            />
+          </div>
+        )}
+        {view === 'room' && chosenRoom !== undefined && (
+          <div className="min-w-48">
+            <SelectField
+              label={t('timetable.grid.room')}
+              name="room"
+              value={chosenRoom.id}
+              options={data.rooms.map((one) => ({ value: one.id, label: one.name }))}
+              onChange={(event) => {
+                setRoomId(event.target.value);
+              }}
+            />
+          </div>
+        )}
         <SavedSign saved={write.isSuccess || remove.isSuccess || placed} />
       </div>
       {!data.editable && <p className="text-sm">{t('timetable.grid.readOnly')}</p>}
@@ -233,94 +344,115 @@ export function GridStep({
       )}
       <FailureAlert error={write.error} text={failureText(write.error)} />
       <FailureAlert error={remove.error} />
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm" data-board={chosen.id}>
-          <thead>
-            <tr>
-              <th className="p-1 text-left font-semibold">
-                <span className="sr-only">{t('timetable.grid.slot')}</span>
-              </th>
-              {board.weekdays.map((weekday) => (
-                <th key={weekday} className="p-1 text-left font-semibold">
-                  {weekdayName(language, weekdaySchema.parse(weekday))}
+      {view === 'room' && chosenRoom === undefined && (
+        <EmptyState title={t('timetable.grid.noRoomsTitle')} text={t('timetable.grid.noRooms')} />
+      )}
+      {view !== 'class' && clockBoard !== null && (
+        <GridClockBoard
+          board={clockBoard}
+          name={(view === 'teacher' ? chosenTeacher?.id : chosenRoom?.id) ?? ''}
+          rowsById={rowsById}
+          roomsById={roomsById}
+          results={data.results}
+          branchName={branchName}
+          classOf={classOf}
+          onOpenClass={(id) => {
+            setClassId(id);
+            setView('class');
+          }}
+        />
+      )}
+      {view === 'class' && (
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-sm" data-board={chosen.id}>
+            <thead>
+              <tr>
+                <th className="p-1 text-left font-semibold">
+                  <span className="sr-only">{t('timetable.grid.slot')}</span>
                 </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {board.positions.map((position) => (
-              <tr key={position}>
-                <th scope="row" className="p-1 text-left align-top font-semibold">
-                  {t('timetable.grid.slotNumber', { position })}
-                </th>
-                {board.weekdays.map((weekday) => {
-                  const cell = board.cellAt(weekday, position);
-                  if (cell === null) {
-                    return (
-                      <td
-                        key={weekday}
-                        className="border border-border p-1 align-top text-xs text-muted-foreground"
-                      >
-                        {t('timetable.grid.noSlot')}
-                      </td>
-                    );
-                  }
-                  const blocks = board.blocksAt(cell);
-                  return (
-                    <GridCell
-                      key={weekday}
-                      cell={cell}
-                      status={menuOpen ? undefined : statuses.get(cellKey(cell))}
-                      editable={editable}
-                    >
-                      <span className="text-xs text-muted-foreground">
-                        {rangeText(t, cell.start, cell.end)}
-                      </span>
-                      {blocks.map((block) => (
-                        <GridTile
-                          key={block.id}
-                          block={block}
-                          rowsById={rowsById}
-                          roomsById={roomsById}
-                          results={data.results}
-                          editable={editable}
-                          onMove={() => {
-                            setRefusal(null);
-                            setMoving(block);
-                            setMenuOpen(true);
-                          }}
-                          onRemove={() => {
-                            void removeAsked(block);
-                          }}
-                        />
-                      ))}
-                      {editable && blocks.length === 0 && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          aria-label={t('timetable.grid.addAt', {
-                            weekday: weekdayName(language, weekdaySchema.parse(weekday)),
-                            time: rangeText(t, cell.start, cell.end),
-                          })}
-                          onClick={() => {
-                            setRefusal(null);
-                            setPlaced(false);
-                            setAdding(cell);
-                          }}
-                        >
-                          {t('timetable.grid.add')}
-                        </Button>
-                      )}
-                    </GridCell>
-                  );
-                })}
+                {board.weekdays.map((weekday) => (
+                  <th key={weekday} className="p-1 text-left font-semibold">
+                    {weekdayName(language, weekdaySchema.parse(weekday))}
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {editable && adding !== null && (
+            </thead>
+            <tbody>
+              {board.positions.map((position) => (
+                <tr key={position}>
+                  <th scope="row" className="p-1 text-left align-top font-semibold">
+                    {t('timetable.grid.slotNumber', { position })}
+                  </th>
+                  {board.weekdays.map((weekday) => {
+                    const cell = board.cellAt(weekday, position);
+                    if (cell === null) {
+                      return (
+                        <td
+                          key={weekday}
+                          className="border border-border p-1 align-top text-xs text-muted-foreground"
+                        >
+                          {t('timetable.grid.noSlot')}
+                        </td>
+                      );
+                    }
+                    const blocks = board.blocksAt(cell);
+                    return (
+                      <GridCell
+                        key={weekday}
+                        cell={cell}
+                        status={menuOpen ? undefined : statuses.get(cellKey(cell))}
+                        editable={editable}
+                      >
+                        <span className="text-xs text-muted-foreground">
+                          {rangeText(t, cell.start, cell.end)}
+                        </span>
+                        {blocks.map((block) => (
+                          <GridTile
+                            key={block.id}
+                            block={block}
+                            rowsById={rowsById}
+                            roomsById={roomsById}
+                            results={data.results}
+                            branchName={branchName}
+                            editable={editable}
+                            onMove={() => {
+                              setRefusal(null);
+                              setMoving(block);
+                              setMenuOpen(true);
+                            }}
+                            onRemove={() => {
+                              void removeAsked(block);
+                            }}
+                          />
+                        ))}
+                        {editable && blocks.length === 0 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            aria-label={t('timetable.grid.addAt', {
+                              weekday: weekdayName(language, weekdaySchema.parse(weekday)),
+                              time: rangeText(t, cell.start, cell.end),
+                            })}
+                            onClick={() => {
+                              setRefusal(null);
+                              setPlaced(false);
+                              setAdding(cell);
+                            }}
+                          >
+                            {t('timetable.grid.add')}
+                          </Button>
+                        )}
+                      </GridCell>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {view === 'class' && editable && adding !== null && (
         <GridPlaceForm
           key={`${chosen.id}|${cellKey(adding)}`}
           grid={data}

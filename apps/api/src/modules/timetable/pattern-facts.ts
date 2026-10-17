@@ -1,5 +1,7 @@
+import { sql } from 'kysely';
 import {
   blockOf,
+  elsewherePlacement,
   firstOn,
   patternModel,
   templateFor,
@@ -31,13 +33,21 @@ import type { LoadFacts, StoredLoadRow, VersionContext } from './load-facts.js';
  * each weekday's first date on or after it, with no special dates (the weekly
  * pattern, as `weekDaysOf`).
  *
- * What is not read yet: the published lessons of other branches as busy
- * elsewhere (`fixed`) and the drafts of other branches (`otherDrafts`, empty),
- * which 5.4b adds (decision 1; its From line); the teacher's other branches
- * (`branchIds` is this branch when the record is linked to it, which is all
- * `teacher_branch` reads while every placement is of this branch); the end of
- * the version is the end of its year, the next published version comes with
- * 5.5a (it bounds `teacher_unavailable_later`, a warning).
+ * Task 5.4b-1: the teachers' lessons in the published pattern in force on
+ * `statusOn` in every other branch are read as busy elsewhere
+ * (`busyElsewhere`, the engine's `fixed` placements: `timetable_busy_elsewhere`,
+ * 0071), and their lessons in the other branches' drafts that can overlap this
+ * one as `otherDrafts` (`timetable_drafts_elsewhere`): weekday, times and
+ * branch only (decision 2). A later published version of another branch and
+ * its one-day changes are dated facts, checked by publish (5.5a, its From
+ * 5.4b-1 line). `branchIds` stays this branch when the record is linked to it
+ * (review decision 12): its only readers, `checkDay` and `checkResources`
+ * (`teacher_branch` and the profile rules), skip fixed placements, and every
+ * other placement is of this branch, so another link changes no result.
+ *
+ * What is not read yet: the end of the version is the end of its year, the
+ * next published version comes with 5.5a (it bounds
+ * `teacher_unavailable_later`, a warning).
  *
  * The load rows are passed (review correction 3): `checkTimetable` then gives
  * a `load_mismatch` warning for every row with fewer pinned lessons than its
@@ -163,6 +173,38 @@ export async function readPatternFacts(
           .orderBy('student_id')
           .execute(),
   ]);
+
+  const elsewhere = async (query: ReturnType<typeof sql<ElsewhereRow>>) =>
+    teacherIds.length === 0 ? [] : (await query.execute(transaction)).rows;
+  const [busyRows, draftRows] = await Promise.all([
+    elsewhere(sql<ElsewhereRow>`
+      select * from timetable_busy_elsewhere(${branchId}::uuid, ${sql.val(teacherIds)}::uuid[], ${statusOn}::date)
+    `),
+    elsewhere(sql<ElsewhereRow>`
+      select * from timetable_drafts_elsewhere(${branchId}::uuid, ${sql.val(teacherIds)}::uuid[], ${statusOn}::date, ${year.end_date}::date)
+    `),
+  ]);
+  const lessonOf = (row: ElsewhereRow) => ({
+    id: row.entry_id,
+    teacherId: row.staff_id,
+    branchId: row.branch_id,
+    weekday: row.weekday,
+    start: row.start_minutes,
+    end: row.end_minutes,
+  });
+  const byId = (a: { id: string }, b: { id: string }) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+  const otherBranchIds = [
+    ...new Set([...busyRows, ...draftRows].map((row) => row.branch_id)),
+  ].sort();
+  const otherBranches =
+    otherBranchIds.length === 0
+      ? []
+      : await transaction
+          .selectFrom('branches')
+          .select(['id', 'name'])
+          .where('id', 'in', otherBranchIds)
+          .orderBy('id')
+          .execute();
 
   const membersOf = (list: readonly { id: string; student: string }[]) => {
     const found = new Map<string, string[]>();
@@ -337,7 +379,11 @@ export async function readPatternFacts(
         block: block.length === 0 ? [row.id] : block.map((one) => one.id).sort(),
       };
     }),
-    otherDrafts: [],
+    busyElsewhere: busyRows
+      .map((row) => ({ ...lessonOf(row), tutorLesson: row.tutor_lesson ?? false }))
+      .sort(byId),
+    otherDrafts: draftRows.map((row) => elsewherePlacement(lessonOf(row), false)).sort(byId),
+    branches: otherBranches,
   };
   const model = patternModel(data);
 
@@ -349,6 +395,18 @@ export async function readPatternFacts(
       model.placementOf(model.rowOf(row.id), { ...at, roomId: row.room_id }),
     dayOfRow: (row, weekday) => model.dayOfRows([model.rowOf(row.id)], weekday),
   };
+}
+
+/** A row of `timetable_busy_elsewhere` or `timetable_drafts_elsewhere` (0071). */
+interface ElsewhereRow {
+  readonly staff_id: string;
+  readonly branch_id: string;
+  readonly entry_id: string;
+  readonly weekday: number;
+  readonly start_minutes: number;
+  readonly end_minutes: number;
+  /** `timetable_busy_elsewhere` only. */
+  readonly tutor_lesson?: boolean;
 }
 
 function engineRoomOf(room: {
