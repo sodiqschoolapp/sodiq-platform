@@ -33,13 +33,15 @@ export const isTileData = (
  * `docs/design-system.md`, Subject colours), class or group, teacher and room,
  * the rules its lessons break now, and, when the draft is edited, a pointer
  * drag and the Move and Remove buttons that work by keyboard and touch
- * (review correction 3).
+ * (review correction 3). A lesson that a draft of another branch also plans
+ * names that branch (06, Two drafts at once; task 5.4b-1).
  */
 export function GridTile({
   block,
   rowsById,
   roomsById,
   results,
+  branchName,
   editable,
   onMove,
   onRemove,
@@ -48,6 +50,7 @@ export function GridTile({
   rowsById: ReadonlyMap<string, Row>;
   roomsById: ReadonlyMap<string, string>;
   results: readonly RuleResultAnswer[];
+  branchName: (branchId: string) => string;
   editable: boolean;
   onMove: () => void;
   onRemove: () => void;
@@ -76,6 +79,14 @@ export function GridTile({
   const own = results.filter((result) => result.lessonIds.some((id) => ids.has(id)));
   const rules = [...new Set(own.map((result) => result.rule))];
   const blocked = own.some((result) => result.severity === 'blocked');
+  const draftBranches = [
+    ...new Set(
+      own.flatMap((result) => {
+        const branchId = result.detail?.branchId;
+        return result.rule === 'other_draft' && typeof branchId === 'string' ? [branchId] : [];
+      }),
+    ),
+  ];
 
   return (
     <div
@@ -121,6 +132,13 @@ export function GridTile({
         >
           <WarningIcon aria-hidden className="size-4 shrink-0" />
           <span>{rules.map((rule) => ruleText(t, rule)).join(' ')}</span>
+        </p>
+      )}
+      {draftBranches.length > 0 && (
+        <p className="text-warning" data-other-draft={draftBranches.join(' ')}>
+          {t('timetable.grid.otherDraftIn', {
+            branches: draftBranches.map(branchName).join(', '),
+          })}
         </p>
       )}
       {editable && (

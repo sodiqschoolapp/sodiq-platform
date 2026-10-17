@@ -248,7 +248,9 @@ export function PinsSection({
               <li key={`${conflict.rule}|${conflict.pinIds.join(',')}`} data-rule={conflict.rule}>
                 <span className="font-semibold">{ruleText(conflict.rule)}</span>
                 {' · '}
-                {named(conflict.pinIds)}
+                {[named(conflict.pinIds)]
+                  .concat(conflict.elsewhere ? [t('timetable.builder.pins.elsewhere')] : [])
+                  .join('; ')}
               </li>
             ))}
           </ul>

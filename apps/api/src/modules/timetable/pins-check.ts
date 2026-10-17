@@ -147,9 +147,7 @@ export async function checkPins(
         const subject = load.subjects.get(row.subject_id);
         return unit !== undefined && subject !== undefined && isTutorRow(unit.unit, subject);
       },
-      new Set(
-        pattern.data.busyElsewhere.filter((one) => one.tutorLesson).map((one) => one.id),
-      ),
+      new Set(pattern.data.busyElsewhere.filter((one) => one.tutorLesson).map((one) => one.id)),
     ).map(conflictOf),
   };
 }

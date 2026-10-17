@@ -382,9 +382,7 @@ export async function readPatternFacts(
     busyElsewhere: busyRows
       .map((row) => ({ ...lessonOf(row), tutorLesson: row.tutor_lesson ?? false }))
       .sort(byId),
-    otherDrafts: draftRows
-      .map((row) => elsewherePlacement(lessonOf(row), false))
-      .sort(byId),
+    otherDrafts: draftRows.map((row) => elsewherePlacement(lessonOf(row), false)).sort(byId),
     branches: otherBranches,
   };
   const model = patternModel(data);

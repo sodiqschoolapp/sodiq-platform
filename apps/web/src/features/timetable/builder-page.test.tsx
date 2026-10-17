@@ -480,7 +480,9 @@ describe('the pinned lessons of step 5', () => {
       path: STEP_FIVE,
       answer: withPins({
         pins: [PIN, OTHER],
-        conflicts: [{ rule: 'teacher_double', weekday: 5, pinIds: [PIN.id, OTHER.id] }],
+        conflicts: [
+          { rule: 'teacher_double', weekday: 5, pinIds: [PIN.id, OTHER.id], elsewhere: false },
+        ],
         problems: [{ pinId: OTHER.id, problem: 'pin_no_slot' }],
       }),
     });
@@ -572,7 +574,12 @@ describe('the pinned lessons of step 5', () => {
   });
 
   it('lists a Tutor of two classes pinned at the same time in the load step', async () => {
-    const clash = { rule: 'teacher_double', weekday: 5 as const, pinIds: [PIN.id, OTHER.id] };
+    const clash = {
+      rule: 'teacher_double',
+      weekday: 5 as const,
+      pinIds: [PIN.id, OTHER.id],
+      elsewhere: false,
+    };
     await openPage({
       path: `/timetable/builder?version=${VERSION.id}&step=load`,
       answer: readiness({
@@ -602,6 +609,45 @@ describe('the pinned lessons of step 5', () => {
     });
     expect(line?.textContent).toBe(
       '7 Oxford, Mathematics, Friday, slot 5; 7 Princeton, Mathematics, Friday, slot 5',
+    );
+  });
+
+  it('names a lesson in another branch beside a pin it meets in the load step (task 5.4b-1)', async () => {
+    const clash = {
+      rule: 'teacher_double',
+      weekday: 5 as const,
+      pinIds: [PIN.id],
+      elsewhere: true,
+    };
+    await openPage({
+      path: `/timetable/builder?version=${VERSION.id}&step=load`,
+      answer: readiness({
+        load: {
+          ready: true,
+          rows: 2,
+          problemRows: [],
+          leftRows: 0,
+          classesOver: [],
+          tutorPinClashes: [clash],
+        },
+        rules: {
+          ready: false,
+          confirmed: true,
+          weights: WEIGHTS,
+          changed: [],
+          ...NO_PINS,
+          pins: [PIN],
+          conflicts: [clash],
+        },
+      }),
+    });
+    const line = await waitFor(() => {
+      const found = document.querySelector('[data-tutor-clash]');
+      expect(found).not.toBeNull();
+      return found;
+    });
+    expect(line?.textContent).toBe(
+      `7 Oxford, Mathematics, Friday, slot 5; ${en.timetable.builder.pins.elsewhere}`,
     );
   });
 });

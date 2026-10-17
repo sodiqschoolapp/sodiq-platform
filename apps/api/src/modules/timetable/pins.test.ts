@@ -497,7 +497,11 @@ describe('pinned lessons of step 5', () => {
       weekday: number,
       position: 1 | 3 | 5,
     ) {
-      const [start, end] = { 1: [480, 525], 3: [535, 580], 5: [590, 635] }[position];
+      const { start, end } = {
+        1: { start: 480, end: 525 },
+        3: { start: 535, end: 580 },
+        5: { start: 590, end: 635 },
+      }[position];
       const block = await t.database.migrator
         .insertInto('pattern_blocks')
         .values({

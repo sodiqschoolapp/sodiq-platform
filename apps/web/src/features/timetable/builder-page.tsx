@@ -357,6 +357,7 @@ export function BuilderPage(): React.JSX.Element {
                         position: pin.slotPosition,
                       }),
                     )
+                    .concat(clash.elsewhere ? [t('timetable.builder.pins.elsewhere')] : [])
                     .join('; ')}
                 </li>
               ))}
