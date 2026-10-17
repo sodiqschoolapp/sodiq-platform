@@ -1230,6 +1230,12 @@ describe('the grid of a draft', () => {
         lessons_per_week: 2,
         mixed_block: true,
       });
+      // Blocks in the other drafts, so a wrong write there would show (permission review, should-fix 1).
+      gridOf(
+        await placeWith(other.branch, other.version, other.peBoys, other.techGirls, 1, 1),
+        201,
+      );
+      gridOf(await placeWith(s.branch, sameBranch, sameRow, undefined, 1, 1), 201);
       await viceIn(s.branch);
       await staleEditLock(s.version);
       const before = await patternRows([s.version, other.version, sameBranch]);
