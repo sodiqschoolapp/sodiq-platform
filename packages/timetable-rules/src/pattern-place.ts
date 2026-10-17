@@ -32,6 +32,8 @@ export interface PatternBlock {
   readonly start: number;
   readonly end: number;
   readonly lessons: readonly BlockLesson[];
+  /** The pair of a double lesson (`pattern_blocks.double_pair_id`; task 5.4c-3a); `null` for a single lesson. */
+  readonly doublePairId: string | null;
 }
 
 /**
@@ -42,7 +44,11 @@ export interface PatternBlock {
  */
 export function blockPlacements(
   model: PatternModel,
-  block: { readonly id: string; readonly lessons: readonly BlockLesson[] },
+  block: {
+    readonly id: string;
+    readonly lessons: readonly BlockLesson[];
+    readonly doublePairId?: string | null;
+  },
   weekday: number,
   slotPosition: number,
 ): Placement[] | null {
@@ -61,6 +67,7 @@ export function blockPlacements(
       start: slot.start,
       end: slot.end,
       roomId: one.roomId,
+      doublePairId: block.doublePairId ?? null,
     });
   });
 }
@@ -79,6 +86,7 @@ export function patternPlacements(
         start: block.start,
         end: block.end,
         roomId: one.roomId,
+        doublePairId: block.doublePairId,
       }),
     ),
   );
@@ -119,5 +127,74 @@ export function newBlockOf(model: PatternModel, rowId: string): PatternBlock {
       loadRowId: id,
       roomId: model.roomOfNew(model.rowOf(id)),
     })),
+    doublePairId: null,
   };
+}
+
+/** The id of the second half of a double not placed yet (task 5.4c-3a). */
+export const NEW_SECOND_HALF_ID = `${NEW_BLOCK_ID}:2`;
+
+/**
+ * The two halves of a double lesson of a load row not placed yet (task
+ * 5.4c-3a): two blocks of `newBlockOf`, with ids of their own and lesson ids
+ * of their own (one id twice would be one lesson to `checkCandidates`), the
+ * first half first.
+ */
+export function newPairOf(model: PatternModel, rowId: string): [PatternBlock, PatternBlock] {
+  const first = newBlockOf(model, rowId);
+  return [
+    { ...first, doublePairId: NEW_BLOCK_ID },
+    {
+      ...first,
+      id: NEW_SECOND_HALF_ID,
+      lessons: first.lessons.map((lesson) => ({ ...lesson, id: `new:2:${lesson.loadRowId}` })),
+      doublePairId: NEW_BLOCK_ID,
+    },
+  ];
+}
+
+/** The other half of a block of a double among the stored blocks; `undefined` for a single lesson. */
+export function otherHalf(
+  blocks: readonly PatternBlock[],
+  block: PatternBlock,
+): PatternBlock | undefined {
+  return block.doublePairId === null
+    ? undefined
+    : blocks.find((one) => one.doublePairId === block.doublePairId && one.id !== block.id);
+}
+
+/**
+ * A double lesson at a slot (task 5.4c-3a, decisions 4 and 5): `halves` are
+ * the two blocks of the pair, the earlier first; the half `movedId` takes the
+ * slot and the other takes the next lesson slot of that day when it comes
+ * after, the previous one when it comes before ("consecutive lesson slots",
+ * a break between them allowed: edge/timetable, Structure). `null` when the
+ * day has no slot at the position, the slot is not a lesson slot, or there is
+ * no lesson slot beside it.
+ */
+export function pairAt(
+  model: PatternModel,
+  halves: readonly [PatternBlock, PatternBlock],
+  movedId: string,
+  weekday: number,
+  slotPosition: number,
+): [PatternBlock, PatternBlock] | null {
+  const [first, second] = halves;
+  const movedFirst = first.id === movedId;
+  const rows = first.lessons.map((one) => model.rowOf(one.loadRowId));
+  const day = model.dayOfRows(rows, weekday);
+  const slot = slotAt(day, slotPosition);
+  if (day === null || slot === undefined || slot.lessonNumber === null) return null;
+  const wanted = slot.lessonNumber + (movedFirst ? 1 : -1);
+  const beside = day.slots.find((one) => one.lessonNumber === wanted);
+  if (beside === undefined) return null;
+  const [firstSlot, secondSlot] = movedFirst ? [slot, beside] : [beside, slot];
+  const at = (block: PatternBlock, to: DaySlot): PatternBlock => ({
+    ...block,
+    weekday,
+    slotPosition: to.position,
+    start: to.start,
+    end: to.end,
+  });
+  return [at(first, firstSlot), at(second, secondSlot)];
 }

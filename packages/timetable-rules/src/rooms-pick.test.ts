@@ -40,6 +40,7 @@ const block = (
     start: times?.[0] ?? 0,
     end: times?.[1] ?? 0,
     lessons: [{ id: `${id}:l`, loadRowId: rowId, roomId }],
+    doublePairId: null,
   };
 };
 

@@ -33,6 +33,7 @@ export const RULE_ORDER = [
   'break_slot',
   'two_grade_slot',
   'double_apart',
+  'double_not_allowed',
   // The teacher, the subject and the room.
   'teacher_branch',
   'teacher_inactive',
@@ -109,6 +110,7 @@ export const FIXED_RULES = [
   'break_slot',
   'two_grade_slot',
   'double_apart',
+  'double_not_allowed',
   'teacher_branch',
   'teacher_inactive',
   'teacher_subject',

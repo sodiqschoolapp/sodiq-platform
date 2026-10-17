@@ -92,7 +92,15 @@ function stored(
   const placed = blockPlacements(model, { id, lessons }, weekday, slotPosition);
   const first = placed?.[0];
   if (first === undefined) throw new Error(`no slot ${weekday}:${slotPosition}`);
-  return { id, weekday, slotPosition, start: first.start, end: first.end, lessons };
+  return {
+    id,
+    weekday,
+    slotPosition,
+    start: first.start,
+    end: first.end,
+    lessons,
+    doublePairId: null,
+  };
 }
 
 // The blocks of the fixture: each class row alone, the English split whole.
@@ -130,12 +138,19 @@ function apply(blocks: readonly PatternBlock[], edit: Edit, serial: number): Pat
     block: { id: string; lessons: readonly BlockLesson[] },
     weekday: number,
     slot: number,
-  ) => {
+  ): PatternBlock | null => {
     const placed = blockPlacements(model, block, weekday, slot);
     const first = placed?.[0];
     return first === undefined
       ? null
-      : { ...block, weekday, slotPosition: slot, start: first.start, end: first.end };
+      : {
+          ...block,
+          weekday,
+          slotPosition: slot,
+          start: first.start,
+          end: first.end,
+          doublePairId: null,
+        };
   };
   if (edit.kind === 'place') {
     const id = `n${serial}`;

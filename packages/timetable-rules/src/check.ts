@@ -363,14 +363,25 @@ const lessonNumberAt = (day: Day, start: number, end: number) =>
 
 /**
  * Double lessons: "Two linked lessons in consecutive lesson slots with the
- * same teacher and room" (edge/timetable, Structure).
+ * same teacher and room" (edge/timetable, Structure). A double of a block of
+ * several lessons is two lessons per load row, each row checked on its own
+ * (task 5.4c-3a, decision 3); a lesson with no row is keyed by its unit.
+ * `double_not_allowed`: a double of a row that does not allow double lessons
+ * (05, Teaching load: "whether double lessons are allowed"; decision 2).
  */
 function checkDoubles(placements: readonly Placement[], facts: Facts, results: Results): void {
   const pairs = groupBy(
     placements.filter((one) => one.kind === 'lesson' && one.doublePairId !== null),
-    (one) => [`${one.day}|${one.doublePairId ?? ''}`],
+    (one) => [
+      `${one.day}|${one.doublePairId ?? ''}|${one.loadRowId ?? one.groupId ?? one.classId ?? ''}`,
+    ],
   );
+  const rows = new Map(facts.loadRows.map((row) => [row.id, row]));
   for (const pair of pairs.values()) {
+    const rowId = pair[0]?.loadRowId ?? null;
+    if (rowId !== null && rows.get(rowId)?.doubleLessons === false) {
+      results.add('double_not_allowed', pair[0]?.day ?? '', pair);
+    }
     const [first, second, ...rest] = [...pair].sort(byStart);
     if (first === undefined) continue;
     if (second === undefined || rest.length > 0) {

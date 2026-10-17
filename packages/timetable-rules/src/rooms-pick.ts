@@ -13,7 +13,12 @@
  */
 import { checkCandidates } from './check.js';
 import type { PatternModel } from './facts-data.js';
-import { checkedPlacements, patternPlacements, type PatternBlock } from './pattern-place.js';
+import {
+  checkedPlacements,
+  otherHalf,
+  patternPlacements,
+  type PatternBlock,
+} from './pattern-place.js';
 import type { RuleResult } from './rules.js';
 
 /** A result keyed by everything that tells two results apart (`.claude/rules/timetable.md`). */
@@ -47,7 +52,32 @@ export interface RoomChange {
   readonly warnings: RuleResult[];
 }
 
-/** The results of one lesson of a block in a room, among the other lessons. */
+/**
+ * The lessons a room change of `lessonId` changes, by block (task 5.4c-3a,
+ * decision 7): the lesson itself and, in a double, the lesson of the same load
+ * row in the other half ("Two linked lessons ... with the same teacher and
+ * room": edge/timetable, Structure).
+ */
+export function roomLessons(
+  all: readonly PatternBlock[],
+  block: PatternBlock,
+  lessonId: string,
+): { readonly block: PatternBlock; readonly lessonId: string }[] {
+  const lesson = block.lessons.find((one) => one.id === lessonId);
+  if (lesson === undefined) {
+    throw new Error('roomChange: the lesson is not in the block.');
+  }
+  const other = otherHalf(all, block);
+  const twin = other?.lessons.find((one) => one.loadRowId === lesson.loadRowId);
+  return other === undefined || twin === undefined
+    ? [{ block, lessonId }]
+    : [
+        { block, lessonId },
+        { block: other, lessonId: twin.id },
+      ];
+}
+
+/** The results of the lessons of a room change in a room, among the other lessons. */
 function lessonResults(
   model: PatternModel,
   all: readonly PatternBlock[],
@@ -55,18 +85,22 @@ function lessonResults(
   lessonId: string,
   roomId: string | null,
 ): RuleResult[] {
-  const changed: PatternBlock = {
-    ...block,
-    lessons: block.lessons.map((one) => (one.id === lessonId ? { ...one, roomId } : one)),
-  };
-  const candidate = patternPlacements(model, [changed]).find((one) => one.id === lessonId);
-  if (candidate === undefined) {
-    throw new Error('roomChange: the lesson is not in the block.');
-  }
-  return checkCandidates(checkedPlacements(model, all), model.facts, [candidate]);
+  const candidates = roomLessons(all, block, lessonId).flatMap((one) => {
+    const changed: PatternBlock = {
+      ...one.block,
+      lessons: one.block.lessons.map((lesson) =>
+        lesson.id === one.lessonId ? { ...lesson, roomId } : lesson,
+      ),
+    };
+    return patternPlacements(model, [changed]).filter((placed) => placed.id === one.lessonId);
+  });
+  return checkCandidates(checkedPlacements(model, all), model.facts, candidates);
 }
 
-/** The lesson `lessonId` of a stored block put in the room `roomId`, or in none (`null`). */
+/**
+ * The lesson `lessonId` of a stored block put in the room `roomId`, or in none
+ * (`null`); in a double, with its lesson in the other half (`roomLessons`).
+ */
 export function roomChange(
   model: PatternModel,
   all: readonly PatternBlock[],

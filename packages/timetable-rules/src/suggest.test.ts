@@ -33,7 +33,15 @@ function at(
   }));
   const [first] = blockPlacements(model, { id, lessons }, weekday, slotPosition) ?? [];
   if (first === undefined) throw new Error('No such slot in the fixture.');
-  return { id, weekday, slotPosition, start: first.start, end: first.end, lessons };
+  return {
+    id,
+    weekday,
+    slotPosition,
+    start: first.start,
+    end: first.end,
+    lessons,
+    doublePairId: null,
+  };
 }
 
 /** The route's check of a suggestion: the changed blocks among the draft (review finding 1). */
