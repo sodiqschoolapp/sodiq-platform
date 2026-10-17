@@ -14,6 +14,7 @@ import {
   type PinRecord,
   type PlaceRecord,
   type PreferenceWeights,
+  type RearrangeRecord,
   type SwapRecord,
   type TimetableVersionCreate,
   type TimetableVersionEdit,
@@ -243,6 +244,15 @@ export const moveBlock = (versionId: string, blockId: string, record: MoveRecord
 export const swapBlocks = (versionId: string, record: SwapRecord) =>
   answerOf(
     api.POST('/api/timetable/versions/{id}/pattern/swap', {
+      params: { header: branchHeader(), path: { id: versionId } },
+      body: record,
+    }),
+  ).then((answer) => gridSchema.parse(answer));
+
+/** Step 7: a suggestion of "Suggest a place" applied, up to three blocks at once (task 5.4b-2b). */
+export const rearrangeBlocks = (versionId: string, record: RearrangeRecord) =>
+  answerOf(
+    api.POST('/api/timetable/versions/{id}/pattern/rearrange', {
       params: { header: branchHeader(), path: { id: versionId } },
       body: record,
     }),

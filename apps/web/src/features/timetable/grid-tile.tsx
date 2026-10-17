@@ -54,6 +54,7 @@ export function GridTile({
   onMove,
   onRemove,
   onRoom,
+  onSuggest,
 }: {
   block: PatternBlock;
   rowsById: ReadonlyMap<string, Row>;
@@ -67,6 +68,8 @@ export function GridTile({
   onMove: () => void;
   onRemove: () => void;
   onRoom?: (lessonId: string) => void;
+  /** "Suggest a place" (task 5.4b-2b), on the class board. */
+  onSuggest?: () => void;
 }): React.JSX.Element {
   const { t, i18n } = useTranslation();
   const language = i18n.language;
@@ -188,6 +191,11 @@ export function GridTile({
           <Button type="button" variant="ghost" size="sm" onClick={onMove}>
             {t('timetable.grid.move')}
           </Button>
+          {onSuggest !== undefined && (
+            <Button type="button" variant="ghost" size="sm" onClick={onSuggest}>
+              {t('timetable.grid.suggest')}
+            </Button>
+          )}
           <Button type="button" variant="destructive" size="sm" onClick={onRemove}>
             {t('timetable.grid.remove')}
           </Button>

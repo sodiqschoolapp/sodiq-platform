@@ -96,3 +96,28 @@ export function checkedPlacements(
 ): Placement[] {
   return [...patternPlacements(model, blocks), ...model.fixed];
 }
+
+/** The id of a block not placed yet, dragged or placed from the "To place" panel (task 5.4b-2a). */
+export const NEW_BLOCK_ID = 'new';
+
+/**
+ * The block of a load row not placed yet, as the place route builds it: one
+ * lesson per row of its block, each in its row's room, else a class row's
+ * main classroom (`roomOfNew`); it sits at no slot until it is placed. The
+ * one builder of a new block for the grid, "Suggest a place" and the routes
+ * (task 5.4b-2b, review correction 2).
+ */
+export function newBlockOf(model: PatternModel, rowId: string): PatternBlock {
+  return {
+    id: NEW_BLOCK_ID,
+    weekday: 0,
+    slotPosition: 0,
+    start: 0,
+    end: 0,
+    lessons: model.rowOf(rowId).block.map((id) => ({
+      id: `new:${id}`,
+      loadRowId: id,
+      roomId: model.roomOfNew(model.rowOf(id)),
+    })),
+  };
+}

@@ -2,6 +2,17 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 17 October 2026: task 5.4b-2b Grid: "Suggest a place"
+
+- A tile of the class board and an entry of "To place" have "Suggest a place": up to five free slots, fewest warnings first (a slot held only by its room is offered with another room, after the others), or, when none is free, up to three rearrangements of two or three blocks. The search is `suggestPlaces` of `packages/timetable-rules/src/suggest.ts`, run in the browser with a budget of 2,000 checks; each trial is the route's own check.
+- Route `POST …/pattern/rearrange` (one to three changes, at most one new block, rooms by load row), one transaction, clash constraints deferred; audit `pattern_block.rearrange` per moved block and `pattern_block.create` for a new one, each with `rearrangedWith`. The grid answer gains `pins`. `newBlockOf` moved into the rule engine. No migration.
+- Left out: locks and undo of a suggestion (5.4c, From 5.4b-2b line); preference weights in the ranking (the solver, 5.10); the handbook (paused). The browser test was not run here; CI runs it.
+
+The next sessions must know:
+
+- A new block is built only by `newBlockOf` of `packages/timetable-rules`; the web re-exports it from `use-slot-status.ts`.
+- The next task is 5.4c.
+
 ## 17 October 2026: task 5.4b-2a Grid: "to place", the room picker and the conflict panel
 
 - Step 7 has a "To place" panel (blocks short of their load, dragged or placed with the slot list), a room picker on each lesson and in the place form (rooms free in the slot, best fit first), and a conflict panel with "Show"; the checklist shows step 7's errors and warnings.

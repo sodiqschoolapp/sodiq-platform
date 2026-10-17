@@ -145,6 +145,8 @@ export {
 export {
   blockPlacements,
   checkedPlacements,
+  NEW_BLOCK_ID,
+  newBlockOf,
   patternPlacements,
   slotAt,
   type BlockLesson,
@@ -157,6 +159,18 @@ export {
   type RoomChange,
   type RoomChoice,
 } from './rooms-pick.js';
+export {
+  FREE_SHOWN,
+  MOST_BLOCKS_CHANGED,
+  REARRANGEMENTS_SHOWN,
+  ROOM_RULES,
+  SUGGEST_BUDGET,
+  suggestPlaces,
+  type SuggestedChange,
+  type Suggestion,
+  type Suggestions,
+  type SuggestOptions,
+} from './suggest.js';
 export {
   draftReady,
   loadReadiness,

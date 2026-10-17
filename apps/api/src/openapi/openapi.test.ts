@@ -237,6 +237,7 @@ describe('OpenAPI document', () => {
         '/api/timetable/versions/{id}/load/teachers',
         '/api/timetable/versions/{id}/load/{rowId}',
         '/api/timetable/versions/{id}/pattern',
+        '/api/timetable/versions/{id}/pattern/rearrange',
         '/api/timetable/versions/{id}/pattern/swap',
         '/api/timetable/versions/{id}/pattern/{blockId}',
         '/api/timetable/versions/{id}/pattern/{blockId}/move',

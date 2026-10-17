@@ -1,6 +1,6 @@
 import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { classDisplayName, weekdaySchema, type GridAnswer, type PlaceRecord } from '@sodiq/shared';
-import { patternModel, type PatternBlock } from '@sodiq/timetable-rules';
+import { patternModel, type PatternBlock, type Suggestion } from '@sodiq/timetable-rules';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,6 +23,7 @@ import { GridConflicts } from './grid-conflicts';
 import { GridMoveDialog } from './grid-move-dialog';
 import { GridPlaceForm } from './grid-place-form';
 import { GridRoomPicker } from './grid-room-picker';
+import { GridSuggestDialog, rearrangeOf } from './grid-suggest-dialog';
 import { GridToPlace, isPlaceData } from './grid-to-place';
 import { GridTile, isTileData, unitText } from './grid-tile';
 import { ruleText } from './rule-text';
@@ -32,6 +33,7 @@ import {
   changeLessonRoom,
   moveBlock,
   placeBlock,
+  rearrangeBlocks,
   removeBlock,
   swapBlocks,
 } from './timetable-api';
@@ -65,6 +67,9 @@ import {
  * Task 5.4b-2a: beside the board, the "To place" panel (dragged or placed
  * from, decision 2) and the conflict panel (each result with a button to its
  * lesson, decision 8); the room picker of a lesson (decisions 4 and 5).
+ *
+ * Task 5.4b-2b: "Suggest a place" on a tile and on a "To place" entry, applied
+ * through the rearrange route, which checks it again.
  */
 const GRID_VIEWS = ['class', 'teacher', 'room'] as const;
 
@@ -101,6 +106,8 @@ export function GridStep({
   const [shownRow, setShownRow] = useState<string | null>(null);
   /** The lesson whose room picker is open. */
   const [rooming, setRooming] = useState<{ blockId: string; lessonId: string } | null>(null);
+  /** The block whose "Suggest a place" is open. */
+  const [suggesting, setSuggesting] = useState<PatternBlock | null>(null);
 
   const model = useMemo(() => (data === undefined ? null : patternModel(data.facts)), [data]);
   const chosen = data?.classes.find((one) => one.id === classId) ?? data?.classes[0];
@@ -208,6 +215,13 @@ export function GridStep({
         lessonId: input.lessonId,
         roomId: input.roomId,
       }),
+    onSuccess: answered,
+  });
+  const rearrange = useMutation({
+    mutationFn: (suggestion: Suggestion) => {
+      if (model === null) throw new Error('The grid is not read yet.');
+      return rearrangeBlocks(versionId, rearrangeOf(model, suggestion));
+    },
     onSuccess: answered,
   });
   const [placed, setPlaced] = useState(false);
@@ -376,7 +390,11 @@ export function GridStep({
             />
           </div>
         )}
-        <SavedSign saved={write.isSuccess || remove.isSuccess || room.isSuccess || placed} />
+        <SavedSign
+          saved={
+            write.isSuccess || remove.isSuccess || room.isSuccess || rearrange.isSuccess || placed
+          }
+        />
       </div>
       {!data.editable && <p className="text-sm">{t('timetable.grid.readOnly')}</p>}
       {data.editable && canEdit && !wide && (
@@ -390,6 +408,7 @@ export function GridStep({
       <FailureAlert error={write.error} text={failureText(write.error)} />
       <FailureAlert error={remove.error} />
       <FailureAlert error={room.error} text={failureText(room.error)} />
+      <FailureAlert error={rearrange.error} text={failureText(rearrange.error)} />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="grid min-w-0 content-start gap-4">
           {view === 'room' && chosenRoom === undefined && (
@@ -480,6 +499,11 @@ export function GridStep({
                                 onRemove={() => {
                                   void removeAsked(block);
                                 }}
+                                onSuggest={() => {
+                                  setRefusal(null);
+                                  setPlaced(false);
+                                  setSuggesting(block);
+                                }}
                               />
                             ))}
                             {editable && blocks.length === 0 && (
@@ -547,6 +571,12 @@ export function GridStep({
                 setMoving(newBlockOf(model, entry.rowId));
                 setMenuOpen(true);
               }}
+              onSuggest={(entry) => {
+                setRefusal(null);
+                setPlaced(false);
+                setAdding(null);
+                setSuggesting(newBlockOf(model, entry.rowId));
+              }}
             />
           )}
           <GridConflicts
@@ -601,6 +631,27 @@ export function GridStep({
           }}
           onClose={() => {
             setRooming(null);
+          }}
+        />
+      )}
+      {editable && (
+        <GridSuggestDialog
+          title={
+            suggesting === null
+              ? null
+              : t('timetable.grid.suggestTitle', { lesson: lessonName(suggesting) })
+          }
+          grid={data}
+          model={model}
+          all={all}
+          block={suggesting}
+          lessonName={lessonName}
+          onApply={(suggestion) => {
+            setSuggesting(null);
+            rearrange.mutate(suggestion);
+          }}
+          onClose={() => {
+            setSuggesting(null);
           }}
         />
       )}

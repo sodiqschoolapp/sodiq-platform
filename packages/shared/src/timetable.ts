@@ -722,6 +722,14 @@ export const gridSchema = z.object({
   rooms: z.array(z.object({ id: z.uuid(), name: z.string() })),
   blocks: z.array(gridBlockSchema),
   facts: patternFactsDataSchema,
+  /** The pins of step 5 (task 5.4b-2b): "Suggest a place" never moves a block that holds one as a blocker. */
+  pins: z.array(
+    z.object({
+      loadRowId: z.uuid(),
+      weekday: weekdaySchema,
+      slotPosition: z.int().min(1).max(PIN_SLOT_POSITION_MAX),
+    }),
+  ),
   /** Every result of the draft's pattern now (the conflict panel of 5.4b lists them). */
   results: z.array(ruleResultSchema),
 });
@@ -729,6 +737,11 @@ export const gridSchema = z.object({
 export type GridAnswer = z.infer<typeof gridSchema>;
 
 const slotPositionSchema = z.int().min(1).max(PIN_SLOT_POSITION_MAX);
+
+/** "A swap of two or three lessons" (06, Editing in the grid): the blocks one suggestion changes. */
+export const REARRANGE_BLOCKS_MAX = 3;
+/** The rooms of one change: one per lesson of its block. */
+const REARRANGE_ROOMS_MAX = 20;
 
 /**
  * A lesson placed by clicking an empty slot: a load row (with its whole block),
@@ -767,5 +780,51 @@ export type SwapRecord = z.infer<typeof swapRecordSchema>;
 export const lessonRoomRecordSchema = z.strictObject({ lessonId: z.uuid(), roomId: z.uuid() });
 
 export type LessonRoomRecord = z.infer<typeof lessonRoomRecordSchema>;
+
+/**
+ * A suggestion of "Suggest a place" applied (task 5.4b-2b): one to three
+ * changes, each a stored block moved (`blockId`) or a new block of a load row
+ * placed (`loadRowId`, at most one), at a weekday and slot, with the rooms its
+ * lessons take (by load row) where they change.
+ */
+export const rearrangeChangeSchema = z
+  .strictObject({
+    blockId: z.uuid().optional(),
+    loadRowId: z.uuid().optional(),
+    weekday: weekdaySchema,
+    slotPosition: slotPositionSchema,
+    rooms: z
+      .array(z.strictObject({ loadRowId: z.uuid(), roomId: z.uuid() }))
+      .max(REARRANGE_ROOMS_MAX)
+      .optional(),
+  })
+  .refine((change) => (change.blockId === undefined) !== (change.loadRowId === undefined), {
+    message: 'A block or a load row.',
+    path: ['blockId'],
+  })
+  .refine(
+    (change) =>
+      new Set((change.rooms ?? []).map((one) => one.loadRowId)).size ===
+      (change.rooms ?? []).length,
+    { message: 'One room per load row.', path: ['rooms'] },
+  );
+
+export const rearrangeRecordSchema = z
+  .strictObject({ changes: z.array(rearrangeChangeSchema).min(1).max(REARRANGE_BLOCKS_MAX) })
+  .refine(
+    (record) => {
+      const blocks = record.changes.flatMap((one) =>
+        one.blockId === undefined ? [] : [one.blockId],
+      );
+      return new Set(blocks).size === blocks.length;
+    },
+    { message: 'Each block once.', path: ['changes'] },
+  )
+  .refine((record) => record.changes.filter((one) => one.loadRowId !== undefined).length <= 1, {
+    message: 'At most one new block.',
+    path: ['changes'],
+  });
+
+export type RearrangeRecord = z.infer<typeof rearrangeRecordSchema>;
 
 export const patternBlockParamsSchema = z.object({ id: z.uuid(), blockId: z.uuid() });

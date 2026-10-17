@@ -3430,6 +3430,16 @@ try {
   });
   seeded.draftGridPanels = { login: panelsVice.login, password: panelsVice.firstPassword };
 
+  // "Suggest a place" (task 5.4b-2b): the same scene in a branch of its own.
+  const suggestVice = await gridScene({
+    branch: 'Grid suggestions browser test branch',
+    vice: ['Shahnoza', 'Qodirova'],
+    staffId: 'S-269333',
+    phone: '+998935557333',
+    rooms: [],
+  });
+  seeded.draftGridSuggest = { login: suggestVice.login, password: suggestVice.firstPassword };
+
   // The department move (task 3.4c): a branch of its own with a year around
   // today, 7 Oxford, the attendance-only subject Cosmology of STEAM and a
   // draft whose row of it names a STEAM teacher who no longer has it in the

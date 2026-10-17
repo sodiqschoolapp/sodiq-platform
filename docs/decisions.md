@@ -246,6 +246,22 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 17 October 2026: the grid, "Suggest a place" (task 5.4b-2b)
+
+Plan approved on pull request #134 with corrections 1 to 3; decisions 1 to 10 confirmed there (4 changed by correction 1). Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| "Suggest a place" is on a lesson of the class board and on a "To place" entry, and moves or places the whole block | Decision 1; `edge/timetable`, Structure: blocks are placed and moved whole |
+| Best free slots: no blocked result, then fewest warnings (week counts left out), then slots that keep their rooms, then weekday and slot; at most 5. Step 5's weights are the solver's | Decision 2; `06` says "best" without a measure |
+| Rearrangements only when no slot is free, at most 3, fewer blocks first; at most three blocks change, the selected one included | Decision 3; `06`, "or a swap of two or three lessons" |
+| The search runs in the browser on the grid's facts, bounded only by a budget of 2,000 checks; every trial is the route's check (`checkCandidates` of the changed blocks among `checkedPlacements`), and the route checks again | Decision 4, review correction 1; `14`, One rule engine |
+| A suggestion changes a room only through `roomChoices` of the rule engine, when room rules alone block the slot, each lesson's room chosen with the earlier choices in place | Decision 5, plan review findings 3 to 5 |
+| A busy-elsewhere lesson and a block holding a pin of step 5 are never moved by a suggestion; the grid answer carries `pins`. The pin rule belongs to the search only: the rearrange route accepts a pinned block as the move route does, since a person may move a pinned lesson by hand (5.4a) | Decisions 6 and 9; permission review, should-fix 2 |
+| Route `POST …/pattern/rearrange`, one transaction, clash constraints deferred; audit `pattern_block.rearrange` per moved block and `pattern_block.create` for a new one, each with `rearrangedWith`; a change at its own slot and rooms writes nothing | Decision 7, plan review findings 10 and 11 |
+| Undo of a suggestion and locks are 5.4c's (From 5.4b-2b line) | Decision 8 |
+| The search lives in `packages/timetable-rules`, not in `cellStatus`; a web test holds the two equal; `newBlockOf` moved into the engine as the one builder of a new block | Decision 10, review correction 2 |
+
 ## 17 October 2026: the grid, "to place", the room picker and the conflict panel (task 5.4b-2a)
 
 Plan approved on pull request #133 with corrections 1 to 3; decisions 1 to 12 confirmed there. Flagged on issue #42.

@@ -1,5 +1,5 @@
 import type { GridAnswer, TimetableVersion } from '@sodiq/shared';
-import { patternModel, RULE_ORDER } from '@sodiq/timetable-rules';
+import { patternModel, RULE_ORDER, suggestPlaces } from '@sodiq/timetable-rules';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
@@ -7,7 +7,8 @@ import { ru } from '@/i18n/locales/ru';
 import { uz } from '@/i18n/locales/uz';
 import { fakeApi, json, NORTH, renderApp, sessionOf } from '@/testing/render-app';
 import { setWindowWidth } from '@/testing/window-width';
-import { boardOf, cellStatus } from './use-slot-status';
+import { rearrangeOf } from './grid-suggest-dialog';
+import { boardOf, cellStatus, newBlockOf } from './use-slot-status';
 
 const uid = (n: number): string => `0199a000-0000-7000-8000-${String(n).padStart(12, '0')}`;
 
@@ -274,6 +275,7 @@ const GRID: GridAnswer = {
     otherDrafts: [],
     branches: [],
   },
+  pins: [],
   results: [],
 };
 
@@ -296,6 +298,7 @@ async function openGrid(
     moved?: () => Response;
     placed?: () => Response;
     roomed?: () => Response;
+    rearranged?: () => Response;
     /** Step 7's mark of the readiness answer (task 5.4b-2a). */
     gridMark?: { ready: boolean; blocked: number; warnings: number };
     /** Every step 1 to 5 ready. */
@@ -358,6 +361,8 @@ async function openGrid(
       options.placed?.() ?? json(options.grid ?? GRID, 201),
     [`POST /api/timetable/versions/${VERSION.id}/pattern/${BLOCK_OXFORD}/room`]: () =>
       options.roomed?.() ?? json(options.grid ?? GRID),
+    [`POST /api/timetable/versions/${VERSION.id}/pattern/rearrange`]: () =>
+      options.rearranged?.() ?? json(options.grid ?? GRID),
   });
   renderApp(`/timetable/builder?version=${VERSION.id}&step=grid`, language);
   await waitFor(() => {
@@ -921,5 +926,189 @@ describe('the panels of the grid', () => {
         `${ru.timetable.builder.gridClean}, 5 предупреждений`,
       );
     });
+  });
+});
+
+// Task 5.4b-2b: "Suggest a place" (06, Editing in the grid: "shows the best
+// free slots, or a swap of two or three lessons that makes room for it").
+describe('Suggest a place', () => {
+  const model = patternModel(GRID.facts);
+  const oxford = GRID.blocks.find((one) => one.id === BLOCK_OXFORD);
+  if (oxford === undefined) throw new Error('No Oxford block.');
+
+  it('offers as free only slots the drag marks free or warning (review finding 9)', () => {
+    const board = boardOf(GRID, model, OXFORD);
+    const { free } = suggestPlaces(model, GRID.blocks, oxford);
+    expect(free.length).toBeGreaterThan(0);
+    for (const one of free) {
+      const to = one.changes[0]?.to;
+      const cell = to === undefined ? null : board.cellAt(to.weekday, to.slotPosition);
+      if (cell === null) throw new Error('A suggestion off the board.');
+      expect(cellStatus(model, board, GRID.blocks, oxford, cell).status).not.toBe('blocked');
+    }
+  });
+
+  it('lists the free slots of a lesson, never where its teacher or class is busy, and applies one', async () => {
+    const calls = await openGrid();
+    const own = tile(BLOCK_OXFORD);
+    if (own === null) throw new Error('No tile.');
+    fireEvent.click(within(own).getByRole('button', { name: en.timetable.grid.suggest }));
+    const dialog = await screen.findByRole('dialog');
+    const offered = [...dialog.querySelectorAll('[data-suggestion="free"]')].map(
+      (one) => one.textContent,
+    );
+    expect(offered.length).toBeGreaterThan(0);
+    // Monday 08:50 Karimova teaches Princeton; Tuesday 08:00 Oxford has English.
+    expect(offered.some((text) => text?.includes('Monday, 08:50'))).toBe(false);
+    expect(offered.some((text) => text?.includes('Tuesday, 08:00'))).toBe(false);
+    const [best] = suggestPlaces(model, GRID.blocks, oxford).free;
+    if (best === undefined) throw new Error('No suggestion.');
+    const first = dialog.querySelector<HTMLButtonElement>('[data-suggestion="free"] button');
+    if (first === null) throw new Error('No button.');
+    fireEvent.click(first);
+    await waitFor(() => {
+      expect(calls.find((call) => call.route.endsWith('/rearrange'))?.body).toEqual(
+        rearrangeOf(model, best),
+      );
+    });
+    expect(calls.find((call) => call.route.endsWith('/rearrange'))?.body).toEqual({
+      changes: [
+        {
+          blockId: BLOCK_OXFORD,
+          weekday: best.changes[0]?.to.weekday,
+          slotPosition: best.changes[0]?.to.slotPosition,
+        },
+      ],
+    });
+  });
+
+  it('suggests a place for an entry of "To place" and sends its row', async () => {
+    const calls = await openGrid();
+    const entry = panel()?.querySelector<HTMLElement>(`[data-to-place="${ROW_OXFORD}"]`);
+    if (entry === null || entry === undefined) throw new Error('No entry.');
+    fireEvent.click(within(entry).getByRole('button', { name: en.timetable.grid.suggest }));
+    const dialog = await screen.findByRole('dialog');
+    const first = dialog.querySelector<HTMLButtonElement>('[data-suggestion="free"] button');
+    if (first === null) throw new Error('No button.');
+    fireEvent.click(first);
+    const [best] = suggestPlaces(model, GRID.blocks, newBlockOf(model, ROW_OXFORD)).free;
+    await waitFor(() => {
+      expect(calls.find((call) => call.route.endsWith('/rearrange'))?.body).toEqual({
+        changes: [
+          {
+            loadRowId: ROW_OXFORD,
+            weekday: best?.changes[0]?.to.weekday,
+            slotPosition: best?.changes[0]?.to.slotPosition,
+          },
+        ],
+      });
+    });
+  });
+
+  // Monday only, two lessons: Karimova teaches Oxford at 08:00, Princeton's
+  // English group (Princeton only here) is at 08:50.
+  const MONDAY_DAY = { ...DAY, end: 575, slots: DAY.slots.slice(0, 3) };
+  const FULL: GridAnswer = {
+    ...GRID,
+    blocks: [
+      { ...oxford },
+      {
+        ...GRID.blocks[2],
+        id: BLOCK_GROUP,
+        weekday: 1,
+        slotPosition: 3,
+        start: 530,
+        end: 575,
+        lessons: [{ id: uid(1002), loadRowId: ROW_GROUP, roomId: null }],
+      },
+    ],
+    facts: {
+      ...GRID.facts,
+      units: GRID.facts.units.map((one) =>
+        one.id === GROUP ? { ...one, classIds: [PRINCETON], studentIds: [uid(3003)] } : one,
+      ),
+      days: GRID.facts.days.map((one) =>
+        one.weekday === 1
+          ? { ...one, day: { lessons: true as const, day: MONDAY_DAY, noRegularLessons: false } }
+          : { ...one, day: { lessons: false as const, reason: 'not_working_day' as const } },
+      ),
+    },
+  };
+
+  it('offers moves of two lessons that make room when no slot is free, and applies one', async () => {
+    const calls = await openGrid({ grid: FULL });
+    fireEvent.change(screen.getByLabelText(en.timetable.grid.class), {
+      target: { value: PRINCETON },
+    });
+    const entry = panel()?.querySelector<HTMLElement>(`[data-to-place="${ROW_PRINCETON}"]`);
+    if (entry === null || entry === undefined) throw new Error('No entry.');
+    fireEvent.click(within(entry).getByRole('button', { name: en.timetable.grid.suggest }));
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog.querySelector('[data-suggestion="free"]')).toBeNull();
+    const moves = dialog.querySelectorAll('[data-suggestion="rearrange"]');
+    expect(moves.length).toBeGreaterThan(0);
+    expect(moves[0]?.textContent).toContain('→');
+    const fullModel = patternModel(FULL.facts);
+    const [best] = suggestPlaces(
+      fullModel,
+      FULL.blocks,
+      newBlockOf(fullModel, ROW_PRINCETON),
+    ).rearrangements;
+    if (best === undefined) throw new Error('No rearrangement.');
+    expect(best.changes).toHaveLength(2);
+    const first = moves[0]?.querySelector('button');
+    if (first === null || first === undefined) throw new Error('No button.');
+    fireEvent.click(first);
+    await waitFor(() => {
+      expect(calls.find((call) => call.route.endsWith('/rearrange'))?.body).toEqual(
+        rearrangeOf(fullModel, best),
+      );
+    });
+  });
+
+  it('says so when nothing makes room, and has no button for the Principal', async () => {
+    const stuck: GridAnswer = {
+      ...FULL,
+      facts: {
+        ...FULL.facts,
+        // Karimova is away all Monday but 08:00: neither lesson can move.
+        teachers: FULL.facts.teachers.map((one) =>
+          one.id === KARIMOVA
+            ? {
+                ...one,
+                availability: one.availability.map((entry) => ({
+                  ...entry,
+                  ranges: [{ weekday: 1, start: 480, end: 525 }],
+                })),
+              }
+            : {
+                ...one,
+                availability: one.availability.map((entry) => ({
+                  ...entry,
+                  ranges: [{ weekday: 1, start: 530, end: 575 }],
+                })),
+              },
+        ),
+      },
+    };
+    await openGrid({ grid: stuck });
+    fireEvent.change(screen.getByLabelText(en.timetable.grid.class), {
+      target: { value: PRINCETON },
+    });
+    const entry = panel()?.querySelector<HTMLElement>(`[data-to-place="${ROW_PRINCETON}"]`);
+    if (entry === null || entry === undefined) throw new Error('No entry.');
+    fireEvent.click(within(entry).getByRole('button', { name: en.timetable.grid.suggest }));
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog.textContent).toContain(en.timetable.grid.nothingFound);
+  });
+
+  it('gives the Principal no Suggest button', async () => {
+    await openGrid({ session: principal() });
+    const own = tile(BLOCK_OXFORD);
+    expect(own).not.toBeNull();
+    expect(
+      within(own as HTMLElement).queryByRole('button', { name: en.timetable.grid.suggest }),
+    ).toBeNull();
+    expect(screen.queryByRole('button', { name: en.timetable.grid.suggest })).toBeNull();
   });
 });

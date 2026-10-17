@@ -85,12 +85,14 @@ function Entry({
   editable,
   highlighted,
   onPlace,
+  onSuggest,
 }: {
   entry: ToPlaceEntry;
   onBoard: boolean;
   editable: boolean;
   highlighted: boolean;
   onPlace: () => void;
+  onSuggest: () => void;
 }): React.JSX.Element {
   const { t, i18n } = useTranslation();
   const language = i18n.language;
@@ -148,6 +150,9 @@ function Entry({
             <Button type="button" variant="ghost" size="sm" onClick={onPlace}>
               {t('timetable.grid.place')}
             </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={onSuggest}>
+              {t('timetable.grid.suggest')}
+            </Button>
           </div>
         )
       )}
@@ -163,6 +168,7 @@ export function GridToPlace({
   editable,
   highlightRowId,
   onPlace,
+  onSuggest,
 }: {
   grid: GridAnswer;
   model: PatternModel;
@@ -171,6 +177,8 @@ export function GridToPlace({
   editable: boolean;
   highlightRowId: string | null;
   onPlace: (entry: ToPlaceEntry) => void;
+  /** "Suggest a place" for the entry's block (task 5.4b-2b). */
+  onSuggest: (entry: ToPlaceEntry) => void;
 }): React.JSX.Element {
   const { t } = useTranslation();
   const { entries, complete } = toPlace(grid, model);
@@ -200,6 +208,9 @@ export function GridToPlace({
                   highlighted={entry.rows.some(({ row }) => row.id === highlightRowId)}
                   onPlace={() => {
                     onPlace(entry);
+                  }}
+                  onSuggest={() => {
+                    onSuggest(entry);
                   }}
                 />
               ))}

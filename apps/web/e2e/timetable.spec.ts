@@ -382,3 +382,67 @@ test('an Academic Vice Principal places a lesson from "To place", changes its ro
   await expect(shown).toContainText('Princeton');
   await screenshot(page, 'grid-conflict-shown');
 });
+
+// Task 5.4b-2b (Done when): 06, Editing in the grid: "'Suggest a place' on a
+// selected lesson shows the best free slots, or a swap of two or three lessons
+// that makes room for it"; applying it is checked by the rule engine and
+// refused by the API like a move. The same scene as the drag test, in a branch
+// of its own. All names are invented.
+test('an Academic Vice Principal applies a suggested place, and the API refuses a blocked rearrangement', async ({
+  page,
+}) => {
+  const account = accountOf('draftGridSuggest');
+  await page.goto('/sign-in');
+  await languageChooser(page).selectOption('en');
+  await signIn(page, en, account.login, account.password);
+  await changeFirstPassword(page, en, account);
+  await expect(heading(page, en.setUp.title)).toBeVisible();
+  await page.getByRole('button', { name: en.setUp.start, exact: true }).click();
+  const key = await page.locator('dd').innerText();
+  await page.getByLabel(en.setUp.code, { exact: true }).fill(codeNow(key));
+  await page.getByRole('button', { name: en.setUp.confirm, exact: true }).click();
+  await page.getByRole('checkbox', { name: en.setUp.saved }).check();
+  await page.getByRole('button', { name: en.setUp.continue, exact: true }).click();
+  await expect(heading(page, en.home.title)).toBeVisible();
+
+  await page.goto('/timetable/builder');
+  await expect(heading(page, en.timetable.builder.title)).toBeVisible();
+  const gridRead = page.waitForRequest((request) => request.url().endsWith('/grid'));
+  await page.locator('[data-step="grid"] button').click();
+  const branchId = (await gridRead).headers()['x-branch-id'] ?? '';
+  const versionId = new URL(page.url()).searchParams.get('version') ?? '';
+  await expect(page.locator('[data-board]')).toBeVisible();
+  const cell = (weekday: number, position: number) =>
+    page.locator(`[data-cell="${String(weekday)}:${String(position)}"]`);
+
+  // 7 Oxford's Geometry on Monday at 08:00; its teacher has 7 Princeton at 08:45.
+  const lesson = cell(1, 1).locator('[data-block]');
+  const blockId = (await lesson.getAttribute('data-block')) ?? '';
+  await lesson.getByRole('button', { name: en.timetable.grid.suggest }).click();
+  const dialog = page.getByRole('dialog');
+  const free = dialog.locator('[data-suggestion="free"]');
+  await expect(free.first()).toBeVisible();
+  await expect(free.filter({ hasText: 'Monday, 08:45' })).toHaveCount(0);
+  await expect(free.first()).toContainText('Monday, 09:30');
+  await screenshot(page, 'grid-suggest');
+  await free.first().getByRole('button').click();
+  await expect(cell(1, 3).locator(`[data-block="${blockId}"]`)).toBeVisible();
+  await expect(cell(1, 1).locator('[data-block]')).toHaveCount(0);
+
+  // The API refuses a rearrangement that puts the teacher in two lessons at once.
+  const refused = await page.request.post(
+    `/api/timetable/versions/${versionId}/pattern/rearrange`,
+    {
+      headers: { 'X-Branch-Id': branchId },
+      data: { changes: [{ blockId, weekday: 1, slotPosition: 2 }] },
+    },
+  );
+  expect(refused.status()).toBe(409);
+  const body = (await refused.json()) as {
+    error: { code: string; details?: { code: string }[] };
+  };
+  expect(body.error.code).toBe('pattern_blocked');
+  expect(body.error.details?.map((detail) => detail.code)).toEqual(['teacher_double']);
+  await page.reload();
+  await expect(cell(1, 3).locator(`[data-block="${blockId}"]`)).toBeVisible();
+});

@@ -268,6 +268,7 @@ describe('the routes that work without sign-in', () => {
       'POST /api/timetable/versions/:id/pattern',
       'POST /api/timetable/versions/:id/pattern/:blockId/move',
       'POST /api/timetable/versions/:id/pattern/:blockId/room',
+      'POST /api/timetable/versions/:id/pattern/rearrange',
       'POST /api/timetable/versions/:id/pattern/swap',
       'POST /api/timetable/versions/:id/pins',
       'POST /api/timetable/versions/:id/rules/confirm',

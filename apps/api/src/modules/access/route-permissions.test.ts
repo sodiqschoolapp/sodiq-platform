@@ -547,6 +547,11 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     branch: 'request',
     roles: ['super_admin', 'academic_vice_principal'],
   },
+  // Task 5.4b-2b: a suggestion of "Suggest a place" applied.
+  'POST /api/timetable/versions/:id/pattern/rearrange': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
   'POST /api/timetable/versions/:id/pattern/:blockId/move': {
     branch: 'request',
     roles: ['super_admin', 'academic_vice_principal'],
