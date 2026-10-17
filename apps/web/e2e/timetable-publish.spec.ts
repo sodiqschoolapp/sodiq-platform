@@ -10,8 +10,9 @@ import { codeNow } from './totp';
 // #139. The grid scene with one lesson a week per row, each placed, four
 // dated quarters and Geometry's distributions: the Academic Vice Principal
 // confirms step 1, finds nothing that stops the publish in step 8, publishes
-// after the confirmation and sees the version read only. All names are
-// invented.
+// after the confirmation and sees the version read only. Task 5.5a-2a: the
+// teacher's later availability entry shows warnings by date that do not stop
+// the publish. All names are invented.
 test('an Academic Vice Principal publishes a draft from step 8 and sees it read only', async ({
   page,
 }) => {
@@ -39,6 +40,10 @@ test('an Academic Vice Principal publishes a draft from step 8 and sees it read 
   await page.locator('[data-step="publish"] button').click();
   await expect(page.locator('[data-step="publish"]')).toContainText(builder.notPublished);
   await expect(page.locator('[data-can-publish]')).toHaveText(texts.nothingRefused);
+  // Task 5.5a-2a: the teacher's later hours from quarter 3 are warnings by date.
+  await expect(page.locator('li span[data-date]').first()).toContainText(
+    en.timetable.rule.teacher_unavailable_later,
+  );
   await page.getByRole('button', { name: texts.action, exact: true }).click();
   const dialog = page.getByRole('alertdialog');
   await expect(dialog).toContainText('Publish version 1?');

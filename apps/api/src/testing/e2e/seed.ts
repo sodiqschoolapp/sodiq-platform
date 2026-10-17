@@ -3353,6 +3353,41 @@ try {
           })),
         )
         .execute();
+      if (scene.publishable === true) {
+        // Task 5.5a-2a: from quarter 3 the teacher's hours end at 01:00, so
+        // the dates from then are warnings by date that do not stop the publish.
+        const later = isoDate(new Date(yearStart.getTime() + 2 * 91 * dayMs));
+        await transaction
+          .updateTable('staff_availability')
+          .set({ valid_until: later })
+          .where('id', '=', hours.id)
+          .execute();
+        await transaction
+          .updateTable('staff_availability_ranges')
+          .set({ valid_until: later })
+          .where('entry_id', '=', hours.id)
+          .execute();
+        const laterHours = await transaction
+          .insertInto('staff_availability')
+          .values({ branch_id: gridBranch, staff_id: person.id, valid_from: later })
+          .returning(['id', 'valid_until'])
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('staff_availability_ranges')
+          .values(
+            [1, 2, 3, 4, 5].map((weekday) => ({
+              entry_id: laterHours.id,
+              branch_id: gridBranch,
+              staff_id: person.id,
+              weekday,
+              start_minutes: 0,
+              end_minutes: 60,
+              valid_from: later,
+              valid_until: laterHours.valid_until,
+            })),
+          )
+          .execute();
+      }
       // Task 5.4b-2a: rooms of the branch for the room picker.
       if (scene.rooms.length > 0) {
         const building = await transaction
