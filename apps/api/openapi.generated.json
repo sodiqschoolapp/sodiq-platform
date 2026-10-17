@@ -203426,6 +203426,76 @@
                       ],
                       "additionalProperties": false
                     },
+                    "pins": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "loadRowId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "weekday": {
+                            "anyOf": [
+                              {
+                                "type": "number",
+                                "enum": [
+                                  1
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  2
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  3
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  4
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  5
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  6
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  7
+                                ]
+                              }
+                            ]
+                          },
+                          "slotPosition": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 20
+                          }
+                        },
+                        "required": [
+                          "loadRowId",
+                          "weekday",
+                          "slotPosition"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "results": {
                       "type": "array",
                       "items": {
@@ -203527,6 +203597,7 @@
                     "rooms",
                     "blocks",
                     "facts",
+                    "pins",
                     "results"
                   ],
                   "additionalProperties": false
@@ -205528,6 +205599,76 @@
                       ],
                       "additionalProperties": false
                     },
+                    "pins": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "loadRowId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "weekday": {
+                            "anyOf": [
+                              {
+                                "type": "number",
+                                "enum": [
+                                  1
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  2
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  3
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  4
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  5
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  6
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  7
+                                ]
+                              }
+                            ]
+                          },
+                          "slotPosition": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 20
+                          }
+                        },
+                        "required": [
+                          "loadRowId",
+                          "weekday",
+                          "slotPosition"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "results": {
                       "type": "array",
                       "items": {
@@ -205629,6 +205770,7 @@
                     "rooms",
                     "blocks",
                     "facts",
+                    "pins",
                     "results"
                   ],
                   "additionalProperties": false
@@ -207586,6 +207728,76 @@
                       ],
                       "additionalProperties": false
                     },
+                    "pins": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "loadRowId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "weekday": {
+                            "anyOf": [
+                              {
+                                "type": "number",
+                                "enum": [
+                                  1
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  2
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  3
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  4
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  5
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  6
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  7
+                                ]
+                              }
+                            ]
+                          },
+                          "slotPosition": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 20
+                          }
+                        },
+                        "required": [
+                          "loadRowId",
+                          "weekday",
+                          "slotPosition"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "results": {
                       "type": "array",
                       "items": {
@@ -207687,6 +207899,2217 @@
                     "rooms",
                     "blocks",
                     "facts",
+                    "pins",
+                    "results"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "validation_failed",
+                            "malformed_request",
+                            "not_found",
+                            "payload_too_large",
+                            "unsupported_media_type",
+                            "not_signed_in",
+                            "sign_in_failed",
+                            "too_many_attempts",
+                            "password_expired",
+                            "account_locked",
+                            "password_change_required",
+                            "current_password_wrong",
+                            "password_unchanged",
+                            "second_step_required",
+                            "second_step_set_up_required",
+                            "second_step_code_wrong",
+                            "second_step_already_on",
+                            "second_step_not_on",
+                            "second_step_cannot_turn_off",
+                            "permission_denied",
+                            "own_request",
+                            "cross_site_request",
+                            "request_key_reused",
+                            "already_exists",
+                            "archive_refused",
+                            "floor_archived",
+                            "archived_record",
+                            "built_in",
+                            "dates_overlap",
+                            "outside_year",
+                            "quarters_out_of_order",
+                            "year_closed",
+                            "current_year_exists",
+                            "earlier_year_not_closed",
+                            "year_out_of_order",
+                            "go_live_outside_year",
+                            "date_not_in_future",
+                            "grade_ranges_overlap",
+                            "day_past_midnight",
+                            "no_lesson_slot",
+                            "already_ended",
+                            "default_template_required",
+                            "slot_type_in_use",
+                            "template_in_use",
+                            "slot_type_archived",
+                            "template_uses_archived_slot_type",
+                            "template_archived",
+                            "calendar_date_not_in_future",
+                            "calendar_entry_past",
+                            "calendar_entry_archived",
+                            "calendar_outside_year",
+                            "calendar_overlap",
+                            "follows_weekday_required",
+                            "follows_weekday_not_working",
+                            "calendar_restore_started",
+                            "calendar_restore_overlap",
+                            "calendar_restore_outside_year",
+                            "calendar_restore_follows_weekday",
+                            "calendar_restore_template_archived",
+                            "calendar_archive_started",
+                            "year_leaves_calendar_entry",
+                            "go_live_school_day_taken",
+                            "go_live_not_school_day",
+                            "travel_time_same_branch",
+                            "subject_archived",
+                            "department_not_academic",
+                            "department_archived",
+                            "department_has_subjects",
+                            "daily_weights_required",
+                            "daily_weights_set",
+                            "attendance_only_no_weights",
+                            "subject_department_archived",
+                            "subject_move_super_admin",
+                            "weights_shape_mismatch",
+                            "quarter_one_not_set",
+                            "staff_id_exhausted",
+                            "staff_department_required",
+                            "subject_outside_department",
+                            "grade_not_in_subject",
+                            "languages_required",
+                            "division_archived",
+                            "status_from_past",
+                            "status_before_admission",
+                            "status_unchanged",
+                            "own_status",
+                            "account_inactive",
+                            "subject_has_teachers",
+                            "department_move_loads",
+                            "department_move_start_outside",
+                            "staff_changed",
+                            "subject_changed",
+                            "department_has_staff",
+                            "availability_overlap",
+                            "photo_invalid",
+                            "photo_too_large",
+                            "photos_not_configured",
+                            "photos_unavailable",
+                            "reset_link_invalid",
+                            "reset_link_expired",
+                            "account_exists",
+                            "own_record_exists",
+                            "own_link_status",
+                            "login_taken",
+                            "no_account",
+                            "staff_left",
+                            "role_branch_not_person",
+                            "role_overlap",
+                            "too_many_super_admins",
+                            "own_super_admin_role",
+                            "last_super_admin",
+                            "assignment_ended",
+                            "role_from_past",
+                            "head_teacher_taken",
+                            "subject_unknown",
+                            "role_not_appointment",
+                            "appointment_ends_by_then",
+                            "own_account",
+                            "account_already_locked",
+                            "account_not_locked",
+                            "second_step_off",
+                            "account_missing",
+                            "uid_set_mismatch",
+                            "student_value_taken",
+                            "no_academic_year",
+                            "student_not_active",
+                            "leaving_before_start",
+                            "leaving_not_planned",
+                            "leaving_in_force",
+                            "student_not_inactive",
+                            "undo_not_leaving",
+                            "return_too_early",
+                            "return_not_planned",
+                            "return_in_force",
+                            "status_date_future",
+                            "student_not_graduated",
+                            "restore_before_graduation",
+                            "date_in_closed_year",
+                            "student_has_data",
+                            "student_changed",
+                            "student_needs_relative",
+                            "relative_phone_taken",
+                            "relative_phone_exists",
+                            "relative_phone_changed",
+                            "last_relative",
+                            "main_contact_needed",
+                            "merge_needs_super_admin",
+                            "relative_changed",
+                            "relative_merged",
+                            "staff_phone_taken",
+                            "phone_is_staff",
+                            "class_year_closed",
+                            "class_needs_year",
+                            "class_changed",
+                            "class_archived",
+                            "room_closed",
+                            "tutor_language",
+                            "tutor_language_held",
+                            "class_tutor_taken",
+                            "tutor_not_tutor",
+                            "tutor_outside_role",
+                            "tutor_date_past",
+                            "tutor_ended",
+                            "tutor_ends_by_then",
+                            "class_language_tutor",
+                            "role_tutor_taken",
+                            "role_tutor_language",
+                            "student_has_class",
+                            "student_not_active_on",
+                            "class_grade_differs",
+                            "class_full",
+                            "membership_outside_year",
+                            "membership_before_start",
+                            "membership_in_force",
+                            "membership_not_planned",
+                            "student_needs_class",
+                            "student_grade_class",
+                            "class_has_members",
+                            "class_grade_members",
+                            "class_size_below_members",
+                            "year_cut_holds",
+                            "group_year_closed",
+                            "group_needs_year",
+                            "group_changed",
+                            "group_archived",
+                            "group_class_year",
+                            "group_grades",
+                            "group_subject_grade",
+                            "group_subject_archived",
+                            "group_language",
+                            "group_language_needed",
+                            "group_mixed_language",
+                            "class_grade_groups",
+                            "class_in_groups",
+                            "class_language_mixes_groups",
+                            "subject_grade_groups",
+                            "subject_has_groups",
+                            "group_restore_class",
+                            "group_restore_subject",
+                            "student_has_group",
+                            "student_not_in_group_class",
+                            "group_full",
+                            "group_membership_outside_year",
+                            "group_membership_in_force",
+                            "group_membership_not_planned",
+                            "group_has_members",
+                            "group_size_below_members",
+                            "group_class_has_members",
+                            "group_membership_in_class",
+                            "placement_no_seat",
+                            "class_group_no_seat",
+                            "class_group_missing",
+                            "stay_continues",
+                            "move_in_past",
+                            "move_not_scheduled",
+                            "move_not_undoable",
+                            "move_scheduled",
+                            "move_before_later",
+                            "move_no_membership",
+                            "move_same_target",
+                            "class_language_differs",
+                            "return_language_differs",
+                            "return_outside_year",
+                            "branch_move_same_branch",
+                            "branch_move_open",
+                            "branch_move_closed",
+                            "branch_move_not_yet",
+                            "branch_move_language_differs",
+                            "branch_move_group",
+                            "branch_move_outside_year",
+                            "branch_move_year_closed",
+                            "status_scheduled",
+                            "before_branch_move",
+                            "student_merge_same",
+                            "student_merge_not_found",
+                            "student_merge_overlap",
+                            "student_merge_release_open",
+                            "student_merge_move_scheduled",
+                            "student_merge_year_closed",
+                            "student_merge_grade",
+                            "group_transfer_subject",
+                            "version_not_draft",
+                            "timetable_year_closed",
+                            "version_start_past",
+                            "version_start_outside_year",
+                            "version_copy_year",
+                            "preferences_changed",
+                            "pins_changed",
+                            "pin_taken",
+                            "pin_over_load",
+                            "pin_mixed_block",
+                            "pattern_blocked",
+                            "pattern_no_slot",
+                            "pattern_mixed_block",
+                            "pattern_clash",
+                            "timetable_busy",
+                            "draft_not_ready",
+                            "load_unit_year",
+                            "load_unit_archived",
+                            "load_group_subject",
+                            "load_subject_archived",
+                            "load_subject_grade",
+                            "load_teacher_branch",
+                            "load_teacher_status",
+                            "load_teacher_subject",
+                            "load_teacher_grade",
+                            "load_teacher_language",
+                            "load_room_closed",
+                            "load_no_tutor",
+                            "load_tutor_row_teacher",
+                            "load_teacher_needed",
+                            "load_room_choice",
+                            "load_row_exists",
+                            "load_group_no_shared_slot",
+                            "load_split_and_whole",
+                            "load_mixed_not_split",
+                            "load_block_mixed",
+                            "load_block_lessons",
+                            "load_block_teacher",
+                            "load_group_gaps",
+                            "vacancy_has_load",
+                            "request_refused",
+                            "internal_error"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              },
+                              "recordId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "holder": {
+                                "type": "object",
+                                "properties": {
+                                  "fullName": {
+                                    "type": "string"
+                                  },
+                                  "students": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  }
+                                },
+                                "required": [
+                                  "fullName",
+                                  "students"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "mergeable": {
+                                "type": "boolean"
+                              },
+                              "staffName": {
+                                "type": "string"
+                              },
+                              "expected": {
+                                "type": "string"
+                              },
+                              "day": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                              },
+                              "freeSeats": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "classId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "fullFrom": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                              },
+                              "students": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 9007199254740991
+                              },
+                              "subjectId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "load": {
+                                "type": "object",
+                                "properties": {
+                                  "versionId": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "versionNumber": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "versionStartsOn": {
+                                    "type": "string",
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                  },
+                                  "unit": {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "class",
+                                          "group"
+                                        ]
+                                      },
+                                      "id": {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                      },
+                                      "name": {
+                                        "type": "string"
+                                      },
+                                      "grade": {
+                                        "nullable": true,
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "id",
+                                      "name",
+                                      "grade"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "subjectId": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "teacher": {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                      },
+                                      "name": {
+                                        "nullable": true,
+                                        "type": "string"
+                                      },
+                                      "vacancy": {
+                                        "type": "boolean"
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "name",
+                                      "vacancy"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "required": [
+                                  "versionId",
+                                  "versionNumber",
+                                  "versionStartsOn",
+                                  "unit",
+                                  "subjectId",
+                                  "teacher"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "stay": {
+                                "type": "object",
+                                "properties": {
+                                  "studentName": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  },
+                                  "unit": {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "class",
+                                          "group"
+                                        ]
+                                      },
+                                      "name": {
+                                        "type": "string"
+                                      },
+                                      "grade": {
+                                        "nullable": true,
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "name",
+                                      "grade"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "firstDay": {
+                                    "type": "string",
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                  },
+                                  "lastDay": {
+                                    "type": "string",
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                  }
+                                },
+                                "required": [
+                                  "studentName",
+                                  "unit",
+                                  "firstDay",
+                                  "lastDay"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "rule": {
+                                "type": "object",
+                                "properties": {
+                                  "weekday": {
+                                    "nullable": true,
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 7
+                                  },
+                                  "lessonIds": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "weekday",
+                                  "lessonIds"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "more": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "code",
+                              "message"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Timetable"
+        ]
+      }
+    },
+    "/api/timetable/versions/{id}/pattern/rearrange": {
+      "post": {
+        "operationId": "TimetableController_rearrangeBlocks",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "X-Branch-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "changes": {
+                    "minItems": 1,
+                    "maxItems": 3,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "blockId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "loadRowId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "weekday": {
+                          "anyOf": [
+                            {
+                              "type": "number",
+                              "enum": [
+                                1
+                              ]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [
+                                2
+                              ]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [
+                                3
+                              ]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [
+                                4
+                              ]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [
+                                5
+                              ]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [
+                                6
+                              ]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [
+                                7
+                              ]
+                            }
+                          ]
+                        },
+                        "slotPosition": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 20
+                        },
+                        "rooms": {
+                          "maxItems": 20,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "loadRowId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "roomId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              }
+                            },
+                            "required": [
+                              "loadRowId",
+                              "roomId"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "weekday",
+                        "slotPosition"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "changes"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "version": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "academicYearId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "yearName": {
+                          "type": "string"
+                        },
+                        "yearStatus": {
+                          "type": "string",
+                          "enum": [
+                            "planned",
+                            "current",
+                            "closed"
+                          ]
+                        },
+                        "number": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "published",
+                            "archived"
+                          ]
+                        },
+                        "startsOn": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "fromVersion": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "number": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "number"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "rows": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "leftRows": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "academicYearId",
+                        "yearName",
+                        "yearStatus",
+                        "number",
+                        "status",
+                        "startsOn",
+                        "fromVersion",
+                        "rows",
+                        "leftRows"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "editable": {
+                      "type": "boolean"
+                    },
+                    "classes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "grade": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "grade"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "rows": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "unit": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "class",
+                                  "group"
+                                ]
+                              },
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "grades": {
+                                "type": "array",
+                                "items": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "language": {
+                                "type": "string",
+                                "enum": [
+                                  "uz",
+                                  "ru"
+                                ]
+                              },
+                              "archived": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "id",
+                              "name",
+                              "grades",
+                              "language",
+                              "archived"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "subject": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "names": {
+                                "type": "object",
+                                "properties": {
+                                  "uz": {
+                                    "type": "string"
+                                  },
+                                  "ru": {
+                                    "type": "string"
+                                  },
+                                  "en": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "uz",
+                                  "ru",
+                                  "en"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "colour": {
+                                "type": "string",
+                                "enum": [
+                                  "red",
+                                  "orange",
+                                  "amber",
+                                  "lime",
+                                  "green",
+                                  "teal",
+                                  "cyan",
+                                  "blue",
+                                  "indigo",
+                                  "violet",
+                                  "pink",
+                                  "brown"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "names",
+                              "colour"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "teacher": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "person",
+                                  "vacancy"
+                                ]
+                              },
+                              "name": {
+                                "nullable": true,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "kind",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "lessonsPerWeek": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 40
+                          },
+                          "mixedBlock": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "unit",
+                          "subject",
+                          "teacher",
+                          "lessonsPerWeek",
+                          "mixedBlock"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "rooms": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "blocks": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "weekday": {
+                            "anyOf": [
+                              {
+                                "type": "number",
+                                "enum": [
+                                  1
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  2
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  3
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  4
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  5
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  6
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  7
+                                ]
+                              }
+                            ]
+                          },
+                          "slotPosition": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 20
+                          },
+                          "start": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "end": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "lessons": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "loadRowId": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "roomId": {
+                                  "nullable": true,
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "loadRowId",
+                                "roomId"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "weekday",
+                          "slotPosition",
+                          "start",
+                          "end",
+                          "lessons"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "facts": {
+                      "type": "object",
+                      "properties": {
+                        "branchId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "startDate": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "versionEnd": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "teachers": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "vacancy": {
+                                "type": "boolean"
+                              },
+                              "out": {
+                                "type": "boolean"
+                              },
+                              "branchIds": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                }
+                              },
+                              "subjects": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "subjectId": {
+                                      "type": "string",
+                                      "format": "uuid",
+                                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                    },
+                                    "grades": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "subjectId",
+                                    "grades"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "languages": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "availability": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "validFrom": {
+                                      "type": "string",
+                                      "format": "date",
+                                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                                    },
+                                    "validUntil": {
+                                      "nullable": true,
+                                      "type": "string",
+                                      "format": "date",
+                                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                                    },
+                                    "branchId": {
+                                      "type": "string",
+                                      "format": "uuid",
+                                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                    },
+                                    "ranges": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "weekday": {
+                                            "type": "integer",
+                                            "minimum": 1,
+                                            "maximum": 7
+                                          },
+                                          "start": {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991
+                                          },
+                                          "end": {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991
+                                          }
+                                        },
+                                        "required": [
+                                          "weekday",
+                                          "start",
+                                          "end"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "validFrom",
+                                    "validUntil",
+                                    "branchId",
+                                    "ranges"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "weeklyLessons": {
+                                "nullable": true,
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "dailyLessons": {
+                                "nullable": true,
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "vacancy",
+                              "out",
+                              "branchIds",
+                              "subjects",
+                              "languages",
+                              "availability",
+                              "weeklyLessons",
+                              "dailyLessons"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "subjects": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "active": {
+                                "type": "boolean"
+                              },
+                              "languageRule": {
+                                "type": "boolean"
+                              },
+                              "tutorSubject": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "active",
+                              "languageRule",
+                              "tutorSubject"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "rooms": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "classroom",
+                                  "laboratory",
+                                  "sports_hall",
+                                  "hall",
+                                  "other"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "in_use",
+                                  "under_repair",
+                                  "closed"
+                                ]
+                              },
+                              "shared": {
+                                "type": "boolean"
+                              },
+                              "lessonsAtOnce": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 9007199254740991
+                              },
+                              "capacity": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "type",
+                              "status",
+                              "shared",
+                              "lessonsAtOnce",
+                              "capacity"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "units": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "class",
+                                  "group"
+                                ]
+                              },
+                              "grades": {
+                                "type": "array",
+                                "items": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "language": {
+                                "type": "string"
+                              },
+                              "tutorOnStart": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "classIds": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                }
+                              },
+                              "studentIds": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                }
+                              },
+                              "mainRoomId": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "kind",
+                              "grades",
+                              "language",
+                              "tutorOnStart",
+                              "classIds",
+                              "studentIds",
+                              "mainRoomId"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "classStudents": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "classId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "studentIds": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                }
+                              }
+                            },
+                            "required": [
+                              "classId",
+                              "studentIds"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "days": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "grade": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "weekday": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 7
+                              },
+                              "day": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "lessons": {
+                                        "type": "boolean",
+                                        "enum": [
+                                          true
+                                        ]
+                                      },
+                                      "day": {
+                                        "type": "object",
+                                        "properties": {
+                                          "start": {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991
+                                          },
+                                          "end": {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991
+                                          },
+                                          "slots": {
+                                            "type": "array",
+                                            "items": {
+                                              "type": "object",
+                                              "properties": {
+                                                "position": {
+                                                  "type": "integer",
+                                                  "minimum": 1,
+                                                  "maximum": 9007199254740991
+                                                },
+                                                "kind": {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "lesson",
+                                                    "break"
+                                                  ]
+                                                },
+                                                "start": {
+                                                  "type": "integer",
+                                                  "minimum": -9007199254740991,
+                                                  "maximum": 9007199254740991
+                                                },
+                                                "end": {
+                                                  "type": "integer",
+                                                  "minimum": -9007199254740991,
+                                                  "maximum": 9007199254740991
+                                                },
+                                                "lessonNumber": {
+                                                  "nullable": true,
+                                                  "type": "integer",
+                                                  "minimum": 1,
+                                                  "maximum": 9007199254740991
+                                                }
+                                              },
+                                              "required": [
+                                                "position",
+                                                "kind",
+                                                "start",
+                                                "end",
+                                                "lessonNumber"
+                                              ],
+                                              "additionalProperties": false
+                                            }
+                                          }
+                                        },
+                                        "required": [
+                                          "start",
+                                          "end",
+                                          "slots"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      "noRegularLessons": {
+                                        "type": "boolean"
+                                      }
+                                    },
+                                    "required": [
+                                      "lessons",
+                                      "day",
+                                      "noRegularLessons"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "lessons": {
+                                        "type": "boolean",
+                                        "enum": [
+                                          false
+                                        ]
+                                      },
+                                      "reason": {
+                                        "type": "string",
+                                        "enum": [
+                                          "day_off",
+                                          "not_working_day",
+                                          "no_template"
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "lessons",
+                                      "reason"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "grade",
+                              "weekday",
+                              "day"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "year": {
+                          "type": "object",
+                          "properties": {
+                            "firstDate": {
+                              "type": "string",
+                              "format": "date",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                            },
+                            "lastDate": {
+                              "type": "string",
+                              "format": "date",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                            },
+                            "quarters": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "firstDate": {
+                                    "type": "string",
+                                    "format": "date",
+                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                                  },
+                                  "lastDate": {
+                                    "type": "string",
+                                    "format": "date",
+                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                                  }
+                                },
+                                "required": [
+                                  "firstDate",
+                                  "lastDate"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "firstDate",
+                            "lastDate",
+                            "quarters"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "travel": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "branchA": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "branchB": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "minutes": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "branchA",
+                              "branchB",
+                              "minutes"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "classDailyLessons": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "rows": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "classId": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "groupId": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "subjectId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "teacherId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "roomId": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "roomType": {
+                                "nullable": true,
+                                "type": "string",
+                                "enum": [
+                                  "classroom",
+                                  "laboratory",
+                                  "sports_hall",
+                                  "hall",
+                                  "other"
+                                ]
+                              },
+                              "lessonsPerWeek": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 9007199254740991
+                              },
+                              "mixedBlock": {
+                                "type": "boolean"
+                              },
+                              "block": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                }
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "classId",
+                              "groupId",
+                              "subjectId",
+                              "teacherId",
+                              "roomId",
+                              "roomType",
+                              "lessonsPerWeek",
+                              "mixedBlock",
+                              "block"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "busyElsewhere": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "teacherId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "branchId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "weekday": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 7
+                              },
+                              "start": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "end": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "tutorLesson": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "teacherId",
+                              "branchId",
+                              "weekday",
+                              "start",
+                              "end",
+                              "tutorLesson"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "otherDrafts": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "lesson",
+                                  "exam"
+                                ]
+                              },
+                              "branchId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "day": {
+                                "type": "string"
+                              },
+                              "start": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "end": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "blockId": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "doublePairId": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "classId": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "groupId": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "classIds": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                }
+                              },
+                              "studentIds": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                }
+                              },
+                              "exemptStudentIds": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                }
+                              },
+                              "subjectId": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "loadRowId": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "teacherIds": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                }
+                              },
+                              "substitute": {
+                                "type": "boolean"
+                              },
+                              "roomId": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "examRooms": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "roomId": {
+                                      "type": "string",
+                                      "format": "uuid",
+                                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                    },
+                                    "students": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    }
+                                  },
+                                  "required": [
+                                    "roomId",
+                                    "students"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "fixed": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "kind",
+                              "branchId",
+                              "day",
+                              "start",
+                              "end",
+                              "blockId",
+                              "doublePairId",
+                              "classId",
+                              "groupId",
+                              "classIds",
+                              "studentIds",
+                              "exemptStudentIds",
+                              "subjectId",
+                              "loadRowId",
+                              "teacherIds",
+                              "substitute",
+                              "roomId",
+                              "examRooms",
+                              "fixed"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "branches": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "branchId",
+                        "startDate",
+                        "versionEnd",
+                        "teachers",
+                        "subjects",
+                        "rooms",
+                        "units",
+                        "classStudents",
+                        "days",
+                        "year",
+                        "travel",
+                        "classDailyLessons",
+                        "rows",
+                        "busyElsewhere",
+                        "otherDrafts",
+                        "branches"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "pins": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "loadRowId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "weekday": {
+                            "anyOf": [
+                              {
+                                "type": "number",
+                                "enum": [
+                                  1
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  2
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  3
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  4
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  5
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  6
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  7
+                                ]
+                              }
+                            ]
+                          },
+                          "slotPosition": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 20
+                          }
+                        },
+                        "required": [
+                          "loadRowId",
+                          "weekday",
+                          "slotPosition"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "rule": {
+                            "type": "string",
+                            "pattern": "^[a-z_]+$"
+                          },
+                          "severity": {
+                            "type": "string",
+                            "enum": [
+                              "blocked",
+                              "warning"
+                            ]
+                          },
+                          "weekday": {
+                            "nullable": true,
+                            "anyOf": [
+                              {
+                                "type": "number",
+                                "enum": [
+                                  1
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  2
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  3
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  4
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  5
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  6
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  7
+                                ]
+                              }
+                            ]
+                          },
+                          "lessonIds": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "detail": {
+                            "type": "object",
+                            "additionalProperties": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "string"
+                                }
+                              ]
+                            }
+                          }
+                        },
+                        "required": [
+                          "rule",
+                          "severity",
+                          "weekday",
+                          "lessonIds"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "version",
+                    "editable",
+                    "classes",
+                    "rows",
+                    "rooms",
+                    "blocks",
+                    "facts",
+                    "pins",
                     "results"
                   ],
                   "additionalProperties": false
@@ -209687,6 +212110,76 @@
                       ],
                       "additionalProperties": false
                     },
+                    "pins": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "loadRowId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "weekday": {
+                            "anyOf": [
+                              {
+                                "type": "number",
+                                "enum": [
+                                  1
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  2
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  3
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  4
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  5
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  6
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  7
+                                ]
+                              }
+                            ]
+                          },
+                          "slotPosition": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 20
+                          }
+                        },
+                        "required": [
+                          "loadRowId",
+                          "weekday",
+                          "slotPosition"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "results": {
                       "type": "array",
                       "items": {
@@ -209788,6 +212281,7 @@
                     "rooms",
                     "blocks",
                     "facts",
+                    "pins",
                     "results"
                   ],
                   "additionalProperties": false
@@ -211747,6 +214241,76 @@
                       ],
                       "additionalProperties": false
                     },
+                    "pins": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "loadRowId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "weekday": {
+                            "anyOf": [
+                              {
+                                "type": "number",
+                                "enum": [
+                                  1
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  2
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  3
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  4
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  5
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  6
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  7
+                                ]
+                              }
+                            ]
+                          },
+                          "slotPosition": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 20
+                          }
+                        },
+                        "required": [
+                          "loadRowId",
+                          "weekday",
+                          "slotPosition"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "results": {
                       "type": "array",
                       "items": {
@@ -211848,6 +214412,7 @@
                     "rooms",
                     "blocks",
                     "facts",
+                    "pins",
                     "results"
                   ],
                   "additionalProperties": false
@@ -213780,6 +216345,76 @@
                       ],
                       "additionalProperties": false
                     },
+                    "pins": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "loadRowId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "weekday": {
+                            "anyOf": [
+                              {
+                                "type": "number",
+                                "enum": [
+                                  1
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  2
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  3
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  4
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  5
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  6
+                                ]
+                              },
+                              {
+                                "type": "number",
+                                "enum": [
+                                  7
+                                ]
+                              }
+                            ]
+                          },
+                          "slotPosition": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 20
+                          }
+                        },
+                        "required": [
+                          "loadRowId",
+                          "weekday",
+                          "slotPosition"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "results": {
                       "type": "array",
                       "items": {
@@ -213881,6 +216516,7 @@
                     "rooms",
                     "blocks",
                     "facts",
+                    "pins",
                     "results"
                   ],
                   "additionalProperties": false

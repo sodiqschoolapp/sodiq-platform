@@ -8,6 +8,7 @@ import {
   type LessonRoomRecord,
   type MoveRecord,
   type PlaceRecord,
+  type RearrangeRecord,
   type SwapRecord,
 } from '@sodiq/shared';
 import {
@@ -15,6 +16,7 @@ import {
   checkCandidates,
   checkedPlacements,
   checkTimetable,
+  newBlockOf,
   patternPlacements,
   roomChange,
   type BlockLesson,
@@ -30,6 +32,7 @@ import { notFound, refusingConstraints } from '../setup/setup-refusals.js';
 import { LOAD_REFUSALS, LoadFacts, type StoredLoadRow } from './load-facts.js';
 import { readPatternFacts, type PatternFacts } from './pattern-facts.js';
 import { deferPatternClashes, readBlocks } from './pattern-queries.js';
+import { readPins } from './pins-check.js';
 import { blockedRefusal, resultAnswerOf } from './rule-answers.js';
 import { Timetable, type VersionRow } from './timetable.service.js';
 
@@ -147,64 +150,16 @@ export class TimetablePattern {
         ) {
           throw notFound();
         }
-        const lessons = model.rowOf(row.id).block.map((rowId) => ({
-          id: `new:${rowId}`,
-          loadRowId: rowId,
-          roomId:
-            rowId === row.id && input.roomId !== undefined
-              ? input.roomId
-              : model.roomOfNew(model.rowOf(rowId)),
-        }));
-        const placed = blockAt(model, { id: 'new', lessons }, input.weekday, input.slotPosition);
+        // One builder of a new block (task 5.4b-2b, review correction 2).
+        const fresh = newBlockOf(model, row.id);
+        const lessons = fresh.lessons.map((lesson) =>
+          lesson.loadRowId === row.id && input.roomId !== undefined
+            ? { ...lesson, roomId: input.roomId }
+            : lesson,
+        );
+        const placed = blockAt(model, { id: fresh.id, lessons }, input.weekday, input.slotPosition);
         this.refuseBlocked(state, [placed]);
-
-        const block = await transaction
-          .insertInto('pattern_blocks')
-          .values({
-            branch_id: branchId,
-            version_id: id,
-            weekday: placed.weekday,
-            slot_position: placed.slotPosition,
-            start_minutes: placed.start,
-            end_minutes: placed.end,
-          })
-          .returning('id')
-          .executeTakeFirstOrThrow();
-        const entries = await transaction
-          .insertInto('pattern_entries')
-          .values(
-            lessons.map((lesson) => ({
-              branch_id: branchId,
-              version_id: id,
-              block_id: block.id,
-              weekday: placed.weekday,
-              start_minutes: placed.start,
-              end_minutes: placed.end,
-              load_row_id: lesson.loadRowId,
-              teacher_id: model.rowOf(lesson.loadRowId).teacherId,
-              room_id: lesson.roomId,
-            })),
-          )
-          .returning(['id', 'load_row_id'])
-          .execute();
-        await this.audit.record(transaction, {
-          branchId,
-          actorId: access.accountId,
-          assignmentId: access.assignmentId,
-          action: 'pattern_block.create',
-          record: { type: 'pattern_block', id: block.id },
-          newValue: {
-            versionId: id,
-            ...this.slotOf(placed),
-            lessons: lessons.map((lesson) => ({
-              id: entries.find((entry) => entry.load_row_id === lesson.loadRowId)?.id ?? null,
-              loadRowId: lesson.loadRowId,
-              teacherId: model.rowOf(lesson.loadRowId).teacherId,
-              roomId: lesson.roomId,
-            })),
-          },
-          requestId,
-        });
+        await this.insertBlock(transaction, access, state, placed, requestId);
         return this.gridAfter(transaction, version);
       }),
     );
@@ -349,6 +304,131 @@ export class TimetablePattern {
     );
   }
 
+  /**
+   * A suggestion of "Suggest a place" applied (task 5.4b-2b, decision 7): one to
+   * three blocks moved, at most one of them new, with the rooms the suggestion
+   * gives, checked together by the rule engine as a move is (`refuseBlocked`)
+   * and written in one transaction with the clash constraints checked at the
+   * commit. A change at its block's own slot and rooms writes nothing.
+   */
+  rearrange(
+    access: Access,
+    id: string,
+    input: RearrangeRecord,
+    requestId: string,
+  ): Promise<GridAnswer> {
+    const branchId = branchOf(access);
+    return refusingPattern(() =>
+      this.transactions.run(access.branchIds, async (transaction) => {
+        const version = await this.timetable.lockDraft(transaction, branchId, id);
+        const state = await this.stateOf(transaction, version);
+        const { model } = state.pattern;
+        const changes = input.changes.map((change) => {
+          let from: PatternBlock | null = null;
+          let block: { readonly id: string; readonly lessons: readonly BlockLesson[] };
+          if (change.blockId !== undefined) {
+            from = this.blockOf(state, change.blockId);
+            block = from;
+          } else {
+            const row = state.rows.find((one) => one.id === change.loadRowId);
+            if (row === undefined) {
+              throw notFound();
+            }
+            if (row.mixed_block) {
+              throw refused('pattern_mixed_block');
+            }
+            block = newBlockOf(model, row.id);
+          }
+          const rooms = change.rooms ?? [];
+          for (const room of rooms) {
+            if (
+              !block.lessons.some((lesson) => lesson.loadRowId === room.loadRowId) ||
+              !model.data.rooms.some((one) => one.id === room.roomId)
+            ) {
+              throw notFound();
+            }
+          }
+          const lessons = block.lessons.map((lesson) => {
+            const room = rooms.find((one) => one.loadRowId === lesson.loadRowId);
+            return room === undefined ? lesson : { ...lesson, roomId: room.roomId };
+          });
+          const to = blockAt(model, { id: block.id, lessons }, change.weekday, change.slotPosition);
+          return { from, to };
+        });
+        const effective = changes.filter(
+          ({ from, to }) =>
+            from === null ||
+            from.weekday !== to.weekday ||
+            from.slotPosition !== to.slotPosition ||
+            from.lessons.some((lesson, index) => lesson.roomId !== to.lessons[index]?.roomId),
+        );
+        if (effective.length === 0) {
+          return this.gridOf(transaction, state);
+        }
+        this.refuseBlocked(
+          state,
+          effective.map((one) => one.to),
+        );
+        await deferPatternClashes(transaction);
+        // At most one new block (`rearrangeRecordSchema`); the others keep their ids.
+        const others = (blockId: string) =>
+          effective.filter((one) => one.to.id !== blockId).map((one) => one.to.id);
+        const fresh = effective.find((one) => one.from === null);
+        const freshId =
+          fresh === undefined
+            ? null
+            : await this.insertBlock(
+                transaction,
+                access,
+                state,
+                fresh.to,
+                requestId,
+                others(fresh.to.id),
+              );
+        for (const { from, to } of effective) {
+          if (from === null) continue;
+          if (from.weekday !== to.weekday || from.slotPosition !== to.slotPosition) {
+            await this.writeSlot(transaction, to);
+          }
+          for (const [index, lesson] of to.lessons.entries()) {
+            if (lesson.roomId !== from.lessons[index]?.roomId) {
+              await transaction
+                .updateTable('pattern_entries')
+                .set({ room_id: lesson.roomId })
+                .where('id', '=', lesson.id)
+                .execute();
+            }
+          }
+          const roomsOf = (block: PatternBlock) =>
+            block.lessons.map((lesson) => ({
+              id: lesson.id,
+              loadRowId: lesson.loadRowId,
+              roomId: lesson.roomId,
+            }));
+          const rearrangedWith = others(to.id).map((blockId) =>
+            fresh !== undefined && blockId === fresh.to.id ? (freshId ?? blockId) : blockId,
+          );
+          await this.audit.record(transaction, {
+            branchId,
+            actorId: access.accountId,
+            assignmentId: access.assignmentId,
+            action: 'pattern_block.rearrange',
+            record: { type: 'pattern_block', id: from.id },
+            oldValue: {
+              versionId: id,
+              rearrangedWith,
+              ...this.slotOf(from),
+              lessons: roomsOf(from),
+            },
+            newValue: { versionId: id, rearrangedWith, ...this.slotOf(to), lessons: roomsOf(to) },
+            requestId,
+          });
+        }
+        return this.gridAfter(transaction, version);
+      }),
+    );
+  }
+
   /** A block removed with its lessons; the audit entry keeps every lesson it removes. */
   remove(access: Access, id: string, blockId: string, requestId: string): Promise<GridAnswer> {
     const branchId = branchOf(access);
@@ -380,6 +460,73 @@ export class TimetablePattern {
         return this.gridAfter(transaction, version);
       }),
     );
+  }
+
+  /**
+   * A new block written with its lessons and audited `pattern_block.create`;
+   * `rearrangedWith` names the other blocks of a suggestion applied with it.
+   * Returns the new block's id.
+   */
+  private async insertBlock(
+    transaction: Transaction,
+    access: Access,
+    state: PatternState,
+    placed: PatternBlock,
+    requestId: string,
+    rearrangedWith?: readonly string[],
+  ): Promise<string> {
+    const { model } = state.pattern;
+    const branchId = state.version.branch_id;
+    const versionId = state.version.id;
+    const block = await transaction
+      .insertInto('pattern_blocks')
+      .values({
+        branch_id: branchId,
+        version_id: versionId,
+        weekday: placed.weekday,
+        slot_position: placed.slotPosition,
+        start_minutes: placed.start,
+        end_minutes: placed.end,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    const entries = await transaction
+      .insertInto('pattern_entries')
+      .values(
+        placed.lessons.map((lesson) => ({
+          branch_id: branchId,
+          version_id: versionId,
+          block_id: block.id,
+          weekday: placed.weekday,
+          start_minutes: placed.start,
+          end_minutes: placed.end,
+          load_row_id: lesson.loadRowId,
+          teacher_id: model.rowOf(lesson.loadRowId).teacherId,
+          room_id: lesson.roomId,
+        })),
+      )
+      .returning(['id', 'load_row_id'])
+      .execute();
+    await this.audit.record(transaction, {
+      branchId,
+      actorId: access.accountId,
+      assignmentId: access.assignmentId,
+      action: 'pattern_block.create',
+      record: { type: 'pattern_block', id: block.id },
+      newValue: {
+        versionId,
+        ...this.slotOf(placed),
+        lessons: placed.lessons.map((lesson) => ({
+          id: entries.find((entry) => entry.load_row_id === lesson.loadRowId)?.id ?? null,
+          loadRowId: lesson.loadRowId,
+          teacherId: model.rowOf(lesson.loadRowId).teacherId,
+          roomId: lesson.roomId,
+        })),
+        ...(rearrangedWith === undefined ? {} : { rearrangedWith: [...rearrangedWith] }),
+      },
+      requestId,
+    });
+    return block.id;
   }
 
   private async stateOf(transaction: Transaction, version: VersionRow): Promise<PatternState> {
@@ -440,6 +587,7 @@ export class TimetablePattern {
 
   private async gridOf(transaction: Transaction, state: PatternState): Promise<GridAnswer> {
     const { version, rows, load, pattern, blocks } = state;
+    const pins = await readPins(transaction, version.id);
     const answers = rows.map((row) => load.answerOf(row, []));
     const classIds = [...new Set(pattern.data.classStudents.map((one) => one.classId))];
     const roomIds = [
@@ -499,6 +647,11 @@ export class TimetablePattern {
       rooms,
       blocks,
       facts: pattern.data,
+      pins: pins.map((pin) => ({
+        loadRowId: pin.load_row_id,
+        weekday: pin.weekday,
+        slotPosition: pin.slot_position,
+      })),
       results: checkTimetable(checkedPlacements(pattern.model, blocks), pattern.model.facts).map(
         resultAnswerOf,
       ),

@@ -7,11 +7,13 @@ import {
   placeRecordSchema,
   lessonRoomRecordSchema,
   swapRecordSchema,
+  rearrangeRecordSchema,
   type GridAnswer,
   type MoveRecord,
   type PlaceRecord,
   type LessonRoomRecord,
   type SwapRecord,
+  type RearrangeRecord,
   loadRowEditSchema,
   loadRowParamsSchema,
   loadRowRecordSchema,
@@ -241,6 +243,20 @@ export class TimetableController {
     @RequestId() requestId: string,
   ): Promise<GridAnswer> {
     return this.pattern.swap(access, params.id, body, requestId);
+  }
+
+  /** Step 7: a suggestion of "Suggest a place" applied, up to three blocks checked as one change (task 5.4b-2b). */
+  @Post('versions/:id/pattern/rearrange')
+  @HttpCode(200)
+  @Requires('timetable', 'edit')
+  @Returns(gridSchema)
+  rearrangeBlocks(
+    @CurrentAccess() access: Access,
+    @ValidParams(timetableVersionParamsSchema) params: TimetableVersionParams,
+    @ValidBody(rearrangeRecordSchema) body: RearrangeRecord,
+    @RequestId() requestId: string,
+  ): Promise<GridAnswer> {
+    return this.pattern.rearrange(access, params.id, body, requestId);
   }
 
   /** Step 7: a block moved whole to a weekday and slot. */

@@ -193,6 +193,8 @@ export const AUDIT_ACTION_GROUPS = {
     'pattern_block.delete',
     // Task 5.4b-2a: the room of a lesson of the weekly pattern, from the room picker.
     'pattern_entry.room',
+    // Task 5.4b-2b: a suggestion of "Suggest a place" applied, two or three blocks changed together.
+    'pattern_block.rearrange',
     'teaching_load.create',
     'teaching_load.edit',
     'teaching_load.delete',
