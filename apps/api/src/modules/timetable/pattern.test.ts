@@ -589,13 +589,16 @@ describe('the grid of a draft', () => {
       blockId: string,
       lessonId: string,
       roomId: string,
+      cookie = t.admin,
     ) =>
-      post(`/api/timetable/versions/${version}/pattern/${blockId}/room`, branch, {
-        lessonId,
-        roomId,
-      });
-    const rearrange = (branch: string, version: string, body: object) =>
-      post(`/api/timetable/versions/${version}/pattern/rearrange`, branch, body);
+      post(
+        `/api/timetable/versions/${version}/pattern/${blockId}/room`,
+        branch,
+        { lessonId, roomId },
+        cookie,
+      );
+    const rearrange = (branch: string, version: string, body: object, cookie = t.admin) =>
+      post(`/api/timetable/versions/${version}/pattern/rearrange`, branch, body, cookie);
     /** The blocks of a pair, the earlier first. */
     const halves = (answer: GridAnswer) => {
       const paired = answer.blocks
@@ -834,6 +837,105 @@ describe('the grid of a draft', () => {
       );
       expect(answer.blocks).toEqual([]);
       expect(await t.entries('pattern_block.delete', second.id)).toHaveLength(1);
+    });
+
+    // Permission review, should-fixes 1 to 4.
+    it("answers 404 to a double of another branch's, another version's and an unknown row, and to a half of their pairs; the Principal is refused; nothing changes", async () => {
+      const s = await doubles();
+      const other = await doubles();
+      const sameBranch = await load.version(s.branch, s.year, { startsOn: MONDAY });
+      const sameRow = await load.row({
+        branch_id: s.branch,
+        version_id: sameBranch,
+        class_id: s.classA,
+        subject_id: s.subject,
+        teacher_id: s.teacherA,
+        double_lessons: true,
+      });
+      const own = halves(gridOf(await placeDouble(s.branch, s.version, s.rowA, 1, 1), 201));
+      const otherPair = halves(
+        gridOf(await placeDouble(other.branch, other.version, other.rowA, 1, 1), 201),
+      );
+      const samePair = halves(gridOf(await placeDouble(s.branch, sameBranch, sameRow, 1, 1), 201));
+      await viceIn(s.branch);
+      await staleEditLock(s.version);
+      const before = await patternRows([s.version, other.version, sameBranch]);
+      for (const cookie of [t.vicePrincipal, t.admin]) {
+        for (const row of [other.rowA, UNKNOWN, sameRow]) {
+          refusedWith(
+            await placeDouble(s.branch, s.version, row, 2, 1, {}, cookie),
+            404,
+            'not_found',
+          );
+        }
+        for (const half of [...otherPair, ...samePair]) {
+          const lesson = half.lessons[0]?.id ?? UNKNOWN;
+          refusedWith(await move(s.branch, s.version, half.id, 2, 1, cookie), 404, 'not_found');
+          refusedWith(await drop(s.branch, s.version, half.id, cookie), 404, 'not_found');
+          refusedWith(
+            await roomOf(s.branch, s.version, half.id, lesson, s.roomB, cookie),
+            404,
+            'not_found',
+          );
+          refusedWith(
+            await rearrange(s.branch, s.version, { changes: [], remove: [half.id] }, cookie),
+            404,
+            'not_found',
+          );
+        }
+      }
+      for (const cookie of [t.principal, t.teacher]) {
+        refusedWith(
+          await placeDouble(t.north, s.version, s.rowA, 2, 1, {}, cookie),
+          403,
+          'permission_denied',
+        );
+        refusedWith(
+          await move(t.north, s.version, own[1].id, 2, 1, cookie),
+          403,
+          'permission_denied',
+        );
+        refusedWith(await drop(t.north, s.version, own[0].id, cookie), 403, 'permission_denied');
+      }
+      expect(await patternRows([s.version, other.version, sameBranch])).toEqual(before);
+    });
+
+    it('refuses the undo of a suggestion that would remove a double whose other half is locked, changing nothing', async () => {
+      const s = await doubles();
+      const [first, second] = halves(
+        gridOf(await placeDouble(s.branch, s.version, s.rowA, 1, 1), 201),
+      );
+      const locked = await post(`/api/timetable/versions/${s.version}/locks`, s.branch, {
+        kind: 'block',
+        blockId: second.id,
+      });
+      expect(locked.status, JSON.stringify(locked.body)).toBe(201);
+      const before = await patternRows([s.version]);
+      refusedWith(
+        await rearrange(s.branch, s.version, { changes: [], remove: [first.id] }),
+        409,
+        'pattern_locked',
+      );
+      expect(await patternRows([s.version])).toEqual(before);
+    });
+
+    it('lets the Academic Vice Principal of the branch place and move a double, the audit naming the assignment', async () => {
+      const s = await doubles();
+      const assignment = await viceIn(s.branch);
+      const [first, second] = halves(
+        gridOf(await placeDouble(s.branch, s.version, s.rowA, 1, 1, {}, t.vicePrincipal), 201),
+      );
+      const answer = gridOf(await move(s.branch, s.version, second.id, 2, 3, t.vicePrincipal));
+      expect(slots(answer)).toEqual([
+        [2, 1, 480, 525],
+        [2, 3, 535, 580],
+      ]);
+      for (const half of [first, second]) {
+        for (const action of ['pattern_block.create', 'pattern_block.move']) {
+          const [entry] = await t.entries(action, half.id);
+          expect(entry, action).toMatchObject({ assignment_id: assignment });
+        }
+      }
     });
   });
 
