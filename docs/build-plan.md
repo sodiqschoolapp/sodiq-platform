@@ -569,7 +569,7 @@ How to read the task lines:
   - Done when: a double lesson is placed, moved and removed as one.
   - From 5.4c-3 (pull request #137, decision 1, Look first): split into 5.4c-3a (double lessons) and 5.4c-3b (mixed pairings).
 
-- [ ] **5.4c-3b Grid: mixed pairings**
+- [x] **5.4c-3b Grid: mixed pairings** (pull request #138)
   - Read: `06` (Editing in the grid), `edge/timetable` (Structure: mixed blocks).
   - Build: the pairing of the halves of a mixed split slot by slot.
   - Done when: a mixed split is placed with both pairings.
@@ -597,6 +597,7 @@ How to read the task lines:
   - From 5.1a (pull request #107, correction 6): `lessons` and `lesson_blocks` (0058) have no delete grant: the removal of empty future lessons at publish adds it in a migration of its own, with the check that a lesson holds no data. The columns that tie a dated lesson to its version (`lesson_blocks.version_id` and `pattern_block_id`, `lessons.load_row_id` and `pattern_entry_id`) have no update grant: this task decides whether an unchanged lesson is re-pointed to the new version under a grant of its own or stays with the version that created it, read through the chain (`edge/timetable`, Versions and drafts: "An unchanged lesson keeps its identity"). The routes map `40P01` and `40001` to `timetable_busy` and pass on a constraint name only, never the detail of an exclusion error.
   - From 3.6c-2 (pull request #125, decisions 3, 4, 6 and 11): a dated lesson of a Tutor row (a Tutor subject on a class row) takes the class's Tutor in force at its start (`tutorAt`, the acting Tutor first), not the pattern entry's teacher; with no Tutor then, or a clash of time or travel with the Tutor's other lessons and exams (`checkTeacherTime` over `teacher_claims_elsewhere`), it is created "needs a teacher", as `followTutors` (`apps/api/src/modules/timetable/tutor-lessons.ts`) sets it.
   - From 5.4c-3a (pull request #137, decision 12): a dated lesson block made from a paired pattern block (`pattern_blocks.double_pair_id`) takes a `double_pair_id` of its own per date, shared with the other half of that date (0058 `lesson_blocks_double` counts a pair across all dates).
+  - From 5.4c-3b (pull request #138, decisions 3 and 6): `edge/timetable`, Structure: "A mixed block is allowed: boys have physical education while girls have technology, and the reverse in another slot." A pattern block of two subjects' mixed halves (a pairing) becomes one dated lesson block with two lessons, as a split does; a double of a pairing follows the 5.4c-3a line. The pairing check of `checkBlocks` (`EngineLoadRow.block` and `partners`, `packages/timetable-rules/src/placement.ts`) is filled in dated mode here, so a dated block of rows that are neither one block of the load nor a pairing is `split_apart` with `rows`.
 
 - [ ] **5.5c Publish: journals, notices and withdraw**
   - Read: `06` (How surprises are prevented), `07` (first paragraph), `edge/timetable` (Versions and drafts), `edge/developer-rules`.
@@ -666,6 +667,7 @@ How to read the task lines:
   - From 5.3b-2 (pull request #129, decisions 1 and 2): `edge/timetable`, Generator and editing: "Before generating, the locked and pinned lessons are checked on their own. A blocked conflict stops the run and lists the lessons." The pins are `timetable_pins` (0070): a load row, a weekday and a slot position, breaks counted, as `pattern_blocks.slot_position`; a pin of a group row holds its whole block in that slot. The solver keeps them fixed and treats the busy-elsewhere lessons of other branches, and the travel time around them, as fixed (`06`, Busy elsewhere).
   - From 5.3b-1 (pull request #128, decisions 3 and 8): the weights of the soft constraints are the eight `weight_<code>` columns of `timetable_versions` (codes `PREFERENCES` of `packages/timetable-rules`, in the order of the preferences table of `06`), whole numbers from 0 to 10; 0 means the preference is not used.
   - From 5.4c-3a (pull request #137, decisions 2 and 11): `double_not_allowed` (a double of a load row without "double lessons allowed") is a blocked rule to mirror in Kotlin; the solver places doubles only for rows that allow them, as two blocks with one `double_pair_id` in consecutive lesson slots with the same teacher and room (`double_apart`, checked per load row).
+  - From 5.4c-3b (pull request #138, decisions 3 to 6): `edge/timetable`, Structure: "A mixed block is allowed: boys have physical education while girls have technology, and the reverse in another slot." The solver places a mixed split either whole or as pairings slot by slot with a half of another subject's mixed split of the same class (`partnersIn` of `packages/timetable-rules/src/facts-data.ts`); the engine's re-check accepts exactly those blocks (`checkBlocks`: any other set of rows in one block is `split_apart` with `rows`). `subject_twice` is counted per student (decision 2, Look first).
 
 - [ ] **5.11 Generation in the product**
   - Read: `06` (Auto-generation, Building a timetable), `edge/timetable` (Generator and editing).
@@ -675,6 +677,7 @@ How to read the task lines:
   - From 5.4c-1 (pull request #135, decision 2 with review correction 5): a run and the use of a variant are draft writes and take `lockDraft`, so they are refused `draft_edit_locked` while another account holds the draft's edit lock.
   - From 5.3b-1 (pull request #128, decision 6): the run route calls `requireReady` of the timetable service first, in the run's transaction (409 `draft_not_ready`, one detail per step not ready).
   - From 5.4c-3a (pull request #137, decision 8): a lock on either half of a double holds the pair; Regenerate keeps the two halves together.
+  - From 5.4c-3b (pull request #138): pins of a pairing are decided here. A pin names one load row (`timetable_pins`, 0070) and step 5 still refuses a mixed half (`pin_mixed_block`); a pinned pairing would need its partner row. A placed pairing is a block, so a lock holds it like any block (`lockedBy`).
 
 - [ ] **5.12 Timetable end-to-end tests**
   - Read: `14` (Timetable).

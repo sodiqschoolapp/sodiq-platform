@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 17 October 2026: task 5.4c-3b Grid: mixed pairings
+
+- A half of a mixed split is placed in the grid "Paired with" a half of another subject's mixed split of the same class, one block of two lessons (boys' physical education with girls' technology, the reverse in another slot), or as its whole split; from "To place", the Place form, "Suggest a place" and as a double; undo and redo place a pairing again with its partner. No migration.
+- The rule engine: `mixedPartners`, `pairingProblem`, `placeRowsOf` and `newBlockOf(model, row, partner)`; `checkBlocks` reports a block that is neither one block of the load nor a pairing (`split_apart` with `rows`); `subject_twice` is counted per student. The place and rearrange routes take `partnerRowId` (404 outside the version, 409 `pattern_mixed_partner`); `pattern_mixed_block` is gone.
+- Left out: pins of a pairing (5.11), pairings in the solver (5.10, 5.11), dated pairings (5.5b), the handbook (paused).
+
+The next sessions must know:
+
+- A body that builds a block again names its rows with `placeRowsOf` (both rows of a pairing), never `lessons[0]` alone; `writeOf` of `grid-history.ts` takes the model.
+- `EngineLoadRow.block` and `partners` are filled in pattern mode only; dated mode skips the pairing check until 5.5b fills them.
+- Phase 5's next task is 5.5a.
+
 ## 17 October 2026: task 5.4c-3a Grid: double lessons
 
 - A double lesson is placed in the grid from "To place" or the Place form (a "Double lesson" switch on rows that allow doubles), moved as one by either half (the other half beside it, `pairAt`), re-roomed in both halves and removed as one; each is one step of undo and redo. "Suggest a place" on a half offers the pair's free slots, applied by the move route. No migration: `pattern_blocks.double_pair_id` (0058) is written now.

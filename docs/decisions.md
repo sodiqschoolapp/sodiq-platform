@@ -246,6 +246,20 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 17 October 2026: the grid, mixed pairings (task 5.4c-3b)
+
+Plan approved on pull request #138 with corrections 1 to 4; decisions 1 to 10 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (tests changed by a requirement). The tests that refused a mixed half with `pattern_mixed_block` are rewritten: a mixed half alone is placed as its whole split, and each case keeps a refusal test (`pattern_mixed_partner`); the code `pattern_mixed_block` is removed. `pin_mixed_block` stays | Decision 1; the task makes a mixed half placeable |
+| **Look first.** `subject_twice` counts per student (a double pair once; a lesson with no members stands for its class or group). Proposed `/spec-change` for `06`, Rules, Warning row: "The same subject twice in one day for a student of a class (the halves of a mixed split placed in two slots count once each); a free period in the middle of a class's day." | Decision 2 with review correction 3; `edge/timetable`, Structure: "the reverse in another slot" can be the same day |
+| A pairing is one pattern block of two lessons, chosen slot by slot, not stored on the load; a mixed half alone takes its whole split | Decisions 3 and 4; "A mixed block is allowed" is a permission |
+| Partners (`partnersIn`): rows marked mixed whose groups are splits of the same class, of another subject; coverage and overlap stay `split_apart` and `student_double`; "Paired with" lists the halves sharing no student first | Decision 5 |
+| A block that is neither one block of the load nor a pairing of partners is `split_apart` with the detail `rows` and a text of its own; the load edit that causes it is not refused | Decision 6 with review corrections 1 and 2 |
+| `pattern_mixed_partner` (409) for a partner that cannot pair; a partner outside the version is 404 | Decision 7 |
+| A double of a pairing is two pairing blocks of the same two rows in consecutive slots; "To place" has an entry per mixed half; no audit kind is added | Decisions 8 to 10 |
+
 ## 17 October 2026: the grid, double lessons (task 5.4c-3a)
 
 Plan approved on pull request #137 with corrections 1 to 3; decisions 1 to 12 confirmed there. Flagged on issue #42.
