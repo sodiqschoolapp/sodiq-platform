@@ -201,10 +201,14 @@ function gradesOf(facts: Facts, placement: Placement): number[] {
 
 // --- One place at a time ---------------------------------------------------
 
-function checkClashes(placements: readonly Placement[], facts: Facts, results: Results): void {
+function checkTeacherDouble(placements: readonly Placement[], results: Results): void {
   for (const [a, b] of overlappingPairs(placements, teachersOf)) {
     results.add('teacher_double', a.day, [a, b]);
   }
+}
+
+function checkClashes(placements: readonly Placement[], facts: Facts, results: Results): void {
+  checkTeacherDouble(placements, results);
   const sharedRoom = (roomId: string) => need(facts.rooms, roomId, 'room').shared;
   for (const [a, b] of overlappingPairs(placements, (one) =>
     roomsOf(one).filter((roomId) => !sharedRoom(roomId)),
@@ -409,7 +413,7 @@ function loadUnitOf(unit: EngineUnit): LoadUnit {
     grades: unit.grades,
     language: unit.language,
     subjectId: null,
-    tutorStaffIds: unit.tutorStaffIds,
+    tutorOnStart: unit.tutorOnStart,
   };
 }
 
@@ -606,7 +610,11 @@ function checkResources(placement: Placement, facts: Facts, results: Results): v
  * several branches, Travel time). Neighbours by start time only; exams and
  * busy-elsewhere lessons count (decision 15). An unset pair blocks (decision 1).
  */
-function checkTravel(placements: readonly Placement[], facts: Facts, results: Results): void {
+function checkTravel(
+  placements: readonly Placement[],
+  facts: Pick<Facts, 'travelMinutes'>,
+  results: Results,
+): void {
   const groups = groupBy(placements, (one) => one.teacherIds.map((id) => `${one.day}|${id}`));
   for (const group of groups.values()) {
     // The lesson before the next one is the one that ends last among those
@@ -794,4 +802,28 @@ export function checkCandidate(
   return checkTimetable([...others, candidate], facts, options).filter((result) =>
     result.lessonIds.includes(candidate.id),
   );
+}
+
+/**
+ * Whether a teacher may take a dated lesson by time alone: one place at a
+ * time and the travel time between branches (06, Rules), with the teacher's
+ * other lessons and exams of the day, in every branch, as `fixed` placements
+ * (task 3.6c-2, decision 4: a Tutor lesson that follows a change of Tutor).
+ * The same rule functions as `checkTimetable`; availability, profile and load
+ * are not read. Returns the results that name the candidate.
+ */
+export function checkTeacherTime(
+  others: readonly Placement[],
+  candidate: Placement,
+  travelMinutes: Facts['travelMinutes'],
+): RuleResult[] {
+  const placements = [...others.filter((one) => one.id !== candidate.id), candidate];
+  const results = new Results(
+    {},
+    new Set(placements.filter((one) => one.fixed).map((one) => one.id)),
+    'dated',
+  );
+  checkTeacherDouble(placements, results);
+  checkTravel(placements, { travelMinutes }, results);
+  return results.list().filter((result) => result.lessonIds.includes(candidate.id));
 }

@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   LOAD_PROBLEM_ORDER,
   loadRowProblems,
+  isTutorRow,
   refusingProblems,
-  takesAsTutor,
   teacherProblems,
   type LoadRowFacts,
   type LoadSubject,
@@ -20,7 +20,7 @@ const seventh: LoadUnit = {
   grades: [7],
   language: 'uz',
   subjectId: null,
-  tutorStaffIds: ['tutor-of-7'],
+  tutorOnStart: 'tutor-of-7',
 };
 
 const algebra: LoadSubject = {
@@ -73,7 +73,7 @@ describe('loadRowProblems', () => {
   });
 
   it("takes a group's own subject only", () => {
-    const group: LoadUnit = { ...seventh, kind: 'group', subjectId: 'algebra', tutorStaffIds: [] };
+    const group: LoadUnit = { ...seventh, kind: 'group', subjectId: 'algebra', tutorOnStart: null };
     expect(loadRowProblems(facts({ unit: group }))).toEqual([]);
     expect(loadRowProblems(facts({ unit: { ...group, subjectId: 'geometry' } }))).toEqual([
       'load_group_subject',
@@ -92,7 +92,7 @@ describe('loadRowProblems', () => {
       kind: 'group',
       grades: [9, 10],
       subjectId: 'algebra',
-      tutorStaffIds: [],
+      tutorOnStart: null,
     };
     const teacher = { ...fit, subjects: [{ subjectId: 'algebra', grades: [9, 10] }] };
     expect(loadRowProblems(facts({ unit: group, teacher }))).toEqual(['load_subject_grade']);
@@ -104,7 +104,7 @@ describe('loadRowProblems', () => {
       kind: 'group',
       grades: [7, 8],
       subjectId: 'algebra',
-      tutorStaffIds: [],
+      tutorOnStart: null,
     };
     expect(loadRowProblems(facts({ unit: group, sharedSlot: true }))).toEqual([]);
     expect(loadRowProblems(facts({ unit: group, sharedSlot: false }))).toEqual([
@@ -118,7 +118,7 @@ describe('loadRowProblems', () => {
       kind: 'group',
       grades: [8, 9],
       subjectId: 'algebra',
-      tutorStaffIds: [],
+      tutorOnStart: null,
     };
     expect(loadRowProblems(facts({ unit: group, sharedSlot: true }))).toEqual([
       'load_teacher_grade',
@@ -199,7 +199,7 @@ describe('loadRowProblems', () => {
 // Task 3.4b (pull request #100): the block rules, the split-or-whole rule
 // and the students not placed, which are listed but never refuse (decision 4).
 describe('the problems of a block', () => {
-  const group: LoadUnit = { ...seventh, kind: 'group', subjectId: 'algebra', tutorStaffIds: [] };
+  const group: LoadUnit = { ...seventh, kind: 'group', subjectId: 'algebra', tutorOnStart: null };
 
   it('reports a class both whole and split for the subject (05, Group)', () => {
     expect(loadRowProblems(facts({ splitAndWhole: true }))).toEqual(['load_split_and_whole']);
@@ -235,9 +235,11 @@ describe('the problems of a block', () => {
   });
 });
 
-// Decision 2 and correction 4: a Tutor subject on a class row is taken by a
-// Tutor of that class in force on the start date without the profile row;
-// the language rule and the subject's grades still apply.
+// 3.4a decision 2 as narrowed by task 3.6c-2 (decision 1, review correction
+// 1): a Tutor row (a Tutor subject on a class row) holds the class's Tutor of
+// the version and nobody else, without the profile row; the language rule
+// still applies; a group row of a Tutor subject keeps the profile rule. These
+// cases replace 3.4a's "a Tutor of the class, or anyone with the profile row".
 describe('a Tutor subject', () => {
   const spiritual: LoadSubject = {
     id: 'spiritual',
@@ -254,38 +256,59 @@ describe('a Tutor subject', () => {
     languages: ['uz'],
   };
 
-  it('is taken by the Tutor of the class in force on the start date without a profile row', () => {
-    expect(takesAsTutor(seventh, spiritual, tutor)).toBe(true);
+  it('is a Tutor row on a class only', () => {
+    expect(isTutorRow(seventh, spiritual)).toBe(true);
+    expect(isTutorRow({ kind: 'group' }, spiritual)).toBe(false);
+    expect(isTutorRow(seventh, algebra)).toBe(false);
+  });
+
+  it('is taken by the Tutor of the class of the version without a profile row', () => {
     expect(loadRowProblems(facts({ subject: spiritual, teacher: tutor }))).toEqual([]);
   });
 
-  it('is refused for a Tutor whose row ended before the start date (no longer in the list)', () => {
-    const ended = { ...seventh, tutorStaffIds: [] };
-    expect(loadRowProblems(facts({ unit: ended, subject: spiritual, teacher: tutor }))).toEqual([
+  it('has no teacher to take when the class has no Tutor', () => {
+    const lonely = { ...seventh, tutorOnStart: null };
+    expect(loadRowProblems(facts({ unit: lonely, subject: spiritual, teacher: tutor }))).toEqual([
+      'load_no_tutor',
       'load_teacher_subject',
     ]);
   });
 
-  it('is refused for another teacher without it and for the Tutor of another class', () => {
+  it('is refused for another teacher, also one with the subject in the profile', () => {
     expect(
       loadRowProblems(facts({ subject: spiritual, teacher: { ...tutor, id: 'other' } })),
-    ).toEqual(['load_teacher_subject']);
-    const otherClass = { ...seventh, tutorStaffIds: ['tutor-of-8'] };
-    expect(
-      loadRowProblems(facts({ unit: otherClass, subject: spiritual, teacher: tutor })),
-    ).toEqual(['load_teacher_subject']);
+    ).toEqual(['load_tutor_row_teacher', 'load_teacher_subject']);
+    const holder: LoadTeacher = {
+      ...tutor,
+      id: 'other',
+      subjects: [{ subjectId: 'spiritual', grades: [7] }],
+    };
+    expect(loadRowProblems(facts({ subject: spiritual, teacher: holder }))).toEqual([
+      'load_tutor_row_teacher',
+    ]);
   });
 
-  it('is refused for the Tutor on a group row', () => {
+  it('is refused for the Tutor of another class', () => {
+    const otherClass = { ...seventh, tutorOnStart: 'tutor-of-8' };
+    expect(
+      loadRowProblems(facts({ unit: otherClass, subject: spiritual, teacher: tutor })),
+    ).toEqual(['load_tutor_row_teacher', 'load_teacher_subject']);
+  });
+
+  it('keeps the profile rule on a group row', () => {
     const group: LoadUnit = {
       ...seventh,
       kind: 'group',
       subjectId: 'spiritual',
-      tutorStaffIds: ['tutor-of-7'],
+      tutorOnStart: null,
     };
     expect(loadRowProblems(facts({ unit: group, subject: spiritual, teacher: tutor }))).toEqual([
       'load_teacher_subject',
     ]);
+    const holder: LoadTeacher = { ...tutor, subjects: [{ subjectId: 'spiritual', grades: [7] }] };
+    expect(loadRowProblems(facts({ unit: group, subject: spiritual, teacher: holder }))).toEqual(
+      [],
+    );
   });
 
   it('is refused for the Tutor without the language of the class', () => {
@@ -295,7 +318,6 @@ describe('a Tutor subject', () => {
   });
 
   it('keeps the profile rule for an ordinary subject, also for the Tutor', () => {
-    expect(takesAsTutor(seventh, algebra, tutor)).toBe(false);
     expect(loadRowProblems(facts({ teacher: tutor }))).toEqual(['load_teacher_subject']);
   });
 });
@@ -315,7 +337,7 @@ describe('teacherProblems over every unit', () => {
           grades: first === second ? [first] : [first, second],
           language,
           subjectId: first === second ? null : 'algebra',
-          tutorStaffIds: [],
+          tutorOnStart: null,
         });
       }
     }

@@ -229,7 +229,9 @@ describe('department_move_loads in the database', () => {
       const version = await kit.version(north, northYear, {
         startsOn: input.versionStart ?? STARTS_ON,
       });
-      const row = await kit.row({
+      // Task 3.6c-2: only the class's Tutor may be written on a Tutor row; a
+      // row of another teacher is one 3.4a let be written.
+      const row = await (input.tutor ? kit.row.bind(kit) : kit.rowAsBefore.bind(kit))({
         branch_id: north,
         version_id: version,
         class_id: classId,
@@ -328,7 +330,8 @@ describe('department_move_loads in the database', () => {
         .execute();
       await kit.profile(vacancy, [{ subject, grades: [7] }]);
       const version = await kit.version(north, northYear, { startsOn: STARTS_ON });
-      const row = await kit.row({
+      // Written as 3.4a let it be (task 3.6c-2: no longer).
+      const row = await kit.rowAsBefore({
         branch_id: north,
         version_id: version,
         class_id: classId,

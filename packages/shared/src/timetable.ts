@@ -35,6 +35,8 @@ export const LOAD_PROBLEMS = [
   'load_group_no_shared_slot',
   'load_split_and_whole',
   'load_mixed_not_split',
+  'load_no_tutor',
+  'load_tutor_row_teacher',
   'load_teacher_branch',
   'load_teacher_status',
   'load_teacher_subject',
@@ -110,8 +112,14 @@ export type LoadRowParams = z.infer<typeof loadRowParamsSchema>;
 
 /** The fields of a row that an edit may change (decision 7). */
 const loadRowFieldsSchema = z.object({
-  /** One teacher or one vacancy (06, Model). */
-  teacherId: z.uuid(),
+  /**
+   * One teacher or one vacancy (06, Model). `null` on a Tutor row (a Tutor
+   * subject on a class row), whose teacher the server writes: the class's
+   * Tutor (task 3.6c-2, decision 1); a teacher sent there is refused
+   * (`load_tutor_row_teacher`); a new row that is not a Tutor row needs one
+   * (`load_teacher_needed`). On an edit, `null` keeps the teacher.
+   */
+  teacherId: z.uuid().nullable(),
   lessonsPerWeek: z.int().min(1).max(LOAD_LESSONS_MAX),
   /** Decision 13: a room, a room type, or neither. */
   roomId: z.uuid().nullable(),
@@ -225,12 +233,14 @@ export const loadTeachersQuerySchema = z
 export type LoadTeachersQuery = z.infer<typeof loadTeachersQuerySchema>;
 
 /**
- * The teachers and vacancies a row may take (decision 2): the class's Tutors
- * first, marked; `defaultTeacherId` is the class's Tutor for a Tutor subject
- * (correction 1: the main Tutor, the acting one when there is no main),
- * otherwise empty.
+ * The teachers and vacancies a row may take (decision 2): the class's Tutor
+ * first, marked. On a Tutor row (`tutorRow`) the class's Tutor of the version
+ * alone, also as `defaultTeacherId`, which nobody changes (task 3.6c-2,
+ * decision 1); otherwise `defaultTeacherId` is empty.
  */
 export const loadTeachersSchema = z.object({
+  /** A Tutor subject on a class row: the server writes the class's Tutor. */
+  tutorRow: z.boolean(),
   teachers: z.array(loadTeacherSchema.extend({ tutor: z.boolean() })),
   defaultTeacherId: z.uuid().nullable(),
   /**

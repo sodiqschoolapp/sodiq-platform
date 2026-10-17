@@ -2772,9 +2772,20 @@ try {
 
   // The Academic Vice Principal of the teaching load test (task 3.4a), in a
   // branch of its own with a planned year around today, 7 Oxford (Uzbek), a
-  // teacher of Geometry in grade 7 and one of Geometry in grade 8 only.
+  // teacher of Geometry in grade 7 and one of Geometry in grade 8 only. Task
+  // 3.6c-2: 7 Oxford has a Tutor, and the Homework slot is a subject of the
+  // Tutors department, whose row holds the Tutor.
   const loadBranch = await insertBranch(migrator, 'Teaching load browser test branch');
   const loadVice = await create('Shahlo', 'Rasulova');
+  const loadTutor = await create('Gulnora', 'Tursunova');
+  const loadTutorRole = await transactions.run([loadBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: loadTutor.id,
+      role: 'tutor',
+      branchId: loadBranch,
+      givenBy: null,
+    }),
+  );
   await transactions.run([loadBranch], (transaction) =>
     assignments.give(transaction, {
       accountId: loadVice.id,
@@ -2813,7 +2824,77 @@ try {
         language: 'uz',
         max_size: 25,
       })
-      .execute();
+      .returning('id')
+      .executeTakeFirstOrThrow()
+      .then(async (oxford) => {
+        const tutors = await transaction
+          .selectFrom('departments')
+          .select('id')
+          .where('tutors', '=', true)
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('subjects')
+          .values({
+            name_uz: 'Uy vazifasi soati',
+            name_ru: 'Час домашнего задания',
+            name_en: 'Homework slot',
+            department_id: tutors.id,
+            grades: [7],
+            colour: 'green',
+            journal_type: 'attendance_only',
+            rating_exam: false,
+            language_rule: true,
+          })
+          .execute();
+        const tutor = await transaction
+          .insertInto('staff')
+          .values({
+            kind: 'person',
+            staff_id: 'S-269303',
+            account_id: loadTutor.id,
+            first_name: 'Gulnora',
+            last_name: 'Tursunova',
+            sex: 'female',
+            birth_date: '1987-02-11',
+            phone: '+998935557303',
+            admission_date: '2026-09-01',
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('staff_branches')
+          .values({ staff_id: tutor.id, branch_id: loadBranch, is_main: true })
+          .execute();
+        await transaction
+          .insertInto('staff_divisions')
+          .values({
+            staff_id: tutor.id,
+            division_id: academic.id,
+            department_id: steam.id,
+            is_main: true,
+          })
+          .execute();
+        await transaction
+          .insertInto('staff_languages')
+          .values({ staff_id: tutor.id, language: 'uz' })
+          .execute();
+        await transaction
+          .insertInto('staff_statuses')
+          .values({ staff_id: tutor.id, status: 'active', valid_from: '2026-09-01' })
+          .execute();
+        await transaction
+          .insertInto('class_tutors')
+          .values({
+            branch_id: loadBranch,
+            class_id: oxford.id,
+            assignment_id: loadTutorRole.id,
+            kind: 'tutor',
+            valid_from: new Date(),
+            own_until: null,
+            given_by: loadVice.id,
+          })
+          .execute();
+      });
     const geometry = await transaction
       .selectFrom('subjects')
       .select('id')

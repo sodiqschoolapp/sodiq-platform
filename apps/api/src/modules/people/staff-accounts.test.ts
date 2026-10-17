@@ -841,8 +841,9 @@ describe('the account section of a staff record', () => {
                   .then((response) => response);
           for (let tries = 0; tries < 100; tries += 1) {
             const waiting = await sql<{ waiting: number }>`
-                select count(*)::int as waiting from pg_locks
-                where locktype = 'advisory' and not granted
+                select count(*)::int as waiting
+                from pg_locks l join pg_stat_activity a on a.pid = l.pid
+                where a.datname = current_database() and l.locktype = 'advisory' and not l.granted
               `.execute(t.database.migrator);
             if ((waiting.rows[0]?.waiting ?? 0) > 0) {
               break;
@@ -880,8 +881,9 @@ describe('the account section of a staff record', () => {
         // The route waits for the count, holding no lock on the record yet.
         for (let tries = 0; tries < 100; tries += 1) {
           const waiting = await sql<{ waiting: number }>`
-            select count(*)::int as waiting from pg_locks
-            where locktype = 'advisory' and not granted
+            select count(*)::int as waiting
+            from pg_locks l join pg_stat_activity a on a.pid = l.pid
+            where a.datname = current_database() and l.locktype = 'advisory' and not l.granted
           `.execute(t.database.migrator);
           if ((waiting.rows[0]?.waiting ?? 0) > 0) {
             break;

@@ -262,6 +262,8 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
     'The teaching load rows a department move of a teacher or a subject would leave with a teacher outside the subject\'s department, by id and version for the branch of the request named by the caller and one count per other branch, never a row, a name or a subject of another branch, so that "those loads are listed for reassignment first" (edge/people-roles-accounts, row 15; task 3.4c, decision 3 of pull request #101, Look first).',
   'teacher_load_elsewhere(uuid,uuid[],date)':
     'The lessons per week each teacher or vacancy linked to a branch of the transaction has in the version running in every other branch, counts and branch ids only, so that "the teacher\'s total across branches is shown to both" (06, Weekly load; task 3.4b, decision 8 of pull request #100, Look first).',
+  'teacher_claims_elsewhere(uuid,uuid,timestamp with time zone,timestamp with time zone)':
+    'The start, end and branch of each lesson or exam a teacher linked to a branch of the transaction holds in any branch over a range, no class, subject, room or name, so that a Tutor lesson that follows a change of Tutor is checked for a clash and the travel time across branches (06, Teachers who work in several branches, "One clash check"; task 3.6c-2, decision 13 of pull request #125, Look first).',
   'vacancy_load_rows(uuid)':
     'The number of teaching load rows of any version and branch that name a record, a count only, for the deferred refusal of a closed vacancy row (04, Vacancy: "cannot be closed while a load row names it"; task 3.4a, pull request #99); the backstop must not depend on what the closing transaction sees.',
   'vacancy_delete(uuid)':

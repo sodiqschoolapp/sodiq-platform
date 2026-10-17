@@ -32,6 +32,7 @@ import { changesOf, notFound, refusingConstraints } from '../setup/setup-refusal
 import { memberCountsOn, MEMBERSHIP_REFUSALS } from './class-membership-rows.js';
 import { GROUP_SIDE_REFUSALS } from './group-rows.js';
 import { followClassLanguage, lockClassesOfGroups } from './group-side.js';
+import { auditOf, followChanged, followTutors } from '../timetable/tutor-lessons.js';
 import {
   CLASS_EDIT_REFUSALS,
   CLASS_REFUSALS,
@@ -487,6 +488,14 @@ export class Classes {
             .set({ archived_at: now })
             .where('id', '=', id)
             .execute();
+          // Task 3.6c-2 (spec review of the plan, must-fix 5): the archive
+          // does not refuse future lessons, so the Tutor lessons from now
+          // need a teacher.
+          const follow = await followTutors(transaction, [id], now);
+          const details = {
+            ...(ended.length === 0 ? {} : { tutorsEnded: ended }),
+            ...(followChanged(follow) ? { tutorLessons: auditOf(follow) } : {}),
+          };
           await this.audit.record(transaction, {
             branchId,
             actorId: access.accountId,
@@ -495,7 +504,7 @@ export class Classes {
             record: { type: 'class', id },
             oldValue: { archived: false },
             newValue: { archived: true },
-            ...(ended.length === 0 ? {} : { details: { tutorsEnded: ended } }),
+            ...(Object.keys(details).length === 0 ? {} : { details }),
             requestId,
           });
           return readClassDetail(transaction, branchId, id);

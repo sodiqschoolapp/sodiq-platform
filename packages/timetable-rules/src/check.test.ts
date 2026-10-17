@@ -1,6 +1,6 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { checkCandidate, checkTimetable, overlappingPairs } from './check.js';
+import { checkCandidate, checkTeacherTime, checkTimetable, overlappingPairs } from './check.js';
 import { dayTimes, type DaySlotInput } from './day.js';
 import type {
   EngineDay,
@@ -80,7 +80,7 @@ const unit = (
   kind,
   grades,
   language,
-  tutorStaffIds: [],
+  tutorOnStart: null,
 });
 
 const room = (id: string, extra: Partial<EngineRoom> = {}): EngineRoom => ({
@@ -663,14 +663,26 @@ describe('the teacher, the subject and the room', () => {
     ]);
   });
 
-  it('lets a Tutor take a Tutor subject of the class without the profile row', () => {
+  // Task 3.6c-2, decision 1 (review correction 1): the class's Tutor takes a
+  // Tutor subject without the profile row; anyone else on that lesson (a
+  // substitute) needs the subject, as for every lesson.
+  it('lets the class Tutor take a Tutor subject without the profile row, nobody else', () => {
     const f = facts({
       subjects: new Map([
         ['homework', { id: 'homework', active: true, languageRule: false, tutorSubject: true }],
       ]),
-      units: new Map([['7a', { ...unit('7a', 'class', [7]), tutorStaffIds: ['t1'] }]]),
+      units: new Map([['7a', { ...unit('7a', 'class', [7]), tutorOnStart: 't1' }]]),
     });
     expect(codes(checkTimetable([place({ subjectId: 'homework' })], f))).toEqual([]);
+    const other = facts({
+      subjects: new Map([
+        ['homework', { id: 'homework', active: true, languageRule: false, tutorSubject: true }],
+      ]),
+      units: new Map([['7a', { ...unit('7a', 'class', [7]), tutorOnStart: 't9' }]]),
+    });
+    expect(codes(checkTimetable([place({ subjectId: 'homework' })], other))).toEqual([
+      'teacher_subject',
+    ]);
   });
 
   it('binds a vacancy by every blocked rule that binds a teacher (06, the vacancy row)', () => {
@@ -1314,5 +1326,50 @@ describe('the sweep against all pairs (plan finding 10)', () => {
       }),
       { numRuns: 300 },
     );
+  });
+});
+
+// Task 3.6c-2, decision 4: a Tutor lesson that follows a change of Tutor is
+// checked by time alone, with the Tutor's other lessons and exams as fixed.
+describe('checkTeacherTime', () => {
+  const tutorLesson = (extra: Partial<Placement> = {}) =>
+    place({ id: 'tutor-lesson', day: '2026-10-20', ...L2, ...extra });
+  const busy = (extra: Partial<Placement> = {}) =>
+    place({ id: 'busy', day: '2026-10-20', classId: '8a', fixed: true, ...extra });
+
+  it('passes a free teacher', () => {
+    expect(checkTeacherTime([busy({ ...L1 })], tutorLesson(), () => 0)).toEqual([]);
+  });
+
+  it('finds a lesson or an exam at the same time, in any branch', () => {
+    expect(codes(checkTeacherTime([busy({ ...L2 })], tutorLesson(), () => 0))).toEqual([
+      'teacher_double',
+    ]);
+    expect(
+      codes(
+        checkTeacherTime([busy({ kind: 'exam', start: 500, end: 640 })], tutorLesson(), () => 0),
+      ),
+    ).toEqual(['teacher_double']);
+    expect(codes(checkTeacherTime([busy({ ...L2, branchId: B })], tutorLesson(), () => 0))).toEqual(
+      ['teacher_double'],
+    );
+  });
+
+  it('finds the travel time between branches not kept, and an unset pair', () => {
+    expect(
+      codes(checkTeacherTime([busy({ ...L1, branchId: B })], tutorLesson(), () => 30)),
+    ).toEqual(['travel_time']);
+    expect(codes(checkTeacherTime([busy({ ...L1, branchId: B })], tutorLesson(), () => 5))).toEqual(
+      [],
+    );
+    expect(
+      codes(checkTeacherTime([busy({ ...L1, branchId: B })], tutorLesson(), () => null)),
+    ).toEqual(['travel_time_not_set']);
+  });
+
+  it('reads no availability, profile or room', () => {
+    expect(
+      checkTeacherTime([], tutorLesson({ teacherIds: ['nobody'], roomId: 'closed' }), () => 0),
+    ).toEqual([]);
   });
 });

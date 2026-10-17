@@ -8,6 +8,7 @@ import {
 } from '@sodiq/shared';
 import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
+import { emptyFollow, followTutors, type TutorFollow } from '../timetable/tutor-lessons.js';
 
 /**
  * The refusals of the database for classes and their Tutors
@@ -177,4 +178,36 @@ export async function trackingTutorEnds(
       ? []
       : [{ id: row.id, classId: row.classId, from: old.validUntil, to: row.validUntil }];
   });
+}
+
+/**
+ * The Tutor lessons of the classes whose Tutor rows a role end moved follow
+ * (task 3.6c-2; spec review of the plan, should-fix 1): each class from the
+ * earlier of the old and the new end of its rows, so an end taken back gives
+ * the lessons from the old end back to the Tutor. One follow per class, in
+ * the order of the class id.
+ */
+export async function followTutorEnds(
+  transaction: Transaction,
+  rows: readonly { classId: string; from: string | null; to: string | null }[],
+): Promise<TutorFollow> {
+  const earliest = new Map<string, number>();
+  for (const row of rows) {
+    const ends = [row.from, row.to]
+      .filter((one): one is string => one !== null)
+      .map((one) => new Date(one).getTime());
+    if (ends.length === 0) continue;
+    const at = Math.min(...ends);
+    earliest.set(row.classId, Math.min(at, earliest.get(row.classId) ?? at));
+  }
+  const all = emptyFollow();
+  for (const classId of [...earliest.keys()].sort()) {
+    const one = await followTutors(transaction, [classId], new Date(earliest.get(classId) ?? 0));
+    all.moved.push(...one.moved);
+    all.needsTeacher.push(...one.needsTeacher);
+    all.draftRows.push(...one.draftRows);
+    all.draftRowsKept.push(...one.draftRowsKept);
+    all.draftEntriesRemoved.push(...one.draftEntriesRemoved);
+  }
+  return all;
 }

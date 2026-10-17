@@ -38,8 +38,14 @@ describe('a load row', () => {
     expect(loadRowRecordSchema.safeParse({ ...row, classId: null }).success).toBe(false);
   });
 
-  it('needs a teacher (correction 3)', () => {
-    expect(loadRowRecordSchema.safeParse({ ...row, teacherId: null }).success).toBe(false);
+  // Correction 3 of 3.4a as changed by task 3.6c-2 (decision 1): a Tutor row
+  // is sent without a teacher (`null`), so the schema takes `null`; the server
+  // refuses `null` on a new row that is not a Tutor row (`load_teacher_needed`,
+  // teaching-load.test.ts). The field itself stays required, and an id only.
+  it('names its teacher, or null for the server to decide (task 3.6c-2)', () => {
+    expect(loadRowRecordSchema.safeParse({ ...row, teacherId: null }).success).toBe(true);
+    expect(loadRowRecordSchema.safeParse({ ...row, teacherId: undefined }).success).toBe(false);
+    expect(loadRowRecordSchema.safeParse({ ...row, teacherId: 'Karimova' }).success).toBe(false);
   });
 
   it('holds lessons per week from 1 to LOAD_LESSONS_MAX', () => {

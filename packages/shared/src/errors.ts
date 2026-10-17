@@ -526,6 +526,12 @@ export const ERROR_CODES = [
   'load_teacher_language',
   /** The room named is closed (06, Rules; task 3.4a). */
   'load_room_closed',
+  /** A Tutor row's class has no Tutor on the version's start date, or today when it has passed (task 3.6c-2). */
+  'load_no_tutor',
+  /** A teacher was named for a Tutor row, whose teacher is always the class's Tutor (task 3.6c-2, decision 1). */
+  'load_tutor_row_teacher',
+  /** A row that is not a Tutor row was sent without a teacher (task 3.6c-2). */
+  'load_teacher_needed',
   /** A load row names a room or a room type, not both (task 3.4a, decision 13). */
   'load_room_choice',
   /** The version already has a row for this class and subject, or this group; `details` names them (task 3.4a). */

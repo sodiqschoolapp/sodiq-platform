@@ -71,8 +71,10 @@ const roomOf = (value: string) => {
  * type if a special one is needed, whether double lessons are allowed"; task
  * 3.4a). The class or group and the subject are chosen at the create and fixed
  * (decision 7). The teachers offered are those the server finds may take the
- * row (the rules of the create; decision 2), the class's Tutor first; for a
- * Tutor subject the Tutor is chosen already (correction 1). Task 3.4b: the
+ * row (the rules of the create; decision 2), the class's Tutor first. A Tutor
+ * row (a Tutor subject on a class row) has no teacher to choose: the server
+ * writes the class's Tutor, and the form shows who and sends none (task
+ * 3.6c-2, decision 1). Task 3.4b: the
  * lessons of a group row are written to every part of its block (decision 3);
  * a half of a split may be marked as part of a mixed block (decision 12); a
  * class and a subject whose group switch is on offer the class's groups of
@@ -116,7 +118,10 @@ export function LoadRowForm({
     },
     read: (typed) => {
       const fields = {
-        teacherId: typed.teacherId,
+        // No teacher is sent for a Tutor row, whose field stays empty, nor for
+        // an edit that keeps its teacher (task 3.6c-2).
+        teacherId:
+          typed.teacherId === '' || typed.teacherId === row?.teacher.id ? null : typed.teacherId,
         lessonsPerWeek: wholeNumber(typed.lessonsPerWeek),
         ...roomOf(typed.room),
         doubleLessons: typed.doubleLessons === CHECKED,
@@ -182,6 +187,13 @@ export function LoadRowForm({
   // offered falls back to none (.claude/rules/web.md).
   useEffect(() => {
     if (teachers.data === undefined) {
+      return;
+    }
+    if (teachers.data.tutorRow) {
+      // Nobody picks the teacher of a Tutor row: the server writes the Tutor.
+      if (row === null && teacherField.value !== '') {
+        teacherField.onChange({ target: { value: '' } });
+      }
       return;
     }
     if (teacherField.value === '' && row === null && teachers.data.defaultTeacherId !== null) {
@@ -285,6 +297,19 @@ export function LoadRowForm({
             void teachers.refetch();
           }}
         />
+      ) : teachers.data?.tutorRow === true ? (
+        <p className="text-sm" data-tutor-row="">
+          {teachers.data.teachers[0] === undefined
+            ? t('timetable.load.noTutorTeacher', {
+                subject: (() => {
+                  const chosen = subjects.find((one) => one.id === subjectId);
+                  return chosen === undefined ? '' : nameOf(chosen.names, i18n.language);
+                })(),
+              })
+            : t('timetable.load.tutorRowTeacher', {
+                name: teachers.data.teachers[0].name ?? t('timetable.load.gone'),
+              })}
+        </p>
       ) : teachers.data !== undefined && teacherOptions.length === 0 ? (
         <NoTeacherReasons
           answer={teachers.data}

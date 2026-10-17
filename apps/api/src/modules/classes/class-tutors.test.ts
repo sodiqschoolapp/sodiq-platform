@@ -68,6 +68,11 @@ describe('the Tutors of a class', () => {
     Promise.all([
       database.migrator.selectFrom('classes').selectAll().orderBy('id').execute(),
       database.migrator.selectFrom('class_tutors').selectAll().orderBy('id').execute(),
+      // Task 3.6c-2: what the follow of a Tutor change writes.
+      database.migrator.selectFrom('lessons').selectAll().orderBy('id').execute(),
+      database.migrator.selectFrom('time_claims').selectAll().orderBy('id').execute(),
+      database.migrator.selectFrom('teaching_load_rows').selectAll().orderBy('id').execute(),
+      database.migrator.selectFrom('pattern_entries').selectAll().orderBy('id').execute(),
       auditCount(),
     ]);
   const entry = (action: string, recordId: string) =>

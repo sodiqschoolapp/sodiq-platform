@@ -387,6 +387,11 @@ export const uz: Texts<'one' | 'other'> = {
     load_teacher_language:
       'Bu oʻqituvchi yoki vakansiya sinf yoki guruh tilida dars bermaydi, fan esa til qoidasiga boʻysunadi. Boshqa oʻqituvchini tanlang.',
     load_room_closed: 'Bu xona yopilgan. Boshqa xonani yoki xona turini tanlang.',
+    load_no_tutor:
+      'Versiya boshlanadigan kuni sinfda tyutor yoʻq, bu qatorni esa sinf tyutori oladi. Avval sinfga tyutor bering: Sinflar → sinf → Tyutor berish.',
+    load_tutor_row_teacher:
+      'Bu qatorni doim sinf tyutori oladi; unga oʻqituvchi tanlanmaydi. Sinf tyutori almashganda u ham almashadi.',
+    load_teacher_needed: 'Bu qator uchun oʻqituvchi yoki vakansiyani tanlang.',
     load_room_choice: 'Xonani yoki xona turini koʻrsating, ikkalasini emas.',
     load_row_exists:
       'Bu versiyada shu sinf va fan yoki shu guruh uchun qator allaqachon bor. Uni oʻzgartirish uchun oching.',
@@ -2644,6 +2649,22 @@ export const uz: Texts<'one' | 'other'> = {
     nameTaken: 'Bu yilda {{grade}}-sinfda «{{name}}» nomli sinf bor.',
     tutors: 'Tyutorlar',
     noTutorRows: 'Hozircha tyutor yoʻq',
+    preview: {
+      none: 'Sanali darslar oʻzgarmaydi.',
+      moved_one: '{{count}} ta tyutor darsi {{name}} ga oʻtadi.',
+      moved_other: '{{count}} ta tyutor darsi {{name}} ga oʻtadi.',
+      needsTeacher_one: '{{count}} ta darsga oʻqituvchi kerak boʻladi:',
+      needsTeacher_other: '{{count}} ta darsga oʻqituvchi kerak boʻladi:',
+      lesson: '{{date}}, {{start}}–{{end}}, {{subject}}:',
+      noTutor: 'bu vaqtda tyutor yoʻq.',
+      clash: '{{start}}–{{end}} band.',
+      clashIn: '{{branch}} da {{start}}–{{end}} band.',
+      draftRows_one: 'Qoralama jadvalning {{count}} ta qatorida oʻqituvchi almashadi.',
+      draftRows_other: 'Qoralama jadvallarning {{count}} ta qatorida oʻqituvchi almashadi.',
+      draftEntries_one: 'Qoralamaning {{count}} ta darsi «Joylashtirish kerak» roʻyxatiga qaytadi.',
+      draftEntries_other:
+        'Qoralamalarning {{count}} ta darsi «Joylashtirish kerak» roʻyxatiga qaytadi.',
+    },
     giveTutor: 'Tyutor tayinlash',
     setActing: 'Vaqtinchalik tyutor tayinlash',
     person: 'Shaxs',
@@ -2984,7 +3005,8 @@ export const uz: Texts<'one' | 'other'> = {
       noSubjectTeacher:
         '{{subject}} filialning hech bir oʻqituvchisi yoki vakansiyasi profilida yoʻq: Odamlar → Xodimlar → Fanlar.',
       noTutorTeacher:
-        '{{subject}} ni sinf tyutori yoki shu fani bor oʻqituvchi oladi; sinfda tyutor yoʻq: Sinflar → sinf → Tyutor berish.',
+        '{{subject}} ni sinf tyutori oladi, versiya boshlanadigan kuni esa sinfda tyutor yoʻq: Sinflar → sinf → Tyutor berish.',
+      tutorRowTeacher: 'Oʻqituvchi: {{name}}, sinf tyutori. Tyutor almashganda almashadi.',
       whyStatus: '{{teacher}}: faol emas.',
       whyGrade: '{{teacher}}: {{grades}}-sinfni oʻqitmaydi.',
       whyLanguage: '{{teacher}}: {{language}} dars bermaydi.',
@@ -3020,6 +3042,8 @@ export const uz: Texts<'one' | 'other'> = {
         load_teacher_grade: 'Daraja profilda yoʻq',
         load_teacher_language: 'Taʼlim tili',
         load_room_closed: 'Xona yopilgan',
+        load_no_tutor: 'Sinfda tyutor yoʻq',
+        load_tutor_row_teacher: 'Sinf tyutori emas',
         load_split_and_whole: 'Sinf ham butun, ham boʻlingan',
         load_mixed_not_split: 'Bir necha sinf guruhida aralash blok',
         load_block_mixed: 'Qismlar aralash blokda mos emas',

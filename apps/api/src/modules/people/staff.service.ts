@@ -84,7 +84,12 @@ import {
   refusingDuplicates,
 } from '../setup/setup-refusals.js';
 import { closeOpenResetLinks } from '../auth/reset-links.js';
-import { ROLE_END_TUTOR_REFUSALS, trackingTutorEnds } from '../classes/class-tutor-rows.js';
+import {
+  followTutorEnds,
+  ROLE_END_TUTOR_REFUSALS,
+  trackingTutorEnds,
+} from '../classes/class-tutor-rows.js';
+import { auditOf, followChanged } from '../timetable/tutor-lessons.js';
 import { reachingAssignment } from './account-reach.js';
 import { endAvailability } from './availability.service.js';
 import { staffIdOf, takeStaffNumber } from './staff-numbers.js';
@@ -1477,6 +1482,12 @@ export class Staff {
           .where('id', '=', assignment.id)
           .execute();
       });
+      // Task 3.6c-2: the Tutor lessons of those classes follow.
+      const follow = await followTutorEnds(transaction, tutorRows);
+      const details = {
+        ...(tutorRows.length === 0 ? {} : { tutorRows }),
+        ...(followChanged(follow) ? { tutorLessons: auditOf(follow) } : {}),
+      };
       await this.audit.record(transaction, {
         branchId: assignment.branch_id,
         actorId: access.accountId,
@@ -1486,7 +1497,7 @@ export class Staff {
         record: { type: 'assignment', id: assignment.id },
         oldValue: { validUntil: assignment.valid_until?.toISOString() ?? null },
         newValue: { validUntil: end.toISOString() },
-        ...(tutorRows.length === 0 ? {} : { details: { tutorRows } }),
+        ...(Object.keys(details).length === 0 ? {} : { details }),
         reason: 'staff_left',
         requestId: left.requestId,
       });
@@ -1537,6 +1548,12 @@ export class Staff {
           .where('id', '=', end.id)
           .execute();
       });
+      // Task 3.6c-2: the lessons from the old end go back to the Tutor.
+      const follow = await followTutorEnds(transaction, tutorRows);
+      const details = {
+        ...(tutorRows.length === 0 ? {} : { tutorRows }),
+        ...(followChanged(follow) ? { tutorLessons: auditOf(follow) } : {}),
+      };
       await this.audit.record(transaction, {
         branchId: end.branch_id,
         actorId: access.accountId,
@@ -1546,7 +1563,7 @@ export class Staff {
         record: { type: 'assignment', id: end.id },
         oldValue: { validUntil: end.valid_until?.toISOString() ?? null },
         newValue: { validUntil: end.previous_valid_until?.toISOString() ?? null },
-        ...(tutorRows.length === 0 ? {} : { details: { tutorRows } }),
+        ...(Object.keys(details).length === 0 ? {} : { details }),
         reason: 'staff_left_withdrawn',
         requestId,
       });

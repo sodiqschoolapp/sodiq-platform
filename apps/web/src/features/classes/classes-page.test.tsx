@@ -213,6 +213,9 @@ async function openList(
 // and name: 7 Oxford"; edge/students-classes-groups: "A class with no Tutor
 // shows a warning to the Academic Vice Principal and the Head Tutor"; task
 // 3.1a, pull request #88, decisions 11 to 13.
+/** A preview of a give that changes no dated lesson (task 3.6c-2). */
+const NO_CHANGE = { moved: [], needsTeacher: [], draftRows: 0, draftEntriesRemoved: 0 };
+
 describe('the class list', () => {
   it('lists the classes as grade and name, with a No Tutor mark', async () => {
     setWindowWidth(1440);
@@ -618,6 +621,7 @@ describe('a class in the side panel', () => {
       extra: {
         [`POST /api/classes/${OXFORD.id}/tutors`]: () =>
           json(detailOf(OXFORD, [tutorRow(2, { kind: 'acting', state: 'planned' })]), 201),
+        [`POST /api/classes/${OXFORD.id}/tutors/preview`]: () => json(NO_CHANGE),
       },
     });
     fireEvent.click(rowButton('7 Oxford'));
@@ -645,10 +649,88 @@ describe('a class in the side panel', () => {
     });
   });
 
+  // Task 3.6c-2, decision 10 (answer 1 of 16 October 2026): the give lists
+  // the Tutor lessons that move and those that will need a teacher before the
+  // save, and they never stop it.
+  it('shows what a give does to the Tutor lessons before the save, which it does not stop', async () => {
+    const calls = await openList({
+      extra: {
+        [`POST /api/classes/${OXFORD.id}/tutors/preview`]: () =>
+          json({
+            moved: [
+              {
+                lessonId: uid(901),
+                date: '2026-10-20',
+                start: '09:00',
+                end: '09:45',
+                subjectNames: {
+                  uz: 'Maʼnaviyat soati',
+                  ru: 'Маънавият соати',
+                  en: 'Spiritual hour',
+                },
+                to: { firstName: 'Kamola', lastName: 'Rahimova' },
+              },
+            ],
+            needsTeacher: [
+              {
+                lessonId: uid(902),
+                date: '2026-10-21',
+                start: '09:00',
+                end: '09:45',
+                subjectNames: {
+                  uz: 'Maʼnaviyat soati',
+                  ru: 'Маънавият соати',
+                  en: 'Spiritual hour',
+                },
+                clashes: [{ start: '09:00', end: '09:45', branchName: null }],
+              },
+              {
+                lessonId: uid(903),
+                date: '2026-10-22',
+                start: '09:00',
+                end: '09:45',
+                subjectNames: {
+                  uz: 'Maʼnaviyat soati',
+                  ru: 'Маънавият соати',
+                  en: 'Spiritual hour',
+                },
+                clashes: [{ start: '09:50', end: '10:35', branchName: 'South' }],
+              },
+            ],
+            draftRows: 0,
+            draftEntriesRemoved: 0,
+          }),
+        [`POST /api/classes/${OXFORD.id}/tutors`]: () =>
+          json(detailOf(OXFORD, [tutorRow(2, { kind: 'acting', state: 'planned' })]), 201),
+      },
+    });
+    fireEvent.click(rowButton('7 Oxford'));
+    const panel = await screen.findByRole('complementary', { name: '7 Oxford' });
+    fireEvent.click(await within(panel).findByRole('button', { name: en.classes.setActing }));
+    const form = await within(panel).findByRole('form', { name: en.classes.setActing });
+    type(await within(form).findByLabelText(en.classes.person), uid(601));
+    const shown = await waitFor(() => {
+      const found = form.querySelector('[data-tutor-preview]');
+      expect(found).not.toBeNull();
+      return found;
+    });
+    expect(shown?.querySelector('p')?.textContent).toBe(
+      en.classes.preview.moved_one.replace('{{count}}', '1').replace('{{name}}', 'Rahimova Kamola'),
+    );
+    expect([...(shown?.querySelectorAll('li') ?? [])].map((one) => one.textContent)).toEqual([
+      '21 October 2026, 09:00–09:45, Spiritual hour: busy 09:00–09:45.',
+      '22 October 2026, 09:00–09:45, Spiritual hour: busy 09:50–10:35 in South.',
+    ]);
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await savedInPanel(panel);
+    expect(calls.some((call) => call.route === `POST /api/classes/${OXFORD.id}/tutors`)).toBe(true);
+  });
+
   it('shows a refusal of the language rule as its text', async () => {
     await openList({
       extra: {
         [`POST /api/classes/${PRINCETON.id}/tutors`]: () => refusal('tutor_language', 409),
+        [`POST /api/classes/${PRINCETON.id}/tutors/preview`]: () => json(NO_CHANGE),
       },
     });
     fireEvent.click(rowButton('8 Princeton'));

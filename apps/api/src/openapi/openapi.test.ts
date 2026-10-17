@@ -73,6 +73,7 @@ describe('OpenAPI document', () => {
         '/api/classes/{id}/members/{memberId}/withdraw',
         '/api/classes/{id}/restore',
         '/api/classes/{id}/tutors',
+        '/api/classes/{id}/tutors/preview',
         '/api/classes/{id}/tutors/{tutorId}/end',
         '/api/feedback',
         '/api/groups',

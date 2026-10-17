@@ -156,6 +156,7 @@ describe('the routes that work without sign-in', () => {
       'POST /api/classes/:id/restore',
       'POST /api/classes/:id/tutors',
       'POST /api/classes/:id/tutors/:tutorId/end',
+      'POST /api/classes/:id/tutors/preview',
       'POST /api/classes/export',
       'POST /api/classes/transfers',
       'POST /api/classes/transfers/:id/cancel',

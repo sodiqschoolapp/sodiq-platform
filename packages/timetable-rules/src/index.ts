@@ -49,7 +49,7 @@ export {
   loadRowProblems,
   refusingProblems,
   ROOM_PROBLEMS,
-  takesAsTutor,
+  isTutorRow,
   TEACHER_PROBLEMS,
   teacherProblems,
   type LoadProblem,
@@ -104,4 +104,5 @@ export type {
   Facts,
   Placement,
 } from './placement.js';
-export { checkCandidate, checkTimetable, overlappingPairs } from './check.js';
+export { tutorAt, type TutorRow } from './tutors.js';
+export { checkCandidate, checkTeacherTime, checkTimetable, overlappingPairs } from './check.js';

@@ -175,8 +175,10 @@ describe('the password reset by email', () => {
   async function untilWaiting(): Promise<void> {
     for (let tries = 0; tries < 150; tries += 1) {
       const waiting = await sql<{ waiting: number }>`
-        select count(*)::int as waiting from pg_locks
-        where locktype in ('transactionid', 'tuple') and not granted
+        select count(*)::int as waiting
+        from pg_locks l join pg_stat_activity a on a.pid = l.pid
+        where a.datname = current_database() and l.locktype in ('transactionid', 'tuple')
+          and not l.granted
       `.execute(t.database.migrator);
       if ((waiting.rows[0]?.waiting ?? 0) > 0) {
         return;

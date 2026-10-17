@@ -1094,7 +1094,11 @@ describe('draft versions and the teaching load', () => {
       expect(none).toMatchObject({ teachers: [], noTutor: true });
     });
 
-    it('puts the Tutor of the class first, marked, and preselects them for a Tutor subject only', async () => {
+    // 3.4a correction 1 as narrowed by task 3.6c-2 (decision 1, review
+    // correction 1): an ordinary subject offers the class's Tutor first and
+    // preselects nobody; a Tutor row answers the Tutor alone, and no load
+    // route accepts a teacher for it (done-when 3).
+    it('puts the Tutor of the class first for an ordinary subject, and answers the Tutor alone for a Tutor row', async () => {
       const version = await draft();
       const tutorSubject = await load.tutorSubject({ grades: [7] });
       const classId = await load.classes.schoolClass(t.north, year, { grade: 7 });
@@ -1108,6 +1112,7 @@ describe('draft versions and the teaching load', () => {
           ).expect(200)
         ).body,
       );
+      expect(ordinary.tutorRow).toBe(false);
       expect(ordinary.teachers[0]).toMatchObject({ id: person.staffId, tutor: true });
       expect(ordinary.teachers.find((one) => one.id === other.staffId)?.tutor).toBe(false);
       expect(ordinary.defaultTeacherId).toBeNull();
@@ -1118,35 +1123,75 @@ describe('draft versions and the teaching load', () => {
           ).expect(200)
         ).body,
       );
+      expect(tutors.tutorRow).toBe(true);
       expect(tutors.teachers.map((one) => [one.id, one.kind, one.tutor])).toEqual([
         [person.staffId, 'person', true],
       ]);
       expect(tutors.defaultTeacherId).toBe(person.staffId);
-      // Another teacher without the subject in the profile may not take it.
-      refusedWith(
-        await createRow(version.id, { classId, teacherId: other.staffId, subjectId: tutorSubject }),
-        409,
-        'load_teacher_subject',
-      );
-      // The Homework slot and Ma'naviyat soati: the class Tutor takes the row
-      // without the subject in the profile (edge/people-roles-accounts, row 13).
+    });
+
+    it('writes the class Tutor on a Tutor row and accepts no teacher for it (done-when 3)', async () => {
+      const version = await draft();
+      const tutorSubject = await load.tutorSubject({ grades: [7] });
+      const classId = await load.classes.schoolClass(t.north, year, { grade: 7 });
+      const person = await load.teacher(t.north);
+      await load.tutorOf(t.north, classId, person.accountId);
+      const other = await load.teacher(t.north);
+      const audits = await t.auditCount();
+      // Neither another teacher nor the Tutor named by hand.
+      for (const teacherId of [other.staffId, person.staffId]) {
+        refusedWith(
+          await createRow(version.id, { classId, teacherId, subjectId: tutorSubject }),
+          422,
+          'load_tutor_row_teacher',
+        );
+      }
+      expect(await t.auditCount()).toBe(audits);
+      // The Homework slot and Ma'naviyat soati: the server writes the class
+      // Tutor, without the subject in the profile (edge/timetable, Structure).
       const row = rowOf(
-        await createRow(version.id, {
-          classId,
+        await createRow(version.id, { classId, teacherId: null, subjectId: tutorSubject }),
+      );
+      expect(row.teacher.id).toBe(person.staffId);
+      expect(row.problems).toEqual([]);
+      // An edit names no teacher either; `null` keeps the Tutor.
+      refusedWith(
+        await patch(`/api/timetable/versions/${version.id}/load/${row.id}`, {
           teacherId: person.staffId,
-          subjectId: tutorSubject,
+          lessonsPerWeek: 2,
+          roomId: null,
+          roomType: null,
+          doubleLessons: false,
+        }),
+        422,
+        'load_tutor_row_teacher',
+      );
+      const edited = rowOf(
+        await patch(`/api/timetable/versions/${version.id}/load/${row.id}`, {
+          teacherId: null,
+          lessonsPerWeek: 2,
+          roomId: null,
+          roomType: null,
+          doubleLessons: false,
         }),
       );
-      expect(row.problems).toEqual([]);
+      expect([edited.teacher.id, edited.lessonsPerWeek]).toEqual([person.staffId, 2]);
+      // A class with no Tutor has nobody to write.
       const otherClass = await load.classes.schoolClass(t.north, year, { grade: 7 });
       refusedWith(
         await createRow(version.id, {
           classId: otherClass,
-          teacherId: person.staffId,
+          teacherId: null,
           subjectId: tutorSubject,
         }),
         409,
-        'load_teacher_subject',
+        'load_no_tutor',
+      );
+      // Every other row needs its teacher.
+      refusedWith(
+        await createRow(version.id, { classId, teacherId: null }),
+        422,
+        'load_teacher_needed',
       );
     });
   });

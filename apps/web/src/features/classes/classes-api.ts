@@ -4,6 +4,7 @@ import {
   classMembersSchema,
   classSeatsSchema,
   classPlacementResultSchema,
+  classTutorPreviewSchema,
   tutorCandidateListSchema,
   type ClassCreate,
   type ClassEdit,
@@ -136,6 +137,32 @@ export const archiveClass = (id: string, restore: boolean) =>
       params: { header: branchHeader(), path: { id } },
     }),
   ).then((answer) => classDetailSchema.parse(answer));
+
+/**
+ * What a give would do to the class's dated Tutor lessons, written nowhere
+ * (task 3.6c-2, decision 10); asked while the give form holds a person and a
+ * date.
+ */
+export const tutorPreviewQuery = (
+  branchId: string | null,
+  id: string,
+  give: ClassTutorGive | null,
+) =>
+  queryOptions({
+    queryKey: [...classesKey(branchId), id, 'tutor-preview', give],
+    queryFn: async () =>
+      classTutorPreviewSchema.parse(
+        await answerOf(
+          api.POST('/api/classes/{id}/tutors/preview', {
+            params: { header: branchHeader(), path: { id } },
+            body: give ?? { assignmentId: '', kind: 'tutor', from: '', until: null },
+          }),
+        ),
+      ),
+    enabled: branchId !== null && give !== null,
+    gcTime: 0,
+    retry: false,
+  });
 
 export const giveTutor = (id: string, give: ClassTutorGive) =>
   answerOf(

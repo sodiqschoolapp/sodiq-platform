@@ -71,6 +71,9 @@ test('an Academic Vice Principal creates a class and gives it a Tutor of its lan
   ).toBeDisabled();
   await screenshot(page, 'give-tutor');
   await person.selectOption({ label: 'Salimova Zuhra' });
+  // Task 3.6c-2 (decision 10): what the give does to the dated Tutor lessons
+  // is shown before the save; this class has none yet.
+  await expect(give.getByText(en.classes.preview.none, { exact: true })).toBeVisible();
   await give.getByRole('button', { name: en.form.save, exact: true }).click();
 
   await expect(panel.getByText(`${texts.kinds.tutor}: Salimova Zuhra`)).toBeVisible();
