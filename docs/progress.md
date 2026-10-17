@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 17 October 2026: task 5.4c-3a Grid: double lessons
+
+- A double lesson is placed in the grid from "To place" or the Place form (a "Double lesson" switch on rows that allow doubles), moved as one by either half (the other half beside it, `pairAt`), re-roomed in both halves and removed as one; each is one step of undo and redo. "Suggest a place" on a half offers the pair's free slots, applied by the move route. No migration: `pattern_blocks.double_pair_id` (0058) is written now.
+- The rule engine checks a double per load row (a double of a split was always `double_apart`) and has a new blocked rule `double_not_allowed`.
+- 5.4c-3 is split: 5.4c-3b (mixed pairings) is next.
+- Left out: mixed pairings (5.4c-3b); joining or splitting a placed double (not planned); pins of doubles and doubles in the solver (5.10, 5.11); dated doubles (5.5b); the handbook (paused).
+
+The next sessions must know:
+
+- `PatternBlock` carries `doublePairId`; `otherHalf` finds the other half; a route that moves a block of a pair moves both (`pairAt`) and defers the clash constraints.
+- In a browser test, drag within the first row of the board: the status lines of a drag make the rows below taller and the drop lands off target.
+- The next task is 5.4c-3b.
+
 ## 17 October 2026: task 5.4c-2 Grid: undo and redo
 
 - Undo and Redo on the grid (buttons that name the step, Ctrl+Z, Ctrl+Shift+Z, Ctrl+Y) over the page's own placements, moves, swaps, room changes, removals and applied suggestions. Each step is what one write changed (`stepOf` of `apps/web/src/features/timetable/grid-history.ts`) and is taken back through the route of its kind (`writeOf`), so the rule engine and the API check it; a refused step is shown and kept; a step whose lessons changed since (the board is read again first) is dropped with a message.

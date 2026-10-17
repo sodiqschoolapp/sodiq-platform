@@ -20,6 +20,7 @@ const at = (id: string, rowId: string, weekday: number, slot: { start: number; e
     start: slot.start,
     end: slot.end,
     roomId: null,
+    doublePairId: null,
   });
 
 const slot = (day: typeof SENIOR, position: number) => {
@@ -66,6 +67,7 @@ function handFacts(): Facts {
       id: one.id,
       lessonsPerWeek: one.lessonsPerWeek,
       deliberatelyShort: false,
+      doubleLessons: one.doubleLessons,
     })),
     otherDrafts: [],
   };
@@ -168,6 +170,7 @@ describe('the lessons of other branches (task 5.4b-1)', () => {
       start: slot(SENIOR, position).start,
       end: slot(SENIOR, position).end,
       roomId: null,
+      doublePairId: null,
     });
 
   it('builds a fixed placement with the teacher, times and branch only', () => {
@@ -223,6 +226,7 @@ describe('the lessons of other branches (task 5.4b-1)', () => {
         start: senior1.start,
         end: senior1.end,
         roomId: null,
+        doublePairId: null,
       }),
     ]);
     expect(results.filter((one) => one.rule === 'other_draft')).toEqual([

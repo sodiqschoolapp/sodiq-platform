@@ -1,5 +1,6 @@
 import { weekdaySchema, type GridAnswer, type RearrangeRecord } from '@sodiq/shared';
 import {
+  otherHalf,
   suggestPlaces,
   type PatternBlock,
   type PatternModel,
@@ -158,6 +159,9 @@ export function GridSuggestDialog({
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
+        {block !== null && otherHalf(all, block) !== undefined && (
+          <p className="text-sm text-muted-foreground">{t('timetable.grid.freeSlotsOnly')}</p>
+        )}
         {found !== null && (
           <div className="grid max-h-[60vh] gap-4 overflow-y-auto" data-suggestions="">
             {found.free.length > 0 && (

@@ -24,7 +24,7 @@ export async function readBlocks(
   const [blocks, entries] = await Promise.all([
     transaction
       .selectFrom('pattern_blocks')
-      .select(['id', 'weekday', 'slot_position', 'start_minutes', 'end_minutes'])
+      .select(['id', 'weekday', 'slot_position', 'start_minutes', 'end_minutes', 'double_pair_id'])
       .where('version_id', '=', versionId)
       .orderBy('weekday')
       .orderBy('start_minutes')
@@ -47,6 +47,7 @@ export async function readBlocks(
     lessons: entries
       .filter((entry) => entry.block_id === block.id)
       .map((entry) => ({ id: entry.id, loadRowId: entry.load_row_id, roomId: entry.room_id })),
+    doublePairId: block.double_pair_id,
   }));
 }
 

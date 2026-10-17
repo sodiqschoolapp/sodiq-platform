@@ -3169,6 +3169,8 @@ try {
     staffId: string;
     phone: string;
     rooms: readonly string[];
+    /** Task 5.4c-3a: the rows allow double lessons. */
+    doubleLessons?: boolean;
   }) => {
     const gridBranch = await insertBranch(migrator, scene.branch);
     const gridVice = await create(scene.vice[0], scene.vice[1]);
@@ -3376,6 +3378,7 @@ try {
             subject_id: geometry.id,
             teacher_id: person.id,
             lessons_per_week: 3,
+            double_lessons: scene.doubleLessons ?? false,
           })
           .returning('id')
           .executeTakeFirstOrThrow();
@@ -3482,6 +3485,18 @@ try {
     rooms: [],
   });
   seeded.draftGridUndo = { login: undoVice.login, password: undoVice.firstPassword };
+
+  // Double lessons (task 5.4c-3a): the same scene in a branch of its own, its
+  // rows allowing double lessons.
+  const doubleVice = await gridScene({
+    branch: 'Grid doubles browser test branch',
+    vice: ['Dilfuza', 'Rahimova'],
+    staffId: 'S-269336',
+    phone: '+998935557336',
+    rooms: [],
+    doubleLessons: true,
+  });
+  seeded.draftGridDouble = { login: doubleVice.login, password: doubleVice.firstPassword };
 
   // The department move (task 3.4c): a branch of its own with a year around
   // today, 7 Oxford, the attendance-only subject Cosmology of STEAM and a

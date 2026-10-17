@@ -666,6 +666,8 @@ export const patternFactsDataSchema = z.object({
       roomType: roomTypeSchema.nullable(),
       lessonsPerWeek: z.int().min(1),
       mixedBlock: z.boolean(),
+      /** "Whether double lessons are allowed" (05, Teaching load; task 5.4c-3a). */
+      doubleLessons: z.boolean(),
       block: z.array(z.uuid()),
     }),
   ),
@@ -704,7 +706,10 @@ export const ruleResultSchema = z.object({
 
 export type RuleResultAnswer = z.infer<typeof ruleResultSchema>;
 
-/** A placed block: a weekday, the position of its slot (breaks counted), its minutes, one lesson per load row. */
+/**
+ * A placed block: a weekday, the position of its slot (breaks counted), its
+ * minutes, one lesson per load row; task 5.4c-3a: the pair of a double lesson.
+ */
 export const gridBlockSchema = z.object({
   id: z.uuid(),
   weekday: weekdaySchema,
@@ -712,6 +717,7 @@ export const gridBlockSchema = z.object({
   start: z.int(),
   end: z.int(),
   lessons: z.array(z.object({ id: z.uuid(), loadRowId: z.uuid(), roomId: z.uuid().nullable() })),
+  doublePairId: z.uuid().nullable(),
 });
 
 export type GridBlock = z.infer<typeof gridBlockSchema>;
@@ -803,7 +809,9 @@ const blockRoomsSchema = z
  * a weekday and a slot position; task 5.4b-2a: the room of the chosen row's
  * lesson from the room picker (the other lessons of its block take their new
  * lesson's room); task 5.4c-2: or the room of every lesson by load row, for
- * the undo of a removal.
+ * the undo of a removal; task 5.4c-3a: `double` places a double lesson, the
+ * slot taking its first half and the next lesson slot its second (the rooms
+ * apply to both halves).
  */
 export const placeRecordSchema = z
   .strictObject({
@@ -812,6 +820,7 @@ export const placeRecordSchema = z
     slotPosition: slotPositionSchema,
     roomId: z.uuid().optional(),
     rooms: blockRoomsSchema.optional(),
+    double: z.boolean().optional(),
   })
   .refine((place) => place.roomId === undefined || place.rooms === undefined, {
     message: 'A room or the rooms of the block.',

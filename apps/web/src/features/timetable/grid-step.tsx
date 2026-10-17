@@ -6,7 +6,13 @@ import {
   type PlaceRecord,
   type TimetableLockRecord,
 } from '@sodiq/shared';
-import { lockedBy, patternModel, type PatternBlock, type Suggestion } from '@sodiq/timetable-rules';
+import {
+  lockedBy,
+  patternModel,
+  type PatternBlock,
+  type PatternModel,
+  type Suggestion,
+} from '@sodiq/timetable-rules';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -70,11 +76,16 @@ import {
   cellStatus,
   clockBoardOf,
   newBlockOf,
+  newPairOf,
   NEW_BLOCK_ID,
   useSlotStatuses,
   type BoardCell,
   type Drop,
 } from './use-slot-status';
+
+/** A block not placed yet: the first half of a new double (task 5.4c-3a), or a single one. */
+const newOf = (model: PatternModel, rowId: string, double: boolean): PatternBlock =>
+  double ? newPairOf(model, rowId)[0] : newBlockOf(model, rowId);
 
 /**
  * Step 7 of the builder, the grid (06, Editing in the grid; task 5.4a, pull
@@ -258,6 +269,7 @@ export function GridStep({
           loadRowId: drop.block.lessons[0]?.loadRowId ?? '',
           weekday: weekdaySchema.parse(drop.to.weekday),
           slotPosition: drop.to.slotPosition,
+          ...(drop.double ? { double: true } : {}),
         });
       }
       throw new Error('Only a move or a swap is sent.');
@@ -286,6 +298,18 @@ export function GridStep({
   const rearrange = useMutation({
     mutationFn: (suggestion: Suggestion) => {
       if (model === null) throw new Error('The grid is not read yet.');
+      // Task 5.4c-3a (decision 6): a free slot of a double is its move.
+      const [selected, half] = suggestion.changes;
+      if (
+        selected?.from != null &&
+        selected.from.doublePairId !== null &&
+        half?.from?.doublePairId === selected.from.doublePairId
+      ) {
+        return moveBlock(versionId, selected.from.id, {
+          weekday: weekdaySchema.parse(selected.to.weekday),
+          slotPosition: selected.to.slotPosition,
+        });
+      }
       return rearrangeBlocks(versionId, rearrangeOf(model, suggestion));
     },
     onMutate: () => all,
@@ -422,7 +446,7 @@ export function GridStep({
       onDragStart: ({ source }) => {
         const data = source.data;
         if (isPlaceData(data) && model !== null) {
-          setMoving(newBlockOf(model, data.placeRowId));
+          setMoving(newOf(model, data.placeRowId, data.placeDouble === true));
           setRefusal(null);
           return;
         }
@@ -437,7 +461,7 @@ export function GridStep({
         if (target === undefined || !isCellData(target)) return;
         const block =
           isPlaceData(data) && model !== null
-            ? newBlockOf(model, data.placeRowId)
+            ? newOf(model, data.placeRowId, data.placeDouble === true)
             : isTileData(data)
               ? all.find((one) => one.id === data.blockId)
               : undefined;
@@ -802,14 +826,14 @@ export function GridStep({
               classId={chosen.id}
               editable={editable}
               highlightRowId={shownRow}
-              onPlace={(entry) => {
+              onPlace={(entry, double) => {
                 setRefusal(null);
                 setPlaced(false);
                 setAdding(null);
                 if (!entry.classIds.includes(chosen.id)) {
                   setClassId(entry.classIds[0] ?? chosen.id);
                 }
-                setMoving(newBlockOf(model, entry.rowId));
+                setMoving(newOf(model, entry.rowId, double));
                 setMenuOpen(true);
               }}
               onSuggest={(entry) => {

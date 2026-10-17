@@ -563,12 +563,19 @@ How to read the task lines:
   - From 5.4b-2b (pull request #134, decision 8): undo takes back an applied suggestion as one step; a suggestion that created a block is taken back by removing it in the same transaction (the rearrange route, widened).
   - From 5.4c-1 (pull request #135, decision 2): every step is a draft write and runs under the edit lock (`lockDraft`).
 
-- [ ] **5.4c-3 Grid: double lessons and mixed blocks**
-  - From 5.4c-2 (pull request #136, decision 11): the placing, moving and removal of a double lesson and of a mixed pairing are steps of the grid history (`apps/web/src/features/timetable/grid-history.ts`): each write records the blocks it changed (`stepOf`) and is taken back through the route of its kind (`writeOf`), so a write of two blocks together must be one step, taken back in one transaction.
-  - Read: `06` (Editing in the grid), `edge/timetable` (Structure: double lessons, mixed blocks).
-  - Build: double lessons placed and moved together; the pairing of the halves of a mixed split slot by slot.
-  - Done when: a double lesson is placed, moved and removed as one, and a mixed split is placed with both pairings.
-  - From 5.4a (pull request #130, decisions 8, 10 and 14): the grid refuses a half of a mixed split (`pattern_mixed_block`) and no route writes `pattern_blocks.double_pair_id`; the pairing of mixed halves and the double lessons placed and moved together (`edge/timetable`, Structure, Double lessons) are built here on the routes of `apps/api/src/modules/timetable/pattern.service.ts`.
+- [x] **5.4c-3a Grid: double lessons** (pull request #137)
+  - Read: `06` (Editing in the grid), `edge/timetable` (Structure: double lessons).
+  - Build: double lessons placed, moved, re-roomed and removed as one; each one step of undo and redo.
+  - Done when: a double lesson is placed, moved and removed as one.
+  - From 5.4c-3 (pull request #137, decision 1, Look first): split into 5.4c-3a (double lessons) and 5.4c-3b (mixed pairings).
+
+- [ ] **5.4c-3b Grid: mixed pairings**
+  - Read: `06` (Editing in the grid), `edge/timetable` (Structure: mixed blocks).
+  - Build: the pairing of the halves of a mixed split slot by slot.
+  - Done when: a mixed split is placed with both pairings.
+  - From 5.4c-3 (pull request #137, decision 1, Look first): split from 5.4c-3; 5.4c-3a built the double lessons. A place route body names one load row; a pairing needs the partner row too (the place route takes `double` since 5.4c-3a). A double of a mixed pairing is a pair of two such blocks whose rows all allow doubles (`double_not_allowed`).
+  - From 5.4c-2 (pull request #136, decision 11): the placing, moving and removal of a mixed pairing are steps of the grid history (`apps/web/src/features/timetable/grid-history.ts`): each write records the blocks it changed (`stepOf`) and is taken back through the route of its kind (`writeOf`), so a write of two blocks together must be one step, taken back in one transaction; `stillApplies` builds a block to place again with `newBlockOf`, which knows no pairing.
+  - From 5.4a (pull request #130, decisions 8, 10 and 14): the grid refuses a half of a mixed split (`pattern_mixed_block`); the pairing of mixed halves is built here on the routes of `apps/api/src/modules/timetable/pattern.service.ts`.
   - From 3.4b (pull request #100, decision 12, Look first): the halves of a split marked `mixed_block` meet in different slots; the pairing of two subjects' halves slot by slot (boys have physical education while girls have technology, and the reverse in another slot; `edge/timetable`, Structure) is placed and kept here.
 
 - [ ] **5.5a Publish: preview and checks**
@@ -589,6 +596,7 @@ How to read the task lines:
   - Done when: a version that starts mid-week and a holiday inside a week are tested.
   - From 5.1a (pull request #107, correction 6): `lessons` and `lesson_blocks` (0058) have no delete grant: the removal of empty future lessons at publish adds it in a migration of its own, with the check that a lesson holds no data. The columns that tie a dated lesson to its version (`lesson_blocks.version_id` and `pattern_block_id`, `lessons.load_row_id` and `pattern_entry_id`) have no update grant: this task decides whether an unchanged lesson is re-pointed to the new version under a grant of its own or stays with the version that created it, read through the chain (`edge/timetable`, Versions and drafts: "An unchanged lesson keeps its identity"). The routes map `40P01` and `40001` to `timetable_busy` and pass on a constraint name only, never the detail of an exclusion error.
   - From 3.6c-2 (pull request #125, decisions 3, 4, 6 and 11): a dated lesson of a Tutor row (a Tutor subject on a class row) takes the class's Tutor in force at its start (`tutorAt`, the acting Tutor first), not the pattern entry's teacher; with no Tutor then, or a clash of time or travel with the Tutor's other lessons and exams (`checkTeacherTime` over `teacher_claims_elsewhere`), it is created "needs a teacher", as `followTutors` (`apps/api/src/modules/timetable/tutor-lessons.ts`) sets it.
+  - From 5.4c-3a (pull request #137, decision 12): a dated lesson block made from a paired pattern block (`pattern_blocks.double_pair_id`) takes a `double_pair_id` of its own per date, shared with the other half of that date (0058 `lesson_blocks_double` counts a pair across all dates).
 
 - [ ] **5.5c Publish: journals, notices and withdraw**
   - Read: `06` (How surprises are prevented), `07` (first paragraph), `edge/timetable` (Versions and drafts), `edge/developer-rules`.
@@ -643,6 +651,7 @@ How to read the task lines:
   - From 2.7 (pull request #77, decision 2; issue #39, item 6): the same forced delete for a building, floor or room that nothing references (`03`, Building, floor, room; spec change of 13 October 2026), with a reason, an audit entry and 30 days to restore; a referenced one stays archive-only.
   - From 5.1a (pull request #107, correction 6): the forced delete of a dated lesson needs a delete grant on `lessons` and `lesson_blocks` (0058 gives none), added with its guard in a migration of its own.
   - From 5.4b-2a (pull request #133, decision 3): reopening an old version as a new draft ("Restore an earlier version") copies its pattern too; entries whose teacher, room, subject or class is no longer active go to the "to place" list with the reason (`edge/timetable`, Versions and drafts; `edge/academic-year`). The panel is `GridToPlace` (`apps/web/src/features/timetable/grid-to-place.tsx`); today a copy takes the load and the pins only.
+  - From 5.4c-3a (pull request #137, decision 12): a pattern copied into a new draft gives each double pair a new `double_pair_id` (0058 `pattern_blocks_double` counts a pair across all versions, so a copied id is refused).
 
 - [ ] **5.9 Timetable views, print and export**
   - Read: `06` (Views and outputs), `edge/system-behaviour`.
@@ -656,6 +665,7 @@ How to read the task lines:
   - From 5.2 (pull request #109): the re-check of the solver's output is `checkTimetable` in `mode: 'pattern'`; the blocked rules of `RULE_ORDER` (every code not in `WARNINGS`) are the hard constraints to mirror in Kotlin.
   - From 5.3b-2 (pull request #129, decisions 1 and 2): `edge/timetable`, Generator and editing: "Before generating, the locked and pinned lessons are checked on their own. A blocked conflict stops the run and lists the lessons." The pins are `timetable_pins` (0070): a load row, a weekday and a slot position, breaks counted, as `pattern_blocks.slot_position`; a pin of a group row holds its whole block in that slot. The solver keeps them fixed and treats the busy-elsewhere lessons of other branches, and the travel time around them, as fixed (`06`, Busy elsewhere).
   - From 5.3b-1 (pull request #128, decisions 3 and 8): the weights of the soft constraints are the eight `weight_<code>` columns of `timetable_versions` (codes `PREFERENCES` of `packages/timetable-rules`, in the order of the preferences table of `06`), whole numbers from 0 to 10; 0 means the preference is not used.
+  - From 5.4c-3a (pull request #137, decisions 2 and 11): `double_not_allowed` (a double of a load row without "double lessons allowed") is a blocked rule to mirror in Kotlin; the solver places doubles only for rows that allow them, as two blocks with one `double_pair_id` in consecutive lesson slots with the same teacher and room (`double_apart`, checked per load row).
 
 - [ ] **5.11 Generation in the product**
   - Read: `06` (Auto-generation, Building a timetable), `edge/timetable` (Generator and editing).
@@ -664,6 +674,7 @@ How to read the task lines:
   - From 5.3b-2 (pull request #129, decision 1): `edge/timetable`, Generator and editing: "Before generating, the locked and pinned lessons are checked on their own. A blocked conflict stops the run and lists the lessons." `requireReady` already reads the pins' check (step 5); once 5.4b adds the busy-elsewhere lessons to `pattern-facts.ts`, the check before a run counts them. The locks of 5.4c-1 (`timetable_locks`, `lockedBy` of `packages/timetable-rules/src/locks.ts`) join the same check before a run, and "Regenerate" changes only what they do not hold.
   - From 5.4c-1 (pull request #135, decision 2 with review correction 5): a run and the use of a variant are draft writes and take `lockDraft`, so they are refused `draft_edit_locked` while another account holds the draft's edit lock.
   - From 5.3b-1 (pull request #128, decision 6): the run route calls `requireReady` of the timetable service first, in the run's transaction (409 `draft_not_ready`, one detail per step not ready).
+  - From 5.4c-3a (pull request #137, decision 8): a lock on either half of a double holds the pair; Regenerate keeps the two halves together.
 
 - [ ] **5.12 Timetable end-to-end tests**
   - Read: `14` (Timetable).

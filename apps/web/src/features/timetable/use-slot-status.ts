@@ -4,6 +4,9 @@ import {
   checkCandidates,
   checkedPlacements,
   NEW_BLOCK_ID,
+  newPairOf,
+  otherHalf,
+  pairAt,
   patternPlacements,
   slotStatus,
   WEEK_COUNT_RULES,
@@ -120,12 +123,27 @@ export function blockAt(
 }
 
 /** A block not placed yet: one builder for the grid, the routes and "Suggest a place" (task 5.4b-2b). */
-export { NEW_BLOCK_ID, newBlockOf } from '@sodiq/timetable-rules';
+export { NEW_BLOCK_ID, newBlockOf, newPairOf } from '@sodiq/timetable-rules';
 
-/** What dropping a block on a cell does: a move, a swap with the block there, a place of a new block, or nothing. */
+/**
+ * What dropping a block on a cell does: a move, a swap with the block there, a
+ * place of a new block, or nothing. Task 5.4c-3a: `changed` is every block the
+ * write changes, both halves of a double; `double` places a new double.
+ */
 export type Drop =
-  | { readonly kind: 'move'; readonly block: PatternBlock; readonly to: PatternBlock }
-  | { readonly kind: 'place'; readonly block: PatternBlock; readonly to: PatternBlock }
+  | {
+      readonly kind: 'move';
+      readonly block: PatternBlock;
+      readonly to: PatternBlock;
+      readonly changed: readonly PatternBlock[];
+    }
+  | {
+      readonly kind: 'place';
+      readonly block: PatternBlock;
+      readonly to: PatternBlock;
+      readonly changed: readonly PatternBlock[];
+      readonly double: boolean;
+    }
   | {
       readonly kind: 'swap';
       readonly block: PatternBlock;
@@ -143,16 +161,44 @@ export function dropOf(
 ): Drop {
   if (block.id === NEW_BLOCK_ID) {
     // A new block is placed beside whatever is there; the engine names a clash.
+    if (block.doublePairId !== null) {
+      // Task 5.4c-3a: a new double, its first half at the cell (decision 4).
+      const rowId = block.lessons[0]?.loadRowId;
+      const position = positionFor(model, block, cell);
+      const pair =
+        rowId === undefined || position === null
+          ? null
+          : pairAt(model, newPairOf(model, rowId), NEW_BLOCK_ID, cell.weekday, position);
+      return pair === null
+        ? { kind: 'no_slot' }
+        : { kind: 'place', block, to: pair[0], changed: pair, double: true };
+    }
     const to = blockAt(model, block, cell);
-    return to === null ? { kind: 'no_slot' } : { kind: 'place', block, to };
+    return to === null
+      ? { kind: 'no_slot' }
+      : { kind: 'place', block, to, changed: [to], double: false };
   }
-  const other = board.blocksAt(cell).find((one) => one.id !== block.id);
+  // Task 5.4c-3a: a half of a double moves the pair (decision 5); its own other
+  // half in the cell is no block to swap with.
+  const half = otherHalf(board.blocks, block);
+  const other = board.blocksAt(cell).find((one) => one.id !== block.id && one.id !== half?.id);
   if (other === undefined) {
     if (block.weekday === cell.weekday && block.start < cell.end && cell.start < block.end) {
       return { kind: 'same' };
     }
+    if (half !== undefined) {
+      const position = positionFor(model, block, cell);
+      const halves: [PatternBlock, PatternBlock] =
+        block.start <= half.start ? [block, half] : [half, block];
+      const pair =
+        position === null ? null : pairAt(model, halves, block.id, cell.weekday, position);
+      const to = pair?.find((one) => one.id === block.id);
+      return pair === null || to === undefined
+        ? { kind: 'no_slot' }
+        : { kind: 'move', block, to, changed: pair };
+    }
     const to = blockAt(model, block, cell);
-    return to === null ? { kind: 'no_slot' } : { kind: 'move', block, to };
+    return to === null ? { kind: 'no_slot' } : { kind: 'move', block, to, changed: [to] };
   }
   const from: BoardCell = {
     weekday: block.weekday,
@@ -190,7 +236,7 @@ export function cellStatus(
   const drop = dropOf(model, board, block, cell);
   if (drop.kind === 'same') return { status: 'free', rule: null, drop };
   if (drop.kind === 'no_slot') return { status: 'blocked', rule: null, drop };
-  const changed = drop.kind === 'swap' ? drop.changed : [drop.to];
+  const { changed } = drop;
   const results: RuleResult[] = checkCandidates(
     checkedPlacements(model, all),
     model.facts,

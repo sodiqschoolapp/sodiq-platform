@@ -351,6 +351,7 @@ export async function readPatternFacts(
         roomType: row.room_type,
         lessonsPerWeek: row.lessons_per_week,
         mixedBlock: row.mixed_block,
+        doubleLessons: row.double_lessons,
         block: block.length === 0 ? [row.id] : block.map((one) => one.id).sort(),
       };
     }),
@@ -367,7 +368,7 @@ export async function readPatternFacts(
     data,
     model,
     placementOf: (row, at) =>
-      model.placementOf(model.rowOf(row.id), { ...at, roomId: row.room_id }),
+      model.placementOf(model.rowOf(row.id), { ...at, roomId: row.room_id, doublePairId: null }),
     dayOfRow: (row, weekday) => model.dayOfRows([model.rowOf(row.id)], weekday),
   };
 }

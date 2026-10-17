@@ -36,6 +36,8 @@ import {
   NEW_BLOCK_ID,
   patternPlacements,
   type PatternBlock,
+  otherHalf,
+  pairAt,
 } from './pattern-place.js';
 import { lockedBy, type PatternLock } from './locks.js';
 import type { Pin } from './pins.js';
@@ -174,7 +176,15 @@ export function suggestPlaces(
       const named = result.lessonIds
         .map((id) => blockOfLesson.get(id))
         .filter((one): one is PatternBlock => one !== undefined && !changedIds.has(one.id));
-      if (named.length === 0 || named.some(pinned) || named.some((one) => held(one))) return null;
+      // Task 5.4c-3a, decision 6: a half of a double is never moved as a blocker.
+      if (
+        named.length === 0 ||
+        named.some(pinned) ||
+        named.some((one) => held(one)) ||
+        named.some((one) => one.doublePairId !== null)
+      ) {
+        return null;
+      }
       for (const one of named) found.set(one.id, one);
     }
     return [...found.values()];
@@ -182,6 +192,12 @@ export function suggestPlaces(
 
   const free: Suggestion[] = [];
   const rearrangements: Suggestion[] = [];
+  const other = from === null ? undefined : otherHalf(all, from);
+  if (from !== null && other !== undefined) {
+    // Decision 8: a lock on either half holds the pair.
+    if (held(other)) return { free: [], rearrangements: [], cutShort: false, locked: true };
+    return pairSuggestions(from, other);
+  }
   const cells = slotsOf(model, block).filter(
     (one) => (from === null || !sameSlot(one, from)) && !held(block, one),
   );
@@ -238,6 +254,52 @@ export function suggestPlaces(
     cutShort,
     locked: false,
   };
+
+  /**
+   * A double (task 5.4c-3a, decision 6): the pair's free slots only, the
+   * selected half at each lesson slot and the other beside it (`pairAt`), both
+   * checked together; no room change and no rearrangement.
+   */
+  function pairSuggestions(selected: PatternBlock, half: PatternBlock): Suggestions {
+    const halves: [PatternBlock, PatternBlock] =
+      selected.start < half.start ? [selected, half] : [half, selected];
+    const found: Suggestion[] = [];
+    let short = false;
+    try {
+      for (const cell of slotsOf(model, selected)) {
+        const pair = pairAt(model, halves, selected.id, cell.weekday, cell.slotPosition);
+        if (pair === null) continue;
+        const [first, second] = pair;
+        const movedSelected = first.id === selected.id ? first : second;
+        const movedHalf = first.id === selected.id ? second : first;
+        if (sameSlot(movedSelected, selected)) continue;
+        if (held(selected, movedSelected) || held(half, movedHalf)) continue;
+        const results = check(pair);
+        if (blockedOf(results).length > 0) continue;
+        found.push({
+          changes: [
+            { from: selected, to: movedSelected },
+            { from: half, to: movedHalf },
+          ],
+          warnings: counted(results),
+          roomChanged: false,
+        });
+      }
+    } catch (error) {
+      if (!(error instanceof OutOfBudget)) throw error;
+      short = true;
+    }
+    return {
+      free: found
+        .map((one, index) => ({ one, index }))
+        .sort((a, b) => a.one.warnings.length - b.one.warnings.length || a.index - b.index)
+        .slice(0, FREE_SHOWN)
+        .map(({ one }) => one),
+      rearrangements: [],
+      cutShort: short,
+      locked: false,
+    };
+  }
 
   /**
    * The block at the cell with another room for each lesson a room rule names,

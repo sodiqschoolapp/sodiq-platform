@@ -199893,6 +199893,12 @@
                               ],
                               "additionalProperties": false
                             }
+                          },
+                          "doublePairId": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                           }
                         },
                         "required": [
@@ -199901,7 +199907,8 @@
                           "slotPosition",
                           "start",
                           "end",
-                          "lessons"
+                          "lessons",
+                          "doublePairId"
                         ],
                         "additionalProperties": false
                       }
@@ -200518,6 +200525,9 @@
                               "mixedBlock": {
                                 "type": "boolean"
                               },
+                              "doubleLessons": {
+                                "type": "boolean"
+                              },
                               "block": {
                                 "type": "array",
                                 "items": {
@@ -200537,6 +200547,7 @@
                               "roomType",
                               "lessonsPerWeek",
                               "mixedBlock",
+                              "doubleLessons",
                               "block"
                             ],
                             "additionalProperties": false
@@ -202196,6 +202207,12 @@
                               ],
                               "additionalProperties": false
                             }
+                          },
+                          "doublePairId": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                           }
                         },
                         "required": [
@@ -202204,7 +202221,8 @@
                           "slotPosition",
                           "start",
                           "end",
-                          "lessons"
+                          "lessons",
+                          "doublePairId"
                         ],
                         "additionalProperties": false
                       }
@@ -202821,6 +202839,9 @@
                               "mixedBlock": {
                                 "type": "boolean"
                               },
+                              "doubleLessons": {
+                                "type": "boolean"
+                              },
                               "block": {
                                 "type": "array",
                                 "items": {
@@ -202840,6 +202861,7 @@
                               "roomType",
                               "lessonsPerWeek",
                               "mixedBlock",
+                              "doubleLessons",
                               "block"
                             ],
                             "additionalProperties": false
@@ -208853,6 +208875,12 @@
                               ],
                               "additionalProperties": false
                             }
+                          },
+                          "doublePairId": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                           }
                         },
                         "required": [
@@ -208861,7 +208889,8 @@
                           "slotPosition",
                           "start",
                           "end",
-                          "lessons"
+                          "lessons",
+                          "doublePairId"
                         ],
                         "additionalProperties": false
                       }
@@ -209478,6 +209507,9 @@
                               "mixedBlock": {
                                 "type": "boolean"
                               },
+                              "doubleLessons": {
+                                "type": "boolean"
+                              },
                               "block": {
                                 "type": "array",
                                 "items": {
@@ -209497,6 +209529,7 @@
                               "roomType",
                               "lessonsPerWeek",
                               "mixedBlock",
+                              "doubleLessons",
                               "block"
                             ],
                             "additionalProperties": false
@@ -210795,6 +210828,9 @@
                       ],
                       "additionalProperties": false
                     }
+                  },
+                  "double": {
+                    "type": "boolean"
                   }
                 },
                 "required": [
@@ -211250,6 +211286,12 @@
                               ],
                               "additionalProperties": false
                             }
+                          },
+                          "doublePairId": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                           }
                         },
                         "required": [
@@ -211258,7 +211300,8 @@
                           "slotPosition",
                           "start",
                           "end",
-                          "lessons"
+                          "lessons",
+                          "doublePairId"
                         ],
                         "additionalProperties": false
                       }
@@ -211875,6 +211918,9 @@
                               "mixedBlock": {
                                 "type": "boolean"
                               },
+                              "doubleLessons": {
+                                "type": "boolean"
+                              },
                               "block": {
                                 "type": "array",
                                 "items": {
@@ -211894,6 +211940,7 @@
                               "roomType",
                               "lessonsPerWeek",
                               "mixedBlock",
+                              "doubleLessons",
                               "block"
                             ],
                             "additionalProperties": false
@@ -213578,6 +213625,12 @@
                               ],
                               "additionalProperties": false
                             }
+                          },
+                          "doublePairId": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                           }
                         },
                         "required": [
@@ -213586,7 +213639,8 @@
                           "slotPosition",
                           "start",
                           "end",
-                          "lessons"
+                          "lessons",
+                          "doublePairId"
                         ],
                         "additionalProperties": false
                       }
@@ -214203,6 +214257,9 @@
                               "mixedBlock": {
                                 "type": "boolean"
                               },
+                              "doubleLessons": {
+                                "type": "boolean"
+                              },
                               "block": {
                                 "type": "array",
                                 "items": {
@@ -214222,6 +214279,7 @@
                               "roomType",
                               "lessonsPerWeek",
                               "mixedBlock",
+                              "doubleLessons",
                               "block"
                             ],
                             "additionalProperties": false
@@ -215996,6 +216054,12 @@
                               ],
                               "additionalProperties": false
                             }
+                          },
+                          "doublePairId": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                           }
                         },
                         "required": [
@@ -216004,7 +216068,8 @@
                           "slotPosition",
                           "start",
                           "end",
-                          "lessons"
+                          "lessons",
+                          "doublePairId"
                         ],
                         "additionalProperties": false
                       }
@@ -216621,6 +216686,9 @@
                               "mixedBlock": {
                                 "type": "boolean"
                               },
+                              "doubleLessons": {
+                                "type": "boolean"
+                              },
                               "block": {
                                 "type": "array",
                                 "items": {
@@ -216640,6 +216708,7 @@
                               "roomType",
                               "lessonsPerWeek",
                               "mixedBlock",
+                              "doubleLessons",
                               "block"
                             ],
                             "additionalProperties": false
@@ -218367,6 +218436,12 @@
                               ],
                               "additionalProperties": false
                             }
+                          },
+                          "doublePairId": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                           }
                         },
                         "required": [
@@ -218375,7 +218450,8 @@
                           "slotPosition",
                           "start",
                           "end",
-                          "lessons"
+                          "lessons",
+                          "doublePairId"
                         ],
                         "additionalProperties": false
                       }
@@ -218992,6 +219068,9 @@
                               "mixedBlock": {
                                 "type": "boolean"
                               },
+                              "doubleLessons": {
+                                "type": "boolean"
+                              },
                               "block": {
                                 "type": "array",
                                 "items": {
@@ -219011,6 +219090,7 @@
                               "roomType",
                               "lessonsPerWeek",
                               "mixedBlock",
+                              "doubleLessons",
                               "block"
                             ],
                             "additionalProperties": false
@@ -220698,6 +220778,12 @@
                               ],
                               "additionalProperties": false
                             }
+                          },
+                          "doublePairId": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                           }
                         },
                         "required": [
@@ -220706,7 +220792,8 @@
                           "slotPosition",
                           "start",
                           "end",
-                          "lessons"
+                          "lessons",
+                          "doublePairId"
                         ],
                         "additionalProperties": false
                       }
@@ -221323,6 +221410,9 @@
                               "mixedBlock": {
                                 "type": "boolean"
                               },
+                              "doubleLessons": {
+                                "type": "boolean"
+                              },
                               "block": {
                                 "type": "array",
                                 "items": {
@@ -221342,6 +221432,7 @@
                               "roomType",
                               "lessonsPerWeek",
                               "mixedBlock",
+                              "doubleLessons",
                               "block"
                             ],
                             "additionalProperties": false
@@ -223001,6 +223092,12 @@
                               ],
                               "additionalProperties": false
                             }
+                          },
+                          "doublePairId": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                           }
                         },
                         "required": [
@@ -223009,7 +223106,8 @@
                           "slotPosition",
                           "start",
                           "end",
-                          "lessons"
+                          "lessons",
+                          "doublePairId"
                         ],
                         "additionalProperties": false
                       }
@@ -223626,6 +223724,9 @@
                               "mixedBlock": {
                                 "type": "boolean"
                               },
+                              "doubleLessons": {
+                                "type": "boolean"
+                              },
                               "block": {
                                 "type": "array",
                                 "items": {
@@ -223645,6 +223746,7 @@
                               "roomType",
                               "lessonsPerWeek",
                               "mixedBlock",
+                              "doubleLessons",
                               "block"
                             ],
                             "additionalProperties": false

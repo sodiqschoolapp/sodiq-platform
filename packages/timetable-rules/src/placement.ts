@@ -154,6 +154,8 @@ export interface EngineLoadRow {
   readonly lessonsPerWeek: number;
   /** "deliberately short" with a reason (06, Rules, last row); stored with publish, task 5.5a. */
   readonly deliberatelyShort: boolean;
+  /** "Whether double lessons are allowed" (05, Teaching load; task 5.4c-3a). */
+  readonly doubleLessons: boolean;
 }
 
 export interface Facts {

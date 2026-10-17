@@ -146,7 +146,11 @@ export {
   blockPlacements,
   checkedPlacements,
   NEW_BLOCK_ID,
+  NEW_SECOND_HALF_ID,
   newBlockOf,
+  newPairOf,
+  otherHalf,
+  pairAt,
   patternPlacements,
   slotAt,
   type BlockLesson,
@@ -154,6 +158,7 @@ export {
 } from './pattern-place.js';
 export {
   addedResults,
+  roomLessons,
   roomChange,
   roomChoices,
   type RoomChange,

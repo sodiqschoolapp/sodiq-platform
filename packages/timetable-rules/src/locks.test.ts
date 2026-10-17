@@ -15,6 +15,7 @@ const block = (id: string, rowIds: readonly string[], weekday: number): PatternB
   start: 480,
   end: 525,
   lessons: rowIds.map((loadRowId) => ({ id: `${id}:${loadRowId}`, loadRowId, roomId: null })),
+  doublePairId: null,
 });
 
 const math7a = block('a', ['math-7a'], 1);

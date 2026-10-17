@@ -55,6 +55,8 @@ export interface PatternRowData {
   readonly roomType: string | null;
   readonly lessonsPerWeek: number;
   readonly mixedBlock: boolean;
+  /** "Whether double lessons are allowed" (05, Teaching load; task 5.4c-3a, decision 2). */
+  readonly doubleLessons: boolean;
   /** The rows of its block, the row included, sorted (`blockOf`); the row alone for a class row. */
   readonly block: readonly string[];
 }
@@ -157,6 +159,8 @@ export interface PatternAt {
   readonly start: number;
   readonly end: number;
   readonly roomId: string | null;
+  /** The pair of a double lesson (task 5.4c-3a); `null` for a single lesson. */
+  readonly doublePairId: string | null;
 }
 
 export interface PatternModel {
@@ -197,6 +201,7 @@ export function factsFromData(data: PatternFactsData): Facts {
     lessonsPerWeek: row.lessonsPerWeek,
     // Stored with publish (5.5a).
     deliberatelyShort: false,
+    doubleLessons: row.doubleLessons,
   }));
   return {
     mode: 'pattern',
@@ -255,7 +260,7 @@ export function patternModel(data: PatternFactsData): PatternModel {
         start: at.start,
         end: at.end,
         blockId: at.blockId,
-        doublePairId: null,
+        doublePairId: at.doublePairId,
         classId: row.classId,
         groupId: row.groupId,
         classIds: unit.classIds,

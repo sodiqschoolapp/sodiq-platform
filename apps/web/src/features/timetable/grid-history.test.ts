@@ -38,6 +38,7 @@ const block = (
   start: 0,
   end: 45,
   lessons: [{ id: `${id}-lesson`, loadRowId: rowId, roomId }],
+  doublePairId: null,
 });
 
 const row = (id: string, block: string[] = [id]) => ({
@@ -50,6 +51,7 @@ const row = (id: string, block: string[] = [id]) => ({
   roomType: null,
   lessonsPerWeek: 3,
   mixedBlock: false,
+  doubleLessons: false,
   block,
 });
 
@@ -105,12 +107,14 @@ describe('the step of a write', () => {
             weekday: 1,
             slotPosition: 1,
             rooms: [{ loadRowId: ROW_A, roomId: ROOM }],
+            paired: false,
           },
           after: {
             blockId: A.id,
             weekday: 2,
             slotPosition: 1,
             rooms: [{ loadRowId: ROW_A, roomId: ROOM }],
+            paired: false,
           },
         },
       ],
@@ -282,5 +286,84 @@ describe('the lists of steps', () => {
       route: 'remove',
       blockId: again.id,
     });
+  });
+});
+
+// Task 5.4c-3a: the two halves of a double lesson are one step, written by
+// one route on either half (From 5.4c-2 line, decision 11).
+describe('the steps of a double lesson', () => {
+  const PAIR = uid(30);
+  const half = (id: string, slotPosition: number, roomId: string | null = ROOM): PatternBlock => ({
+    ...block(id, ROW_A, 1, slotPosition, roomId),
+    doublePairId: PAIR,
+  });
+  const first = half(uid(31), 1);
+  const second = half(uid(32), 3);
+
+  it('takes a placed double back by removing one half, and places it again as a double', () => {
+    const step = stepFrom(stepOf('place', [B], [B, first, second]));
+    expect(step.changes).toHaveLength(2);
+    expect(writeOf(step, 'undo', [B, first, second])).toEqual({
+      route: 'remove',
+      blockId: first.id,
+    });
+    expect(writeOf(step, 'redo', [B])).toEqual({
+      route: 'place',
+      body: {
+        loadRowId: ROW_A,
+        weekday: 1,
+        slotPosition: 1,
+        rooms: [{ loadRowId: ROW_A, roomId: ROOM }],
+        double: true,
+      },
+    });
+  });
+
+  it('takes a moved double back by moving one half, the other going with it', () => {
+    const moved = [
+      { ...first, weekday: 2 },
+      { ...second, weekday: 2 },
+    ];
+    const step = stepFrom(stepOf('move', [first, second], moved));
+    expect(step.changes).toHaveLength(2);
+    expect(writeOf(step, 'undo', moved)).toEqual({
+      route: 'move',
+      blockId: first.id,
+      body: { weekday: 1, slotPosition: 1 },
+    });
+  });
+
+  it('takes a removed double back by placing it as a double, with its rooms', () => {
+    const step = stepFrom(stepOf('remove', [first, second], []));
+    expect(writeOf(step, 'undo', [])).toMatchObject({
+      route: 'place',
+      body: { loadRowId: ROW_A, slotPosition: 1, double: true },
+    });
+  });
+
+  it('gives back the room of both halves through the room route of one', () => {
+    const before = [half(first.id, 1, null), half(second.id, 3, null)];
+    const step = stepFrom(stepOf('room', before, [first, second]));
+    expect(writeOf(step, 'undo', [first, second])).toEqual({
+      route: 'room',
+      blockId: first.id,
+      body: { lessonId: first.lessons[0]?.id, roomId: null },
+    });
+  });
+
+  it('names both halves placed again by their new ids', () => {
+    const step = stepFrom(stepOf('remove', [first, second], []));
+    const again = [half(uid(41), 1), half(uid(42), 3)];
+    expect(placedAgain(step, 'undo', [], again)).toEqual([
+      { from: first.id, to: uid(41) },
+      { from: second.id, to: uid(42) },
+    ]);
+  });
+
+  it('tells a half from a single lesson in the same slot (a step of a single lesson does not apply)', () => {
+    const single = { ...first, doublePairId: null };
+    const step = stepFrom(stepOf('move', [{ ...single, slotPosition: 3 }], [single]));
+    expect(stillApplies(modelOf([row(ROW_A)]), [single], step, 'undo')).toBe(true);
+    expect(stillApplies(modelOf([row(ROW_A)]), [first], step, 'undo')).toBe(false);
   });
 });

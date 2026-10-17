@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import {
   gridSchema,
@@ -20,8 +21,12 @@ import {
   checkTimetable,
   lockedBy,
   newBlockOf,
+  newPairOf,
+  otherHalf,
+  pairAt,
   patternPlacements,
   roomChange,
+  roomLessons,
   type BlockLesson,
   type PatternBlock,
   type PatternModel,
@@ -54,6 +59,8 @@ const PATTERN_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   pattern_entries_room_excl: 'pattern_clash',
   pattern_block_classes_excl: 'pattern_clash',
   pattern_room_shared_full: 'pattern_clash',
+  // Task 5.4c-3a (plan review, should-fix 2): the pair guard of 0058, at the commit.
+  pattern_double_pair: 'pattern_clash',
 };
 
 async function refusingPattern<T>(work: () => Promise<T>): Promise<T> {
@@ -98,7 +105,11 @@ interface PatternState {
 /** A block at a weekday and slot, with the minutes of that slot; `pattern_no_slot` without one. */
 function blockAt(
   model: PatternModel,
-  block: { readonly id: string; readonly lessons: readonly BlockLesson[] },
+  block: {
+    readonly id: string;
+    readonly lessons: readonly BlockLesson[];
+    readonly doublePairId?: string | null;
+  },
   weekday: number,
   slotPosition: number,
 ): PatternBlock {
@@ -106,8 +117,23 @@ function blockAt(
   if (first === undefined) {
     throw refused('pattern_no_slot');
   }
-  return { ...block, weekday, slotPosition, start: first.start, end: first.end };
+  return {
+    ...block,
+    doublePairId: block.doublePairId ?? null,
+    weekday,
+    slotPosition,
+    start: first.start,
+    end: first.end,
+  };
 }
+
+/** The two halves of a double, the earlier first (task 5.4c-3a). */
+const halvesOf = (a: PatternBlock, b: PatternBlock): [PatternBlock, PatternBlock] =>
+  a.start <= b.start ? [a, b] : [b, a];
+
+/** The pair of a double in an audit entry; nothing for a single lesson (decision 10). */
+const pairValue = (block: PatternBlock) =>
+  block.doublePairId === null ? {} : { doublePairId: block.doublePairId };
 
 /**
  * The lessons of the weekly pattern placed by hand in the grid of step 7
@@ -148,7 +174,12 @@ export class TimetablePattern {
     });
   }
 
-  /** A load row placed at a slot with its whole block (decision 8); refused when blocked. */
+  /**
+   * A load row placed at a slot with its whole block (decision 8); refused when
+   * blocked. Task 5.4c-3a: `double` places a double lesson, the first half at
+   * the slot and the second in the next lesson slot (`pairAt`), both checked
+   * together and written with one pair id.
+   */
   place(access: Access, id: string, input: PlaceRecord, requestId: string): Promise<GridAnswer> {
     return refusingPattern(() =>
       this.transactions.run(access.branchIds, async (transaction) => {
@@ -185,6 +216,35 @@ export class TimetablePattern {
             ? { ...lesson, roomId: input.roomId }
             : lesson;
         });
+        if (input.double === true) {
+          const doublePairId = randomUUID();
+          const [first, second] = newPairOf(model, row.id);
+          const pair = pairAt(
+            model,
+            [
+              { ...first, lessons, doublePairId },
+              {
+                ...second,
+                lessons: second.lessons.map((lesson, index) => ({
+                  ...lesson,
+                  roomId: lessons[index]?.roomId ?? lesson.roomId,
+                })),
+                doublePairId,
+              },
+            ],
+            first.id,
+            input.weekday,
+            input.slotPosition,
+          );
+          if (pair === null) {
+            throw refused('pattern_no_slot');
+          }
+          this.refuseBlocked(state, pair);
+          for (const half of pair) {
+            await this.insertBlock(transaction, access, state, half, requestId);
+          }
+          return this.gridAfter(transaction, version, access.accountId);
+        }
         const placed = blockAt(model, { id: fresh.id, lessons }, input.weekday, input.slotPosition);
         this.refuseBlocked(state, [placed]);
         await this.insertBlock(transaction, access, state, placed, requestId);
@@ -193,7 +253,12 @@ export class TimetablePattern {
     );
   }
 
-  /** A block moved whole to another weekday and slot; nothing is written when it is already there. */
+  /**
+   * A block moved whole to another weekday and slot; nothing is written when it
+   * is already there. Task 5.4c-3a: a half of a double takes the pair, the
+   * other half beside it (`pairAt`, decision 5), the clash constraints
+   * checked at the commit (the halves may cross each other's old slots).
+   */
   move(
     access: Access,
     id: string,
@@ -210,19 +275,45 @@ export class TimetablePattern {
         if (block.weekday === input.weekday && block.slotPosition === input.slotPosition) {
           return this.gridOf(transaction, state);
         }
-        const moved = blockAt(state.pattern.model, block, input.weekday, input.slotPosition);
-        this.refuseBlocked(state, [moved]);
-        await this.writeSlot(transaction, moved);
-        await this.audit.record(transaction, {
-          branchId,
-          actorId: access.accountId,
-          assignmentId: access.assignmentId,
-          action: 'pattern_block.move',
-          record: { type: 'pattern_block', id: block.id },
-          oldValue: { versionId: id, ...this.slotOf(block) },
-          newValue: { versionId: id, ...this.slotOf(moved) },
-          requestId,
-        });
+        const other = otherHalf(state.blocks, block);
+        let moves: [PatternBlock, PatternBlock][];
+        if (other === undefined) {
+          moves = [[block, blockAt(state.pattern.model, block, input.weekday, input.slotPosition)]];
+        } else {
+          const halves = halvesOf(block, other);
+          const pair = pairAt(
+            state.pattern.model,
+            halves,
+            block.id,
+            input.weekday,
+            input.slotPosition,
+          );
+          if (pair === null) {
+            throw refused('pattern_no_slot');
+          }
+          moves = [
+            [halves[0], pair[0]],
+            [halves[1], pair[1]],
+          ];
+          await deferPatternClashes(transaction);
+        }
+        this.refuseBlocked(
+          state,
+          moves.map(([, to]) => to),
+        );
+        for (const [from, to] of moves) {
+          await this.writeSlot(transaction, to);
+          await this.audit.record(transaction, {
+            branchId,
+            actorId: access.accountId,
+            assignmentId: access.assignmentId,
+            action: 'pattern_block.move',
+            record: { type: 'pattern_block', id: from.id },
+            oldValue: { versionId: id, ...this.slotOf(from), ...pairValue(from) },
+            newValue: { versionId: id, ...this.slotOf(to), ...pairValue(to) },
+            requestId,
+          });
+        }
         return this.gridAfter(transaction, version, access.accountId);
       }),
     );
@@ -299,38 +390,47 @@ export class TimetablePattern {
         ) {
           throw notFound();
         }
-        if (lesson.roomId === input.roomId) {
+        // Task 5.4c-3a, decision 7: in a double, the row's lesson of both halves.
+        const changed = roomLessons(state.blocks, block, lesson.id).flatMap((one) => {
+          const found = one.block.lessons.find((each) => each.id === one.lessonId);
+          return found === undefined ? [] : [{ block: one.block, lesson: found }];
+        });
+        if (changed.every((one) => one.lesson.roomId === input.roomId)) {
           return this.gridOf(transaction, state);
         }
         const change = roomChange(model, state.blocks, block, lesson.id, input.roomId);
         if (!change.accepted) {
           throw blockedRefusal(change.blocked);
         }
-        await transaction
-          .updateTable('pattern_entries')
-          .set({ room_id: input.roomId })
-          .where('id', '=', lesson.id)
-          .execute();
-        await this.audit.record(transaction, {
-          branchId,
-          actorId: access.accountId,
-          assignmentId: access.assignmentId,
-          action: 'pattern_entry.room',
-          record: { type: 'pattern_entry', id: lesson.id },
-          oldValue: {
-            versionId: id,
-            blockId: block.id,
-            loadRowId: lesson.loadRowId,
-            roomId: lesson.roomId,
-          },
-          newValue: {
-            versionId: id,
-            blockId: block.id,
-            loadRowId: lesson.loadRowId,
-            roomId: input.roomId,
-          },
-          requestId,
-        });
+        for (const one of changed) {
+          await transaction
+            .updateTable('pattern_entries')
+            .set({ room_id: input.roomId })
+            .where('id', '=', one.lesson.id)
+            .execute();
+          await this.audit.record(transaction, {
+            branchId,
+            actorId: access.accountId,
+            assignmentId: access.assignmentId,
+            action: 'pattern_entry.room',
+            record: { type: 'pattern_entry', id: one.lesson.id },
+            oldValue: {
+              versionId: id,
+              blockId: one.block.id,
+              loadRowId: one.lesson.loadRowId,
+              roomId: one.lesson.roomId,
+              ...pairValue(one.block),
+            },
+            newValue: {
+              versionId: id,
+              blockId: one.block.id,
+              loadRowId: one.lesson.loadRowId,
+              roomId: input.roomId,
+              ...pairValue(one.block),
+            },
+            requestId,
+          });
+        }
         return this.gridAfter(transaction, version, access.accountId);
       }),
     );
@@ -360,7 +460,11 @@ export class TimetablePattern {
         const { model } = state.pattern;
         const changes = input.changes.map((change) => {
           let from: PatternBlock | null = null;
-          let block: { readonly id: string; readonly lessons: readonly BlockLesson[] };
+          let block: {
+            readonly id: string;
+            readonly lessons: readonly BlockLesson[];
+            readonly doublePairId: string | null;
+          };
           if (change.blockId !== undefined) {
             from = this.blockOf(state, change.blockId);
             block = from;
@@ -387,7 +491,12 @@ export class TimetablePattern {
             const room = rooms.find((one) => one.loadRowId === lesson.loadRowId);
             return room === undefined ? lesson : { ...lesson, roomId: room.roomId };
           });
-          const to = blockAt(model, { id: block.id, lessons }, change.weekday, change.slotPosition);
+          const to = blockAt(
+            model,
+            { id: block.id, lessons, doublePairId: block.doublePairId },
+            change.weekday,
+            change.slotPosition,
+          );
           return { from, to };
         });
         const effective = changes.filter(
@@ -397,7 +506,12 @@ export class TimetablePattern {
             from.slotPosition !== to.slotPosition ||
             from.lessons.some((lesson, index) => lesson.roomId !== to.lessons[index]?.roomId),
         );
-        const removed = (input.remove ?? []).map((blockId) => this.blockOf(state, blockId));
+        // Task 5.4c-3a: a removed half of a double takes the other half with it.
+        const removed = (input.remove ?? []).flatMap((blockId) => {
+          const block = this.blockOf(state, blockId);
+          const other = otherHalf(state.blocks, block);
+          return other === undefined ? [block] : [block, other];
+        });
         if (effective.length === 0 && removed.length === 0) {
           return this.gridOf(transaction, state);
         }
@@ -496,7 +610,10 @@ export class TimetablePattern {
     );
   }
 
-  /** A block removed with its lessons; the audit entry keeps every lesson it removes. */
+  /**
+   * A block removed with its lessons; the audit entry keeps every lesson it
+   * removes. Task 5.4c-3a: a half of a double removes both halves.
+   */
   remove(access: Access, id: string, blockId: string, requestId: string): Promise<GridAnswer> {
     const branchId = branchOf(access);
     return refusingPattern(() =>
@@ -504,16 +621,19 @@ export class TimetablePattern {
         const version = await this.timetable.lockDraft(transaction, access, id, requestId);
         const state = await this.stateOf(transaction, version, access.accountId);
         const block = this.blockOf(state, blockId);
-        await this.audit.record(transaction, {
-          branchId,
-          actorId: access.accountId,
-          assignmentId: access.assignmentId,
-          action: 'pattern_block.delete',
-          record: { type: 'pattern_block', id: block.id },
-          oldValue: this.removedValue(state, block),
-          requestId,
-        });
-        await transaction.deleteFrom('pattern_blocks').where('id', '=', block.id).execute();
+        const other = otherHalf(state.blocks, block);
+        for (const one of other === undefined ? [block] : [block, other]) {
+          await this.audit.record(transaction, {
+            branchId,
+            actorId: access.accountId,
+            assignmentId: access.assignmentId,
+            action: 'pattern_block.delete',
+            record: { type: 'pattern_block', id: one.id },
+            oldValue: this.removedValue(state, one),
+            requestId,
+          });
+          await transaction.deleteFrom('pattern_blocks').where('id', '=', one.id).execute();
+        }
         return this.gridAfter(transaction, version, access.accountId);
       }),
     );
@@ -642,6 +762,7 @@ export class TimetablePattern {
         slot_position: placed.slotPosition,
         start_minutes: placed.start,
         end_minutes: placed.end,
+        double_pair_id: placed.doublePairId,
       })
       .returning('id')
       .executeTakeFirstOrThrow();
@@ -677,6 +798,7 @@ export class TimetablePattern {
           teacherId: model.rowOf(lesson.loadRowId).teacherId,
           roomId: lesson.roomId,
         })),
+        ...pairValue(placed),
         ...(rearrangedWith === undefined ? {} : { rearrangedWith: [...rearrangedWith] }),
       },
       requestId,
@@ -711,6 +833,7 @@ export class TimetablePattern {
     return {
       versionId: state.version.id,
       ...this.slotOf(block),
+      ...pairValue(block),
       lessons: block.lessons.map((lesson) => ({
         id: lesson.id,
         loadRowId: lesson.loadRowId,

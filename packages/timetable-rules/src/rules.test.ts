@@ -22,6 +22,7 @@ describe('FIXED_RULES', () => {
       'break_slot',
       'two_grade_slot',
       'double_apart',
+      'double_not_allowed',
       'teacher_branch',
       'teacher_inactive',
       'teacher_subject',

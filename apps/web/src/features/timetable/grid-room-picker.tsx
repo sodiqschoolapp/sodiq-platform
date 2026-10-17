@@ -1,5 +1,10 @@
 import type { GridAnswer } from '@sodiq/shared';
-import { roomChoices, type PatternBlock, type PatternModel } from '@sodiq/timetable-rules';
+import {
+  otherHalf,
+  roomChoices,
+  type PatternBlock,
+  type PatternModel,
+} from '@sodiq/timetable-rules';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import {
@@ -135,6 +140,9 @@ export function GridRoomPicker({
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
+        {block !== null && otherHalf(all, block) !== undefined && (
+          <p className="text-sm">{t('timetable.grid.roomBothHalves')}</p>
+        )}
         {block !== null && lesson !== undefined && (
           <RoomChoiceList
             grid={grid}

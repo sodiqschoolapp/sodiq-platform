@@ -29,6 +29,8 @@ export interface BlockState {
   readonly weekday: number;
   readonly slotPosition: number;
   readonly rooms: readonly { readonly loadRowId: string; readonly roomId: string | null }[];
+  /** A half of a double lesson (task 5.4c-3a); a pair placed again has a new pair id. */
+  readonly paired: boolean;
 }
 
 export interface StepChange {
@@ -60,6 +62,7 @@ export function stateOf(block: PatternBlock): BlockState {
     weekday: block.weekday,
     slotPosition: block.slotPosition,
     rooms: block.lessons.map((lesson) => ({ loadRowId: lesson.loadRowId, roomId: lesson.roomId })),
+    paired: block.doublePairId !== null,
   };
 }
 
@@ -67,6 +70,7 @@ const sameState = (a: BlockState, b: BlockState): boolean =>
   a.blockId === b.blockId &&
   a.weekday === b.weekday &&
   a.slotPosition === b.slotPosition &&
+  a.paired === b.paired &&
   a.rooms.length === b.rooms.length &&
   a.rooms.every((room) =>
     b.rooms.some((one) => one.loadRowId === room.loadRowId && one.roomId === room.roomId),
@@ -220,6 +224,54 @@ export function writeOf(
   if (step.kind === 'swap' && second?.from != null && first.from !== null) {
     return { route: 'swap', body: { blockIds: [first.from.blockId, second.from.blockId] } };
   }
+  // Task 5.4c-3a: the two halves of a double are one step, written by one
+  // route on either half: placed again as a double, removed, or moved.
+  if (
+    second !== undefined &&
+    moves.length === 2 &&
+    moves.every(({ from, to }) => (from ?? to)?.paired === true) &&
+    step.kind !== 'room'
+  ) {
+    if (first.from === null && second.from === null && first.to !== null && second.to !== null) {
+      const [earlier] = [first.to, second.to].sort(
+        (a, b) => a.weekday - b.weekday || a.slotPosition - b.slotPosition,
+      );
+      if (earlier !== undefined) {
+        return {
+          route: 'place',
+          body: {
+            loadRowId: earlier.rooms[0]?.loadRowId ?? '',
+            ...slotOf(earlier),
+            rooms: roomsOf(earlier),
+            double: true,
+          },
+        };
+      }
+    }
+    if (first.to === null && second.to === null && first.from !== null) {
+      return { route: 'remove', blockId: first.from.blockId };
+    }
+    if (first.from !== null && first.to !== null) {
+      return { route: 'move', blockId: first.from.blockId, body: slotOf(first.to) };
+    }
+  }
+  // A room of a double changes both halves through the room route of one.
+  if (step.kind === 'room' && first.from !== null && first.to !== null) {
+    const from = first.from;
+    const changed = first.to.rooms.find(
+      (room) => from.rooms.find((one) => one.loadRowId === room.loadRowId)?.roomId !== room.roomId,
+    );
+    const lesson = blocks
+      .find((one) => one.id === from.blockId)
+      ?.lessons.find((one) => one.loadRowId === changed?.loadRowId);
+    if (changed !== undefined && lesson !== undefined) {
+      return {
+        route: 'room',
+        blockId: from.blockId,
+        body: { lessonId: lesson.id, roomId: changed.roomId },
+      };
+    }
+  }
   if (step.kind !== 'suggestion' && moves.length === 1) {
     const { from, to } = first;
     if (to === null && from !== null) return { route: 'remove', blockId: from.blockId };
@@ -228,22 +280,6 @@ export function writeOf(
         route: 'place',
         body: { loadRowId: to.rooms[0]?.loadRowId ?? '', ...slotOf(to), rooms: roomsOf(to) },
       };
-    }
-    if (from !== null && to !== null && step.kind === 'room') {
-      const changed = to.rooms.find(
-        (room) =>
-          from.rooms.find((one) => one.loadRowId === room.loadRowId)?.roomId !== room.roomId,
-      );
-      const lesson = blocks
-        .find((one) => one.id === from.blockId)
-        ?.lessons.find((one) => one.loadRowId === changed?.loadRowId);
-      if (changed !== undefined && lesson !== undefined) {
-        return {
-          route: 'room',
-          blockId: from.blockId,
-          body: { lessonId: lesson.id, roomId: changed.roomId },
-        };
-      }
     }
     if (from !== null && to !== null && step.kind === 'move') {
       return { route: 'move', blockId: from.blockId, body: slotOf(to) };

@@ -81,6 +81,7 @@ export const row = (id: string, extra: Partial<PatternRowData> = {}): PatternRow
   roomType: null,
   lessonsPerWeek: 3,
   mixedBlock: false,
+  doubleLessons: false,
   block: [id],
   ...extra,
 });

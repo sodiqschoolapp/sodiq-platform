@@ -612,6 +612,99 @@ describe('the day', () => {
       'double_apart',
     ]);
   });
+
+  // Task 5.4c-3a, decision 3: a double of a block of several lessons is two
+  // lessons per load row, each row checked on its own.
+  describe('a double of a block of two lessons', () => {
+    const half = (blockId: string, slot: { start: number; end: number }) => [
+      place({
+        id: `${blockId}-m1`,
+        blockId,
+        doublePairId: 'dp',
+        ...slot,
+        classId: null,
+        groupId: '7m1',
+        classIds: ['7a'],
+        studentIds: ['s1', 's2'],
+        loadRowId: 'row-m1',
+        teacherIds: ['t1'],
+        roomId: 'r1',
+      }),
+      place({
+        id: `${blockId}-m2`,
+        blockId,
+        doublePairId: 'dp',
+        ...slot,
+        classId: null,
+        groupId: '7m2',
+        classIds: ['7a'],
+        studentIds: ['s3', 's4'],
+        loadRowId: 'row-m2',
+        teacherIds: ['t2'],
+        roomId: 'r2',
+      }),
+    ];
+    const rows = [
+      { id: 'row-m1', lessonsPerWeek: 2, deliberatelyShort: false, doubleLessons: true },
+      { id: 'row-m2', lessonsPerWeek: 2, deliberatelyShort: false, doubleLessons: true },
+    ];
+    const pairRules = (placements: Placement[]) =>
+      codes(checkTimetable(placements, facts({ loadRows: rows }))).filter(
+        (code) => code === 'double_apart' || code === 'double_not_allowed',
+      );
+
+    it('accepts both rows in consecutive slots, each with its teacher and room', () => {
+      expect(pairRules([...half('b1', L1), ...half('b2', L2)])).toEqual([]);
+    });
+
+    it('refuses one row whose second lesson is in another room', () => {
+      const [m1, m2] = half('b2', L2);
+      if (m1 === undefined || m2 === undefined) throw new Error('two lessons');
+      expect(
+        only(
+          checkTimetable(
+            [...half('b1', L1), { ...m1, roomId: 'small' }, m2],
+            facts({ loadRows: rows }),
+          ),
+          'double_apart',
+        ).map((one) => one.lessonIds),
+      ).toEqual([['b1-m1', 'b2-m1']]);
+    });
+
+    it('refuses one row whose second lesson is in another slot', () => {
+      const [m1, m2] = half('b2', L2);
+      if (m1 === undefined || m2 === undefined) throw new Error('two lessons');
+      expect(pairRules([...half('b1', L1), { ...m1, ...L3 }, m2])).toEqual(['double_apart']);
+    });
+
+    it('refuses a half that lacks the lesson of one row', () => {
+      const [, m2] = half('b2', L2);
+      if (m2 === undefined) throw new Error('two lessons');
+      expect(pairRules([...half('b1', L1), m2])).toEqual(['double_apart']);
+    });
+
+    it('refuses a double of a row that does not allow double lessons, and only that row', () => {
+      const mixed = [
+        { id: 'row-m1', lessonsPerWeek: 2, deliberatelyShort: false, doubleLessons: true },
+        { id: 'row-m2', lessonsPerWeek: 2, deliberatelyShort: false, doubleLessons: false },
+      ];
+      const results = only(
+        checkTimetable([...half('b1', L1), ...half('b2', L2)], facts({ loadRows: mixed })),
+        'double_not_allowed',
+      );
+      expect(results.map((one) => [one.severity, one.lessonIds])).toEqual([
+        ['blocked', ['b1-m2', 'b2-m2']],
+      ]);
+    });
+
+    it('never names a single lesson of a row that does not allow double lessons', () => {
+      const single = place({ id: 's', loadRowId: 'row-m1' });
+      const noDoubles = rows.map((one) => ({ ...one, doubleLessons: false }));
+      expect(
+        only(checkTimetable([single], facts({ loadRows: noDoubles })), 'double_not_allowed'),
+      ).toEqual([]);
+    });
+  });
 });
 
 describe('the teacher, the subject and the room', () => {
@@ -1068,8 +1161,8 @@ describe('warnings', () => {
 
   it('warns when the lessons placed differ from the load, unless deliberately short', () => {
     const rows = [
-      { id: 'row1', lessonsPerWeek: 2, deliberatelyShort: false },
-      { id: 'row2', lessonsPerWeek: 2, deliberatelyShort: true },
+      { id: 'row1', lessonsPerWeek: 2, deliberatelyShort: false, doubleLessons: false },
+      { id: 'row2', lessonsPerWeek: 2, deliberatelyShort: true, doubleLessons: false },
     ];
     const placements = [
       place({ id: 'a', loadRowId: 'row1' }),
@@ -1137,8 +1230,8 @@ describe('results that differ only in their detail (review of the build, must-fi
 
   it('lists every load row with no lesson placed', () => {
     const rows = [
-      { id: 'row1', lessonsPerWeek: 2, deliberatelyShort: false },
-      { id: 'row2', lessonsPerWeek: 3, deliberatelyShort: false },
+      { id: 'row1', lessonsPerWeek: 2, deliberatelyShort: false, doubleLessons: false },
+      { id: 'row2', lessonsPerWeek: 3, deliberatelyShort: false, doubleLessons: false },
     ];
     expect(
       only(checkTimetable([], facts({ loadRows: rows })), 'load_mismatch').map((one) => one.detail),
