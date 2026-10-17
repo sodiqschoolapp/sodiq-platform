@@ -246,6 +246,21 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 17 October 2026: the grid, double lessons (task 5.4c-3a)
+
+Plan approved on pull request #137 with corrections 1 to 3; decisions 1 to 12 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** 5.4c-3 is split into 5.4c-3a (double lessons) and 5.4c-3b (mixed pairings) | Decision 1; each changes every write path of the grid and its undo on its own |
+| **Look first.** New blocked rule `double_not_allowed` in `FIXED_RULES` and `RULE_ORDER`: a double of a row without "double lessons allowed". Proposed `/spec-change` for `06`, Rules: add "Blocked: A double lesson of a teaching load row that does not allow double lessons." | Decision 2; `05`, Teaching load, Fields; fills a silence of `06`, Rules |
+| A double is two blocks sharing `double_pair_id`, each the whole block of its rows; `double_apart` checks each load row's two lessons | Decision 3; `edge/timetable`, Structure |
+| The second half goes in the next lesson slot (a break between allowed); a move names either half, which takes the slot, the other beside it (`pairAt`) | Decisions 4 and 5 |
+| Swap and rearrange never move a half alone (the engine's `double_apart`); "Suggest a place" on a double offers its free slots only, applied by the move route; a removal of either half removes both; no join or split route | Decision 6, plan review finding 9 |
+| A room change of a lesson of a double changes that row's lesson in both halves (`roomLessons`) | Decision 7 |
+| A lock on either half holds the pair; no database constraint for consecutive slots, teacher and room; the existing audit kinds carry `doublePairId` | Decisions 8 to 10 |
+| `pattern_double_pair` (0058, at the commit) maps to `pattern_clash` | Plan review, should-fix 2 |
+
 ## 17 October 2026: the grid, undo and redo (task 5.4c-2)
 
 Plan approved on pull request #136 with no corrections; decisions 1 to 11 confirmed there. Flagged on issue #42.
