@@ -66,6 +66,7 @@ export type AccountKey =
   | 'teachingLoad'
   | 'teachingBlocks'
   | 'draftBuilder'
+  | 'draftGrid'
   | 'whoTeacher'
   | 'whoHeadTutor'
   | 'whoHeadTeacher';
