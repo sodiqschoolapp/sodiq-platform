@@ -503,13 +503,20 @@ How to read the task lines:
   - From 1.5 (pull request #46): `lessonSlotProblem` and `lessonTimeProblem` exist; every lesson write calls them, so "a lesson can only sit in a lesson slot" holds on the server and not only in the engine.
   - From 1.6 (pull request #49, decision 4): travel time is `travel_times`, one row per unordered pair of branches; a pair without a row is "not set", never 0 minutes. This task decides what the rule does with an unset pair, and flags it.
 
-- [ ] **5.3 Draft builder, steps 1 to 5**
+- [x] **5.3a Draft builder, steps 1 to 4** (pull request #127)
   - Read: `06` (Building a timetable, Rules), `03` (Slot types and day templates), `04` (Teacher and staff record), `edge/timetable` (After publishing).
-  - Build: draft versions; the steps for templates, load, teachers, rooms and rules with their "ready when" checks; pinned lessons; availability as dated entries; a draft checks the entries in force on its intended start date.
-  - Done when: a draft cannot move to generation while a readiness check fails.
-  - From 3.4a (pull request #99, decision 15 and correction 6): draft versions exist with their start date ("next Monday by default") and the load; this task adds the rest of step 1, the first day of a coming quarter as a shortcut, the readiness of the load step (the problems of each row, `loadRowProblems`), and the load step's list of a Tutor of two classes whose pinned lessons fall at the same time.
+  - Build: the builder screen with its checklist of steps; step 1 (the start date with the first day of a coming quarter as a shortcut, the table of templates per weekday and grade confirmed); the readiness of steps 2 to 4; availability as dated entries, a draft checking the entry in force on its intended start date.
+  - Done when: the readiness route names every failing check of steps 1 to 4, and a draft whose steps 1 to 4 pass is reported ready for them.
+  - From 3.4a (pull request #99, decision 15 and correction 6): draft versions exist with their start date ("next Monday by default") and the load; this task adds the rest of step 1, the first day of a coming quarter as a shortcut, and the readiness of the load step (the problems of each row, `loadRowProblems`).
   - From 3.4b (pull request #100, decisions 4, 5 and 7): the readiness of steps 2 and 3 reads the weekly totals (`totals.ts` of `packages/timetable-rules`: each class's lessons against the lesson slots of its week, each teacher's lessons against the free slots in the branch) and blocks on `load_group_gaps` (students not placed) and the block problems (`load_block_lessons`, `load_block_teacher`, `load_block_mixed`, `load_mixed_not_split`, `load_split_and_whole`), which the load page only shows.
   - From 3.4c (pull request #101, spec review nit 8): the row trigger of 0055 reads the class Tutor of a Tutor subject on the version's start date only, while `department_move_loads` (0057) reads it on the later of the start date, the move's start and today; for a draft whose start date has passed the two differ, and readiness settles one reading for the row checks.
+
+- [ ] **5.3b Draft builder, step 5 and the gate**
+  - Read: `06` (Building a timetable, Auto-generation, Rules), `edge/timetable` (Structure, the Homework slot row: "A Tutor of two classes cannot have both pinned at the same time"; Generator and editing: "the locked and pinned lessons are checked on their own").
+  - Build: step 5 of the builder: the fixed rules shown, the weight of each preference, pinned lessons (stored per load row, weekday and slot, checked on their own by the rule engine), the confirmation of step 5; the gate.
+  - Done when: a draft cannot move to generation while a readiness check fails.
+  - From 3.4a (pull request #99, decision 15 and correction 6): the load step's list of a Tutor of two classes whose pinned lessons fall at the same time.
+  - From 5.3a (pull request #127, decisions 2 and 3): readiness is `draftReady` over the steps' checks of `packages/timetable-rules/src/readiness.ts`, computed on each read by `GET api/timetable/versions/:id/readiness`; step 5 adds its check there, and the builder page (`apps/web/src/features/timetable/builder-page.tsx`) opens step 5 (`BUILDER_STEPS`). Facts are read on the dates of decision 2: templates weekday by weekday from the later of the start date and today, availability from the one entry in force on that date.
 
 - [ ] **5.4a Grid: board and drag**
   - Read: `06` (Editing in the grid), `12`.

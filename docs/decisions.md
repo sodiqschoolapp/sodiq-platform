@@ -246,6 +246,25 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 17 October 2026: the draft builder, steps 1 to 4 (task 5.3a)
+
+Plan approved on pull request #127 with corrections 1 to 3; decisions 1 to 13 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** Task 5.3 split into 5.3a (the builder screen, steps 1 to 4, the readiness route) and 5.3b (step 5, pins, the Tutor-of-two-classes list, the gate); each From line moved to the part that builds it | Decision 1; the split rule of the build plan |
+| **Look first.** One reading of the dates for a draft, the engine's (`placement.ts`): templates weekday by weekday on each weekday's first date on or after the later of the start date and today (`weekDaysOf`), in step 1, step 2 and the totals; availability from the one entry in force on that date, for every weekday, in step 3 and the totals (changes 3.4b decision 7, which read hours weekday by weekday). Proposed `/spec-change` for `06`, Building a timetable, step 1: "… and confirms the day templates of each weekday in force on that weekday's first date on or after the start date, per grade range where they differ, from the table in School setup." | Decision 2 with review correction 2; `06`, Rules, availability row |
+| Readiness is computed on each read; only the confirmed table is stored (`timetable_versions.templates_confirmed`, 0068, guarded by `timetable_versions_draft()`), compared on template id and the kind, start and end of each slot, never on its dates or the template's name | Decision 3 with review correction 1; `CLAUDE.md`, State from stored moments |
+| The table has the working weekdays and the grades of the year's active classes; every cell needs a template | Decision 4 |
+| Step 1 is not ready while the start date is before today | Decision 5 |
+| A coming quarter: one of the draft's year whose first day is on or after today, offered by the web only | Decision 6 |
+| Step 2: no row problem but the room problems, at least one row, the rows a copy left dismissed, each class's lessons within its lesson slots | Decisions 7 to 9 |
+| Step 3: every teacher and vacancy has an hours entry in force and no more lessons than free slots in the branch; contract, daily maximum and other branches shown only | Decision 10 |
+| Step 4: every row's room type has a room of the branch that is not closed (under repair counts); no row names a closed room (`load_room_closed` moves from step 2 to step 4); classes with no main classroom listed, not blocking | Decision 11 |
+| The confirm is a draft write under `timetable` `edit`, one audit entry per change of the stored table; readiness is read under `timetable` `view` | Decision 12 |
+| The builder is its own page; the load page and the staff record stay the places of their edits, linked from steps 2 and 3 | Decision 13 |
+| The checklist marks are one component, `StatusMark` (`apps/web/src/components/status-mark.tsx`), used by the setup checklist and the builder | Spec review of the plan, should-fix 8 |
+
 ## 17 October 2026: Tutor lessons follow the Tutor (task 3.6c-2)
 
 Plan approved on pull request #125 with corrections 1 to 6; every decision confirmed there. Flagged on issue #42. 3.4a decision 2 ("a Tutor of the class, or anyone with the profile row, takes a Tutor subject") no longer applies.
