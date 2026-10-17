@@ -1,6 +1,12 @@
 import { Controller, Delete, Get, HttpCode, Patch, Post, Put } from '@nestjs/common';
 import {
   draftReadinessSchema,
+  publishBodySchema,
+  publishCheckQuerySchema,
+  publishCheckSchema,
+  type PublishBody,
+  type PublishCheck,
+  type PublishCheckQuery,
   gridSchema,
   moveRecordSchema,
   patternBlockParamsSchema,
@@ -54,10 +60,18 @@ import {
   type TimetableVersionParams,
 } from '@sodiq/shared';
 import { RequestId } from '../../http/request-id.js';
-import { Returns, ReturnsNothing, ValidBody, ValidParams, ValidQuery } from '../../http/schemas.js';
+import {
+  RequestKey,
+  Returns,
+  ReturnsNothing,
+  ValidBody,
+  ValidParams,
+  ValidQuery,
+} from '../../http/schemas.js';
 import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { TimetablePattern } from './pattern.service.js';
+import { TimetablePublish } from './publish.service.js';
 import { Timetable } from './timetable.service.js';
 
 /**
@@ -71,6 +85,7 @@ export class TimetableController {
   constructor(
     private readonly timetable: Timetable,
     private readonly pattern: TimetablePattern,
+    private readonly publisher: TimetablePublish,
   ) {}
 
   @Get('versions')
@@ -101,6 +116,36 @@ export class TimetableController {
     @RequestId() requestId: string,
   ): Promise<TimetableVersion> {
     return this.timetable.editVersion(access, params.id, input, requestId);
+  }
+
+  /**
+   * What a publish on a date would refuse and warn, written nowhere (task
+   * 5.5a-1, decision 13): a view, so the Principal reads it too.
+   */
+  @Get('versions/:id/publish-check')
+  @Requires('timetable', 'view')
+  @Returns(publishCheckSchema)
+  publishCheck(
+    @CurrentAccess() access: Access,
+    @ValidParams(timetableVersionParamsSchema) params: TimetableVersionParams,
+    @ValidQuery(publishCheckQuerySchema) query: PublishCheckQuery,
+  ): Promise<PublishCheck> {
+    return this.publisher.check(access, params.id, query.startsOn);
+  }
+
+  /** The publish of a draft from its start date (task 5.5a-1), safe to repeat with its key. */
+  @Post('versions/:id/publish')
+  @HttpCode(200)
+  @Requires('timetable', 'edit')
+  @Returns(timetableVersionSchema)
+  publish(
+    @CurrentAccess() access: Access,
+    @ValidParams(timetableVersionParamsSchema) params: TimetableVersionParams,
+    @RequestKey() key: string,
+    @ValidBody(publishBodySchema) input: PublishBody,
+    @RequestId() requestId: string,
+  ): Promise<TimetableVersion> {
+    return this.publisher.publish(access, params.id, input, key, requestId);
   }
 
   @Get('versions/:id/load')

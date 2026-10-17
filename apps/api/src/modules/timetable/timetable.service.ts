@@ -132,7 +132,10 @@ const teacherField = (code: 'load_tutor_row_teacher' | 'load_teacher_needed'): A
  * waited for, so a Tutor row never slips in while its subject leaves the
  * Tutors department.
  */
-async function lockSubjects(transaction: Transaction, ids: readonly string[]): Promise<void> {
+export async function lockSubjects(
+  transaction: Transaction,
+  ids: readonly string[],
+): Promise<void> {
   const sorted = [...new Set(ids.map((id) => id.toLowerCase()))].sort();
   if (sorted.length === 0) {
     return;
@@ -193,6 +196,8 @@ export interface VersionRow extends WeightColumns {
   rules_confirmed: unknown;
   edit_holder_id: string | null;
   edit_seen_at: Date | null;
+  /** Task 5.5a-1, decision 4: the moment a publish marked the draft out of date. */
+  out_of_date_at: Date | null;
   start_date: string;
   end_date: string;
   year_status: string;
@@ -210,6 +215,7 @@ const fieldsOf = (row: StoredLoadRow) => ({
   roomType: row.room_type,
   doubleLessons: row.double_lessons,
   mixedBlock: row.mixed_block,
+  shortReason: row.short_reason ?? null,
 });
 
 const ROW_COLUMNS = [
@@ -223,6 +229,7 @@ const ROW_COLUMNS = [
   'room_type',
   'double_lessons',
   'mixed_block',
+  'short_reason',
 ] as const;
 
 /** The id a row being created stands under while its block is read (no stored row has it). */
@@ -451,6 +458,8 @@ export class Timetable {
               starts_on: input.startsOn,
               from_version_id: source?.id ?? null,
               left_rows: JSON.stringify(left),
+              // Task 5.5a-1, decision 14: a copy of a draft marked out of date carries the mark.
+              out_of_date_at: source?.out_of_date_at ?? null,
               // Decision 5 of 5.3b-1: a copy takes its source's weights, not their confirmation.
               ...(source === undefined ? {} : weightColumnsOf(weightsOf(source))),
             })
@@ -484,6 +493,8 @@ export class Timetable {
                 room_type: row.room_type,
                 double_lessons: row.double_lessons,
                 mixed_block: row.mixed_block,
+                // Decision 8: the mark goes with the row.
+                short_reason: row.short_reason ?? null,
               })
               .returning('id')
               .executeTakeFirstOrThrow();
@@ -1032,14 +1043,19 @@ export class Timetable {
   }
 
   /** The readiness of a version, read in the transaction of the request (decision 2 for the dates). */
-  private async readinessOf(
+  /**
+   * The readiness of steps 1 to 5. Publish (task 5.5a-1) reads it on the
+   * start date it is checked on, with the Tutor rows of that date (`rows`).
+   */
+  async readinessOf(
     transaction: Transaction,
     branchId: string,
     version: VersionRow,
+    stored?: StoredLoadRow[],
   ): Promise<DraftReadiness> {
     const context = await this.contextOf(transaction, version);
     const today = await this.todayIn(transaction, branchId);
-    const rows = await this.rowsOf(transaction, version.id);
+    const rows = stored ?? (await this.rowsOf(transaction, version.id));
     const left = leftRowsOf(version.left_rows);
     const facts = await LoadFacts.of(transaction, context, rows, {
       versionRows: rows,
@@ -1445,6 +1461,7 @@ export class Timetable {
             room_type: input.roomType,
             double_lessons: input.doubleLessons,
             mixed_block: input.mixedBlock,
+            short_reason: input.shortReason ?? null,
           };
           const blocks = await LoadFacts.of(transaction, context, [candidate], {
             versionRows: await this.rowsOf(transaction, id),
@@ -1474,6 +1491,7 @@ export class Timetable {
               room_type: input.roomType,
               double_lessons: input.doubleLessons,
               mixed_block: input.mixedBlock,
+              short_reason: input.shortReason ?? null,
             })
             .returning(ROW_COLUMNS)
             .executeTakeFirstOrThrow();
@@ -1534,6 +1552,8 @@ export class Timetable {
             room_type: input.roomType,
             double_lessons: input.doubleLessons,
             mixed_block: input.mixedBlock ?? before.mixed_block,
+            short_reason:
+              input.shortReason === undefined ? (before.short_reason ?? null) : input.shortReason,
           };
           const changes = changesOf(fieldsOf(before), fieldsOf(after));
           if (changes === null) {
@@ -1583,6 +1603,7 @@ export class Timetable {
                 room_type: row.room_type,
                 double_lessons: row.double_lessons,
                 mixed_block: row.mixed_block,
+                ...(row.id === after.id ? { short_reason: after.short_reason ?? null } : {}),
               })
               .where('id', '=', row.id)
               .execute();
@@ -1839,7 +1860,8 @@ export class Timetable {
    * the version, when the class has one (task 3.6c-2, decision 5); the others
    * as they are.
    */
-  private async withVersionTutors(
+  /** The rows with the Tutor of each Tutor row on the version's start date (task 3.6c-2, decision 5). */
+  async withVersionTutors(
     transaction: Transaction,
     context: VersionContext,
     rows: readonly StoredLoadRow[],
@@ -2112,6 +2134,7 @@ export class Timetable {
         'timetable_versions.rules_confirmed',
         'timetable_versions.edit_holder_id',
         'timetable_versions.edit_seen_at',
+        'timetable_versions.out_of_date_at',
         ...WEIGHT_COLUMNS,
         'academic_years.start_date',
         'academic_years.end_date',
@@ -2153,7 +2176,7 @@ export class Timetable {
   }
 
   /** Today in the branch's time zone at the moment of the transaction (`.claude/rules/database.md`). */
-  private async todayIn(transaction: Transaction, branchId: string): Promise<string> {
+  async todayIn(transaction: Transaction, branchId: string): Promise<string> {
     const branch = await transaction
       .selectFrom('branches')
       .select('time_zone')
@@ -2176,6 +2199,7 @@ export class Timetable {
         'timetable_versions.left_rows',
         'timetable_versions.edit_holder_id',
         'timetable_versions.edit_seen_at',
+        'timetable_versions.out_of_date_at',
         'academic_years.start_date',
         'academic_years.end_date',
         'academic_years.status as year_status',
@@ -2213,6 +2237,7 @@ export class Timetable {
       left_rows: unknown;
       edit_holder_id: string | null;
       edit_seen_at: Date | null;
+      out_of_date_at: Date | null;
       start_date: string;
       end_date: string;
       year_status: string;
@@ -2258,6 +2283,7 @@ export class Timetable {
             : { id: row.from_version_id, number: fromNumber },
         rows: row.rows,
         leftRows: leftRowsOf(row.left_rows).length,
+        outOfDate: row.out_of_date_at !== null,
         editLock: ((holder) =>
           holder === null || row.edit_seen_at === null
             ? null

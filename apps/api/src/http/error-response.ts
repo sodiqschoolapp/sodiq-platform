@@ -285,6 +285,7 @@ const MESSAGE: Record<ErrorCode, string> = {
   lock_taken: 'The draft already has that lock.',
   timetable_busy: 'Another change of the timetable was being saved.',
   draft_not_ready: 'A step of the draft is not ready.',
+  publish_blocked: 'The draft cannot be published; the details list why.',
   load_unit_year: 'The class or group is of another academic year.',
   load_unit_archived: 'The class or group is archived.',
   load_group_subject: "The subject is not the group's.",

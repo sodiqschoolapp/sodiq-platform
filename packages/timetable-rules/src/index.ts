@@ -206,3 +206,9 @@ export {
   type Preference,
   type Weights,
 } from './preferences.js';
+export {
+  publishRefusals,
+  startChoices,
+  type PublishResults,
+  type StartChoices,
+} from './publish.js';

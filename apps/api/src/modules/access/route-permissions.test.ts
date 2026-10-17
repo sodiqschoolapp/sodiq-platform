@@ -552,6 +552,15 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     branch: 'request',
     roles: ['super_admin', 'academic_vice_principal'],
   },
+  // Task 5.5a-1: publish (timetable edit) and its check, read by every reader of the timetable.
+  'GET /api/timetable/versions/:id/publish-check': {
+    branch: 'request',
+    roles: ['super_admin', 'principal', 'academic_vice_principal'],
+  },
+  'POST /api/timetable/versions/:id/publish': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
   // Task 5.4c-1: the edit lock of a draft and the locks of the grid, under timetable edit.
   'POST /api/timetable/versions/:id/edit-lock': {
     branch: 'request',

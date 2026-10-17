@@ -82,6 +82,7 @@ export const row = (id: string, extra: Partial<PatternRowData> = {}): PatternRow
   lessonsPerWeek: 3,
   mixedBlock: false,
   doubleLessons: false,
+  deliberatelyShort: false,
   block: [id],
   ...extra,
 });

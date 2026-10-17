@@ -72,6 +72,12 @@ export const timetableVersionSchema = z.object({
   rows: z.int().min(0),
   leftRows: z.int().min(0),
   /**
+   * A publish marked the draft out of date (task 5.5a-1, decision 4): another
+   * version of the branch and year was published after it was started, and
+   * it cannot be published until it is brought up to date (5.5a-3).
+   */
+  outOfDate: z.boolean(),
+  /**
    * Who edits the draft now (task 5.4c-1): the account that holds its edit
    * lock and was active in the last 5 minutes, with its name, and whether it
    * is the reader's; `null` when the lock is free (`edge/timetable`,
@@ -128,6 +134,9 @@ export const loadRowParamsSchema = z.object({ id: z.uuid(), rowId: z.uuid() });
 
 export type LoadRowParams = z.infer<typeof loadRowParamsSchema>;
 
+/** The longest reason of a row marked "deliberately short" (0073). */
+export const SHORT_REASON_MAX = 500;
+
 /** The fields of a row that an edit may change (decision 7). */
 const loadRowFieldsSchema = z.object({
   /**
@@ -143,6 +152,12 @@ const loadRowFieldsSchema = z.object({
   roomId: z.uuid().nullable(),
   roomType: roomTypeSchema.nullable(),
   doubleLessons: z.boolean(),
+  /**
+   * "Deliberately short" with its reason (06, Rules, last row; task 5.5a-1,
+   * decision 8): no reason, not short. Absent on an edit keeps it; absent on
+   * a new row is none.
+   */
+  shortReason: z.string().trim().min(1).max(SHORT_REASON_MAX).nullable().optional(),
 });
 
 const oneRoomChoice = (row: { roomId: string | null; roomType: string | null }) =>
@@ -214,6 +229,8 @@ export const loadRowSchema = z.object({
   roomType: roomTypeSchema.nullable(),
   doubleLessons: z.boolean(),
   mixedBlock: z.boolean(),
+  /** "Deliberately short" with its reason (task 5.5a-1); `null` when not marked. */
+  shortReason: z.string().nullable(),
   /** Task 3.4b: the rows of the block of a group row, this one included, by group name; empty for a class row. */
   block: z.array(z.object({ id: z.uuid(), name: z.string() })),
   /** Task 3.4b, decision 4: the students not placed in one of the block's groups; 0 for a class row. */
@@ -668,6 +685,8 @@ export const patternFactsDataSchema = z.object({
       mixedBlock: z.boolean(),
       /** "Whether double lessons are allowed" (05, Teaching load; task 5.4c-3a). */
       doubleLessons: z.boolean(),
+      /** Marked "deliberately short" with a reason (task 5.5a-1, decision 8). */
+      deliberatelyShort: z.boolean(),
       block: z.array(z.uuid()),
     }),
   ),
@@ -919,3 +938,80 @@ export const rearrangeRecordSchema = z
 export type RearrangeRecord = z.infer<typeof rearrangeRecordSchema>;
 
 export const patternBlockParamsSchema = z.object({ id: z.uuid(), blockId: z.uuid() });
+
+/**
+ * Why a publish is refused (task 5.5a-1, pull request #139): the start date
+ * (`06`, How surprises are prevented, Start date), a later published version
+ * (decision 3, until 5.5a-3), the mark "out of date" (decision 4), a step of
+ * the builder not ready (decision 5), a problem of a load row, a blocked
+ * result of the pattern, a difference from the load (`06`, Rules, last row),
+ * and the year and subject settings (`edge/academic-year`: "Publishing is
+ * blocked unless the year has four dated quarters and every subject in the
+ * load has its journal type and, if it is graded, its daily distribution and
+ * its quarterly distribution for each quarter the version touches").
+ */
+export const PUBLISH_REFUSALS = [
+  'version_start_too_early',
+  'version_start_outside_year',
+  'version_later_published',
+  'draft_out_of_date',
+  'draft_not_ready',
+  'load_problem',
+  'pattern_blocked',
+  'load_mismatch',
+  'year_quarters',
+  'subject_daily_weights',
+  'subject_quarter_weights',
+] as const;
+
+export const publishRefusalCodeSchema = z.enum(PUBLISH_REFUSALS);
+
+export type PublishRefusalCode = z.infer<typeof publishRefusalCodeSchema>;
+
+/** The builder steps a publish requires besides the pattern's own check (decision 5). */
+export const PUBLISH_STEPS = ['templates', 'load', 'teachers', 'rooms'] as const;
+
+/** One reason a publish is refused, with what names it. */
+export const publishRefusalSchema = z.object({
+  code: publishRefusalCodeSchema,
+  /** `draft_not_ready`: the step. */
+  step: z.enum(PUBLISH_STEPS).optional(),
+  /** `load_problem` and `load_mismatch`: the row; `load_problem` also names its problem. */
+  loadRowId: z.uuid().optional(),
+  problem: loadProblemSchema.optional(),
+  /** `subject_daily_weights` and `subject_quarter_weights`: the subject; the second also its quarter, 1 to 4. */
+  subjectId: z.uuid().optional(),
+  quarter: z.int().min(1).max(4).optional(),
+  /** `pattern_blocked` and `load_mismatch`: the result of the rule engine. */
+  result: ruleResultSchema.optional(),
+  /** `version_later_published`: the number of the published version. */
+  versionNumber: z.int().min(1).optional(),
+});
+
+export type PublishRefusal = z.infer<typeof publishRefusalSchema>;
+
+/** The start date a publish is checked on. */
+export const publishCheckQuerySchema = z.object({ startsOn: schoolDateSchema });
+
+export type PublishCheckQuery = z.infer<typeof publishCheckQuerySchema>;
+
+/** A publish (decision 7): the start date, the draft's or a changed one. */
+export const publishBodySchema = z.strictObject({ startsOn: schoolDateSchema });
+
+export type PublishBody = z.infer<typeof publishBodySchema>;
+
+/**
+ * What a publish on a date would do, written nowhere (decision 13): the dates
+ * offered (decision 15), every refusal and the warnings of the pattern.
+ */
+export const publishCheckSchema = z.object({
+  startsOn: schoolDateSchema,
+  earliest: schoolDateSchema,
+  defaultStart: schoolDateSchema,
+  quarterStarts: z.array(schoolDateSchema),
+  refusals: z.array(publishRefusalSchema),
+  warnings: z.array(ruleResultSchema),
+  canPublish: z.boolean(),
+});
+
+export type PublishCheck = z.infer<typeof publishCheckSchema>;

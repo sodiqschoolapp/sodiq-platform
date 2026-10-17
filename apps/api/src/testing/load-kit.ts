@@ -250,12 +250,30 @@ export class LoadKit {
       .execute();
   }
 
+  /**
+   * The status of a version. Task 5.5a-1 (0073) lets a draft only be
+   * published; an archived version (withdraw, from 5.5c) and a version put
+   * back to a draft, which earlier tests stand on, are written past that
+   * trigger.
+   */
   async setVersion(id: string, status: 'draft' | 'published' | 'archived'): Promise<void> {
-    await this.migrator
-      .updateTable('timetable_versions')
-      .set({ status })
-      .where('id', '=', id)
-      .execute();
+    await this.migrator.transaction().execute(async (transaction) => {
+      if (status !== 'published') {
+        await sql`alter table timetable_versions disable trigger timetable_versions_status`.execute(
+          transaction,
+        );
+      }
+      await transaction
+        .updateTable('timetable_versions')
+        .set({ status })
+        .where('id', '=', id)
+        .execute();
+      if (status !== 'published') {
+        await sql`alter table timetable_versions enable trigger timetable_versions_status`.execute(
+          transaction,
+        );
+      }
+    });
   }
 
   /**

@@ -532,6 +532,8 @@ export const ERROR_CODES = [
   'timetable_busy',
   /** A step of the draft builder is not ready, so the draft cannot move to generation (task 5.3b-1, decision 6). */
   'draft_not_ready',
+  /** A publish is refused; `details` lists every reason, each with its code of `PUBLISH_REFUSALS` (task 5.5a-1, decision 12). */
+  'publish_blocked',
   /** The class or group of a load row is of another academic year than the version (task 3.4a). */
   'load_unit_year',
   /** The class or group of a load row is archived (task 3.4a). */
