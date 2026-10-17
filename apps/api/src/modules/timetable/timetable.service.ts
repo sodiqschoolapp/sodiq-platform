@@ -2186,7 +2186,11 @@ export class Timetable {
       ]);
   }
 
-  async answerOf(transaction: Transaction, id: string, accountId: string): Promise<TimetableVersion> {
+  async answerOf(
+    transaction: Transaction,
+    id: string,
+    accountId: string,
+  ): Promise<TimetableVersion> {
     const rows = await this.versionsIn(transaction)
       .where('timetable_versions.id', '=', id)
       .execute();
@@ -2221,9 +2225,7 @@ export class Timetable {
       row.edit_holder_id !== null && editLockFresh(row.edit_seen_at, moment)
         ? row.edit_holder_id
         : null;
-    const holders = [
-      ...new Set(rows.map(holderOf).filter((one): one is string => one !== null)),
-    ];
+    const holders = [...new Set(rows.map(holderOf).filter((one): one is string => one !== null))];
     const names = await accountNames(transaction, holders);
     const sources = [
       ...new Set(rows.map((row) => row.from_version_id).filter((id): id is string => id !== null)),

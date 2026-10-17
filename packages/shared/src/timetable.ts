@@ -872,4 +872,3 @@ export const rearrangeRecordSchema = z
 export type RearrangeRecord = z.infer<typeof rearrangeRecordSchema>;
 
 export const patternBlockParamsSchema = z.object({ id: z.uuid(), blockId: z.uuid() });
-

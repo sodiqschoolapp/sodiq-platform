@@ -140,8 +140,7 @@ export function suggestPlaces(
     results.filter((one) => one.severity === 'blocked');
   const locks = options.locks ?? [];
   /** A lock holds the block where it is, or keeps it out of the cell's weekday. */
-  const held = (one: PatternBlock, to?: PatternBlock) =>
-    lockedBy(model, locks, one, to).length > 0;
+  const held = (one: PatternBlock, to?: PatternBlock) => lockedBy(model, locks, one, to).length > 0;
   // A new block of a locked class or teacher is held too: nothing places it.
   if (held(block)) {
     return { free: [], rearrangements: [], cutShort: false, locked: true };

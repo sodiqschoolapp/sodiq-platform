@@ -585,6 +585,29 @@ describe('the teaching load page', () => {
     expect(calls.some((call) => call.route === 'GET /api/classes')).toBe(false);
   });
 
+  it('names who edits the draft and offers no change while another person does (task 5.4c-1)', async () => {
+    setWindowWidth(1440);
+    await openPage({
+      versions: [
+        version(1, {
+          editLock: {
+            holder: { id: uid(1901), name: 'Tosheva Malika' },
+            seenAt: '2026-10-10T18:50:00Z',
+            mine: false,
+          },
+        }),
+      ],
+      load: { rows: [row(1)] },
+    });
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(1);
+    });
+    const banner = document.querySelector<HTMLElement>('[data-edit-lock]');
+    expect(banner?.textContent).toContain('Tosheva Malika');
+    expect(screen.queryByRole('button', { name: en.timetable.load.add })).toBeNull();
+    expect(screen.queryByRole('button', { name: en.timetable.load.changeStart })).toBeNull();
+  });
+
   it('reads a published version without offering a change', async () => {
     await openPage({ versions: [version(1, { status: 'published' })], load: { rows: [row(1)] } });
     expect(await screen.findByText(en.timetable.load.readOnly)).not.toBeNull();

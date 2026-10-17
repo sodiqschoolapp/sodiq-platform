@@ -1844,6 +1844,26 @@ describe('the grid of a draft', () => {
         expect(await noticesOf(vice, s.branch)).toEqual([]);
       });
 
+      it('names a holder with no staff record by the login of the account', async () => {
+        const s = await scene();
+        const { id: teacher, login } = await t.database.migrator
+          .selectFrom('assignments')
+          .innerJoin('accounts', 'accounts.id', 'assignments.account_id')
+          .select(['accounts.id', 'accounts.login'])
+          .where('assignments.role', '=', 'teacher')
+          .where('assignments.branch_id', '=', t.north)
+          .executeTakeFirstOrThrow();
+        await t.database.migrator
+          .updateTable('timetable_versions')
+          .set({ edit_holder_id: teacher, edit_seen_at: t.clock.now() })
+          .where('id', '=', s.version)
+          .execute();
+        expect(gridOf(await grid(s.branch, s.version)).version.editLock).toMatchObject({
+          holder: { id: teacher, name: login },
+          mine: false,
+        });
+      });
+
       it('answers 404 for another branch’s and an unknown version, 403 to the Principal and a Teacher, and refuses a published one', async () => {
         const s = await scene();
         const other = await scene();

@@ -3440,6 +3440,39 @@ try {
   });
   seeded.draftGridSuggest = { login: suggestVice.login, password: suggestVice.firstPassword };
 
+  // The takeover of a draft's edit lock (task 5.4c-1): the grid scene's
+  // Academic Vice Principal holds the lock and was last active 10 minutes
+  // before the seed ran; a second Academic Vice Principal of the branch takes
+  // over, and the first is told.
+  const lockHolder = await gridScene({
+    branch: 'Grid lock browser test branch',
+    vice: ['Gulnora', 'Ismoilova'],
+    staffId: 'S-269334',
+    phone: '+998935557334',
+    rooms: [],
+  });
+  const lockBranch = await migrator
+    .selectFrom('branches')
+    .select('id')
+    .where('name', '=', 'Grid lock browser test branch')
+    .executeTakeFirstOrThrow();
+  const lockTaker = await create('Zarina', 'Hakimova');
+  await transactions.run([lockBranch.id], (transaction) =>
+    assignments.give(transaction, {
+      accountId: lockTaker.id,
+      role: 'academic_vice_principal',
+      branchId: lockBranch.id,
+      givenBy: null,
+    }),
+  );
+  await migrator
+    .updateTable('timetable_versions')
+    .set({ edit_holder_id: lockHolder.id, edit_seen_at: new Date(Date.now() - 10 * 60_000) })
+    .where('branch_id', '=', lockBranch.id)
+    .execute();
+  seeded.draftLockHolder = { login: lockHolder.login, password: lockHolder.firstPassword };
+  seeded.draftLockTaker = { login: lockTaker.login, password: lockTaker.firstPassword };
+
   // The department move (task 3.4c): a branch of its own with a year around
   // today, 7 Oxford, the attendance-only subject Cosmology of STEAM and a
   // draft whose row of it names a STEAM teacher who no longer has it in the
