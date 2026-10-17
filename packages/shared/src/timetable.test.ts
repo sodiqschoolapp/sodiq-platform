@@ -111,8 +111,11 @@ describe('the bodies of an undo', () => {
 
   it('places a block with the room of each lesson by load row, or with one room, not both', () => {
     expect(
-      placeRecordSchema.safeParse({ loadRowId: ROW, ...at, rooms: [{ loadRowId: ROW, roomId: null }] })
-        .success,
+      placeRecordSchema.safeParse({
+        loadRowId: ROW,
+        ...at,
+        rooms: [{ loadRowId: ROW, roomId: null }],
+      }).success,
     ).toBe(true);
     expect(
       placeRecordSchema.safeParse({

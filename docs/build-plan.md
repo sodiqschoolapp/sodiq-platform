@@ -556,7 +556,7 @@ How to read the task lines:
   - From 5.4c (pull request #135, decision 1, Look first): split into 5.4c-1, 5.4c-2 and 5.4c-3.
   - From 5.4b-2b (pull request #134, decisions 8 and 9): "Suggest a place" (`suggestPlaces` of `packages/timetable-rules/src/suggest.ts`) never moves a pinned block as a blocker; it and the rearrange route (`POST …/pattern/rearrange`) must leave locked lessons in place too (`06`, Auto-generation, Locks).
 
-- [ ] **5.4c-2 Grid: undo and redo**
+- [x] **5.4c-2 Grid: undo and redo** (pull request #136)
   - Read: `06` (Editing in the grid), `edge/timetable` (Generator and editing).
   - Build: undo and redo of the session's own grid changes, each step taken back through the routes and the rule engine; an applied suggestion taken back as one step.
   - Done when: a move, a room change, a removal and an applied suggestion are undone and redone, and a step refused by the rules is shown and kept.
@@ -564,6 +564,7 @@ How to read the task lines:
   - From 5.4c-1 (pull request #135, decision 2): every step is a draft write and runs under the edit lock (`lockDraft`).
 
 - [ ] **5.4c-3 Grid: double lessons and mixed blocks**
+  - From 5.4c-2 (pull request #136, decision 11): the placing, moving and removal of a double lesson and of a mixed pairing are steps of the grid history (`apps/web/src/features/timetable/grid-history.ts`): each write records the blocks it changed (`stepOf`) and is taken back through the route of its kind (`writeOf`), so a write of two blocks together must be one step, taken back in one transaction.
   - Read: `06` (Editing in the grid), `edge/timetable` (Structure: double lessons, mixed blocks).
   - Build: double lessons placed and moved together; the pairing of the halves of a mixed split slot by slot.
   - Done when: a double lesson is placed, moved and removed as one, and a mixed split is placed with both pairings.

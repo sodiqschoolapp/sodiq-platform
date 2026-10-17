@@ -1705,9 +1705,17 @@ describe('the grid of a draft', () => {
     it('refuses a room and the rooms of a block together, and answers 404 for a room of another branch, an unknown one and a row not in the block, changing nothing', async () => {
       const s = await scene();
       const other = await scene();
+      const sameBranch = await load.version(s.branch, s.year, { startsOn: MONDAY });
+      const sameBranchRow = await load.row({
+        branch_id: s.branch,
+        version_id: sameBranch,
+        class_id: s.classA,
+        subject_id: s.subject,
+        teacher_id: s.teacherA,
+      });
       await viceIn(s.branch);
       await staleEditLock(s.version);
-      const before = await patternRows([s.version, other.version]);
+      const before = await patternRows([s.version, other.version, sameBranch]);
       for (const cookie of [t.vicePrincipal, t.admin]) {
         for (const roomId of [other.roomB, UNKNOWN]) {
           refusedWith(
@@ -1716,7 +1724,7 @@ describe('the grid of a draft', () => {
             'not_found',
           );
         }
-        for (const loadRowId of [s.rowB, other.rowA, UNKNOWN]) {
+        for (const loadRowId of [s.rowB, other.rowA, UNKNOWN, sameBranchRow]) {
           refusedWith(
             await placeWith(s.branch, s.version, s.rowA, [{ loadRowId, roomId: null }], cookie),
             404,
@@ -1735,15 +1743,19 @@ describe('the grid of a draft', () => {
         400,
         'validation_failed',
       );
-      expect(await patternRows([s.version, other.version])).toEqual(before);
+      expect(await patternRows([s.version, other.version, sameBranch])).toEqual(before);
     });
 
-    it('gives a lesson no room in one audited write (decision 7)', async () => {
+    it('gives a lesson no room in one audited write, as the Academic Vice Principal (decision 7)', async () => {
       const s = await scene();
+      await viceIn(s.branch);
       const a = await placed(s.branch, s.version, s.rowA, 1, 1);
       const lesson = lessonOf(a.answer, a.id);
       expect(lesson.roomId).toBe(s.roomA);
-      const answer = gridOf(await roomOf(s.branch, s.version, a.id, lesson.id, null));
+      await load.freeEditLock(s.version);
+      const answer = gridOf(
+        await roomOf(s.branch, s.version, a.id, lesson.id, null, t.vicePrincipal),
+      );
       expect(lessonOf(answer, a.id).roomId).toBeNull();
       const [entry] = await t.entries('pattern_entry.room', lesson.id);
       expect(entry).toMatchObject({
@@ -1823,11 +1835,14 @@ describe('the grid of a draft', () => {
       expect(moved).toMatchObject({ new_value: { rearrangedWith: [b.id], slotPosition: 1 } });
     });
 
-    it('removes a block alone, and gives a lesson no room through its rooms', async () => {
+    it('removes a block alone as the Academic Vice Principal, and gives a lesson no room through its rooms', async () => {
       const s = await scene();
+      await viceIn(s.branch);
       const a = await placed(s.branch, s.version, s.rowA, 1, 1);
       const b = await placed(s.branch, s.version, s.rowB, 1, 3);
-      const answer = gridOf(await rearrange(s.branch, s.version, [], [b.id]));
+      await load.freeEditLock(s.version);
+      const answer = gridOf(await rearrange(s.branch, s.version, [], [b.id], t.vicePrincipal));
+      await load.freeEditLock(s.version);
       expect(blockOf(answer, b.id)).toBeUndefined();
       expect(await t.entries('pattern_block.delete', b.id)).toHaveLength(1);
       const cleared = gridOf(
@@ -1891,6 +1906,34 @@ describe('the grid of a draft', () => {
       before = await patternRows([s.version]);
       refusedWith(await rearrange(s.branch, s.version, [], [b.id]), 409, 'pattern_locked');
       expect(await patternRows([s.version])).toEqual(before);
+    });
+
+    it('refuses to remove a block held by a day lock alone, the moved block free (decision 5)', async () => {
+      const s = await sharedTeacher();
+      // A on Monday, the block to remove on Tuesday, which is locked.
+      const a = await placed(s.branch, s.version, s.rowA, 1, 1);
+      const b = await placed(s.branch, s.version, s.rowB, 2, 1);
+      const day = await post(`/api/timetable/versions/${s.version}/locks`, s.branch, {
+        kind: 'day',
+        weekday: 2,
+      });
+      expect(day.status).toBe(201);
+      const before = await patternRows([s.version]);
+      refusedWith(
+        await rearrange(
+          s.branch,
+          s.version,
+          [{ blockId: a.id, weekday: 1, slotPosition: 3 }],
+          [b.id],
+        ),
+        409,
+        'pattern_locked',
+      );
+      expect(await patternRows([s.version])).toEqual(before);
+      // Without the removal the move alone goes through.
+      gridOf(
+        await rearrange(s.branch, s.version, [{ blockId: a.id, weekday: 1, slotPosition: 3 }], []),
+      );
     });
 
     it("answers 404 for a removed block of another branch's and another version's draft and an unknown one, changing nothing", async () => {
