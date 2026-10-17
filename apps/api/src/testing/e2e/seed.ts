@@ -3473,6 +3473,16 @@ try {
   seeded.draftLockHolder = { login: lockHolder.login, password: lockHolder.firstPassword };
   seeded.draftLockTaker = { login: lockTaker.login, password: lockTaker.firstPassword };
 
+  // Undo and redo of the grid (task 5.4c-2): the same scene in a branch of its own.
+  const undoVice = await gridScene({
+    branch: 'Grid undo browser test branch',
+    vice: ['Kamola', 'Ergasheva'],
+    staffId: 'S-269335',
+    phone: '+998935557335',
+    rooms: [],
+  });
+  seeded.draftGridUndo = { login: undoVice.login, password: undoVice.firstPassword };
+
   // The department move (task 3.4c): a branch of its own with a year around
   // today, 7 Oxford, the attendance-only subject Cosmology of STEAM and a
   // draft whose row of it names a STEAM teacher who no longer has it in the

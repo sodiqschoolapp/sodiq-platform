@@ -40,7 +40,8 @@ export function addedResults(
 
 /** What a room gives a lesson: accepted or not, the blocked results it adds, the warnings it adds. */
 export interface RoomChange {
-  readonly roomId: string;
+  /** `null`: no room, for an undo that gives back a lesson without one (task 5.4c-2). */
+  readonly roomId: string | null;
   readonly accepted: boolean;
   readonly blocked: RuleResult[];
   readonly warnings: RuleResult[];
@@ -65,13 +66,13 @@ function lessonResults(
   return checkCandidates(checkedPlacements(model, all), model.facts, [candidate]);
 }
 
-/** The lesson `lessonId` of a stored block put in the room `roomId`. */
+/** The lesson `lessonId` of a stored block put in the room `roomId`, or in none (`null`). */
 export function roomChange(
   model: PatternModel,
   all: readonly PatternBlock[],
   block: PatternBlock,
   lessonId: string,
-  roomId: string,
+  roomId: string | null,
 ): RoomChange {
   const current = block.lessons.find((one) => one.id === lessonId);
   if (current === undefined) {

@@ -3131,6 +3131,22 @@ export const en = {
       placeLesson: 'Place {{lesson}}',
       suggest: 'Suggest a place',
       suggestTitle: 'A place for {{lesson}}',
+      history: {
+        undo: 'Undo',
+        redo: 'Redo',
+        undoStep: 'Undo: {{step}}',
+        redoStep: 'Redo: {{step}}',
+        kinds: {
+          place: 'placing {{lesson}}',
+          move: 'moving {{lesson}}',
+          swap: 'swapping {{lesson}}',
+          room: 'the room of {{lesson}}',
+          remove: 'removing {{lesson}}',
+          suggestion: 'the suggestion for {{lesson}}',
+        },
+        changedSince:
+          'This change cannot be taken back: its lessons were changed since. Change them by hand.',
+      },
       freeSlots: 'Free slots',
       rearrangements: 'Make room by moving other lessons',
       nothingFound:

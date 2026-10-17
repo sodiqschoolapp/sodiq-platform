@@ -246,6 +246,23 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 17 October 2026: the grid, undo and redo (task 5.4c-2)
+
+Plan approved on pull request #136 with no corrections; decisions 1 to 11 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** A step whose blocks changed since (the board read again just before) is dropped with a message and nothing is sent; a step refused by the rules is shown and kept | Decision 3; the journal's undo rule (`edge/journal`, Undo: "applies only to cells nobody changed since") read onto the timetable, and the task's Done when |
+| Steps are the grid changes of the page only (place, move, swap, room, remove, applied suggestion); locks, the load and steps 1 to 6 are not steps | Decision 1; `06` puts Undo under "Editing in the grid" |
+| A step is taken back by a new write through the route of its kind, audited as that write, with no undo mark | Decisions 2 and 5; build plan line ("each step taken back through the routes and the rule engine") |
+| An undone removal places the block again with a new id and its rooms; its lock does not come back | Decision 4; a lock is not a step |
+| Locks bind the undo of a suggestion (rearrange) and not the undo of a hand move, room change or removal | Decision 5, with 5.4c-1 decision 8 |
+| The history is per builder page and version, at most 50 steps (a default), cleared on reload, another version and a takeover | Decisions 6 and 10 |
+| The room route and the `rooms` of place and rearrange accept `null` so that an undo gives back "no room"; the picker never offers it | Decision 7; a lesson may have no room (`roomOfNew`); 5.4b-2a decision 5 stays for the picker |
+| Ctrl+Z undo, Ctrl+Shift+Z and Ctrl+Y redo (Cmd on a Mac), not inside a field or an open dialog | Decision 8 |
+| The read before an undo and its write are two transactions; the edit lock keeps other accounts out, a second tab of the same account is accepted | Decision 9 |
+| The rearrange route leaves a removed block out of the check of the moved blocks and writes the removal in the same transaction | Plan review finding 1; a block must go back into the slot of the block the suggestion created |
+
 ## 17 October 2026: the grid, the edit lock and locks (task 5.4c-1)
 
 Plan approved on pull request #135 with corrections 1 to 5; decisions 1 to 12 confirmed there, 13 removed by correction 2. Flagged on issue #42.

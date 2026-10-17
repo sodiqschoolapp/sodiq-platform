@@ -1,4 +1,4 @@
-import type { GridAnswer, TimetableVersion } from '@sodiq/shared';
+import { weekdaySchema, type GridAnswer, type TimetableVersion } from '@sodiq/shared';
 import { patternModel, RULE_ORDER, suggestPlaces } from '@sodiq/timetable-rules';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
@@ -298,10 +298,15 @@ async function openGrid(
     session?: ReturnType<typeof sessionOf>;
     language?: 'en' | 'ru';
     grid?: GridAnswer;
-    moved?: () => Response;
-    placed?: () => Response;
-    roomed?: () => Response;
-    rearranged?: () => Response;
+    /** Task 5.4c-2: the board as the server holds it now, read again before an undo. */
+    gridNow?: () => GridAnswer;
+    moved?: (body: unknown) => Response;
+    placed?: (body: unknown) => Response;
+    roomed?: (body: unknown) => Response;
+    rearranged?: (body: unknown) => Response;
+    removed?: () => Response;
+    /** More routes, such as a block placed again under a new id. */
+    extra?: Record<string, (body: unknown) => Response>;
     /** The version as the list answers it (task 5.4c-1: its edit lock). */
     version?: TimetableVersion;
     /** "Take over" and "still here" (task 5.4c-1). */
@@ -362,15 +367,19 @@ async function openGrid(
         },
       }),
     'GET /api/setup/academic-years': () => json({ years: [] }),
-    [`GET /api/timetable/versions/${VERSION.id}/grid`]: () => json(options.grid ?? GRID),
-    [`POST /api/timetable/versions/${VERSION.id}/pattern/${BLOCK_OXFORD}/move`]: () =>
-      options.moved?.() ?? json(options.grid ?? GRID),
-    [`POST /api/timetable/versions/${VERSION.id}/pattern`]: () =>
-      options.placed?.() ?? json(options.grid ?? GRID, 201),
-    [`POST /api/timetable/versions/${VERSION.id}/pattern/${BLOCK_OXFORD}/room`]: () =>
-      options.roomed?.() ?? json(options.grid ?? GRID),
-    [`POST /api/timetable/versions/${VERSION.id}/pattern/rearrange`]: () =>
-      options.rearranged?.() ?? json(options.grid ?? GRID),
+    [`GET /api/timetable/versions/${VERSION.id}/grid`]: () =>
+      json(options.gridNow?.() ?? options.grid ?? GRID),
+    [`POST /api/timetable/versions/${VERSION.id}/pattern/${BLOCK_OXFORD}/move`]: (body) =>
+      options.moved?.(body) ?? json(options.grid ?? GRID),
+    [`POST /api/timetable/versions/${VERSION.id}/pattern`]: (body) =>
+      options.placed?.(body) ?? json(options.grid ?? GRID, 201),
+    [`POST /api/timetable/versions/${VERSION.id}/pattern/${BLOCK_OXFORD}/room`]: (body) =>
+      options.roomed?.(body) ?? json(options.grid ?? GRID),
+    [`POST /api/timetable/versions/${VERSION.id}/pattern/rearrange`]: (body) =>
+      options.rearranged?.(body) ?? json(options.grid ?? GRID),
+    [`DELETE /api/timetable/versions/${VERSION.id}/pattern/${BLOCK_OXFORD}`]: () =>
+      options.removed?.() ?? json(options.grid ?? GRID),
+    ...options.extra,
     [`POST /api/timetable/versions/${VERSION.id}/edit-lock`]: () =>
       options.tookLock?.() ?? json(options.version ?? VERSION),
     [`POST /api/timetable/versions/${VERSION.id}/locks`]: () => json(options.grid ?? GRID, 201),
@@ -1252,5 +1261,353 @@ describe('the edit lock and the locks', () => {
       { kind: 'day', weekday: 2 },
       { kind: 'teacher', teacherId: KARIMOVA },
     ]);
+  });
+});
+
+// Task 5.4c-2 (Done when): 06, Editing in the grid: "Undo and redo". A move, a
+// room change, a removal and an applied suggestion are undone and redone, each
+// through its route; a step refused by the rules is shown and kept.
+describe('undo and redo', () => {
+  const PLACED_AGAIN = uid(1500);
+  const CREATED = uid(1501);
+  const slotTimes = (position: number) => {
+    const slot = DAY.slots.find((one) => one.position === position);
+    if (slot === undefined) throw new Error('No slot.');
+    return { start: slot.start, end: slot.end };
+  };
+  const at = (body: unknown) => body as { weekday: number; slotPosition: number };
+  /** A server that keeps the board each write answers, read again by the undo. */
+  const server = (start: GridAnswer) => {
+    let board = start;
+    return {
+      now: () => board,
+      answer: (blocks: GridAnswer['blocks'], status = 200) => {
+        board = { ...board, blocks };
+        return json(board, status);
+      },
+      blocks: () => board.blocks,
+    };
+  };
+  const movedTo = (blocks: GridAnswer['blocks'], id: string, weekday: number, position: number) =>
+    blocks.map((one) =>
+      one.id === id
+        ? {
+            ...one,
+            weekday: weekdaySchema.parse(weekday),
+            slotPosition: position,
+            ...slotTimes(position),
+          }
+        : one,
+    );
+  const button = (name: RegExp) => screen.getByRole('button', { name });
+  const disabled = (name: string | RegExp) =>
+    screen.getByRole<HTMLButtonElement>('button', { name }).disabled;
+  const routesOf = <T extends { route: string }>(calls: readonly T[], end: string) =>
+    calls.filter((call) => call.route.endsWith(end));
+  const moveOxfordTo = async (weekday: number, position: number) => {
+    const own = tile(BLOCK_OXFORD);
+    if (own === null) throw new Error('No tile.');
+    fireEvent.click(within(own).getByRole('button', { name: en.timetable.grid.move }));
+    const dialog = await screen.findByRole('dialog');
+    const free = dialog.querySelector<HTMLButtonElement>(
+      `[data-move-cell="${String(weekday)}:${String(position)}"] button`,
+    );
+    if (free === null) throw new Error('No free slot.');
+    fireEvent.click(free);
+  };
+  const blocked = () =>
+    json(
+      {
+        error: {
+          code: 'pattern_blocked',
+          message: 'A blocked rule refuses the lesson at that slot.',
+          requestId: uid(4000),
+          details: [
+            {
+              path: '',
+              code: 'teacher_double',
+              message: 'A blocked rule of the timetable.',
+              rule: { weekday: 1, lessonIds: [uid(1000)] },
+            },
+          ],
+        },
+      },
+      409,
+    );
+
+  it('undoes and redoes a move through the move route, naming the step', async () => {
+    const s = server(GRID);
+    const calls = await openGrid({
+      gridNow: s.now,
+      moved: (body) =>
+        s.answer(movedTo(s.blocks(), BLOCK_OXFORD, at(body).weekday, at(body).slotPosition)),
+    });
+    expect(disabled(en.timetable.grid.history.undo)).toBe(true);
+    await moveOxfordTo(3, 5);
+    const named = await screen.findByRole('button', {
+      name: 'Undo: moving Mathematics, 7 Oxford',
+    });
+    fireEvent.click(named);
+    await waitFor(() => {
+      expect(routesOf(calls, '/move').at(-1)?.body).toEqual({ weekday: 1, slotPosition: 1 });
+    });
+    fireEvent.click(await screen.findByRole('button', { name: /^Redo: moving Mathematics/ }));
+    await waitFor(() => {
+      expect(routesOf(calls, '/move')).toHaveLength(3);
+    });
+    expect(routesOf(calls, '/move').at(-1)?.body).toEqual({ weekday: 3, slotPosition: 5 });
+    // Each step read the board again first.
+    expect(routesOf(calls, '/grid').length).toBeGreaterThanOrEqual(3);
+    await waitFor(() => {
+      expect(button(/^Undo: moving/)).not.toBeNull();
+    });
+  });
+
+  it('undoes and redoes a room change through the room route', async () => {
+    const s = server(ROOMS_GRID);
+    const calls = await openGrid({
+      grid: ROOMS_GRID,
+      gridNow: s.now,
+      roomed: (body) => {
+        const { roomId } = body as { roomId: string | null };
+        return s.answer(
+          s
+            .blocks()
+            .map((one) =>
+              one.id === BLOCK_OXFORD
+                ? { ...one, lessons: one.lessons.map((lesson) => ({ ...lesson, roomId })) }
+                : one,
+            ),
+        );
+      },
+    });
+    const own = tile(BLOCK_OXFORD);
+    if (own === null) throw new Error('No tile.');
+    fireEvent.click(within(own).getByRole('button', { name: /Room of Mathematics/ }));
+    const dialog = await screen.findByRole('dialog');
+    const small = dialog.querySelector<HTMLButtonElement>(`[data-room-choice="${ROOM_3}"] button`);
+    if (small === null) throw new Error('No room.');
+    fireEvent.click(small);
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Undo: the room of Mathematics, 7 Oxford' }),
+    );
+    await waitFor(() => {
+      expect(routesOf(calls, '/room').at(-1)?.body).toEqual({ lessonId: uid(1000), roomId: ROOM });
+    });
+    fireEvent.click(await screen.findByRole('button', { name: /^Redo: the room of/ }));
+    await waitFor(() => {
+      expect(routesOf(calls, '/room')).toHaveLength(3);
+    });
+    expect(routesOf(calls, '/room').at(-1)?.body).toEqual({ lessonId: uid(1000), roomId: ROOM_3 });
+  });
+
+  it('undoes a removal by placing the block again with its room, and redoes it on the new block', async () => {
+    const s = server(GRID);
+    const oxford = GRID.blocks.find((one) => one.id === BLOCK_OXFORD);
+    if (oxford === undefined) throw new Error('No Oxford block.');
+    const calls = await openGrid({
+      gridNow: s.now,
+      removed: () => s.answer(s.blocks().filter((one) => one.id !== BLOCK_OXFORD)),
+      placed: () =>
+        s.answer(
+          [
+            ...s.blocks(),
+            {
+              ...oxford,
+              id: PLACED_AGAIN,
+              lessons: [{ id: uid(1600), loadRowId: ROW_OXFORD, roomId: ROOM }],
+            },
+          ],
+          201,
+        ),
+      extra: {
+        [`DELETE /api/timetable/versions/${VERSION.id}/pattern/${PLACED_AGAIN}`]: () =>
+          s.answer(s.blocks().filter((one) => one.id !== PLACED_AGAIN)),
+      },
+    });
+    const own = tile(BLOCK_OXFORD);
+    if (own === null) throw new Error('No tile.');
+    fireEvent.click(within(own).getByRole('button', { name: en.timetable.grid.remove }));
+    const confirm = await screen.findByRole('alertdialog');
+    fireEvent.click(within(confirm).getByRole('button', { name: en.timetable.grid.remove }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Undo: removing Mathematics, 7 Oxford' }),
+    );
+    await waitFor(() => {
+      expect(routesOf(calls, '/pattern').at(-1)?.body).toEqual({
+        loadRowId: ROW_OXFORD,
+        weekday: 1,
+        slotPosition: 1,
+        rooms: [{ loadRowId: ROW_OXFORD, roomId: ROOM }],
+      });
+    });
+    fireEvent.click(await screen.findByRole('button', { name: /^Redo: removing/ }));
+    await waitFor(() => {
+      expect(calls.map((call) => call.route)).toContain(
+        `DELETE /api/timetable/versions/${VERSION.id}/pattern/${PLACED_AGAIN}`,
+      );
+    });
+  });
+
+  it('undoes an applied suggestion that created a block as one step, removing it, and redoes it', async () => {
+    const s = server(GRID);
+    const model = patternModel(GRID.facts);
+    const [best] = suggestPlaces(model, GRID.blocks, newBlockOf(model, ROW_OXFORD)).free;
+    const to = best?.changes[0]?.to;
+    if (to === undefined) throw new Error('No suggestion.');
+    const created = {
+      ...to,
+      weekday: weekdaySchema.parse(to.weekday),
+      id: CREATED,
+      lessons: to.lessons.map((lesson) => ({ ...lesson, id: uid(1601) })),
+    };
+    const calls = await openGrid({
+      gridNow: s.now,
+      rearranged: (body) => {
+        const record = body as { remove?: string[] };
+        return record.remove === undefined
+          ? s.answer([...s.blocks(), created])
+          : s.answer(s.blocks().filter((one) => !record.remove?.includes(one.id)));
+      },
+    });
+    const entry = panel()?.querySelector<HTMLElement>(`[data-to-place="${ROW_OXFORD}"]`);
+    if (entry === null || entry === undefined) throw new Error('No entry.');
+    fireEvent.click(within(entry).getByRole('button', { name: en.timetable.grid.suggest }));
+    const dialog = await screen.findByRole('dialog');
+    const first = dialog.querySelector<HTMLButtonElement>('[data-suggestion="free"] button');
+    if (first === null) throw new Error('No button.');
+    fireEvent.click(first);
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Undo: the suggestion for Mathematics, 7 Oxford',
+      }),
+    );
+    await waitFor(() => {
+      expect(routesOf(calls, '/rearrange')).toHaveLength(2);
+    });
+    expect(routesOf(calls, '/rearrange').at(-1)?.body).toEqual({ changes: [], remove: [CREATED] });
+    fireEvent.click(await screen.findByRole('button', { name: /^Redo: the suggestion/ }));
+    await waitFor(() => {
+      expect(routesOf(calls, '/rearrange')).toHaveLength(3);
+    });
+    expect(routesOf(calls, '/rearrange').at(-1)?.body).toEqual({
+      changes: [
+        {
+          loadRowId: ROW_OXFORD,
+          weekday: to.weekday,
+          slotPosition: to.slotPosition,
+          rooms: to.lessons.map((lesson) => ({
+            loadRowId: lesson.loadRowId,
+            roomId: lesson.roomId,
+          })),
+        },
+      ],
+    });
+  });
+
+  it('shows an undo the rules refuse and keeps the step', async () => {
+    const s = server(GRID);
+    let writes = 0;
+    await openGrid({
+      gridNow: s.now,
+      moved: (body) => {
+        writes += 1;
+        return writes === 1
+          ? s.answer(movedTo(s.blocks(), BLOCK_OXFORD, at(body).weekday, at(body).slotPosition))
+          : blocked();
+      },
+    });
+    await moveOxfordTo(3, 5);
+    fireEvent.click(await screen.findByRole('button', { name: /^Undo: moving/ }));
+    const alert = await screen.findByText((text) =>
+      text.includes(en.timetable.rule.teacher_double),
+    );
+    expect(alert.textContent).toContain(en.errors.pattern_blocked);
+    await waitFor(() => {
+      expect(
+        screen.getByRole<HTMLButtonElement>('button', { name: /^Undo: moving/ }).disabled,
+      ).toBe(false);
+    });
+    expect(disabled(en.timetable.grid.history.redo)).toBe(true);
+  });
+
+  it('drops a step whose lesson changed since, sending nothing (decision 3)', async () => {
+    const s = server(GRID);
+    let elsewhere = false;
+    const calls = await openGrid({
+      gridNow: () =>
+        elsewhere ? { ...s.now(), blocks: movedTo(s.blocks(), BLOCK_OXFORD, 4, 1) } : s.now(),
+      moved: (body) =>
+        s.answer(movedTo(s.blocks(), BLOCK_OXFORD, at(body).weekday, at(body).slotPosition)),
+    });
+    await moveOxfordTo(3, 5);
+    const undo = await screen.findByRole('button', { name: /^Undo: moving/ });
+    elsewhere = true;
+    fireEvent.click(undo);
+    expect(await screen.findByText(en.timetable.grid.history.changedSince)).not.toBeNull();
+    expect(routesOf(calls, '/move')).toHaveLength(1);
+    expect(disabled(en.timetable.grid.history.undo)).toBe(true);
+  });
+
+  it('clears the history when the draft is another account’s (decision 6)', async () => {
+    const s = server(GRID);
+    let writes = 0;
+    await openGrid({
+      gridNow: s.now,
+      moved: (body) => {
+        writes += 1;
+        return writes === 1
+          ? s.answer(movedTo(s.blocks(), BLOCK_OXFORD, at(body).weekday, at(body).slotPosition))
+          : json(
+              {
+                error: {
+                  code: 'draft_edit_locked',
+                  message: 'Another account edits the draft.',
+                  requestId: uid(4001),
+                },
+              },
+              409,
+            );
+      },
+    });
+    await moveOxfordTo(3, 5);
+    fireEvent.click(await screen.findByRole('button', { name: /^Undo: moving/ }));
+    await waitFor(() => {
+      expect(disabled(en.timetable.grid.history.undo)).toBe(true);
+    });
+  });
+
+  it('undoes by Ctrl+Z and redoes by Ctrl+Y, and keeps the history over a visit to step 2', async () => {
+    const s = server(GRID);
+    const calls = await openGrid({
+      gridNow: s.now,
+      moved: (body) =>
+        s.answer(movedTo(s.blocks(), BLOCK_OXFORD, at(body).weekday, at(body).slotPosition)),
+    });
+    await moveOxfordTo(3, 5);
+    await screen.findByRole('button', { name: /^Undo: moving/ });
+    const step = (name: string) =>
+      document.querySelector<HTMLElement>(`[data-step="${name}"] button`);
+    fireEvent.click(step('load') ?? document.body);
+    await waitFor(() => {
+      expect(document.querySelector('[data-board]')).toBeNull();
+    });
+    fireEvent.click(step('grid') ?? document.body);
+    await screen.findByRole('button', { name: /^Undo: moving/ });
+    fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true });
+    await waitFor(() => {
+      expect(routesOf(calls, '/move')).toHaveLength(2);
+    });
+    await screen.findByRole('button', { name: /^Redo: moving/ });
+    fireEvent.keyDown(document.body, { key: 'y', ctrlKey: true });
+    await waitFor(() => {
+      expect(routesOf(calls, '/move')).toHaveLength(3);
+    });
+    expect(routesOf(calls, '/move').at(-1)?.body).toEqual({ weekday: 3, slotPosition: 5 });
+  });
+
+  it('speaks Russian and Uzbek', () => {
+    expect(ru.timetable.grid.history.undo).not.toBe(en.timetable.grid.history.undo);
+    expect(uz.timetable.grid.history.changedSince).toContain('oʻ');
   });
 });

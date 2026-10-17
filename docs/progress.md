@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 17 October 2026: task 5.4c-2 Grid: undo and redo
+
+- Undo and Redo on the grid (buttons that name the step, Ctrl+Z, Ctrl+Shift+Z, Ctrl+Y) over the page's own placements, moves, swaps, room changes, removals and applied suggestions. Each step is what one write changed (`stepOf` of `apps/web/src/features/timetable/grid-history.ts`) and is taken back through the route of its kind (`writeOf`), so the rule engine and the API check it; a refused step is shown and kept; a step whose lessons changed since (the board is read again first) is dropped with a message.
+- Routes widened, no migration: place takes `rooms` by load row (`null` = no room); the room route takes `roomId: null`; rearrange takes `remove` (one block, removed in the same transaction, left out of the check of the moved blocks) and `null` rooms; `roomChange` takes `null`.
+- The history lives in the builder page per version (`useGridHistory`), at most 50 steps; cleared on reload, another version, and when another account holds the edit lock.
+- Left out: steps of double lessons and mixed blocks (5.4c-3, From 5.4c-2 line); Regenerate reading the locks (5.10, 5.11); the handbook (paused). The browser test ran here with the installed Chromium (a scratchpad `PLAYWRIGHT_BROWSERS_PATH` pointing at it).
+
+The next sessions must know:
+
+- A new grid write records its step with `recordedAnswer(kind, before, answer)` in `grid-step.tsx`; a write of several blocks that must go back together is one step and needs a route that takes them back in one transaction.
+- The next task is 5.4c-3.
+
 ## 17 October 2026: task 5.4c-1 Grid: the edit lock and locks
 
 - One person edits a draft at a time: every draft write takes the edit lock (`lockDraft`, stored as `edit_holder_id` and `edit_seen_at` on `timetable_versions`, 0072), kept by the holder's writes and "still here" calls after a key or pointer; after 5 minutes without activity another account takes over and the earlier holder gets `timetable.draft_taken_over`. Others see a banner with the holder and Take over; the page is read only.

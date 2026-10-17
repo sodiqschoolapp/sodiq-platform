@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   LOAD_LESSONS_MAX,
+  lessonRoomRecordSchema,
+  placeRecordSchema,
+  rearrangeRecordSchema,
   loadRowEditSchema,
   loadRowRecordSchema,
   loadTeachersQuerySchema,
@@ -96,5 +99,72 @@ describe('a draft version', () => {
     expect(timetableVersionEditSchema.safeParse({ dismissLeftRows: true }).success).toBe(true);
     expect(timetableVersionEditSchema.safeParse({}).success).toBe(false);
     expect(timetableVersionEditSchema.safeParse({ dismissLeftRows: false }).success).toBe(false);
+  });
+});
+
+// Task 5.4c-2: the bodies an undo sends (decision 7: `null` is no room).
+describe('the bodies of an undo', () => {
+  const BLOCK = '0190a3c4-0000-7000-8000-000000000010';
+  const OTHER = '0190a3c4-0000-7000-8000-000000000011';
+  const ROW = '0190a3c4-0000-7000-8000-000000000012';
+  const at = { weekday: 1, slotPosition: 2 };
+
+  it('places a block with the room of each lesson by load row, or with one room, not both', () => {
+    expect(
+      placeRecordSchema.safeParse({
+        loadRowId: ROW,
+        ...at,
+        rooms: [{ loadRowId: ROW, roomId: null }],
+      }).success,
+    ).toBe(true);
+    expect(
+      placeRecordSchema.safeParse({
+        loadRowId: ROW,
+        ...at,
+        roomId: ROOM,
+        rooms: [{ loadRowId: ROW, roomId: ROOM }],
+      }).success,
+    ).toBe(false);
+    expect(
+      placeRecordSchema.safeParse({
+        loadRowId: ROW,
+        ...at,
+        rooms: [
+          { loadRowId: ROW, roomId: ROOM },
+          { loadRowId: ROW, roomId: null },
+        ],
+      }).success,
+    ).toBe(false);
+  });
+
+  it('gives a lesson no room', () => {
+    expect(lessonRoomRecordSchema.safeParse({ lessonId: BLOCK, roomId: null }).success).toBe(true);
+    expect(lessonRoomRecordSchema.safeParse({ lessonId: BLOCK }).success).toBe(false);
+  });
+
+  it('removes one block with up to two moves, a block once, one to three in all', () => {
+    const move = { blockId: BLOCK, ...at };
+    expect(rearrangeRecordSchema.safeParse({ changes: [], remove: [OTHER] }).success).toBe(true);
+    expect(rearrangeRecordSchema.safeParse({ changes: [move], remove: [OTHER] }).success).toBe(
+      true,
+    );
+    expect(rearrangeRecordSchema.safeParse({ changes: [] }).success).toBe(false);
+    expect(rearrangeRecordSchema.safeParse({ changes: [move], remove: [BLOCK] }).success).toBe(
+      false,
+    );
+    expect(rearrangeRecordSchema.safeParse({ changes: [], remove: [OTHER, BLOCK] }).success).toBe(
+      false,
+    );
+    expect(
+      rearrangeRecordSchema.safeParse({
+        changes: [move, { blockId: ROOM, ...at }, { blockId: CLASS, ...at }],
+        remove: [OTHER],
+      }).success,
+    ).toBe(false);
+    expect(
+      rearrangeRecordSchema.safeParse({
+        changes: [{ ...move, rooms: [{ loadRowId: ROW, roomId: null }] }],
+      }).success,
+    ).toBe(true);
   });
 });

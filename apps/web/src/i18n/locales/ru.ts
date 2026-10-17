@@ -3287,6 +3287,22 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       placeLesson: 'Поставить урок: {{lesson}}',
       suggest: 'Подсказать место',
       suggestTitle: 'Место для урока: {{lesson}}',
+      history: {
+        undo: 'Отменить',
+        redo: 'Повторить',
+        undoStep: 'Отменить: {{step}}',
+        redoStep: 'Повторить: {{step}}',
+        kinds: {
+          place: 'размещение урока {{lesson}}',
+          move: 'перенос урока {{lesson}}',
+          swap: 'обмен урока {{lesson}}',
+          room: 'кабинет урока {{lesson}}',
+          remove: 'удаление урока {{lesson}}',
+          suggestion: 'предложение для урока {{lesson}}',
+        },
+        changedSince:
+          'Это изменение нельзя отменить: его уроки с тех пор изменились. Измените их вручную.',
+      },
       freeSlots: 'Свободные уроки',
       rearrangements: 'Освободить место, переставив другие уроки',
       nothingFound:

@@ -1609,6 +1609,399 @@ describe('the grid of a draft', () => {
     });
   });
 
+  // Task 5.4c-2: the writes an undo or a redo sends (06, Editing in the grid:
+  // "Undo and redo"; decisions 4, 5 and 7; From 5.4b-2b line: "a suggestion
+  // that created a block is taken back by removing it in the same transaction").
+  describe('the writes of an undo', () => {
+    type Rooms = { loadRowId: string; roomId: string | null }[];
+    type Change = {
+      blockId?: string;
+      loadRowId?: string;
+      weekday: number;
+      slotPosition: number;
+      rooms?: Rooms;
+    };
+    const placeWith = (
+      branch: string,
+      version: string,
+      loadRowId: string,
+      rooms: Rooms,
+      cookie = t.admin,
+    ) =>
+      post(
+        `/api/timetable/versions/${version}/pattern`,
+        branch,
+        { loadRowId, weekday: 2, slotPosition: 1, rooms },
+        cookie,
+      );
+    const roomOf = (
+      branch: string,
+      version: string,
+      blockId: string,
+      lessonId: string,
+      roomId: string | null,
+      cookie = t.admin,
+    ) =>
+      post(
+        `/api/timetable/versions/${version}/pattern/${blockId}/room`,
+        branch,
+        { lessonId, roomId },
+        cookie,
+      );
+    const rearrange = (
+      branch: string,
+      version: string,
+      changes: Change[],
+      removed: string[],
+      cookie = t.admin,
+    ) =>
+      post(
+        `/api/timetable/versions/${version}/pattern/rearrange`,
+        branch,
+        { changes, remove: removed },
+        cookie,
+      );
+    const addLock = (branch: string, version: string, blockId: string) =>
+      post(`/api/timetable/versions/${version}/locks`, branch, { kind: 'block', blockId });
+    const blockOf = (answer: GridAnswer, blockId: string) =>
+      answer.blocks.find((one) => one.id === blockId);
+    const lessonOf = (answer: GridAnswer, blockId: string) => {
+      const lesson = blockOf(answer, blockId)?.lessons[0];
+      if (lesson === undefined) throw new Error('The block has no lesson.');
+      return lesson;
+    };
+    /** A scene whose two rows share teacher A, so their blocks clash in one slot. */
+    async function sharedTeacher() {
+      const s = await scene();
+      await t.database.migrator
+        .updateTable('teaching_load_rows')
+        .set({ teacher_id: s.teacherA })
+        .where('id', '=', s.rowB)
+        .execute();
+      return s;
+    }
+
+    it('places a block again with the room of each lesson, a room or none, audited', async () => {
+      const s = await scene();
+      const spare = await load.classes.room(s.branch);
+      const withSpare = gridOf(
+        await placeWith(s.branch, s.version, s.rowA, [{ loadRowId: s.rowA, roomId: spare }]),
+        201,
+      );
+      const a = withSpare.blocks.find((one) => one.lessons[0]?.loadRowId === s.rowA);
+      expect(a?.lessons[0]?.roomId).toBe(spare);
+      const [created] = await t.entries('pattern_block.create', a?.id);
+      expect(created).toMatchObject({ new_value: { lessons: [{ roomId: spare }] } });
+      const none = gridOf(
+        await placeWith(s.branch, s.version, s.rowB, [{ loadRowId: s.rowB, roomId: null }]),
+        201,
+      );
+      // Without `rooms` the row of B would take its class main classroom (5.4a).
+      expect(
+        none.blocks.find((one) => one.lessons[0]?.loadRowId === s.rowB)?.lessons[0],
+      ).toMatchObject({ roomId: null });
+    });
+
+    it('refuses a room and the rooms of a block together, and answers 404 for a room of another branch, an unknown one and a row not in the block, changing nothing', async () => {
+      const s = await scene();
+      const other = await scene();
+      const sameBranch = await load.version(s.branch, s.year, { startsOn: MONDAY });
+      const sameBranchRow = await load.row({
+        branch_id: s.branch,
+        version_id: sameBranch,
+        class_id: s.classA,
+        subject_id: s.subject,
+        teacher_id: s.teacherA,
+      });
+      await viceIn(s.branch);
+      await staleEditLock(s.version);
+      const before = await patternRows([s.version, other.version, sameBranch]);
+      for (const cookie of [t.vicePrincipal, t.admin]) {
+        for (const roomId of [other.roomB, UNKNOWN]) {
+          refusedWith(
+            await placeWith(s.branch, s.version, s.rowA, [{ loadRowId: s.rowA, roomId }], cookie),
+            404,
+            'not_found',
+          );
+        }
+        for (const loadRowId of [s.rowB, other.rowA, UNKNOWN, sameBranchRow]) {
+          refusedWith(
+            await placeWith(s.branch, s.version, s.rowA, [{ loadRowId, roomId: null }], cookie),
+            404,
+            'not_found',
+          );
+        }
+      }
+      refusedWith(
+        await post(`/api/timetable/versions/${s.version}/pattern`, s.branch, {
+          loadRowId: s.rowA,
+          weekday: 2,
+          slotPosition: 1,
+          roomId: s.roomA,
+          rooms: [{ loadRowId: s.rowA, roomId: s.roomA }],
+        }),
+        400,
+        'validation_failed',
+      );
+      expect(await patternRows([s.version, other.version, sameBranch])).toEqual(before);
+    });
+
+    it('gives a lesson no room in one audited write, as the Academic Vice Principal (decision 7)', async () => {
+      const s = await scene();
+      await viceIn(s.branch);
+      const a = await placed(s.branch, s.version, s.rowA, 1, 1);
+      const lesson = lessonOf(a.answer, a.id);
+      expect(lesson.roomId).toBe(s.roomA);
+      await load.freeEditLock(s.version);
+      const answer = gridOf(
+        await roomOf(s.branch, s.version, a.id, lesson.id, null, t.vicePrincipal),
+      );
+      expect(lessonOf(answer, a.id).roomId).toBeNull();
+      const [entry] = await t.entries('pattern_entry.room', lesson.id);
+      expect(entry).toMatchObject({
+        old_value: { roomId: s.roomA },
+        new_value: { blockId: a.id, loadRowId: s.rowA, roomId: null },
+      });
+    });
+
+    it("answers 404 to no room for another branch's, another version's and an unknown block and lesson, changing nothing", async () => {
+      const s = await scene();
+      const other = await scene();
+      const sameBranch = await load.version(s.branch, s.year, { startsOn: MONDAY });
+      const sameBranchRow = await load.row({
+        branch_id: s.branch,
+        version_id: sameBranch,
+        class_id: s.classA,
+        subject_id: s.subject,
+        teacher_id: s.teacherA,
+      });
+      const own = await placed(s.branch, s.version, s.rowA, 1, 1);
+      const second = await placed(s.branch, s.version, s.rowB, 2, 1);
+      const otherBlock = await placed(other.branch, other.version, other.rowA, 1, 1);
+      const sameBranchBlock = await placed(s.branch, sameBranch, sameBranchRow, 1, 3);
+      const lesson = lessonOf(own.answer, own.id).id;
+      await viceIn(s.branch);
+      await staleEditLock(s.version);
+      const before = await patternRows([s.version, other.version, sameBranch]);
+      for (const cookie of [t.vicePrincipal, t.admin]) {
+        for (const block of [otherBlock.id, UNKNOWN, sameBranchBlock.id]) {
+          refusedWith(
+            await roomOf(s.branch, s.version, block, lesson, null, cookie),
+            404,
+            'not_found',
+          );
+        }
+        for (const id of [
+          lessonOf(second.answer, second.id).id,
+          lessonOf(otherBlock.answer, otherBlock.id).id,
+          UNKNOWN,
+        ]) {
+          refusedWith(
+            await roomOf(s.branch, s.version, own.id, id, null, cookie),
+            404,
+            'not_found',
+          );
+        }
+      }
+      expect(await patternRows([s.version, other.version, sameBranch])).toEqual(before);
+    });
+
+    it('moves a block back into the slot of the block it removes, in one audited write', async () => {
+      const s = await sharedTeacher();
+      // The suggestion moved A from slot 1 to 3 and placed B (teacher A too) in slot 1.
+      const a = await placed(s.branch, s.version, s.rowA, 1, 3);
+      const b = await placed(s.branch, s.version, s.rowB, 1, 1);
+      const answer = gridOf(
+        await rearrange(
+          s.branch,
+          s.version,
+          [{ blockId: a.id, weekday: 1, slotPosition: 1 }],
+          [b.id],
+        ),
+      );
+      expect(blockOf(answer, a.id)).toMatchObject({ weekday: 1, slotPosition: 1 });
+      expect(blockOf(answer, b.id)).toBeUndefined();
+      const [removed] = await t.entries('pattern_block.delete', b.id);
+      expect(removed).toMatchObject({
+        old_value: {
+          versionId: s.version,
+          rearrangedWith: [a.id],
+          weekday: 1,
+          slotPosition: 1,
+          lessons: [{ loadRowId: s.rowB, teacherId: s.teacherA, roomId: s.roomB }],
+        },
+      });
+      const [moved] = await t.entries('pattern_block.rearrange', a.id);
+      expect(moved).toMatchObject({ new_value: { rearrangedWith: [b.id], slotPosition: 1 } });
+    });
+
+    it('removes a block alone as the Academic Vice Principal, and gives a lesson no room through its rooms', async () => {
+      const s = await scene();
+      await viceIn(s.branch);
+      const a = await placed(s.branch, s.version, s.rowA, 1, 1);
+      const b = await placed(s.branch, s.version, s.rowB, 1, 3);
+      await load.freeEditLock(s.version);
+      const answer = gridOf(await rearrange(s.branch, s.version, [], [b.id], t.vicePrincipal));
+      await load.freeEditLock(s.version);
+      expect(blockOf(answer, b.id)).toBeUndefined();
+      expect(await t.entries('pattern_block.delete', b.id)).toHaveLength(1);
+      const cleared = gridOf(
+        await rearrange(
+          s.branch,
+          s.version,
+          [
+            {
+              blockId: a.id,
+              weekday: 1,
+              slotPosition: 1,
+              rooms: [{ loadRowId: s.rowA, roomId: null }],
+            },
+          ],
+          [],
+        ),
+      );
+      expect(lessonOf(cleared, a.id).roomId).toBeNull();
+    });
+
+    it('refuses a moved block that is still blocked, leaving the block it would remove in place', async () => {
+      const s = await sharedTeacher();
+      const science = await load.classes.subject({ grades: [7] });
+      const rowC = await s.row(s.classA, await teacher(s.branch, science), { subject_id: science });
+      const a = await placed(s.branch, s.version, s.rowA, 1, 3);
+      const b = await placed(s.branch, s.version, s.rowB, 1, 5);
+      // C, of class A too, holds slot 1; removing B does not free it.
+      await placed(s.branch, s.version, rowC, 1, 1);
+      const before = await patternRows([s.version]);
+      expect(
+        blockedRules(
+          await rearrange(
+            s.branch,
+            s.version,
+            [{ blockId: a.id, weekday: 1, slotPosition: 1 }],
+            [b.id],
+          ),
+        ),
+      ).toContain('class_double');
+      expect(await patternRows([s.version])).toEqual(before);
+    });
+
+    it('refuses a moved block and a removed block locked since, changing nothing (decision 5)', async () => {
+      const s = await sharedTeacher();
+      const a = await placed(s.branch, s.version, s.rowA, 1, 3);
+      const b = await placed(s.branch, s.version, s.rowB, 1, 1);
+      expect((await addLock(s.branch, s.version, a.id)).status).toBe(201);
+      let before = await patternRows([s.version]);
+      refusedWith(
+        await rearrange(
+          s.branch,
+          s.version,
+          [{ blockId: a.id, weekday: 1, slotPosition: 1 }],
+          [b.id],
+        ),
+        409,
+        'pattern_locked',
+      );
+      expect(await patternRows([s.version])).toEqual(before);
+      expect((await addLock(s.branch, s.version, b.id)).status).toBe(201);
+      before = await patternRows([s.version]);
+      refusedWith(await rearrange(s.branch, s.version, [], [b.id]), 409, 'pattern_locked');
+      expect(await patternRows([s.version])).toEqual(before);
+    });
+
+    it('refuses to remove a block held by a day lock alone, the moved block free (decision 5)', async () => {
+      const s = await sharedTeacher();
+      // A on Monday, the block to remove on Tuesday, which is locked.
+      const a = await placed(s.branch, s.version, s.rowA, 1, 1);
+      const b = await placed(s.branch, s.version, s.rowB, 2, 1);
+      const day = await post(`/api/timetable/versions/${s.version}/locks`, s.branch, {
+        kind: 'day',
+        weekday: 2,
+      });
+      expect(day.status).toBe(201);
+      const before = await patternRows([s.version]);
+      refusedWith(
+        await rearrange(
+          s.branch,
+          s.version,
+          [{ blockId: a.id, weekday: 1, slotPosition: 3 }],
+          [b.id],
+        ),
+        409,
+        'pattern_locked',
+      );
+      expect(await patternRows([s.version])).toEqual(before);
+      // Without the removal the move alone goes through.
+      gridOf(
+        await rearrange(s.branch, s.version, [{ blockId: a.id, weekday: 1, slotPosition: 3 }], []),
+      );
+    });
+
+    it("answers 404 for a removed block of another branch's and another version's draft and an unknown one, changing nothing", async () => {
+      const s = await scene();
+      const other = await scene();
+      const sameBranch = await load.version(s.branch, s.year, { startsOn: MONDAY });
+      const sameBranchRow = await load.row({
+        branch_id: s.branch,
+        version_id: sameBranch,
+        class_id: s.classA,
+        subject_id: s.subject,
+        teacher_id: s.teacherA,
+      });
+      const own = await placed(s.branch, s.version, s.rowA, 1, 1);
+      const otherBlock = await placed(other.branch, other.version, other.rowA, 1, 1);
+      const sameBranchBlock = await placed(s.branch, sameBranch, sameBranchRow, 1, 3);
+      // A lock of each block, so a removal that went through would take it with it.
+      for (const [branch, version, blockId] of [
+        [s.branch, s.version, own.id],
+        [other.branch, other.version, otherBlock.id],
+        [s.branch, sameBranch, sameBranchBlock.id],
+      ] as const) {
+        await t.database.migrator
+          .insertInto('timetable_locks')
+          .values({ branch_id: branch, version_id: version, kind: 'block', block_id: blockId })
+          .execute();
+      }
+      await viceIn(s.branch);
+      await staleEditLock(s.version);
+      const before = await patternRows([s.version, other.version, sameBranch]);
+      for (const cookie of [t.vicePrincipal, t.admin]) {
+        for (const block of [otherBlock.id, UNKNOWN, sameBranchBlock.id]) {
+          refusedWith(
+            await rearrange(
+              s.branch,
+              s.version,
+              [{ blockId: own.id, weekday: 2, slotPosition: 1 }],
+              [block],
+              cookie,
+            ),
+            404,
+            'not_found',
+          );
+          refusedWith(await rearrange(s.branch, s.version, [], [block], cookie), 404, 'not_found');
+        }
+      }
+      expect(await patternRows([s.version, other.version, sameBranch])).toEqual(before);
+    });
+
+    it('refuses every write of an undo to a second account while the first holds the edit lock', async () => {
+      const s = await scene();
+      await viceIn(s.branch);
+      const a = await placed(s.branch, s.version, s.rowA, 1, 1);
+      await load.freeEditLock(s.version);
+      gridOf(await move(s.branch, s.version, a.id, 1, 3, t.vicePrincipal));
+      const before = await patternRows([s.version]);
+      const lesson = lessonOf(gridOf(await grid(s.branch, s.version)), a.id).id;
+      refusedWith(
+        await placeWith(s.branch, s.version, s.rowB, [{ loadRowId: s.rowB, roomId: null }]),
+        409,
+        'draft_edit_locked',
+      );
+      refusedWith(await roomOf(s.branch, s.version, a.id, lesson, null), 409, 'draft_edit_locked');
+      refusedWith(await rearrange(s.branch, s.version, [], [a.id]), 409, 'draft_edit_locked');
+      expect(await patternRows([s.version])).toEqual(before);
+    });
+  });
+
   describe('a write and another write at the same moment', () => {
     /** How many connections to the test database wait for a lock right now. */
     async function waitingForALock(): Promise<number> {

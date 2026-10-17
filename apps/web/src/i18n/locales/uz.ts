@@ -3157,6 +3157,22 @@ export const uz: Texts<'one' | 'other'> = {
       placeLesson: '{{lesson}} darsini joylashtirish',
       suggest: 'Joy taklif qilish',
       suggestTitle: '{{lesson}} uchun joy',
+      history: {
+        undo: 'Bekor qilish',
+        redo: 'Qaytarish',
+        undoStep: 'Bekor qilish: {{step}}',
+        redoStep: 'Qaytarish: {{step}}',
+        kinds: {
+          place: '{{lesson}} darsini joylash',
+          move: '{{lesson}} darsini koʻchirish',
+          swap: '{{lesson}} darsini almashtirish',
+          room: '{{lesson}} darsining xonasi',
+          remove: '{{lesson}} darsini olib tashlash',
+          suggestion: '{{lesson}} darsi uchun taklif',
+        },
+        changedSince:
+          'Bu oʻzgarishni bekor qilib boʻlmaydi: uning darslari keyin oʻzgargan. Ularni qoʻlda oʻzgartiring.',
+      },
       freeSlots: 'Boʻsh soatlar',
       rearrangements: 'Boshqa darslarni koʻchirib joy ochish',
       nothingFound:
