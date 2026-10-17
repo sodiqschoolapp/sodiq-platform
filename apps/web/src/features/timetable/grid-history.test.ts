@@ -117,13 +117,9 @@ describe('the step of a write', () => {
     });
     expect(stepOf('move', [A, B], [A, B])).toBeNull();
     const placed = stepFrom(stepOf('place', [A], [A, B]));
-    expect(placed.changes).toEqual([
-      { before: null, after: expect.objectContaining({ blockId: B.id }) },
-    ]);
+    expect(placed.changes).toMatchObject([{ before: null, after: { blockId: B.id } }]);
     const removed = stepFrom(stepOf('remove', [A, B], [A]));
-    expect(removed.changes).toEqual([
-      { before: expect.objectContaining({ blockId: B.id }), after: null },
-    ]);
+    expect(removed.changes).toMatchObject([{ before: { blockId: B.id }, after: null }]);
   });
 });
 

@@ -522,3 +522,81 @@ test('a second Academic Vice Principal takes over a draft and the first is told'
   await takerContext.close();
   await holderContext.close();
 });
+
+// Task 5.4c-2 (Done when): 06, Editing in the grid: "Undo and redo". A move
+// is undone and redone, a removal is undone, each through the routes; the
+// room change and the applied suggestion are covered by grid-step.test.tsx.
+// All names are invented.
+test('an Academic Vice Principal undoes and redoes a move, and undoes a removal', async ({
+  page,
+}) => {
+  const account = accountOf('draftGridUndo');
+  await page.goto('/sign-in');
+  await languageChooser(page).selectOption('en');
+  await signIn(page, en, account.login, account.password);
+  await changeFirstPassword(page, en, account);
+  await expect(heading(page, en.setUp.title)).toBeVisible();
+  await page.getByRole('button', { name: en.setUp.start, exact: true }).click();
+  const key = await page.locator('dd').innerText();
+  await page.getByLabel(en.setUp.code, { exact: true }).fill(codeNow(key));
+  await page.getByRole('button', { name: en.setUp.confirm, exact: true }).click();
+  await page.getByRole('checkbox', { name: en.setUp.saved }).check();
+  await page.getByRole('button', { name: en.setUp.continue, exact: true }).click();
+  await expect(heading(page, en.home.title)).toBeVisible();
+
+  await page.goto('/timetable/builder');
+  await expect(heading(page, en.timetable.builder.title)).toBeVisible();
+  const gridRead = page.waitForRequest((request) => request.url().endsWith('/grid'));
+  await page.locator('[data-step="grid"] button').click();
+  const branchId = (await gridRead).headers()['x-branch-id'] ?? '';
+  const versionId = new URL(page.url()).searchParams.get('version') ?? '';
+  await expect(page.locator('[data-board]')).toBeVisible();
+  const cell = (weekday: number, position: number) =>
+    page.locator(`[data-cell="${String(weekday)}:${String(position)}"]`);
+  const history = en.timetable.grid.history;
+  const undo = page.locator('[data-history]').getByRole('button', { name: /^Undo/ });
+  const redo = page.locator('[data-history]').getByRole('button', { name: /^Redo/ });
+  /** Where the server holds the block now. */
+  const slotOnServer = async (blockId: string) => {
+    const answer = await page.request.get(`/api/timetable/versions/${versionId}/grid`, {
+      headers: { 'X-Branch-Id': branchId },
+    });
+    const grid = (await answer.json()) as {
+      blocks: { id: string; weekday: number; slotPosition: number }[];
+    };
+    const block = grid.blocks.find((one) => one.id === blockId);
+    return block === undefined ? null : [block.weekday, block.slotPosition];
+  };
+
+  // 7 Oxford's Geometry on Monday at 08:00, moved to Tuesday at 08:00.
+  const lesson = cell(1, 1).locator('[data-block]');
+  await expect(lesson).toContainText('Geometry');
+  const blockId = (await lesson.getAttribute('data-block')) ?? '';
+  await expect(undo).toBeDisabled();
+  await lesson.dragTo(cell(2, 1));
+  await expect(cell(2, 1).locator(`[data-block="${blockId}"]`)).toBeVisible();
+  await expect(undo).toHaveAccessibleName(/^Undo: moving Geometry/);
+  await undo.click();
+  await expect(cell(1, 1).locator(`[data-block="${blockId}"]`)).toBeVisible();
+  expect(await slotOnServer(blockId)).toEqual([1, 1]);
+  await expect(redo).toBeEnabled();
+  await redo.click();
+  await expect(cell(2, 1).locator(`[data-block="${blockId}"]`)).toBeVisible();
+  expect(await slotOnServer(blockId)).toEqual([2, 1]);
+  await screenshot(page, 'grid-undo');
+
+  // Removed, then put back by Undo in the same slot.
+  await cell(2, 1)
+    .locator(`[data-block="${blockId}"]`)
+    .getByRole('button', { name: en.timetable.grid.remove })
+    .click();
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: en.timetable.grid.remove })
+    .click();
+  await expect(cell(2, 1).locator('[data-block]')).toHaveCount(0);
+  await expect(undo).toHaveAccessibleName(/^Undo: removing Geometry/);
+  await undo.click();
+  await expect(cell(2, 1).locator('[data-block]')).toContainText('Geometry');
+  await expect(redo).toHaveAccessibleName(new RegExp(`^${history.redo}: removing Geometry`));
+});
