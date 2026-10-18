@@ -1222,6 +1222,85 @@ describe('publish', () => {
       expect([await rowsOf(s.b), await entriesOf(s.b), await t.auditCount()]).toEqual(before);
     });
 
+    // Permission review, must-fix 1 and should-fixes 1 and 2: the rows a
+    // replace or a carry would write exist in both branches.
+    it("answers 404 for another branch's draft and an unknown one with every answer, changing nothing in either branch", async () => {
+      const s = await chainScene();
+      const theirs = await chainScene();
+      await viceIn(s.branch);
+      await load.freeEditLock(s.fix);
+      const before = await written([s.fix, theirs.fix]);
+      for (const cookie of [t.admin, t.vicePrincipal]) {
+        for (const id of [theirs.fix, UNKNOWN]) {
+          for (const chain of ['replace', 'carry']) {
+            refusedWith(
+              await request(t.kit.server)
+                .post(`/api/timetable/versions/${id}/publish`)
+                .set('Cookie', cookie)
+                .set(BRANCH_HEADER, s.branch)
+                .set(REQUEST_KEY_HEADER, randomUUID())
+                .send({ startsOn: '2026-10-19', chain, laterKey: 'a'.repeat(64) }),
+              404,
+              'not_found',
+            );
+            refusedWith(
+              await check(s.branch, id, `2026-10-19&chain=${chain}`, cookie),
+              404,
+              'not_found',
+            );
+          }
+        }
+      }
+      expect(await written([s.fix, theirs.fix])).toEqual(before);
+    });
+
+    it('replaces and carries in its own branch only, and checks a repeat again before the stored answer', async () => {
+      const s = await chainScene();
+      const theirs = await chainScene();
+      const theirsBefore = await written([theirs.fix]);
+      const chain = await laterKey(s.branch, s.fix, '2026-10-19', 'replace');
+      const key = randomUUID();
+      versionOf(await publishChain(s.branch, s.fix, '2026-10-19', 'replace', chain.key, key));
+      const after = await written([s.fix, theirs.fix]);
+      for (const id of [theirs.fix, UNKNOWN]) {
+        refusedWith(
+          await publishChain(s.branch, id, '2026-10-19', 'replace', chain.key, key),
+          404,
+          'not_found',
+        );
+      }
+      const principal = await t.database.migrator
+        .selectFrom('assignments')
+        .select('account_id')
+        .where('role', '=', 'principal')
+        .where('branch_id', '=', t.north)
+        .executeTakeFirstOrThrow();
+      await load.classes.role(principal.account_id, s.branch, 'principal');
+      expect(
+        (
+          await request(t.kit.server)
+            .post(`/api/timetable/versions/${s.fix}/publish`)
+            .set('Cookie', t.principal)
+            .set(BRANCH_HEADER, s.branch)
+            .set(REQUEST_KEY_HEADER, key)
+            .send({ startsOn: '2026-10-19', chain: 'replace', laterKey: chain.key })
+        ).status,
+      ).toBe(403);
+      expect(await written([s.fix, theirs.fix])).toEqual(after);
+      // The other branch's chain is as it was; then a carry there leaves this branch's.
+      const [theirVersions, theirRows, theirEntries] = theirsBefore;
+      expect((await written([theirs.fix])).slice(0, 3)).toEqual([
+        theirVersions,
+        theirRows,
+        theirEntries,
+      ]);
+      const ownBefore = (await written([s.fix])).slice(0, 3);
+      const carry = await laterKey(theirs.branch, theirs.fix, '2026-10-19', 'carry');
+      versionOf(await publishChain(theirs.branch, theirs.fix, '2026-10-19', 'carry', carry.key));
+      expect((await rowsOf(theirs.b)).map((one) => one.teacher_id)).toEqual([theirs.second]);
+      expect((await written([s.fix])).slice(0, 3)).toEqual(ownBefore);
+    });
+
     it('ignores an answer when no later version is published', async () => {
       const s = await scene();
       const answer = checkOf(await checkChain(s.branch, s.version, MONDAY, 'replace'));
