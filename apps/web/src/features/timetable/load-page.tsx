@@ -11,7 +11,7 @@ import {
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useConfirm } from '@/components/confirm-dialog';
 import { SelectField } from '@/components/field';
@@ -23,6 +23,7 @@ import { PageHeader } from '@/components/page-header';
 import { EmptyState, ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { PANEL, SECTION_TITLE } from '@/components/ui/control';
+import { ApiFailure } from '@/api/failure';
 import { useView } from '@/features/access/use-view';
 import { classesQuery } from '@/features/classes/classes-api';
 import { groupsQuery } from '@/features/classes/groups-api';
@@ -31,6 +32,7 @@ import { subjectsQuery } from '@/features/setup/subjects-api';
 import { schoolDateText } from '@/lib/dates';
 import { SM, useMinWidth } from '@/lib/use-min-width';
 import { LoadRowForm } from './load-row-form';
+import { ruleText } from './rule-text';
 import { LoadRowPanel } from './load-row-panel';
 import { LoadTotalsSection } from './load-totals';
 import { EditLockBanner, useEditLock } from './edit-lock';
@@ -41,6 +43,7 @@ import {
   invalidateTimetable,
   loadQuery,
   versionsQuery,
+  withdrawVersion,
 } from './timetable-api';
 import { comingQuarterStarts, NewDraftForm, StartForm } from './version-form';
 
@@ -132,6 +135,22 @@ export function LoadPage(): React.JSX.Element {
   const create = useMutation({
     mutationFn: (record: LoadRowRecord) => createLoadRow(chosen?.id ?? '', record),
     onSuccess: refresh,
+  });
+  // Task 5.5c-2a: one key per withdraw asked, so a repeat of the same click is harmless.
+  const withdrawKey = useRef<string | null>(null);
+  const withdraw = useMutation({
+    mutationFn: (versionId: string) => {
+      withdrawKey.current ??= crypto.randomUUID();
+      return withdrawVersion(versionId, withdrawKey.current);
+    },
+    onSuccess: async () => {
+      withdrawKey.current = null;
+      await refresh();
+    },
+    onError: async () => {
+      withdrawKey.current = null;
+      await refresh();
+    },
   });
 
   const open = (next: ListSearch, how: 'push' | 'replace'): void => {
@@ -384,6 +403,42 @@ export function LoadPage(): React.JSX.Element {
     );
   }
 
+  // Task 5.5c-2a: a published version not started, in a year not closed;
+  // the server decides (`withdraw_started`), this only offers the button.
+  const withdrawable =
+    can('edit') &&
+    chosen.status === 'published' &&
+    chosen.yearStatus !== 'closed' &&
+    chosen.startsOn > versions.data.today;
+  // Decision 3: the published version with the latest start before it, a tie to the higher number.
+  const earlierOf = (one: TimetableVersion) =>
+    list
+      .filter(
+        (other) =>
+          other.status === 'published' &&
+          other.academicYearId === one.academicYearId &&
+          other.startsOn < one.startsOn,
+      )
+      .sort((a, b) => b.startsOn.localeCompare(a.startsOn) || b.number - a.number)[0];
+  // Task 5.5c-2a: asks first, naming the version and the one that runs again.
+  const askWithdraw = async (one: TimetableVersion) => {
+    const earlier = earlierOf(one);
+    const date = schoolDateText(one.startsOn, language);
+    if (
+      await confirm({
+        title: t('timetable.load.withdrawTitle', { number: one.number }),
+        text:
+          earlier === undefined
+            ? t('timetable.load.withdrawTextNone', { date })
+            : t('timetable.load.withdrawText', { date, earlier: earlier.number }),
+        names: [versionLabel(one)],
+        action: t('timetable.load.withdraw'),
+        destructive: true,
+      })
+    ) {
+      withdraw.mutate(one.id);
+    }
+  };
   const rowName = (row: LoadRow) => `${unitText(row)}, ${nameOf(row.subject.names, language)}`;
   const leftRows = load.data?.leftRows ?? [];
 
@@ -430,7 +485,38 @@ export function LoadPage(): React.JSX.Element {
               {t('timetable.load.changeStart')}
             </Button>
           )}
+          {withdrawable && (
+            <Button
+              variant="destructive"
+              disabled={withdraw.isPending}
+              onClick={() => {
+                void askWithdraw(chosen);
+              }}
+            >
+              {t('timetable.load.withdraw')}
+            </Button>
+          )}
         </div>
+        {withdraw.error !== null && (
+          <div className="grid gap-2" data-withdraw-failure="true">
+            <FailureAlert error={withdraw.error} />
+            {withdraw.error instanceof ApiFailure && withdraw.error.code === 'withdraw_blocked' && (
+              <ul className="grid gap-1 text-sm">
+                {(withdraw.error.details ?? []).map((detail, index) => (
+                  <li key={`${detail.path}-${String(index)}`}>
+                    {t('timetable.load.withdrawBlocked', {
+                      date:
+                        detail.day === undefined
+                          ? t('timetable.load.everyWeek')
+                          : schoolDateText(detail.day, language),
+                      rule: ruleText(t, detail.path.split('.').at(-1) ?? ''),
+                    })}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
         {changingStart && (
           <div className="max-w-xl">
             <StartForm

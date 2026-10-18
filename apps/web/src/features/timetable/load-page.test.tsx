@@ -619,6 +619,103 @@ describe('the teaching load page', () => {
   });
 });
 
+// Task 5.5c-2a, pull request #156 (06, How surprises are prevented: "Withdraw.
+// A published version can be withdrawn only before its start date.").
+describe('the teaching load page: withdraw', () => {
+  const earlier = version(1, { status: 'published', startsOn: '2026-09-01' });
+  const later = version(2, { status: 'published', startsOn: '2026-11-09' });
+
+  it('withdraws a published version before its start, naming the version that runs again', async () => {
+    const calls = await openPage({
+      versions: [later, earlier],
+      extra: {
+        [`POST /api/timetable/versions/${later.id}/withdraw`]: () =>
+          json({ ...later, status: 'archived' }),
+      },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: en.timetable.load.withdraw }));
+    const dialog = await screen.findByRole('alertdialog');
+    expect(within(dialog).getByText('Withdraw version 2?')).not.toBeNull();
+    expect(
+      within(dialog).getByText(
+        'It is withdrawn before it starts on 9 November 2026. Version 1 runs again over its dates.',
+      ),
+    ).not.toBeNull();
+    fireEvent.click(within(dialog).getByRole('button', { name: en.timetable.load.withdraw }));
+    await waitFor(() => {
+      expect(
+        calls.filter((call) => call.route === `POST /api/timetable/versions/${later.id}/withdraw`),
+      ).toHaveLength(1);
+    });
+  });
+
+  it('says when no version runs over the dates of the first one', async () => {
+    await openPage({ versions: [later] });
+    fireEvent.click(await screen.findByRole('button', { name: en.timetable.load.withdraw }));
+    const dialog = await screen.findByRole('alertdialog');
+    expect(
+      within(dialog).getByText(
+        'It is withdrawn before it starts on 9 November 2026. No version runs over its dates.',
+      ),
+    ).not.toBeNull();
+  });
+
+  it.each([
+    ['a started version', earlier],
+    ['a draft', version(3, { startsOn: '2026-11-09' })],
+    ['an archived version', version(4, { status: 'archived', startsOn: '2026-11-09' })],
+  ])('offers no withdraw for %s', async (_name, one) => {
+    await openPage({ versions: [one] });
+    await screen.findByText('Starts on', { exact: false });
+    expect(screen.queryByRole('button', { name: en.timetable.load.withdraw })).toBeNull();
+  });
+
+  it('offers no withdraw to the Principal', async () => {
+    await openPage({ session: principal(), versions: [later] });
+    await screen.findByText(en.timetable.load.readOnly);
+    expect(screen.queryByRole('button', { name: en.timetable.load.withdraw })).toBeNull();
+  });
+
+  it('lists the dates of a refusal by the version that would run again', async () => {
+    await openPage({
+      versions: [later, earlier],
+      extra: {
+        [`POST /api/timetable/versions/${later.id}/withdraw`]: () =>
+          Response.json(
+            {
+              error: {
+                code: 'withdraw_blocked',
+                message: 'ENGLISH TEXT FOR THE DEVELOPER',
+                requestId: 'test-request',
+                details: [
+                  {
+                    path: 'dates.2026-11-16.teacher_double',
+                    code: 'date_blocked',
+                    message: 'x',
+                    day: '2026-11-16',
+                  },
+                ],
+              },
+            },
+            { status: 409 },
+          ),
+      },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: en.timetable.load.withdraw }));
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: en.timetable.load.withdraw }));
+    const failure = await waitFor(() => {
+      const found = document.querySelector<HTMLElement>('[data-withdraw-failure]');
+      expect(found).not.toBeNull();
+      return found as HTMLElement;
+    });
+    expect(within(failure).getByText(en.errors.withdraw_blocked)).not.toBeNull();
+    expect(
+      within(failure).getByText(`16 November 2026: ${en.timetable.rule.teacher_double}`),
+    ).not.toBeNull();
+  });
+});
+
 describe('the timetable page', () => {
   it.each([
     ['academic_vice_principal', true],

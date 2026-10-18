@@ -561,6 +561,11 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     branch: 'request',
     roles: ['super_admin', 'academic_vice_principal'],
   },
+  // Task 5.5c-2a: withdraw, under the publish's own permission.
+  'POST /api/timetable/versions/:id/withdraw': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
   // Task 5.5a-3b-1: the causes of a draft's mark, read by every reader of the
   // timetable, and bringing it up to date, under timetable edit.
   'GET /api/timetable/versions/:id/out-of-date': {

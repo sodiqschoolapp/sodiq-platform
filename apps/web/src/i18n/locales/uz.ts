@@ -410,6 +410,12 @@ export const uz: Texts<'one' | 'other'> = {
       'Shu paytda dars jadvalining boshqa oʻzgarishi saqlanayotgan edi. Qayta urinib koʻring.',
     publish_blocked:
       'Qoralamani hali eʼlon qilib boʻlmaydi. 8-qadam barcha sabablarni koʻrsatadi; ularni hal qilib, qayta eʼlon qiling.',
+    version_not_published:
+      'Faqat eʼlon qilingan versiyani qaytarib olish mumkin. Roʻyxatni yangilang.',
+    withdraw_started:
+      'Bu versiya kuchga kirgan, uni endi qaytarib olib boʻlmaydi. Oʻzgartirish uchun yangi versiyani eʼlon qiling.',
+    withdraw_blocked:
+      'Qayta kuchga kiradigan versiya koʻrsatilgan sanalarda bloklovchi toʻqnashuvga uchraydi. Ularni hal qilib, qayta qaytarib oling.',
     draft_not_ready:
       'Qoralamaning bir qadami tayyor emas. Avval tayyor emas deb belgilangan qadamlarni tugating.',
     load_unit_year:
@@ -2647,6 +2653,7 @@ export const uz: Texts<'one' | 'other'> = {
         up_to_date: 'Qoralama yangilandi',
         replace: 'Eʼlon qilingan versiya oldinroq boshlanadigan versiya bilan almashtirildi',
         carry: 'Oʻqituvchi yoki xona oʻzgarishi eʼlon qilingan versiyaga oʻtkazildi',
+        withdraw: 'Eʼlon qilingan versiya boshlanishidan oldin qaytarib olindi',
         day_keep: 'Qoralamaning qisqartirilgan kunida qoladigan darslar tanlandi',
       },
       timetable_lock: {
@@ -3445,6 +3452,8 @@ export const uz: Texts<'one' | 'other'> = {
       bring: 'Yangilash',
       byPublish:
         'Bu qoralamani eʼlon eskirgan deb belgiladi. Har bir farq uchun qoralamani qoldiring yoki eʼlon qilingan versiyani oling.',
+      byWithdraw:
+        'Bu qoralamani versiyaning qaytarib olinishi eskirgan deb belgiladi. Har bir farq uchun qoralamani qoldiring yoki amaldagi versiyani oling.',
       compared: '{{date}} dan amalda boʻlgan {{number}}-versiya bilan solishtirildi.',
       startedFrom: 'Bu qoralama {{number}}-versiyadan boshlangan.',
       noBase: 'Bu qoralama boshqa versiyadan boshlanmagan.',
@@ -3612,6 +3621,14 @@ export const uz: Texts<'one' | 'other'> = {
       startsOnText: '{{date}} dan boshlanadi',
       fromVersion: '{{number}}-versiyadan nusxa olingan',
       newDraft: 'Yangi qoralama',
+      withdraw: 'Qaytarib olish',
+      withdrawTitle: '{{number}}-versiya qaytarib olinsinmi?',
+      withdrawText:
+        'U {{date}} da boshlanishidan oldin qaytarib olinadi. Uning sanalarida {{earlier}}-versiya yana amal qiladi.',
+      withdrawTextNone:
+        'U {{date}} da boshlanishidan oldin qaytarib olinadi. Uning sanalarida hech bir versiya amal qilmaydi.',
+      withdrawBlocked: '{{date}}: {{rule}}',
+      everyWeek: 'Har hafta',
       newDraftTitle: 'Yangi qoralama',
       year: 'Oʻquv yili',
       copyFrom: 'Nimadan boshlash',

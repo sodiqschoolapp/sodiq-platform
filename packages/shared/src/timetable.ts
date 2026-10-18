@@ -1323,6 +1323,8 @@ export type PublishCheck = z.infer<typeof publishCheckSchema>;
  */
 export const OUT_OF_DATE_ACTIONS = {
   'timetable_version.publish': 'publish',
+  // Task 5.5c-2a (decision 6): a withdraw changes the live timetable too.
+  'timetable_version.withdraw': 'withdraw',
   'calendar_entry.create': 'calendar',
   'calendar_entry.edit': 'calendar',
   'calendar_entry.archive': 'calendar',
@@ -1344,6 +1346,7 @@ export const outOfDateActionSchema = z.enum(
 
 export const OUT_OF_DATE_KINDS = [
   'publish',
+  'withdraw',
   'calendar',
   'templates',
   'availability',

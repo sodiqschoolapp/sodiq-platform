@@ -257,6 +257,7 @@ describe('OpenAPI document', () => {
         '/api/timetable/versions/{id}/templates/confirm',
         '/api/timetable/versions/{id}/totals',
         '/api/timetable/versions/{id}/up-to-date',
+        '/api/timetable/versions/{id}/withdraw',
       ]);
       expect(document.paths['/api/health']?.get?.responses).toEqual({
         '200': {

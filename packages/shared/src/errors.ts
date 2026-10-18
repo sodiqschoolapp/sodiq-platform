@@ -550,6 +550,12 @@ export const ERROR_CODES = [
   'draft_not_ready',
   /** A publish is refused; `details` lists every reason, each with its code of `PUBLISH_REFUSALS` (task 5.5a-1, decision 12). */
   'publish_blocked',
+  /** The version is not published: only a published version can be withdrawn (task 5.5c-2a). */
+  'version_not_published',
+  /** The version has started: a published version can be withdrawn only before its start date (task 5.5c-2a). */
+  'withdraw_started',
+  /** A withdraw is refused: the version that would run again meets a blocked conflict; `details` lists each (task 5.5c-2a). */
+  'withdraw_blocked',
   /** The class or group of a load row is of another academic year than the version (task 3.4a). */
   'load_unit_year',
   /** The class or group of a load row is archived (task 3.4a). */

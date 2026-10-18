@@ -265,6 +265,23 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 18 October 2026: publish, withdraw (task 5.5c-2a)
+
+Plan approved on pull request #156 with corrections 1 to 4; decisions 1 to 13 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a task split). 5.5c-2 is split into 5.5c-2a (withdraw) and 5.5c-2b ("Classes taught", the vacancy kept) | Decision 1 |
+| **Look first** (a pinned list widened by a requirement). `timetable_version_out_of_date_causes_action_check` (0082) and the shared `OUT_OF_DATE_ACTIONS` gain `timetable_version.withdraw`, kind `withdraw` | Decision 2 |
+| The version that runs again is the latest published start before the withdrawn one, a tie to the higher number, until the next published start or the year's end | Decision 3 |
+| Its lessons are written by `writeDatedLessons`; an unchanged lesson keeps its identity | Decision 4 |
+| The full rule set on its pattern and dates refuses (`withdraw_blocked`); a teacher out, and a Tutor lesson, are decided per date as "needs a teacher"; the version is read as if it started on the withdrawn start | Decision 5; spec review must-fix 2 of the plan; code review must-fix 1 |
+| Every draft of the branch and year gets a withdraw cause; bringing it up to date is a publish cause's; with no published version left, an archived source (withdrawn, or replaced) is no longer named | Decision 6; code review should-fix 4 |
+| No reason, no preview; notices with 5.5c-3; no column, the audit entry `timetable_version.withdraw`; permission timetable edit | Decisions 7 to 10 |
+| With no earlier version, the stored lessons of the run are deleted | Decision 11 |
+| A shortened day with no stored choice is read as a publish reads it | Decision 12 |
+| A carry or replace made by the withdrawn version's publish stays | Decision 13 (review correction 2) |
+
 ## 18 October 2026: publish, journals at publish (task 5.5c-1)
 
 Plan approved on pull request #155 with corrections 1 to 3; decisions 1 to 10 confirmed there. Flagged on issue #42.

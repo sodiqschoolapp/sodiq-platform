@@ -666,14 +666,19 @@ How to read the task lines:
   - Build: the journal record (one per class or group and subject per year) created, closed and reopened at publish, without cells: its runs are the days the published chain's load has it.
   - Done when: publishing a load with a new subject creates exactly one journal and removing it closes that journal.
 
-- [ ] **5.5c-2 Publish: withdraw**
-  - Read: `06` (How surprises are prevented), `04` (Teacher and staff record, Vacancy), `edge/timetable` (Versions and drafts), `edge/developer-rules`.
-  - Build: withdraw before the start date; the journals synced again after it (`syncJournals`, `apps/api/src/modules/timetable/journals.ts`); "Classes taught" on the staff record from the published load.
+- [x] **5.5c-2a Publish: withdraw** (5.5c-2 split in two, pull request #156, decision 1)
+  - Read: `06` (How surprises are prevented), `edge/timetable` (Versions and drafts), `edge/developer-rules`.
+  - Build: withdraw before the start date; the version in force before it runs again over its dates; the journals synced again after it (`syncJournals`, `apps/api/src/modules/timetable/journals.ts`); the drafts of the branch and year marked out of date.
   - Done when: a version withdrawn before its start has no dated lessons left, the version in force before it runs again over its dates, and a journal only it opened has no run.
-  - From 3.4a (pull request #99): `04`, Teacher and staff record, Academic, "Classes taught, filled from the teaching load", is read from the published load; a vacancy that "held a load" is closed and kept (`04`, Vacancy) once 5.5 publishes it.
   - From 5.1a (pull request #107, correction 6): withdraw before the start date removes the version's dated lessons; the delete grant on `lessons` and `lesson_blocks` comes in a migration of its own.
-  - From 3.6a (pull request #118, decision 4): the students a Teacher reads come from `taughtAt` (`apps/api/src/modules/access/taught-scope.ts`): the classes and groups of the teacher's rows in the published version in force of each year not closed, on `greatest(today, the year's start)`; "Classes taught" reads the same, and publishing makes a Teacher's Students list fill.
   - From 5.5a-3a (pull request #145, decision 10): withdraw uses the transition published → archived of 0076, allowed only before the version's start.
+
+- [ ] **5.5c-2b Publish: "Classes taught" and the vacancy kept** (5.5c-2 split in two, pull request #156, decision 1)
+  - Read: `04` (Teacher and staff record, Vacancy), `06` (Changes after publishing: Filling a vacancy), `edge/timetable` (After publishing: the vacancy rows), `edge/developer-rules`.
+  - Build: "Classes taught" on the staff record from the published load; the vacancy closed and kept: close refused while a load row of a draft or of a published version not yet ended names it or a future lesson is under it (`04`, Vacancy: "A vacancy cannot be closed while a load row names it or a future lesson is under it. One that never held a load can be deleted; one that did is closed and kept."), the 0055 trigger `staff_statuses_vacancy_load` narrowed to the same rows, delete still refused for a vacancy that ever held a load.
+  - Done when: a vacancy whose published rows have all ended and that has no future lesson can be closed and stays listed, one with a future lesson is refused, and "Classes taught" lists the classes and groups of the published load in force.
+  - From 3.4a (pull request #99): `04`, Teacher and staff record, Academic, "Classes taught, filled from the teaching load", is read from the published load; a vacancy that "held a load" is closed and kept (`04`, Vacancy) once 5.5 publishes it.
+  - From 3.6a (pull request #118, decision 4): the students a Teacher reads come from `taughtAt` (`apps/api/src/modules/access/taught-scope.ts`): the classes and groups of the teacher's rows in the published version in force of each year not closed, on `greatest(today, the year's start)`; "Classes taught" reads the same, and publishing makes a Teacher's Students list fill.
 
 - [ ] **5.5c-3 Publish: notices and the changed mark**
   - Read: `06` (How surprises are prevented, Changes after publishing, Views and outputs), `edge/timetable` (After publishing, "One publish changes thousands of lessons").
@@ -681,6 +686,7 @@ How to read the task lines:
   - Done when: a publish that changes one teacher's lessons notifies that teacher once and no teacher whose week is the same, and the changed lessons carry the mark for seven days.
   - From 3.6c-2 (pull request #125, decision 9 with review correction 5): a change of a class's Tutor that moves its dated Tutor lessons (`followTutors`) notifies the old and the new Tutor as a teacher change does, and the lessons it moved carry the "changed" mark for a week.
   - From 5.5a-3a (pull request #145, decision 10): a carry notifies the teachers of the later versions it changed.
+  - From 5.5c-2a (pull request #156, decision 8): a withdraw notifies the affected teachers, as a publish does (`06`, Views and outputs: "When a published timetable changes, the affected teachers are notified at once").
 
 - [ ] **5.6a One-day changes**
   - Read: `06` (Changes after publishing), `edge/timetable` (After publishing, Versions and drafts).

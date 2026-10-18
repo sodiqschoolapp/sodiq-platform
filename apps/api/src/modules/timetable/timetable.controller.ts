@@ -80,6 +80,7 @@ import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { TimetablePattern } from './pattern.service.js';
 import { TimetablePublish } from './publish.service.js';
+import { TimetableWithdraw } from './withdraw.service.js';
 import { TimetableUpToDate } from './up-to-date.service.js';
 import { Timetable } from './timetable.service.js';
 
@@ -96,6 +97,7 @@ export class TimetableController {
     private readonly pattern: TimetablePattern,
     private readonly publisher: TimetablePublish,
     private readonly upToDate: TimetableUpToDate,
+    private readonly withdrawer: TimetableWithdraw,
   ) {}
 
   @Get('versions')
@@ -194,6 +196,20 @@ export class TimetableController {
     @RequestId() requestId: string,
   ): Promise<TimetableVersion> {
     return this.publisher.publish(access, params.id, input, key, requestId);
+  }
+
+  /** The withdraw of a published version before its start (task 5.5c-2a), safe to repeat with its key. */
+  @Post('versions/:id/withdraw')
+  @HttpCode(200)
+  @Requires('timetable', 'edit')
+  @Returns(timetableVersionSchema)
+  withdraw(
+    @CurrentAccess() access: Access,
+    @ValidParams(timetableVersionParamsSchema) params: TimetableVersionParams,
+    @RequestKey() key: string,
+    @RequestId() requestId: string,
+  ): Promise<TimetableVersion> {
+    return this.withdrawer.withdraw(access, params.id, key, requestId);
   }
 
   @Get('versions/:id/load')
