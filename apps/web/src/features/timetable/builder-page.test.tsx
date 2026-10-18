@@ -1184,3 +1184,144 @@ describe('pinSlots', () => {
     });
   });
 });
+
+// Task 5.5a-3b-1, pull request #146: what marked a draft out of date, and
+// bringing it up to date (06, How surprises are prevented: "the draft must be
+// brought up to date before publishing; the differences are shown").
+describe('a draft out of date', () => {
+  const KEY = 'a'.repeat(64);
+  const BRANCH = {
+    id: NORTH.id,
+    name: 'North',
+    address: null,
+    phone: null,
+    email: null,
+    workingWeekdays: [1, 2, 3, 4, 5],
+    timeZone: 'Asia/Tashkent',
+    goLiveDate: null,
+  };
+  const CHECK = {
+    startsOn: '2026-10-19',
+    earliest: '2026-10-11',
+    defaultStart: '2026-10-12',
+    quarterStarts: [],
+    refusals: [{ code: 'draft_out_of_date' }, { code: 'year_quarters' }],
+    warnings: [],
+    cancelledLessons: [],
+    needsTeacher: [],
+    impact: null,
+    shortenedDays: [],
+    unusedKeeps: [],
+    chain: null,
+    canPublish: false,
+  };
+  const CALENDAR = {
+    id: uid(960),
+    kind: 'calendar',
+    action: 'calendar_entry.create',
+    causedAt: '2026-10-10T08:30:00.000Z',
+    record: {
+      id: uid(961),
+      name: 'Teachers day',
+      firstDate: '2026-11-04',
+      lastDate: '2026-11-04',
+      versionNumber: null,
+    },
+  };
+  const ROOM_GONE = {
+    id: uid(962),
+    kind: 'rooms',
+    action: 'room.edit',
+    causedAt: '2026-10-10T09:05:00.000Z',
+    record: null,
+  };
+  const causesRoute = `GET /api/timetable/versions/${VERSION.id}/out-of-date`;
+  const bringRoute = `POST /api/timetable/versions/${VERSION.id}/up-to-date`;
+
+  /** The page with the draft out of date until it is brought up to date. */
+  async function outOfDate(
+    causes: readonly object[],
+    options: { session?: ReturnType<typeof sessionOf>; causesFail?: boolean } = {},
+  ) {
+    let marked = true;
+    const calls = await openPage({
+      ...(options.session === undefined ? {} : { session: options.session }),
+      extra: {
+        'GET /api/timetable/versions': () =>
+          json({ versions: [{ ...VERSION, outOfDate: marked }], today: '2026-10-10' }),
+        'GET /api/setup/branch': () => json(BRANCH),
+        [causesRoute]: () =>
+          options.causesFail === true
+            ? json({ error: { code: 'internal_error', message: 'x', requestId: 'r' } }, 500)
+            : json({ causes: marked ? causes : [], key: KEY }),
+        [`GET /api/timetable/versions/${VERSION.id}/publish-check`]: () => json(CHECK),
+        [bringRoute]: () => {
+          marked = false;
+          return json({ ...VERSION, outOfDate: false });
+        },
+      },
+    });
+    return calls;
+  }
+
+  const panel = () =>
+    waitFor(() => {
+      const found = document.querySelector('[data-out-of-date-panel]');
+      if (found === null || found.querySelector('li') === null) throw new Error('No panel yet.');
+      return found as HTMLElement;
+    });
+
+  it('lists each cause with its record and moment in branch time, counts the check, and brings the draft up to date', async () => {
+    const calls = await outOfDate([CALENDAR, ROOM_GONE]);
+    const found = await panel();
+    expect([...found.querySelectorAll('li')].map((item) => item.textContent)).toEqual([
+      `${en.audit.actions.calendar_entry.create}: Teachers day, 4 November 2026 · 10 Oct 2026, 13:30`,
+      `${en.audit.actions.room.edit}: ${en.timetable.outOfDate.recordGone} · 10 Oct 2026, 14:05`,
+    ]);
+    await waitFor(() => {
+      expect(found.querySelector('[data-check]')?.textContent).toContain(
+        en.timetable.outOfDate.check.replace('{{refusals}}', '1').replace('{{warnings}}', '0'),
+      );
+    });
+    fireEvent.click(within(found).getByRole('button', { name: en.timetable.outOfDate.bring }));
+    await waitFor(() => {
+      expect(document.querySelector('[data-out-of-date-panel]')).toBeNull();
+    });
+    expect(calls.find((call) => call.route === bringRoute)?.body).toEqual({ key: KEY });
+    expect(document.querySelector('[data-out-of-date="true"]')).toBeNull();
+  });
+
+  it('switches the button off with its reason while a publish marked the draft', async () => {
+    const calls = await outOfDate([
+      CALENDAR,
+      {
+        id: uid(963),
+        kind: 'publish',
+        action: 'timetable_version.publish',
+        causedAt: '2026-10-10T09:10:00.000Z',
+        record: null,
+      },
+    ]);
+    const found = await panel();
+    expect([...found.querySelectorAll('li')][1]?.textContent).toContain(
+      en.timetable.outOfDate.earlierPublish,
+    );
+    expect(within(found).getByText(en.timetable.outOfDate.byPublish)).toBeTruthy();
+    expect(
+      within(found).getByRole('button', { name: en.timetable.outOfDate.bring }),
+    ).toHaveProperty('disabled', true);
+    expect(calls.some((call) => call.route === bringRoute)).toBe(false);
+  });
+
+  it('shows the Principal the causes with no button', async () => {
+    await outOfDate([CALENDAR], { session: principal() });
+    const found = await panel();
+    expect(within(found).queryByRole('button', { name: en.timetable.outOfDate.bring })).toBeNull();
+  });
+
+  it('says when the causes cannot be read, with a retry', async () => {
+    await outOfDate([CALENDAR], { causesFail: true });
+    expect(await screen.findByRole('button', { name: en.problems.retry })).toBeTruthy();
+    expect(document.querySelector('[data-out-of-date-panel]')).toBeNull();
+  });
+});

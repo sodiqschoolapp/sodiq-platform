@@ -362,6 +362,10 @@ export const uz: Texts<'one' | 'other'> = {
       'Ikki yozuvdan birida bugundan keyingi sinf yoki guruh koʻchirilishi bor. Avval uni bekor qiling, soʻng birlashtiring.',
     version_not_draft:
       'Bu versiya endi qoralama emas: uning yuklamasi va boshlanish sanasi oʻzgarmaydi. Yuklamani oʻzgartirish uchun yangi qoralama boshlang.',
+    draft_out_of_date_by_publish:
+      'Bu qoralama boshlangandan keyin boshqa versiya eʼlon qilindi. Eʼlondan keyin qoralamani yangilash hali mavjud emas.',
+    out_of_date_changed:
+      'Siz koʻrayotganingizda qoralama yana eskirgan deb belgilandi. Nima oʻzgarganini tekshiring va uni qayta yangilang.',
     timetable_year_closed:
       'Bu versiyaning oʻquv yili yopilgan: unda hech narsa oʻzgarmaydi. Rejalashtirilgan yoki joriy yilda ishlang.',
     version_start_past: 'Boshlanish sanasi bugundan oldin. Bugungi yoki keyingi sanani tanlang.',
@@ -2635,7 +2639,8 @@ export const uz: Texts<'one' | 'other'> = {
         rules_confirm: 'Qoralamaning qoidalari tasdiqlandi',
         edit_lock: 'Dars jadvali qoralamasi tahrirlash uchun olindi',
         publish: 'Dars jadvali versiyasi eʼlon qilindi',
-        out_of_date: 'Eʼlon tufayli qoralama eskirgan deb belgilandi',
+        out_of_date: 'Qoralama eskirgan deb belgilandi',
+        up_to_date: 'Qoralama yangilandi',
         replace: 'Eʼlon qilingan versiya oldinroq boshlanadigan versiya bilan almashtirildi',
         carry: 'Oʻqituvchi yoki xona oʻzgarishi eʼlon qilingan versiyaga oʻtkazildi',
         day_keep: 'Qoralamaning qisqartirilgan kunida qoladigan darslar tanlandi',
@@ -3409,7 +3414,7 @@ export const uz: Texts<'one' | 'other'> = {
         version_later_published:
           '{{number}}-versiya shu yoki keyingi sanadan allaqachon eʼlon qilingan. Keyingi versiyalar bilan nima boʻlishini quyida tanlang.',
         draft_out_of_date:
-          'Bu qoralama boshlangandan keyin boshqa versiya eʼlon qilindi. Avval qoralamani yangilang.',
+          'Bu qoralama boshlangandan keyin sozlamalar yoki boshqa versiya oʻzgardi. Avval qoralamani yangilang.',
         draft_not_ready: '«{{step}}» qadami tayyor emas.',
         load_problem: '{{row}}: {{problem}}',
         load_problem_row: 'Yuklama qatori: {{problem}}',
@@ -3426,9 +3431,21 @@ export const uz: Texts<'one' | 'other'> = {
         subject_quarter_weights_any: 'Yuklamadagi bir fanning {{quarter}}-chorak taqsimoti yoʻq.',
       },
     },
+    outOfDate: {
+      title: 'Nima oʻzgardi',
+      none: 'Hech narsa koʻrsatilmagan.',
+      bring: 'Yangilash',
+      byPublish: 'Bu qoralamani eʼlon eskirgan deb belgiladi. Eʼlondan keyin qoralamani yangilash hali mavjud emas.',
+      check: 'Hozir eʼlon qilib boʻlmasligi sabablari: {{refusals}}. Ogohlantirishlar: {{warnings}}.',
+      openCheck: 'Tekshiruvni ochish',
+      earlierPublish: 'Bu roʻyxat yuritilishidan oldingi eʼlon',
+      recordGone: 'Endi mavjud boʻlmagan yozuv',
+      version: '{{number}}-versiya',
+      dates: '{{first}} – {{last}}',
+    },
     builder: {
       notPublished: 'Eʼlon qilinmagan',
-      outOfDate: 'Bu qoralama boshlangandan keyin boshqa versiya eʼlon qilindi.',
+      outOfDate: 'Bu qoralama boshlangandan keyin sozlamalar yoki boshqa versiya oʻzgardi.',
       title: 'Qoralama yigʻuvchi',
       noVersion: 'Avval oʻquv yuklamasi sahifasida qoralama boshlang.',
       later: 'Hali mavjud emas',

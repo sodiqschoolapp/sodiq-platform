@@ -6,6 +6,7 @@ import {
   loadSchema,
   loadTeachersSchema,
   loadTotalsSchema,
+  outOfDateAnswerSchema,
   publishCheckSchema,
   timetableVersionListSchema,
   timetableVersionSchema,
@@ -363,5 +364,29 @@ export const publishVersion = (
         ...(transitionKey === null ? {} : { transitionKey }),
         ...(chain === null ? {} : chain),
       },
+    }),
+  ).then((answer) => timetableVersionSchema.parse(answer));
+
+/** The causes of a draft's mark out of date and their key (task 5.5a-3b-1). */
+export const outOfDateQuery = (branchId: string | null, versionId: string | null) =>
+  queryOptions({
+    queryKey: [...timetableKey(branchId), 'load', versionId, 'out-of-date'],
+    queryFn: async () =>
+      outOfDateAnswerSchema.parse(
+        await answerOf(
+          api.GET('/api/timetable/versions/{id}/out-of-date', {
+            params: { header: branchHeader(), path: { id: versionId ?? '' } },
+          }),
+        ),
+      ),
+    enabled: branchId !== null && versionId !== null,
+  });
+
+/** A draft brought up to date after a change of the setup, with the key of the causes shown. */
+export const bringUpToDate = (versionId: string, key: string) =>
+  answerOf(
+    api.POST('/api/timetable/versions/{id}/up-to-date', {
+      params: { header: branchHeader(), path: { id: versionId } },
+      body: { key },
     }),
   ).then((answer) => timetableVersionSchema.parse(answer));
