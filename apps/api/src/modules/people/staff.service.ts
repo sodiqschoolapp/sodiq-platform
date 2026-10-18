@@ -22,6 +22,7 @@ import {
   type StaffCheck,
   type StaffCheckResult,
   type StaffDetail,
+  type ClassesTaught,
   type StaffDivisions,
   type StaffExport,
   type StaffExportColumn,
@@ -43,6 +44,7 @@ import type { XlsxFile } from '../../http/xlsx.js';
 import { currentAssignments } from '../access/current-assignments.js';
 import { decide } from '../access/permission-check.js';
 import { activeSuperAdmins, lockSuperAdmins } from '../access/super-admins.js';
+import { branchToday, taughtRows } from '../access/taught-scope.js';
 import {
   checkMoveStart,
   departmentChangeOf,
@@ -1802,7 +1804,89 @@ export class Staff {
       rights,
       today: await this.todayIn(transaction, branchId),
       sameAsRelative: await this.sameAsRelative(transaction, access, id),
+      classesTaught: await this.classesTaught(transaction, branchId, id),
     };
+  }
+
+  /**
+   * "Classes taught, filled from the teaching load" (`04`, Teacher and staff
+   * record, Academic; task 5.5c-2b, decisions 5 to 7): the rows of the
+   * published version in force of each year not closed, read by
+   * `taughtRows` as a Teacher's students are, in the branch of the request.
+   */
+  private async classesTaught(
+    transaction: Transaction,
+    branchId: string,
+    id: string,
+  ): Promise<ClassesTaught> {
+    const today = await branchToday(transaction, branchId);
+    const rows = await taughtRows(transaction, branchId, today, { staffId: id });
+    if (rows.length === 0) {
+      return [];
+    }
+    const yearIds = [...new Set(rows.map((row) => row.academic_year_id))];
+    const classIds = [
+      ...new Set(rows.flatMap((row) => (row.class_id === null ? [] : [row.class_id]))),
+    ];
+    const groupIds = [
+      ...new Set(rows.flatMap((row) => (row.group_id === null ? [] : [row.group_id]))),
+    ];
+    const years = await transaction
+      .selectFrom('academic_years')
+      .select(['id', 'start_date', 'end_date'])
+      .where('id', 'in', yearIds)
+      .orderBy('start_date')
+      .orderBy('id')
+      .execute();
+    const classes =
+      classIds.length === 0
+        ? []
+        : await transaction
+            .selectFrom('classes')
+            .select(['id', 'grade', 'name'])
+            .where('id', 'in', classIds)
+            .execute();
+    const groups =
+      groupIds.length === 0
+        ? []
+        : await transaction
+            .selectFrom('groups')
+            .select(['id', 'name'])
+            .where('id', 'in', groupIds)
+            .execute();
+    return years.map((year) => {
+      const ofYear = rows.filter((row) => row.academic_year_id === year.id);
+      const subjectsOf = (match: (row: (typeof rows)[number]) => boolean) =>
+        [...new Set(ofYear.filter(match).map((row) => row.subject_id))].sort();
+      const classEntries = classes
+        .filter((one) => ofYear.some((row) => row.class_id === one.id))
+        .sort(
+          (a, b) => a.grade - b.grade || a.name.localeCompare(b.name) || a.id.localeCompare(b.id),
+        )
+        .map((one) => ({
+          kind: 'class' as const,
+          id: one.id,
+          grade: one.grade,
+          name: one.name,
+          subjectIds: subjectsOf((row) => row.class_id === one.id),
+        }));
+      const groupEntries = groups
+        .filter((one) => ofYear.some((row) => row.group_id === one.id))
+        .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id))
+        .map((one) => ({
+          kind: 'group' as const,
+          id: one.id,
+          grade: null,
+          name: one.name,
+          subjectIds: subjectsOf((row) => row.group_id === one.id),
+        }));
+      return {
+        academicYearId: year.id,
+        startDate: year.start_date,
+        endDate: year.end_date,
+        entries: [...classEntries, ...groupEntries],
+      };
+    });
   }
 
   /**

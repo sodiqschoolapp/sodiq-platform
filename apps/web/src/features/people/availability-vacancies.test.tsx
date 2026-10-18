@@ -116,6 +116,7 @@ const AKMAL_DETAIL: StaffDetail = {
   },
   today: '2026-10-10',
   sameAsRelative: null,
+  classesTaught: [],
 };
 
 const HOURS: Availability = {
@@ -605,6 +606,23 @@ describe('the vacancies', () => {
     await waitFor(() => {
       expect(panelActions(panel)?.textContent).toContain(en.errors.vacancy_has_load);
     });
+  });
+
+  // Task 5.5c-2b (04, Vacancy): "One that never held a load can be deleted;
+  // one that did is closed and kept." The delete has a text of its own.
+  it('say why a vacancy named by a load row is kept, not deleted', async () => {
+    api('academic_vice_principal', {
+      [`POST /api/people/vacancies/${OPEN.id}/delete`]: () => refusal('vacancy_in_load', 409),
+    });
+    renderApp(`/people/vacancies?open=${OPEN.id}`);
+    const panel = await screen.findByRole('complementary', { name: OPEN.name });
+    fireEvent.click(await within(panel).findByRole('button', { name: en.people.vacancies.delete }));
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: en.people.vacancies.delete }));
+    await waitFor(() => {
+      expect(panelActions(panel)?.textContent).toContain(en.errors.vacancy_in_load);
+    });
+    expect(panelActions(panel)?.textContent).not.toContain(en.errors.vacancy_has_load);
   });
 
   it('are closed, and deleted after a confirmation that names them', async () => {

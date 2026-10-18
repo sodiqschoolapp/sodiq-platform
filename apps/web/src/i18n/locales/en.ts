@@ -449,7 +449,9 @@ export const en = {
     load_group_gaps:
       'Students of the classes are not placed in a group of this block. Place them on the group placement screen.',
     vacancy_has_load:
-      'A teaching load row names this vacancy, so it cannot be closed or deleted. Give that row another teacher first.',
+      'A draft or published teaching load that can still run, or a future lesson, names this vacancy, so it cannot be closed yet. Give those rows another teacher, or close it once that load has ended.',
+    vacancy_in_load:
+      'A teaching load row names this vacancy, so it cannot be deleted. A vacancy that held a published load is kept with its history: close it instead.',
     student_merge_year_closed:
       'The merge would change a row of a closed academic year, which nothing changes. These records cannot be merged.',
     student_merge_grade:
@@ -2081,6 +2083,8 @@ export const en = {
       subjects: 'Subjects',
       grades: 'Grades',
       languagesTitle: 'Languages of instruction',
+      classesTaught: 'Classes taught',
+      classesTaughtOfYear: '{{year}}: {{list}}',
       tutorsClass: 'Tutor of {{name}}, a class of that language.',
       tutorsClassElsewhere: 'Tutor of a class of that language in another branch.',
       languages: { uz: 'Uzbek', ru: 'Russian' },

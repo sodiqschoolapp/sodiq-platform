@@ -602,8 +602,14 @@ export const ERROR_CODES = [
   'load_block_teacher',
   /** Students of the classes of a group row are not placed in one of the block's groups; listed, never a refusal (task 3.4b, decision 4). */
   'load_group_gaps',
-  /** A load row names the vacancy: it cannot be closed or deleted (04, Vacancy; task 3.4a). */
+  /**
+   * A load row of a draft or of a published version that can still run, or a
+   * lesson dated after today, names the vacancy: it cannot be closed yet (04,
+   * Vacancy; task 3.4a, narrowed by task 5.5c-2b).
+   */
   'vacancy_has_load',
+  /** A load row of any version names the vacancy: it cannot be deleted, only closed and kept (04, Vacancy; task 5.5c-2b). */
+  'vacancy_in_load',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

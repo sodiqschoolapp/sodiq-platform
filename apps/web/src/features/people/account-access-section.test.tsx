@@ -77,6 +77,7 @@ const detail: StaffDetail = {
   },
   today: '2026-10-10',
   sameAsRelative: null,
+  classesTaught: [],
 };
 
 const PASSWORD = 'Rt5vNw8QpL2kXz7M';
