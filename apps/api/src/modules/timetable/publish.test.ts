@@ -3236,18 +3236,17 @@ describe('publish', () => {
           { subject: s.subject, teacherId: s.teacherId, weekdays: [1] },
         ]);
         const impact = await impactOf(s.branch, version, NEXT_MONDAY);
-        expect(impact.changes).toEqual([
-          expect.objectContaining({
-            kind: 'changed',
-            unitId: s.classId,
-            subjectId: s.subject,
-            before: expect.objectContaining({ roomId: room2 }),
-            after: expect.objectContaining({ roomId: s.room }),
-            count: 1,
-            firstDate: '2026-10-26',
-            lastDate: '2026-10-26',
-          }),
-        ]);
+        expect(impact.changes).toHaveLength(1);
+        expect(impact.changes[0]).toMatchObject({
+          kind: 'changed',
+          unitId: s.classId,
+          subjectId: s.subject,
+          before: { roomId: room2 },
+          after: { roomId: s.room },
+          count: 1,
+          firstDate: '2026-10-26',
+          lastDate: '2026-10-26',
+        });
         expect(impact.roomIds).toEqual([room2, s.room].sort());
         versionOf(await publish(s.branch, version, NEXT_MONDAY));
         const [entry] = await t.entries('timetable_version.publish', version);
