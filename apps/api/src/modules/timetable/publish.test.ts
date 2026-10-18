@@ -2333,6 +2333,21 @@ describe('publish', () => {
       expect(await keepsOf([s.version])).toEqual([]);
     });
 
+    it('refuses a choice in a closed year (permission review, should-fix 5)', async () => {
+      const s = await shortScene();
+      await load.classes.setYear(s.year, 'closed');
+      refusedWith(
+        await keep(s.branch, s.version, {
+          classId: s.classId,
+          date: SHORT_DATE,
+          slotPositions: [1, 5],
+        }),
+        409,
+        'timetable_year_closed',
+      );
+      expect(await keepsOf([s.version])).toEqual([]);
+    });
+
     it("answers 404 for another branch's or an unknown version or class, changing nothing", async () => {
       const s = await shortScene();
       const o = await shortScene();
@@ -2344,7 +2359,20 @@ describe('publish', () => {
         });
         expect(saved.status, JSON.stringify(saved.body)).toBe(200);
       }
-      const unchanged = async () => [await allKeeps([s.branch, o.branch]), await t.auditCount()];
+      // Permission review, must-fix 2: the edit lock is free, so a call that
+      // reached the lock would write it; every version row is compared.
+      await load.freeEditLock(s.version);
+      await load.freeEditLock(o.version);
+      const unchanged = async () => [
+        await allKeeps([s.branch, o.branch]),
+        await t.database.migrator
+          .selectFrom('timetable_versions')
+          .selectAll()
+          .where('branch_id', 'in', [s.branch, o.branch])
+          .orderBy('id')
+          .execute(),
+        await t.auditCount(),
+      ];
       const start = await unchanged();
       for (const [version, classId] of [
         [o.version, s.classId],

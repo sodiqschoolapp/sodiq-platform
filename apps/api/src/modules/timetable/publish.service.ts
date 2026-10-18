@@ -168,7 +168,9 @@ export class TimetablePublish {
   setDayKeep(access: Access, id: string, input: DayKeepBody, requestId: string): Promise<DayKeep> {
     const branchId = branchOf(access);
     return this.transactions.run(access.branchIds, async (transaction) => {
-      const version = await this.timetable.lockDraft(transaction, access, id, requestId);
+      // Every id of the request is checked against the branch before any lock
+      // or write (permission review, should-fix 3).
+      await this.timetable.findVersion(transaction, branchId, id);
       const known = await transaction
         .selectFrom('classes')
         .select('id')
@@ -178,6 +180,7 @@ export class TimetablePublish {
       if (known === undefined) {
         throw new ApiException('not_found', 404);
       }
+      const version = await this.timetable.lockDraft(transaction, access, id, requestId);
       const positions = [...input.slotPositions].sort((a, b) => a - b);
       if (positions.length > 0) {
         if (input.date <= (await this.timetable.todayIn(transaction, branchId))) {

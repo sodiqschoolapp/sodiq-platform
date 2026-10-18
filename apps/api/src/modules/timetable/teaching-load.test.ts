@@ -103,6 +103,8 @@ describe('draft versions and the teaching load', () => {
       t.database.migrator.selectFrom('teaching_load_rows').selectAll().orderBy('id').execute(),
       // Task 5.3b-2: the copy writes pins and the row delete removes them.
       t.database.migrator.selectFrom('timetable_pins').selectAll().orderBy('id').execute(),
+      // Task 5.5a-2b-2: the copy writes the choices of the lessons kept on a shortened day.
+      t.database.migrator.selectFrom('timetable_day_keeps').selectAll().orderBy('id').execute(),
       t.database.migrator.selectFrom('staff_statuses').selectAll().orderBy('id').execute(),
       // The vacancy delete removes the record and its rows (permission review, S3).
       t.database.migrator.selectFrom('staff').select('id').orderBy('id').execute(),
@@ -288,6 +290,25 @@ describe('draft versions and the teaching load', () => {
           teacher_id: southTeacher.staffId,
         }),
       );
+      // Task 5.5a-2b-2 (permission review, must-fix 1): a stored choice on the
+      // source and on an own version, so a copy across branches would write one.
+      const keepOn = (branch: string, version: string, classId: string) =>
+        t.database.migrator
+          .insertInto('timetable_day_keeps')
+          .values({
+            branch_id: branch,
+            version_id: version,
+            class_id: classId,
+            kept_on: '2026-11-16',
+            slot_position: 1,
+          })
+          .execute();
+      await keepOn(t.south, southern, southClass);
+      await keepOn(
+        t.north,
+        await load.version(t.north, year),
+        await load.classes.schoolClass(t.north, year),
+      );
       for (const fields of [
         { academicYearId: southYear },
         { academicYearId: UNKNOWN },
@@ -307,6 +328,7 @@ describe('draft versions and the teaching load', () => {
         expect(await rowsOf()).toEqual(before);
       }
       // The Super Admin, whose roles reach every branch, too.
+      const beforeAdmin = await rowsOf();
       refusedWith(
         await post(
           '/api/timetable/versions',
@@ -316,6 +338,7 @@ describe('draft versions and the teaching load', () => {
         404,
         'not_found',
       );
+      expect(await rowsOf()).toEqual(beforeAdmin);
     });
 
     it('copies a version of the same year only (decision 10)', async () => {
