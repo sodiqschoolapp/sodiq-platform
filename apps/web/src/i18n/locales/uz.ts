@@ -378,6 +378,14 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu darsda haftalik darslar sonicha qotirilgan slot bor. Avval qotirishni olib tashlang yoki haftalik darslar sonini oshiring.',
     pin_mixed_block:
       'Aralash boʻlinmaning yarmini qotirib boʻlmaydi: uning yarmlari turli slotlarda oʻtadi.',
+    day_keep_date_passed:
+      'Qoladigan darslarni faqat ertadan boshlab sanaga tanlash mumkin. Keyingi sanani tanlang.',
+    day_keep_not_short:
+      'Bu sanada sinfning barcha darslari sigʻadi yoki uning darsi yoʻq, shuning uchun tanlash kerak emas. Tekshiruvni yangilang.',
+    day_keep_lessons:
+      'Belgilangan dars endi bu sanada sinfning darsi emas. Tekshiruvni yangilang va qayta belgilang.',
+    day_keep_over_slots:
+      'Kundagi dars slotlaridan koʻp dars belgilangan. Bir darsdan belgini olib tashlang.',
     pattern_blocked:
       'Bu darsni bu yerga qoʻyib boʻlmaydi: uni dars jadvalining qoidasi taqiqlaydi. Boʻsh yoki ogohlantirishli slotni tanlang.',
     pattern_no_slot:
@@ -2628,6 +2636,7 @@ export const uz: Texts<'one' | 'other'> = {
         edit_lock: 'Dars jadvali qoralamasi tahrirlash uchun olindi',
         publish: 'Dars jadvali versiyasi eʼlon qilindi',
         out_of_date: 'Eʼlon tufayli qoralama eskirgan deb belgilandi',
+        day_keep: 'Qoralamaning qisqartirilgan kunida qoladigan darslar tanlandi',
       },
       timetable_lock: {
         create: 'Qoralama qulfi qoʻyildi',
@@ -3263,6 +3272,21 @@ export const uz: Texts<'one' | 'other'> = {
       cancelledTitle_one: 'Kunga sigʻmaydigan {{count}} dars',
       cancelledTitle_other: 'Kunga sigʻmaydigan {{count}} dars',
       cancelledNote: 'Ular bekor qilingan holda yaratiladi va eʼlon qilishga toʻsqinlik qilmaydi.',
+      shortened: {
+        title_one: '{{count}} ta qisqartirilgan kun',
+        title_other: '{{count}} ta qisqartirilgan kun',
+        day: '{{date}}, {{class}}',
+        aClass: 'sinf',
+        chosen: '(tanlangan)',
+        missing: 'Tanlangan dars endi oʻz slotida emas. Belgilangan darslarni tekshiring.',
+        lesson: '{{number}}-dars: {{lessons}}',
+        keeps: 'Qoladigan darslar: {{kept}} / {{slots}}',
+        save: 'Tanlovni saqlash',
+        reset: 'Avvalgi holatga qaytarish',
+        tooMany: 'Kunda {{slots}} ta dars sloti bor: bir darsdan belgini olib tashlang.',
+        unused: 'Endi amal qilmaydigan tanlovlar',
+        remove: 'Olib tashlash',
+      },
       cancelled: {
         not_in_template: 'kun shablonida yoʻq',
         day_off: 'sinflaridan biri uchun dam olish kuni',

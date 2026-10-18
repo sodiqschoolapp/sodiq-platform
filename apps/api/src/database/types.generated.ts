@@ -903,6 +903,16 @@ export interface TimeClaims {
   teacher_id: string | null;
 }
 
+export interface TimetableDayKeeps {
+  branch_id: string;
+  class_id: string;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  kept_on: string;
+  slot_position: number;
+  version_id: string;
+}
+
 export interface TimetableLocks {
   block_id: string | null;
   branch_id: string;
@@ -1031,6 +1041,7 @@ export interface DB {
   subjects: Subjects;
   teaching_load_rows: TeachingLoadRows;
   time_claims: TimeClaims;
+  timetable_day_keeps: TimetableDayKeeps;
   timetable_locks: TimetableLocks;
   timetable_pins: TimetablePins;
   timetable_versions: TimetableVersions;

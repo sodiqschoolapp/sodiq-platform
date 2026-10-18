@@ -371,6 +371,13 @@ export const en = {
       'This lesson already has as many pinned slots as lessons per week. Remove a pin or raise the lessons per week first.',
     pin_mixed_block:
       'A half of a mixed split cannot be pinned: its halves meet in different slots.',
+    day_keep_date_passed:
+      'The lessons kept can be chosen for a date from tomorrow on only. Choose a later date.',
+    day_keep_not_short:
+      'Every lesson of the class fits on that date, or it has none, so there is nothing to choose. Read the check again.',
+    day_keep_lessons:
+      'A lesson ticked is no longer a lesson of the class on that date. Read the check again and tick again.',
+    day_keep_over_slots: 'More lessons are ticked than the day has lesson slots. Untick a lesson.',
     pattern_blocked:
       'This lesson cannot go there: a rule of the timetable blocks it. Choose a slot marked free or warning.',
     pattern_no_slot:
@@ -2608,6 +2615,7 @@ export const en = {
         edit_lock: 'Draft timetable version taken for editing',
         publish: 'Timetable version published',
         out_of_date: 'Draft marked out of date by a publish',
+        day_keep: 'Lessons kept on a shortened day of a draft chosen',
       },
       timetable_lock: {
         create: 'Lock of a draft set',
@@ -3238,6 +3246,21 @@ export const en = {
       cancelledTitle_one: '{{count}} lesson the day cannot hold',
       cancelledTitle_other: '{{count}} lessons the day cannot hold',
       cancelledNote: 'They are created as cancelled and do not stop the publish.',
+      shortened: {
+        title_one: '{{count}} shortened day',
+        title_other: '{{count}} shortened days',
+        day: '{{date}}, {{class}}',
+        aClass: 'a class',
+        chosen: '(chosen)',
+        missing: 'A lesson chosen is no longer in its slot. Check the lessons ticked.',
+        lesson: 'Lesson {{number}}: {{lessons}}',
+        keeps: 'Lessons kept: {{kept}} of {{slots}}',
+        save: 'Save the choice',
+        reset: 'Back to the default',
+        tooMany: 'The day has {{slots}} lesson slots: untick a lesson.',
+        unused: 'Choices that no longer apply',
+        remove: 'Remove',
+      },
       cancelled: {
         not_in_template: "not in the day's template",
         day_off: 'a day off for one of its grades',

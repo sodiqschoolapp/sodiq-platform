@@ -712,6 +712,8 @@ describe('pinSlots', () => {
       cancelledLessons: [],
       needsTeacher: [],
       impact: null,
+      shortenedDays: [],
+      unusedKeeps: [],
       canPublish: true,
     };
     const checkRoute = `GET /api/timetable/versions/${VERSION.id}/publish-check`;
@@ -842,6 +844,104 @@ describe('pinSlots', () => {
       await waitFor(() => {
         expect(calls.find((call) => call.route === publishRoute)?.body).toEqual({
           startsOn: '2026-11-02',
+        });
+      });
+    });
+
+    // Task 5.5a-2b-2, pull request #143: the lessons kept on a shortened day.
+    describe('a shortened day', () => {
+      const keepRoute = `PUT /api/timetable/versions/${VERSION.id}/day-keeps`;
+      const DAY = {
+        date: '2026-11-16',
+        classId: ROW.unit.id,
+        lessonSlots: 2,
+        lessons: [
+          { slotPosition: 1, entryIds: [uid(801)] },
+          { slotPosition: 3, entryIds: [uid(802)] },
+          { slotPosition: 5, entryIds: [uid(803)] },
+        ],
+        kept: [1, 3],
+        chosen: false,
+        missingPositions: [],
+      };
+      const boxes = () => [
+        ...document.querySelectorAll<HTMLInputElement>('[data-shortened] input[type="checkbox"]'),
+      ];
+
+      it('ticks the lessons kept, keeps Save off with too many, and saves the lessons chosen', async () => {
+        const calls = await openPage({
+          path: `/timetable/builder?version=${VERSION.id}&step=publish`,
+          extra: {
+            [checkRoute]: () => json({ ...CHECK, shortenedDays: [DAY] }),
+            [keepRoute]: () =>
+              json({ classId: ROW.unit.id, date: '2026-11-16', slotPositions: [1, 5] }),
+          },
+        });
+        await screen.findByRole('heading', { name: '1 shortened day' });
+        expect(document.querySelector('[data-shortened] p')?.textContent).toBe(
+          '16 November 2026, 7 Oxford',
+        );
+        expect(boxes().map((box) => box.checked)).toEqual([true, true, false]);
+        const save = screen.getByRole('button', { name: en.timetable.publish.shortened.save });
+        expect(save).toHaveProperty('disabled', true);
+        expect(
+          screen.queryByRole('button', { name: en.timetable.publish.shortened.reset }),
+        ).toBeNull();
+        fireEvent.click(boxes()[2] as HTMLInputElement);
+        expect(document.querySelector('[data-kept-count]')?.textContent).toBe(
+          'Lessons kept: 3 of 2',
+        );
+        expect(document.querySelector('[data-too-many]')).not.toBeNull();
+        expect(save).toHaveProperty('disabled', true);
+        fireEvent.click(boxes()[1] as HTMLInputElement);
+        expect(document.querySelector('[data-too-many]')).toBeNull();
+        expect(save).toHaveProperty('disabled', false);
+        fireEvent.click(save);
+        await waitFor(() => {
+          expect(calls.find((call) => call.route === keepRoute)?.body).toEqual({
+            classId: ROW.unit.id,
+            date: '2026-11-16',
+            slotPositions: [1, 5],
+          });
+        });
+      });
+
+      it('goes back to the default and removes a choice that no longer applies with an empty list', async () => {
+        const calls = await openPage({
+          path: `/timetable/builder?version=${VERSION.id}&step=publish`,
+          extra: {
+            [checkRoute]: () =>
+              json({
+                ...CHECK,
+                shortenedDays: [{ ...DAY, kept: [1, 5], chosen: true, missingPositions: [7] }],
+                unusedKeeps: [{ date: '2026-11-23', classId: ROW.unit.id }],
+              }),
+            [keepRoute]: (body) => json(body),
+          },
+        });
+        await screen.findByRole('heading', { name: '1 shortened day' });
+        expect(document.querySelector('[data-chosen]')).not.toBeNull();
+        expect(document.querySelector('[data-missing]')?.textContent).toBe(
+          en.timetable.publish.shortened.missing,
+        );
+        expect(boxes().map((box) => box.checked)).toEqual([true, false, true]);
+        fireEvent.click(screen.getByRole('button', { name: en.timetable.publish.shortened.reset }));
+        await waitFor(() => {
+          expect(calls.filter((call) => call.route === keepRoute).map((call) => call.body)).toEqual(
+            [{ classId: ROW.unit.id, date: '2026-11-16', slotPositions: [] }],
+          );
+        });
+        const unused = document.querySelector('[data-unused]');
+        expect(unused?.textContent).toContain('23 November 2026, 7 Oxford');
+        fireEvent.click(
+          within(unused as HTMLElement).getByRole('button', {
+            name: en.timetable.publish.shortened.remove,
+          }),
+        );
+        await waitFor(() => {
+          expect(
+            calls.filter((call) => call.route === keepRoute).map((call) => call.body),
+          ).toContainEqual({ classId: ROW.unit.id, date: '2026-11-23', slotPositions: [] });
         });
       });
     });

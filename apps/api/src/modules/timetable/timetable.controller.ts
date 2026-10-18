@@ -2,6 +2,10 @@ import { Controller, Delete, Get, HttpCode, Patch, Post, Put } from '@nestjs/com
 import {
   draftReadinessSchema,
   publishBodySchema,
+  dayKeepBodySchema,
+  dayKeepSchema,
+  type DayKeep,
+  type DayKeepBody,
   publishCheckQuerySchema,
   publishCheckSchema,
   type PublishBody,
@@ -131,6 +135,19 @@ export class TimetableController {
     @ValidQuery(publishCheckQuerySchema) query: PublishCheckQuery,
   ): Promise<PublishCheck> {
     return this.publisher.check(access, params.id, query.startsOn);
+  }
+
+  /** Step 8: the lessons a class keeps on a shortened day of a draft (task 5.5a-2b-2, decisions 2, 6 and 8). */
+  @Put('versions/:id/day-keeps')
+  @Requires('timetable', 'edit')
+  @Returns(dayKeepSchema)
+  setDayKeep(
+    @CurrentAccess() access: Access,
+    @ValidParams(timetableVersionParamsSchema) params: TimetableVersionParams,
+    @ValidBody(dayKeepBodySchema) body: DayKeepBody,
+    @RequestId() requestId: string,
+  ): Promise<DayKeep> {
+    return this.publisher.setDayKeep(access, params.id, body, requestId);
   }
 
   /** The publish of a draft from its start date (task 5.5a-1), safe to repeat with its key. */

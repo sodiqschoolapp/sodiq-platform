@@ -245,7 +245,8 @@ export async function datedCheck(
  * (`datedPattern`), with the facts of each date it read: the calendar and the
  * templates of the dates, the members of each class and group, the Tutors of
  * each class (task 5.5a-2a; the impact preview of task 5.5a-2b-1 expands the
- * earlier version with it).
+ * earlier version with it), and the version's own choices of the lessons kept
+ * on a shortened day (task 5.5a-2b-2, decision 9).
  */
 export async function datedLessonsOf(
   transaction: Transaction,
@@ -269,7 +270,7 @@ export async function datedLessonsOf(
   const rows = data.rows;
   const classIds = [...new Set(data.units.flatMap((unit) => unit.classIds))].sort();
   const groupIds = data.units.filter((unit) => unit.kind === 'group').map((unit) => unit.id);
-  const [classMembers, groupMembers, tutorRows, dayStarts] = await Promise.all([
+  const [classMembers, groupMembers, tutorRows, dayStarts, classGrades, keeps] = await Promise.all([
     classIds.length === 0
       ? Promise.resolve([] as MemberRow[])
       : transaction
@@ -309,7 +310,21 @@ export async function datedLessonsOf(
       select d::date::text as day, (d::date::timestamp at time zone ${branch.time_zone}) as begins
       from generate_series(${startsOn}::date, ${lastDate}::date + 1, interval '1 day') d
     `.execute(transaction),
+    classIds.length === 0
+      ? Promise.resolve([] as { id: string; grade: number }[])
+      : transaction
+          .selectFrom('classes')
+          .select(['id', 'grade'])
+          .where('id', 'in', classIds)
+          .execute(),
+    readDayKeeps(transaction, state.version.id, startsOn, lastDate),
   ]);
+  const gradeOfClass = new Map(classGrades.map((row) => [row.id, row.grade]));
+  const keptOf = new Map<string, number[]>();
+  for (const keep of keeps) {
+    const key = `${keep.class_id}|${keep.kept_on}`;
+    keptOf.set(key, [...(keptOf.get(key) ?? []), keep.slot_position]);
+  }
   const beginsOf = new Map(dayStarts.rows.map((row) => [row.day, row.begins]));
   const begins = (date: string): Date => {
     const found = beginsOf.get(date);
@@ -389,6 +404,7 @@ export async function datedLessonsOf(
     return {
       id: block.id,
       weekday: block.weekday,
+      slotPosition: block.slotPosition,
       start: block.start,
       end: block.end,
       doublePairId: block.doublePairId,
@@ -412,9 +428,34 @@ export async function datedLessonsOf(
     studentsOn,
     tutorOn: (classId, date, start) =>
       tutorAt(tutorRows.get(classId) ?? [], new Date(begins(date).getTime() + start * MINUTE)),
+    gradeOf: (classId) => {
+      const grade = gradeOfClass.get(classId);
+      if (grade === undefined) throw new Error(`No grade of class ${classId}.`);
+      return grade;
+    },
+    keptOn: (classId, date) => keptOf.get(`${classId}|${date}`) ?? null,
   });
 
   return { dated, begins, classOn, dayOfDate, branch };
+}
+
+/** The stored choices of the lessons kept on a shortened day of a version between two dates (task 5.5a-2b-2). */
+export function readDayKeeps(
+  transaction: Transaction,
+  versionId: string,
+  firstDate: string,
+  lastDate: string,
+) {
+  return transaction
+    .selectFrom('timetable_day_keeps')
+    .select(['class_id', sql<string>`kept_on::text`.as('kept_on'), 'slot_position'])
+    .where('version_id', '=', versionId)
+    .where('kept_on', '>=', firstDate)
+    .where('kept_on', '<=', lastDate)
+    .orderBy('class_id')
+    .orderBy('kept_on')
+    .orderBy('slot_position')
+    .execute();
 }
 
 /** A teacher's claim in another branch as a fixed placement (busy elsewhere). */

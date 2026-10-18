@@ -44,6 +44,7 @@ const QUARTERS = [
 const block = (id: string, extra: Partial<DatedBlock> = {}): DatedBlock => ({
   id,
   weekday: 1,
+  slotPosition: 3,
   ...L2,
   doublePairId: null,
   grades: [7],
@@ -88,6 +89,8 @@ function input(extra: Partial<DatedPatternInput> = {}): DatedPatternInput {
     },
     studentsOn: (unitId, date) => (date < '2026-11-23' ? [`${unitId}-s1`] : [`${unitId}-s2`]),
     tutorOn: () => 'tutor-1',
+    gradeOf: (classId) => Number.parseInt(classId, 10),
+    keptOn: () => null,
     ...extra,
   };
 }
@@ -333,5 +336,249 @@ describe('datedPattern', () => {
       ['2026-11-30', [], false],
     ]);
     expect(found.noTutor).toEqual([{ date: '2026-11-30', entryId: 'e-tut' }]);
+  });
+});
+
+// Task 5.5a-2b-2: the lessons kept on a shortened day (edge/time-dates-calendar,
+// "A shortened day": "The Academic Vice Principal can choose which lessons are kept").
+describe('datedPattern, the lessons kept on a shortened day', () => {
+  const sevenParts: DaySlotInput[] = [];
+  for (let n = 1; n <= 7; n += 1) {
+    if (n > 1) sevenParts.push(pause(5));
+    sevenParts.push(lesson(45));
+  }
+  // Seven lessons of 45 minutes from 08:00, 5 minutes apart: lesson n at slot position 2n - 1.
+  const SEVEN = dayTimes(480, sevenParts);
+  // A shortened day of five lessons of 30 minutes from 08:00: lesson k from 480 + 35 (k - 1).
+  const FIVE = dayTimes(480, [
+    lesson(30),
+    pause(5),
+    lesson(30),
+    pause(5),
+    lesson(30),
+    pause(5),
+    lesson(30),
+    pause(5),
+    lesson(30),
+  ]);
+  const short = (k: number) => [480 + 35 * (k - 1), 510 + 35 * (k - 1)];
+  const position = (n: number) => 2 * n - 1;
+  const DATE = '2026-11-16';
+
+  const lessonBlock = (classId: string, n: number): DatedBlock => ({
+    id: `${classId}-${String(n)}`,
+    weekday: 1,
+    slotPosition: position(n),
+    start: 480 + 50 * (n - 1),
+    end: 525 + 50 * (n - 1),
+    doublePairId: null,
+    grades: [Number.parseInt(classId, 10)],
+    entries: [
+      {
+        id: `e-${classId}-${String(n)}`,
+        loadRowId: `row-${classId}-${String(n)}`,
+        classId,
+        groupId: null,
+        classIds: [classId],
+        subjectId: `subject-${String(n)}`,
+        teacherId: `t-${classId}-${String(n)}`,
+        roomId: null,
+        tutorRow: false,
+      },
+    ],
+  });
+  const dayOf = (numbers: readonly number[], classId = '7a') =>
+    numbers.map((n) => lessonBlock(classId, n));
+
+  const shortInput = (
+    blocks: readonly DatedBlock[],
+    keeps: Record<string, readonly number[]> = {},
+    day: Day = FIVE,
+  ) =>
+    input({
+      firstDate: DATE,
+      lastDate: DATE,
+      blocks,
+      weeklyDay: () => SEVEN,
+      dayOn: () => ({ lessons: true, day, followsWeekday: 1, noRegularLessons: false }),
+      keptOn: (classId, date) => (date === DATE ? (keeps[classId] ?? null) : null),
+    });
+  const timesOf = (found: ReturnType<typeof datedPattern>) =>
+    found.lessons.map((one) => [one.entryId, one.placement.start, one.placement.end]);
+  const cancelledOf = (found: ReturnType<typeof datedPattern>) =>
+    found.cancelled.map((one) => [one.blockId, one.reason]);
+
+  it('keeps the two lessons chosen in place of the last two (Done when)', () => {
+    const found = datedPattern(
+      shortInput(dayOf([1, 2, 3, 4, 5, 6, 7]), { '7a': [1, 3, 5, 11, 13] }),
+    );
+    expect(timesOf(found)).toEqual([
+      ['e-7a-1', ...short(1)],
+      ['e-7a-2', ...short(2)],
+      ['e-7a-3', ...short(3)],
+      ['e-7a-6', ...short(4)],
+      ['e-7a-7', ...short(5)],
+    ]);
+    expect(cancelledOf(found)).toEqual([
+      ['7a-4', 'not_in_template'],
+      ['7a-5', 'not_in_template'],
+    ]);
+    expect(found.shortened).toEqual([
+      {
+        date: DATE,
+        classId: '7a',
+        lessonSlots: 5,
+        lessons: [1, 2, 3, 4, 5, 6, 7].map((n) => ({
+          blockId: `7a-${String(n)}`,
+          slotPosition: position(n),
+          entryIds: [`e-7a-${String(n)}`],
+        })),
+        kept: [1, 3, 5, 11, 13],
+        chosen: true,
+        missingPositions: [],
+      },
+    ]);
+    expect(found.unusedKeeps).toEqual([]);
+  });
+
+  it('keeps the first five by their order in the day without a choice, and lists the class', () => {
+    const found = datedPattern(shortInput(dayOf([1, 2, 3, 4, 5, 6, 7])));
+    expect(timesOf(found).map(([id]) => id)).toEqual([
+      'e-7a-1',
+      'e-7a-2',
+      'e-7a-3',
+      'e-7a-4',
+      'e-7a-5',
+    ]);
+    expect(cancelledOf(found)).toEqual([
+      ['7a-6', 'not_in_template'],
+      ['7a-7', 'not_in_template'],
+    ]);
+    expect(found.shortened.map((one) => [one.classId, one.kept, one.chosen])).toEqual([
+      ['7a', [1, 3, 5, 7, 9], false],
+    ]);
+  });
+
+  it('gives a saved choice equal to the default the default lessons, with a free period (review correction 1)', () => {
+    const blocks = dayOf([1, 2, 4, 5, 6, 7]);
+    const none = datedPattern(shortInput(blocks));
+    const same = datedPattern(shortInput(blocks, { '7a': [1, 3, 7, 9] }));
+    expect(timesOf(none)).toEqual([
+      ['e-7a-1', ...short(1)],
+      ['e-7a-2', ...short(2)],
+      ['e-7a-4', ...short(4)],
+      ['e-7a-5', ...short(5)],
+    ]);
+    expect(timesOf(same)).toEqual(timesOf(none));
+    expect(cancelledOf(same)).toEqual(cancelledOf(none));
+    expect(same.shortened.map((one) => one.chosen)).toEqual([true]);
+  });
+
+  it('ignores a choice on a day that is not shortened for the class, and lists it unused (decision 3)', () => {
+    const found = datedPattern(shortInput(dayOf([1, 2, 3, 4, 5]), { '7a': [1, 3, 5] }));
+    expect(timesOf(found).map(([id]) => id)).toEqual([
+      'e-7a-1',
+      'e-7a-2',
+      'e-7a-3',
+      'e-7a-4',
+      'e-7a-5',
+    ]);
+    expect(found.cancelled).toEqual([]);
+    expect(found.shortened).toEqual([]);
+    expect(found.unusedKeeps).toEqual([{ date: DATE, classId: '7a' }]);
+  });
+
+  it('ignores a stored position that holds no lesson of the class and names it (decision 11)', () => {
+    const blocks = dayOf([1, 2, 3, 4, 5, 6, 7]);
+    const found = datedPattern(shortInput(blocks, { '7a': [1, 3, 5, 11, 15] }));
+    expect(timesOf(found)).toEqual([
+      ['e-7a-1', ...short(1)],
+      ['e-7a-2', ...short(2)],
+      ['e-7a-3', ...short(3)],
+      ['e-7a-6', ...short(4)],
+    ]);
+    expect(found.shortened[0]).toMatchObject({ kept: [1, 3, 5, 11], missingPositions: [15] });
+    // No stored position holds a lesson: the choice is unused and the default applies.
+    const none = datedPattern(shortInput(blocks, { '7a': [15, 17] }));
+    expect(timesOf(none)).toEqual(timesOf(datedPattern(shortInput(blocks))));
+    expect(none.shortened[0]).toMatchObject({ chosen: false, kept: [1, 3, 5, 7, 9] });
+    expect(none.unusedKeeps).toEqual([{ date: DATE, classId: '7a' }]);
+  });
+
+  it('cancels a kept lesson that finds no free slot of the day', () => {
+    const found = datedPattern(
+      shortInput(dayOf([1, 2, 3, 4, 5, 6, 7]), { '7a': [1, 3, 5, 7, 9, 11] }),
+    );
+    expect(timesOf(found).map(([id]) => id)).toEqual([
+      'e-7a-1',
+      'e-7a-2',
+      'e-7a-3',
+      'e-7a-4',
+      'e-7a-5',
+    ]);
+    expect(cancelledOf(found)).toEqual([
+      ['7a-6', 'not_in_template'],
+      ['7a-7', 'not_in_template'],
+    ]);
+  });
+
+  describe('a group drawn from two classes (decision 4)', () => {
+    // Lesson 6 of 7a and 7b is one group lesson.
+    const groupBlock: DatedBlock = {
+      ...lessonBlock('7a', 6),
+      id: 'grp',
+      entries: [
+        {
+          id: 'e-grp',
+          loadRowId: 'row-grp',
+          classId: null,
+          groupId: 'g7',
+          classIds: ['7a', '7b'],
+          subjectId: 'english',
+          teacherId: 't-grp',
+          roomId: null,
+          tutorRow: false,
+        },
+      ],
+    };
+    const blocks = [
+      ...dayOf([1, 2, 3, 4, 5, 7], '7a'),
+      ...dayOf([1, 2, 3, 4, 5, 7], '7b'),
+      groupBlock,
+    ];
+
+    it('keeps it where both classes keep it at the same slot', () => {
+      const keep = [1, 3, 5, 9, 11];
+      const found = datedPattern(shortInput(blocks, { '7a': keep, '7b': keep }));
+      expect(found.lessons.find((one) => one.entryId === 'e-grp')?.placement).toMatchObject({
+        start: short(4)[0],
+        end: short(4)[1],
+      });
+    });
+
+    it('cancels it where the classes keep it at different slots', () => {
+      const found = datedPattern(
+        shortInput(blocks, { '7a': [1, 3, 5, 9, 11], '7b': [1, 3, 5, 7, 11] }),
+      );
+      expect(found.lessons.some((one) => one.entryId === 'e-grp')).toBe(false);
+      expect(found.cancelled).toContainEqual({
+        date: DATE,
+        reason: 'not_in_template',
+        blockId: 'grp',
+        entryIds: ['e-grp'],
+      });
+    });
+
+    it('cancels it where one class keeps it and the other has no choice', () => {
+      const found = datedPattern(shortInput(blocks, { '7a': [1, 3, 5, 9, 11] }));
+      expect(found.lessons.some((one) => one.entryId === 'e-grp')).toBe(false);
+      expect(found.cancelled).toContainEqual({
+        date: DATE,
+        reason: 'not_in_template',
+        blockId: 'grp',
+        entryIds: ['e-grp'],
+      });
+      expect(found.shortened.map((one) => one.classId)).toEqual(['7a', '7b']);
+    });
   });
 });

@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 18 October 2026: task 5.5a-2b-2 Publish: the lessons kept on a shortened day
+
+- On a date whose template has fewer lesson slots than a class has lessons that weekday, step 8 lists the class with its lessons of the day, the default ones ticked; the Academic Vice Principal ticks others and saves, or goes back to the default (`PUT /timetable/versions/:id/day-keeps`, `timetable` `edit`, edit lock). Stored per version, date and class (`timetable_day_keeps`, 0074), copied with a draft.
+- `datedPattern` applies the choice: a kept lesson keeps the slot of its number when the date has it, the others fill the free lesson slots in their order; the rest are cancelled "not in the day's template". The dated check, the cancelled list, the preview (its "before" side with the published version's own choices) and the transition week follow, and 5.5b's dated lessons will.
+- Left out: stored dated lessons (5.5b); applying a choice to stored lessons after a calendar or template change (with stored lessons); the handbook (paused).
+
+The next sessions must know:
+
+- `DatedPatternInput` now needs `gradeOf` and `keptOn`; `DatedBlock` needs `slotPosition`; the output adds `shortened` and `unusedKeeps`.
+- A choice applies only where the day is shortened for the class; elsewhere it is unused, listed with Remove. An empty list always removes a choice.
+- An error code must not end in a plural suffix (`_one`, `_few`, `_many`, `_other`): the locale types read it as a plural form (`day_keep_too_many` became `day_keep_over_slots`).
+- The next task is 5.5a-2c.
+
 ## 18 October 2026: task 5.5a-2b-1 Publish: the impact preview and the transition week
 
 - Step 8 shows what a publish changes: the draft's lessons of every date compared with those the published version in force before the start gives (`publishImpact`, rule engine): created, moved (per class or group, subject and week), removed and changed (teacher or room), grouped into lines with a count and dates; the teachers (notified, no account, vacancy), classes and rooms affected; the lessons per week under each vacancy. No migration.

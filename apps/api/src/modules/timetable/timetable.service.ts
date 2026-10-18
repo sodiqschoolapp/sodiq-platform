@@ -517,6 +517,54 @@ export class Timetable {
               });
             }
           }
+          // Task 5.5a-2b-2, decision 12: the choices of the lessons kept on a
+          // shortened day, for the classes the copy's load still has; the
+          // others are left behind and named in the audit entry.
+          const copiedClasses = new Set(
+            copied.flatMap((row) => (row.class_id === null ? [] : [row.class_id])),
+          );
+          const copiedGroups = copied.flatMap((row) =>
+            row.group_id === null ? [] : [row.group_id],
+          );
+          if (copiedGroups.length > 0) {
+            const drawn = await transaction
+              .selectFrom('group_classes')
+              .select('class_id')
+              .where('group_id', 'in', copiedGroups)
+              .execute();
+            for (const row of drawn) copiedClasses.add(row.class_id);
+          }
+          const sourceKeeps =
+            source === undefined
+              ? []
+              : await transaction
+                  .selectFrom('timetable_day_keeps')
+                  .select(['class_id', sql<string>`kept_on::text`.as('kept_on'), 'slot_position'])
+                  .where('version_id', '=', source.id)
+                  .orderBy('class_id')
+                  .orderBy('kept_on')
+                  .orderBy('slot_position')
+                  .execute();
+          const keepOf = (keep: (typeof sourceKeeps)[number]) => ({
+            classId: keep.class_id,
+            date: keep.kept_on,
+            slotPosition: keep.slot_position,
+          });
+          const copiedDayKeeps = sourceKeeps.filter((keep) => copiedClasses.has(keep.class_id));
+          if (copiedDayKeeps.length > 0) {
+            await transaction
+              .insertInto('timetable_day_keeps')
+              .values(
+                copiedDayKeeps.map((keep) => ({
+                  branch_id: branchId,
+                  version_id: created.id,
+                  class_id: keep.class_id,
+                  kept_on: keep.kept_on,
+                  slot_position: keep.slot_position,
+                })),
+              )
+              .execute();
+          }
           await this.audit.record(transaction, {
             branchId,
             actorId: access.accountId,
@@ -530,6 +578,10 @@ export class Timetable {
               fromVersionId: source?.id ?? null,
               copiedRows: copied.map((row) => row.id),
               copiedPins,
+              copiedDayKeeps: copiedDayKeeps.map(keepOf),
+              leftDayKeeps: sourceKeeps
+                .filter((keep) => !copiedClasses.has(keep.class_id))
+                .map(keepOf),
               leftRows: left as unknown as JsonValue,
               weights: source === undefined ? null : weightsOf(source),
             },

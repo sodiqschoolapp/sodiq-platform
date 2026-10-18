@@ -20,6 +20,7 @@ import { nameOf } from '@/features/setup/setup-api';
 import { schoolDateText, weekdayName } from '@/lib/dates';
 import { numbersText } from './grid-conflicts';
 import { PublishImpact } from './publish-impact';
+import { classNameFrom, PublishShortened } from './publish-shortened';
 import { ruleText } from './rule-text';
 import {
   gridQuery,
@@ -43,7 +44,8 @@ const unitOf = (row: LoadRow): string =>
  * every reason the draft cannot be published on it and the warnings, then
  * Publish after a confirmation. The server decides; this shows its check.
  * Task 5.5a-2a: the reasons and warnings of a date, the lessons the day cannot
- * hold and those that will need a teacher, each with its date.
+ * hold and those that will need a teacher, each with its date. Task
+ * 5.5a-2b-2: the lessons kept on a shortened day.
  */
 export function PublishStep({
   version,
@@ -310,6 +312,16 @@ export function PublishStep({
             </ul>
           </section>
         )}
+        <PublishShortened
+          versionId={version.id}
+          answer={answer}
+          canEdit={canEdit}
+          className={classNameFrom([
+            ...rows.map((row) => row.unit),
+            ...(answer.impact?.names.units ?? []),
+          ])}
+          lessonsText={lessonsText}
+        />
         {answer.impact !== null && (
           <PublishImpact
             impact={answer.impact}

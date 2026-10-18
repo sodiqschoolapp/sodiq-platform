@@ -246,6 +246,25 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 18 October 2026: publish, the lessons kept on a shortened day (task 5.5a-2b-2)
+
+Plan approved on pull request #143 with corrections 1 and 2; decisions 1 to 12 confirmed there (1 changed by correction 1). Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| A kept lesson keeps the slot of its own lesson number when the date has it; the other kept lessons fill the remaining lesson slots in their order in the day | Decision 1 with correction 1: "matched by their order in the day"; a saved choice of the default ticks changes nothing |
+| A choice is stored per version, date and class, one row per kept lesson, named by the slot position of the weekday the date follows (`timetable_day_keeps`, 0074) | Decision 2; as pins name a slot |
+| A choice applies only where the day is shortened for the class; elsewhere it is unused and listed with Remove | Decision 3 |
+| A lesson of several classes is kept only when each class keeps it at the same time; otherwise cancelled "not in the day's template" | Decision 4 |
+| A lesson not kept is cancelled "not in the day's template" | Decision 5 |
+| Refused: a day not shortened (`day_keep_not_short`), a position that is not a lesson of the class (`day_keep_lessons`), more lessons than slots (`day_keep_over_slots`), today or earlier (`day_keep_date_passed`, the branch's today from the clock); fewer allowed; an empty list always removes | Decisions 6 and 10, correction 2, spec review must-fix 1 |
+| The two halves of a double lesson are not forced together | Decision 7 |
+| `timetable` `edit` with the edit lock; no new area | Decision 8 |
+| The preview's "before" side uses the published version's own choices | Decision 9 |
+| A stored position with no lesson of the class is ignored and shown as changed; a choice with none is unused | Decision 11 |
+| A copy carries the choices of the classes its load still has; the others are named in its audit entry | Decision 12 |
+| The refusal of too many lessons is `day_keep_over_slots`, not the plan's `day_keep_too_many`: the locale types read a key ending in `_many` as a plural form | Build decision 13 |
+
 ## 18 October 2026: publish, the impact preview and the transition week (task 5.5a-2b-1)
 
 Plan approved on pull request #142 with corrections 1 and 2; decisions 1 to 13 confirmed there (10 changed by correction 2). Flagged on issue #42.

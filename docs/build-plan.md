@@ -605,7 +605,7 @@ How to read the task lines:
   - From 5.5a-2 (pull request #140, decision 1, Look first): split into 5.5a-2a (the dated check of every date), 5.5a-2b (the impact preview and the transition week) and 5.5a-2c (the readers that follow the published version).
   - From 5.5a-2b (pull request #142, decision 1, Look first): split into 5.5a-2b-1 (the impact preview and the transition week) and 5.5a-2b-2 (the choice of which lessons of a shortened day are kept).
 
-- [ ] **5.5a-2b-2 Publish: the lessons kept on a shortened day**
+- [x] **5.5a-2b-2 Publish: the lessons kept on a shortened day** (pull request #143)
   - Read: `edge/time-dates-calendar` ("A shortened day", "A day off for grade 9 only"), `06` (How surprises are prevented), `edge/timetable` (Versions and drafts, "The pattern is valid but one date is not"), `edge/developer-rules`.
   - Build: the choice of which lessons of a shortened day are kept (`edge/time-dates-calendar`: "Lessons are matched by their order in the day. Those beyond the day's slots are created as cancelled with the reason 'not in the day's template' and listed per class in the preview. The Academic Vice Principal can choose which lessons are kept"): stored per version, date and class, with its route and its place in step 8. The choice reaches everything `datedPattern` feeds: the dated check and the cancelled list of 5.5a-2a, the impact preview and the transition week of 5.5a-2b-1, and the dated lessons of 5.5b.
   - Done when: a shortened day of 5 slots for a class with 7 lessons keeps the two lessons chosen in place of the last two, and the dated check, the cancelled list and the preview follow the choice.

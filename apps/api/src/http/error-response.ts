@@ -275,6 +275,10 @@ const MESSAGE: Record<ErrorCode, string> = {
   pin_taken: 'The row is already pinned to that weekday and slot.',
   pin_over_load: 'The block already has as many pinned slots as lessons per week.',
   pin_mixed_block: 'A half of a split marked mixed block cannot be pinned.',
+  day_keep_date_passed: 'The lessons kept can be chosen from tomorrow on only.',
+  day_keep_not_short: 'The date is not a shortened day for the class.',
+  day_keep_lessons: 'A slot chosen is not a lesson of the class on that date.',
+  day_keep_over_slots: 'More lessons are chosen than the day has lesson slots.',
   pattern_blocked: 'A blocked rule refuses the lesson at that slot.',
   pattern_no_slot: 'The weekday has no slot at that position for the lesson.',
   pattern_mixed_partner:
