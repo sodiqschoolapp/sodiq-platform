@@ -388,6 +388,8 @@ describe('publish', () => {
         warnings: [],
         cancelledLessons: [],
         needsTeacher: [],
+        shortenedDays: [],
+        unusedKeeps: [],
         canPublish: true,
       });
       // Task 5.5a-2b-1: a first publish from a Monday.
@@ -2043,6 +2045,382 @@ describe('publish', () => {
         'validation_failed',
       );
       expect((await versionRow(s.version)).status).toBe('draft');
+    });
+  });
+
+  // Task 5.5a-2b-2, pull request #143: the lessons kept on a shortened day
+  // (edge/time-dates-calendar, "A shortened day has 5 lesson slots and a class
+  // has 7 lessons that weekday": "The Academic Vice Principal can choose which
+  // lessons are kept"). On Monday 16 November a special day has two lessons of
+  // 30 minutes from 08:00; the class has three lessons on Mondays: two of one
+  // subject at positions 1 and 3, one of another at position 5.
+  describe('the lessons kept on a shortened day', () => {
+    const SHORT_DATE = '2026-11-16';
+
+    const keep = (
+      branch: string,
+      version: string,
+      body: { classId: string; date: string; slotPositions: number[] },
+      cookie = t.admin,
+    ) => t.put(`/api/timetable/versions/${version}/day-keeps`, branch, body, cookie);
+
+    const keepsOf = (versions: readonly string[]) =>
+      t.database.migrator
+        .selectFrom('timetable_day_keeps')
+        .select([
+          'version_id',
+          'class_id',
+          sql<string>`kept_on::text`.as('kept_on'),
+          'slot_position',
+        ])
+        .where('version_id', 'in', versions)
+        .orderBy('version_id')
+        .orderBy('class_id')
+        .orderBy('kept_on')
+        .orderBy('slot_position')
+        .execute();
+
+    /** Every row of the choices in the branches named, each column. */
+    const allKeeps = (branches: readonly string[]) =>
+      t.database.migrator
+        .selectFrom('timetable_day_keeps')
+        .selectAll()
+        .where('branch_id', 'in', branches)
+        .orderBy('id')
+        .execute();
+
+    const storeKeep = (
+      branch: string,
+      version: string,
+      classId: string,
+      date: string,
+      slot: number,
+    ) =>
+      t.database.migrator
+        .insertInto('timetable_day_keeps')
+        .values({
+          branch_id: branch,
+          version_id: version,
+          class_id: classId,
+          kept_on: date,
+          slot_position: slot,
+        })
+        .execute();
+
+    const placeSlot = async (
+      branch: string,
+      version: string,
+      loadRowId: string,
+      slotPosition: number,
+    ) => {
+      const placed = await post(`/api/timetable/versions/${version}/pattern`, branch, {
+        loadRowId,
+        weekday: 1,
+        slotPosition,
+      });
+      expect(placed.status, JSON.stringify(placed.body)).toBe(201);
+    };
+
+    const entriesOf = async (version: string) =>
+      (
+        await t.database.migrator
+          .selectFrom('pattern_entries')
+          .select('id')
+          .where('version_id', '=', version)
+          .orderBy('weekday')
+          .orderBy('start_minutes')
+          .execute()
+      ).map((one) => one.id);
+
+    /** The scene of the describe: rows A (two lessons) and B (one lesson) of the class, the short day. */
+    async function shortScene() {
+      const s = await scene({ lessons: 2 });
+      await placeSlot(s.branch, s.version, s.rowId, 3);
+      const other = await load.classes.subject({ grades: [7], journalType: 'attendance_only' });
+      const second = (await load.teacher(s.branch, { subjects: [{ subject: other, grades: [7] }] }))
+        .staffId;
+      await hours(s.branch, second);
+      const rowB = await load.row({
+        branch_id: s.branch,
+        version_id: s.version,
+        class_id: s.classId,
+        subject_id: other,
+        teacher_id: second,
+        lessons_per_week: 1,
+      });
+      await placeSlot(s.branch, s.version, rowB, 5);
+      const lesson = await t.createSlotType(s.branch, 'Short lesson', 'lesson', 30);
+      const short = await t.createTemplate(s.branch, 'Short', [lesson, lesson]);
+      await t.database.migrator
+        .insertInto('calendar_entries')
+        .values({
+          branch_id: s.branch,
+          kind: 'special_day',
+          name: 'Short day',
+          first_date: SHORT_DATE,
+          last_date: SHORT_DATE,
+          day_template_id: short,
+        })
+        .execute();
+      await confirmTemplates(s.branch, s.version);
+      const [first, secondA, onlyB] = await entriesOf(s.version);
+      return { ...s, other, second, rowB, first, secondA, onlyB };
+    }
+
+    it('keeps the lesson chosen in place of the last one, and the check, the cancelled list and the preview follow (Done when)', async () => {
+      const s = await shortScene();
+      const before = checkOf(await check(s.branch, s.version, MONDAY));
+      expect(before.refusals).toEqual([]);
+      expect(before.shortenedDays).toEqual([
+        {
+          date: SHORT_DATE,
+          classId: s.classId,
+          lessonSlots: 2,
+          lessons: [
+            { slotPosition: 1, entryIds: [s.first] },
+            { slotPosition: 3, entryIds: [s.secondA] },
+            { slotPosition: 5, entryIds: [s.onlyB] },
+          ],
+          kept: [1, 3],
+          chosen: false,
+          missingPositions: [],
+        },
+      ]);
+      expect(before.cancelledLessons).toEqual([
+        { date: SHORT_DATE, reason: 'not_in_template', entryIds: [s.onlyB] },
+      ]);
+
+      const saved = await keep(s.branch, s.version, {
+        classId: s.classId,
+        date: SHORT_DATE,
+        slotPositions: [5, 1],
+      });
+      expect(saved.status, JSON.stringify(saved.body)).toBe(200);
+      expect(saved.body).toEqual({ classId: s.classId, date: SHORT_DATE, slotPositions: [1, 5] });
+      const [entry] = await t.entries('timetable_version.day_keep', s.version);
+      expect(entry).toMatchObject({
+        request_id: saved.headers['x-request-id'],
+        old_value: { classId: s.classId, date: SHORT_DATE, slotPositions: [] },
+        new_value: { classId: s.classId, date: SHORT_DATE, slotPositions: [1, 5] },
+      });
+
+      const after = checkOf(await check(s.branch, s.version, MONDAY));
+      expect(after.refusals).toEqual([]);
+      expect(after.shortenedDays).toEqual([
+        expect.objectContaining({ kept: [1, 5], chosen: true, missingPositions: [] }),
+      ]);
+      expect(after.cancelledLessons).toEqual([
+        { date: SHORT_DATE, reason: 'not_in_template', entryIds: [s.secondA] },
+      ]);
+      // The kept lesson of the other subject takes the second slot of the day (08:30).
+      const created = (after.impact?.changes ?? []).filter(
+        (one) =>
+          one.kind === 'created' && one.firstDate === SHORT_DATE && one.lastDate === SHORT_DATE,
+      );
+      expect(created.map((one) => [one.subjectId, one.after?.start])).toEqual(
+        expect.arrayContaining([
+          [s.subject, 480],
+          [s.other, 510],
+        ]),
+      );
+      expect(created.some((one) => one.subjectId === s.subject && one.after?.start === 510)).toBe(
+        false,
+      );
+      expect(versionOf(await publish(s.branch, s.version, MONDAY)).status).toBe('published');
+    });
+
+    it('refuses the date where the lesson kept meets a clash only it makes (the dated check follows)', async () => {
+      const s = await shortScene();
+      // Class 7b has one lesson with the second teacher at position 3: on the
+      // short day it is the second lesson, 08:30.
+      const room = await load.classes.room(s.branch);
+      const otherClass = await load.classes.schoolClass(s.branch, s.year, { grade: 7, room });
+      const rowC = await load.row({
+        branch_id: s.branch,
+        version_id: s.version,
+        class_id: otherClass,
+        subject_id: s.other,
+        teacher_id: s.second,
+        lessons_per_week: 1,
+      });
+      await placeSlot(s.branch, s.version, rowC, 3);
+      await confirmTemplates(s.branch, s.version);
+      expect(checkOf(await check(s.branch, s.version, MONDAY)).refusals).toEqual([]);
+      const saved = await keep(s.branch, s.version, {
+        classId: s.classId,
+        date: SHORT_DATE,
+        slotPositions: [1, 5],
+      });
+      expect(saved.status, JSON.stringify(saved.body)).toBe(200);
+      const refusals = checkOf(await check(s.branch, s.version, MONDAY)).refusals;
+      expect(refusals.length).toBeGreaterThan(0);
+      expect(
+        refusals.every((one) => one.code === 'date_blocked' && one.result?.date === SHORT_DATE),
+      ).toBe(true);
+      expect(refusals.map((one) => one.result?.lessonIds.slice().sort())).toContainEqual(
+        [
+          s.onlyB,
+          (await entriesOf(s.version)).find((id) => ![s.first, s.secondA, s.onlyB].includes(id)),
+        ].sort(),
+      );
+    });
+
+    it('refuses a choice for today, a day that is not shortened, a slot that is no lesson, and too many lessons, changing nothing', async () => {
+      const s = await shortScene();
+      const choose = (date: string, slotPositions: number[]) =>
+        keep(s.branch, s.version, { classId: s.classId, date, slotPositions });
+      const unchanged = async () => [await allKeeps([s.branch]), await t.auditCount()];
+      const start = await unchanged();
+      refusedWith(await choose(TODAY, [1]), 409, 'day_keep_date_passed');
+      // Not shortened: every lesson fits; a vacation date; a day with no lessons of the class.
+      refusedWith(await choose('2026-11-23', [1]), 409, 'day_keep_not_short');
+      refusedWith(await choose('2026-11-03', [1]), 409, 'day_keep_not_short');
+      refusedWith(await choose('2026-11-17', [1]), 409, 'day_keep_not_short');
+      refusedWith(await choose(SHORT_DATE, [1, 7]), 409, 'day_keep_lessons');
+      refusedWith(await choose(SHORT_DATE, [1, 3, 5]), 409, 'day_keep_too_many');
+      refusedWith(await choose(SHORT_DATE, [1, 1]), 400, 'validation_failed');
+      expect(await unchanged()).toEqual(start);
+    });
+
+    it('removes a choice with an empty list on any date: no longer shortened, before the start, past', async () => {
+      const s = await shortScene();
+      for (const date of ['2026-11-23', TOMORROW, '2026-10-05']) {
+        await storeKeep(s.branch, s.version, s.classId, date, 1);
+      }
+      for (const date of ['2026-11-23', TOMORROW, '2026-10-05']) {
+        const removed = await keep(s.branch, s.version, {
+          classId: s.classId,
+          date,
+          slotPositions: [],
+        });
+        expect(removed.status, JSON.stringify(removed.body)).toBe(200);
+        expect(removed.body).toEqual({ classId: s.classId, date, slotPositions: [] });
+      }
+      expect(await keepsOf([s.version])).toEqual([]);
+      expect(await t.entries('timetable_version.day_keep', s.version)).toHaveLength(3);
+    });
+
+    it('lists a stored choice that decides nothing as unused, and writes nothing for the same choice again', async () => {
+      const s = await shortScene();
+      await storeKeep(s.branch, s.version, s.classId, '2026-11-23', 1);
+      const answer = checkOf(await check(s.branch, s.version, MONDAY));
+      expect(answer.unusedKeeps).toEqual([{ date: '2026-11-23', classId: s.classId }]);
+      const body = { classId: s.classId, date: SHORT_DATE, slotPositions: [1, 5] };
+      expect((await keep(s.branch, s.version, body)).status).toBe(200);
+      const count = await t.auditCount();
+      expect((await keep(s.branch, s.version, body)).status).toBe(200);
+      expect(await t.auditCount()).toBe(count);
+    });
+
+    it('refuses a draft another account edits, and a published version', async () => {
+      const s = await shortScene();
+      const body = { classId: s.classId, date: SHORT_DATE, slotPositions: [1, 5] };
+      const holder = await t.database.migrator
+        .selectFrom('assignments')
+        .select('account_id')
+        .where('role', '=', 'teacher')
+        .where('branch_id', '=', t.north)
+        .executeTakeFirstOrThrow();
+      await t.database.migrator
+        .updateTable('timetable_versions')
+        .set({ edit_holder_id: holder.account_id, edit_seen_at: t.clock.now() })
+        .where('id', '=', s.version)
+        .execute();
+      refusedWith(await keep(s.branch, s.version, body), 409, 'draft_edit_locked');
+      await load.freeEditLock(s.version);
+      expect(versionOf(await publish(s.branch, s.version, MONDAY)).status).toBe('published');
+      refusedWith(await keep(s.branch, s.version, body), 409, 'version_not_draft');
+      expect(await keepsOf([s.version])).toEqual([]);
+    });
+
+    it("answers 404 for another branch's or an unknown version or class, changing nothing", async () => {
+      const s = await shortScene();
+      const o = await shortScene();
+      for (const one of [s, o]) {
+        const saved = await keep(one.branch, one.version, {
+          classId: one.classId,
+          date: SHORT_DATE,
+          slotPositions: [1, 5],
+        });
+        expect(saved.status, JSON.stringify(saved.body)).toBe(200);
+      }
+      const unchanged = async () => [await allKeeps([s.branch, o.branch]), await t.auditCount()];
+      const start = await unchanged();
+      for (const [version, classId] of [
+        [o.version, s.classId],
+        [UNKNOWN, s.classId],
+        [s.version, o.classId],
+        [s.version, UNKNOWN],
+      ] as const) {
+        for (const slotPositions of [[1, 3], []]) {
+          refusedWith(
+            await keep(s.branch, version, { classId, date: SHORT_DATE, slotPositions }),
+            404,
+            'not_found',
+          );
+        }
+      }
+      expect(await unchanged()).toEqual(start);
+    });
+
+    it('carries the choices of the classes a copy keeps, and names the others in its audit entry (decision 12)', async () => {
+      const s = await shortScene();
+      expect(
+        (
+          await keep(s.branch, s.version, {
+            classId: s.classId,
+            date: SHORT_DATE,
+            slotPositions: [1, 5],
+          })
+        ).status,
+      ).toBe(200);
+      const empty = await load.classes.schoolClass(s.branch, s.year, { grade: 7 });
+      await storeKeep(s.branch, s.version, empty, SHORT_DATE, 3);
+      const copy = await draft(s.branch, s.year, s.version);
+      expect(await keepsOf([copy])).toEqual([
+        { version_id: copy, class_id: s.classId, kept_on: SHORT_DATE, slot_position: 1 },
+        { version_id: copy, class_id: s.classId, kept_on: SHORT_DATE, slot_position: 5 },
+      ]);
+      const [entry] = await t.entries('timetable_version.create', copy);
+      expect(entry).toMatchObject({
+        new_value: {
+          copiedDayKeeps: [
+            { classId: s.classId, date: SHORT_DATE, slotPosition: 1 },
+            { classId: s.classId, date: SHORT_DATE, slotPosition: 5 },
+          ],
+          leftDayKeeps: [{ classId: empty, date: SHORT_DATE, slotPosition: 3 }],
+        },
+      });
+    });
+
+    it("compares a draft with the published version's own choice (decision 9)", async () => {
+      const s = await shortScene();
+      const body = { classId: s.classId, date: SHORT_DATE, slotPositions: [1, 5] };
+      expect((await keep(s.branch, s.version, body)).status).toBe(200);
+      expect(versionOf(await publish(s.branch, s.version, MONDAY)).status).toBe('published');
+      // The next draft, copied with the choice and placed the same way.
+      const next = await draft(s.branch, s.year, s.version);
+      const rows = await t.database.migrator
+        .selectFrom('teaching_load_rows')
+        .select(['id', 'subject_id'])
+        .where('version_id', '=', next)
+        .execute();
+      const rowA = rows.find((one) => one.subject_id === s.subject)?.id ?? '';
+      const rowB = rows.find((one) => one.subject_id === s.other)?.id ?? '';
+      await placeSlot(s.branch, next, rowA, 1);
+      await placeSlot(s.branch, next, rowA, 3);
+      await placeSlot(s.branch, next, rowB, 5);
+      await confirmTemplates(s.branch, next);
+      const onShortDay = (answer: PublishCheck) =>
+        (answer.impact?.changes ?? []).filter((one) => one.firstDate === SHORT_DATE);
+      const same = checkOf(await check(s.branch, next, '2026-10-19'));
+      expect(same.impact?.beforeVersion?.id).toBe(s.version);
+      expect(onShortDay(same)).toEqual([]);
+      expect((await keep(s.branch, next, { ...body, slotPositions: [] })).status).toBe(200);
+      const cleared = checkOf(await check(s.branch, next, '2026-10-19'));
+      expect(onShortDay(cleared).map((one) => [one.kind, one.subjectId])).toEqual(
+        expect.arrayContaining([['removed', s.other]]),
+      );
     });
   });
 });
