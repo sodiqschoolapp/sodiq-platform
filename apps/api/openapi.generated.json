@@ -188889,9 +188889,50 @@
                                         "type": "object",
                                         "properties": {
                                           "weekday": {
-                                            "type": "integer",
-                                            "minimum": 1,
-                                            "maximum": 7
+                                            "anyOf": [
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  1
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  2
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  3
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  4
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  5
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  6
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  7
+                                                ]
+                                              }
+                                            ]
                                           },
                                           "slotPosition": {
                                             "type": "integer",
@@ -188919,9 +188960,50 @@
                                             "type": "object",
                                             "properties": {
                                               "weekday": {
-                                                "type": "integer",
-                                                "minimum": 1,
-                                                "maximum": 7
+                                                "anyOf": [
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      1
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      2
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      3
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      4
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      5
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      6
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      7
+                                                    ]
+                                                  }
+                                                ]
                                               },
                                               "slotPosition": {
                                                 "type": "integer",
@@ -188953,9 +189035,50 @@
                                         "type": "object",
                                         "properties": {
                                           "weekday": {
-                                            "type": "integer",
-                                            "minimum": 1,
-                                            "maximum": 7
+                                            "anyOf": [
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  1
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  2
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  3
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  4
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  5
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  6
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  7
+                                                ]
+                                              }
+                                            ]
                                           },
                                           "slotPosition": {
                                             "type": "integer",
@@ -189035,9 +189158,50 @@
                                         "type": "object",
                                         "properties": {
                                           "weekday": {
-                                            "type": "integer",
-                                            "minimum": 1,
-                                            "maximum": 7
+                                            "anyOf": [
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  1
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  2
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  3
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  4
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  5
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  6
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  7
+                                                ]
+                                              }
+                                            ]
                                           },
                                           "slotPosition": {
                                             "type": "integer",
@@ -189065,9 +189229,50 @@
                                             "type": "object",
                                             "properties": {
                                               "weekday": {
-                                                "type": "integer",
-                                                "minimum": 1,
-                                                "maximum": 7
+                                                "anyOf": [
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      1
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      2
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      3
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      4
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      5
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      6
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      7
+                                                    ]
+                                                  }
+                                                ]
                                               },
                                               "slotPosition": {
                                                 "type": "integer",
@@ -189099,9 +189304,50 @@
                                         "type": "object",
                                         "properties": {
                                           "weekday": {
-                                            "type": "integer",
-                                            "minimum": 1,
-                                            "maximum": 7
+                                            "anyOf": [
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  1
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  2
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  3
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  4
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  5
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  6
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  7
+                                                ]
+                                              }
+                                            ]
                                           },
                                           "slotPosition": {
                                             "type": "integer",
@@ -189181,9 +189427,50 @@
                                         "type": "object",
                                         "properties": {
                                           "weekday": {
-                                            "type": "integer",
-                                            "minimum": 1,
-                                            "maximum": 7
+                                            "anyOf": [
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  1
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  2
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  3
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  4
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  5
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  6
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  7
+                                                ]
+                                              }
+                                            ]
                                           },
                                           "slotPosition": {
                                             "type": "integer",
@@ -189211,9 +189498,50 @@
                                             "type": "object",
                                             "properties": {
                                               "weekday": {
-                                                "type": "integer",
-                                                "minimum": 1,
-                                                "maximum": 7
+                                                "anyOf": [
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      1
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      2
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      3
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      4
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      5
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      6
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      7
+                                                    ]
+                                                  }
+                                                ]
                                               },
                                               "slotPosition": {
                                                 "type": "integer",
@@ -189245,9 +189573,50 @@
                                         "type": "object",
                                         "properties": {
                                           "weekday": {
-                                            "type": "integer",
-                                            "minimum": 1,
-                                            "maximum": 7
+                                            "anyOf": [
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  1
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  2
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  3
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  4
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  5
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  6
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  7
+                                                ]
+                                              }
+                                            ]
                                           },
                                           "slotPosition": {
                                             "type": "integer",

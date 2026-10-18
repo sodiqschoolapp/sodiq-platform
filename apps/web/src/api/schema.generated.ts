@@ -39399,19 +39399,19 @@ export interface operations {
                                     mixedBlock: boolean;
                                     shortReason: string | null;
                                     placements: {
-                                        weekday: number;
+                                        weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
                                         slotPosition: number;
                                         /** Format: uuid */
                                         roomId: string | null;
                                         roomName: string | null;
                                         with: string[];
                                         pairedWith: {
-                                            weekday: number;
+                                            weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
                                             slotPosition: number;
                                         } | null;
                                     }[];
                                     pins: {
-                                        weekday: number;
+                                        weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
                                         slotPosition: number;
                                     }[];
                                 } | null;
@@ -39428,19 +39428,19 @@ export interface operations {
                                     mixedBlock: boolean;
                                     shortReason: string | null;
                                     placements: {
-                                        weekday: number;
+                                        weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
                                         slotPosition: number;
                                         /** Format: uuid */
                                         roomId: string | null;
                                         roomName: string | null;
                                         with: string[];
                                         pairedWith: {
-                                            weekday: number;
+                                            weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
                                             slotPosition: number;
                                         } | null;
                                     }[];
                                     pins: {
-                                        weekday: number;
+                                        weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
                                         slotPosition: number;
                                     }[];
                                 } | null;
@@ -39457,19 +39457,19 @@ export interface operations {
                                     mixedBlock: boolean;
                                     shortReason: string | null;
                                     placements: {
-                                        weekday: number;
+                                        weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
                                         slotPosition: number;
                                         /** Format: uuid */
                                         roomId: string | null;
                                         roomName: string | null;
                                         with: string[];
                                         pairedWith: {
-                                            weekday: number;
+                                            weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
                                             slotPosition: number;
                                         } | null;
                                     }[];
                                     pins: {
-                                        weekday: number;
+                                        weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
                                         slotPosition: number;
                                     }[];
                                 } | null;

@@ -1401,19 +1401,17 @@ export const upToDateValuesSchema = z.object({
   /** The lessons of the row in the weekly pattern, by weekday and slot position. */
   placements: z.array(
     z.object({
-      weekday: z.int().min(1).max(7),
+      weekday: weekdaySchema,
       slotPosition: z.int().min(1),
       roomId: z.uuid().nullable(),
       roomName: z.string().nullable(),
       /** The keys of the other rows of its block. */
       with: z.array(z.string()),
       /** The slot of the other half of a double; `null` for a single lesson. */
-      pairedWith: z
-        .object({ weekday: z.int().min(1).max(7), slotPosition: z.int().min(1) })
-        .nullable(),
+      pairedWith: z.object({ weekday: weekdaySchema, slotPosition: z.int().min(1) }).nullable(),
     }),
   ),
-  pins: z.array(z.object({ weekday: z.int().min(1).max(7), slotPosition: z.int().min(1) })),
+  pins: z.array(z.object({ weekday: weekdaySchema, slotPosition: z.int().min(1) })),
 });
 
 export type UpToDateValues = z.infer<typeof upToDateValuesSchema>;

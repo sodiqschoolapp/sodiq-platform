@@ -635,7 +635,7 @@ How to read the task lines:
   - From 5.5a-3 (pull request #145, decision 1, Look first): split from 5.5a-3; 5.5a-3a built the chain.
   - From 5.5a (pull request #139, decision 1, Look first): 5.5a-1 marks drafts out of date only at publish (`timetable_versions.out_of_date_at`); a marked draft cannot be published (`draft_out_of_date`) until this part.
 
-- [ ] **5.5a-3b-2 Publish: bringing a draft up to date after a publish**
+- [x] **5.5a-3b-2 Publish: bringing a draft up to date after a publish** (pull request #148)
   - Read: `06` (How surprises are prevented: "Out-of-date draft"), `edge/timetable` (Versions and drafts).
   - Build: for a draft marked by a publish, what changed on both sides against the version the draft started from (the draft's changes and the published version's: rows, entries, pins and blocks), the person picks, the rule engine checks the picks; the draft then names the published version as the one it started from.
   - Done when: a publish marks an open draft; bringing it up to date lists the changes of both sides and keeps the person's picks.

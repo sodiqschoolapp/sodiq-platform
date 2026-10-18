@@ -1,7 +1,9 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import {
+  classDisplayName,
   listName,
+  weekdaySchema,
   type ErrorDetail,
   type OutOfDateAnswer,
   type TimetableVersion,
@@ -742,7 +744,7 @@ export class TimetableUpToDate {
         ? []
         : transaction
             .selectFrom('classes')
-            .select(['id', 'name'])
+            .select(['id', 'name', 'grade'])
             .where('id', 'in', classIds)
             .execute(),
       groupIds.length === 0
@@ -774,7 +776,10 @@ export class TimetableUpToDate {
             .where('id', 'in', roomIds)
             .execute(),
     ]);
-    const unitName = new Map([...classes, ...groups].map((one) => [one.id, one.name]));
+    const unitName = new Map([
+      ...classes.map((one) => [one.id, classDisplayName(one.grade, one.name)] as const),
+      ...groups.map((one) => [one.id, one.name] as const),
+    ]);
     const subjectNames = new Map(
       subjects.map((one) => [one.id, { uz: one.name_uz, ru: one.name_ru, en: one.name_en }]),
     );
@@ -796,10 +801,21 @@ export class TimetableUpToDate {
             roomName: one.roomId === null ? null : (roomName.get(one.roomId) ?? null),
             placements: one.placements.map((placement) => ({
               ...placement,
+              weekday: weekdaySchema.parse(placement.weekday),
+              pairedWith:
+                placement.pairedWith === null
+                  ? null
+                  : {
+                      weekday: weekdaySchema.parse(placement.pairedWith.weekday),
+                      slotPosition: placement.pairedWith.slotPosition,
+                    },
               with: [...placement.with],
               roomName: placement.roomId === null ? null : (roomName.get(placement.roomId) ?? null),
             })),
-            pins: one.pins.map((pin) => ({ ...pin })),
+            pins: one.pins.map((pin) => ({
+              weekday: weekdaySchema.parse(pin.weekday),
+              slotPosition: pin.slotPosition,
+            })),
           };
     return items.map((item) => ({
       key: item.key,
