@@ -10,6 +10,7 @@ import { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { ClassesKit } from '../../testing/classes-kit.js';
+import { LoadKit } from '../../testing/load-kit.js';
 import { dayTemplatesKit, UNKNOWN, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { relativesInput } from '../../testing/relatives-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
@@ -1653,6 +1654,118 @@ describe('groups on every class membership path', () => {
       );
       expect(replaced.status, JSON.stringify(replaced.body)).toBe(200);
       refusedWith(placed4, 409, 'group_full');
+    });
+  });
+
+  // Task 5.5a-2c, decisions 1 and 4: on the run of a published version the
+  // split and group subjects of a class are those of its group rows, and the
+  // automatic placement chooses among that run's groups. A branch of its own,
+  // so that its published versions run over no other test's class rows.
+  describe('the groups of the published version (task 5.5a-2c)', () => {
+    /**
+     * A branch of its own with a year and a class of grade 7; `versions` are
+     * published in turn, each with one row of the subject: the class whole
+     * (`'class'`) or one of its groups by index.
+     */
+    async function chain(
+      groupNames: readonly string[],
+      versions: readonly [string, 'class' | number][],
+    ) {
+      const kit = new LoadKit(t.database.migrator);
+      const west = await t.newBranch();
+      const westYear = await classes.year(west);
+      const maths = await subject();
+      const oxford = await classes.schoolClass(west, westYear, { grade: 7 });
+      const groups: string[] = [];
+      for (const name of groupNames) {
+        groups.push(await classes.group(west, westYear, maths, [oxford], { name }));
+      }
+      const { staffId } = await kit.teacher(west, { subjects: [{ subject: maths, grades: [7] }] });
+      for (const [startsOn, unit] of versions) {
+        const version = await kit.version(west, westYear, { startsOn });
+        await kit.row({
+          branch_id: west,
+          version_id: version,
+          ...(unit === 'class' ? { class_id: oxford } : { group_id: groups[unit] ?? '' }),
+          subject_id: maths,
+          teacher_id: staffId,
+        });
+        await kit.setVersion(version, 'published');
+      }
+      // A student of the branch with no class, from 12 October.
+      const created = await t.post(
+        '/api/people/students',
+        west,
+        body({ classId: null, startsOn: '2026-10-12' }),
+      );
+      expect(created.status, JSON.stringify(created.body)).toBe(201);
+      const student = studentDetailSchema.parse(created.body);
+      const put = async () => {
+        const response = await t.post(`/api/classes/${oxford}/members`, west, {
+          students: [{ id: student.id, version: student.version }],
+          from: '2026-10-12',
+        });
+        expect(response.status, JSON.stringify(response.body)).toBe(201);
+        return rowsOfStudent(student.id);
+      };
+      return { groups, put };
+    }
+
+    it('places from the start of the published group row, among its groups, and not where the class is taught whole', async () => {
+      // Before 2 November the active groups (A and B, the smallest by name:
+      // A); from 2 November version 1 teaches B only; from 7 December
+      // version 2 the class whole.
+      const { groups, put } = await chain(
+        ['A', 'B'],
+        [
+          ['2026-11-02', 1],
+          ['2026-12-07', 'class'],
+        ],
+      );
+      const [a, b] = groups;
+      expect(await put()).toEqual([
+        expect.objectContaining({
+          group_id: a,
+          valid_from: '2026-10-12',
+          valid_until: '2026-11-02',
+          own_until: '2026-11-02',
+          ended_by: null,
+          cause: 'automatic',
+          review: true,
+        }),
+        expect.objectContaining({
+          group_id: b,
+          valid_from: '2026-11-02',
+          valid_until: '2026-12-07',
+          own_until: '2026-12-07',
+          ended_by: null,
+          cause: 'automatic',
+          review: true,
+        }),
+      ]);
+    });
+
+    it('writes no group row while the published version teaches the class whole, an active group drawing from it', async () => {
+      const { put } = await chain(['A'], [['2026-09-01', 'class']]);
+      expect(await put()).toEqual([]);
+    });
+
+    it('writes one row over stretches with the same groups', async () => {
+      const { groups, put } = await chain(
+        ['A'],
+        [
+          ['2026-11-02', 0],
+          ['2026-12-07', 0],
+        ],
+      );
+      expect(await put()).toEqual([
+        expect.objectContaining({
+          group_id: groups[0],
+          valid_from: '2026-10-12',
+          valid_until: '2027-06-01',
+          own_until: '2027-06-01',
+        }),
+      ]);
     });
   });
 });

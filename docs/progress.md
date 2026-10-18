@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 18 October 2026: task 5.5a-2c Publish: the readers that follow the published version
+
+- On the run of a published version (its start to the next published start of the branch and year), a class's split and group subjects are those of its group rows whose group is active and draws from the class; before the year's first published version, the active groups as before (`class_group_subject_runs`, 0075). Both class-side commit checks and every class path read it; the automatic placement chooses among the run's groups, and the branch move accept offers and writes by the runs.
+- `department_move_loads` leaves out a published version once a later published version of its branch and year starts on or before the move's start date.
+- Left out: nothing of the task. Journals at publish (5.5c) and stored dated lessons (5.5b) stay with their tasks.
+
+The next sessions must know:
+
+- `groupSubjectRuns` and `runsWithin` (`apps/api/src/modules/classes/class-groups.ts`) replace `groupSubjectsOf`; `planClassGroups` takes the runs. A new class path reads them the same way.
+- A parameter of a SQL function that shares a name with a column of a table it selects from is read as the column: qualify it with the function's name (`class_row_needs_groups.from_day`).
+- The next task is 5.5a-3.
+
 ## 18 October 2026: task 5.5a-2b-2 Publish: the lessons kept on a shortened day
 
 - On a date whose template has fewer lesson slots than a class has lessons that weekday, step 8 lists the class with its lessons of the day, the default ones ticked; the Academic Vice Principal ticks others and saves, or goes back to the default (`PUT /timetable/versions/:id/day-keeps`, `timetable` `edit`, edit lock). Stored per version, date and class (`timetable_day_keeps`, 0074), copied with a draft.

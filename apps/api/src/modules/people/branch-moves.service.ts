@@ -22,8 +22,9 @@ import { Audit } from '../audit/audit.service.js';
 import {
   CLASS_GROUP_REFUSALS,
   coverClassRows,
-  groupSubjectsOf,
+  groupSubjectRuns,
   lockClassGroups,
+  runsWithin,
   SeatBook,
   smallestGroup,
   type CoverGroup,
@@ -312,8 +313,8 @@ export class BranchMoves {
       const book = new SeatBook(transaction);
       const range = { from, until: target.ownUntil };
       const subjects = [];
-      for (const subjectId of groupSubjectsOf(groups, target.id)) {
-        const offered = this.offered(groups, target.id, subjectId);
+      for (const [subjectId, stretches] of await this.stretchesOf(transaction, target.id, range)) {
+        const offered = this.offered(groups, stretches, subjectId);
         const options = [];
         for (const group of offered) {
           const peak = await groupMembersPeak(transaction, group.id, from, target.ownUntil);
@@ -818,17 +819,40 @@ export class BranchMoves {
   }
 
   /** The groups of a subject offered to a class: in service and drawing from it. */
+  /**
+   * The groups of a subject offered to the class (task 5.5a-2c, decision 5):
+   * in service, of the subject, and listed by a stretch of the subject that
+   * holds a day of the class row.
+   */
   private offered<G extends CoverGroup>(
     groups: ReadonlyMap<string, G>,
-    classId: string,
+    stretches: readonly { groupIds: ReadonlySet<string> }[],
     subjectId: string,
   ): G[] {
     return [...groups.values()].filter(
       (group) =>
         group.inService &&
         group.subjectId === subjectId &&
-        group.classIds.has(classId.toLowerCase()),
+        stretches.some((stretch) => stretch.groupIds.has(group.id.toLowerCase())),
     );
+  }
+
+  /**
+   * The split or group subjects of the class on the days of `range`, each
+   * with its stretches cut to the range (`class_group_subject_runs`, 0075),
+   * by subject id in the order of the runs.
+   */
+  private async stretchesOf(
+    transaction: Transaction,
+    classId: string,
+    range: { from: SchoolDate; until: SchoolDate },
+  ): Promise<Map<string, ReturnType<typeof runsWithin>>> {
+    const runs = (await groupSubjectRuns(transaction, [classId])).get(classId.toLowerCase()) ?? [];
+    const found = new Map<string, ReturnType<typeof runsWithin>>();
+    for (const stretch of runsWithin(runs, range)) {
+      found.set(stretch.subjectId, [...(found.get(stretch.subjectId) ?? []), stretch]);
+    }
+    return found;
   }
 
   /**
@@ -852,16 +876,17 @@ export class BranchMoves {
       review: false;
     }[]
   > {
-    const subjects = groupSubjectsOf(groups, target.id);
+    const subjects = await this.stretchesOf(transaction, target.id, row);
     const book = new SeatBook(transaction);
     const written = [];
     for (const [index, choice] of input.groups.entries()) {
       const group = groups.get(choice.groupId.toLowerCase());
+      const stretches = group === undefined ? undefined : subjects.get(group.subjectId);
       if (
         group === undefined ||
+        stretches === undefined ||
         !same(group.subjectId, choice.subjectId) ||
-        !subjects.some((subject) => same(subject, choice.subjectId)) ||
-        !this.offered(groups, target.id, group.subjectId).some((one) => one.id === group.id)
+        !this.offered(groups, stretches, group.subjectId).some((one) => one.id === group.id)
       ) {
         throw new ApiException('branch_move_group', 409, undefined, [
           {
@@ -871,44 +896,63 @@ export class BranchMoves {
           },
         ]);
       }
-      const range = { from: row.from, until: row.until };
-      if (!(await book.fits(group, range))) {
-        throw new ApiException('class_group_no_seat', 409, undefined, [
-          {
-            path: `groups.${String(index)}.groupId`,
-            code: 'class_group_no_seat',
-            message: 'The group has no free seat for the student.',
-            recordId: row.studentId,
-            subjectId: group.subjectId,
-          },
-        ]);
+      // The chosen group over the days of the stretches that list it, joined
+      // where they meet (decision 5); every other day is covered after.
+      const ranges: { from: SchoolDate; until: SchoolDate }[] = [];
+      for (const stretch of stretches) {
+        if (!stretch.groupIds.has(group.id.toLowerCase())) {
+          continue;
+        }
+        const last = ranges.at(-1);
+        if (last !== undefined && last.until === stretch.from) {
+          last.until = stretch.until;
+        } else {
+          ranges.push({ from: stretch.from, until: stretch.until });
+        }
       }
-      book.add(group.id, range);
-      const inserted = await transaction
-        .insertInto('group_memberships')
-        .values({
-          branch_id: group.branchId,
-          student_id: row.studentId,
-          group_id: group.id,
-          subject_id: group.subjectId,
-          valid_from: row.from,
-          valid_until: row.until,
-          own_until: target.ownUntil,
-          cause: 'branch_move',
-          review: false,
-          ended_by: row.leavingId === null ? null : 'leaving',
-          leaving_id: row.leavingId,
-        })
-        .returning('id')
-        .executeTakeFirstOrThrow();
-      written.push({
-        id: inserted.id,
-        groupId: group.id,
-        from: row.from,
-        until: row.until,
-        cause: 'branch_move' as const,
-        review: false as const,
-      });
+      for (const range of ranges) {
+        if (!(await book.fits(group, range))) {
+          throw new ApiException('class_group_no_seat', 409, undefined, [
+            {
+              path: `groups.${String(index)}.groupId`,
+              code: 'class_group_no_seat',
+              message: 'The group has no free seat for the student.',
+              recordId: row.studentId,
+              subjectId: group.subjectId,
+            },
+          ]);
+        }
+      }
+      for (const range of ranges) {
+        book.add(group.id, range);
+        // Only a row that reaches the end of the class row takes its own end and its cut.
+        const atEnd = range.until === row.until;
+        const inserted = await transaction
+          .insertInto('group_memberships')
+          .values({
+            branch_id: group.branchId,
+            student_id: row.studentId,
+            group_id: group.id,
+            subject_id: group.subjectId,
+            valid_from: range.from,
+            valid_until: range.until,
+            own_until: atEnd ? target.ownUntil : range.until,
+            cause: 'branch_move',
+            review: false,
+            ended_by: atEnd && row.leavingId !== null ? 'leaving' : null,
+            leaving_id: atEnd ? row.leavingId : null,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        written.push({
+          id: inserted.id,
+          groupId: group.id,
+          from: range.from,
+          until: range.until,
+          cause: 'branch_move' as const,
+          review: false as const,
+        });
+      }
     }
     return written;
   }

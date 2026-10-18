@@ -246,6 +246,21 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 18 October 2026: publish, the readers that follow the published version (task 5.5a-2c)
+
+Plan approved on pull request #144 with corrections 1 to 4; decisions 1 to 8 confirmed there (6 changed by correction 1, 7 marked Look first). Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a trigger narrowed by a requirement). On the days a published version runs, `class_memberships_need_groups` and `class_memberships_regained` read its group rows instead of the active groups; before the year's first published version the active groups still bind | Decision 1; 3.4b decision 1; `edge/timetable`, Versions and drafts, "takes effect on that version's start date"; `05`, Group |
+| **Look first** (a refusal narrowed by a requirement). A department move leaves out a published version once a later published version of its branch and year starts on or before the move's start date; drafts count as before | Decision 7; the From line of 3.4c |
+| A run lasts from a published version's start to the next published start of the branch and year; a tie goes to the higher number; withdrawn versions never run | Decision 2; as `timetable_busy_elsewhere` reads "in force" |
+| A published group row binds only while its group is not archived and draws from the class | Decision 3 |
+| On a published run the automatic placement offers only that run's groups; adjacent stretches with the same groups are one | Decision 4 |
+| The branch move accept offers the union of the groups of the runs from the release's date and writes the chosen group only over the runs that list it; other days are covered automatically | Decision 5 |
+| No new lock between a publish and a class path; earlier class rows missing the draft's group subject block the publish as `load_group_gaps` | Decision 6 with correction 1 |
+| No route, permission, screen or text changes | Decision 8 |
+
 ## 18 October 2026: publish, the lessons kept on a shortened day (task 5.5a-2b-2)
 
 Plan approved on pull request #143 with corrections 1 and 2; decisions 1 to 12 confirmed there (1 changed by correction 1). Flagged on issue #42.

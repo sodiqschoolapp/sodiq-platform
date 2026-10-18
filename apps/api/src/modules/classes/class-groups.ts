@@ -428,30 +428,76 @@ export async function planGiveBack(
   return given;
 }
 
-/** The subjects of the active groups that draw from the class (decision 5), from the groups read. */
-export function groupSubjectsOf(
-  groups: ReadonlyMap<string, CoverGroup>,
-  classId: string,
-): string[] {
-  const key = classId.toLowerCase();
-  return [
-    ...new Set(
-      [...groups.values()]
-        .filter((group) => group.inService && group.classIds.has(key))
-        .map((group) => group.subjectId),
-    ),
-  ].sort();
+/**
+ * A stretch of days [from, until) on which a subject splits a class, with the
+ * groups that teach it there (task 5.5a-2c, decisions 1 to 4); a null end is
+ * open. Before the year's first published version, the active groups that
+ * draw from the class; on the run of a published version, the groups of its
+ * group rows that draw from the class.
+ */
+export interface SubjectRun {
+  subjectId: string;
+  from: SchoolDate | null;
+  until: SchoolDate | null;
+  groupIds: ReadonlySet<string>;
+}
+
+/**
+ * The split or group subjects of each class by stretch of days, keyed by the
+ * class id in small letters: `class_group_subject_runs` (0075), the reading
+ * the commit checks of the class side use, so that a path and the database
+ * agree on every day.
+ */
+export async function groupSubjectRuns(
+  transaction: Transaction,
+  classIds: readonly string[],
+): Promise<Map<string, SubjectRun[]>> {
+  const found = new Map<string, SubjectRun[]>();
+  for (const classId of [...new Set(classIds.map((id) => id.toLowerCase()))].sort()) {
+    const rows = await sql<{
+      subject_id: string;
+      from_day: string | null;
+      until_day: string | null;
+      group_ids: string[];
+    }>`
+      select subject_id, from_day::text as from_day, until_day::text as until_day, group_ids
+      from class_group_subject_runs(${classId}::uuid)
+    `.execute(transaction);
+    found.set(
+      classId,
+      rows.rows.map((row) => ({
+        subjectId: row.subject_id,
+        from: row.from_day,
+        until: row.until_day,
+        groupIds: new Set(row.group_ids.map((id) => id.toLowerCase())),
+      })),
+    );
+  }
+  return found;
+}
+
+/** The runs of a subject that hold a day of [from, until), cut to it, in their order. */
+export function runsWithin(
+  runs: readonly SubjectRun[],
+  range: { from: SchoolDate; until: SchoolDate },
+): { subjectId: string; from: SchoolDate; until: SchoolDate; groupIds: ReadonlySet<string> }[] {
+  return runs.flatMap((run) => {
+    const from = run.from === null || run.from < range.from ? range.from : run.from;
+    const until = run.until === null || run.until > range.until ? range.until : run.until;
+    return from < until ? [{ subjectId: run.subjectId, from, until, groupIds: run.groupIds }] : [];
+  });
 }
 
 /**
  * The automatic rows that cover the class rows (decision 7): for each class
  * row, in the order given (the students by surname, first name and UID), each
- * split or group subject of its class, each run of its days held by no group
- * row of the subject (the student's rows and the rows of this change), the
- * smallest suitable group of the subject that draws from the class. A row
- * runs to the end of the class row, cut at the same leaving, or stops where
- * the next group row of the subject begins, its own end that day (spec review
- * of the plan, must-fix 1). Refusals are named per student and subject.
+ * split or group subject of its class on each stretch of its days (`runs`,
+ * task 5.5a-2c), each run of days held by no group row of the subject (the
+ * student's rows and the rows of this change), the smallest suitable group of
+ * the stretch. A row runs to the end of the class row, cut at the same
+ * leaving, or stops where the next group row of the subject or the stretch
+ * ends, its own end that day (spec review of the plan, must-fix 1). Refusals
+ * are named per student and subject, once.
  *
  * A group named by `preferredOf` for the student and subject (task 3.3b,
  * decision 5 with correction 1: the group a leaving cut, on a return into the
@@ -464,6 +510,7 @@ export function groupSubjectsOf(
 export async function planClassGroups(
   book: SeatBook,
   groups: ReadonlyMap<string, CoverGroup>,
+  runs: ReadonlyMap<string, readonly SubjectRun[]>,
   classRows: readonly { index: number; row: ClassRowToCover }[],
   heldOf: (
     studentId: string,
@@ -478,7 +525,12 @@ export async function planClassGroups(
     if (row.from >= row.until) {
       continue;
     }
-    for (const subjectId of groupSubjectsOf(groups, row.classId)) {
+    const refusedSubjects = new Set<string>();
+    for (const stretch of runsWithin(runs.get(row.classId.toLowerCase()) ?? [], row)) {
+      const subjectId = stretch.subjectId;
+      if (refusedSubjects.has(subjectId)) {
+        continue;
+      }
       const held = [
         ...heldOf(row.studentId).filter((one) => one.subjectId === subjectId),
         ...rows.filter((one) => one.studentId === row.studentId && one.subjectId === subjectId),
@@ -489,22 +541,24 @@ export async function planClassGroups(
         (group) =>
           group.inService &&
           group.subjectId === subjectId &&
-          group.classIds.has(row.classId.toLowerCase()),
+          stretch.groupIds.has(group.id.toLowerCase()),
       );
       const preferredId = preferredOf(row.studentId, subjectId)?.toLowerCase();
       const preferred =
         preferredId === undefined
           ? undefined
           : offered.find((group) => group.id.toLowerCase() === preferredId);
-      let day = row.from;
-      while (day < row.until) {
+      let day = stretch.from;
+      while (day < stretch.until) {
         const holding = held.find((one) => one.from <= day && day < one.until);
         if (holding !== undefined) {
           day = holding.until;
           continue;
         }
-        const next = held.find((one) => one.from > day && one.from < row.until);
-        const stop = next === undefined ? row.until : next.from;
+        const next = held.find((one) => one.from > day && one.from < stretch.until);
+        const stop = next === undefined ? stretch.until : next.from;
+        // The row reaches the end of the class row: it takes its own end and its cut.
+        const atEnd = stop === row.until;
         const best =
           preferred !== undefined && (await book.fits(preferred, { from: day, until: stop }))
             ? preferred
@@ -517,10 +571,11 @@ export async function planClassGroups(
             recordId: row.studentId,
             subjectId,
           });
+          refusedSubjects.add(subjectId);
           break;
         }
         book.add(best.id, { from: day, until: stop });
-        const ownEnd = next === undefined ? row.ownUntil : stop;
+        const ownEnd = atEnd ? row.ownUntil : stop;
         rows.push({
           studentId: row.studentId,
           groupId: best.id,
@@ -529,12 +584,12 @@ export async function planClassGroups(
           from: day,
           until: stop,
           ownUntil: ownEnd,
-          leavingId: next === undefined && row.until < row.ownUntil ? row.leavingId : null,
+          leavingId: atEnd && row.until < row.ownUntil ? row.leavingId : null,
           cause: 'automatic',
           review: true,
           writtenByMoveId: moveId,
           endedByMoveId:
-            next === undefined && row.until < row.ownUntil && row.leavingId === null
+            atEnd && row.until < row.ownUntil && row.leavingId === null
               ? (row.endedByMoveId ?? null)
               : null,
         });
@@ -829,9 +884,14 @@ export async function coverClassRows(
   const sorted = [...input.classRows].sort(
     (a, b) => order.indexOf(a.row.studentId) - order.indexOf(b.row.studentId) || a.index - b.index,
   );
+  const runs = await groupSubjectRuns(
+    transaction,
+    input.classRows.map(({ row }) => row.classId),
+  );
   const planned = await planClassGroups(
     book,
     groups,
+    runs,
     sorted,
     (studentId) => [
       ...heldRows(own.get(studentId) ?? [], groups, subjectOf),
