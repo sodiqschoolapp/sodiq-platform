@@ -661,7 +661,7 @@ How to read the task lines:
   - From 5.5a-2b-1 (pull request #142, decisions 2 and 9): the impact preview compares the draft with the published version in force before its start expanded by `datedPattern` (`apps/api/src/modules/timetable/impact.ts`); once this task stores dated lessons, its "before" side and the transition week's dates before the start are the stored lessons (with their one-day changes), and the preview lists the lessons holding data that block a removal (`06`, How surprises are prevented, Impact preview: "any lesson holding data that blocks a removal").
   - From 5.5b-1 (pull request #152, decision 9): once 6.1 adds the cells, the preview lists the lessons holding data that a removal would leave in place.
 
-- [ ] **5.5c-1 Publish: journals at publish** (5.5c split in three, pull request #155, decision 1)
+- [x] **5.5c-1 Publish: journals at publish** (5.5c split in three, pull request #155, decision 1)
   - Read: `06` (What a change does to existing data), `07` (first paragraph), `edge/timetable` (Versions and drafts, After publishing), `edge/developer-rules`.
   - Build: the journal record (one per class or group and subject per year) created, closed and reopened at publish, without cells: its runs are the days the published chain's load has it.
   - Done when: publishing a load with a new subject creates exactly one journal and removing it closes that journal.

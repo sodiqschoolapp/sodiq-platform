@@ -1596,9 +1596,13 @@ describe('publish', () => {
       const s = await scene();
       const key = randomUUID();
       const first = versionOf(await publish(s.branch, s.version, MONDAY, t.admin, key));
+      // Task 5.5c-1: the journals and their entries as the first publish left them.
+      const journals = await written([s.version]);
       const again = versionOf(await publish(s.branch, s.version, MONDAY, t.admin, key));
       expect(again).toEqual(first);
       expect(await t.entries('timetable_version.publish', s.version)).toHaveLength(1);
+      expect(await written([s.version])).toEqual(journals);
+      expect(journals[11]).toHaveLength(1);
     });
 
     it('sent while the first waits for the publish lock, gets the same answer (review correction 2)', async () => {
@@ -4886,12 +4890,109 @@ describe('publish', () => {
       expect((await journalsOf(s.branch)).find((one) => one.id === maths?.id)).toEqual(maths);
       expect(await t.entries('journal.runs', maths?.id)).toHaveLength(0);
 
-      // A longer year leaves the journals open: their last run has no end (decision 10).
+      // A longer year, then a publish: the journals stay open, their last run
+      // with no end, never the year's last date (decision 10).
       await t.database.migrator
         .updateTable('academic_years')
         .set({ end_date: '2027-06-15' })
         .where('id', '=', s.year)
         .execute();
+      const afterLonger = await placedAll(s.branch, s.year, again);
+      versionOf(await publish(s.branch, afterLonger, '2027-04-12'));
+      expect(await runsOf(s.branch, { classId: s.classId }, s.subject)).toEqual([
+        '{[2026-10-12,)}',
+      ]);
+      expect(await runsOf(s.branch, { classId: s.classId }, art)).toEqual([
+        '{[2026-11-09,2027-01-11),[2027-03-30,)}',
+      ]);
+    });
+
+    it('changes no journal of another branch', async () => {
+      const theirs = await scene();
+      versionOf(await publish(theirs.branch, theirs.version, MONDAY));
+      const before = await journalsOf(theirs.branch);
+      expect(before).toHaveLength(1);
+      const s = await scene();
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      const next = await draft(s.branch, s.year, s.version);
+      const { rowId } = await withArt(s, next);
+      await t.database.migrator
+        .deleteFrom('pattern_blocks')
+        .where('version_id', '=', next)
+        .execute();
+      const [mathsRow] = await t.database.migrator
+        .selectFrom('teaching_load_rows')
+        .select('id')
+        .where('version_id', '=', next)
+        .where('id', '<>', rowId)
+        .execute();
+      await placeAt(s.branch, next, mathsRow?.id ?? '', 1);
+      await placeAt(s.branch, next, rowId, 2);
+      await confirmTemplates(s.branch, next);
+      await load.freeEditLock(next);
+      versionOf(await publish(s.branch, next, '2026-11-09'));
+      expect(await journalsOf(s.branch)).toHaveLength(2);
+      expect(await journalsOf(theirs.branch)).toEqual(before);
+    });
+
+    it('under "run until" with the same load changes no journal', async () => {
+      const s = await scene();
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      const later = await placedCopy(s.branch, s.year, s.version);
+      versionOf(await publish(s.branch, later, '2026-11-09'));
+      const before = await journalsOf(s.branch);
+      const fix = await placedCopy(s.branch, s.year, s.version);
+      const until = checkOf(await check(s.branch, fix, '2026-10-19&chain=run_until')).chain?.key;
+      const published = await request(t.kit.server)
+        .post(`/api/timetable/versions/${fix}/publish`)
+        .set('Cookie', t.admin)
+        .set(BRANCH_HEADER, s.branch)
+        .set(REQUEST_KEY_HEADER, randomUUID())
+        .send({ startsOn: '2026-10-19', chain: 'run_until', laterKey: until });
+      versionOf(published);
+      expect(await journalsOf(s.branch)).toEqual(before);
+      expect(await t.entries('journal.runs', before[0]?.id)).toHaveLength(0);
+    });
+
+    it('under "replace" closes a journal the fix drops from the fix\'s start', async () => {
+      const s = await scene();
+      // The first version has Art too, on Tuesday.
+      const { art, rowId } = await withArt(s, s.version);
+      await placeAt(s.branch, s.version, rowId, 2);
+      await load.freeEditLock(s.version);
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      const later = await placedAll(s.branch, s.year, s.version);
+      versionOf(await publish(s.branch, later, '2026-11-09'));
+      // A fix of the first version without Art, replacing the later one from 26 October.
+      const fix = await draft(s.branch, s.year, s.version);
+      await t.database.migrator
+        .deleteFrom('pattern_blocks')
+        .where('version_id', '=', fix)
+        .execute();
+      await t.database.migrator
+        .deleteFrom('teaching_load_rows')
+        .where('version_id', '=', fix)
+        .where('subject_id', '=', art)
+        .execute();
+      const [mathsRow] = await t.database.migrator
+        .selectFrom('teaching_load_rows')
+        .select('id')
+        .where('version_id', '=', fix)
+        .execute();
+      await placeAt(s.branch, fix, mathsRow?.id ?? '', 1);
+      await confirmTemplates(s.branch, fix);
+      await load.freeEditLock(fix);
+      const replaceKey = checkOf(await check(s.branch, fix, '2026-10-26&chain=replace')).chain?.key;
+      const replaced = await request(t.kit.server)
+        .post(`/api/timetable/versions/${fix}/publish`)
+        .set('Cookie', t.admin)
+        .set(BRANCH_HEADER, s.branch)
+        .set(REQUEST_KEY_HEADER, randomUUID())
+        .send({ startsOn: '2026-10-26', chain: 'replace', laterKey: replaceKey });
+      versionOf(replaced);
+      expect(await runsOf(s.branch, { classId: s.classId }, art)).toEqual([
+        '{[2026-10-12,2026-10-26)}',
+      ]);
       expect(await runsOf(s.branch, { classId: s.classId }, s.subject)).toEqual([
         '{[2026-10-12,)}',
       ]);

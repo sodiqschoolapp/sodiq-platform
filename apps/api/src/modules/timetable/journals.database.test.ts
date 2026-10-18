@@ -112,6 +112,10 @@ describe('the journals in the database', () => {
     expect(await refusal(insert({ classId: planned }))).toMatchObject({
       constraint: 'journal_unit_year',
     });
+    const plannedGroup = await kit.load.classes.group(north, otherYear, subject, [planned]);
+    expect(await refusal(insert({ groupId: plannedGroup }))).toMatchObject({
+      constraint: 'journal_unit_year',
+    });
     const oxford = await schoolClass();
     const group = await kit.load.classes.group(north, year, subject, [oxford]);
     const other = await kit.load.classes.subject({ grades: [7] });

@@ -116,7 +116,17 @@ export async function syncJournals(
     .where('academic_year_id', '=', version.academic_year_id)
     .execute();
   const storedOf = new Map(stored.map((one) => [keyOf(one), one]));
-  const keys = [...new Set([...wanted.keys(), ...storedOf.keys()])].sort();
+  // Written and audited in the order class id, group id, subject id: class journals first.
+  const keys = [...new Set([...wanted.keys(), ...storedOf.keys()])].sort((a, b) => {
+    const [classA = '', groupA = '', subjectA = ''] = a.split('|');
+    const [classB = '', groupB = '', subjectB = ''] = b.split('|');
+    return (
+      Number(classA === '') - Number(classB === '') ||
+      classA.localeCompare(classB) ||
+      groupA.localeCompare(groupB) ||
+      subjectA.localeCompare(subjectB)
+    );
+  });
   let opened = 0;
   let changed = 0;
   for (const key of keys) {
