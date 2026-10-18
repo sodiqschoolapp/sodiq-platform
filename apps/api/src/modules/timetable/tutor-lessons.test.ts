@@ -245,6 +245,10 @@ describe('Tutor lessons follow the Tutor', () => {
       // Task 5.5c-3b: a follow sends notices and marks lessons.
       database.migrator.selectFrom('notifications').select('id').orderBy('id').execute(),
       database.migrator.selectFrom('lesson_changes').selectAll().orderBy('lesson_id').execute(),
+      // A notice enqueues its delivery (permission review, must-fix 1).
+      sql<{ id: string; name: string }>`select id, name from pgboss.job order by id`
+        .execute(database.migrator)
+        .then((result) => result.rows),
       database.migrator.selectFrom('audit_log').select('id').orderBy('id').execute(),
     ]);
 

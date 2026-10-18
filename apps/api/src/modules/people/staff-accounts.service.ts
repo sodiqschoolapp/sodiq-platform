@@ -411,6 +411,9 @@ export class StaffAccounts {
       // Task 5.5c-3b: the notice and the mark of the Tutor lessons it moved;
       // the give's entry is written before, and the `assignment.end`
       // entries of `endRoles` name every moved lesson (review correction 1).
+      // Today only the role just given ends here, which holds no Tutor row
+      // yet; the send keeps the path right if that changes (permission
+      // review, should-fix 1).
       await sendTutorChanges(transaction, this.notifications, tutorChanges(follows));
     }
     return given.id;
