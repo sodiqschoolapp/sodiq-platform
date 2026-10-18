@@ -186,6 +186,7 @@ export const AUDIT_ACTION_GROUPS = {
     // Task 5.5a-1: publish, and the drafts it marks out of date.
     'timetable_version.publish',
     'timetable_version.out_of_date',
+    'timetable_version.up_to_date',
     // Task 5.5a-3a: later published versions replaced by a publish, or changed by a carry.
     'timetable_version.replace',
     'timetable_version.carry',

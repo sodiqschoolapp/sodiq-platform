@@ -627,12 +627,21 @@ How to read the task lines:
   - From 5.5a-3 (pull request #145, decision 1, Look first): split into 5.5a-3a (the chain) and 5.5a-3b (out-of-date drafts).
   - From 5.5a-2a (pull request #140): the dated check of a publish runs every version to the year's end, as no publish before a later published version is allowed yet; once one is, it ends the day before the next version's start.
 
-- [ ] **5.5a-3b Publish: out-of-date drafts**
+- [x] **5.5a-3b-1 Publish: out-of-date drafts after a change of the setup** (pull request #146)
   - Read: `06` (How surprises are prevented: "Out-of-date draft"), `edge/timetable` (Versions and drafts), `edge/time-dates-calendar`.
-  - Build: the mark "out of date" from changes of templates, calendar, availability and rooms; bringing a draft up to date (what changed on both sides, the person picks).
-  - Done when: a calendar change marks an open draft out of date, and bringing it up to date lists the changes of both sides and keeps the person's picks.
+  - Build: the mark "out of date" from changes of templates, calendar, availability and rooms, kept as its causes; bringing a draft up to date after them (the causes and the check shown, then confirmed).
+  - Done when: a calendar change marks an open draft out of date, and bringing it up to date lists the change and clears the mark.
+  - From 5.5a-3b (pull request #146, decision 1, Look first): split into 5.5a-3b-1 (the marks from the setup and bringing a draft up to date after them) and 5.5a-3b-2 (bringing a draft up to date after a publish).
   - From 5.5a-3 (pull request #145, decision 1, Look first): split from 5.5a-3; 5.5a-3a built the chain.
   - From 5.5a (pull request #139, decision 1, Look first): 5.5a-1 marks drafts out of date only at publish (`timetable_versions.out_of_date_at`); a marked draft cannot be published (`draft_out_of_date`) until this part.
+
+- [ ] **5.5a-3b-2 Publish: bringing a draft up to date after a publish**
+  - Read: `06` (How surprises are prevented: "Out-of-date draft"), `edge/timetable` (Versions and drafts).
+  - Build: for a draft marked by a publish, what changed on both sides against the version the draft started from (the draft's changes and the published version's: rows, entries, pins and blocks), the person picks, the rule engine checks the picks; the draft then names the published version as the one it started from.
+  - Done when: a publish marks an open draft; bringing it up to date lists the changes of both sides and keeps the person's picks.
+  - From 5.5a-3b-1 (pull request #146, decision 1, Look first): split from 5.5a-3b; 5.5a-3b-1 built the marks from the setup and bringing a draft up to date after them.
+  - From 5.5a-3b-1 (pull request #146, decisions 5 and 7): the mark is its causes (`timetable_version_out_of_date_causes`, 0077; `out_of_date_at` is gone); a draft with a cause of action `timetable_version.publish` is refused `draft_out_of_date_by_publish` by `POST /api/timetable/versions/:id/up-to-date` until this part lifts it, and the builder's panel switches its button off.
+  - From 5.5a-3b-1 (pull request #146, decision 6): the drafts marked before 0077 carry a publish cause with no record (`record_id` null): which version marked them is not known; this part decides what their "other side" is.
 
 - [ ] **5.5b Publish: dated lessons**
   - Read: `06` (What a change does to existing data, How surprises are prevented), `edge/timetable` (Versions and drafts), `edge/time-dates-calendar`.

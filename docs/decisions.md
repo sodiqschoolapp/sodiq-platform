@@ -257,6 +257,25 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 18 October 2026: out-of-date drafts after a change of the setup (task 5.5a-3b-1)
+
+Plan approved on pull request #146 with corrections 1 to 4; decisions 1 to 12 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** 5.5a-3b is split into 5.5a-3b-1 (the marks from templates, calendar, availability and rooms, and bringing a draft up to date after them) and 5.5a-3b-2 (bringing a draft up to date after a publish: both sides, the person picks) | Decision 1 |
+| **Look first** (a column and a trigger column removed because the requirement changed). The mark is its causes (`timetable_version_out_of_date_causes`, 0077): a draft is out of date while it has a cause; `timetable_versions.out_of_date_at` is dropped and `timetable_versions_mark_draft` guards `edit_holder_id` and `edit_seen_at` only; the fixtures of `publish.database.test.ts` and `publish.test.ts` read and write causes. No trigger guards a cause: every reader, a copy included, counts the causes of drafts only | Decision 7, review correction 2; `06`: "the differences are shown" |
+| **Look first** (a lock narrowed, no rule weakened). The `for update` locks of version rows (`lockDraft`, publish, Tutor rows) are `for no key update`: they still exclude one another and a copy's `for share`, and no longer block the `for key share` of a cause's foreign key. A setup writer then never waits on a version row; the tests check that nothing waits on a version or a cause row and that both sides commit | Decision 8, review correction 1 |
+| The writes that mark: every calendar entry write but a new name alone; a slot length, a template version, a template set or ended; availability set, or ended by a branch removed from a person (the removed branch's drafts); a room edit of its type, capacity, status, sharing or simultaneous lessons. Creates, renames, archives and restores of slot types and templates, room creates and renames, buildings and floors do not mark | Decision 2 |
+| A change marks the drafts of its own branch in years not closed that it touches: a calendar entry the years of its dates (before and after an edit), a template change the years ending on or after its date, availability the years of the entry's dates, a room every year not closed | Decision 3 |
+| Bringing a draft up to date after a change of the setup is a confirmation after the causes and the check of the draft are shown; nothing on the setup side is picked | Decision 4 |
+| A draft with a publish cause is refused `draft_out_of_date_by_publish` until 5.5a-3b-2; a publish adds its cause to every other draft of its branch and year whose chain of sources does not hold it, marked or not | Decision 5, spec review must-fix 2, review correction 3 |
+| The drafts marked before 0077 carry one publish cause with no record | Decision 6 |
+| A copy takes the causes its transaction reads, only from a draft | Decision 9, review correction 2 |
+| `POST up-to-date` takes no request key; it deletes exactly the causes it read when the key of their ids matches (`out_of_date_changed` otherwise), and a draft with no cause is answered as it is | Decision 10 |
+| A change of the year's or the quarters' dates does not mark | Decision 11 |
+| The panel is in the builder only; it names each cause by its audit action's label, its record and moment in branch time, counts the check of the draft and links to step 8 | Decision 12 |
+
 ## 18 October 2026: publish, the chain (task 5.5a-3a)
 
 Plan approved on pull request #145 with corrections 1 and 2; decisions 1 to 11 confirmed there. Flagged on issue #42.

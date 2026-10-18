@@ -357,6 +357,10 @@ export const en = {
       'One of the two records has a class or group move after today. Cancel that move first, then merge.',
     version_not_draft:
       'This version is no longer a draft: its load and start date do not change. Start a new draft to change the load.',
+    draft_out_of_date_by_publish:
+      'Another version was published after this draft was started. Bringing a draft up to date after a publish is not available yet.',
+    out_of_date_changed:
+      'The draft was marked out of date again while you looked. Check what changed and bring it up to date again.',
     timetable_year_closed:
       'The academic year of this version is closed: nothing in it changes. Work in a planned or current year.',
     version_start_past: 'The start date is before today. Choose today or a later date.',
@@ -2614,7 +2618,8 @@ export const en = {
         rules_confirm: 'Rules of a draft confirmed',
         edit_lock: 'Draft timetable version taken for editing',
         publish: 'Timetable version published',
-        out_of_date: 'Draft marked out of date by a publish',
+        out_of_date: 'Draft marked out of date',
+        up_to_date: 'Draft brought up to date',
         replace: 'Published version replaced by an earlier start',
         carry: 'Teacher or room change carried into a published version',
         day_keep: 'Lessons kept on a shortened day of a draft chosen',
@@ -3382,7 +3387,7 @@ export const en = {
         version_later_published:
           'Version {{number}} is already published from this date or a later one. Choose below what happens to the later versions.',
         draft_out_of_date:
-          'Another version was published after this draft was started. Bring the draft up to date first.',
+          'The setup or another version changed after this draft was started. Bring the draft up to date first.',
         draft_not_ready: 'Step "{{step}}" is not ready.',
         load_problem: '{{row}}: {{problem}}',
         load_problem_row: 'A row of the load: {{problem}}',
@@ -3401,9 +3406,23 @@ export const en = {
           'A subject of the load has no distribution for quarter {{quarter}}.',
       },
     },
+    outOfDate: {
+      title: 'What changed',
+      none: 'Nothing is listed.',
+      bring: 'Bring up to date',
+      byPublish:
+        'A publish marked this draft. Bringing a draft up to date after a publish is not available yet.',
+      check: 'Reasons it cannot be published now: {{refusals}}. Warnings: {{warnings}}.',
+      openCheck: 'Open the check',
+      earlierPublish: 'A publish before this list was kept',
+      recordGone: 'A record that no longer exists',
+      teacherGone: 'A teacher who no longer works in this branch',
+      version: 'Version {{number}}',
+      dates: '{{first}} to {{last}}',
+    },
     builder: {
       notPublished: 'Not published',
-      outOfDate: 'Another version was published after this draft was started.',
+      outOfDate: 'The setup or another version changed after this draft was started.',
       title: 'Draft builder',
       noVersion: 'Start a draft on the teaching load page first.',
       later: 'Not yet available',

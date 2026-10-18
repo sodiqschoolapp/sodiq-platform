@@ -561,6 +561,16 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     branch: 'request',
     roles: ['super_admin', 'academic_vice_principal'],
   },
+  // Task 5.5a-3b-1: the causes of a draft's mark, read by every reader of the
+  // timetable, and bringing it up to date, under timetable edit.
+  'GET /api/timetable/versions/:id/out-of-date': {
+    branch: 'request',
+    roles: ['super_admin', 'principal', 'academic_vice_principal'],
+  },
+  'POST /api/timetable/versions/:id/up-to-date': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
   // Task 5.5a-2b-2: the lessons kept on a shortened day, under timetable edit.
   'PUT /api/timetable/versions/:id/day-keeps': {
     branch: 'request',

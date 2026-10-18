@@ -1,6 +1,10 @@
 import { Controller, Delete, Get, HttpCode, Patch, Post, Put } from '@nestjs/common';
 import {
   draftReadinessSchema,
+  outOfDateAnswerSchema,
+  upToDateBodySchema,
+  type OutOfDateAnswer,
+  type UpToDateBody,
   publishBodySchema,
   dayKeepBodySchema,
   dayKeepSchema,
@@ -120,6 +124,31 @@ export class TimetableController {
     @RequestId() requestId: string,
   ): Promise<TimetableVersion> {
     return this.timetable.editVersion(access, params.id, input, requestId);
+  }
+
+  /** The causes of a draft's mark out of date and their key (task 5.5a-3b-1). */
+  @Get('versions/:id/out-of-date')
+  @Requires('timetable', 'view')
+  @Returns(outOfDateAnswerSchema)
+  outOfDate(
+    @CurrentAccess() access: Access,
+    @ValidParams(timetableVersionParamsSchema) params: TimetableVersionParams,
+  ): Promise<OutOfDateAnswer> {
+    return this.timetable.outOfDate(access, params.id);
+  }
+
+  /** Brings a draft up to date after a change of the setup (task 5.5a-3b-1, decision 4). */
+  @Post('versions/:id/up-to-date')
+  @HttpCode(200)
+  @Requires('timetable', 'edit')
+  @Returns(timetableVersionSchema)
+  bringUpToDate(
+    @CurrentAccess() access: Access,
+    @ValidParams(timetableVersionParamsSchema) params: TimetableVersionParams,
+    @ValidBody(upToDateBodySchema) input: UpToDateBody,
+    @RequestId() requestId: string,
+  ): Promise<TimetableVersion> {
+    return this.timetable.bringUpToDate(access, params.id, input, requestId);
   }
 
   /**

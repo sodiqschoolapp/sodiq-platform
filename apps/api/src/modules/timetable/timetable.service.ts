@@ -7,6 +7,8 @@ import {
   schoolDateOf,
   timetableVersionStatusSchema,
   type DraftReadiness,
+  type OutOfDateAnswer,
+  type UpToDateBody,
   type ErrorCode,
   type ErrorDetail,
   type Load,
@@ -79,6 +81,14 @@ import {
   type VersionContext,
 } from './load-facts.js';
 import { blockRowOf, readBlockGroups } from './load-blocks.js';
+import {
+  causeAnswers,
+  causesKey,
+  copyCauses,
+  isPublishCause,
+  outOfDateColumn,
+  storedCauses,
+} from './out-of-date.js';
 import { auditOf, followChanged, followVersion } from './tutor-lessons.js';
 import { checkPins, pinRowsOf, readPins, type StoredPin } from './pins-check.js';
 import { blockedRefusal } from './rule-answers.js';
@@ -196,8 +206,8 @@ export interface VersionRow extends WeightColumns {
   rules_confirmed: unknown;
   edit_holder_id: string | null;
   edit_seen_at: Date | null;
-  /** Task 5.5a-1, decision 4: the moment a publish marked the draft out of date. */
-  out_of_date_at: Date | null;
+  /** Task 5.5a-3b-1, decision 7: a draft with a cause of the mark out of date. */
+  out_of_date: boolean;
   start_date: string;
   end_date: string;
   year_status: string;
@@ -458,13 +468,15 @@ export class Timetable {
               starts_on: input.startsOn,
               from_version_id: source?.id ?? null,
               left_rows: JSON.stringify(left),
-              // Task 5.5a-1, decision 14: a copy of a draft marked out of date carries the mark.
-              out_of_date_at: source?.out_of_date_at ?? null,
               // Decision 5 of 5.3b-1: a copy takes its source's weights, not their confirmation.
               ...(source === undefined ? {} : weightColumnsOf(weightsOf(source))),
             })
             .returning('id')
             .executeTakeFirstOrThrow();
+          // Task 5.5a-3b-1, review correction 2: a copy of a draft carries its
+          // causes of the mark out of date; a copy of a published version none.
+          const copiedCauses =
+            source === undefined ? 0 : await copyCauses(transaction, branchId, source, created.id);
           // Task 5.3b-2, decision 9: the pins of the rows the copy takes, on their new rows.
           const sourcePins =
             source === undefined
@@ -584,6 +596,7 @@ export class Timetable {
                 .map(keepOf),
               leftRows: left as unknown as JsonValue,
               weights: source === undefined ? null : weightsOf(source),
+              ...(copiedCauses === 0 ? {} : { outOfDateCauses: copiedCauses }),
             },
             requestId,
           });
@@ -1029,6 +1042,96 @@ export class Timetable {
         ? readiness
         : { ...readiness, grid: await gridOf(transaction, version) };
     });
+  }
+
+  /**
+   * The causes of a draft's mark, oldest first, and their key (task 5.5a-3b-1,
+   * pull request #146). A version that is not a draft lists none (decision 7).
+   */
+  outOfDate(access: Access, id: string): Promise<OutOfDateAnswer> {
+    return this.transactions.run(access.branchIds, async (transaction) => {
+      const named = await this.namedVersion(transaction, branchOf(access), id);
+      const causes = named.status === 'draft' ? await storedCauses(transaction, id) : [];
+      return { causes: await causeAnswers(transaction, causes), key: causesKey(id, causes) };
+    });
+  }
+
+  /**
+   * Brings a draft up to date after a change of the setup (task 5.5a-3b-1,
+   * decision 4): a draft write that deletes exactly the causes shown, by the
+   * key of their ids. A publish cause waits for 5.5a-3b-2 (decision 5). A draft
+   * with no cause is answered as it is, and nothing is written (decision 10).
+   */
+  bringUpToDate(
+    access: Access,
+    id: string,
+    input: UpToDateBody,
+    requestId: string,
+  ): Promise<TimetableVersion> {
+    return refusingConstraints(() =>
+      this.transactions.run(access.branchIds, async (transaction) => {
+        const named = await this.namedVersion(transaction, branchOf(access), id);
+        if (named.status === 'draft' && (await storedCauses(transaction, id)).length === 0) {
+          return this.answerOf(transaction, id, access.accountId);
+        }
+        await this.lockDraft(transaction, access, id, requestId);
+        const causes = await storedCauses(transaction, id);
+        if (causes.length === 0) {
+          return this.answerOf(transaction, id, access.accountId);
+        }
+        if (causes.some(isPublishCause)) {
+          throw refused('draft_out_of_date_by_publish');
+        }
+        if (input.key !== causesKey(id, causes)) {
+          throw refused('out_of_date_changed');
+        }
+        await transaction
+          .deleteFrom('timetable_version_out_of_date_causes')
+          .where(
+            'id',
+            'in',
+            causes.map((one) => one.id),
+          )
+          .execute();
+        await this.audit.record(transaction, {
+          branchId: branchOf(access),
+          actorId: access.accountId,
+          assignmentId: access.assignmentId,
+          action: 'timetable_version.up_to_date',
+          record: { type: 'timetable_version', id },
+          oldValue: {
+            outOfDate: true,
+            causes: causes.map((one) => ({
+              id: one.id,
+              action: one.action,
+              recordId: one.record_id,
+              causedAt: one.caused_at.toISOString(),
+            })),
+          },
+          newValue: { outOfDate: false },
+          requestId,
+        });
+        return this.answerOf(transaction, id, access.accountId);
+      }),
+    );
+  }
+
+  /** A version of the branch, its status; another branch's or unknown: 404. */
+  private async namedVersion(
+    transaction: Transaction,
+    branchId: string,
+    id: string,
+  ): Promise<{ id: string; status: string }> {
+    const named = await transaction
+      .selectFrom('timetable_versions')
+      .select(['id', 'status'])
+      .where('id', '=', id)
+      .where('branch_id', '=', branchId)
+      .executeTakeFirst();
+    if (named === undefined) {
+      throw notFound();
+    }
+    return named;
   }
 
   /**
@@ -2051,7 +2154,8 @@ export class Timetable {
 
   /**
    * A draft of the branch for a write: the year FOR SHARE, then the version
-   * FOR UPDATE, whatever their state, then read (the lock order of the
+   * FOR NO KEY UPDATE (task 5.5a-3b-1, decision 8: a cause's foreign key is
+   * not blocked), whatever their state, then read (the lock order of the
    * class). Another branch's or unknown: 404; a closed year:
    * `timetable_year_closed`; not a draft: `version_not_draft`.
    */
@@ -2075,7 +2179,7 @@ export class Timetable {
       .selectFrom('timetable_versions')
       .select('id')
       .where('id', '=', id)
-      .forUpdate()
+      .forNoKeyUpdate()
       .execute();
     const version = await this.versionRow(transaction, id);
     if (version.year_status === 'closed') {
@@ -2186,7 +2290,7 @@ export class Timetable {
         'timetable_versions.rules_confirmed',
         'timetable_versions.edit_holder_id',
         'timetable_versions.edit_seen_at',
-        'timetable_versions.out_of_date_at',
+        outOfDateColumn,
         ...WEIGHT_COLUMNS,
         'academic_years.start_date',
         'academic_years.end_date',
@@ -2251,7 +2355,7 @@ export class Timetable {
         'timetable_versions.left_rows',
         'timetable_versions.edit_holder_id',
         'timetable_versions.edit_seen_at',
-        'timetable_versions.out_of_date_at',
+        outOfDateColumn,
         'academic_years.start_date',
         'academic_years.end_date',
         'academic_years.status as year_status',
@@ -2289,7 +2393,7 @@ export class Timetable {
       left_rows: unknown;
       edit_holder_id: string | null;
       edit_seen_at: Date | null;
-      out_of_date_at: Date | null;
+      out_of_date: boolean;
       start_date: string;
       end_date: string;
       year_status: string;
@@ -2335,7 +2439,7 @@ export class Timetable {
             : { id: row.from_version_id, number: fromNumber },
         rows: row.rows,
         leftRows: leftRowsOf(row.left_rows).length,
-        outOfDate: row.out_of_date_at !== null,
+        outOfDate: row.out_of_date,
         editLock: ((holder) =>
           holder === null || row.edit_seen_at === null
             ? null

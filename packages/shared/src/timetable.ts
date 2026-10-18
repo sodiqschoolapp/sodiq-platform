@@ -1313,3 +1313,83 @@ export const publishCheckSchema = z.object({
 });
 
 export type PublishCheck = z.infer<typeof publishCheckSchema>;
+
+/**
+ * The changes that mark a draft out of date (task 5.5a-3b-1, decision 2), by
+ * their audit action; the same list as the check of 0077.
+ * docs/spec/edge-cases/timetable.md, Versions and drafts: "Any publish, or any
+ * change to templates, calendar, availability or rooms, marks the other drafts
+ * out of date."
+ */
+export const OUT_OF_DATE_ACTIONS = {
+  'timetable_version.publish': 'publish',
+  'calendar_entry.create': 'calendar',
+  'calendar_entry.edit': 'calendar',
+  'calendar_entry.archive': 'calendar',
+  'calendar_entry.restore': 'calendar',
+  'slot_type.length_change': 'templates',
+  'day_template.version_create': 'templates',
+  'day_template_assignment.set': 'templates',
+  'day_template_assignment.end': 'templates',
+  'staff.availability_set': 'availability',
+  'staff.availability_end': 'availability',
+  'room.edit': 'rooms',
+} as const;
+
+export type OutOfDateAction = keyof typeof OUT_OF_DATE_ACTIONS;
+
+export const outOfDateActionSchema = z.enum(
+  Object.keys(OUT_OF_DATE_ACTIONS) as [OutOfDateAction, ...OutOfDateAction[]],
+);
+
+export const OUT_OF_DATE_KINDS = [
+  'publish',
+  'calendar',
+  'templates',
+  'availability',
+  'rooms',
+] as const;
+
+export const outOfDateKindSchema = z.enum(OUT_OF_DATE_KINDS);
+
+export type OutOfDateKind = z.infer<typeof outOfDateKindSchema>;
+
+/** One cause of the mark, oldest first, with the record it names. */
+export const outOfDateCauseSchema = z.object({
+  id: z.uuid(),
+  kind: outOfDateKindSchema,
+  action: outOfDateActionSchema,
+  causedAt: z.iso.datetime({ offset: true }),
+  /**
+   * The record changed: its name (a calendar entry, template, slot type, staff
+   * member or room), the dates of a calendar entry, the number of a published
+   * version. `null` when it cannot be read any more, or for a publish that
+   * marked the draft before the causes were kept (decision 6).
+   */
+  record: z
+    .object({
+      id: z.uuid(),
+      name: z.string().nullable(),
+      firstDate: schoolDateSchema.nullable(),
+      lastDate: schoolDateSchema.nullable(),
+      versionNumber: z.int().min(1).nullable(),
+    })
+    .nullable(),
+});
+
+export type OutOfDateCause = z.infer<typeof outOfDateCauseSchema>;
+
+/** The causes of a draft's mark and the key that bringing it up to date sends back. */
+export const outOfDateAnswerSchema = z.object({
+  causes: z.array(outOfDateCauseSchema),
+  key: transitionKeySchema,
+});
+
+export type OutOfDateAnswer = z.infer<typeof outOfDateAnswerSchema>;
+
+/** Bringing a draft up to date: the key of the causes shown. */
+export const upToDateBodySchema = z.strictObject({
+  key: transitionKeySchema,
+});
+
+export type UpToDateBody = z.infer<typeof upToDateBodySchema>;

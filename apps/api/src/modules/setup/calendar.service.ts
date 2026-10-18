@@ -27,6 +27,7 @@ import type { Access } from '../access/permission.guard.js';
 import { calendarSettings, loadEntries, losesGoLive, type StoredEntry } from './calendar-state.js';
 import { loadStore, type TemplateStore } from './day-template-state.js';
 import { notFound, refusingConstraints } from './setup-refusals.js';
+import { markDraftsOutOfDate } from '../timetable/out-of-date.js';
 
 /** A refusal of 409 that names the fields to show it beside. */
 function refused(
@@ -237,6 +238,31 @@ export class Calendar {
     });
   }
 
+  /**
+   * The drafts of the branch in the years the entry's dates touch are marked
+   * out of date (task 5.5a-3b-1, decisions 2 and 3).
+   */
+  private markDrafts(
+    context: Context,
+    action:
+      | 'calendar_entry.create'
+      | 'calendar_entry.edit'
+      | 'calendar_entry.archive'
+      | 'calendar_entry.restore',
+    id: string,
+    dates: readonly { firstDate: string; lastDate: string }[],
+  ): Promise<void> {
+    return markDraftsOutOfDate(context.transaction, this.audit, {
+      branchId: context.branchId,
+      action,
+      recordId: id,
+      dates: dates.map((one) => ({ from: one.firstDate, until: one.lastDate })),
+      actorId: context.access.accountId,
+      assignmentId: context.access.assignmentId,
+      requestId: context.requestId,
+    });
+  }
+
   // Reads.
 
   list(access: Access, branchId: string): Promise<CalendarEntryList> {
@@ -376,6 +402,7 @@ export class Calendar {
       .executeTakeFirstOrThrow();
     await this.refuseGoLive(context);
     await this.record(context, 'calendar_entry.create', row.id, { newValue: fieldsOf(record) });
+    await this.markDrafts(context, 'calendar_entry.create', row.id, [record]);
     return this.answer(context, row.id);
   }
 
@@ -461,6 +488,10 @@ export class Calendar {
       oldValue: Object.fromEntries(changed.map((key) => [key, old[key]])),
       newValue: Object.fromEntries(changed.map((key) => [key, next[key]])),
     });
+    // Decision 2: a new name alone changes no date of a draft.
+    if (changed.some((key) => key !== 'name')) {
+      await this.markDrafts(context, 'calendar_entry.edit', id, [before, record]);
+    }
     return this.answer(context, id);
   }
 
@@ -486,6 +517,7 @@ export class Calendar {
       oldValue: { archivedAt: null },
       newValue: { archivedAt: now.toISOString() },
     });
+    await this.markDrafts(context, 'calendar_entry.archive', id, [entry]);
     return this.answer(context, id);
   }
 
@@ -510,6 +542,7 @@ export class Calendar {
       oldValue: { archivedAt: entry.archivedAt.toISOString() },
       newValue: { archivedAt: null },
     });
+    await this.markDrafts(context, 'calendar_entry.restore', id, [entry]);
     return this.answer(context, id);
   }
 

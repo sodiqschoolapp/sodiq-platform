@@ -42,6 +42,7 @@ import { gridMarkText } from './grid-conflicts';
 import { EditLockBanner, useEditLock } from './edit-lock';
 import { GridStep } from './grid-step';
 import { useGridHistory } from './use-grid-history';
+import { OutOfDatePanel } from './out-of-date-panel';
 import { PublishStep } from './publish-step';
 import { RulesStep } from './rules-step';
 import {
@@ -600,6 +601,16 @@ export function BuilderPage(): React.JSX.Element {
             </p>
           )}
         </div>
+        {chosen.outOfDate && (
+          <OutOfDatePanel
+            key={chosen.id}
+            version={chosen}
+            canEdit={canEdit}
+            onOpenCheck={() => {
+              go({ version: chosen.id, step: 'publish' });
+            }}
+          />
+        )}
       </section>
       <div className="grid gap-6 md:grid-cols-[16rem_1fr]">
         <nav aria-label={t('timetable.builder.stepsLabel')} className={`${PANEL} p-4`}>

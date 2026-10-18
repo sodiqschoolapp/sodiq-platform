@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   minutesOf,
   nextDay,
+  previousDay,
   rangesOverlap,
   schoolDateOf,
   timeText,
@@ -22,6 +23,7 @@ import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { endFrom, isWithdrawn, scheduleFrom } from '../setup/dated-rows.js';
 import { notFound, refusingConstraints } from '../setup/setup-refusals.js';
+import { markDraftsOutOfDate } from '../timetable/out-of-date.js';
 
 /** The refusals of the database for availability (db/migrations/0025), by the name of the constraint. */
 const AVAILABILITY_REFUSALS: Readonly<Record<string, ErrorCode>> = {
@@ -260,6 +262,22 @@ export class StaffAvailability {
               validUntil: schedule.validUntil,
               ranges,
             }),
+            requestId,
+          });
+          // Task 5.5a-3b-1, decisions 2 and 3: the drafts of the branch in the
+          // years the new entry's dates touch.
+          await markDraftsOutOfDate(transaction, this.audit, {
+            branchId,
+            action: 'staff.availability_set',
+            recordId: id,
+            dates: [
+              {
+                from: schedule.validFrom,
+                until: schedule.validUntil === null ? null : previousDay(schedule.validUntil),
+              },
+            ],
+            actorId: access.accountId,
+            assignmentId: access.assignmentId,
             requestId,
           });
           return this.answer(transaction, id, branchId);

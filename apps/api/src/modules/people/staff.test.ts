@@ -106,6 +106,10 @@ describe('staff records', () => {
       'assignments',
       'staff_status_role_ends',
       'staff_id_counters',
+      // Task 5.5a-3b-1: the hours a removed branch ends, the drafts that marks, and the marks.
+      'staff_availability',
+      'timetable_versions',
+      'timetable_version_out_of_date_causes',
     ] as const) {
       rows[table] = await sql`select * from ${sql.table(table)} order by 1, 2`.execute(
         t.database.migrator,
@@ -382,6 +386,20 @@ describe('staff records', () => {
 
     it('answers 404 for a record of another branch and for an unknown one, and changes nothing', async () => {
       const created = await create();
+      // Task 5.5a-3b-1: a further branch with hours and a draft, which a
+      // removal of that branch would end and mark; a draft in each branch.
+      const further = await t.newBranch();
+      await t.database.migrator
+        .insertInto('staff_branches')
+        .values({ staff_id: created.id, branch_id: further, is_main: false })
+        .execute();
+      await t.database.migrator
+        .insertInto('staff_availability')
+        .values({ branch_id: further, staff_id: created.id, valid_from: '2026-09-01' })
+        .execute();
+      for (const branch of [t.north, t.south, further]) {
+        await t.draftIn(branch);
+      }
       const before = await snapshot();
       for (const [id, branch] of [
         [created.id, t.south],
