@@ -5,8 +5,9 @@ name: Routines
 # runs on every pull request, so this workflow fires the routines through their
 # API triggers. The routines have no GitHub triggers of their own (removed by
 # the owner on 11 October 2026: they ran a second reviewer for every event);
-# their hourly schedules stay as a second net, and a duplicate run finds
-# nothing to do, because reviews compare shas. Each job only sends a POST; no
+# their hourly schedules stay as a second net. Two review runs of one head can
+# post conflicting verdicts (#140), so a fire call is retried only when the
+# request never left (no name, no connection, failed TLS handshake). Each job only sends a POST; no
 # code is checked out or run.
 #
 # The repository is public since 13 October 2026 (docs/decisions.md): a job
@@ -21,7 +22,8 @@ on:
   issue_comment:
     types: [created]
 
-# No job reads the repository. wake-builder alone reads the pull request.
+# No job reads the repository. wake-builder reads the pull request, and review
+# the comments of a draft on a push.
 permissions: {}
 
 jobs:
@@ -34,17 +36,74 @@ jobs:
       && github.event.pull_request.head.repo.full_name == 'sodiqschoolapp/sodiq-platform'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    # One group per pull request, never cancelled: two pushes in a row fire two
-    # runs in order, never in parallel. GitHub keeps one waiting run per group,
-    # so a third push replaces a second that still waits; the reviewer reads
-    # the newest head either way.
+    # One group per pull request, never cancelled: the POSTs go out in order.
+    # The routine sessions they start still run side by side, so a push to a
+    # draft that is being built fires nothing (the step below): on #140 the last
+    # push of the build and the "ready for review" of the same head fired two
+    # reviewer runs, which posted conflicting verdicts 9 seconds apart.
     concurrency:
       group: routines-review-${{ github.event.pull_request.number }}
       cancel-in-progress: false
+    # Only to read the comments of a draft pull request on a push (the newest
+    # [review]); nothing is written.
+    permissions:
+      issues: read
+      pull-requests: read
     steps:
+      # A push to a draft whose newest [review] by abbosc is "approved" is the
+      # build of an approved plan: review-pr skips it, and the "ready for review"
+      # of the finished work fires the review. A push to a draft with any other
+      # newest verdict (a revised plan) still fires one.
+      - name: Decide whether this event needs a review run
+        id: need
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ACTION: ${{ github.event.action }}
+          DRAFT: ${{ github.event.pull_request.draft }}
+          COMMENTS_URL: ${{ github.api_url }}/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments
+        run: |
+          if [ "$ACTION" != "synchronize" ] || [ "$DRAFT" != "true" ]; then
+            echo "fire=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          : > "$RUNNER_TEMP/comments.jsonl"
+          page=1
+          while :; do
+            # A failed read fires the run: a review too many is harmless, a
+            # revised plan left unreviewed stalls the task.
+            if ! curl --fail-with-body --silent --show-error --max-time 30 \
+              --retry 3 --retry-all-errors \
+              --output "$RUNNER_TEMP/page.json" \
+              --header "Authorization: Bearer $GH_TOKEN" \
+              --header "Accept: application/vnd.github+json" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              "$COMMENTS_URL?per_page=100&page=$page"; then
+              echo "The comments could not be read: the review run fires."
+              echo "fire=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            if ! count=$(jq 'length' "$RUNNER_TEMP/page.json") \
+              || ! jq -c '.[]' "$RUNNER_TEMP/page.json" >> "$RUNNER_TEMP/comments.jsonl"; then
+              echo "The comments could not be read: the review run fires."
+              echo "fire=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            [ "$count" -lt 100 ] && break
+            page=$((page + 1))
+          done
+          newest=$(jq -rs '[.[] | select(.user.login == "abbosc" and (.body | startswith("[review]")))] | last | (.body // "") | split("\n")[0] // ""' "$RUNNER_TEMP/comments.jsonl") || newest=""
+          echo "Newest [review]: ${newest:-none}"
+          case "$newest" in
+            "[review] approved"*)
+              echo "A push to a draft that is being built: no review run."
+              echo "fire=false" >> "$GITHUB_OUTPUT" ;;
+            *)
+              echo "fire=true" >> "$GITHUB_OUTPUT" ;;
+          esac
       # Values go through env, never into the command text. The token is never
-      # printed; the retry may fire the routine twice, which finds nothing to do.
+      # printed.
       - name: Fire the review routine
+        if: steps.need.outputs.fire == 'true'
         env:
           ROUTINE_URL: ${{ secrets.REVIEW_ROUTINE_URL }}
           ROUTINE_TOKEN: ${{ secrets.REVIEW_ROUTINE_TOKEN }}
@@ -59,16 +118,25 @@ jobs:
           text="Pull request #$NUMBER ($ACTION, head $HEAD_SHA)"
           echo "Payload: $text"
           body=$(jq -n --arg text "$text" '{text: $text}')
-          code=0
-          status=$(curl --fail-with-body --silent --show-error --max-time 30 \
-            --retry 3 --retry-all-errors \
-            --output "$RUNNER_TEMP/response.json" --write-out '%{http_code}' \
-            --request POST "$ROUTINE_URL" \
-            --header "Authorization: Bearer $ROUTINE_TOKEN" \
-            --header "anthropic-beta: experimental-cc-routine-2026-04-01" \
-            --header "anthropic-version: 2023-06-01" \
-            --header "Content-Type: application/json" \
-            --data "$body") || code=$?
+          # Retried only when the request never left (curl exit 6: no name,
+          # 7: no connection, 35: TLS handshake failed); any other failure
+          # turns the job red and the hourly run takes the pull request up.
+          # A retry after a slow or failed answer could start a second session.
+          for attempt in 1 2 3 4; do
+            code=0
+            status=$(curl --fail-with-body --silent --show-error --max-time 60 \
+              --output "$RUNNER_TEMP/response.json" --write-out '%{http_code}' \
+              --request POST "$ROUTINE_URL" \
+              --header "Authorization: Bearer $ROUTINE_TOKEN" \
+              --header "anthropic-beta: experimental-cc-routine-2026-04-01" \
+              --header "anthropic-version: 2023-06-01" \
+              --header "Content-Type: application/json" \
+              --data "$body") || code=$?
+            case "$code" in
+              6|7|35) echo "Attempt $attempt: no connection (curl exit $code)"; sleep 10 ;;
+              *) break ;;
+            esac
+          done
           echo "HTTP status: $status"
           if [ "$code" -ne 0 ]; then
             echo "::error::The review routine was not fired (curl exit $code)."
@@ -101,16 +169,25 @@ jobs:
           text="Merged #$NUMBER"
           echo "Payload: $text"
           body=$(jq -n --arg text "$text" '{text: $text}')
-          code=0
-          status=$(curl --fail-with-body --silent --show-error --max-time 30 \
-            --retry 3 --retry-all-errors \
-            --output "$RUNNER_TEMP/response.json" --write-out '%{http_code}' \
-            --request POST "$ROUTINE_URL" \
-            --header "Authorization: Bearer $ROUTINE_TOKEN" \
-            --header "anthropic-beta: experimental-cc-routine-2026-04-01" \
-            --header "anthropic-version: 2023-06-01" \
-            --header "Content-Type: application/json" \
-            --data "$body") || code=$?
+          # Retried only when the request never left (curl exit 6: no name,
+          # 7: no connection, 35: TLS handshake failed); any other failure
+          # turns the job red and the hourly run takes the pull request up.
+          # A retry after a slow or failed answer could start a second session.
+          for attempt in 1 2 3 4; do
+            code=0
+            status=$(curl --fail-with-body --silent --show-error --max-time 60 \
+              --output "$RUNNER_TEMP/response.json" --write-out '%{http_code}' \
+              --request POST "$ROUTINE_URL" \
+              --header "Authorization: Bearer $ROUTINE_TOKEN" \
+              --header "anthropic-beta: experimental-cc-routine-2026-04-01" \
+              --header "anthropic-version: 2023-06-01" \
+              --header "Content-Type: application/json" \
+              --data "$body") || code=$?
+            case "$code" in
+              6|7|35) echo "Attempt $attempt: no connection (curl exit $code)"; sleep 10 ;;
+              *) break ;;
+            esac
+          done
           echo "HTTP status: $status"
           if [ "$code" -ne 0 ]; then
             echo "::error::The start routine was not fired (curl exit $code)."
@@ -152,14 +229,20 @@ jobs:
           head_ref=$(jq -r '.head.ref' "$RUNNER_TEMP/pull.json")
           # A fork that was deleted leaves head.repo null.
           head_repo=$(jq -r '.head.repo.full_name // ""' "$RUNNER_TEMP/pull.json")
+          # A verdict that lands on a pull request merged a moment earlier wakes
+          # no builder: there is nothing left to build.
+          state=$(jq -r '.state // ""' "$RUNNER_TEMP/pull.json")
           echo "Head branch: $head_ref"
           echo "Head repository: $head_repo"
+          echo "State: $state"
           echo "head_ref=$head_ref" >> "$GITHUB_OUTPUT"
           echo "head_repo=$head_repo" >> "$GITHUB_OUTPUT"
+          echo "state=$state" >> "$GITHUB_OUTPUT"
       - name: Fire the start routine
         if: >-
           steps.pr.outputs.head_repo == 'sodiqschoolapp/sodiq-platform'
           && startsWith(steps.pr.outputs.head_ref, 'task/')
+          && steps.pr.outputs.state == 'open'
         env:
           ROUTINE_URL: ${{ secrets.START_ROUTINE_URL }}
           ROUTINE_TOKEN: ${{ secrets.START_ROUTINE_TOKEN }}
@@ -174,16 +257,25 @@ jobs:
           text="Review on #$NUMBER: $first_line"
           echo "Payload: $text"
           body=$(jq -n --arg text "$text" '{text: $text}')
-          code=0
-          status=$(curl --fail-with-body --silent --show-error --max-time 30 \
-            --retry 3 --retry-all-errors \
-            --output "$RUNNER_TEMP/response.json" --write-out '%{http_code}' \
-            --request POST "$ROUTINE_URL" \
-            --header "Authorization: Bearer $ROUTINE_TOKEN" \
-            --header "anthropic-beta: experimental-cc-routine-2026-04-01" \
-            --header "anthropic-version: 2023-06-01" \
-            --header "Content-Type: application/json" \
-            --data "$body") || code=$?
+          # Retried only when the request never left (curl exit 6: no name,
+          # 7: no connection, 35: TLS handshake failed); any other failure
+          # turns the job red and the hourly run takes the pull request up.
+          # A retry after a slow or failed answer could start a second session.
+          for attempt in 1 2 3 4; do
+            code=0
+            status=$(curl --fail-with-body --silent --show-error --max-time 60 \
+              --output "$RUNNER_TEMP/response.json" --write-out '%{http_code}' \
+              --request POST "$ROUTINE_URL" \
+              --header "Authorization: Bearer $ROUTINE_TOKEN" \
+              --header "anthropic-beta: experimental-cc-routine-2026-04-01" \
+              --header "anthropic-version: 2023-06-01" \
+              --header "Content-Type: application/json" \
+              --data "$body") || code=$?
+            case "$code" in
+              6|7|35) echo "Attempt $attempt: no connection (curl exit $code)"; sleep 10 ;;
+              *) break ;;
+            esac
+          done
           echo "HTTP status: $status"
           if [ "$code" -ne 0 ]; then
             echo "::error::The start routine was not fired (curl exit $code)."
