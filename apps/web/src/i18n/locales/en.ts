@@ -3014,7 +3014,21 @@ export const en = {
       timetable: {
         draft_taken_over:
           '{{name}} took over draft {{number}} of the timetable after 5 minutes without activity. Your saved changes are kept.',
+        published:
+          'Timetable version {{number}} was published and your lessons changed. Your week before and after:',
+        withdrawn:
+          'Timetable version {{number}} was withdrawn and your lessons changed. Your week before and after:',
       },
+    },
+    // The week before and after of a notice of a timetable change (task 5.5c-3a).
+    week: {
+      title: 'Week of {{date}}',
+      before: 'Before',
+      after: 'After',
+      none: 'No lessons',
+      noRoom: 'no room',
+      cancelled: 'cancelled',
+      changed: 'changed',
     },
   },
   timetable: {

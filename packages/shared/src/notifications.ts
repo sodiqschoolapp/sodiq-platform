@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { schoolDateSchema } from './academic-year.js';
 import { branchIdSchema } from './branches.js';
 
 /**
@@ -23,11 +24,60 @@ export const NOTIFICATION_KIND_MAX_LENGTH = 100;
  * of the web app fails for a kind without its texts. The fields of the data
  * are the `{{names}}` of the text and nothing else; a plural form is not
  * chosen by them (the web passes the data as `replace`, not as options).
+ * The one exception: the kinds of `WEEK_CHANGE_KINDS` also carry the lists
+ * `before` and `after`, which no text interpolates; the web shows them as two
+ * lists under the text (`week-change.tsx`; task 5.5c-3a, review correction 2,
+ * build decision 11).
  *
  * `sample.message` exists for the tests and the browser tests of task 0.9; no
  * route of the application sends one.
  */
 const relativeName = z.string().min(1).max(120);
+
+const versionNumber = z.string().regex(/^[1-9][0-9]{0,3}$/);
+
+/** At most this many lessons on each side of a week (task 5.5c-3a, decision 9). */
+export const WEEK_LESSONS_MAX = 100;
+
+const clockTime = z.string().regex(/^([01][0-9]|2[0-3]):[0-5][0-9]$/);
+
+/**
+ * One lesson of a teacher's week in a notice of a timetable change, as the
+ * event saw it (task 5.5c-3a, decision 9): its date and times in branch time,
+ * its class or group and subject as shown, its room, and whether a one-day
+ * cancel is on it (review correction 3), and whether it changed. No teacher: a vacancy never appears
+ * in a notice (edge/timetable, the vacancy rows).
+ */
+export const weekLessonSchema = z.strictObject({
+  date: schoolDateSchema,
+  start: clockTime,
+  end: clockTime,
+  unit: z.string().min(1).max(120),
+  subject: z.strictObject({
+    uz: z.string().min(1).max(200),
+    ru: z.string().min(1).max(200),
+    en: z.string().min(1).max(200),
+  }),
+  room: z.string().min(1).max(200).nullable(),
+  cancelled: z.boolean(),
+  /** Nothing on the other side equals it, as the server paired the two (code review should-fix 7). */
+  changed: z.boolean(),
+});
+
+export type WeekLesson = z.infer<typeof weekLessonSchema>;
+
+/**
+ * "One notice per person per event, with the week before and after"
+ * (edge/timetable, After publishing): the number of the version, the Monday
+ * of the week shown, and the teacher's lessons of the branch that week before
+ * and after the event, sorted by date, start, class or group and subject.
+ */
+const weekChange = z.strictObject({
+  number: versionNumber,
+  weekStart: schoolDateSchema,
+  before: z.array(weekLessonSchema).max(WEEK_LESSONS_MAX),
+  after: z.array(weekLessonSchema).max(WEEK_LESSONS_MAX),
+});
 
 export const NOTIFICATION_KINDS = {
   'sample.message': z.strictObject({ text: z.string().min(1).max(500) }),
@@ -56,12 +106,25 @@ export const NOTIFICATION_KINDS = {
    * the new holder's name.
    */
   'timetable.draft_taken_over': z.strictObject({
-    number: z.string().regex(/^[1-9][0-9]{0,3}$/),
+    number: versionNumber,
     name: relativeName,
   }),
+  /**
+   * A publish, with its replace and carries, changed this teacher's lessons in
+   * the branch (`06`, How surprises are prevented, Everyone is told; task
+   * 5.5c-3a, decisions 5 to 7): the new version's number and the week.
+   */
+  'timetable.published': weekChange,
+  /** A withdraw changed them (task 5.5c-2a, decision 8): the withdrawn version's number and the week. */
+  'timetable.withdrawn': weekChange,
 } as const satisfies Record<string, z.ZodType>;
 
 export type NotificationKind = keyof typeof NOTIFICATION_KINDS;
+
+/** The kinds that carry a week before and after (task 5.5c-3a). */
+export const WEEK_CHANGE_KINDS = ['timetable.published', 'timetable.withdrawn'] as const;
+
+export type WeekChangeKind = (typeof WEEK_CHANGE_KINDS)[number];
 
 export const NOTIFICATION_KIND_NAMES = Object.keys(NOTIFICATION_KINDS) as [
   NotificationKind,

@@ -265,6 +265,24 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 18 October 2026: notices and the changed mark of a publish and a withdraw (task 5.5c-3a)
+
+Plan approved on pull request #158 with corrections 1 to 3; decisions 1 to 10 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a task split). 5.5c-3 is split into 5.5c-3a (publish, its replace and carries, withdraw) and 5.5c-3b (a Tutor change, every path of `followTutors`) | Decision 1 |
+| **Look first** (a Build line moved). Showing the "changed" mark on the views goes to 5.9, which builds them; this task stores the mark (`lesson_changes`, 0084) and the reader `isMarkedChanged` | Decision 2 |
+| Both sides are the stored lessons of the branch over the event's dates, read by the preview's reader (`storedLessonRows`, `cancelled: 'one_day'`): a lesson the expansion cancelled is on neither side, a one-day cancel is a lesson held. The side before is read `for update` after the publish lock and before the first write, in the writer's order (blocks, then lessons) | Decision 3; spec review must-fix 1, should-fixes 2 and 4 |
+| "Changed": a lesson after the event with no equal before it by date, start, end, class or group, subject, teacher and room; one created again equal keeps the earlier mark | Decision 3 |
+| **Build decision.** No mark in a **week** (Monday to Sunday) with no stored lesson of the branch before the event, the days before the start included; the plan said a date, which left a lesson moved to a weekday that had none unmarked | Decision 4, read by the week at the build |
+| One notice per affected teacher with an account (never a vacancy) per event: `timetable.published` (with its replace and carries) or `timetable.withdrawn`, the version's number and the whole week of the teacher's earliest change, both sides sorted, at most 100 lessons each, no teacher field, a one-day cancel marked `cancelled` | Decisions 5 to 7 and 9; corrections 2 and 3 |
+| The mark in a table of its own (composite key to the lesson's branch, cascade with the lesson) so that `lessons_claims` does not run; seven days from the transaction's moment, compared on each read | Decision 8; spec review should-fix 3 |
+| No route or permission; the publish and withdraw audit entries carry `notices: { notified, marked }` | Decision 10 |
+| **Build decision.** The notice's week is drawn as two short lists (before, after), one line per lesson, "changed" and "cancelled" in words; the plan named the design system's table and badge parts. A table does not fit the notification dialog, and `docs/design-system.md` ("What we never do", 4 and 12) asks for words, not badges or dots | Code review should-fix 8 |
+| **Build decision.** Each lesson of a notice carries `changed`, set by the server's pairing (`weekChanges`), so the browser never compares display names again | Code review should-fix 7 |
+| **Build decision.** The days of the last week after the event's last written date (a withdraw whose run ends mid-week) are read once for both sides, like the days before its start | Code review should-fix 4 |
+
 ## 18 October 2026: "Classes taught" and the vacancy kept (task 5.5c-2b)
 
 Plan approved on pull request #157 with corrections 1 to 4; decisions 1 to 9 confirmed there. Flagged on issue #42.

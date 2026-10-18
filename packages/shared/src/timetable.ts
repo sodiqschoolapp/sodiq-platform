@@ -58,6 +58,27 @@ export type LoadProblem = z.infer<typeof loadProblemSchema>;
 /** "The edit lock is released after 5 minutes without activity" (edge/timetable, Generator and editing; task 5.4c-1). */
 export const DRAFT_EDIT_LOCK_MINUTES = 5;
 
+/**
+ * "Changed lessons carry a 'changed' mark on every timetable view for a week"
+ * (`06`, How surprises are prevented, Everyone is told; task 5.5c-3a). The
+ * mark is the stored moment of the change (`lesson_changes`, 0084).
+ */
+export const CHANGED_MARK_DAYS = 7;
+
+const DAY_MS = 86_400_000;
+
+/**
+ * Whether a lesson changed at `changedAt` is marked at `now` (the injected
+ * clock's moment): from the change for seven days of 24 hours, half-open, so
+ * the mark is gone at exactly seven days. Compared on each read, never cleared
+ * by a job (CLAUDE.md, state from stored moments).
+ */
+export function isMarkedChanged(changedAt: Date | null, now: Date): boolean {
+  if (changedAt === null) return false;
+  const at = changedAt.getTime();
+  return now.getTime() >= at && now.getTime() < at + CHANGED_MARK_DAYS * DAY_MS;
+}
+
 /** A version as the list shows it. */
 export const timetableVersionSchema = z.object({
   id: z.uuid(),

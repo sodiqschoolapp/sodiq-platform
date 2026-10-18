@@ -34,6 +34,7 @@ import type { JsonValue } from '../../database/types.generated.js';
 import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
+import { Notifications } from '../notifications/notifications.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { refusingConstraints } from '../setup/setup-refusals.js';
 import { dailyWeightsFit, quarterWeightsFit } from '../setup/subject-weights.js';
@@ -58,6 +59,7 @@ import { PATTERN_REFUSALS, TimetablePattern, type PatternState } from './pattern
 import { resultAnswerOf } from './rule-answers.js';
 import { lockSubjects, Timetable, type VersionRow } from './timetable.service.js';
 import { auditOf, followChanged, followVersion } from './tutor-lessons.js';
+import { sendWeekChanges, snapshotWeek } from './week-changes.js';
 
 /**
  * The one lock of every publish of the school (decision 2): two publishes run
@@ -150,6 +152,7 @@ export class TimetablePublish {
     private readonly requestKeys: RequestKeys,
     private readonly timetable: Timetable,
     private readonly pattern: TimetablePattern,
+    private readonly notifications: Notifications,
   ) {}
 
   /** What a publish on the date would refuse and warn, written nowhere (decision 13). */
@@ -436,6 +439,9 @@ export class TimetablePublish {
     if (findings.written === null) {
       throw new Error('A publish with no refusal has its dated check.');
     }
+    // Task 5.5c-3a: the lessons before the publish, its replace and carries,
+    // read before the first write, to the year's end (decisions 5 and 6).
+    const week = await snapshotWeek(transaction, branchId, startsOn, version.end_date);
     const lessons = await writeDatedLessons(
       transaction,
       findings.written.state,
@@ -456,6 +462,11 @@ export class TimetablePublish {
         if (write !== true) carriedLessons.set(result.version.id, write);
       }
     }
+    // Task 5.5c-3a: one notice per affected teacher, and the changed lessons marked.
+    const notices = await sendWeekChanges(transaction, this.notifications, week, {
+      kind: 'timetable.published',
+      number: version.number,
+    });
     // Task 5.5c-1: the journals of the year follow the chain as it now stands.
     const journals = await syncJournals(transaction, this.audit, version, {
       actorId: access.accountId,
@@ -484,6 +495,7 @@ export class TimetablePublish {
         impact: findings.impact?.answer.counts ?? null,
         datedLessons: datedAuditOf(lessons),
         journals: { ...journals },
+        notices: { ...notices },
         ...(transitionKey === null || findings.impact === null
           ? {}
           : {

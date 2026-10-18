@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CHANGED_MARK_DAYS,
+  isMarkedChanged,
   LOAD_LESSONS_MAX,
   lessonRoomRecordSchema,
   placeRecordSchema,
@@ -206,5 +208,25 @@ describe('the partner of a pairing', () => {
         changes: [{ blockId: BLOCK, partnerRowId: PARTNER, ...at }],
       }).success,
     ).toBe(false);
+  });
+});
+
+// Task 5.5c-3a: "Changed lessons carry a 'changed' mark on every timetable
+// view for a week" (`06`, How surprises are prevented).
+describe('the changed mark', () => {
+  const changedAt = new Date('2026-10-10T18:55:00Z');
+  const later = (ms: number) => new Date(changedAt.getTime() + ms);
+  const DAY = 86_400_000;
+
+  it('lasts seven days from the change, half-open', () => {
+    expect(CHANGED_MARK_DAYS).toBe(7);
+    expect(isMarkedChanged(changedAt, changedAt)).toBe(true);
+    expect(isMarkedChanged(changedAt, later(7 * DAY - 1))).toBe(true);
+    expect(isMarkedChanged(changedAt, later(7 * DAY))).toBe(false);
+  });
+
+  it('is not shown without a change, or before it', () => {
+    expect(isMarkedChanged(null, changedAt)).toBe(false);
+    expect(isMarkedChanged(changedAt, later(-1))).toBe(false);
   });
 });

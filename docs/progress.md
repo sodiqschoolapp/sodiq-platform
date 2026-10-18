@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 18 October 2026: task 5.5c-3a Publish: notices and the changed mark of a publish and a withdraw
+
+- A publish (with its replace and carries) and a withdraw send one notice to each affected teacher with an account, kinds `timetable.published` and `timetable.withdrawn`, with the teacher's week in the branch before and after, shown under the notice's text in the bell's dialog (`week-change.tsx`).
+- The lessons that changed are marked in `lesson_changes` (0084) with the event's moment; `isMarkedChanged` (packages/shared) reads the mark for seven days.
+- Left out: the Tutor change (5.5c-3b, split); the mark on the views (5.9, From line).
+
+The next sessions must know:
+
+- `snapshotWeek` must be read after the publish lock and before the first write of lessons, and `sendWeekChanges` after the last; both live in `apps/api/src/modules/timetable/week-changes.ts`, with `storedLessonRows` (`stored-lessons.ts`) as the one reader of stored lessons.
+- A week with no stored lesson before the event gets no mark (a first publish), but its teachers are notified.
+- `keyOf` (`week-changes.ts`) does not compare the cancel: once 5.6a stores one-day cancels, a lesson cancelled on one side only pairs as unchanged; 5.6a handles it (its From line).
+- The next task is 5.5c-3b.
+
 ## 18 October 2026: task 5.5c-2b Publish: "Classes taught" and the vacancy kept
 
 - The staff record shows "Classes taught": per year not closed, the classes and groups with their subjects of the person's rows in the published version in force, read by `taughtRows` (`apps/api/src/modules/access/taught-scope.ts`), the query `taughtAt` reads too.
