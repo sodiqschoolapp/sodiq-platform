@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { pairDated, type PairStored, type PairWanted } from './dated-lessons.js';
+import {
+  needKeyOf,
+  pairDated,
+  writtenTeacherOf,
+  type PairStored,
+  type PairWanted,
+} from './dated-lessons.js';
 
 const DATE = '2026-11-16';
 
@@ -146,5 +152,51 @@ describe('the pairing of stored and new dated lessons', () => {
     );
     expect(tie.reused).toEqual(['block-y']);
     expect(idsOf(tie.pairs, [a, b])).toEqual([null, 'lesson-b']);
+  });
+});
+
+// Task 5.5b-2, pull request #154 (decision 5): the teacher a lesson is
+// written with, which the impact preview gives its "after" side too.
+// 06, How surprises are prevented: "A dated lesson of a vacancy keeps the
+// vacancy as its teacher and is \"needs a teacher\" from the day it is created".
+describe('the teacher a dated lesson is written with', () => {
+  const needs = new Set([needKeyOf('entry-1', DATE), needKeyOf('entry-2', DATE)]);
+  const vacancies = new Set(['vacancy-english']);
+
+  it('gives no teacher to a lesson in the needs-a-teacher list', () => {
+    expect(
+      writtenTeacherOf(needs, vacancies, {
+        entryId: 'entry-1',
+        date: DATE,
+        teacherId: 'teacher-karimova',
+      }),
+    ).toBeNull();
+  });
+
+  it('keeps a vacancy in the list as the teacher', () => {
+    expect(
+      writtenTeacherOf(needs, vacancies, {
+        entryId: 'entry-2',
+        date: DATE,
+        teacherId: 'vacancy-english',
+      }),
+    ).toBe('vacancy-english');
+  });
+
+  it('keeps the teacher of a lesson not in the list, also of the same entry on another date', () => {
+    expect(
+      writtenTeacherOf(needs, vacancies, {
+        entryId: 'entry-3',
+        date: DATE,
+        teacherId: 'teacher-karimova',
+      }),
+    ).toBe('teacher-karimova');
+    expect(
+      writtenTeacherOf(needs, vacancies, {
+        entryId: 'entry-1',
+        date: '2026-11-23',
+        teacherId: 'teacher-karimova',
+      }),
+    ).toBe('teacher-karimova');
   });
 });

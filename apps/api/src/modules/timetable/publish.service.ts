@@ -826,17 +826,20 @@ export class TimetablePublish {
         stateOf: (other) => this.pattern.stateOf(transaction, other, accountId),
       },
       state,
-      dated.dated,
+      dated,
       startsOn,
       carried.flatMap((one) =>
-        one.left || one.before === null || one.after === null
+        one.left || one.before === null || one.written === null
           ? []
           : [
               {
                 versionId: one.version.id,
                 number: one.version.number,
+                firstDate: one.version.starts_on,
+                lastDate: one.written.lastDate,
                 before: one.before,
-                after: one.after,
+                state: one.written.state,
+                after: one.written.findings,
               },
             ],
       ),

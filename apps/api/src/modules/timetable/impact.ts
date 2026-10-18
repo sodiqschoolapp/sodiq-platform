@@ -16,8 +16,10 @@ import {
   type ImpactLesson,
 } from '@sodiq/timetable-rules';
 import type { Transaction } from '../../database/transactions.js';
-import { datedLessonsOf } from './dated-check.js';
+import { datedLessonsOf, type DatedFindings } from './dated-check.js';
+import { needKeyOf, vacanciesOf, writtenTeacherOf } from './dated-lessons.js';
 import type { PatternState } from './pattern.service.js';
+import { hasStoredLessons, storedImpactLessons } from './stored-lessons.js';
 import type { VersionRow } from './timetable.service.js';
 
 /** How the preview reads another version: its row and its pattern state. */
@@ -55,12 +57,18 @@ export function transitionKeyOf(
  * refused by 5.5a-1, decision 3). The transition week reads each date before
  * the start from the published version in force on that date (spec review
  * must-fix 1), and the draft's load (decision 10).
+ *
+ * Task 5.5b-2 (pull request #154): the lessons of a published version are
+ * the ones stored (`storedImpactLessons`), and a version with none stored,
+ * published before 0079, is expanded from its pattern (decision 2). The
+ * "after" sides carry the needs-a-teacher marks of their dated check, as the
+ * publish writes them (`writtenTeacherOf`, decision 5).
  */
 export async function impactOf(
   transaction: Transaction,
   reader: VersionReader,
   draft: PatternState,
-  draftDated: DatedPattern,
+  draftFindings: DatedFindings,
   startsOn: string,
   carried: readonly CarriedImpact[] = [],
 ): Promise<Impact> {
@@ -82,33 +90,68 @@ export async function impactOf(
   const inForceOn = (date: string) => published.find((one) => one.starts_on <= date) ?? null;
 
   const states = new Map<string, PatternState>();
+  const classesOfUnit = new Map<string, readonly string[]>();
+  const knowUnits = (state: PatternState) => {
+    for (const unit of state.pattern.model.data.units) classesOfUnit.set(unit.id, unit.classIds);
+  };
+  knowUnits(draft);
+  for (const one of carried) knowUnits(one.state);
   const stateOf = async (id: string): Promise<PatternState> => {
     const known = states.get(id);
     if (known !== undefined) return known;
     const state = await reader.stateOf(await reader.versionRow(id));
     states.set(id, state);
+    knowUnits(state);
     return state;
   };
-  const lessonsOf = async (id: string, from: string, to: string): Promise<ImpactLesson[]> => {
-    const { dated } = await datedLessonsOf(transaction, await stateOf(id), from, to);
+  const storedOf = new Map<string, boolean>();
+  const isStored = async (id: string): Promise<boolean> => {
+    const known = storedOf.get(id);
+    if (known !== undefined) return known;
+    const found = await hasStoredLessons(transaction, id);
+    storedOf.set(id, found);
+    return found;
+  };
+  const storedLessons = (from: string, to: string, cancelled: 'one_day' | 'none') =>
+    storedImpactLessons(transaction, {
+      branchId: draft.version.branch_id,
+      firstDate: from,
+      lastDate: to,
+      classIdsOf: (unitId) => classesOfUnit.get(unitId),
+      cancelled,
+    });
+  const lessonsOf = async (
+    id: string,
+    from: string,
+    to: string,
+    cancelled: 'one_day' | 'none',
+  ): Promise<ImpactLesson[]> => {
+    const state = await stateOf(id);
+    if (await isStored(id)) return storedLessons(from, to, cancelled);
+    const { dated } = await datedLessonsOf(transaction, state, from, to);
     return dated.lessons.map(impactLessonOf);
   };
 
   const beforeVersion = inForceOn(startsOn);
   const before: ImpactLesson[] = [];
   for (const stretch of stretchesOf(published, startsOn, lastDate)) {
-    before.push(...(await lessonsOf(stretch.id, stretch.from, stretch.to)));
+    before.push(...(await lessonsOf(stretch.id, stretch.from, stretch.to, 'one_day')));
   }
-  const after = draftDated.lessons.map(impactLessonOf);
+  const after = await writtenLessonsOf(transaction, draftFindings);
   const own = publishImpact({ before, after });
   // Spec review must-fix 1: each carried version over its own run.
-  const carriedImpacts = carried.map((one) => ({
-    one,
-    impact: publishImpact({
-      before: one.before.lessons.map(impactLessonOf),
-      after: one.after.lessons.map(impactLessonOf),
-    }),
-  }));
+  const carriedImpacts: { one: CarriedImpact; impact: ReturnType<typeof publishImpact> }[] = [];
+  for (const one of carried) {
+    carriedImpacts.push({
+      one,
+      impact: publishImpact({
+        before: (await isStored(one.versionId))
+          ? await storedLessons(one.firstDate, one.lastDate, 'one_day')
+          : one.before.lessons.map(impactLessonOf),
+        after: await writtenLessonsOf(transaction, one.after),
+      }),
+    });
+  }
   const together = (pick: (one: typeof own) => readonly string[]) =>
     [...new Set([own, ...carriedImpacts.map((one) => one.impact)].flatMap(pick))].sort();
   const impact = {
@@ -133,7 +176,7 @@ export async function impactOf(
     const first = dates[0];
     const last = dates[dates.length - 1];
     if (first === undefined || last === undefined) continue;
-    earlier.push(...(await lessonsOf(id, first, last)));
+    earlier.push(...(await lessonsOf(id, first, last, 'none')));
   }
   const load = new Map<string, { unitId: string; subjectId: string; lessonsPerWeek: number }>();
   for (const row of draft.rows) {
@@ -287,12 +330,43 @@ export async function impactOf(
   };
 }
 
-/** A carried version's lessons over its run, before and after the change (task 5.5a-3a). */
+/**
+ * A carried version over its run (task 5.5a-3a): its lessons before the
+ * change, read from its stored lessons, or with none stored from `before`
+ * (task 5.5b-2, decision 2); its state and dated check after the change.
+ */
 export interface CarriedImpact {
   readonly versionId: string;
   readonly number: number;
+  readonly firstDate: string;
+  readonly lastDate: string;
   readonly before: DatedPattern;
-  readonly after: DatedPattern;
+  readonly state: PatternState;
+  readonly after: DatedFindings;
+}
+
+/**
+ * The lessons a dated check expanded, each with the teacher the publish
+ * writes it with (task 5.5b-2, decision 5).
+ */
+async function writtenLessonsOf(
+  transaction: Transaction,
+  findings: DatedFindings,
+): Promise<ImpactLesson[]> {
+  const { lessons } = findings.dated;
+  const vacancies = await vacanciesOf(
+    transaction,
+    lessons.flatMap((one) => one.placement.teacherIds),
+  );
+  const needs = new Set(findings.needsTeacher.map((one) => needKeyOf(one.entryId, one.date)));
+  return lessons.map((lesson) => {
+    const teacher = writtenTeacherOf(needs, vacancies, {
+      entryId: lesson.entryId,
+      date: lesson.date,
+      teacherId: lesson.placement.teacherIds[0] ?? null,
+    });
+    return { ...impactLessonOf(lesson), teacherIds: teacher === null ? [] : [teacher] };
+  });
 }
 
 /**
