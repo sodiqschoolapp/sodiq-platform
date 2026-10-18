@@ -215,12 +215,18 @@ describe('bringing a draft up to date after a publish', () => {
   };
 
   /** A teacher of the subjects in grade 7, free all day on every weekday. */
-  const availableTeacher = async (branch: string, subjects: readonly string[]) => {
-    const teacherId = (
-      await load.teacher(branch, {
-        subjects: subjects.map((one) => ({ subject: one, grades: [7] })),
-      })
-    ).staffId;
+  const availableTeacher = async (branch: string, subjects: readonly string[]) =>
+    freeAllWeek(
+      branch,
+      (
+        await load.teacher(branch, {
+          subjects: subjects.map((one) => ({ subject: one, grades: [7] })),
+        })
+      ).staffId,
+    );
+
+  /** A person made free all day on every weekday. */
+  const freeAllWeek = async (branch: string, teacherId: string) => {
     const hours = await t.database.migrator
       .insertInto('staff_availability')
       .values({ branch_id: branch, staff_id: teacherId, valid_from: '2026-09-01' })
@@ -265,9 +271,10 @@ describe('bringing a draft up to date after a publish', () => {
    * row of history (E's own) on Wednesday 1, and is published, which marks D.
    * D places maths on Tuesday 2 and art on Monday 2. One teacher teaches all
    * three; every lesson is once a week. With `double`, maths is twice a week
-   * as a double: S and E place it as a double, D leaves it unplaced.
+   * as a double: S and E place it as a double, D leaves it unplaced. With
+   * `otherMathsTeacher`, E gives its maths row to a second teacher.
    */
-  async function scene(options: { double?: boolean } = {}) {
+  async function scene(options: { double?: boolean; otherMathsTeacher?: boolean } = {}) {
     const branch = await t.newBranch();
     const year = await yearIn(branch);
     const lesson = await t.createSlotType(branch, 'Lesson', 'lesson', 45);
@@ -306,6 +313,15 @@ describe('bringing a draft up to date after a publish', () => {
 
     const d = await copy(branch, year, s, NOVEMBER);
     const e = await copy(branch, year, s, NOVEMBER);
+    const otherTeacherId =
+      options.otherMathsTeacher === true ? await availableTeacher(branch, [maths]) : null;
+    if (otherTeacherId !== null) {
+      await t.database.migrator
+        .updateTable('teaching_load_rows')
+        .set({ teacher_id: otherTeacherId })
+        .where('id', '=', await rowOf(e, maths))
+        .execute();
+    }
     await place(branch, e, await rowOf(e, maths), 2, 1, double);
     await place(branch, e, await rowOf(e, art), 2, double ? 4 : 2);
     const eHistory = await row(e, history);
@@ -353,7 +369,20 @@ describe('bringing a draft up to date after a publish', () => {
     } else {
       await place(branch, d, await rowOf(d, art), 1, 4);
     }
-    return { branch, year, s, d, e, maths, art, history, classId, teacherId, lockId };
+    return {
+      branch,
+      year,
+      s,
+      d,
+      e,
+      maths,
+      art,
+      history,
+      classId,
+      teacherId,
+      otherTeacherId,
+      lockId,
+    };
   }
 
   const itemOf = (shown: OutOfDateAnswer, subject: string) => {
@@ -466,11 +495,15 @@ describe('bringing a draft up to date after a publish', () => {
     // The draft's maths on Tuesday 2 and the published art on Tuesday 2.
     const refused = await upToDate(x.branch, x.d, shown.key, picks('draft'));
     refusedWith(refused, 409, 'up_to_date_blocked');
-    expect(
-      (refused.body as { error: { details: { path: string }[] } }).error.details.map(
-        (one) => one.path,
-      ),
-    ).toEqual(expect.arrayContaining([expect.stringMatching(/^pattern\./)]));
+    // The teacher rule itself, on Tuesday (code round 2, finding 4): the one
+    // class is double-booked too, so a pattern path alone would not show it.
+    expect((refused.body as { error: { details: unknown[] } }).error.details).toContainEqual(
+      expect.objectContaining({
+        path: 'pattern.teacher_double',
+        code: 'teacher_double',
+        rule: expect.objectContaining({ weekday: 2 }) as unknown,
+      }),
+    );
     expect(await rowsOf(x.branch)).toEqual(before);
     expect(await t.auditCount()).toBe(count);
     // A pick of an item not listed (permission review, should-fix 5).
@@ -737,6 +770,170 @@ describe('bringing a draft up to date after a publish', () => {
     expect(await t.auditCount()).toBe(count);
   });
 
+  // Code round 2, finding 3: a row taken whose load differs is changed in
+  // place; a row only the draft has, picked from the published side, goes.
+  it('changes a row taken in place, keeping its id, and removes a row only the draft has', async () => {
+    const x = await scene({ otherMathsTeacher: true });
+    const drama = await load.classes.subject({ grades: [7], journalType: 'attendance_only' });
+    const dramaRow = await load.row({
+      branch_id: x.branch,
+      version_id: x.d,
+      class_id: x.classId,
+      subject_id: drama,
+      teacher_id: await availableTeacher(x.branch, [drama]),
+      lessons_per_week: 1,
+    });
+    await place(x.branch, x.d, dramaRow, 4, 1);
+    const mathsRow = await rowOf(x.d, x.maths);
+    const shown = await shownOf(x.branch, x.d);
+    const dramaItem = itemOf(shown, drama);
+    expect([dramaItem.changedBy, dramaItem.defaultPick]).toEqual(['draft', 'draft']);
+    expect(itemOf(shown, x.maths).rows[0]?.published?.teacherId).toBe(x.otherTeacherId);
+    versionOf(
+      await upToDate(
+        x.branch,
+        x.d,
+        shown.key,
+        shown.items.map((one) => ({ item: one.key, side: 'published' })),
+      ),
+    );
+    const row = await t.database.migrator
+      .selectFrom('teaching_load_rows')
+      .select(['id', 'teacher_id'])
+      .where('version_id', '=', x.d)
+      .where('subject_id', '=', x.maths)
+      .execute();
+    expect(row).toEqual([{ id: mathsRow, teacher_id: x.otherTeacherId }]);
+    // The lessons written carry the teacher of the row as taken.
+    expect(
+      await t.database.migrator
+        .selectFrom('pattern_entries')
+        .select(['teacher_id'])
+        .where('load_row_id', '=', mathsRow)
+        .execute(),
+    ).toEqual([{ teacher_id: x.otherTeacherId }]);
+    expect(
+      await t.database.migrator
+        .selectFrom('teaching_load_rows')
+        .select('id')
+        .where('id', '=', dramaRow)
+        .execute(),
+    ).toEqual([]);
+    expect(
+      (await placementsOf(x.d)).map((one) => [one.subject_id, one.weekday, one.slot_position]),
+    ).not.toContainEqual([drama, 4, 1]);
+    const [entry] = await t.entries('timetable_version.up_to_date', x.d);
+    expect(entry).toMatchObject({
+      new_value: {
+        rows: {
+          updated: [
+            {
+              before: expect.objectContaining({ id: mathsRow, teacherId: x.teacherId }) as unknown,
+              after: expect.objectContaining({
+                id: mathsRow,
+                teacherId: x.otherTeacherId,
+              }) as unknown,
+            },
+          ],
+          removed: [expect.objectContaining({ id: dramaRow, subjectId: drama })],
+        },
+      },
+    });
+  });
+
+  // Code round 2, finding 3: decision 6, a Tutor row taken from the published
+  // side keeps the draft's Tutor.
+  it("keeps the draft's Tutor on a Tutor row taken from the published side", async () => {
+    const branch = await t.newBranch();
+    const year = await yearIn(branch);
+    const lesson = await t.createSlotType(branch, 'Lesson', 'lesson', 45);
+    await t.assign(branch, await t.createTemplate(branch, 'Regular', [lesson, lesson]));
+    const tutorSubject = await load.tutorSubject({ grades: [7] });
+    // Not graded, so that no weights are owed before a publish.
+    await t.database.migrator
+      .updateTable('subjects')
+      .set({ journal_type: 'attendance_only' })
+      .where('id', '=', tutorSubject)
+      .execute();
+    const room = await load.classes.room(branch);
+    const classId = await load.classes.schoolClass(branch, year, { grade: 7, room });
+    // One Tutor until 9 November, another from then on.
+    const change = new Date('2026-11-09T00:00:00+05:00');
+    const tutors = [];
+    for (const dates of [{ until: change }, { from: change }]) {
+      const tutor = await load.tutorSubjectHolder(branch, tutorSubject, [7]);
+      await freeAllWeek(branch, tutor.staffId);
+      await load.classes.tutorRow(
+        branch,
+        classId,
+        await load.classes.role(tutor.accountId, branch, 'tutor'),
+        dates,
+      );
+      tutors.push(tutor.staffId);
+    }
+    const [first, second] = tutors;
+    const s = await copy(branch, year, null, MONDAY);
+    await place(
+      branch,
+      s,
+      await load.row({
+        branch_id: branch,
+        version_id: s,
+        class_id: classId,
+        subject_id: tutorSubject,
+        teacher_id: first ?? '',
+        lessons_per_week: 1,
+      }),
+      1,
+      1,
+    );
+    await confirm(branch, s);
+    versionOf(await publish(branch, s, MONDAY));
+    // The draft starts after the change of Tutor, the version published before it.
+    const d = await copy(branch, year, s, '2026-11-16');
+    const e = await copy(branch, year, s, NOVEMBER);
+    const tutorRow = await rowOf(d, tutorSubject);
+    const teacherOf = async (rowId: string) =>
+      (
+        await t.database.migrator
+          .selectFrom('teaching_load_rows')
+          .select('teacher_id')
+          .where('id', '=', rowId)
+          .executeTakeFirstOrThrow()
+      ).teacher_id;
+    expect([await teacherOf(tutorRow), await teacherOf(await rowOf(e, tutorSubject))]).toEqual([
+      second,
+      first,
+    ]);
+    await place(branch, e, await rowOf(e, tutorSubject), 2, 1);
+    await confirm(branch, e);
+    versionOf(await publish(branch, e, NOVEMBER));
+    await place(branch, d, tutorRow, 3, 1);
+    const shown = await shownOf(branch, d);
+    expect(shown.other?.id).toBe(e);
+    versionOf(
+      await upToDate(
+        branch,
+        d,
+        shown.key,
+        shown.items.map((one) => ({ item: one.key, side: 'published' })),
+      ),
+    );
+    expect(await teacherOf(tutorRow)).toBe(second);
+    expect(
+      await t.database.migrator
+        .selectFrom('pattern_entries')
+        .innerJoin('pattern_blocks', 'pattern_blocks.id', 'pattern_entries.block_id')
+        .select([
+          'pattern_entries.teacher_id',
+          'pattern_blocks.weekday',
+          'pattern_blocks.slot_position',
+        ])
+        .where('pattern_entries.load_row_id', '=', tutorRow)
+        .execute(),
+    ).toEqual([{ teacher_id: second, weekday: 2, slot_position: 1 }]);
+  });
+
   describe('the version compared (decision 3)', () => {
     /** A branch and year with versions written directly: no rows, only starts and statuses. */
     async function versions() {
@@ -810,6 +1007,19 @@ describe('bringing a draft up to date after a publish', () => {
       expect((refused.body as { error: { details: unknown[] } }).error.details).toContainEqual(
         expect.objectContaining({ code: 'version_later_published', path: 'chain' }),
       );
+    });
+
+    // Code round 2, second opinion: the tie-break of two versions with one start.
+    it('takes the higher number of two published versions with the same start', async () => {
+      const v = await versions();
+      // The lower number is published last, so that its row is read last
+      // when nothing orders by number.
+      const lower = await v.at('2026-09-07', 'draft');
+      const higher = await v.at('2026-09-07', 'published');
+      await load.setVersion(lower, 'published');
+      const marked = await v.at(NOVEMBER, 'draft');
+      await v.cause(marked, higher);
+      expect((await shownOf(v.branch, marked)).other?.id).toBe(higher);
     });
 
     it('takes the earliest published version when none is in force, and confirms only with none at all', async () => {
@@ -973,5 +1183,73 @@ describe('bringing a draft up to date after a publish', () => {
     expect(await held).toBeUndefined();
     refusedWith(await route, 409, 'out_of_date_changed');
     expect(await causesOf(x.d)).toHaveLength(2);
+  });
+
+  // Code round 2, finding 5, the other direction: a bring-up-to-date holds the
+  // publish lock with its write, and a publish waits, then reads the draft as
+  // written: no longer out of date, and named after the version compared.
+  it('lets a publish wait for a bring-up-to-date holding the publish lock, then marks the draft as written', async () => {
+    const x = await scene();
+    const f = await copy(x.branch, x.year, x.s, '2026-11-16');
+    await place(x.branch, f, await rowOf(f, x.maths), 4, 1);
+    await place(x.branch, f, await rowOf(f, x.art), 4, 2);
+    await confirm(x.branch, f);
+    let release: () => void = () => undefined;
+    const released = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let ready: () => void = () => undefined;
+    const isReady = new Promise<void>((resolve) => {
+      ready = resolve;
+    });
+    // What the route writes for a draft brought up to date with no pick.
+    const held = t.app
+      .get(Transactions)
+      .run([x.branch], async (transaction: Transaction) => {
+        await sql`select pg_advisory_xact_lock(550001)`.execute(transaction);
+        await transaction
+          .updateTable('timetable_versions')
+          .set({ from_version_id: x.e })
+          .where('id', '=', x.d)
+          .execute();
+        await transaction
+          .deleteFrom('timetable_version_out_of_date_causes')
+          .where('version_id', '=', x.d)
+          .execute();
+        ready();
+        await released;
+      })
+      .catch((error: unknown) => error);
+    await isReady;
+    let answered: Response | null = null;
+    const route = publish(x.branch, f, '2026-11-16').then((response) => {
+      answered = response;
+      return response;
+    });
+    await expect
+      .poll(
+        async () => {
+          const found = await sql<{ n: number }>`
+            select count(*)::int as n
+            from pg_locks l join pg_stat_activity a on a.pid = l.pid
+            where a.datname = current_database() and l.locktype = 'advisory' and not l.granted
+          `.execute(t.database.migrator);
+          return found.rows[0]?.n ?? 0;
+        },
+        { timeout: 20_000, interval: 25 },
+      )
+      .toBe(1);
+    expect(answered).toBeNull();
+    release();
+    expect(await held).toBeUndefined();
+    versionOf(await route);
+    expect(await fromOf(x.d)).toBe(x.e);
+    expect(await causesOf(x.d)).toEqual([{ action: 'timetable_version.publish', record_id: f }]);
+    // The mark read the draft after the write: it was no longer out of date.
+    const marks = await t.entries('timetable_version.out_of_date', x.d);
+    expect(marks.at(-1)).toMatchObject({
+      old_value: { outOfDate: false },
+      new_value: { outOfDate: true, recordId: f },
+    });
   });
 });

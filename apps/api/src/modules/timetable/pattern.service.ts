@@ -137,7 +137,7 @@ function blockAt(
 export async function writeBlock(
   transaction: Transaction,
   version: { readonly id: string; readonly branch_id: string },
-  model: PatternModel,
+  model: Pick<PatternModel, 'rowOf'>,
   placed: PatternBlock,
 ): Promise<{ block: { id: string }; entries: { id: string; load_row_id: string }[] }> {
   const block = await transaction

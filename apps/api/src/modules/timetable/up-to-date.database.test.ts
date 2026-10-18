@@ -93,6 +93,26 @@ describe('a draft brought up to date, in the database', () => {
     }
   });
 
+  // Code round 2, finding 2: the draft side of the guard, reached by a draft
+  // published and given a new source in one statement.
+  it('refuses a new source written with the publish of a draft', async () => {
+    const v = await versions();
+    expect(
+      (
+        await refusal(
+          inBranch(v.branch, (transaction) =>
+            transaction
+              .updateTable('timetable_versions')
+              .set({ status: 'published', from_version_id: v.published })
+              .where('id', '=', v.draft)
+              .execute(),
+          ),
+        )
+      ).constraint,
+    ).toBe('timetable_versions_fixed');
+    expect(await sourceOf(v.draft)).toBeNull();
+  });
+
   it('refuses a source of another year or another branch (the foreign key)', async () => {
     const v = await versions();
     const nextYear = await kit.classes.year(v.branch, 'planned', '2027-09-01', '2028-05-31');

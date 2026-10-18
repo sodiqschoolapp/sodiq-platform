@@ -475,11 +475,11 @@ export class TimetableUpToDate {
       transaction,
       version,
       draft.state,
-      published.state,
+      merged,
+      takenBlocks,
       plan,
       mergedRows,
       added,
-      accountId,
     );
   }
 
@@ -540,16 +540,20 @@ export class TimetableUpToDate {
     return blocks;
   }
 
-  /** The picks written: rows, blocks and pins, with what the audit entry keeps (decision 13). */
+  /**
+   * The picks written: rows, blocks and pins, with what the audit entry keeps
+   * (decision 13). The blocks are those the check built, on its template
+   * times; nothing of the setup is read again (code round 2, finding 1).
+   */
   private async write(
     transaction: Transaction,
     version: VersionRow,
     draft: PatternState,
-    published: PatternState,
+    merged: PatternState,
+    takenBlocks: readonly PatternBlock[],
     plan: TakenPlan,
     mergedRows: readonly StoredLoadRow[],
     added: readonly StoredLoadRow[],
-    accountId: string,
   ) {
     const branchId = version.branch_id;
     const pins = await readPins(transaction, version.id);
@@ -671,19 +675,19 @@ export class TimetableUpToDate {
         )
         .execute();
     }
-    // The blocks are placed on the rows as written, read again.
-    // The template and the blocks are those the check before writing read, and
-    // it refused a slot the draft lacks: here only the final row ids are mapped.
-    const state = await this.pattern.stateOf(transaction, version, accountId);
-    const blocks = this.blocksTaken(state, published, plan, finalId, []);
+    // The blocks checked, with only their lessons' row ids mapped to the rows
+    // as written; a row's teacher is read from the row the check saw.
+    const checkedIdOf = new Map([...newId].map(([checked, written]) => [written, checked]));
+    const model = {
+      rowOf: (rowId: string) => merged.pattern.model.rowOf(checkedIdOf.get(rowId) ?? rowId),
+    };
     const addedBlocks = [];
-    for (const block of blocks) {
-      const { block: written, entries } = await writeBlock(
-        transaction,
-        version,
-        state.pattern.model,
-        block,
-      );
+    for (const checked of takenBlocks) {
+      const block = {
+        ...checked,
+        lessons: checked.lessons.map((one) => ({ ...one, loadRowId: finalId(one.loadRowId) })),
+      };
+      const { block: written, entries } = await writeBlock(transaction, version, model, block);
       addedBlocks.push({
         id: written.id,
         weekday: block.weekday,
