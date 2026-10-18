@@ -246,6 +246,23 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 18 October 2026: publish, the chain (task 5.5a-3a)
+
+Plan approved on pull request #145 with corrections 1 and 2; decisions 1 to 11 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** 5.5a-3 is split into 5.5a-3a (the chain) and 5.5a-3b (out-of-date drafts) | Decision 1 |
+| **Look first** (a trigger widened by a requirement). `timetable_versions_status` allows published → archived for a version whose start is after the branch's today (`app.now`), in a year not closed (`version_archive_started`); `publish.database.test.ts` no longer expects that transition refused | Decision 2; replace now, withdraw (5.5c) later |
+| **Look first** (two guards widened by a requirement). On a published version that has not started, a load row may change only its teacher and room and a pattern entry only its room (its teacher by the cascade); pins, locks, day keeps, blocks, inserts and deletes stay draft-only | Decision 3 with correction 1; "the same changes are made in every later version" |
+| Carry is offered when the draft names a source and differs from it only in rows' teachers or rooms and entries' rooms, rows matched by class or group and subject, entries by row, weekday and slot position; a Tutor row is never a difference | Decision 4 |
+| A later version takes a change only where it still has the before value; a version where a change brings a blocked result or a load problem the unchanged version has not is left whole | Correction 2, decision 8 |
+| A start on a published version's start is allowed with "replace" only (`chain_start_taken`) | Decision 5 |
+| An answer counts only with the key of the later versions shown (`laterKey`, `chain_changed`); with no later version it is ignored | Decision 6, spec review should-fix 2 |
+| The preview reads each date from the version in force on it; under carry it adds the carried versions' lessons over their runs | Decision 7, spec review must-fix 1 |
+| No column records a replace or carry; the audit entries `timetable_version.replace` and `timetable_version.carry` do | Decision 9 |
+| Notices of a carry come with 5.5c; dated lessons of changed versions with 5.5b | Decisions 10 and 11 |
+
 ## 18 October 2026: publish, the readers that follow the published version (task 5.5a-2c)
 
 Plan approved on pull request #144 with corrections 1 to 4; decisions 1 to 8 confirmed there (6 changed by correction 1, 7 marked Look first). Flagged on issue #42.

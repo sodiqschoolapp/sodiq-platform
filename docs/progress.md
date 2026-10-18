@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 18 October 2026: task 5.5a-3a Publish: the chain
+
+- A draft can be published to start before a published version of its year with one of three answers, sent with the key of the later versions shown (`laterKey`, `chain_changed` otherwise): "run until" ends it the day before the next start; "replace" archives every later published version (0076 allows published → archived before the start); "carry" makes the draft's teacher and room changes (against the version it was copied from, `carryChanges`) in every later version that still has them, a version where a change meets a blocked conflict left as it is.
+- Step 8 asks the question; the check, the dated lists and the impact preview follow the answer, the carried versions' lessons in the preview.
+- Left out: out-of-date marks from templates, calendar, availability and rooms and bringing a draft up to date (5.5a-3b); dated lessons, notices and journals of changed or archived versions (5.5b, 5.5c); a copy that takes the pattern (5.8).
+
+The next sessions must know:
+
+- `withRunEnd` (`pattern-facts.ts`) sets the last date of a version's facts; the dated check and the preview read it. `impactOf` reads each date of the "before" side from the published version in force on it.
+- 0076 lets a published version that has not started change only `teacher_id`/`room_id` of a load row and `room_id` of a pattern entry (the teacher by the cascade); every other write stays draft-only.
+- The next task is 5.5a-3b.
+
 ## 18 October 2026: task 5.5a-2c Publish: the readers that follow the published version
 
 - On the run of a published version (its start to the next published start of the branch and year), a class's split and group subjects are those of its group rows whose group is active and draws from the class; before the year's first published version, the active groups as before (`class_group_subject_runs`, 0075). Both class-side commit checks and every class path read it; the automatic placement chooses among the run's groups, and the branch move accept offers and writes by the runs.

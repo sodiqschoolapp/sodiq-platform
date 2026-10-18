@@ -619,12 +619,20 @@ How to read the task lines:
   - From 3.4b (pull request #100, decisions 1 and 4, Look first): from the published version in force on a date `class_group_subjects` (0049) reads the subjects of its group rows whose groups draw from the class, in place of the active groups, so that the load is the source of the split and group subjects of a class (`05`, Group).
   - From 3.4c (pull request #101, decision 2, Look first): `department_move_loads` (0057) counts every version of a year that is not closed and ends on or after the start date of a department move; once a published version has a run of its own, a published version whose run ends before the start date no longer counts.
 
-- [ ] **5.5a-3 Publish: out-of-date drafts and the chain**
+- [x] **5.5a-3a Publish: the chain** (pull request #145)
   - Read: `06` (How surprises are prevented, Changes after publishing: Filling a vacancy), `edge/timetable` (Versions and drafts).
-  - Build: the mark "out of date" from changes of templates, calendar, availability and rooms; bringing a draft up to date (what changed on both sides, the person picks); publishing before a later published version: "run until that version starts", "replace the versions that follow", "carry the change into them" (carry a teacher or room change into later versions).
+  - Build: publishing before a later published version: "run until that version starts", "replace the versions that follow", "carry the change into them" (carry a teacher or room change into later versions).
   - Done when: a fix published mid-quarter before two later versions is tested with each of the three answers.
-  - From 5.5a (pull request #139, decision 1, Look first): split into 5.5a-1 (the route, its checks and one at a time), 5.5a-2 (dated checks and the impact preview) and 5.5a-3 (out-of-date drafts and the chain). 5.5a-1 refuses a publish on or before the start of a published version of the year (`version_later_published`) and marks drafts out of date only at publish (`timetable_versions.out_of_date_at`); a marked draft cannot be published until this part.
+  - From 5.5a (pull request #139, decision 1, Look first): split into 5.5a-1 (the route, its checks and one at a time), 5.5a-2 (dated checks and the impact preview) and 5.5a-3 (out-of-date drafts and the chain).
+  - From 5.5a-3 (pull request #145, decision 1, Look first): split into 5.5a-3a (the chain) and 5.5a-3b (out-of-date drafts).
   - From 5.5a-2a (pull request #140): the dated check of a publish runs every version to the year's end, as no publish before a later published version is allowed yet; once one is, it ends the day before the next version's start.
+
+- [ ] **5.5a-3b Publish: out-of-date drafts**
+  - Read: `06` (How surprises are prevented: "Out-of-date draft"), `edge/timetable` (Versions and drafts), `edge/time-dates-calendar`.
+  - Build: the mark "out of date" from changes of templates, calendar, availability and rooms; bringing a draft up to date (what changed on both sides, the person picks).
+  - Done when: a calendar change marks an open draft out of date, and bringing it up to date lists the changes of both sides and keeps the person's picks.
+  - From 5.5a-3 (pull request #145, decision 1, Look first): split from 5.5a-3; 5.5a-3a built the chain.
+  - From 5.5a (pull request #139, decision 1, Look first): 5.5a-1 marks drafts out of date only at publish (`timetable_versions.out_of_date_at`); a marked draft cannot be published (`draft_out_of_date`) until this part.
 
 - [ ] **5.5b Publish: dated lessons**
   - Read: `06` (What a change does to existing data, How surprises are prevented), `edge/timetable` (Versions and drafts), `edge/time-dates-calendar`.
@@ -636,6 +644,7 @@ How to read the task lines:
   - From 5.4c-3b (pull request #138, decisions 3 and 6): `edge/timetable`, Structure: "A mixed block is allowed: boys have physical education while girls have technology, and the reverse in another slot." A pattern block of two subjects' mixed halves (a pairing) becomes one dated lesson block with two lessons, as a split does; a double of a pairing follows the 5.4c-3a line. The pairing check of `checkBlocks` (`EngineLoadRow.block` and `partners`, `packages/timetable-rules/src/placement.ts`) is filled in dated mode here, so a dated block of rows that are neither one block of the load nor a pairing is `split_apart` with `rows`.
   - From 5.5a-2b-1 (pull request #142, decisions 2 and 9): the impact preview compares the draft with the published version in force before its start expanded by `datedPattern` (`apps/api/src/modules/timetable/impact.ts`); once this task stores dated lessons, its "before" side and the transition week's dates before the start are the stored lessons (with their one-day changes), and the preview lists the lessons holding data that block a removal (`06`, How surprises are prevented, Impact preview: "any lesson holding data that blocks a removal").
   - From 5.5a-2a (pull request #140, decisions 2, 7 and 11): `datedPattern` (`packages/timetable-rules/src/dated.ts`) is the expansion the dated lessons are created from, its `cancelled` lessons created as cancelled with their reason. Until this task no published version has dated lessons, so the dated check of a publish meets another branch's later version only from here: a test publishes the other branch's later version through the real route and runs the publish check of 5.5a-2a against it. The own branch's exams and stored one-day changes are not read by 5.5a-2a: `edge/timetable`, "The pattern is valid but one date is not" ("an earlier one-day change holding the room" is a blocked conflict of a date) and "A substitution and a one-day move are already recorded … The preview sorts them into kept, needs a decision and dropped. Publish waits until every 'needs a decision' item is settled" (with Exams: a lesson of an invigilator or in an exam room at that time is a "needs a decision" item). `06`, Rules, availability row: "the lessons stay flagged until it is published".
+  - From 5.5a-3a (pull request #145, decision 11): the dated lessons of the later versions follow a carry (the teacher and room changes made in them, `timetable_version.carry`) and are removed with a replace (the versions archived, `timetable_version.replace`); no change to any lesson dated today or earlier.
 
 - [ ] **5.5c Publish: journals, notices and withdraw**
   - Read: `06` (How surprises are prevented), `07` (first paragraph), `edge/timetable` (Versions and drafts), `edge/developer-rules`.
@@ -646,6 +655,7 @@ How to read the task lines:
   - From 5.1a (pull request #107, correction 6): withdraw before the start date removes the version's dated lessons; the delete grant on `lessons` and `lesson_blocks` comes in a migration of its own.
   - From 3.6a (pull request #118, decision 4): the students a Teacher reads come from `taughtAt` (`apps/api/src/modules/access/taught-scope.ts`): the classes and groups of the teacher's rows in the published version in force of each year not closed, on `greatest(today, the year's start)`; "Classes taught" reads the same, and publishing makes a Teacher's Students list fill.
   - From 3.6c-2 (pull request #125, decision 9 with review correction 5): a change of a class's Tutor that moves its dated Tutor lessons (`followTutors`) notifies the old and the new Tutor as a teacher change does, and the lessons it moved carry the "changed" mark for a week.
+  - From 5.5a-3a (pull request #145, decision 10): a carry notifies the teachers of the later versions it changed; withdraw uses the transition published → archived of 0076, allowed only before the version's start.
 
 - [ ] **5.6a One-day changes**
   - Read: `06` (Changes after publishing), `edge/timetable` (After publishing).
@@ -691,6 +701,7 @@ How to read the task lines:
   - From 5.1a (pull request #107, correction 6): the forced delete of a dated lesson needs a delete grant on `lessons` and `lesson_blocks` (0058 gives none), added with its guard in a migration of its own.
   - From 5.4b-2a (pull request #133, decision 3): reopening an old version as a new draft ("Restore an earlier version") copies its pattern too; entries whose teacher, room, subject or class is no longer active go to the "to place" list with the reason (`edge/timetable`, Versions and drafts; `edge/academic-year`). The panel is `GridToPlace` (`apps/web/src/features/timetable/grid-to-place.tsx`); today a copy takes the load and the pins only.
   - From 5.4c-3a (pull request #137, decision 12): a pattern copied into a new draft gives each double pair a new `double_pair_id` (0058 `pattern_blocks_double` counts a pair across all versions, so a copied id is refused).
+  - From 5.5a-3a (pull request #145, decision 4): every copy of a version, not only a restore, takes its pattern, so that a fix drafted from a version keeps its placement and "carry the change into them" is offered (`carryChanges`, `packages/timetable-rules/src/carry.ts`, compares entries by load row, weekday and slot position).
 
 - [ ] **5.9 Timetable views, print and export**
   - Read: `06` (Views and outputs), `edge/system-behaviour`.
