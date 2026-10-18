@@ -5,8 +5,10 @@ name: Routines
 # runs on every pull request, so this workflow fires the routines through their
 # API triggers. The routines have no GitHub triggers of their own (removed by
 # the owner on 11 October 2026: they ran a second reviewer for every event);
-# their hourly schedules stay as a second net, and a duplicate run finds
-# nothing to do, because reviews compare shas. Each job only sends a POST; no
+# their hourly schedules stay as a second net. Two review runs of one head can
+# post conflicting verdicts (#140), so a fire call waits up to two minutes for
+# its answer and is retried only on a refused connection or a transient error
+# (curl --retry), never on every error. Each job only sends a POST; no
 # code is checked out or run.
 #
 # The repository is public since 13 October 2026 (docs/decisions.md): a job
@@ -81,12 +83,16 @@ jobs:
               echo "fire=true" >> "$GITHUB_OUTPUT"
               exit 0
             fi
-            count=$(jq 'length' "$RUNNER_TEMP/page.json")
-            jq -c '.[]' "$RUNNER_TEMP/page.json" >> "$RUNNER_TEMP/comments.jsonl"
+            if ! count=$(jq 'length' "$RUNNER_TEMP/page.json") \
+              || ! jq -c '.[]' "$RUNNER_TEMP/page.json" >> "$RUNNER_TEMP/comments.jsonl"; then
+              echo "The comments could not be read: the review run fires."
+              echo "fire=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
             [ "$count" -lt 100 ] && break
             page=$((page + 1))
           done
-          newest=$(jq -rs '[.[] | select(.user.login == "abbosc" and (.body | startswith("[review]")))] | last | (.body // "") | split("\n")[0] // ""' "$RUNNER_TEMP/comments.jsonl")
+          newest=$(jq -rs '[.[] | select(.user.login == "abbosc" and (.body | startswith("[review]")))] | last | (.body // "") | split("\n")[0] // ""' "$RUNNER_TEMP/comments.jsonl") || newest=""
           echo "Newest [review]: ${newest:-none}"
           case "$newest" in
             "[review] approved"*)
@@ -96,7 +102,8 @@ jobs:
               echo "fire=true" >> "$GITHUB_OUTPUT" ;;
           esac
       # Values go through env, never into the command text. The token is never
-      # printed; the retry may fire the routine twice, which finds nothing to do.
+      # printed. The call waits up to two minutes and retries only on a refused
+      # connection or a transient error, to keep a second session rare.
       - name: Fire the review routine
         if: steps.need.outputs.fire == 'true'
         env:
@@ -114,8 +121,8 @@ jobs:
           echo "Payload: $text"
           body=$(jq -n --arg text "$text" '{text: $text}')
           code=0
-          status=$(curl --fail-with-body --silent --show-error --max-time 30 \
-            --retry 3 --retry-all-errors \
+          status=$(curl --fail-with-body --silent --show-error --max-time 120 \
+            --retry 3 --retry-connrefused \
             --output "$RUNNER_TEMP/response.json" --write-out '%{http_code}' \
             --request POST "$ROUTINE_URL" \
             --header "Authorization: Bearer $ROUTINE_TOKEN" \
@@ -156,8 +163,8 @@ jobs:
           echo "Payload: $text"
           body=$(jq -n --arg text "$text" '{text: $text}')
           code=0
-          status=$(curl --fail-with-body --silent --show-error --max-time 30 \
-            --retry 3 --retry-all-errors \
+          status=$(curl --fail-with-body --silent --show-error --max-time 120 \
+            --retry 3 --retry-connrefused \
             --output "$RUNNER_TEMP/response.json" --write-out '%{http_code}' \
             --request POST "$ROUTINE_URL" \
             --header "Authorization: Bearer $ROUTINE_TOKEN" \
@@ -229,8 +236,8 @@ jobs:
           echo "Payload: $text"
           body=$(jq -n --arg text "$text" '{text: $text}')
           code=0
-          status=$(curl --fail-with-body --silent --show-error --max-time 30 \
-            --retry 3 --retry-all-errors \
+          status=$(curl --fail-with-body --silent --show-error --max-time 120 \
+            --retry 3 --retry-connrefused \
             --output "$RUNNER_TEMP/response.json" --write-out '%{http_code}' \
             --request POST "$ROUTINE_URL" \
             --header "Authorization: Bearer $ROUTINE_TOKEN" \
