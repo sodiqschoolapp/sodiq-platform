@@ -249,3 +249,14 @@ export {
   type TransitionRow,
   type TransitionWeek,
 } from './impact.js';
+// Task 5.5a-3a: "carry the change into them" of a publish before a later version.
+export {
+  carryChanges,
+  carryInto,
+  type CarriedInto,
+  type CarryChange,
+  type CarryEntry,
+  type CarryOffer,
+  type CarryRow,
+  type CarryVersion,
+} from './carry.js';
