@@ -39299,7 +39299,7 @@ export interface operations {
                         quarterStarts: string[];
                         refusals: {
                             /** @enum {string} */
-                            code: "version_start_too_early" | "version_start_outside_year" | "version_later_published" | "draft_out_of_date" | "draft_not_ready" | "load_problem" | "pattern_blocked" | "date_blocked" | "load_mismatch" | "year_quarters" | "subject_daily_weights" | "subject_quarter_weights";
+                            code: "version_start_too_early" | "version_start_outside_year" | "version_later_published" | "draft_out_of_date" | "draft_not_ready" | "load_problem" | "pattern_blocked" | "date_blocked" | "load_mismatch" | "year_quarters" | "subject_daily_weights" | "subject_quarter_weights" | "transition_unacknowledged";
                             /** @enum {string} */
                             step?: "templates" | "load" | "teachers" | "rooms";
                             /** Format: uuid */
@@ -39350,6 +39350,109 @@ export interface operations {
                             /** @enum {string} */
                             reason: "no_tutor" | "tutor_clash" | "not_available_real_day" | "teacher_out";
                         }[];
+                        impact: {
+                            beforeVersion: {
+                                /** Format: uuid */
+                                id: string;
+                                number: number;
+                            } | null;
+                            counts: {
+                                created: number;
+                                moved: number;
+                                removed: number;
+                                changed: number;
+                                unchanged: number;
+                            };
+                            changes: {
+                                /** @enum {string} */
+                                kind: "created" | "moved" | "removed" | "changed";
+                                /** Format: uuid */
+                                unitId: string;
+                                /** Format: uuid */
+                                subjectId: string;
+                                classIds: string[];
+                                before: {
+                                    weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+                                    start: number;
+                                    end: number;
+                                    teacherIds: string[];
+                                    /** Format: uuid */
+                                    roomId: string | null;
+                                } | null;
+                                after: {
+                                    weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+                                    start: number;
+                                    end: number;
+                                    teacherIds: string[];
+                                    /** Format: uuid */
+                                    roomId: string | null;
+                                } | null;
+                                count: number;
+                                /** Format: date */
+                                firstDate: string;
+                                /** Format: date */
+                                lastDate: string;
+                            }[];
+                            teachers: {
+                                /** Format: uuid */
+                                id: string;
+                                vacancy: boolean;
+                                notified: boolean;
+                            }[];
+                            classIds: string[];
+                            roomIds: string[];
+                            vacancies: {
+                                /** Format: uuid */
+                                id: string;
+                                lessonsPerWeek: number;
+                            }[];
+                            transition: {
+                                /** Format: date */
+                                weekStart: string;
+                                /** Format: date */
+                                weekEnd: string;
+                                rows: {
+                                    /** Format: uuid */
+                                    unitId: string;
+                                    /** Format: uuid */
+                                    subjectId: string;
+                                    before: number;
+                                    after: number;
+                                    lessonsPerWeek: number;
+                                    differs: boolean;
+                                }[];
+                                key: string | null;
+                            } | null;
+                            names: {
+                                units: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** @enum {string} */
+                                    kind: "class" | "group";
+                                    name: string;
+                                    grades: number[];
+                                }[];
+                                subjects: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    names: {
+                                        uz: string;
+                                        ru: string;
+                                        en: string;
+                                    };
+                                }[];
+                                teachers: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                }[];
+                                rooms: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                }[];
+                            };
+                        } | null;
                         canPublish: boolean;
                     };
                 };
@@ -39457,6 +39560,7 @@ export interface operations {
                 "application/json": {
                     /** Format: date */
                     startsOn: string;
+                    transitionKey?: string;
                 };
             };
         };

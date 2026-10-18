@@ -968,6 +968,8 @@ export const PUBLISH_REFUSALS = [
   'year_quarters',
   'subject_daily_weights',
   'subject_quarter_weights',
+  // Task 5.5a-2b-1, decision 11: a transition week that differs from the load, not acknowledged.
+  'transition_unacknowledged',
 ] as const;
 
 export const publishRefusalCodeSchema = z.enum(PUBLISH_REFUSALS);
@@ -1027,13 +1029,120 @@ export const needsTeacherSchema = z.object({
 
 export type NeedsTeacherAnswer = z.infer<typeof needsTeacherSchema>;
 
+/** The key of a transition week that differs from the load: SHA-256, lower hex (decision 11). */
+export const transitionKeySchema = z.string().regex(/^[0-9a-f]{64}$/);
+
+/** The kinds of change of the impact preview (task 5.5a-2b-1, decision 3). */
+export const IMPACT_KINDS = ['created', 'moved', 'removed', 'changed'] as const;
+
+/** Where lessons are, without their dates: the weekday of the pattern, the times, teacher and room. */
+export const impactSlotSchema = z.object({
+  weekday: weekdaySchema,
+  start: z.int().min(0).max(1440),
+  end: z.int().min(0).max(1440),
+  /** Empty for a Tutor lesson with no Tutor on its dates. */
+  teacherIds: z.array(z.uuid()),
+  roomId: z.uuid().nullable(),
+});
+
+/** Lessons of one class or group and subject changed the same way on `count` dates (decision 5). */
+export const impactChangeSchema = z.object({
+  kind: z.enum(IMPACT_KINDS),
+  unitId: z.uuid(),
+  subjectId: z.uuid(),
+  classIds: z.array(z.uuid()),
+  before: impactSlotSchema.nullable(),
+  after: impactSlotSchema.nullable(),
+  count: z.int().min(1),
+  firstDate: schoolDateSchema,
+  lastDate: schoolDateSchema,
+});
+
+export type ImpactChangeAnswer = z.infer<typeof impactChangeSchema>;
+
+/** A class or group and subject in the transition week (decision 10, review correction 1). */
+export const transitionRowSchema = z.object({
+  unitId: z.uuid(),
+  subjectId: z.uuid(),
+  before: z.int().min(0),
+  after: z.int().min(0),
+  lessonsPerWeek: z.int().min(0),
+  differs: z.boolean(),
+});
+
+export type TransitionRowAnswer = z.infer<typeof transitionRowSchema>;
+
+/**
+ * The impact preview of a publish (task 5.5a-2b-1; `06`, How surprises are
+ * prevented, Impact preview): the lessons created, moved, removed and changed
+ * against the version in force before the start, the teachers, classes and
+ * rooms affected, who will be notified, the lessons per week under each
+ * vacancy, and the transition week. It names records of the branch only.
+ */
+export const publishImpactSchema = z.object({
+  /** The published version the draft replaces from its start; `null` for a first publish. */
+  beforeVersion: z.object({ id: z.uuid(), number: z.int().min(1) }).nullable(),
+  counts: z.object({
+    created: z.int().min(0),
+    moved: z.int().min(0),
+    removed: z.int().min(0),
+    changed: z.int().min(0),
+    unchanged: z.int().min(0),
+  }),
+  changes: z.array(impactChangeSchema),
+  /** Decisions 6 and 7: a vacancy is never notified, a person only with an account. */
+  teachers: z.array(z.object({ id: z.uuid(), vacancy: z.boolean(), notified: z.boolean() })),
+  classIds: z.array(z.uuid()),
+  roomIds: z.array(z.uuid()),
+  /** Decision 8: every vacancy of the draft's pattern. */
+  vacancies: z.array(z.object({ id: z.uuid(), lessonsPerWeek: z.int().min(0) })),
+  /** Decision 10: `null` when no date of the start's week before it has lessons. */
+  transition: z
+    .object({
+      weekStart: schoolDateSchema,
+      weekEnd: schoolDateSchema,
+      rows: z.array(transitionRowSchema),
+      /** Decision 11: the key a publish sends back; `null` when no row differs. */
+      key: transitionKeySchema.nullable(),
+    })
+    .nullable(),
+  /** The names of what the preview names (decision 12). */
+  names: z.object({
+    units: z.array(
+      z.object({
+        id: z.uuid(),
+        kind: z.enum(['class', 'group']),
+        name: z.string(),
+        grades: z.array(z.int()),
+      }),
+    ),
+    subjects: z.array(
+      z.object({
+        id: z.uuid(),
+        names: z.object({ uz: z.string(), ru: z.string(), en: z.string() }),
+      }),
+    ),
+    teachers: z.array(z.object({ id: z.uuid(), name: z.string() })),
+    rooms: z.array(z.object({ id: z.uuid(), name: z.string() })),
+  }),
+});
+
+export type PublishImpactAnswer = z.infer<typeof publishImpactSchema>;
+
 /** The start date a publish is checked on. */
 export const publishCheckQuerySchema = z.object({ startsOn: schoolDateSchema });
 
 export type PublishCheckQuery = z.infer<typeof publishCheckQuerySchema>;
 
 /** A publish (decision 7): the start date, the draft's or a changed one. */
-export const publishBodySchema = z.strictObject({ startsOn: schoolDateSchema });
+export const publishBodySchema = z.strictObject({
+  startsOn: schoolDateSchema,
+  /**
+   * Task 5.5a-2b-1, decision 11: the key of the transition week shown
+   * (`PublishImpact.transition.key`), when it differs from the load.
+   */
+  transitionKey: transitionKeySchema.optional(),
+});
 
 export type PublishBody = z.infer<typeof publishBodySchema>;
 
@@ -1057,6 +1166,8 @@ export const publishCheckSchema = z.object({
   cancelledLessons: z.array(cancelledLessonSchema),
   /** Decisions 9 to 11: lessons that will be "needs a teacher", listed, not refused. */
   needsTeacher: z.array(needsTeacherSchema),
+  /** Task 5.5a-2b-1: `null` while the start date itself is refused (nothing else is read then). */
+  impact: publishImpactSchema.nullable(),
   canPublish: z.boolean(),
 });
 

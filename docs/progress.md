@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 18 October 2026: task 5.5a-2b-1 Publish: the impact preview and the transition week
+
+- Step 8 shows what a publish changes: the draft's lessons of every date compared with those the published version in force before the start gives (`publishImpact`, rule engine): created, moved (per class or group, subject and week), removed and changed (teacher or room), grouped into lines with a count and dates; the teachers (notified, no account, vacancy), classes and rooms affected; the lessons per week under each vacancy. No migration.
+- The transition week of a start that is not a Monday (`transitionWeek`): every class or group and subject, its lessons before the start (each date from the version in force on it) and from it, against the draft's load. Differences need a tick; the publish carries their key (`transitionKey`) and is refused `transition_unacknowledged` without it or with a stale one. The publish's audit entry keeps the counts and the rows acknowledged.
+- 5.5a-2b is split: 5.5a-2b-2 (the lessons kept on a shortened day) follows.
+- Left out: the shortened-day choice (5.5a-2b-2); the lessons holding data that block a removal, and the stored lessons as the "before" side (5.5b); sending the notices (5.5c); the handbook (paused).
+
+The next sessions must know:
+
+- `datedLessonsOf` (`dated-check.ts`) expands any version's pattern over a range of dates; the check and the preview use it, and `datedCheck` answers its expansion (`dated`).
+- Lessons created as cancelled are in neither side of the preview; a lesson is matched by class or group and subject, never by row or entry id.
+- The next task is 5.5a-2b-2.
+
 ## 17 October 2026: task 5.5a-2a Publish: the dated check of every date
 
 - Publish checks every date of the version, not only its pattern: `datedPattern` (rule engine) gives the pattern's lessons on each date (calendar, special days, worked Saturdays, exam weeks, vacations, lessons matched by their order in the day), and `dated-check.ts` checks each date with `checkTimetable` in dated mode against the other branches' stored claims (`teacher_claims_elsewhere`). A blocked result only a date shows refuses (`date_blocked`, by date); a later availability entry gives warnings by date (`CheckOptions.availabilityFrom`); lessons the day cannot hold (`cancelledLessons`) and lessons that will need a teacher (`needsTeacher`: no Tutor or a Tutor's clash, a worked weekday off, a teacher out after the start) are listed, never refusing. Step 8 shows them. No migration.

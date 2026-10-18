@@ -213,9 +213,16 @@ export class ClassesKit {
   async person(
     branch: string,
     languages: readonly ('uz' | 'ru')[],
-    input: { further?: readonly string[]; first?: string; last?: string; accountId?: string } = {},
+    input: {
+      further?: readonly string[];
+      first?: string;
+      last?: string;
+      accountId?: string;
+      /** A person with no account yet (the account is given later, or never). */
+      noAccount?: boolean;
+    } = {},
   ): Promise<{ staffId: string; accountId: string }> {
-    const accountId = input.accountId ?? (await this.account());
+    const accountId = input.noAccount === true ? null : (input.accountId ?? (await this.account()));
     count += 1;
     const staffId = await this.migrator.transaction().execute(async (transaction) => {
       const academic = await transaction
@@ -274,7 +281,7 @@ export class ClassesKit {
         .execute();
       return staff.id;
     });
-    return { staffId, accountId };
+    return { staffId, accountId: accountId ?? '' };
   }
 
   /** A role of an account in a branch, from a moment, with an end or none. */

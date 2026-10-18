@@ -11,6 +11,7 @@ import {
   type DatedBlock,
   type DatedDay,
   type DatedLesson,
+  type DatedPattern,
   type EngineDay,
   type EngineTeacher,
   type Facts,
@@ -39,6 +40,8 @@ export interface DatedFindings {
   readonly warnings: RuleResultAnswer[];
   readonly needsTeacher: NeedsTeacherAnswer[];
   readonly cancelled: CancelledLesson[];
+  /** The lessons of the dates, for the impact preview (task 5.5a-2b-1). */
+  readonly dated: DatedPattern;
 }
 
 /** A dated row of a class or group, half-open. */
@@ -81,54 +84,17 @@ export async function datedCheck(
   const { data } = model;
   const branchId = data.branchId;
   const lastDate = data.versionEnd;
-  const branch = await transaction
-    .selectFrom('branches')
-    .select(['working_weekdays', 'time_zone'])
-    .where('id', '=', branchId)
-    .executeTakeFirstOrThrow();
-  const [settings, store] = await Promise.all([
-    loadCalendarSettings(transaction, branch.working_weekdays),
-    loadStore(transaction),
-  ]);
-
-  const rows = data.rows;
-  const classIds = [...new Set(data.units.flatMap((unit) => unit.classIds))].sort();
-  const groupIds = data.units.filter((unit) => unit.kind === 'group').map((unit) => unit.id);
+  const { dated, begins, classOn, dayOfDate, branch } = await datedLessonsOf(
+    transaction,
+    state,
+    startsOn,
+    lastDate,
+  );
   const teacherIds = data.teachers.map((one) => one.id);
-  const [classMembers, groupMembers, statuses, tutorRows, dayStarts] = await Promise.all([
-    classIds.length === 0
-      ? Promise.resolve([] as MemberRow[])
-      : transaction
-          .selectFrom('class_memberships')
-          .select([
-            'class_id as unit_id',
-            'student_id',
-            sql<string>`valid_from::text`.as('valid_from'),
-            sql<string>`valid_until::text`.as('valid_until'),
-          ])
-          .where('class_id', 'in', classIds)
-          .where('valid_from', '<=', lastDate)
-          .where('valid_until', '>', startsOn)
-          .orderBy('student_id')
-          .execute(),
-    groupIds.length === 0
-      ? Promise.resolve([] as MemberRow[])
-      : transaction
-          .selectFrom('group_memberships')
-          .select([
-            'group_id as unit_id',
-            'student_id',
-            sql<string>`valid_from::text`.as('valid_from'),
-            sql<string>`valid_until::text`.as('valid_until'),
-          ])
-          .where('group_id', 'in', groupIds)
-          .where('valid_from', '<=', lastDate)
-          .where('valid_until', '>', startsOn)
-          .orderBy('student_id')
-          .execute(),
+  const statuses =
     teacherIds.length === 0
-      ? Promise.resolve([])
-      : transaction
+      ? []
+      : await transaction
           .selectFrom('staff_statuses')
           .select([
             'staff_id',
@@ -137,121 +103,7 @@ export async function datedCheck(
             sql<string | null>`valid_until::text`.as('valid_until'),
           ])
           .where('staff_id', 'in', teacherIds)
-          .execute(),
-    readTutorRows(
-      transaction,
-      rows.flatMap((row) => (row.classId === null ? [] : [row.classId])),
-    ),
-    // The first moment of each date in branch time.
-    sql<{ day: string; begins: Date }>`
-      select d::date::text as day, (d::date::timestamp at time zone ${branch.time_zone}) as begins
-      from generate_series(${startsOn}::date, ${lastDate}::date + 1, interval '1 day') d
-    `.execute(transaction),
-  ]);
-  const beginsOf = new Map(dayStarts.rows.map((row) => [row.day, row.begins]));
-  const begins = (date: string): Date => {
-    const found = beginsOf.get(date);
-    if (found === undefined) throw new Error(`No start of ${date}.`);
-    return found;
-  };
-
-  const membersOn = (list: readonly MemberRow[]) => {
-    const byUnit = new Map<string, MemberRow[]>();
-    for (const row of list) {
-      byUnit.set(row.unit_id, [...(byUnit.get(row.unit_id) ?? []), row]);
-    }
-    return (unitId: string, date: string): string[] =>
-      (byUnit.get(unitId) ?? [])
-        .filter((row) => row.valid_from <= date && date < row.valid_until)
-        .map((row) => row.student_id);
-  };
-  const classOn = membersOn(classMembers);
-  const groupOn = membersOn(groupMembers);
-  const kindOf = new Map(data.units.map((unit) => [unit.id, unit.kind]));
-  const studentsOn = (unitId: string, date: string) =>
-    kindOf.get(unitId) === 'group' ? groupOn(unitId, date) : classOn(unitId, date);
-
-  const datedDays = new Map<string, { engine: EngineDay; dated: DatedDay }>();
-  const dayOfDate = (grade: number, date: string) => {
-    const key = `${grade}|${date}`;
-    const known = datedDays.get(key);
-    if (known !== undefined) return known;
-    const found = dayOn(grade, date, settings);
-    let value: { engine: EngineDay; dated: DatedDay };
-    if (!found.lessons) {
-      value = { engine: { lessons: false, reason: found.reason }, dated: { lessons: false } };
-    } else {
-      const timed = dayOf(store, found.dayTemplateId, date);
-      const noRegularLessons = found.examWeek === 'no_regular_lessons';
-      value =
-        timed === null
-          ? { engine: { lessons: false, reason: 'no_template' }, dated: { lessons: false } }
-          : {
-              engine: { lessons: true, day: timed.day, noRegularLessons },
-              dated: {
-                lessons: true,
-                day: timed.day,
-                followsWeekday: found.followsWeekday,
-                noRegularLessons,
-              },
-            };
-    }
-    datedDays.set(key, value);
-    return value;
-  };
-
-  const weekly = new Map(data.days.map((one) => [`${one.grade}|${one.weekday}`, one.day]));
-  const units = new Map(data.units.map((unit) => [unit.id, unit]));
-  const subjects = new Map(data.subjects.map((subject) => [subject.id, subject]));
-  const blocks: DatedBlock[] = state.blocks.map((block) => {
-    const entries = block.lessons.map((lesson) => {
-      const row = model.rowOf(lesson.loadRowId);
-      const unit = model.unitOf(row.classId ?? row.groupId ?? '');
-      return {
-        id: lesson.id,
-        loadRowId: row.id,
-        classId: row.classId,
-        groupId: row.groupId,
-        classIds: unit.classIds,
-        subjectId: row.subjectId,
-        teacherId: row.teacherId,
-        roomId: lesson.roomId,
-        tutorRow: row.classId !== null && subjects.get(row.subjectId)?.tutorSubject === true,
-      };
-    });
-    const grades = [
-      ...new Set(
-        entries.flatMap((entry) => units.get(entry.classId ?? entry.groupId ?? '')?.grades ?? []),
-      ),
-    ].sort((a, b) => a - b);
-    return {
-      id: block.id,
-      weekday: block.weekday,
-      start: block.start,
-      end: block.end,
-      doublePairId: block.doublePairId,
-      grades,
-      entries,
-    };
-  });
-
-  const MINUTE = 60_000;
-  const dated = datedPattern({
-    branchId,
-    firstDate: startsOn,
-    lastDate,
-    blocks,
-    quarters: data.year.quarters,
-    weeklyDay: (grade, weekday) => {
-      const day = weekly.get(`${grade}|${weekday}`);
-      return day?.lessons === true ? day.day : null;
-    },
-    dayOn: (grade, date) => dayOfDate(grade, date).dated,
-    studentsOn,
-    tutorOn: (classId, date, start) =>
-      tutorAt(tutorRows.get(classId) ?? [], new Date(begins(date).getTime() + start * MINUTE)),
-  });
-
+          .execute();
   // Every other branch's claims of the teachers, on the branch's dates and minutes.
   const elsewhere = new Map<string, Placement[]>();
   const fixedBranches = new Map<string, string>();
@@ -384,7 +236,185 @@ export async function datedCheck(
         ? []
         : [{ date: one.date, reason: one.reason, entryIds: [...one.entryIds] }],
     ),
+    dated,
   };
+}
+
+/**
+ * The lessons of a version's pattern from `firstDate` to `lastDate`
+ * (`datedPattern`), with the facts of each date it read: the calendar and the
+ * templates of the dates, the members of each class and group, the Tutors of
+ * each class (task 5.5a-2a; the impact preview of task 5.5a-2b-1 expands the
+ * earlier version with it).
+ */
+export async function datedLessonsOf(
+  transaction: Transaction,
+  state: PatternState,
+  startsOn: string,
+  lastDate: string,
+) {
+  const { model } = state.pattern;
+  const { data } = model;
+  const branchId = data.branchId;
+  const branch = await transaction
+    .selectFrom('branches')
+    .select(['working_weekdays', 'time_zone'])
+    .where('id', '=', branchId)
+    .executeTakeFirstOrThrow();
+  const [settings, store] = await Promise.all([
+    loadCalendarSettings(transaction, branch.working_weekdays),
+    loadStore(transaction),
+  ]);
+
+  const rows = data.rows;
+  const classIds = [...new Set(data.units.flatMap((unit) => unit.classIds))].sort();
+  const groupIds = data.units.filter((unit) => unit.kind === 'group').map((unit) => unit.id);
+  const [classMembers, groupMembers, tutorRows, dayStarts] = await Promise.all([
+    classIds.length === 0
+      ? Promise.resolve([] as MemberRow[])
+      : transaction
+          .selectFrom('class_memberships')
+          .select([
+            'class_id as unit_id',
+            'student_id',
+            sql<string>`valid_from::text`.as('valid_from'),
+            sql<string>`valid_until::text`.as('valid_until'),
+          ])
+          .where('class_id', 'in', classIds)
+          .where('valid_from', '<=', lastDate)
+          .where('valid_until', '>', startsOn)
+          .orderBy('student_id')
+          .execute(),
+    groupIds.length === 0
+      ? Promise.resolve([] as MemberRow[])
+      : transaction
+          .selectFrom('group_memberships')
+          .select([
+            'group_id as unit_id',
+            'student_id',
+            sql<string>`valid_from::text`.as('valid_from'),
+            sql<string>`valid_until::text`.as('valid_until'),
+          ])
+          .where('group_id', 'in', groupIds)
+          .where('valid_from', '<=', lastDate)
+          .where('valid_until', '>', startsOn)
+          .orderBy('student_id')
+          .execute(),
+    readTutorRows(
+      transaction,
+      rows.flatMap((row) => (row.classId === null ? [] : [row.classId])),
+    ),
+    // The first moment of each date in branch time.
+    sql<{ day: string; begins: Date }>`
+      select d::date::text as day, (d::date::timestamp at time zone ${branch.time_zone}) as begins
+      from generate_series(${startsOn}::date, ${lastDate}::date + 1, interval '1 day') d
+    `.execute(transaction),
+  ]);
+  const beginsOf = new Map(dayStarts.rows.map((row) => [row.day, row.begins]));
+  const begins = (date: string): Date => {
+    const found = beginsOf.get(date);
+    if (found === undefined) throw new Error(`No start of ${date}.`);
+    return found;
+  };
+
+  const membersOn = (list: readonly MemberRow[]) => {
+    const byUnit = new Map<string, MemberRow[]>();
+    for (const row of list) {
+      byUnit.set(row.unit_id, [...(byUnit.get(row.unit_id) ?? []), row]);
+    }
+    return (unitId: string, date: string): string[] =>
+      (byUnit.get(unitId) ?? [])
+        .filter((row) => row.valid_from <= date && date < row.valid_until)
+        .map((row) => row.student_id);
+  };
+  const classOn = membersOn(classMembers);
+  const groupOn = membersOn(groupMembers);
+  const kindOf = new Map(data.units.map((unit) => [unit.id, unit.kind]));
+  const studentsOn = (unitId: string, date: string) =>
+    kindOf.get(unitId) === 'group' ? groupOn(unitId, date) : classOn(unitId, date);
+
+  const datedDays = new Map<string, { engine: EngineDay; dated: DatedDay }>();
+  const dayOfDate = (grade: number, date: string) => {
+    const key = `${grade}|${date}`;
+    const known = datedDays.get(key);
+    if (known !== undefined) return known;
+    const found = dayOn(grade, date, settings);
+    let value: { engine: EngineDay; dated: DatedDay };
+    if (!found.lessons) {
+      value = { engine: { lessons: false, reason: found.reason }, dated: { lessons: false } };
+    } else {
+      const timed = dayOf(store, found.dayTemplateId, date);
+      const noRegularLessons = found.examWeek === 'no_regular_lessons';
+      value =
+        timed === null
+          ? { engine: { lessons: false, reason: 'no_template' }, dated: { lessons: false } }
+          : {
+              engine: { lessons: true, day: timed.day, noRegularLessons },
+              dated: {
+                lessons: true,
+                day: timed.day,
+                followsWeekday: found.followsWeekday,
+                noRegularLessons,
+              },
+            };
+    }
+    datedDays.set(key, value);
+    return value;
+  };
+
+  const weekly = new Map(data.days.map((one) => [`${one.grade}|${one.weekday}`, one.day]));
+  const units = new Map(data.units.map((unit) => [unit.id, unit]));
+  const subjects = new Map(data.subjects.map((subject) => [subject.id, subject]));
+  const blocks: DatedBlock[] = state.blocks.map((block) => {
+    const entries = block.lessons.map((lesson) => {
+      const row = model.rowOf(lesson.loadRowId);
+      const unit = model.unitOf(row.classId ?? row.groupId ?? '');
+      return {
+        id: lesson.id,
+        loadRowId: row.id,
+        classId: row.classId,
+        groupId: row.groupId,
+        classIds: unit.classIds,
+        subjectId: row.subjectId,
+        teacherId: row.teacherId,
+        roomId: lesson.roomId,
+        tutorRow: row.classId !== null && subjects.get(row.subjectId)?.tutorSubject === true,
+      };
+    });
+    const grades = [
+      ...new Set(
+        entries.flatMap((entry) => units.get(entry.classId ?? entry.groupId ?? '')?.grades ?? []),
+      ),
+    ].sort((a, b) => a - b);
+    return {
+      id: block.id,
+      weekday: block.weekday,
+      start: block.start,
+      end: block.end,
+      doublePairId: block.doublePairId,
+      grades,
+      entries,
+    };
+  });
+
+  const MINUTE = 60_000;
+  const dated = datedPattern({
+    branchId,
+    firstDate: startsOn,
+    lastDate,
+    blocks,
+    quarters: data.year.quarters,
+    weeklyDay: (grade, weekday) => {
+      const day = weekly.get(`${grade}|${weekday}`);
+      return day?.lessons === true ? day.day : null;
+    },
+    dayOn: (grade, date) => dayOfDate(grade, date).dated,
+    studentsOn,
+    tutorOn: (classId, date, start) =>
+      tutorAt(tutorRows.get(classId) ?? [], new Date(begins(date).getTime() + start * MINUTE)),
+  });
+
+  return { dated, begins, classOn, dayOfDate, branch };
 }
 
 /** A teacher's claim in another branch as a fixed placement (busy elsewhere). */

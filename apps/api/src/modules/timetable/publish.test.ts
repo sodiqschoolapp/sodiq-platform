@@ -87,13 +87,14 @@ describe('publish', () => {
     startsOn: string,
     cookie = t.admin,
     key: string = randomUUID(),
+    extra: { transitionKey?: string } = {},
   ) =>
     request(t.kit.server)
       .post(`/api/timetable/versions/${version}/publish`)
       .set('Cookie', cookie)
       .set(BRANCH_HEADER, branch)
       .set(REQUEST_KEY_HEADER, key)
-      .send({ startsOn });
+      .send({ startsOn, ...extra });
 
   /** Until `count` sessions of the test database wait for an advisory lock. */
   async function waitForAdvisory(count: number) {
@@ -377,7 +378,8 @@ describe('publish', () => {
     it('offers tomorrow at the earliest, next Monday and the coming quarters, with nothing refused', async () => {
       const s = await scene();
       const answer = checkOf(await check(s.branch, s.version, MONDAY));
-      expect(answer).toEqual({
+      const { impact, ...rest } = answer;
+      expect(rest).toEqual({
         startsOn: MONDAY,
         earliest: TOMORROW,
         defaultStart: MONDAY,
@@ -388,6 +390,8 @@ describe('publish', () => {
         needsTeacher: [],
         canPublish: true,
       });
+      // Task 5.5a-2b-1: a first publish from a Monday.
+      expect(impact).toMatchObject({ beforeVersion: null, transition: null });
       // The check writes nothing (decision 13).
       expect((await versionRow(s.version)).status).toBe('draft');
     });
@@ -432,7 +436,14 @@ describe('publish', () => {
         .where('branch_id', '=', t.north)
         .executeTakeFirstOrThrow();
       await load.classes.role(principal.account_id, s.branch, 'principal');
-      expect(checkOf(await check(s.branch, s.version, MONDAY, t.principal)).canPublish).toBe(true);
+      const answer = checkOf(await check(s.branch, s.version, MONDAY, t.principal));
+      expect(answer.canPublish).toBe(true);
+      // Task 5.5a-2b-1 (permission review, should-fix 2): the Principal reads the
+      // preview too, with the branch's teacher only.
+      expect(answer.impact?.teachers).toEqual([
+        { id: s.teacherId, vacancy: false, notified: true },
+      ]);
+      expect(answer.impact?.names.teachers.map((one) => one.id)).toEqual([s.teacherId]);
       expect((await publish(s.branch, s.version, MONDAY, t.principal)).status).toBe(403);
     });
   });
@@ -1664,6 +1675,374 @@ describe('publish', () => {
         true,
       );
       expect(versionOf(await publish(s.branch, s.version, MONDAY)).status).toBe('published');
+    });
+  });
+
+  // Task 5.5a-2b-1, pull request #142: the impact preview and the transition
+  // week (docs/spec/06-timetable.md, How surprises are prevented, Impact
+  // preview; edge/timetable, Versions and drafts, "A version starts on a
+  // Wednesday"). The week of Monday 19 October 2026 lies in quarter 1.
+  describe('the impact preview and the transition week', () => {
+    const NEXT_MONDAY = '2026-10-19';
+    const WEDNESDAY = '2026-10-21';
+
+    /** A draft of a scene's class with rows of the subjects and teachers named, placed on the weekdays named. */
+    const draftOf = async (
+      s: { branch: string; year: string; classId: string },
+      rows: readonly { subject: string; teacherId: string; weekdays: readonly number[] }[],
+    ) => {
+      const version = await draft(s.branch, s.year);
+      for (const row of rows) {
+        const rowId = await load.row({
+          branch_id: s.branch,
+          version_id: version,
+          class_id: s.classId,
+          subject_id: row.subject,
+          teacher_id: row.teacherId,
+          lessons_per_week: row.weekdays.length,
+        });
+        for (const weekday of row.weekdays) {
+          await placeAt(s.branch, version, rowId, weekday);
+        }
+      }
+      await confirmTemplates(s.branch, version);
+      return version;
+    };
+
+    const impactOf = async (branch: string, version: string, startsOn: string) => {
+      const answer = checkOf(await check(branch, version, startsOn));
+      expect(answer.refusals).toEqual([]);
+      if (answer.impact === null) throw new Error('No impact.');
+      return answer.impact;
+    };
+
+    it('lists every lesson of a first publish as created, with no earlier version', async () => {
+      const s = await scene();
+      // Another branch's published version is never read as the earlier one.
+      const other = await scene();
+      versionOf(await publish(other.branch, other.version, MONDAY));
+      const impact = await impactOf(s.branch, s.version, MONDAY);
+      expect(impact.beforeVersion).toBeNull();
+      expect(impact.counts).toMatchObject({ moved: 0, removed: 0, changed: 0, unchanged: 0 });
+      expect(impact.counts.created).toBeGreaterThan(20);
+      expect(impact.changes).toHaveLength(1);
+      expect(impact.changes[0]).toMatchObject({
+        kind: 'created',
+        unitId: s.classId,
+        subjectId: s.subject,
+        before: null,
+        after: { weekday: 1, teacherIds: [s.teacherId] },
+        count: impact.counts.created,
+        firstDate: MONDAY,
+      });
+      expect(impact.classIds).toEqual([s.classId]);
+      expect(impact.names.units.map((one) => one.id)).toEqual([s.classId]);
+      expect(impact.teachers).toEqual([{ id: s.teacherId, vacancy: false, notified: true }]);
+      expect(impact.transition).toBeNull();
+    });
+
+    it('lists a teacher change with the teachers affected and notified, and the lessons per week under a vacancy (Done when)', async () => {
+      const s = await scene();
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      const second = await load.teacher(s.branch, {
+        subjects: [{ subject: s.subject, grades: [7] }],
+      });
+      await hours(s.branch, second.staffId);
+      // A person with no account, and a vacancy, each with a new subject.
+      const art = await load.classes.subject({ grades: [7], journalType: 'attendance_only' });
+      const music = await load.classes.subject({ grades: [7], journalType: 'attendance_only' });
+      const noAccount = await load.teacher(s.branch, {
+        subjects: [{ subject: art, grades: [7] }],
+        noAccount: true,
+      });
+      await hours(s.branch, noAccount.staffId);
+      const vacancy = await load.vacancy(s.branch, { subjects: [{ subject: music, grades: [7] }] });
+      await hours(s.branch, vacancy);
+      const version = await draftOf(s, [
+        { subject: s.subject, teacherId: second.staffId, weekdays: [1] },
+        { subject: art, teacherId: noAccount.staffId, weekdays: [2] },
+        { subject: music, teacherId: vacancy, weekdays: [3] },
+      ]);
+      const impact = await impactOf(s.branch, version, NEXT_MONDAY);
+      expect(impact.beforeVersion?.id).toBe(s.version);
+      const changed = impact.changes.filter((one) => one.kind === 'changed');
+      expect(changed).toHaveLength(1);
+      expect(changed[0]).toMatchObject({
+        unitId: s.classId,
+        subjectId: s.subject,
+        before: { weekday: 1, teacherIds: [s.teacherId] },
+        after: { weekday: 1, teacherIds: [second.staffId] },
+        firstDate: NEXT_MONDAY,
+      });
+      expect(impact.counts.changed).toBe(changed[0]?.count);
+      expect(
+        impact.changes
+          .filter((one) => one.kind === 'created')
+          .map((one) => one.subjectId)
+          .sort(),
+      ).toEqual([art, music].sort());
+      expect([...impact.teachers].sort((a, b) => a.id.localeCompare(b.id))).toEqual(
+        [
+          { id: s.teacherId, vacancy: false, notified: true },
+          { id: second.staffId, vacancy: false, notified: true },
+          { id: noAccount.staffId, vacancy: false, notified: false },
+          { id: vacancy, vacancy: true, notified: false },
+        ].sort((a, b) => a.id.localeCompare(b.id)),
+      );
+      expect(impact.vacancies).toEqual([{ id: vacancy, lessonsPerWeek: 1 }]);
+      expect(impact.names.teachers.map((one) => one.id).sort()).toEqual(
+        [s.teacherId, second.staffId, noAccount.staffId, vacancy].sort(),
+      );
+      expect(impact.transition).toBeNull();
+      // A Monday start needs no acknowledgement; the audit entry keeps the counts.
+      versionOf(await publish(s.branch, version, NEXT_MONDAY));
+      const [entry] = await t.entries('timetable_version.publish', version);
+      expect(entry?.new_value).toMatchObject({ impact: impact.counts });
+      expect(entry?.new_value).not.toHaveProperty('transition');
+    });
+
+    it('names every class a changed group lesson draws from, with no lesson of its own changed (review of #142)', async () => {
+      const s = await scene();
+      const classB = await load.classes.schoolClass(s.branch, s.year, {
+        grade: 7,
+        room: await load.classes.room(s.branch),
+      });
+      const english = await load.classes.subject({ grades: [7], journalType: 'attendance_only' });
+      const group = await load.classes.group(s.branch, s.year, english, [s.classId, classB]);
+      const [first, second] = [
+        (await load.teacher(s.branch, { subjects: [{ subject: english, grades: [7] }] })).staffId,
+        (await load.teacher(s.branch, { subjects: [{ subject: english, grades: [7] }] })).staffId,
+      ];
+      await hours(s.branch, first);
+      await hours(s.branch, second);
+      /** A draft of the class row as published and the group row with the teacher given, on Tuesday. */
+      const withGroup = async (teacherId: string) => {
+        const version = await draftOf(s, [
+          { subject: s.subject, teacherId: s.teacherId, weekdays: [1] },
+        ]);
+        const rowId = await load.row({
+          branch_id: s.branch,
+          version_id: version,
+          group_id: group,
+          subject_id: english,
+          teacher_id: teacherId,
+          lessons_per_week: 1,
+        });
+        await placeAt(s.branch, version, rowId, 2);
+        await confirmTemplates(s.branch, version);
+        return version;
+      };
+      versionOf(await publish(s.branch, await withGroup(first), MONDAY));
+      const impact = await impactOf(s.branch, await withGroup(second), NEXT_MONDAY);
+      // Only the teacher of the group lesson changed; the class's own lesson did not.
+      expect(impact.changes.map((one) => [one.kind, one.unitId])).toEqual([['changed', group]]);
+      expect(impact.counts).toMatchObject({ moved: 0, removed: 0, created: 0 });
+      expect([...impact.classIds].sort()).toEqual([s.classId, classB].sort());
+      const named = new Set(impact.names.units.map((one) => one.id));
+      for (const id of [...impact.classIds, group]) expect(named.has(id), id).toBe(true);
+    });
+
+    it('shows the transition week of a Wednesday start against the load and needs its acknowledgement (Done when)', async () => {
+      // The earlier version: Monday and Tuesday; the draft: Wednesday and Thursday.
+      const s = await scene({ lessons: 2, placed: 2 });
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      const version = await draftOf(s, [
+        { subject: s.subject, teacherId: s.teacherId, weekdays: [3, 4] },
+      ]);
+      const impact = await impactOf(s.branch, version, WEDNESDAY);
+      expect(impact.transition?.key).toMatch(/^[0-9a-f]{64}$/);
+      expect(impact.transition).toMatchObject({
+        weekStart: NEXT_MONDAY,
+        weekEnd: '2026-10-25',
+        rows: [
+          {
+            unitId: s.classId,
+            subjectId: s.subject,
+            before: 2,
+            after: 2,
+            lessonsPerWeek: 2,
+            differs: true,
+          },
+        ],
+      });
+      const shown = impact.transition?.key ?? '';
+      expect(blockedBy(await publish(s.branch, version, WEDNESDAY))).toEqual([
+        { code: 'transition_unacknowledged', path: 'transition' },
+      ]);
+      expect((await versionRow(version)).status).toBe('draft');
+      // The draft changes after the check: Thursday's lesson moves to Monday.
+      const grid = await get(`/api/timetable/versions/${version}/grid`, s.branch);
+      expect(grid.status, JSON.stringify(grid.body)).toBe(200);
+      const thursday = (grid.body as { blocks: { id: string; weekday: number }[] }).blocks.find(
+        (one) => one.weekday === 4,
+      );
+      if (thursday === undefined) throw new Error('No Thursday block.');
+      const moved = await post(
+        `/api/timetable/versions/${version}/pattern/${thursday.id}/move`,
+        s.branch,
+        { weekday: 1, slotPosition: 1 },
+      );
+      expect(moved.status, JSON.stringify(moved.body)).toBe(200);
+      // The key of what was shown no longer fits.
+      expect(
+        blockedBy(
+          await publish(s.branch, version, WEDNESDAY, t.admin, randomUUID(), {
+            transitionKey: shown,
+          }),
+        ),
+      ).toEqual([{ code: 'transition_unacknowledged', path: 'transition' }]);
+      const again = await impactOf(s.branch, version, WEDNESDAY);
+      expect(again.transition?.rows).toEqual([
+        expect.objectContaining({ before: 2, after: 1, lessonsPerWeek: 2, differs: true }),
+      ]);
+      const key = again.transition?.key ?? '';
+      expect(key).not.toBe(shown);
+      versionOf(
+        await publish(s.branch, version, WEDNESDAY, t.admin, randomUUID(), { transitionKey: key }),
+      );
+      const [entry] = await t.entries('timetable_version.publish', version);
+      expect(entry?.new_value).toMatchObject({
+        transition: {
+          weekStart: NEXT_MONDAY,
+          acknowledged: [
+            {
+              unitId: s.classId,
+              subjectId: s.subject,
+              before: 2,
+              after: 1,
+              lessonsPerWeek: 2,
+              differs: true,
+            },
+          ],
+        },
+      });
+    });
+
+    it('publishes a Wednesday start whose week matches the load without a key, an unchanged teacher not affected', async () => {
+      const s = await scene();
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      const version = await draftOf(s, [
+        { subject: s.subject, teacherId: s.teacherId, weekdays: [1] },
+      ]);
+      const impact = await impactOf(s.branch, version, WEDNESDAY);
+      expect(impact.transition).toEqual({
+        weekStart: NEXT_MONDAY,
+        weekEnd: '2026-10-25',
+        rows: [
+          {
+            unitId: s.classId,
+            subjectId: s.subject,
+            before: 1,
+            after: 0,
+            lessonsPerWeek: 1,
+            differs: false,
+          },
+        ],
+        key: null,
+      });
+      expect(impact.changes).toEqual([]);
+      expect(impact.teachers).toEqual([]);
+      expect(impact.counts.unchanged).toBeGreaterThan(20);
+      versionOf(await publish(s.branch, version, WEDNESDAY));
+    });
+
+    it('reads each date of the week before the start from the version in force on it', async () => {
+      // Version 1 from 12 October on Monday, version 2 from Tuesday 20 October
+      // on Tuesday, the draft from Thursday 22 October on Friday.
+      const s = await scene();
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      const second = await draftOf(s, [
+        { subject: s.subject, teacherId: s.teacherId, weekdays: [2] },
+      ]);
+      const secondImpact = await impactOf(s.branch, second, '2026-10-20');
+      versionOf(
+        await publish(s.branch, second, '2026-10-20', t.admin, randomUUID(), {
+          transitionKey: secondImpact.transition?.key ?? '',
+        }),
+      );
+      const third = await draftOf(s, [
+        { subject: s.subject, teacherId: s.teacherId, weekdays: [5] },
+      ]);
+      const impact = await impactOf(s.branch, third, '2026-10-22');
+      expect(impact.beforeVersion?.id).toBe(second);
+      // Monday from version 1, Tuesday from version 2; Friday from the draft.
+      expect(impact.transition?.rows).toEqual([
+        expect.objectContaining({ before: 2, after: 1, lessonsPerWeek: 1, differs: true }),
+      ]);
+    });
+
+    it('refuses the same request key with another transition key (permission review, should-fix 1)', async () => {
+      const s = await scene();
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      const version = await draftOf(s, [
+        { subject: s.subject, teacherId: s.teacherId, weekdays: [1] },
+      ]);
+      const key = randomUUID();
+      versionOf(await publish(s.branch, version, WEDNESDAY, t.admin, key));
+      const after = await written([version]);
+      refusedWith(
+        await publish(s.branch, version, WEDNESDAY, t.admin, key, {
+          transitionKey: 'b'.repeat(64),
+        }),
+        409,
+        'request_key_reused',
+      );
+      expect(await written([version])).toEqual(after);
+    });
+
+    it("reads only the own branch's earlier version, lessons and names when both branches have one (permission review, should-fix 3)", async () => {
+      const s = await scene({ lessons: 2, placed: 2 });
+      const other = await scene({ lessons: 2, placed: 2 });
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      versionOf(await publish(other.branch, other.version, MONDAY));
+      const second = await load.teacher(s.branch, {
+        subjects: [{ subject: s.subject, grades: [7] }],
+      });
+      await hours(s.branch, second.staffId);
+      const version = await draftOf(s, [
+        { subject: s.subject, teacherId: second.staffId, weekdays: [3, 4] },
+      ]);
+      const impact = await impactOf(s.branch, version, WEDNESDAY);
+      expect(impact.beforeVersion?.id).toBe(s.version);
+      const own = new Set([s.classId, s.subject, s.teacherId, second.staffId, s.room]);
+      const ids = [
+        ...impact.changes.flatMap((one) => [
+          one.unitId,
+          one.subjectId,
+          ...one.classIds,
+          ...[one.before, one.after].flatMap((slot) =>
+            slot === null
+              ? []
+              : [...slot.teacherIds, ...(slot.roomId === null ? [] : [slot.roomId])],
+          ),
+        ]),
+        ...impact.teachers.map((one) => one.id),
+        ...impact.classIds,
+        ...impact.roomIds,
+        ...(impact.transition?.rows ?? []).flatMap((row) => [row.unitId, row.subjectId]),
+        ...impact.names.units.map((one) => one.id),
+        ...impact.names.subjects.map((one) => one.id),
+        ...impact.names.teachers.map((one) => one.id),
+        ...impact.names.rooms.map((one) => one.id),
+      ];
+      expect(ids.length).toBeGreaterThan(0);
+      expect(ids.filter((id) => !own.has(id))).toEqual([]);
+      // The earlier lessons are the own branch's only: two a week, as the own version has.
+      expect(impact.transition?.rows).toEqual([
+        expect.objectContaining({ before: 2, after: 2, lessonsPerWeek: 2 }),
+      ]);
+    });
+
+    it('refuses a transition key that is not 64 lower hex', async () => {
+      const s = await scene();
+      refusedWith(
+        await publish(s.branch, s.version, MONDAY, t.admin, randomUUID(), {
+          transitionKey: 'ABC',
+        }),
+        400,
+        'validation_failed',
+      );
+      expect((await versionRow(s.version)).status).toBe('draft');
     });
   });
 });

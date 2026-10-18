@@ -711,6 +711,7 @@ describe('pinSlots', () => {
       warnings: [],
       cancelledLessons: [],
       needsTeacher: [],
+      impact: null,
       canPublish: true,
     };
     const checkRoute = `GET /api/timetable/versions/${VERSION.id}/publish-check`;
@@ -843,6 +844,171 @@ describe('pinSlots', () => {
           startsOn: '2026-11-02',
         });
       });
+    });
+
+    // Task 5.5a-2b-1, pull request #142: the impact preview and the transition week.
+    it('shows the impact preview and keeps Publish off until the transition week is ticked, then sends its key', async () => {
+      const second = uid(601);
+      const vacancy = uid(602);
+      const key = 'a'.repeat(64);
+      const slot = (teacherId: string) => ({
+        weekday: 1,
+        start: 530,
+        end: 575,
+        teacherIds: [teacherId],
+        roomId: null,
+      });
+      const calls = await openPage({
+        path: `/timetable/builder?version=${VERSION.id}&step=publish`,
+        extra: {
+          [checkRoute]: () =>
+            json({
+              ...CHECK,
+              impact: {
+                beforeVersion: { id: uid(950), number: 1 },
+                counts: { created: 0, moved: 0, removed: 0, changed: 12, unchanged: 40 },
+                changes: [
+                  {
+                    kind: 'changed',
+                    unitId: ROW.unit.id,
+                    subjectId: ROW.subject.id,
+                    classIds: [ROW.unit.id],
+                    before: slot(ROW.teacher.id),
+                    after: slot(second),
+                    count: 12,
+                    firstDate: '2026-10-19',
+                    lastDate: '2027-05-24',
+                  },
+                ],
+                teachers: [
+                  { id: ROW.teacher.id, vacancy: false, notified: true },
+                  { id: second, vacancy: false, notified: false },
+                ],
+                classIds: [ROW.unit.id],
+                roomIds: [],
+                vacancies: [{ id: vacancy, lessonsPerWeek: 3 }],
+                transition: {
+                  weekStart: '2026-10-19',
+                  weekEnd: '2026-10-25',
+                  rows: [
+                    {
+                      unitId: ROW.unit.id,
+                      subjectId: ROW.subject.id,
+                      before: 2,
+                      after: 3,
+                      lessonsPerWeek: 4,
+                      differs: true,
+                    },
+                  ],
+                  key,
+                },
+                names: {
+                  units: [{ id: ROW.unit.id, kind: 'class', name: 'Oxford', grades: [7] }],
+                  subjects: [{ id: ROW.subject.id, names: ROW.subject.names }],
+                  teachers: [
+                    { id: ROW.teacher.id, name: 'Karimova Aziza' },
+                    { id: second, name: 'Rahimov Bobur' },
+                    { id: vacancy, name: 'Teacher wanted' },
+                  ],
+                  rooms: [],
+                },
+              },
+            }),
+          [publishRoute]: () => json({ ...VERSION, status: 'published' }),
+        },
+      });
+      const changes = await waitFor(() => {
+        const found = document.querySelector('[data-changes]');
+        if (found === null) throw new Error('No preview yet.');
+        return found;
+      });
+      expect([...changes.querySelectorAll('li')].map((item) => item.textContent)).toEqual([
+        'Teacher or room changed: 7 Oxford, Mathematics. Monday 08:50–09:35, Karimova Aziza becomes Monday 08:50–09:35, Rahimov Bobur. 12 lessons. 19 October 2026 to 24 May 2027',
+      ]);
+      expect(
+        [...document.querySelectorAll('[data-teachers] li')].map((item) => item.textContent),
+      ).toEqual(['Karimova Aziza: notified', 'Rahimov Bobur: no account, not notified']);
+      expect(document.querySelector('[data-vacancies] li')?.textContent).toBe(
+        'Teacher wanted: 3 lessons a week',
+      );
+      const row = document.querySelector('[data-transition] tbody tr');
+      expect([...(row?.querySelectorAll('td') ?? [])].map((cell) => cell.textContent)).toEqual([
+        '7 Oxford',
+        'Mathematics',
+        '2',
+        '3',
+        '4',
+        en.timetable.publish.transition.differs,
+      ]);
+      const action = screen.getByRole('button', { name: en.timetable.publish.action });
+      expect(action).toHaveProperty('disabled', true);
+      expect(document.querySelector('[data-tick-needed]')?.textContent).toBe(
+        en.timetable.publish.transition.tickNeeded,
+      );
+      fireEvent.click(screen.getByRole('checkbox', { name: en.timetable.publish.transition.tick }));
+      expect(action).toHaveProperty('disabled', false);
+      fireEvent.click(action);
+      const dialog = await screen.findByRole('alertdialog');
+      fireEvent.click(within(dialog).getByRole('button', { name: en.timetable.publish.action }));
+      await waitFor(() => {
+        expect(calls.find((call) => call.route === publishRoute)?.body).toEqual({
+          startsOn: '2026-10-19',
+          transitionKey: key,
+        });
+      });
+    });
+
+    it('needs no tick for a transition week that matches the load', async () => {
+      await openPage({
+        path: `/timetable/builder?version=${VERSION.id}&step=publish`,
+        extra: {
+          [checkRoute]: () =>
+            json({
+              ...CHECK,
+              impact: {
+                beforeVersion: { id: uid(950), number: 1 },
+                counts: { created: 0, moved: 0, removed: 0, changed: 0, unchanged: 40 },
+                changes: [],
+                teachers: [],
+                classIds: [],
+                roomIds: [],
+                vacancies: [],
+                transition: {
+                  weekStart: '2026-10-19',
+                  weekEnd: '2026-10-25',
+                  rows: [
+                    {
+                      unitId: ROW.unit.id,
+                      subjectId: ROW.subject.id,
+                      before: 1,
+                      after: 3,
+                      lessonsPerWeek: 4,
+                      differs: false,
+                    },
+                  ],
+                  key: null,
+                },
+                names: {
+                  units: [{ id: ROW.unit.id, kind: 'class', name: 'Oxford', grades: [7] }],
+                  subjects: [{ id: ROW.subject.id, names: ROW.subject.names }],
+                  teachers: [],
+                  rooms: [],
+                },
+              },
+            }),
+        },
+      });
+      await waitFor(() => {
+        if (document.querySelector('[data-transition] tbody tr') === null)
+          throw new Error('No row.');
+      });
+      expect(
+        screen.queryByRole('checkbox', { name: en.timetable.publish.transition.tick }),
+      ).toBeNull();
+      expect(screen.getByRole('button', { name: en.timetable.publish.action })).toHaveProperty(
+        'disabled',
+        false,
+      );
     });
   });
 });

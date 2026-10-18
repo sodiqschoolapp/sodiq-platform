@@ -1192,4 +1192,13 @@ export {
   type PublishCheckQuery,
   type PublishRefusal,
   type PublishRefusalCode,
+  IMPACT_KINDS,
+  impactChangeSchema,
+  impactSlotSchema,
+  publishImpactSchema,
+  transitionKeySchema,
+  transitionRowSchema,
+  type ImpactChangeAnswer,
+  type PublishImpactAnswer,
+  type TransitionRowAnswer,
 } from './timetable.js';
