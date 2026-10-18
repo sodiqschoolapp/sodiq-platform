@@ -28,6 +28,8 @@ import { errorCode } from '../../testing/sign-in-kit.js';
 import { datedLessonsOf } from './dated-check.js';
 import { TimetablePattern } from './pattern.service.js';
 import { Timetable } from './timetable.service.js';
+import { Notifications } from '../notifications/notifications.service.js';
+import { sendWeekChanges, snapshotWeek } from './week-changes.js';
 
 const refusedWith = (response: Response, status: number, code: string) => {
   expect(response.status, JSON.stringify(response.body)).toBe(status);
@@ -1329,6 +1331,13 @@ describe('publish', () => {
     // one notice per person, as the preview names them (5.5a-3a decision 10).
     it('notifies each teacher of the fix and of the versions it carries into once, as the preview names them', async () => {
       const s = await chainScene();
+      // One-day cancels (`reason`) in the fix's run and in B's (code review should-fix 6).
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ cancel_cause: 'reason', cancel_reason: 'Excursion to the museum' })
+        .where('branch_id', '=', s.branch)
+        .where('lesson_date', 'in', ['2026-10-26', '2026-11-09'])
+        .execute();
       const answer = checkOf(await checkChain(s.branch, s.fix, '2026-10-19', 'carry'));
       const shown = (answer.impact?.teachers ?? [])
         .filter((one) => one.notified)
@@ -1390,6 +1399,24 @@ describe('publish', () => {
         lessonsBefore.filter((one) => one.date >= '2027-03-30'),
       );
       expect(await t.entries('timetable_version.carry', d)).toHaveLength(0);
+      // Task 5.5c-3a (code review must-fix 3): a version left notifies nobody
+      // for its lessons: one notice per person, the people the preview names
+      // from the fix and B and C only.
+      const shown = (answer.impact?.teachers ?? [])
+        .filter((one) => one.notified)
+        .map((one) => one.id);
+      const leftNotices = await noticesOf(
+        s.branch,
+        'timetable.published',
+        (await versionRow(s.fix)).number,
+      );
+      expect(leftNotices.map((one) => one.account_id).sort()).toEqual(
+        (await accountsOf(shown)).sort(),
+      );
+      for (const notice of leftNotices) {
+        const data = notice.data as { before: { date: string }[]; after: { date: string }[] };
+        expect([...data.before, ...data.after].every((one) => one.date < '2027-03-30')).toBe(true);
+      }
       // Task 5.5c-3a (spec review should-fix 6): a version left marks nothing
       // (the other class's lessons were marked by D's own publish, before the fix).
       expect(
@@ -5545,6 +5572,64 @@ describe('publish', () => {
       expect(artWeek.weekStart).toBe('2026-10-19');
       expect(artWeek.before).toMatchObject([{ date: '2026-10-20', cancelled: true }]);
       expect(artWeek.after).toEqual([]);
+    });
+
+    // Code review must-fixes 1 and 2: the notices and marks are written in the
+    // event's transaction, and a lesson created again equal (another id, the
+    // same date, times, class, subject, teacher and room) takes the mark of the
+    // one it replaces.
+    it('writes in the transaction of its event, and gives a lesson created again equal the earlier mark', async () => {
+      const s = await published();
+      const before = await written([s.version]);
+      const notifications = t.app.get(Notifications);
+      await expect(
+        t.app.get(Transactions).run([s.branch], async (transaction) => {
+          const week = await snapshotWeek(transaction, s.branch, '2026-10-19', '2027-05-31');
+          const monday = week.before.find(
+            (one) => one.lesson.subjectId === s.subject && one.lesson.date === '2026-10-19',
+          );
+          if (monday === undefined) throw new Error('Maths is on Monday 19 October.');
+          // Monday 26 October's maths is removed, as a write would remove it.
+          await transaction
+            .deleteFrom('lessons')
+            .where('subject_id', '=', s.subject)
+            .where('lesson_date', '=', '2026-10-26')
+            .execute();
+          // Monday 19 October's maths stood before under another id, marked earlier.
+          const snapshot = {
+            ...week,
+            before: week.before.map((one) =>
+              one.id === monday.id ? { ...one, id: randomUUID(), changedAt: EARLIER } : one,
+            ),
+          };
+          const done = await sendWeekChanges(transaction, notifications, snapshot, {
+            kind: 'timetable.published',
+            number: 99,
+          });
+          expect(done).toEqual({ notified: 1, marked: 0 });
+          const marks = await transaction
+            .selectFrom('lesson_changes')
+            .select(['lesson_id', 'changed_at'])
+            .execute();
+          expect(marks).toEqual([{ lesson_id: monday.id, changed_at: EARLIER }]);
+          const sent = await transaction
+            .selectFrom('notifications')
+            .select('data')
+            .where('branch_id', '=', s.branch)
+            .where(sql<boolean>`data->>'number' = '99'`)
+            .execute();
+          expect(sent.map((one) => one.data)).toMatchObject([
+            {
+              weekStart: '2026-10-26',
+              before: [{ date: '2026-10-26', changed: true }],
+              after: [],
+            },
+          ]);
+          throw new Error('Rolled back by the test.');
+        }),
+      ).rejects.toThrow('Rolled back by the test.');
+      // Nothing of it stays: notices, their delivery jobs, marks.
+      expect(await written([s.version])).toEqual(before);
     });
 
     it('marks nothing and notifies nobody when a publish is refused', async () => {

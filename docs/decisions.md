@@ -279,6 +279,9 @@ Plan approved on pull request #158 with corrections 1 to 3; decisions 1 to 10 co
 | One notice per affected teacher with an account (never a vacancy) per event: `timetable.published` (with its replace and carries) or `timetable.withdrawn`, the version's number and the whole week of the teacher's earliest change, both sides sorted, at most 100 lessons each, no teacher field, a one-day cancel marked `cancelled` | Decisions 5 to 7 and 9; corrections 2 and 3 |
 | The mark in a table of its own (composite key to the lesson's branch, cascade with the lesson) so that `lessons_claims` does not run; seven days from the transaction's moment, compared on each read | Decision 8; spec review should-fix 3 |
 | No route or permission; the publish and withdraw audit entries carry `notices: { notified, marked }` | Decision 10 |
+| **Build decision.** The notice's week is drawn as two short lists (before, after), one line per lesson, "changed" and "cancelled" in words; the plan named the design system's table and badge parts. A table does not fit the notification dialog, and `docs/design-system.md` ("What we never do", 4 and 12) asks for words, not badges or dots | Code review should-fix 8 |
+| **Build decision.** Each lesson of a notice carries `changed`, set by the server's pairing (`weekChanges`), so the browser never compares display names again | Code review should-fix 7 |
+| **Build decision.** The days of the last week after the event's last written date (a withdraw whose run ends mid-week) are read once for both sides, like the days before its start | Code review should-fix 4 |
 
 ## 18 October 2026: "Classes taught" and the vacancy kept (task 5.5c-2b)
 

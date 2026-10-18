@@ -15,26 +15,6 @@ const weekSchema = NOTIFICATION_KINDS['timetable.published'];
 
 const KINDS: readonly string[] = WEEK_CHANGE_KINDS;
 
-const sameLesson = (a: WeekLesson, b: WeekLesson): boolean =>
-  a.date === b.date &&
-  a.start === b.start &&
-  a.end === b.end &&
-  a.unit === b.unit &&
-  a.subject.en === b.subject.en &&
-  a.room === b.room &&
-  a.cancelled === b.cancelled;
-
-/** The lessons of `side` with no equal on `other`, one to one. */
-function differing(side: readonly WeekLesson[], other: readonly WeekLesson[]): boolean[] {
-  const left = [...other];
-  return side.map((one) => {
-    const at = left.findIndex((candidate) => sameLesson(candidate, one));
-    if (at < 0) return true;
-    left.splice(at, 1);
-    return false;
-  });
-}
-
 /** 1 for Monday to 7 for Sunday, of a school date. */
 const weekdayOf = (date: string): Weekday =>
   weekdaySchema.parse(new Date(`${date}T00:00:00Z`).getUTCDay() || 7);
@@ -42,8 +22,8 @@ const weekdayOf = (date: string): Weekday =>
 /**
  * The week before and after of a notice of a timetable change (task 5.5c-3a;
  * edge/timetable, After publishing: "One notice per person per event, with
- * the week before and after"), under the notice's text. A line that differs
- * from the other side says so in words; a lesson with a one-day cancel says
+ * the week before and after"), under the notice's text. A line that the
+ * server found changed (nothing on the other side equals it) says so in words; a lesson with a one-day cancel says
  * "cancelled" (review correction 3). Nothing for another kind, or for data
  * this version of the app cannot read.
  */
@@ -54,12 +34,7 @@ export function WeekChange({ item }: { item: Notification }) {
   if (!week.success) return null;
   const { before, after, weekStart } = week.data;
   const language = i18n.language;
-  const side = (
-    label: string,
-    lessons: readonly WeekLesson[],
-    changed: readonly boolean[],
-    testId: string,
-  ) => (
+  const side = (label: string, lessons: readonly WeekLesson[], testId: string) => (
     <div className="grid gap-0.5">
       <p className="text-xs font-medium">{label}</p>
       {lessons.length === 0 ? (
@@ -76,7 +51,7 @@ export function WeekChange({ item }: { item: Notification }) {
                 one.room ?? t('notifications.week.noRoom'),
                 ...(one.cancelled ? [t('notifications.week.cancelled')] : []),
               ].join(' · ')}
-              {changed[index] === true && (
+              {one.changed && (
                 <span className="font-semibold"> · {t('notifications.week.changed')}</span>
               )}
             </li>
@@ -90,8 +65,8 @@ export function WeekChange({ item }: { item: Notification }) {
       <p className="text-xs text-muted-foreground">
         {t('notifications.week.title', { date: schoolDateText(weekStart, language) })}
       </p>
-      {side(t('notifications.week.before'), before, differing(before, after), 'week-before')}
-      {side(t('notifications.week.after'), after, differing(after, before), 'week-after')}
+      {side(t('notifications.week.before'), before, 'week-before')}
+      {side(t('notifications.week.after'), after, 'week-after')}
     </div>
   );
 }

@@ -269,6 +269,7 @@ describe('the notifications of the top bar', () => {
       subject: { uz: 'Matematika', ru: 'Математика', en: 'Mathematics' },
       room: 'Room 101',
       cancelled: false,
+      changed: false,
     };
     const PUBLISHED: Notification = {
       ...MONDAY,
@@ -276,17 +277,25 @@ describe('the notifications of the top bar', () => {
       data: {
         number: '3',
         weekStart: '2026-10-19',
-        before: [lesson, { ...lesson, date: '2026-10-20', cancelled: true }],
+        before: [
+          { ...lesson, changed: true },
+          { ...lesson, date: '2026-10-20', cancelled: true },
+        ],
         after: [
           { ...lesson, date: '2026-10-20', cancelled: true },
-          { ...lesson, date: '2026-10-21', room: null },
+          { ...lesson, date: '2026-10-21', room: null, changed: true },
         ],
       },
     };
     const WITHDRAWN: Notification = {
       ...ROOM,
       kind: 'timetable.withdrawn',
-      data: { number: '4', weekStart: '2026-11-09', before: [lesson], after: [] },
+      data: {
+        number: '4',
+        weekStart: '2026-11-09',
+        before: [{ ...lesson, changed: true }],
+        after: [],
+      },
     };
     const lines = (dialog: HTMLElement, side: 'week-before' | 'week-after') =>
       within(dialog)

@@ -44,7 +44,7 @@ const clockTime = z.string().regex(/^([01][0-9]|2[0-3]):[0-5][0-9]$/);
  * One lesson of a teacher's week in a notice of a timetable change, as the
  * event saw it (task 5.5c-3a, decision 9): its date and times in branch time,
  * its class or group and subject as shown, its room, and whether a one-day
- * cancel is on it (review correction 3). No teacher: a vacancy never appears
+ * cancel is on it (review correction 3), and whether it changed. No teacher: a vacancy never appears
  * in a notice (edge/timetable, the vacancy rows).
  */
 export const weekLessonSchema = z.strictObject({
@@ -59,6 +59,8 @@ export const weekLessonSchema = z.strictObject({
   }),
   room: z.string().min(1).max(200).nullable(),
   cancelled: z.boolean(),
+  /** Nothing on the other side equals it, as the server paired the two (code review should-fix 7). */
+  changed: z.boolean(),
 });
 
 export type WeekLesson = z.infer<typeof weekLessonSchema>;

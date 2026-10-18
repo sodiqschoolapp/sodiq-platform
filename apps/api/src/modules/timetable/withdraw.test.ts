@@ -1267,6 +1267,56 @@ describe('withdraw', () => {
       expect(entry?.new_value).toMatchObject({ notices: { notified: 1, marked: 0 } });
     });
 
+    // Code review should-fixes 4 and 5: the version that runs again marks what
+    // it changes, and a run that ends mid-week shows the whole week.
+    it('marks the lessons of the version that runs again and shows the whole week of a run that ends mid-week', async () => {
+      const s = await scene();
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      // B: maths on Wednesday from 9 November; C: maths on Friday from Thursday 12 November.
+      const b = await copyOf(s, s.version, { mathsDay: 3 });
+      versionOf(await publish(s.branch, b.version, NOVEMBER));
+      const c = await copyOf(s, b.version, { mathsDay: 5 });
+      const check = await t.get(
+        `/api/timetable/versions/${c.version}/publish-check?startsOn=2026-11-12`,
+        s.branch,
+        t.admin,
+      );
+      expect(check.status, JSON.stringify(check.body)).toBe(200);
+      const key = (check.body as { impact: { transition: { key: string | null } | null } | null })
+        .impact?.transition?.key;
+      versionOf(
+        await publish(s.branch, c.version, '2026-11-12', key == null ? {} : { transitionKey: key }),
+      );
+      // B runs from Monday 9 to Wednesday 11 November; A runs again over it.
+      versionOf(await withdraw(s.branch, b.version));
+      const notices = await noticesOf(s.branch);
+      expect(notices.map((one) => one.account_id)).toEqual([await accountOf(s.teacherId)]);
+      expect(notices[0]?.data).toMatchObject({
+        weekStart: NOVEMBER,
+        before: [
+          { date: '2026-11-11', changed: true },
+          { date: '2026-11-13', changed: false },
+        ],
+        after: [
+          { date: NOVEMBER, changed: true },
+          { date: '2026-11-13', changed: false },
+        ],
+      });
+      // Monday 9 November is marked: its week had lessons before.
+      const marked = await t.database.migrator
+        .selectFrom('lesson_changes')
+        .innerJoin('lessons', 'lessons.id', 'lesson_changes.lesson_id')
+        .select(sql<string>`lessons.lesson_date::text`.as('date'))
+        .where('lesson_changes.branch_id', '=', s.branch)
+        .where('lesson_changes.changed_at', '=', new Date(START))
+        .where('lessons.lesson_date', '>=', NOVEMBER)
+        .where('lessons.lesson_date', '<', '2026-11-12')
+        .execute();
+      expect(marked.map((one) => one.date)).toEqual([NOVEMBER]);
+      const [entry] = await t.entries('timetable_version.withdraw', b.version);
+      expect(entry?.new_value).toMatchObject({ notices: { notified: 1, marked: 1 } });
+    });
+
     it('notifies the teacher of a version withdrawn with none before it', async () => {
       const s = await scene();
       versionOf(await publish(s.branch, s.version, NOVEMBER));

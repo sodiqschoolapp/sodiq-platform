@@ -52,6 +52,10 @@ export interface WeekChanges {
   readonly kept: readonly { readonly id: string; readonly changedAt: Date }[];
   /** Each affected teacher and the Monday of the week shown (decisions 5 and 7). */
   readonly teachers: ReadonlyMap<string, string>;
+  /** The lessons before the event that nothing after it equals: shown as changed in a notice. */
+  readonly beforeDiffers: ReadonlySet<string>;
+  /** The lessons after the event that nothing before it equals: shown as changed in a notice. */
+  readonly afterDiffers: ReadonlySet<string>;
 }
 
 /**
@@ -103,8 +107,9 @@ export function weekChanges(
     .filter((one) => weeksBefore.has(mondayOf(one.lesson.date)))
     .map((one) => one.id)
     .sort(compare);
+  const left = [...waiting.values()].flat();
   const teachers = new Map<string, string>();
-  for (const one of [...unpaired, ...[...waiting.values()].flat()]) {
+  for (const one of [...unpaired, ...left]) {
     for (const teacherId of one.lesson.teacherIds) {
       const known = teachers.get(teacherId);
       if (known === undefined || one.lesson.date < known) teachers.set(teacherId, one.lesson.date);
@@ -118,6 +123,8 @@ export function weekChanges(
         .sort(([a], [b]) => compare(a, b))
         .map(([id, date]) => [id, mondayOf(date)]),
     ),
+    beforeDiffers: new Set(left.map((one) => one.id)),
+    afterDiffers: new Set(unpaired.map((one) => one.id)),
   };
 }
 
@@ -131,7 +138,12 @@ export interface WeekSnapshot {
   readonly lastDate: string;
   /** The lessons before the event, from `firstDate`; the days before the write are the same after it. */
   readonly before: readonly StoredLesson[];
-  /** The days of the week before the first written date, read once for both sides (should-fix 5). */
+  /**
+   * The days of the weeks around the written dates that are not written: before
+   * the first written date and after the last, to the Sunday of its week, read
+   * once for both sides (spec review should-fix 5; code review should-fix 4: a
+   * withdraw's run can end mid-week).
+   */
   readonly unwritten: readonly StoredLesson[];
 }
 
@@ -141,7 +153,8 @@ const noClasses = (): undefined => undefined;
  * The side before an event that writes the branch's lessons from `fromDate`
  * to `lastDate`; read after the publish lock and before the first write. The
  * written dates are read `for update`, as the writer reads them; the days of
- * the first week before `fromDate` are not written and not locked.
+ * the first week before `fromDate` and of the last week after `lastDate` are
+ * not written and not locked.
  */
 export async function snapshotWeek(
   transaction: Transaction,
@@ -176,7 +189,10 @@ export async function snapshotWeek(
     fromDate,
     lastDate,
     before: await read(fromDate, lastDate, true),
-    unwritten: await read(firstDate, addDays(fromDate, -1), false),
+    unwritten: [
+      ...(await read(firstDate, addDays(fromDate, -1), false)),
+      ...(await read(addDays(lastDate, 1), addDays(mondayOf(lastDate), 6), false)),
+    ],
   };
 }
 
@@ -254,7 +270,7 @@ export async function sendWeekChanges(
 
   const both = [...snapshot.unwritten, ...snapshot.before, ...after];
   const names = await namesOf(transaction, both);
-  const weekLessonOf = (one: StoredLesson): WeekLesson => ({
+  const weekLessonOf = (one: StoredLesson, differs: ReadonlySet<string>): WeekLesson => ({
     date: one.lesson.date,
     start: clockOf(one.lesson.start),
     end: clockOf(one.lesson.end),
@@ -262,8 +278,14 @@ export async function sendWeekChanges(
     subject: named(names.subjects, one.lesson.subjectId),
     room: one.lesson.roomId === null ? null : named(names.rooms, one.lesson.roomId),
     cancelled: one.cancelCause !== null,
+    changed: differs.has(one.id),
   });
-  const weekOf = (lessons: readonly StoredLesson[], teacherId: string, monday: string) => {
+  const weekOf = (
+    lessons: readonly StoredLesson[],
+    differs: ReadonlySet<string>,
+    teacherId: string,
+    monday: string,
+  ) => {
     const sunday = addDays(monday, 6);
     return lessons
       .filter(
@@ -272,7 +294,7 @@ export async function sendWeekChanges(
           one.lesson.date >= monday &&
           one.lesson.date <= sunday,
       )
-      .map(weekLessonOf)
+      .map((one) => weekLessonOf(one, differs))
       .sort(
         (a, b) =>
           compare(a.date, b.date) ||
@@ -292,8 +314,18 @@ export async function sendWeekChanges(
       data: {
         number: String(event.number),
         weekStart: monday,
-        before: weekOf([...snapshot.unwritten, ...snapshot.before], one.teacherId, monday),
-        after: weekOf([...snapshot.unwritten, ...after], one.teacherId, monday),
+        before: weekOf(
+          [...snapshot.unwritten, ...snapshot.before],
+          changes.beforeDiffers,
+          one.teacherId,
+          monday,
+        ),
+        after: weekOf(
+          [...snapshot.unwritten, ...after],
+          changes.afterDiffers,
+          one.teacherId,
+          monday,
+        ),
       },
     });
   }

@@ -62,6 +62,7 @@ describe('the notices of a timetable change', () => {
     subject: { uz: 'Matematika', ru: 'Математика', en: 'Mathematics' },
     room: 'Room 101',
     cancelled: false,
+    changed: false,
   };
   const week = { number: '3', weekStart: '2026-10-19', before: [lesson], after: [] };
 
