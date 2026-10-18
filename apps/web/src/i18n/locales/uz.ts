@@ -3442,6 +3442,7 @@ export const uz: Texts<'one' | 'other'> = {
       openCheck: 'Tekshiruvni ochish',
       earlierPublish: 'Bu roʻyxat yuritilishidan oldingi eʼlon',
       recordGone: 'Endi mavjud boʻlmagan yozuv',
+      teacherGone: 'Endi bu filialda ishlamaydigan oʻqituvchi',
       version: '{{number}}-versiya',
       dates: '{{first}} – {{last}}',
     },

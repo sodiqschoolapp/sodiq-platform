@@ -346,6 +346,10 @@ describe('out-of-date drafts', () => {
       expect(await causesOf(a.version)).toEqual([]);
       const [audit] = await t.entries('timetable_version.out_of_date', b.version);
       expect(audit).toMatchObject({ branch_id: b.branch });
+      // Review round 1, second opinion: the teacher is no longer seen from B, so the
+      // record is null there and the panel names a teacher who left the branch.
+      const listed = answerOf(await causesRoute(b.branch, b.version));
+      expect(listed.causes.map((one) => [one.kind, one.record])).toEqual([['availability', null]]);
     });
 
     it('marks for a room capacity, not for a new room name', async () => {

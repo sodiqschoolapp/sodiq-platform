@@ -3620,6 +3620,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       openCheck: 'Открыть проверку',
       earlierPublish: 'Публикация до начала этого списка',
       recordGone: 'Запись, которой больше нет',
+      teacherGone: 'Учитель, который больше не работает в этом филиале',
       version: 'Версия {{number}}',
       dates: '{{first}} – {{last}}',
     },

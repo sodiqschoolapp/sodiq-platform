@@ -66,9 +66,13 @@ export function OutOfDatePanel({
   const recordText = (cause: OutOfDateCause): string => {
     const record = cause.record;
     if (record === null) {
+      // A teacher's record is read through the branch's row filter: one whose
+      // branch was removed is no longer seen here (review round 1, second opinion).
       return cause.kind === 'publish'
         ? t('timetable.outOfDate.earlierPublish')
-        : t('timetable.outOfDate.recordGone');
+        : cause.kind === 'availability'
+          ? t('timetable.outOfDate.teacherGone')
+          : t('timetable.outOfDate.recordGone');
     }
     if (record.versionNumber !== null) {
       return t('timetable.outOfDate.version', { number: record.versionNumber });

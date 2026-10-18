@@ -3416,6 +3416,7 @@ export const en = {
       openCheck: 'Open the check',
       earlierPublish: 'A publish before this list was kept',
       recordGone: 'A record that no longer exists',
+      teacherGone: 'A teacher who no longer works in this branch',
       version: 'Version {{number}}',
       dates: '{{first}} to {{last}}',
     },

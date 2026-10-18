@@ -1235,13 +1235,20 @@ describe('a draft out of date', () => {
     causedAt: '2026-10-10T09:05:00.000Z',
     record: null,
   };
+  const FAILED = { error: { code: 'internal_error', message: 'x', requestId: 'r' } };
   const causesRoute = `GET /api/timetable/versions/${VERSION.id}/out-of-date`;
   const bringRoute = `POST /api/timetable/versions/${VERSION.id}/up-to-date`;
 
   /** The page with the draft out of date until it is brought up to date. */
   async function outOfDate(
     causes: readonly object[],
-    options: { session?: ReturnType<typeof sessionOf>; causesFail?: boolean } = {},
+    options: {
+      session?: ReturnType<typeof sessionOf>;
+      causesFail?: boolean;
+      causesPending?: boolean;
+      branchFail?: boolean;
+      checkFail?: boolean;
+    } = {},
   ) {
     let marked = true;
     const calls = await openPage({
@@ -1249,12 +1256,16 @@ describe('a draft out of date', () => {
       extra: {
         'GET /api/timetable/versions': () =>
           json({ versions: [{ ...VERSION, outOfDate: marked }], today: '2026-10-10' }),
-        'GET /api/setup/branch': () => json(BRANCH),
+        'GET /api/setup/branch': () =>
+          options.branchFail === true ? json(FAILED, 500) : json(BRANCH),
         [causesRoute]: () =>
-          options.causesFail === true
-            ? json({ error: { code: 'internal_error', message: 'x', requestId: 'r' } }, 500)
-            : json({ causes: marked ? causes : [], key: KEY }),
-        [`GET /api/timetable/versions/${VERSION.id}/publish-check`]: () => json(CHECK),
+          options.causesPending === true
+            ? new Promise<Response>(() => undefined)
+            : options.causesFail === true
+              ? json({ error: { code: 'internal_error', message: 'x', requestId: 'r' } }, 500)
+              : json({ causes: marked ? causes : [], key: KEY }),
+        [`GET /api/timetable/versions/${VERSION.id}/publish-check`]: () =>
+          options.checkFail === true ? json(FAILED, 500) : json(CHECK),
         [bringRoute]: () => {
           marked = false;
           return json({ ...VERSION, outOfDate: false });
@@ -1323,5 +1334,51 @@ describe('a draft out of date', () => {
     await outOfDate([CALENDAR], { causesFail: true });
     expect(await screen.findByRole('button', { name: en.problems.retry })).toBeTruthy();
     expect(document.querySelector('[data-out-of-date-panel]')).toBeNull();
+  });
+
+  // Review round 1, finding 1: the loading and failure of each query of the panel.
+  it('shows the loading outline while the causes are read', async () => {
+    await outOfDate([CALENDAR], { causesPending: true });
+    await waitFor(() => {
+      expect(document.querySelector('[data-out-of-date="true"]')).not.toBeNull();
+    });
+    // The outline sits in the section of the out-of-date line, in the panel's place.
+    const section = document.querySelector('[data-out-of-date="true"]')?.closest('section');
+    expect(section?.querySelector('[role="status"][aria-busy="true"]')).not.toBeNull();
+    expect(document.querySelector('[data-out-of-date-panel]')).toBeNull();
+    expect(screen.queryByRole('button', { name: en.timetable.outOfDate.bring })).toBeNull();
+  });
+
+  it('says when the branch cannot be read, with a retry', async () => {
+    await outOfDate([CALENDAR], { branchFail: true });
+    expect(await screen.findByRole('button', { name: en.problems.retry })).toBeTruthy();
+    expect(document.querySelector('[data-out-of-date-panel]')).toBeNull();
+  });
+
+  it('says when the check cannot be read, and still lists the causes and offers the button', async () => {
+    await outOfDate([CALENDAR], { checkFail: true });
+    const found = await panel();
+    await waitFor(() => {
+      expect(within(found).getByRole('alert').textContent).toBe(en.errors.internal_error);
+    });
+    expect(found.querySelector('[data-check]')).toBeNull();
+    expect(found.querySelectorAll('li')).toHaveLength(1);
+    expect(
+      within(found).getByRole('button', { name: en.timetable.outOfDate.bring }),
+    ).toHaveProperty('disabled', false);
+  });
+
+  it('names a teacher no longer seen in the branch, not a record gone', async () => {
+    await outOfDate([
+      {
+        id: uid(964),
+        kind: 'availability',
+        action: 'staff.availability_end',
+        causedAt: '2026-10-10T09:15:00.000Z',
+        record: null,
+      },
+    ]);
+    const found = await panel();
+    expect(found.querySelector('li')?.textContent).toContain(en.timetable.outOfDate.teacherGone);
   });
 });
