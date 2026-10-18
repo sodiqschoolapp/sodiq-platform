@@ -2,7 +2,10 @@ import type { INestApplication } from '@nestjs/common';
 import { BRANCH_HEADER, type DayTemplate, type SlotType } from '@sodiq/shared';
 import request, { type Response, type Test } from 'supertest';
 import { expect } from 'vitest';
+import { sql } from 'kysely';
 import { insertBranch } from './branch-filter-sql.js';
+import { ClassesKit } from './classes-kit.js';
+import { LoadKit } from './load-kit.js';
 import { createTestApp, type TestAppOptions } from './create-test-app.js';
 import { FixedClock } from './fixed-clock.js';
 import { signInKit, type SignInKit } from './sign-in-kit.js';
@@ -66,6 +69,12 @@ export interface DayTemplatesKit {
    * each column: what a refused change must leave as it was, in both branches.
    */
   rowsOf(branch: string): Promise<Record<string, unknown[]>>;
+  /**
+   * A draft of the branch's latest year that is not closed, the year created
+   * (2026-09-01 to 2027-05-31) when the branch has none: what a change of the
+   * setup marks out of date (task 5.5a-3b-1), so a refused one shows it left it.
+   */
+  draftIn(branch: string): Promise<string>;
   createSlotType(
     branch: string,
     name: string,
@@ -250,6 +259,9 @@ export async function dayTemplatesKit(
         'day_templates',
         'day_template_versions',
         'day_template_assignments',
+        // Task 5.5a-3b-1: the drafts a template change marks out of date, and the marks.
+        'timetable_versions',
+        'timetable_version_out_of_date_causes',
       ] as const) {
         rows[table] = await database.migrator
           .selectFrom(table)
@@ -266,6 +278,19 @@ export async function dayTemplatesKit(
         .orderBy('position')
         .execute();
       return rows;
+    },
+    async draftIn(branch) {
+      const found = await database.migrator
+        .selectFrom('academic_years')
+        .select(['id', sql<string>`start_date::text`.as('start')])
+        .where('branch_id', '=', branch)
+        .where('status', '<>', 'closed')
+        .orderBy('start_date', 'desc')
+        .executeTakeFirst();
+      const year = found?.id ?? (await new ClassesKit(database.migrator).year(branch));
+      return new LoadKit(database.migrator).version(branch, year, {
+        startsOn: found === undefined || found.start < '2026-10-19' ? '2026-10-19' : found.start,
+      });
     },
     async createSlotType(branch, name, kind = 'lesson', lengthMinutes = 45) {
       const response = await post('/api/setup/slot-types', branch, { name, kind, lengthMinutes });

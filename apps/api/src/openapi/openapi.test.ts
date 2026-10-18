@@ -240,6 +240,7 @@ describe('OpenAPI document', () => {
         '/api/timetable/versions/{id}/load/{rowId}',
         '/api/timetable/versions/{id}/locks',
         '/api/timetable/versions/{id}/locks/{lockId}',
+        '/api/timetable/versions/{id}/out-of-date',
         '/api/timetable/versions/{id}/pattern',
         '/api/timetable/versions/{id}/pattern/rearrange',
         '/api/timetable/versions/{id}/pattern/swap',
@@ -255,6 +256,7 @@ describe('OpenAPI document', () => {
         '/api/timetable/versions/{id}/rules/confirm',
         '/api/timetable/versions/{id}/templates/confirm',
         '/api/timetable/versions/{id}/totals',
+        '/api/timetable/versions/{id}/up-to-date',
       ]);
       expect(document.paths['/api/health']?.get?.responses).toEqual({
         '200': {

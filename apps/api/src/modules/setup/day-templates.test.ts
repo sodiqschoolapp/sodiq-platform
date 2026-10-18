@@ -158,6 +158,10 @@ describe('day templates', () => {
     const { branch, lesson } = await slotTypes();
     const other = await slotTypes();
     const foreign = await t.createTemplate(other.branch, 'Foreign', [other.lesson]);
+    // Task 5.5a-3b-1: a draft in each branch, which a new version would mark.
+    await t.draftIn(branch);
+    await t.draftIn(other.branch);
+    const rows = [await t.rowsOf(branch), await t.rowsOf(other.branch)];
     const before = await t.auditCount();
     const foreignRows = () =>
       Promise.all([
@@ -191,12 +195,15 @@ describe('day templates', () => {
     }
     expect(await t.auditCount()).toBe(before);
     expect(await foreignRows()).toEqual(rowsBefore);
+    expect([await t.rowsOf(branch), await t.rowsOf(other.branch)]).toEqual(rows);
   });
 
   it('refuse a slot type of another branch or an unknown one with 404, never a 500 from the key, for a new version too; nothing changes in either branch', async () => {
     const { branch, lesson } = await slotTypes();
     const other = await slotTypes();
     const own = await t.createTemplate(branch, 'Own', [lesson]);
+    await t.draftIn(branch);
+    await t.draftIn(other.branch);
     const rows = [await t.rowsOf(branch), await t.rowsOf(other.branch)];
     const before = await t.auditCount();
     for (const slotTypeIds of [[lesson, other.lesson], [UNKNOWN]]) {

@@ -182,6 +182,9 @@ describe('where day templates apply', () => {
     const foreign = await t.assign(other.branch, foreignTemplate, { level: 'weekday', weekday: 1 });
     // An own setting of the key the refused ones name: a save would cut it.
     await t.assign(branch, templates.Main ?? '');
+    // Task 5.5a-3b-1: a draft in each branch, which a setting would mark.
+    await t.draftIn(branch);
+    await t.draftIn(other.branch);
     const rows = [await t.rowsOf(branch), await t.rowsOf(other.branch)];
     const before = await t.auditCount();
     for (const id of [foreign, UNKNOWN]) {
@@ -499,8 +502,8 @@ describe('where day templates apply', () => {
     const preview = (branch: string, change: object, cookie?: string) =>
       t.post('/api/setup/day-template-table/preview', branch, change, cookie);
 
-    const rowsOf = async (branch: string) =>
-      Promise.all(
+    const rowsOf = async (branch: string) => [
+      ...(await Promise.all(
         (['slot_type_lengths', 'day_template_versions', 'day_template_assignments'] as const).map(
           (table) =>
             t.database.migrator
@@ -510,7 +513,15 @@ describe('where day templates apply', () => {
               .orderBy('id')
               .execute(),
         ),
-      );
+      )),
+      // Task 5.5a-3b-1: the marks a saved change would write.
+      await t.database.migrator
+        .selectFrom('timetable_version_out_of_date_causes')
+        .select(['id', 'version_id', 'action', 'record_id'])
+        .where('branch_id', '=', branch)
+        .orderBy('id')
+        .execute(),
+    ];
 
     it('shows the table before and after a setting, marks the changed cells and writes nothing', async () => {
       const { branch, templates } = await branchWith('Main', 'Senior');
@@ -619,6 +630,8 @@ describe('where day templates apply', () => {
         weekday: 2,
       });
       const ownTemplate = own.templates.Main ?? '';
+      await t.draftIn(own.branch);
+      await t.draftIn(other.branch);
       const rows = [await rowsOf(own.branch), await rowsOf(other.branch)];
       const before = await t.auditCount();
       for (const foreign of [

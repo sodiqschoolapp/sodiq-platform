@@ -564,6 +564,30 @@ describe('out-of-date drafts', () => {
       refusedWith(await upToDate(s.branch, published, shown.key), 409, 'version_not_draft');
     });
 
+    it('lets the Academic Vice Principal bring a draft up to date (permission review, should-fix 1)', async () => {
+      const s = await scene();
+      await widenRoom(s.branch, await load.classes.room(s.branch));
+      await load.classes.role(
+        (
+          await t.database.migrator
+            .selectFrom('assignments')
+            .select('account_id')
+            .where('id', '=', t.viceAssignment)
+            .executeTakeFirstOrThrow()
+        ).account_id,
+        s.branch,
+        'academic_vice_principal',
+      );
+      await load.freeEditLock(s.version);
+      const shown = answerOf(await causesRoute(s.branch, s.version, t.vicePrincipal));
+      expect(
+        versionOf(await upToDate(s.branch, s.version, shown.key, t.vicePrincipal)).outOfDate,
+      ).toBe(false);
+      expect(await causesOf(s.version)).toEqual([]);
+      const [audit] = await t.entries('timetable_version.up_to_date', s.version);
+      expect(audit).toMatchObject({ branch_id: s.branch, new_value: { outOfDate: false } });
+    });
+
     it('answers a draft that is up to date as it is and writes nothing', async () => {
       const s = await scene();
       const shown = answerOf(await causesRoute(s.branch, s.version));

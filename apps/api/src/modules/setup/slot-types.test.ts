@@ -121,6 +121,9 @@ describe('slot types', () => {
   it('answer 404 for a slot type of another branch or an unknown one, and change nothing in either branch', async () => {
     const other = await t.newBranch();
     const foreign = await t.createSlotType(other, 'Foreign');
+    // Task 5.5a-3b-1: a draft in each branch, which a length change would mark.
+    await t.draftIn(t.north);
+    await t.draftIn(other);
     const rows = [await t.rowsOf(t.north), await t.rowsOf(other)];
     const before = await t.auditCount();
     for (const id of [foreign, UNKNOWN]) {

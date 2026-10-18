@@ -133,6 +133,9 @@ describe('availability and vacancies', () => {
       'staff_statuses',
       'staff_availability',
       'staff_availability_ranges',
+      // Task 5.5a-3b-1: the drafts new hours mark out of date, and the marks.
+      'timetable_versions',
+      'timetable_version_out_of_date_causes',
     ] as const) {
       rows[table] = (
         await sql`select * from ${sql.table(table)} order by 1, 2`.execute(t.database.migrator)
@@ -319,6 +322,8 @@ describe('availability and vacancies', () => {
 
     it('answers 404 for a record of another branch or an unknown one, changing nothing', async () => {
       const south = await person(t.south);
+      await t.draftIn(t.north);
+      await t.draftIn(t.south);
       const before = await snapshot();
       for (const id of [south, UNKNOWN]) {
         refusedWith(await t.get(`/api/people/staff/${id}/availability`, t.north), 404, 'not_found');

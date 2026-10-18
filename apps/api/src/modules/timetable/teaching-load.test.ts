@@ -105,6 +105,12 @@ describe('draft versions and the teaching load', () => {
       t.database.migrator.selectFrom('timetable_pins').selectAll().orderBy('id').execute(),
       // Task 5.5a-2b-2: the copy writes the choices of the lessons kept on a shortened day.
       t.database.migrator.selectFrom('timetable_day_keeps').selectAll().orderBy('id').execute(),
+      // Task 5.5a-3b-1: the copy takes its source's marks out of date.
+      t.database.migrator
+        .selectFrom('timetable_version_out_of_date_causes')
+        .selectAll()
+        .orderBy('id')
+        .execute(),
       t.database.migrator.selectFrom('staff_statuses').selectAll().orderBy('id').execute(),
       // The vacancy delete removes the record and its rows (permission review, S3).
       t.database.migrator.selectFrom('staff').select('id').orderBy('id').execute(),
@@ -309,6 +315,17 @@ describe('draft versions and the teaching load', () => {
         await load.version(t.north, year),
         await load.classes.schoolClass(t.north, year),
       );
+      // Task 5.5a-3b-1: a mark on the other branch's source, which a copy would take.
+      await t.database.migrator
+        .insertInto('timetable_version_out_of_date_causes')
+        .values({
+          branch_id: t.south,
+          version_id: southern,
+          action: 'timetable_version.publish',
+          record_id: null,
+          caused_at: t.clock.now(),
+        })
+        .execute();
       for (const fields of [
         { academicYearId: southYear },
         { academicYearId: UNKNOWN },

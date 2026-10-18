@@ -4,6 +4,8 @@ import { sql } from 'kysely';
 import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
+import { ClassesKit } from '../../testing/classes-kit.js';
+import { LoadKit } from '../../testing/load-kit.js';
 import { createTestApp } from '../../testing/create-test-app.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
 import { errorCode, signInKit, type SignInKit } from '../../testing/sign-in-kit.js';
@@ -324,13 +326,47 @@ describe('rooms', () => {
       expect(await entries('room.edit', id)).toHaveLength(1);
     });
 
-    it('and not found for a room of another branch', async () => {
+    it('and not found for a room of another branch, with nothing changed in either branch', async () => {
       const id = await createRoom(roomOf('204', first));
+      // Task 5.5a-3b-1: a draft in each branch, which a capacity change would mark.
+      const classes = new ClassesKit(database.migrator);
+      const load = new LoadKit(database.migrator);
+      for (const branch of [north, south]) {
+        await load.version(branch, await classes.year(branch));
+      }
+      const rowsOf = async (branch: string) => ({
+        rooms: await database.migrator
+          .selectFrom('rooms')
+          .selectAll()
+          .where('branch_id', '=', branch)
+          .orderBy('id')
+          .execute(),
+        versions: await database.migrator
+          .selectFrom('timetable_versions')
+          .selectAll()
+          .where('branch_id', '=', branch)
+          .orderBy('id')
+          .execute(),
+        causes: await database.migrator
+          .selectFrom('timetable_version_out_of_date_causes')
+          .selectAll()
+          .where('branch_id', '=', branch)
+          .orderBy('id')
+          .execute(),
+      });
+      const rows = [await rowsOf(north), await rowsOf(south)];
+      const audit =
+        (await entries('room.edit')).length +
+        (await entries('timetable_version.out_of_date')).length;
+      const wider = roomOf('204', first, { capacity: 31 });
 
-      expect((await put(`/api/setup/rooms/${id}`, roomOf('204', first), admin, south)).status).toBe(
-        404,
-      );
-      expect((await put(`/api/setup/rooms/${UNKNOWN}`, roomOf('205', first))).status).toBe(404);
+      expect((await put(`/api/setup/rooms/${id}`, wider, admin, south)).status).toBe(404);
+      expect((await put(`/api/setup/rooms/${UNKNOWN}`, wider)).status).toBe(404);
+      expect([await rowsOf(north), await rowsOf(south)]).toEqual(rows);
+      expect(
+        (await entries('room.edit')).length +
+          (await entries('timetable_version.out_of_date')).length,
+      ).toBe(audit);
     });
 
     it('and refused for the Principal and the Academic Vice Principal', async () => {

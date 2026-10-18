@@ -125,7 +125,8 @@ describe('the calendar', () => {
 
   /**
    * Every row a calendar save or a refused change of this file may write in a
-   * branch: its entries, its branch row, its years and its day templates.
+   * branch: its entries, its branch row, its years, its day templates, its
+   * drafts and their marks out of date.
    */
   async function rowsOf(branch: string) {
     return {
@@ -148,6 +149,19 @@ describe('the calendar', () => {
         .execute(),
       templates: await t.database.migrator
         .selectFrom('day_templates')
+        .selectAll()
+        .where('branch_id', '=', branch)
+        .orderBy('id')
+        .execute(),
+      // Task 5.5a-3b-1: the drafts a save marks out of date, and the marks.
+      versions: await t.database.migrator
+        .selectFrom('timetable_versions')
+        .selectAll()
+        .where('branch_id', '=', branch)
+        .orderBy('id')
+        .execute(),
+      causes: await t.database.migrator
+        .selectFrom('timetable_version_out_of_date_causes')
         .selectAll()
         .where('branch_id', '=', branch)
         .orderBy('id')
@@ -647,6 +661,9 @@ describe('the calendar', () => {
   it('answers 404 for an entry or a template of another branch, or an unknown one', async () => {
     const north = await branchWith();
     const south = await branchWith();
+    // Task 5.5a-3b-1: a draft in each branch, which a save would mark.
+    await t.draftIn(north.branch);
+    await t.draftIn(south.branch);
     await create(north.branch, record({ firstDate: '2026-11-02' }));
     const special404 = await create(
       north.branch,

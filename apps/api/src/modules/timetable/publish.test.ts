@@ -329,6 +329,13 @@ describe('publish', () => {
         .where('branch_id', 'in', branches)
         .orderBy('id')
         .execute(),
+      // Task 5.5a-3b-1: the marks of the other drafts (the mark was a column of the version).
+      t.database.migrator
+        .selectFrom('timetable_version_out_of_date_causes')
+        .selectAll()
+        .where('branch_id', 'in', branches)
+        .orderBy('id')
+        .execute(),
       t.database.migrator.selectFrom('notifications').selectAll().orderBy('id').execute(),
       // A takeover of the edit lock enqueues the delivery of its notice (permission review, should-fix 4).
       sql<{ id: string; name: string }>`select id, name from pgboss.job order by id`
