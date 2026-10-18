@@ -122,7 +122,7 @@ describe('publish in the database', () => {
     await inBranch(branch, async (transaction) => {
       await transaction
         .updateTable('timetable_versions')
-        .set({ edit_holder_id: null, edit_seen_at: new Date(NOW) })
+        .set({ edit_holder_id: null, edit_seen_at: null })
         .where('id', '=', version)
         .execute();
       await transaction
@@ -138,10 +138,10 @@ describe('publish in the database', () => {
     });
     const row = await database.migrator
       .selectFrom('timetable_versions')
-      .select('edit_seen_at')
+      .select(['edit_holder_id', 'edit_seen_at'])
       .where('id', '=', version)
       .executeTakeFirstOrThrow();
-    expect(row.edit_seen_at).toEqual(new Date(NOW));
+    expect(row).toEqual({ edit_holder_id: null, edit_seen_at: null });
     const causes = await database.migrator
       .selectFrom('timetable_version_out_of_date_causes')
       .select('caused_at')
