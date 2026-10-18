@@ -13,6 +13,7 @@ The next sessions must know:
 - A write that creates or removes dated lessons runs `set constraints all deferred` and ends `immediate` (`writeDatedLessons`); a lesson never changes block.
 - Lock order of a publish: the publish lock, the branch, the year, the branch's people and the year's classes `for key share`, the year's versions; `followTutors` takes the versions first too.
 - Versions published before 0079 have no dated lessons until a version is published over their dates; 5.5b-2 and 5.9 read the stored lessons and must not take their absence for an empty timetable.
+- A class with a lesson dated after today is not archived (0080, `class_has_lessons`); dissolving a class is a version without it, whose publish removes its future lessons.
 - The next task is 5.5b-2.
 
 ## 18 October 2026: task 5.5a-3b-2 Publish: bringing a draft up to date after a publish

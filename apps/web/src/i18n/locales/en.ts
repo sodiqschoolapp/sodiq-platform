@@ -255,6 +255,8 @@ export const en = {
     student_needs_class: 'A student who starts today or earlier joins a class. Choose the class.',
     student_grade_class:
       'The student is in a class of their grade. The grade changes with a move to a class of the new grade.',
+    class_has_lessons:
+      'The class has lessons after today. Publish a timetable version without the class from the date it closes, then archive the class.',
     class_has_members:
       'The class has students now or from a later date. Withdraw or move them first, then archive the class.',
     class_grade_members: 'The class has students, so its grade cannot change.',

@@ -54,8 +54,9 @@ describe('the deletes and re-pointing of dated lessons in the database', () => {
   /** A block on `date` at 23:45 to 23:59 and one lesson per entry of the source, by the migrator. */
   async function dated(
     source: LessonSource,
-    classIds: readonly string[],
+    unitIds: readonly string[],
     date: string,
+    unit: 'class' | 'group' = 'class',
   ): Promise<{ block: string; lessons: string[] }> {
     const block = await database.migrator
       .insertInto('lesson_blocks')
@@ -72,7 +73,7 @@ describe('the deletes and re-pointing of dated lessons in the database', () => {
       .returning(['id', 'lesson_date', 'starts_at', 'ends_at'])
       .executeTakeFirstOrThrow();
     const lessons: string[] = [];
-    for (const [index, classId] of classIds.entries()) {
+    for (const [index, unitId] of unitIds.entries()) {
       const from = source.lessons[index];
       const row = await database.migrator
         .insertInto('lessons')
@@ -82,7 +83,8 @@ describe('the deletes and re-pointing of dated lessons in the database', () => {
           lesson_date: block.lesson_date,
           starts_at: block.starts_at,
           ends_at: block.ends_at,
-          class_id: classId,
+          class_id: unit === 'class' ? unitId : null,
+          group_id: unit === 'group' ? unitId : null,
           subject_id: subject,
           load_row_id: from?.loadRowId ?? '',
           pattern_entry_id: from?.patternEntryId ?? '',
@@ -254,6 +256,25 @@ describe('the deletes and re-pointing of dated lessons in the database', () => {
       ).toMatchObject({ constraint: 'lesson_repoint' });
     });
 
+    // 0079, `lesson_repoint`: `r.group_id is distinct from l.group_id` on
+    // its own (second opinion of round 2): the two rows have no class and the
+    // same version, block and subject, so only the group tells them apart.
+    it('refuses a group lesson re-pointed to the row of another group', async () => {
+      const oxford = await schoolClass();
+      const first = await kit.load.classes.group(north, year, subject, [oxford]);
+      const second = await kit.load.classes.group(north, year, subject, [oxford]);
+      const groupSource = (groupId: string) =>
+        kit.source(north, year, [{ classId: null, groupId, subjectId: subject }]);
+      const written = await dated(await groupSource(first), [first], TOMORROW, 'group');
+      const other = await groupSource(second);
+      expect(
+        await refusal(inBranch((transaction) => repoint(transaction, written, other))),
+      ).toMatchObject({ constraint: 'lesson_repoint' });
+      // The same re-point to a row of the lesson's own group passes.
+      const own = await groupSource(first);
+      await inBranch((transaction) => repoint(transaction, written, own));
+    });
+
     it('refuses an entry of another pattern block, and an entry of the block with another row', async () => {
       const oxford = await schoolClass();
       const princeton = await schoolClass();
@@ -374,6 +395,50 @@ describe('the deletes and re-pointing of dated lessons in the database', () => {
           ),
         ),
       ).toMatchObject({ constraint: 'lesson_repoint_past' });
+    });
+  });
+
+  // db/migrations/0080 (code review of #152, round 2, finding 1):
+  // edge/timetable, After publishing: "A class cannot be archived while it
+  // has future lessons or members."
+  describe('the archive of a class (classes_lessons_guard)', () => {
+    const archive = (id: string) =>
+      inBranch((transaction) =>
+        transaction
+          .updateTable('classes')
+          .set({ archived_at: new Date(NOW) })
+          .where('id', '=', id)
+          .execute(),
+      );
+
+    it('refuses an archive while the class has a lesson dated tomorrow', async () => {
+      const oxford = await schoolClass();
+      await dated(await sourceOf([oxford]), [oxford], TOMORROW);
+      expect(await refusal(archive(oxford))).toMatchObject({ constraint: 'classes_has_lessons' });
+    });
+
+    it('archives a class whose lessons are dated today or earlier, also one later today', async () => {
+      const oxford = await schoolClass();
+      // 23:45 today, after the moment of 23:30: not yet held, but not future by date.
+      await dated(await sourceOf([oxford]), [oxford], TODAY);
+      await dated(await sourceOf([oxford]), [oxford], YESTERDAY);
+      await archive(oxford);
+      const row = await database.migrator
+        .selectFrom('classes')
+        .select('archived_at')
+        .where('id', '=', oxford)
+        .executeTakeFirstOrThrow();
+      expect(row.archived_at).toEqual(new Date(NOW));
+    });
+
+    it('counts only the lessons of the class archived', async () => {
+      const oxford = await schoolClass();
+      const cambridge = await schoolClass();
+      await dated(await sourceOf([cambridge]), [cambridge], TOMORROW);
+      await archive(oxford);
+      expect(await refusal(archive(cambridge))).toMatchObject({
+        constraint: 'classes_has_lessons',
+      });
     });
   });
 });

@@ -368,6 +368,8 @@ export const ERROR_CODES = [
   'student_grade_class',
   /** A class with members in force or planned is not archived (task 3.1b). */
   'class_has_members',
+  /** A class with a lesson dated after today is not archived (`edge/timetable`, After publishing: "A class cannot be archived while it has future lessons or members"; task 5.5b-1). */
+  'class_has_lessons',
   /** The grade of a class with members is not changed (task 3.1b, decision 4). */
   'class_grade_members',
   /** The maximum size cannot drop below the members of a date from today on (task 3.1b, decision 11). */

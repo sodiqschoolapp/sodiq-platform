@@ -622,14 +622,29 @@ describe('Tutor lessons follow the Tutor', () => {
       expect(await teacherOf(lessonId)).toBe(a);
     });
 
-    it('follows the archive of the class', async () => {
+    // Review of #152, round 2, finding 1 (edge/timetable, After publishing):
+    // "A class cannot be archived while it has future lessons or members", so
+    // the archive has no Tutor lesson left to follow.
+    it('refuses the archive of a class with a lesson after today, and keeps a lesson later today with its Tutor', async () => {
       const own = await tutoredClass();
-      const lessonId = await tutorLesson(own.classId, own.tutor.staffId, '2026-10-29');
-      await post(`/api/classes/${own.classId}/archive`).expect(200);
-      expect(await teacherOf(lessonId)).toBeNull();
-      expect((await entry('class.archive', own.classId)).details).toMatchObject({
-        tutorLessons: { needsTeacher: [{ lessonId }] },
-      });
+      const later = await tutorLesson(own.classId, own.tutor.staffId, '2026-10-29');
+      const response = await post(`/api/classes/${own.classId}/archive`).expect(409);
+      expect(errorCode(response)).toBe('class_has_lessons');
+      expect(await teacherOf(later)).toBe(own.tutor.staffId);
+      const archived = await database.migrator
+        .selectFrom('classes')
+        .select('archived_at')
+        .where('id', '=', own.classId)
+        .executeTakeFirstOrThrow();
+      expect(archived.archived_at).toBeNull();
+
+      const other = await tutoredClass();
+      const today = await tutorLesson(other.classId, other.tutor.staffId, TODAY, '15:00', '15:45');
+      await post(`/api/classes/${other.classId}/archive`).expect(200);
+      expect(await teacherOf(today)).toBe(other.tutor.staffId);
+      expect((await entry('class.archive', other.classId)).details).not.toHaveProperty(
+        'tutorLessons',
+      );
     });
   });
 

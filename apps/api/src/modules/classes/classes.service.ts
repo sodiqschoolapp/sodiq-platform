@@ -32,7 +32,6 @@ import { changesOf, notFound, refusingConstraints } from '../setup/setup-refusal
 import { memberCountsOn, MEMBERSHIP_REFUSALS } from './class-membership-rows.js';
 import { GROUP_SIDE_REFUSALS } from './group-rows.js';
 import { followClassLanguage, lockClassesOfGroups } from './group-side.js';
-import { auditOf, followChanged, followTutors } from '../timetable/tutor-lessons.js';
 import {
   CLASS_EDIT_REFUSALS,
   CLASS_REFUSALS,
@@ -445,7 +444,8 @@ export class Classes {
    * Archives the class (decision 10): its Tutor rows in force end at the
    * moment of the archive and the planned ones are withdrawn, `end_cause =
    * 'archive'`, named in the same audit entry. An archived class is answered
-   * as it is.
+   * as it is. A class with members in force or planned (0045) or with a
+   * lesson dated after today (0080) is refused.
    */
   archive(access: Access, id: string, requestId: string): Promise<ClassDetail> {
     const branchId = branchOf(access);
@@ -488,14 +488,11 @@ export class Classes {
             .set({ archived_at: now })
             .where('id', '=', id)
             .execute();
-          // Task 3.6c-2 (spec review of the plan, must-fix 5): the archive
-          // does not refuse future lessons, so the Tutor lessons from now
-          // need a teacher.
-          const follow = await followTutors(transaction, [id], now);
-          const details = {
-            ...(ended.length === 0 ? {} : { tutorsEnded: ended }),
-            ...(followChanged(follow) ? { tutorLessons: auditOf(follow) } : {}),
-          };
+          // `classes_lessons_guard` (0080) refuses the archive while the
+          // class has a lesson dated after today (code review of #152, round
+          // 2, finding 1), so no Tutor lesson is left to follow: the follow of
+          // 3.6c-2 is gone with it.
+          const details = ended.length === 0 ? {} : { tutorsEnded: ended };
           await this.audit.record(transaction, {
             branchId,
             actorId: access.accountId,
@@ -509,7 +506,12 @@ export class Classes {
           });
           return readClassDetail(transaction, branchId, id);
         }),
-      { ...CLASS_REFUSALS, ...MEMBERSHIP_REFUSALS, ...GROUP_SIDE_REFUSALS },
+      {
+        ...CLASS_REFUSALS,
+        ...MEMBERSHIP_REFUSALS,
+        ...GROUP_SIDE_REFUSALS,
+        classes_has_lessons: 'class_has_lessons',
+      },
     );
   }
 

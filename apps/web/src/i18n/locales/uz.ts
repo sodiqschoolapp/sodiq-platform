@@ -262,6 +262,8 @@ export const uz: Texts<'one' | 'other'> = {
       'Bugun yoki undan oldin oʻqishni boshlaydigan oʻquvchi sinfga joylashtiriladi. Sinfni tanlang.',
     student_grade_class:
       'Oʻquvchi oʻz sinf darajasidagi sinfda. Sinf darajasi yangi darajadagi sinfga koʻchirish bilan oʻzgaradi.',
+    class_has_lessons:
+      'Sinfning bugundan keyingi darslari bor. Avval sinf yopiladigan sanadan boshlab usiz dars jadvali versiyasini eʼlon qiling, keyin sinfni arxivlang.',
     class_has_members:
       'Sinfda hozir yoki keyingi sanadan oʻquvchilar bor. Avval ularning joylashtirishini bekor qiling yoki koʻchiring, keyin sinfni arxivlang.',
     class_grade_members:

@@ -182,6 +182,7 @@ const MESSAGE: Record<ErrorCode, string> = {
   student_needs_class: 'A student who starts today or earlier is created with a class.',
   student_grade_class: 'The student is in a class of another grade, now or planned.',
   class_has_members: 'The class has members in force or planned.',
+  class_has_lessons: 'The class has lessons dated after today.',
   class_grade_members: 'The class has members; its grade cannot change.',
   class_size_below_members: 'The class holds more members than that on a date from today on.',
   year_cut_holds: 'Class or group stays stand in the days the new dates cut off.',

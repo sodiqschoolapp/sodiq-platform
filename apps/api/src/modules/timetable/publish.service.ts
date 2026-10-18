@@ -993,11 +993,21 @@ function isCheckRefusal(error: unknown): boolean {
 /** The guards of 0079 that only a fault of the code can raise: errors of the server (decision 10). */
 // `lesson_double_pair` too (review of #152): the writer makes the pair ids,
 // and `PUBLISH_LOCK` serialises the publishes that could meet on one.
+// The 0058/0066 guards of a lesson against its block, its unit and the rows
+// of its version too (second opinion of round 2): a published version's rows
+// are fixed, and a class's year and a group's subject are never updated.
+// `lesson_block_quarter` stays a check refusal: a quarter's dates change.
 const CODE_FAULTS = new Set([
   'lesson_delete_past',
   'lesson_repoint',
   'lesson_repoint_past',
   'lesson_double_pair',
+  'lesson_block_date',
+  'lesson_block_version',
+  'lesson_unit_year',
+  'lesson_group_subject',
+  'lesson_load_row',
+  'lesson_pattern_entry',
 ]);
 
 /**

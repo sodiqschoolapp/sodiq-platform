@@ -1879,15 +1879,17 @@ describe('publish', () => {
       s: { branch: string; year: string },
       first: () => Promise<Response>,
       second: () => Promise<Response>,
-    ): Promise<[Response, Response]> {
-      const gate = await holdOpen([s.branch], async (transaction) => {
-        await transaction
+      hold: (transaction: Transaction) => Promise<unknown> = (transaction) =>
+        transaction
           .selectFrom('timetable_versions')
           .select('id')
           .where('academic_year_id', '=', s.year)
           .orderBy('id')
           .forNoKeyUpdate()
-          .execute();
+          .execute(),
+    ): Promise<[Response, Response]> {
+      const gate = await holdOpen([s.branch], async (transaction) => {
+        await hold(transaction);
       });
       const one = first().then((response) => response);
       await expect.poll(() => waiting(), { timeout: 20_000, interval: 25 }).toBe(1);
@@ -2002,33 +2004,51 @@ describe('publish', () => {
       }
     });
 
-    // Review of #152, finding 1: an archive holds its class FOR UPDATE and
-    // then takes the versions in `followTutors`; the publish takes the
-    // classes FOR KEY SHARE before the versions, so neither waits for both.
+    // Review of #152, finding 1: an archive holds its class FOR UPDATE; the
+    // publish takes the classes FOR KEY SHARE before the versions, so neither
+    // waits for both. Round 2, finding 1: the archive behind a publish meets
+    // the lessons it wrote and is refused.
     it('runs an archive of the class and a publish one after the other, in either order, with no deadlock', async () => {
       for (const order of [0, 1]) {
         const s = await tutorScene();
         const archive = () => post(`/api/classes/${s.classId}/archive`, s.branch, {});
         const send = () => publish(s.branch, s.version, MONDAY);
+        // Publish first: the publish holds the class `for key share` and waits
+        // at the held versions; the archive waits for the class. Archive
+        // first: both wait at the class held `for update`, the archive in
+        // front (round 2: the archive no longer takes the versions).
         const [one, two] = await behindVersions(
           s,
           order === 0 ? send : archive,
           order === 0 ? archive : send,
+          order === 0
+            ? undefined
+            : (transaction) =>
+                transaction
+                  .selectFrom('classes')
+                  .select('id')
+                  .where('id', '=', s.classId)
+                  .forUpdate()
+                  .execute(),
         );
         const [published, archived] = order === 0 ? [one, two] : [two, one];
-        expect(archived.status, JSON.stringify(archived.body)).toBe(200);
         if (order === 1) {
           // Archived first: the publish reads the archived class and is refused.
+          expect(archived.status, JSON.stringify(archived.body)).toBe(200);
           refusedWith(published, 409, 'publish_blocked');
           expect(await tutorLessonsOf(s)).toEqual([]);
           continue;
         }
-        // Published first: the archive's follow takes the Tutor lessons from
-        // the archive on off the ended Tutor.
+        // Published first (round 2, finding 1): the class now has lessons after
+        // today, so the archive is refused (`classes_lessons_guard`, 0080),
+        // and the Tutor lessons keep their Tutor.
         expect(versionOf(published).status).toBe('published');
+        refusedWith(archived, 409, 'class_has_lessons');
         const lessons = await tutorLessonsOf(s);
         expect(lessons.length).toBeGreaterThan(0);
-        for (const [, teacher] of lessons) expect(teacher).toBeNull();
+        for (const [date, teacher] of lessons) {
+          expect(teacher).toBe(date < '2026-11-16' ? s.first.staffId : null);
+        }
       }
     });
 
@@ -3632,6 +3652,47 @@ describe('publish', () => {
           ...schoolDates(3, wednesday),
         ].sort(),
       );
+    });
+
+    // Second opinion of round 2: a second version from a Wednesday over stored
+    // lessons; the Monday and Tuesday of its week keep the earlier version's rows.
+    it('publishes a second version from a Wednesday over stored lessons: Monday and Tuesday of its week stay the earlier version', async () => {
+      const s = await scene({ lessons: 3, placed: 3 });
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      const before = await lessonsOf(s.branch);
+      const wednesday = '2026-10-21';
+      const next = await copyOf(s.branch, s.year, s.version);
+      for (const weekday of [3, 4, 5]) await placeSlot(s.branch, next.copy, next.rowId, weekday, 1);
+      await confirmTemplates(s.branch, next.copy);
+      await load.freeEditLock(next.copy);
+      const answer = checkOf(await check(s.branch, next.copy, wednesday));
+      const transitionKey = answer.impact?.transition?.key;
+      versionOf(
+        await publish(s.branch, next.copy, wednesday, t.admin, randomUUID(), {
+          ...(transitionKey === undefined || transitionKey === null ? {} : { transitionKey }),
+        }),
+      );
+      const after = await lessonsOf(s.branch);
+      const wasOn = (date: string) => before.find((one) => one.date === date);
+      const isOn = (date: string) => after.find((one) => one.date === date);
+      // Before the start: the earlier version's rows, untouched.
+      for (const date of ['2026-10-19', '2026-10-20']) {
+        expect(isOn(date)).toEqual(wasOn(date));
+        expect(isOn(date)?.version_id).toBe(s.version);
+      }
+      // The Wednesday in the same slot: kept, re-pointed to the new version.
+      expect(isOn(wednesday)?.id).toBe(wasOn(wednesday)?.id);
+      expect(isOn(wednesday)?.version_id).toBe(next.copy);
+      // Thursday and Friday created; the later Mondays and Tuesdays removed.
+      for (const date of ['2026-10-22', '2026-10-23']) {
+        expect(wasOn(date)).toBeUndefined();
+        expect(isOn(date)?.version_id).toBe(next.copy);
+      }
+      expect(
+        after
+          .filter((one) => one.date >= '2026-10-26' && one.date < '2026-11-02')
+          .map((one) => one.date),
+      ).toEqual(['2026-10-28', '2026-10-29', '2026-10-30']);
     });
 
     it('writes no lesson on a holiday inside a week, and the whole week on either side (Done when)', async () => {
