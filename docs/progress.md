@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 18 October 2026: task 5.5a-3b-1 Publish: out-of-date drafts after a change of the setup
+
+- A change of the calendar, the day templates, a teacher's hours or a room's use marks the drafts of its branch in the years it touches out of date, in its transaction, with an audit entry each; the mark is its causes (`timetable_version_out_of_date_causes`, 0077), and `out_of_date_at` is gone. A publish adds its cause to every draft it marks, marked or not.
+- `GET /api/timetable/versions/:id/out-of-date` lists the causes with their records and a key; `POST .../up-to-date` with that key deletes them. The builder shows them in a panel, with the check counted.
+- Left out: bringing a draft up to date after a publish (5.5a-3b-2).
+
+The next sessions must know:
+
+- A new write that changes what a date of a draft holds calls `markDraftsOutOfDate` (`apps/api/src/modules/timetable/out-of-date.ts`) in its transaction and adds its audit action to `OUT_OF_DATE_ACTIONS` and the check of 0077 (a new migration).
+- Version rows are locked `for no key update`, never `for update`: a `for update` lock of a version deadlocks a setup writer that marks it (`out-of-date.test.ts`, at the same moment).
+- The next task is 5.5a-3b-2.
+
 ## 18 October 2026: task 5.5a-3a Publish: the chain
 
 - A draft can be published to start before a published version of its year with one of three answers, sent with the key of the later versions shown (`laterKey`, `chain_changed` otherwise): "run until" ends it the day before the next start; "replace" archives every later published version (0076 allows published → archived before the start); "carry" makes the draft's teacher and room changes (against the version it was copied from, `carryChanges`) in every later version that still has them, a version where a change meets a blocked conflict left as it is.
