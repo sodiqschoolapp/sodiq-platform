@@ -666,8 +666,20 @@ describe('withdraw', () => {
       await load.setVersion(versionId, 'published');
       const source = { versionId };
       const before = await written([s.version, source.versionId]);
-      const details = blockedBy(await withdraw(s.branch, b.version));
+      const refused = await withdraw(s.branch, b.version);
+      const details = blockedBy(refused);
       expect(details.map((one) => one.code)).toContain('pattern_blocked');
+      // Permission review S2: no id of the other branch's pattern is named.
+      const otherIds = [versionId, block.id, rowId];
+      const otherEntries = await t.database.migrator
+        .selectFrom('pattern_entries')
+        .select('id')
+        .where('branch_id', '=', other)
+        .execute();
+      const named = JSON.stringify((refused.body as { error: unknown }).error);
+      for (const id of [...otherIds, ...otherEntries.map((one) => one.id)]) {
+        expect(named).not.toContain(id);
+      }
       expect(await written([s.version, source.versionId])).toEqual(before);
     });
 
@@ -753,6 +765,8 @@ describe('withdraw', () => {
       versionOf(await withdraw(s.branch, s.b));
       const entries = await t.entries('timetable_version.withdraw', s.b);
       expect(entries).toHaveLength(1);
+      // Permission review S3: the entry names the assignment that allowed it.
+      expect(entries[0]?.assignment_id).toBe(t.adminAssignment);
       expect(entries[0]?.old_value).toEqual({
         status: 'published',
         number: (await versionRow(s.b)).number,
@@ -796,6 +810,8 @@ describe('withdraw', () => {
         'academic_vice_principal',
       );
       refusedWith(await withdraw(s.branch, s.b, t.vicePrincipal, key), 409, 'request_key_reused');
+      // Permission review S1: the key is tied to its version too.
+      refusedWith(await withdraw(s.branch, s.a, t.admin, key), 409, 'request_key_reused');
       expect(await written([s.b])).toEqual(after);
     });
 

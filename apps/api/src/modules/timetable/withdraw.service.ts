@@ -177,8 +177,17 @@ export class TimetableWithdraw {
       const dated = await datedCheck(transaction, state, version.starts_on, patternBlocked, {
         outOnStart: false,
       });
+      // Another branch's lessons are never named by their ids (5.5a-2a
+      // decision 8; permission review S2): only this branch's are kept.
+      const elsewhere = new Set(state.pattern.model.fixed.map((one) => one.id));
       const details = [
-        ...patternBlocked.map((one) => blockedDetail('pattern_blocked', resultAnswerOf(one))),
+        ...patternBlocked.map((one) => {
+          const answer = resultAnswerOf(one);
+          return blockedDetail('pattern_blocked', {
+            ...answer,
+            lessonIds: answer.lessonIds.filter((id) => !elsewhere.has(id)),
+          });
+        }),
         ...dated.blocked.map((one) => blockedDetail('date_blocked', one)),
       ];
       if (details.length > 0) {
