@@ -166,7 +166,9 @@ red (no checks: merge conflict with main), naming the conflicting files when
 they can be found, which is no code round, and review no code. Otherwise wait for
 CI on the head commit (every 30 seconds, up to 15 minutes); when checks or e2e
 failed, post only [review] changes needed at <sha>: CI red (<check>), which is
-no code round, and review no code. Then review the code. On a pull request
+no code round, and review no code. Then review the code, with the second
+opinion of the spec-reviewer agent (the skill's step 8a): a must-fix of either is
+a finding. On a pull request
 with a task id, any change under .claude/, CLAUDE.md,
 .github/, scripts/hooks/ or docs/cloud-loop.md is [review] owner decision needed:
 the loop may not loosen its own rules. The two exceptions: added lines in
@@ -187,9 +189,10 @@ The reviewer merges only pull requests from task/ branches; on any other, the
 ready to merge is for the owner and nothing more is posted. At [review] ready to
 merge on a task/ pull request: when the head sha is still the one the review
 named, read its check runs; when checks and e2e are both green, read the
-comments again right before the merge call and merge only while the newest
-[review] by abbosc naming that sha is the ready to merge (any later verdict at
-the same sha stops the merge: post nothing more and stop); then merge with the
+comments again right before the merge call and merge only while no [review] by
+abbosc naming that sha is changes needed, owner decision needed or stuck after
+three rounds, earlier or later than the ready to merge (the strictest verdict at
+a sha wins: post nothing more and stop); then merge with the
 skill's REST call and -f sha=<that sha> (merge commit) and say "Merged."; when one
 is still running, read the check runs again every 30 seconds for up to 15
 minutes, then re-read the comments and merge the same way, or stop and say so; when the head moved, review
