@@ -275,7 +275,7 @@ describe('the deletes and re-pointing of dated lessons in the database', () => {
       await inBranch((transaction) => repoint(transaction, written, own));
     });
 
-    it('refuses an entry of another pattern block, and an entry of the block with another row', async () => {
+    it("refuses an entry of another row, on the block's pattern block or on another", async () => {
       const oxford = await schoolClass();
       const princeton = await schoolClass();
       const written = await dated(await sourceOf([oxford]), [oxford], TOMORROW);
@@ -315,6 +315,60 @@ describe('the deletes and re-pointing of dated lessons in the database', () => {
           }),
         ),
       ).toMatchObject({ constraint: 'lesson_repoint' });
+    });
+
+    // 0079, `lesson_repoint`: `e.block_id is distinct from block.pattern_block_id`
+    // on its own (code round 3, finding 1): the row of two lessons a week has
+    // an entry in two pattern blocks of the target, and the lesson takes its
+    // own row's entry of the pattern block its block is not on. Version,
+    // class, group and the entry's row all match.
+    it("refuses a lesson re-pointed to its own row's entry in another pattern block", async () => {
+      const oxford = await schoolClass();
+      const written = await dated(await sourceOf([oxford]), [oxford], TOMORROW);
+      const target = await sourceOf([oxford]);
+      const first = target.lessons[0];
+      const firstEntry = await database.migrator
+        .selectFrom('pattern_entries')
+        .select('teacher_id')
+        .where('id', '=', first?.patternEntryId ?? '')
+        .executeTakeFirstOrThrow();
+      await kit.load.setVersion(target.versionId, 'draft');
+      const tuesday = await database.migrator
+        .insertInto('pattern_blocks')
+        .values({
+          branch_id: north,
+          version_id: target.versionId,
+          weekday: 2,
+          slot_position: 1,
+          start_minutes: 540,
+          end_minutes: 585,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      const second = await database.migrator
+        .insertInto('pattern_entries')
+        .values({
+          branch_id: north,
+          version_id: target.versionId,
+          block_id: tuesday.id,
+          weekday: 2,
+          start_minutes: 540,
+          end_minutes: 585,
+          load_row_id: first?.loadRowId ?? '',
+          teacher_id: firstEntry.teacher_id,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await kit.load.setVersion(target.versionId, 'published');
+      const tuesdayEntry: LessonSource = {
+        ...target,
+        lessons: [{ loadRowId: first?.loadRowId ?? '', patternEntryId: second.id }],
+      };
+      expect(
+        await refusal(inBranch((transaction) => repoint(transaction, written, tuesdayEntry))),
+      ).toMatchObject({ constraint: 'lesson_repoint' });
+      // The same row with its entry of the block's own pattern block passes.
+      await inBranch((transaction) => repoint(transaction, written, target));
     });
 
     it('refuses a block re-pointed to a draft, and to a version of another year', async () => {
