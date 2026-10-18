@@ -1,6 +1,6 @@
 import {
   NOTIFICATION_KINDS,
-  WEEK_CHANGE_KINDS,
+  WEEK_KINDS,
   weekdaySchema,
   type Notification,
   type Weekday,
@@ -10,10 +10,10 @@ import { useTranslation } from 'react-i18next';
 import { nameOf } from '@/features/setup/setup-api';
 import { schoolDateText, weekdayName } from '@/lib/dates';
 
-/** The data of every kind of `WEEK_CHANGE_KINDS`: one schema for both. */
-const weekSchema = NOTIFICATION_KINDS['timetable.published'];
+type WeekKind = (typeof WEEK_KINDS)[number];
 
-const KINDS: readonly string[] = WEEK_CHANGE_KINDS;
+const isWeekKind = (kind: string): kind is WeekKind =>
+  (WEEK_KINDS as readonly string[]).includes(kind);
 
 /** 1 for Monday to 7 for Sunday, of a school date. */
 const weekdayOf = (date: string): Weekday =>
@@ -29,8 +29,10 @@ const weekdayOf = (date: string): Weekday =>
  */
 export function WeekChange({ item }: { item: Notification }) {
   const { t, i18n } = useTranslation();
-  if (!KINDS.includes(item.kind)) return null;
-  const week = weekSchema.safeParse(item.data);
+  if (!isWeekKind(item.kind)) return null;
+  // Each kind with its own schema: a Tutor change carries no version number
+  // (task 5.5c-3b, spec review should-fix 5).
+  const week = NOTIFICATION_KINDS[item.kind].safeParse(item.data);
   if (!week.success) return null;
   const { before, after, weekStart } = week.data;
   const language = i18n.language;

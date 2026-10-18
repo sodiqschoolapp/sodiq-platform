@@ -24,7 +24,7 @@ export const NOTIFICATION_KIND_MAX_LENGTH = 100;
  * of the web app fails for a kind without its texts. The fields of the data
  * are the `{{names}}` of the text and nothing else; a plural form is not
  * chosen by them (the web passes the data as `replace`, not as options).
- * The one exception: the kinds of `WEEK_CHANGE_KINDS` also carry the lists
+ * The one exception: the kinds of `WEEK_KINDS` also carry the lists
  * `before` and `after`, which no text interpolates; the web shows them as two
  * lists under the text (`week-change.tsx`; task 5.5c-3a, review correction 2,
  * build decision 11).
@@ -72,12 +72,13 @@ export type WeekLesson = z.infer<typeof weekLessonSchema>;
  * of the week shown, and the teacher's lessons of the branch that week before
  * and after the event, sorted by date, start, class or group and subject.
  */
-const weekChange = z.strictObject({
-  number: versionNumber,
+const teacherWeek = {
   weekStart: schoolDateSchema,
   before: z.array(weekLessonSchema).max(WEEK_LESSONS_MAX),
   after: z.array(weekLessonSchema).max(WEEK_LESSONS_MAX),
-});
+};
+
+const weekChange = z.strictObject({ number: versionNumber, ...teacherWeek });
 
 export const NOTIFICATION_KINDS = {
   'sample.message': z.strictObject({ text: z.string().min(1).max(500) }),
@@ -117,6 +118,13 @@ export const NOTIFICATION_KINDS = {
   'timetable.published': weekChange,
   /** A withdraw changed them (task 5.5c-2a, decision 8): the withdrawn version's number and the week. */
   'timetable.withdrawn': weekChange,
+  /**
+   * A change of a class's Tutor moved this teacher's Tutor lessons in the
+   * branch (task 5.5c-3b, decisions 1 to 5): the week only, no version is
+   * published (3.6c-2 decision 6) and no class is named (one role end can
+   * change several).
+   */
+  'timetable.tutor_changed': z.strictObject(teacherWeek),
 } as const satisfies Record<string, z.ZodType>;
 
 export type NotificationKind = keyof typeof NOTIFICATION_KINDS;
@@ -125,6 +133,13 @@ export type NotificationKind = keyof typeof NOTIFICATION_KINDS;
 export const WEEK_CHANGE_KINDS = ['timetable.published', 'timetable.withdrawn'] as const;
 
 export type WeekChangeKind = (typeof WEEK_CHANGE_KINDS)[number];
+
+/**
+ * Every kind that carries a teacher's week before and after, which the web
+ * shows under the text (task 5.5c-3b, spec review should-fix 5): the version
+ * kinds and the Tutor change.
+ */
+export const WEEK_KINDS = [...WEEK_CHANGE_KINDS, 'timetable.tutor_changed'] as const;
 
 export const NOTIFICATION_KIND_NAMES = Object.keys(NOTIFICATION_KINDS) as [
   NotificationKind,

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { NotificationsModule } from '../notifications/notifications.module.js';
 import { ClassMembers } from './class-members.service.js';
 import { ClassTutors } from './class-tutors.service.js';
 import { ClassesController } from './classes.controller.js';
@@ -15,6 +16,7 @@ import { ClassesSearchController } from './search.controller.js';
  * members (task 3.2b), and Ctrl+K over classes and groups (task 3.2d).
  */
 @Module({
+  imports: [NotificationsModule],
   controllers: [ClassesController, GroupsController, ClassesSearchController],
   providers: [Classes, ClassTutors, ClassMembers, Groups, GroupMembers, RecordSearch],
 })

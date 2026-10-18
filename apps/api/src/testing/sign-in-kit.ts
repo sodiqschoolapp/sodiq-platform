@@ -19,6 +19,7 @@ import { Accounts, type CreatedAccount } from '../modules/auth/accounts.service.
 import { CurrentSession } from '../modules/auth/session.guard.js';
 import type { ActiveSession } from '../modules/auth/sessions.service.js';
 import { totpCode, totpStep } from '../modules/auth/totp.js';
+import { Notifications } from '../modules/notifications/notifications.service.js';
 
 /** Invented for the tests. */
 export const NEW_PASSWORD = 'a-new-password-73';
@@ -164,7 +165,9 @@ export function signInKit(app: INestApplication, options: SignInKitOptions = {})
     return app
       .get(Transactions)
       .run(branchId === undefined ? [] : [branchId], (transaction) =>
-        app.get(Assignments).end(transaction, { assignmentId, endedBy }),
+        app
+          .get(Assignments)
+          .end(transaction, { assignmentId, endedBy, notifications: app.get(Notifications) }),
       );
   }
 

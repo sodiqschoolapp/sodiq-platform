@@ -3047,6 +3047,8 @@ export const uz: Texts<'one' | 'other'> = {
           'Dars jadvalining {{number}}-versiyasi eʻlon qilindi va darslaringiz oʻzgardi. Haftangiz oldin va keyin:',
         withdrawn:
           'Dars jadvalining {{number}}-versiyasi qaytarib olindi va darslaringiz oʻzgardi. Haftangiz oldin va keyin:',
+        tutor_changed:
+          'Sinf rahbari almashgani sababli sinf rahbari darslaringiz oʻzgardi. Haftangiz oldin va keyin:',
       },
     },
     // The week before and after of a notice of a timetable change (task 5.5c-3a).

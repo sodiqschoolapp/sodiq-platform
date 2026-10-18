@@ -347,6 +347,28 @@ describe('the notifications of the top bar', () => {
       );
     });
 
+    // Task 5.5c-3b, decision 3: a Tutor change carries the week and no number.
+    it('shows the week before and after of a Tutor change', async () => {
+      const TUTOR: Notification = {
+        ...ROOM,
+        kind: 'timetable.tutor_changed',
+        data: {
+          weekStart: '2026-10-19',
+          before: [{ ...lesson, date: '2026-10-22', changed: true }],
+          after: [],
+        },
+      };
+      open({ [LIST]: () => json({ unreadCount: 1, items: [TUTOR] }) });
+      const dialog = await openDialog('en', 1);
+      expect(
+        within(dialog).getByText(en.notifications.kinds.timetable.tutor_changed),
+      ).toBeDefined();
+      expect(lines(dialog, 'week-before')).toEqual([
+        ['Thursday, 22 October · 08:00–08:45 · 7 Oxford · Mathematics · Room 101 · changed'],
+      ]);
+      expect(within(dialog).getByText(en.notifications.week.none)).toBeDefined();
+    });
+
     it('shows no week for data it cannot read', async () => {
       open({
         [LIST]: () =>

@@ -6,6 +6,7 @@ import {
   NOTIFICATION_KINDS,
   NOTIFICATION_LIST_LIMIT,
   WEEK_CHANGE_KINDS,
+  WEEK_KINDS,
   WEEK_LESSONS_MAX,
   notificationKindSchema,
   notificationListSchema,
@@ -72,6 +73,19 @@ describe('the notices of a timetable change', () => {
       expect(schema.parse(week)).toEqual(week);
       expect(schema.safeParse({ ...week, after: [{ ...lesson, room: null }] }).success).toBe(true);
     }
+  });
+
+  // Task 5.5c-3b, decision 3: a Tutor change publishes no version, so its
+  // notice carries the week and no number.
+  it('carry the week of a Tutor change without a number, and refuse one with a number', () => {
+    const schema = NOTIFICATION_KINDS['timetable.tutor_changed'];
+    const tutorWeek = { weekStart: week.weekStart, before: week.before, after: week.after };
+    expect(schema.parse(tutorWeek)).toEqual(tutorWeek);
+    expect(schema.safeParse(week).success).toBe(false);
+    expect(schema.safeParse({ ...tutorWeek, before: [{ ...lesson, teacher: 'x' }] }).success).toBe(
+      false,
+    );
+    expect(WEEK_KINDS).toEqual([...WEEK_CHANGE_KINDS, 'timetable.tutor_changed']);
   });
 
   it('refuse a teacher in a lesson, a time not on the clock and more lessons than the most', () => {

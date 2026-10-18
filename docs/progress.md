@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 18 October 2026: task 5.5c-3b Publish: the notice and the changed mark of a Tutor change
+
+- A change of a class's Tutor that moves its dated Tutor lessons (a give, an end, a role end and its taking back, a status change with `left` and its taking back) marks the lessons whose teacher changed (`lesson_changes`) and sends one notice, kind `timetable.tutor_changed`, to the old and the new teacher of each, per branch per request, with the week before and after (`sendTutorChanges`, `apps/api/src/modules/timetable/tutor-changes.ts`).
+- The notice part of a publish is shared (`sendTeacherWeeks`, `week-changes.ts`); the bell shows the new kind's weeks (`WEEK_KINDS`).
+- Left out: the mark on the views (5.9, as for 5.5c-3a).
+
+The next sessions must know:
+
+- The follows of one request are merged by `tutorChanges` (first teacher before, last after); a lesson whose teacher ends as it began is neither marked nor notified. A caller that runs several follows collects them and sends once.
+- `Assignments.end` takes `notifications` in its input (the access module cannot import notifications); a test app whose route sends a notice needs `jobsDatabaseUrl`.
+- The next task is 5.6a.
+
 ## 18 October 2026: task 5.5c-3a Publish: notices and the changed mark of a publish and a withdraw
 
 - A publish (with its replace and carries) and a withdraw send one notice to each affected teacher with an account, kinds `timetable.published` and `timetable.withdrawn`, with the teacher's week in the branch before and after, shown under the notice's text in the bell's dialog (`week-change.tsx`).

@@ -249,7 +249,53 @@ export async function sendWeekChanges(
       .execute();
   }
 
-  const teacherIds = [...changes.teachers.keys()];
+  const notified = await sendTeacherWeeks(transaction, {
+    branchId: snapshot.branchId,
+    teachers: changes.teachers,
+    before: [...snapshot.unwritten, ...snapshot.before],
+    after: [...snapshot.unwritten, ...after],
+    beforeDiffers: changes.beforeDiffers,
+    afterDiffers: changes.afterDiffers,
+    send: (accountId, week) =>
+      notifications.send(transaction, {
+        kind: event.kind,
+        branchId: snapshot.branchId,
+        accountIds: [accountId],
+        data: { number: String(event.number), ...week },
+      }),
+  });
+  return { notified, marked: changes.marked.length };
+}
+
+/** A teacher's week before and after an event, as a notice carries it. */
+export interface TeacherWeek {
+  readonly weekStart: string;
+  readonly before: WeekLesson[];
+  readonly after: WeekLesson[];
+}
+
+/**
+ * Sends each affected teacher with an account (never a vacancy; 5.5a-2b-1
+ * decision 7) the week shown (`teachers`: the teacher and the Monday) of the
+ * lessons of the branch before and after an event, a lesson of `beforeDiffers`
+ * or `afterDiffers` shown as changed; `send` writes the notice of the
+ * event's kind. Shared by a publish and a withdraw (`sendWeekChanges`) and a
+ * Tutor change (`sendTutorChanges`, task 5.5c-3b). Answers how many were
+ * notified.
+ */
+export async function sendTeacherWeeks(
+  transaction: Transaction,
+  input: {
+    readonly branchId: string;
+    readonly teachers: ReadonlyMap<string, string>;
+    readonly before: readonly StoredLesson[];
+    readonly after: readonly StoredLesson[];
+    readonly beforeDiffers: ReadonlySet<string>;
+    readonly afterDiffers: ReadonlySet<string>;
+    readonly send: (accountId: string, week: TeacherWeek) => Promise<unknown>;
+  },
+): Promise<number> {
+  const teacherIds = [...input.teachers.keys()];
   const staff =
     teacherIds.length === 0
       ? []
@@ -265,11 +311,10 @@ export async function sendWeekChanges(
       : [{ teacherId: one.id, accountId: one.account_id }],
   );
   if (notified.length === 0) {
-    return { notified: 0, marked: changes.marked.length };
+    return 0;
   }
 
-  const both = [...snapshot.unwritten, ...snapshot.before, ...after];
-  const names = await namesOf(transaction, both);
+  const names = await namesOf(transaction, [...input.before, ...input.after]);
   const weekLessonOf = (one: StoredLesson, differs: ReadonlySet<string>): WeekLesson => ({
     date: one.lesson.date,
     start: clockOf(one.lesson.start),
@@ -304,32 +349,18 @@ export async function sendWeekChanges(
       )
       .slice(0, WEEK_LESSONS_MAX);
   };
+  let count = 0;
   for (const one of notified) {
-    const monday = changes.teachers.get(one.teacherId);
+    const monday = input.teachers.get(one.teacherId);
     if (monday === undefined) continue;
-    await notifications.send(transaction, {
-      kind: event.kind,
-      branchId: snapshot.branchId,
-      accountIds: [one.accountId],
-      data: {
-        number: String(event.number),
-        weekStart: monday,
-        before: weekOf(
-          [...snapshot.unwritten, ...snapshot.before],
-          changes.beforeDiffers,
-          one.teacherId,
-          monday,
-        ),
-        after: weekOf(
-          [...snapshot.unwritten, ...after],
-          changes.afterDiffers,
-          one.teacherId,
-          monday,
-        ),
-      },
+    await input.send(one.accountId, {
+      weekStart: monday,
+      before: weekOf(input.before, input.beforeDiffers, one.teacherId, monday),
+      after: weekOf(input.after, input.afterDiffers, one.teacherId, monday),
     });
+    count += 1;
   }
-  return { notified: notified.length, marked: changes.marked.length };
+  return count;
 }
 
 /** A name read by `namesOf`; a lesson's class, group, subject and room always exist (foreign keys). */

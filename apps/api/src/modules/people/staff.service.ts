@@ -92,7 +92,9 @@ import {
   ROLE_END_TUTOR_REFUSALS,
   trackingTutorEnds,
 } from '../classes/class-tutor-rows.js';
-import { auditOf, followChanged } from '../timetable/tutor-lessons.js';
+import { Notifications } from '../notifications/notifications.service.js';
+import { sendTutorChanges, tutorChanges } from '../timetable/tutor-changes.js';
+import { auditOf, followChanged, type TutorFollow } from '../timetable/tutor-lessons.js';
 import { reachingAssignment } from './account-reach.js';
 import { endAvailability } from './availability.service.js';
 import { staffIdOf, takeStaffNumber } from './staff-numbers.js';
@@ -276,6 +278,7 @@ export class Staff {
     private readonly audit: Audit,
     @Inject(CLOCK) private readonly clock: Clock,
     private readonly passwordResets: PasswordResets,
+    private readonly notifications: Notifications,
   ) {}
 
   /** The branches a read of this account works with: every branch for a Super Admin, else the branch of the request. */
@@ -1095,30 +1098,44 @@ export class Staff {
             .executeTakeFirstOrThrow();
           inserted.push({ id: written.id, status: write.status, validFrom: write.validFrom });
         }
+        // The follows of the whole status change, sent once after the last
+        // (task 5.5c-3b, decision 1 and spec review must-fix 2).
+        const follows: TutorFollow[] = [];
         // Taken-back `left` rows give their roles back.
         for (const withdrawn of plan.withdrawn.filter((taken) => taken.status === 'left')) {
-          await this.restoreRoleEnds(transaction, access, superAdmin, {
-            staffId: id,
-            statusId: withdrawn.id,
-            dateStart: await startOfDate(transaction, withdrawn.validFrom, main.time_zone),
-            requestId,
-          });
+          follows.push(
+            ...(await this.restoreRoleEnds(transaction, access, superAdmin, {
+              staffId: id,
+              statusId: withdrawn.id,
+              dateStart: await startOfDate(transaction, withdrawn.validFrom, main.time_zone),
+              requestId,
+            })),
+          );
         }
         const left = inserted.find((written) => written.status === 'left');
         if (left !== undefined && row.account_id !== null) {
-          await this.endRoles(transaction, access, superAdmin, {
-            staffId: id,
-            accountId: row.account_id,
-            statusId: left.id,
-            dateStart: await startOfDate(transaction, left.validFrom, main.time_zone),
-            requestId,
-          });
+          follows.push(
+            ...(await this.endRoles(transaction, access, superAdmin, {
+              staffId: id,
+              accountId: row.account_id,
+              statusId: left.id,
+              dateStart: await startOfDate(transaction, left.validFrom, main.time_zone),
+              requestId,
+            })),
+          );
         }
         // "The system refuses to ... remove the last active Super Admin": a
         // status that leaves none is refused (task 2.3a, decision 5).
         if (before > 0 && (await activeSuperAdmins(transaction, now)) === 0) {
           throw refused('last_super_admin');
         }
+        // Task 5.5c-3b: the notice and the mark of every Tutor lesson the
+        // status change moved, once.
+        const notices = await sendTutorChanges(
+          transaction,
+          this.notifications,
+          tutorChanges(follows),
+        );
         let slip: FirstPasswordSlip | null = null;
         if (rehire && row.account_id !== null) {
           const password = await this.passwordResets.forRehire(transaction, {
@@ -1155,6 +1172,7 @@ export class Staff {
             cut: plan.cuts.map((cut) => cut.id),
             withdrawn: plan.withdrawn.map((taken) => taken.id),
             written: inserted.map((written) => written.id),
+            ...(notices.marked > 0 ? { notices: { ...notices } } : {}),
           },
           requestId,
         });
@@ -1456,7 +1474,8 @@ export class Staff {
       dateStart: Date;
       requestId: string;
     },
-  ): Promise<void> {
+  ): Promise<TutorFollow[]> {
+    const follows: TutorFollow[] = [];
     // An end at or before now has passed and is final (0.7a;
     // `assignments_end_guard`, db/migrations/0027): such a role keeps it.
     const now = await transactionMoment(transaction);
@@ -1498,6 +1517,7 @@ export class Staff {
       });
       // Task 3.6c-2: the Tutor lessons of those classes follow.
       const follow = await followTutorEnds(transaction, tutorRows);
+      follows.push(follow);
       const details = {
         ...(tutorRows.length === 0 ? {} : { tutorRows }),
         ...(followChanged(follow) ? { tutorLessons: auditOf(follow) } : {}),
@@ -1516,6 +1536,7 @@ export class Staff {
         requestId: left.requestId,
       });
     }
+    return follows;
   }
 
   /**
@@ -1527,7 +1548,8 @@ export class Staff {
     access: Access,
     superAdmin: string,
     taken: { staffId: string; statusId: string; dateStart: Date; requestId: string },
-  ): Promise<void> {
+  ): Promise<TutorFollow[]> {
+    const follows: TutorFollow[] = [];
     const { staffId, statusId, requestId } = taken;
     const ends = await transaction
       .selectFrom('staff_status_role_ends')
@@ -1564,6 +1586,7 @@ export class Staff {
       });
       // Task 3.6c-2: the lessons from the old end go back to the Tutor.
       const follow = await followTutorEnds(transaction, tutorRows);
+      follows.push(follow);
       const details = {
         ...(tutorRows.length === 0 ? {} : { tutorRows }),
         ...(followChanged(follow) ? { tutorLessons: auditOf(follow) } : {}),
@@ -1582,6 +1605,7 @@ export class Staff {
         requestId,
       });
     }
+    return follows;
   }
 
   /**
