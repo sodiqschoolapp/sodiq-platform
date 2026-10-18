@@ -451,7 +451,7 @@ export const en = {
     vacancy_has_load:
       'A draft or published teaching load that can still run, or a future lesson, names this vacancy, so it cannot be closed yet. Give those rows another teacher, or close it once that load has ended.',
     vacancy_in_load:
-      'A teaching load row names this vacancy, so it cannot be deleted. A vacancy that held a published load is kept with its history: close it instead.',
+      'A teaching load row names this vacancy, so it cannot be deleted. Give the rows of a draft another teacher; a vacancy that held a published load is kept with its history and is closed once that load has ended.',
     student_merge_year_closed:
       'The merge would change a row of a closed academic year, which nothing changes. These records cannot be merged.',
     student_merge_grade:

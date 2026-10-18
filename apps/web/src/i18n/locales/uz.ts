@@ -461,7 +461,7 @@ export const uz: Texts<'one' | 'other'> = {
     vacancy_has_load:
       'Bu vakansiya qoralamada yoki hali amal qilishi mumkin boʻlgan eʼlon qilingan yuklamada koʻrsatilgan yoki unga kelgusi dars biriktirilgan, shuning uchun uni hozircha yopib boʻlmaydi. Shu qatorlarga boshqa oʻqituvchini tayinlang yoki yuklama tugagach, vakansiyani yoping.',
     vacancy_in_load:
-      'Bu vakansiya oʻquv yuklamasi qatorida koʻrsatilgan, shuning uchun uni oʻchirib boʻlmaydi. Eʼlon qilingan yuklamasi boʻlgan vakansiya tarixi bilan saqlanadi: uni oʻchirish oʻrniga yoping.',
+      'Bu vakansiya oʻquv yuklamasi qatorida koʻrsatilgan, shuning uchun uni oʻchirib boʻlmaydi. Qoralama qatorlariga boshqa oʻqituvchini tayinlang; eʼlon qilingan yuklamasi boʻlgan vakansiya tarixi bilan saqlanadi va shu yuklama tugagach yopiladi.',
     student_merge_year_closed:
       'Birlashtirish yopilgan oʻquv yilining qatorini oʻzgartiradi, u esa oʻzgarmaydi. Bu yozuvlarni birlashtirib boʻlmaydi.',
     student_merge_grade:

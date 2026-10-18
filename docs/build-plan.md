@@ -727,6 +727,7 @@ How to read the task lines:
   - Done when: the exception "no teacher of the subject is free" works as the edge case says.
   - From 5.2 (pull request #109, decision 17, correction 3): a substitute is a placement with `substitute: true`; `substitute_language` is a warning that needs a confirmation, `substitute_vacancy` blocks, and the option `noSubjectTeacherFree` of `checkTimetable` turns `teacher_subject`, `teacher_grade` and `teacher_unavailable` of the substitute's own lesson (`substitute: true`, `mode: 'dated'`) into warnings with a tick; every other lesson keeps them blocked, and double booking stays blocked.
   - From 3.6c-2 (pull request #125, decision 11): a substitution on a Tutor lesson is kept by a later `followTutors`; the substitute of a Tutor lesson needs the subject in the profile like any substitute (`teacherProblems` skips the profile rule for the class's Tutor only).
+  - From 5.5c-2b (pull request #157, review decision 10): a substitution never puts a vacancy on a lesson (`substitute_vacancy` blocks), so it needs no check of a closed vacancy; the writes of `lessons.teacher_id` that do (a fill, an absence that gives lessons back) refuse a closed vacancy by the From line of 5.7a.
 
 - [ ] **5.8 Protection and version history**
   - Read: `06` (Protection), `03` (Quarters), `edge/timetable` (Versions and drafts).

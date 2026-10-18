@@ -1,4 +1,5 @@
 import { vacancyDetailSchema, vacancyListSchema } from '@sodiq/shared';
+import { sql } from 'kysely';
 import type { Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
@@ -9,6 +10,7 @@ import {
 } from '../../testing/day-templates-kit.js';
 import { at, LessonsKit, QUARTER_DATES, type LessonSource } from '../../testing/lessons-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
+import { Transactions, type Transaction } from '../../database/transactions.js';
 
 /** A Monday before the kit's today, when the first version starts. */
 const EARLY = '2026-09-07';
@@ -79,7 +81,7 @@ describe('a vacancy closed and kept', () => {
     ]);
 
   /** A lesson of the class on `date` from `source`, under `teacher`, by the migrator. */
-  async function lessonOn(source: LessonSource, date: string, teacher: string): Promise<void> {
+  async function lessonOn(source: LessonSource, date: string, teacher: string): Promise<string> {
     const block = await t.database.migrator
       .insertInto('lesson_blocks')
       .values({
@@ -95,7 +97,7 @@ describe('a vacancy closed and kept', () => {
       .returning(['id', 'lesson_date', 'starts_at', 'ends_at'])
       .executeTakeFirstOrThrow();
     const from = source.lessons[0];
-    await t.database.migrator
+    const lesson = await t.database.migrator
       .insertInto('lessons')
       .values({
         branch_id: t.north,
@@ -110,7 +112,9 @@ describe('a vacancy closed and kept', () => {
         pattern_entry_id: from?.patternEntryId ?? '',
         teacher_id: teacher,
       })
-      .execute();
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    return lesson.id;
   }
 
   beforeAll(async () => {
@@ -195,6 +199,94 @@ describe('a vacancy closed and kept', () => {
 
   // The permission review of the code: another branch's vacancy that its own
   // load holds is 404 before anything reads past the row filter.
+  // Plan test 12: a version in force today still holds while the next one
+  // has not started; each version that holds is named.
+  it('is refused while the version in force holds it, the next one not started, naming each', async () => {
+    const held = await vacancy();
+    const teacher = await kit.load.teacher(t.north, { subjects: [{ subject, grades: [7] }] });
+    const inForce = await naming(held, TODAY);
+    await naming(teacher.staffId, TOMORROW);
+    const response = await post(`/api/people/vacancies/${held}/close`);
+    refusedWith(response, 409, 'vacancy_has_load');
+    expect(detailsOf(response).map((detail) => [detail.path, detail.recordId])).toEqual([
+      ['load', inForce],
+    ]);
+
+    const both = await vacancy();
+    const first = await naming(both, LATER);
+    const second = await naming(both, '2026-10-19');
+    const twice = await post(`/api/people/vacancies/${both}/close`);
+    refusedWith(twice, 409, 'vacancy_has_load');
+    expect(detailsOf(twice).map((detail) => [detail.path, detail.recordId])).toEqual([
+      ['load', first],
+      ['load', second],
+    ]);
+  });
+
+  // The spec review of the code: the side whose wait is proved is the route;
+  // the held side moves a lesson under the vacancy, as no route does yet.
+  it('waits for a lesson being moved under the vacancy and is refused', async () => {
+    const source = await kit.source(
+      t.north,
+      year,
+      [{ classId, groupId: null, subjectId: subject }],
+      EARLY,
+    );
+    const teacher = await t.database.migrator
+      .selectFrom('teaching_load_rows')
+      .select('teacher_id')
+      .where('id', '=', source.lessons[0]?.loadRowId ?? '')
+      .executeTakeFirstOrThrow();
+    const moved = await vacancy();
+    const lesson = await lessonOn(source, '2026-10-13', teacher.teacher_id);
+    let release: () => void = () => undefined;
+    const released = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let ready: () => void = () => undefined;
+    const isReady = new Promise<void>((resolve) => {
+      ready = resolve;
+    });
+    const held = new Transactions(t.database.app, t.clock).run(
+      [t.north],
+      async (transaction: Transaction) => {
+        await transaction
+          .selectFrom('staff')
+          .select('id')
+          .where('id', '=', moved)
+          .forKeyShare()
+          .execute();
+        await transaction
+          .updateTable('lessons')
+          .set({ teacher_id: moved })
+          .where('id', '=', lesson)
+          .execute();
+        ready();
+        await released;
+      },
+    );
+    await isReady;
+    const closing = post(`/api/people/vacancies/${moved}/close`).then((response) => response);
+    await expect
+      .poll(
+        async () =>
+          (
+            await sql<{ waiting: number }>`
+              select count(distinct l.pid)::int as waiting
+              from pg_locks l join pg_stat_activity a on a.pid = l.pid
+              where a.datname = current_database() and not l.granted
+            `.execute(t.database.migrator)
+          ).rows[0]?.waiting ?? 0,
+        { timeout: 20_000, interval: 50 },
+      )
+      .toBe(1);
+    release();
+    await held;
+    const response = await closing;
+    refusedWith(response, 409, 'vacancy_has_load');
+    expect(detailsOf(response).map((detail) => detail.path)).toEqual(['lessons']);
+  });
+
   it('answers 404 for a vacancy of another branch that its load holds', async () => {
     const southYear = await kit.load.classes.year(t.south);
     const southClass = await kit.load.classes.schoolClass(t.south, southYear, { grade: 7 });

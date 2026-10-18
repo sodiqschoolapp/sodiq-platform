@@ -308,12 +308,39 @@ describe('the close of a vacancy in the database', () => {
   it('holds every published row and lesson without a moment', async () => {
     const place = await fresh();
     const ended = await naming(place, EARLY);
+    const source = await sourceOf(place);
     await later(place, TODAY);
-    const found = await sql<{ version_id: string | null }>`
-      select version_id
+    // A lesson today: with a moment neither it nor the ended version holds.
+    await lessonOn(place, source, TODAY, place.vacancy);
+    expect(await holders(place)).toEqual([]);
+    const found = await sql<{ version_id: string | null; lesson_date: string | null }>`
+      select version_id, lesson_date
       from vacancy_close_holders(${place.vacancy}::uuid, ${place.branch}::uuid, ${TODAY}::date)
     `.execute(database.migrator);
-    expect(found.rows).toEqual([{ version_id: ended }]);
+    expect(found.rows).toEqual([
+      { version_id: ended, lesson_date: null },
+      { version_id: null, lesson_date: TODAY },
+    ]);
+  });
+
+  // The close day bounds the lessons (review correction 3): a close from a
+  // later day counts the lessons from that day only.
+  it('counts the lessons from the close day when it comes after today', async () => {
+    const before = await fresh();
+    const beforeSource = await sourceOf(before);
+    await later(before, TODAY);
+    await lessonOn(before, beforeSource, '2026-10-19', before.vacancy);
+    expect(await holders(before, NOW, '2026-10-20')).toEqual([]);
+    expect(await close(before, NOW, '2026-10-20')).toBe('written');
+
+    const on = await fresh();
+    const onSource = await sourceOf(on);
+    await later(on, TODAY);
+    await lessonOn(on, onSource, '2026-10-20', on.vacancy);
+    expect(await holders(on, NOW, '2026-10-20')).toEqual([
+      { version_id: null, version_number: null, lesson_date: '2026-10-20' },
+    ]);
+    expect(await close(on, NOW, '2026-10-20')).toBe('vacancy_has_load');
   });
 
   // Review correction 1 and the permission review of the code: the branch is
