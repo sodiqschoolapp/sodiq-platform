@@ -3018,6 +3018,8 @@ export const en = {
           'Timetable version {{number}} was published and your lessons changed. Your week before and after:',
         withdrawn:
           'Timetable version {{number}} was withdrawn and your lessons changed. Your week before and after:',
+        tutor_changed:
+          "A change of a class's Tutor changed your Tutor lessons. Your week before and after:",
       },
     },
     // The week before and after of a notice of a timetable change (task 5.5c-3a).

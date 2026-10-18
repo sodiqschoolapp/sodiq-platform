@@ -27,6 +27,8 @@ const NOBODY = '00000000-0000-7000-8000-000000000000';
 const ROW_SECURITY_VIOLATION = '42501';
 const START = '2026-10-05T09:00:00+05:00';
 const HOUR = 60 * 60 * 1000;
+/** No end here moves a Tutor lesson (task 5.5c-3b): a notice would be a mistake of the test. */
+const noNotices = { send: () => Promise.reject(new Error('No notice is expected here.')) };
 
 // Edge cases, "Who can act": rights are assignments: person, role, branch,
 // with dates; the server allows an action if any current assignment permits it.
@@ -61,7 +63,7 @@ describe('assignments', () => {
 
   function end(assignmentId: string, branchId: string | null, endedBy = administrator) {
     return transactions.run(branchId === null ? [] : [branchId], (transaction) =>
-      assignments.end(transaction, { assignmentId, endedBy }),
+      assignments.end(transaction, { assignmentId, endedBy, notifications: noNotices }),
     );
   }
 
@@ -438,6 +440,7 @@ describe('assignments', () => {
           assignmentId: given.id,
           endedBy: administrator,
           requestId: 'request-2',
+          notifications: noNotices,
         }),
       );
 
@@ -678,6 +681,7 @@ describe('the Super Admin role', () => {
       assignments.end(transaction, {
         assignmentId: first?.id ?? '',
         endedBy: second?.account_id ?? '',
+        notifications: noNotices,
       }),
     );
     const later = await account('Elyor', 'Saidov');
@@ -696,6 +700,7 @@ describe('the Super Admin role', () => {
       assignments.end(transaction, {
         assignmentId: second?.id ?? '',
         endedBy: first?.account_id ?? '',
+        notifications: noNotices,
       }),
     );
 
@@ -721,6 +726,7 @@ describe('the Super Admin role', () => {
       assignments.end(transaction, {
         assignmentId: later.rows[0]?.id ?? '',
         endedBy: holder.rows[0]?.account_id ?? '',
+        notifications: noNotices,
       }),
     );
     await give(seventh);

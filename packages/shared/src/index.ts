@@ -255,6 +255,7 @@ export {
   type NotificationList,
   type NotificationParams,
   WEEK_CHANGE_KINDS,
+  WEEK_KINDS,
   WEEK_LESSONS_MAX,
   weekLessonSchema,
   type WeekChangeKind,

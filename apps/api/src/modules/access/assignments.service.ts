@@ -5,6 +5,7 @@ import { transactionMoment, type Transaction } from '../../database/transactions
 import type { JsonValue } from '../../database/types.generated.js';
 import { Audit } from '../audit/audit.service.js';
 import { followTutorEnds, trackingTutorEnds } from '../classes/class-tutor-rows.js';
+import { sendTutorChanges, tutorChanges, type NoticeSender } from '../timetable/tutor-changes.js';
 import { auditOf, followChanged } from '../timetable/tutor-lessons.js';
 import { UnknownAccountError } from '../auth/password-resets.service.js';
 import { insertAppointmentSubjects } from './appointment-subjects.js';
@@ -124,6 +125,13 @@ export interface AssignmentEnd {
   actingAssignmentId?: string;
   /** For the audit entry: the staff record of the person (task 2.3a). */
   personId?: string;
+  /**
+   * Sends the notice of the Tutor lessons the end moves (task 5.5c-3b,
+   * decision 6): the `Notifications` service of the caller, required so that
+   * no caller leaves it out; the access module cannot import the
+   * notifications module (it imports auth, which imports access).
+   */
+  notifications: NoticeSender;
 }
 
 /**
@@ -305,6 +313,12 @@ export class Assignments {
     }
     // Task 3.6c-2: the Tutor lessons of those classes follow.
     const follow = await followTutorEnds(transaction, tutorRows);
+    // Task 5.5c-3b: the notice and the mark.
+    const notices = await sendTutorChanges(
+      transaction,
+      ending.notifications,
+      tutorChanges([follow]),
+    );
     await this.audit.record(transaction, {
       branchId: assignment.branch_id,
       actorId: ending.endedBy,
@@ -317,6 +331,7 @@ export class Assignments {
         role: assignment.role,
         ...(tutorRows.length === 0 ? {} : { tutorRows }),
         ...(followChanged(follow) ? { tutorLessons: auditOf(follow) } : {}),
+        ...(notices.marked > 0 ? { notices: { ...notices } } : {}),
       },
       ...(ending.requestId === undefined ? {} : { requestId: ending.requestId }),
       ...(ending.actingAssignmentId === undefined

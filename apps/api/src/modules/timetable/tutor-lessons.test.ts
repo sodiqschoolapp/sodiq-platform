@@ -1,5 +1,11 @@
 import type { INestApplication } from '@nestjs/common';
-import { BRANCH_HEADER, classTutorPreviewSchema, type ClassTutorPreview } from '@sodiq/shared';
+import {
+  BRANCH_HEADER,
+  classTutorPreviewSchema,
+  isMarkedChanged,
+  NOTIFICATION_KINDS,
+  type ClassTutorPreview,
+} from '@sodiq/shared';
 import { tutorAt } from '@sodiq/timetable-rules';
 import { sql } from 'kysely';
 import request from 'supertest';
@@ -18,6 +24,7 @@ import { followTutors } from './tutor-lessons.js';
 const NOW = '2026-10-15T10:00:00+05:00';
 const TODAY = '2026-10-15';
 const UNKNOWN = '0199a000-0000-7000-8000-000000000099';
+const DAY = 24 * 60 * 60 * 1000;
 
 // Task 3.6c-2, pull request #125. Owner's answer 2 of 15 October 2026 and
 // answer 1 of 16 October 2026 (issue #42); docs/spec/edge-cases/timetable.md,
@@ -235,6 +242,9 @@ describe('Tutor lessons follow the Tutor', () => {
       database.migrator.selectFrom('time_claims').selectAll().orderBy('id').execute(),
       database.migrator.selectFrom('teaching_load_rows').selectAll().orderBy('id').execute(),
       database.migrator.selectFrom('pattern_entries').selectAll().orderBy('id').execute(),
+      // Task 5.5c-3b: a follow sends notices and marks lessons.
+      database.migrator.selectFrom('notifications').select('id').orderBy('id').execute(),
+      database.migrator.selectFrom('lesson_changes').selectAll().orderBy('lesson_id').execute(),
       database.migrator.selectFrom('audit_log').select('id').orderBy('id').execute(),
     ]);
 
@@ -252,7 +262,7 @@ describe('Tutor lessons follow the Tutor', () => {
       .insertInto('travel_times')
       .values({ branch_low: low ?? '', branch_high: high ?? '', minutes: 30 })
       .execute();
-    app = await createTestApp({ database: database.app, clock });
+    app = await createTestApp({ database: database.app, jobsDatabaseUrl: database.appUrl, clock });
     kit = signInKit(app);
     const adminBrowser = await kit.completeSession('Aziza', 'Karimova');
     await kit.giveRole(adminBrowser.account.id, { role: 'super_admin' });
@@ -518,6 +528,278 @@ describe('Tutor lessons follow the Tutor', () => {
       await give(first.classId, b.assignmentId, '2026-10-19').expect(201);
       await give(second.classId, b.assignmentId, '2026-10-19').expect(201);
       expect(await teachersOf([one, two])).toEqual([b.staffId, null]);
+    });
+  });
+
+  // Task 5.5c-3b, pull request #159: the notice and the "changed" mark of a
+  // Tutor change (From line of 3.6c-2: "a change of a class's Tutor that
+  // moves its dated Tutor lessons notifies the old and the new Tutor as a
+  // teacher change does, and the lessons it moved carry the 'changed' mark for
+  // a week"; edge/timetable, After publishing: "One notice per person per
+  // event, with the week before and after. A teacher whose week did not change
+  // gets none.").
+  describe('the notice and the mark (task 5.5c-3b)', () => {
+    const noticesOf = (accountId: string) =>
+      database.migrator
+        .selectFrom('notifications')
+        .select(['branch_id', 'data'])
+        .where('account_id', '=', accountId)
+        .where('kind', '=', 'timetable.tutor_changed')
+        .orderBy('id')
+        .execute();
+
+    const markOf = async (lessonId: string) =>
+      (
+        await database.migrator
+          .selectFrom('lesson_changes')
+          .select('changed_at')
+          .where('lesson_id', '=', lessonId)
+          .executeTakeFirst()
+      )?.changed_at ?? null;
+
+    const marksOf = (ids: readonly string[]) => Promise.all(ids.map(markOf));
+
+    const clearMarks = (ids: readonly string[]) =>
+      database.migrator.deleteFrom('lesson_changes').where('lesson_id', 'in', ids).execute();
+
+    /** The lines of one side of a notice: date, start and changed. */
+    const sideOf = (data: unknown, side: 'before' | 'after') => {
+      const week = NOTIFICATION_KINDS['timetable.tutor_changed'].parse(data);
+      return week[side].map((one) => `${one.date} ${one.start}${one.changed ? ' changed' : ''}`);
+    };
+
+    it('notifies the old and the new Tutor once each with the week, and marks the moved lessons (done-when)', async () => {
+      const own = await tutoredClass();
+      const a = own.tutor;
+      const first = await tutorLesson(own.classId, a.staffId, '2026-10-20');
+      const second = await tutorLesson(own.classId, a.staffId, '2026-10-27');
+      // Another teacher of the class: their week does not change.
+      const other = await tutorPerson();
+      const maths = await lesson({
+        classId: own.classId,
+        date: '2026-10-20',
+        start: '10:00',
+        end: '10:45',
+        teacherId: other.staffId,
+        subjectId: subject,
+      });
+      const b = await tutorPerson();
+      await give(own.classId, b.assignmentId, '2026-10-19', {
+        kind: 'acting',
+        until: '2026-10-31',
+      }).expect(201);
+      expect(await teachersOf([first, second, maths])).toEqual([
+        b.staffId,
+        b.staffId,
+        other.staffId,
+      ]);
+
+      const toA = await noticesOf(a.accountId);
+      const toB = await noticesOf(b.accountId);
+      expect(toA).toHaveLength(1);
+      expect(toB).toHaveLength(1);
+      expect(toA[0]?.branch_id).toBe(north);
+      expect(toA[0]?.data).toMatchObject({ weekStart: '2026-10-19' });
+      expect(sideOf(toA[0]?.data, 'before')).toEqual(['2026-10-20 09:00 changed']);
+      expect(sideOf(toA[0]?.data, 'after')).toEqual([]);
+      expect(sideOf(toB[0]?.data, 'before')).toEqual([]);
+      expect(sideOf(toB[0]?.data, 'after')).toEqual(['2026-10-20 09:00 changed']);
+      expect(await noticesOf(other.accountId)).toEqual([]);
+
+      const marks = await marksOf([first, second, maths]);
+      expect(marks.map((one) => one?.toISOString() ?? null)).toEqual([
+        clock.now().toISOString(),
+        clock.now().toISOString(),
+        null,
+      ]);
+      expect(isMarkedChanged(marks[0] ?? null, clock.now())).toBe(true);
+      expect(isMarkedChanged(marks[0] ?? null, new Date(clock.now().getTime() + 7 * DAY))).toBe(
+        false,
+      );
+      expect((await entry('class.tutor_given', own.classId)).new_value).toMatchObject({
+        notices: { notified: 2, marked: 2 },
+      });
+    });
+
+    it('marks and notifies nothing for a lesson that needs a teacher and stays so on a clash (spec review must-fix 1)', async () => {
+      const own = await tutoredClass();
+      const lessonId = await tutorLesson(own.classId, own.tutor.staffId, '2026-10-21');
+      await endRow(own.classId, own.rowId, '2026-10-19').expect(200);
+      expect(await teacherOf(lessonId)).toBeNull();
+      // The end changed it: marked, and the old Tutor told.
+      expect(await markOf(lessonId)).not.toBeNull();
+      expect(await noticesOf(own.tutor.accountId)).toHaveLength(1);
+      await clearMarks([lessonId]);
+
+      // The new Tutor teaches another class at that time.
+      const b = await tutorPerson();
+      const elsewhere = await newClass();
+      await lesson({
+        classId: elsewhere,
+        date: '2026-10-21',
+        start: '09:00',
+        end: '09:45',
+        teacherId: b.staffId,
+        subjectId: subject,
+      });
+      await give(own.classId, b.assignmentId, '2026-10-19').expect(201);
+      expect(await teacherOf(lessonId)).toBeNull();
+      const given = await entry('class.tutor_given', own.classId);
+      expect(given.new_value).toMatchObject({
+        tutorLessons: { needsTeacher: [{ lessonId, from: null }] },
+      });
+      expect(given.new_value).not.toHaveProperty('notices');
+      expect(await markOf(lessonId)).toBeNull();
+      expect(await noticesOf(b.accountId)).toEqual([]);
+      expect(await noticesOf(own.tutor.accountId)).toHaveLength(1);
+    });
+
+    it('writes no notice and no mark for a give with no Tutor lesson to move', async () => {
+      const classId = await newClass();
+      const b = await tutorPerson();
+      await give(classId, b.assignmentId, '2026-10-19').expect(201);
+      expect(await noticesOf(b.accountId)).toEqual([]);
+      expect((await entry('class.tutor_given', classId)).new_value).not.toHaveProperty('notices');
+    });
+
+    it('dated today marks tomorrow’s moved lesson and not today’s', async () => {
+      const own = await tutoredClass();
+      const laterToday = await tutorLesson(own.classId, own.tutor.staffId, TODAY, '14:00', '14:45');
+      const tomorrow = await tutorLesson(own.classId, own.tutor.staffId, '2026-10-16');
+      const acting = await tutorPerson();
+      await give(own.classId, acting.assignmentId, TODAY, {
+        kind: 'acting',
+        until: '2026-10-19',
+      }).expect(201);
+      expect((await marksOf([laterToday, tomorrow])).map((one) => one !== null)).toEqual([
+        false,
+        true,
+      ]);
+      const toActing = await noticesOf(acting.accountId);
+      expect(toActing).toHaveLength(1);
+      // Today's lesson is in the week, unchanged, on the old Tutor's side only.
+      expect(sideOf(toActing[0]?.data, 'after')).toEqual(['2026-10-16 09:00 changed']);
+      expect(sideOf((await noticesOf(own.tutor.accountId))[0]?.data, 'before')).toEqual([
+        '2026-10-15 14:00',
+        '2026-10-16 09:00 changed',
+      ]);
+    });
+
+    it('tells the new Tutor of a lesson taken from a vacancy, never the vacancy', async () => {
+      const own = await tutoredClass();
+      // A lesson of the Tutor row held by a vacancy, as a row written before
+      // 3.6c-2 could leave it; the acting give takes it from the vacancy.
+      const vacancy = await lessons.load.vacancy(north);
+      const lessonId = await lesson({
+        classId: own.classId,
+        date: '2026-10-22',
+        start: '09:00',
+        end: '09:45',
+        teacherId: vacancy,
+        rowTeacherId: own.tutor.staffId,
+      });
+      const b = await tutorPerson();
+      await give(own.classId, b.assignmentId, '2026-10-19', {
+        kind: 'acting',
+        until: '2026-10-31',
+      }).expect(201);
+      expect(await teacherOf(lessonId)).toBe(b.staffId);
+      expect((await entry('class.tutor_given', own.classId)).new_value).toMatchObject({
+        tutorLessons: { moved: [{ lessonId, from: vacancy, to: b.staffId }] },
+      });
+      expect(await markOf(lessonId)).not.toBeNull();
+      expect(await noticesOf(b.accountId)).toHaveLength(1);
+      const toVacancy = await database.migrator
+        .selectFrom('notifications')
+        .innerJoin('staff', 'staff.account_id', 'notifications.account_id')
+        .select('notifications.id')
+        .where('staff.id', '=', vacancy)
+        .execute();
+      expect(toVacancy).toEqual([]);
+    });
+
+    it('sends one notice for a role end over two classes, and again for its taking back', async () => {
+      const a = await tutorPerson();
+      const one = await newClass();
+      const two = await newClass();
+      await lessons.load.classes.tutorRow(north, one, a.assignmentId);
+      await lessons.load.classes.tutorRow(north, two, a.assignmentId);
+      const early = await tutorLesson(one, a.staffId, '2026-10-29');
+      const late = await tutorLesson(two, a.staffId, '2026-10-30');
+      const end = (from: string) =>
+        post(`/api/people/staff/${a.staffId}/roles/${a.assignmentId}/end`, { from }, admin).expect(
+          200,
+        );
+      await end('2026-10-28');
+      expect(await teachersOf([early, late])).toEqual([null, null]);
+      const first = await noticesOf(a.accountId);
+      expect(first).toHaveLength(1);
+      expect(first[0]?.data).toMatchObject({ weekStart: '2026-10-26' });
+      expect((await marksOf([early, late])).every((mark) => mark !== null)).toBe(true);
+      expect((await entry('assignment.ended', a.assignmentId)).details).toMatchObject({
+        notices: { notified: 1, marked: 2 },
+      });
+
+      await clearMarks([early, late]);
+      await end('2026-10-30');
+      expect(await teachersOf([early, late])).toEqual([a.staffId, null]);
+      expect(await noticesOf(a.accountId)).toHaveLength(2);
+      expect((await marksOf([early, late])).map((mark) => mark !== null)).toEqual([true, false]);
+    });
+
+    it('sends one notice for a `left` moved to a later date, and marks only the lessons given back (spec review must-fix 2)', async () => {
+      const own = await tutoredClass();
+      const a = own.tutor;
+      const mid = await tutorLesson(own.classId, a.staffId, '2026-10-29');
+      const late = await tutorLesson(own.classId, a.staffId, '2026-10-30');
+      const left = (from: string) =>
+        post(`/api/people/staff/${a.staffId}/status`, { status: 'left', from }, admin).expect(200);
+      await left('2026-10-28');
+      expect(await teachersOf([mid, late])).toEqual([null, null]);
+      expect(await noticesOf(a.accountId)).toHaveLength(1);
+      expect((await entry('staff.status', a.staffId)).details).toMatchObject({
+        notices: { notified: 1, marked: 2 },
+      });
+
+      await clearMarks([mid, late]);
+      await left('2026-10-30');
+      expect(await teachersOf([mid, late])).toEqual([a.staffId, null]);
+      // The taking back and the new end in one request: one notice, the
+      // lesson after the later date unchanged and unmarked.
+      const notices = await noticesOf(a.accountId);
+      expect(notices).toHaveLength(2);
+      expect(sideOf(notices[1]?.data, 'after')).toEqual(['2026-10-29 09:00 changed']);
+      expect((await marksOf([mid, late])).map((mark) => mark !== null)).toEqual([true, false]);
+      expect((await entry('staff.status', a.staffId)).details).toMatchObject({
+        notices: { notified: 1, marked: 1 },
+      });
+
+      await clearMarks([mid]);
+      await post(
+        `/api/people/staff/${a.staffId}/status`,
+        { status: 'active', from: TODAY },
+        admin,
+      ).expect(200);
+      expect(await teachersOf([mid, late])).toEqual([a.staffId, a.staffId]);
+      expect(await noticesOf(a.accountId)).toHaveLength(3);
+      expect((await marksOf([mid, late])).map((mark) => mark !== null)).toEqual([false, true]);
+    });
+
+    it('leaves no notice and no mark after a preview, which runs the give and rolls it back', async () => {
+      const own = await tutoredClass();
+      const lessonId = await tutorLesson(own.classId, own.tutor.staffId, '2026-10-21');
+      await endRow(own.classId, own.rowId, '2026-10-19').expect(200);
+      await clearMarks([lessonId]);
+      const b = await tutorPerson();
+      const before = await rowsOf();
+      const answer = classTutorPreviewSchema.parse(
+        (await preview(own.classId, b.assignmentId, '2026-10-19').expect(200)).body,
+      );
+      // The preview ran the follow (and so the send) before its rollback.
+      expect(answer.moved).toHaveLength(1);
+      expect(await rowsOf()).toEqual(before);
+      expect(await markOf(lessonId)).toBeNull();
+      expect(await noticesOf(b.accountId)).toEqual([]);
     });
   });
 

@@ -38,6 +38,8 @@ import {
   lockSuperAdmins,
 } from '../access/super-admins.js';
 import { Audit } from '../audit/audit.service.js';
+import { Notifications } from '../notifications/notifications.service.js';
+import { sendTutorChanges, tutorChanges } from '../timetable/tutor-changes.js';
 import { Accounts, LoginTakenError } from '../auth/accounts.service.js';
 import { appointedSubjects } from '../access/appointment-subjects.js';
 import { actorsOf } from './actors.js';
@@ -79,6 +81,7 @@ export class StaffAccounts {
     private readonly assignments: Assignments,
     private readonly staff: Staff,
     private readonly audit: Audit,
+    private readonly notifications: Notifications,
   ) {}
 
   /** The Super Admin assignment that allows a change; the route asks `create` or `edit`, which only the Super Admin has. */
@@ -398,13 +401,17 @@ export class StaffAccounts {
     if (leave !== null) {
       // It ends at the planned `left` as the roles held when that row was
       // written did, and comes back with them when it is taken back.
-      await this.staff.endRoles(transaction, access, superAdmin, {
+      const follows = await this.staff.endRoles(transaction, access, superAdmin, {
         staffId: person.id,
         accountId,
         statusId: leave.id,
         dateStart: await startOfDate(transaction, leave.validFrom, leave.timeZone),
         requestId,
       });
+      // Task 5.5c-3b: the notice and the mark of the Tutor lessons it moved;
+      // the give's entry is written before, and the `assignment.end`
+      // entries of `endRoles` name every moved lesson (review correction 1).
+      await sendTutorChanges(transaction, this.notifications, tutorChanges(follows));
     }
     return given.id;
   }
@@ -508,6 +515,7 @@ export class StaffAccounts {
             actingAssignmentId: superAdmin,
             personId: id,
             requestId,
+            notifications: this.notifications,
           });
           const next = await this.giveTo(
             transaction,
@@ -541,6 +549,7 @@ export class StaffAccounts {
               actingAssignmentId: superAdmin,
               personId: id,
               requestId,
+              notifications: this.notifications,
             });
           }
           // One entry that ties the two together (plan of #63); the end and the
@@ -634,6 +643,7 @@ export class StaffAccounts {
               actingAssignmentId: superAdmin,
               personId: id,
               requestId,
+              notifications: this.notifications,
             }),
           );
           return this.sectionOf(transaction, access, person, branchId);

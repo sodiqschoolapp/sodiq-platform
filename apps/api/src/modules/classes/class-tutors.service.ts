@@ -15,8 +15,10 @@ import { Transactions, transactionMoment, type Transaction } from '../../databas
 import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
+import { Notifications } from '../notifications/notifications.service.js';
 import { startOfDate } from '../people/staff-status.js';
 import { notFound, refusingConstraints } from '../setup/setup-refusals.js';
+import { sendTutorChanges, tutorChanges } from '../timetable/tutor-changes.js';
 import {
   auditOf,
   followChanged,
@@ -41,6 +43,7 @@ export class ClassTutors {
   constructor(
     private readonly transactions: Transactions,
     private readonly audit: Audit,
+    private readonly notifications: Notifications,
   ) {}
 
   /**
@@ -256,6 +259,9 @@ export class ClassTutors {
     // Task 3.6c-2: the class's Tutor rows and Tutor lessons follow, from
     // the start of the new row.
     const follow = await followTutors(transaction, [classId], validFrom);
+    // Task 5.5c-3b: the notice and the mark, also under the preview's
+    // savepoint, which rolls them back with the give.
+    const notices = await sendTutorChanges(transaction, this.notifications, tutorChanges([follow]));
     await this.audit.record(transaction, {
       branchId,
       actorId: access.accountId,
@@ -269,6 +275,7 @@ export class ClassTutors {
         validFrom: validFrom.toISOString(),
         validUntil: row.valid_until?.toISOString() ?? null,
         ...(followChanged(follow) ? { tutorLessons: auditOf(follow) } : {}),
+        ...(notices.marked > 0 ? { notices: { ...notices } } : {}),
       },
       requestId,
     });
@@ -326,6 +333,12 @@ export class ClassTutors {
           // Task 3.6c-2: from the new end, the earlier of the two (an end only
           // moves earlier).
           const follow = await followTutors(transaction, [classId], validUntil);
+          // Task 5.5c-3b: the notice and the mark.
+          const notices = await sendTutorChanges(
+            transaction,
+            this.notifications,
+            tutorChanges([follow]),
+          );
           await this.audit.record(transaction, {
             branchId,
             actorId: access.accountId,
@@ -337,6 +350,7 @@ export class ClassTutors {
               tutorId,
               validUntil: validUntil.toISOString(),
               ...(followChanged(follow) ? { tutorLessons: auditOf(follow) } : {}),
+              ...(notices.marked > 0 ? { notices: { ...notices } } : {}),
             },
             requestId,
           });
