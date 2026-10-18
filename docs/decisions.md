@@ -246,6 +246,25 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 17 October 2026: publish, the dated check of every date (task 5.5a-2a)
+
+Plan approved on pull request #140 with corrections 1 and 2; decisions 1 to 11 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** 5.5a-2 is split into 5.5a-2a (the dated check), 5.5a-2b (the impact preview and the transition week) and 5.5a-2c (`class_group_subjects` and `department_move_loads` from the published version) | Decision 1 |
+| The other branches on each date are their stored claims (`teacher_claims_elsewhere`, 0067); the own branch's stored lessons and exams are not read | Decision 2; the claims hold another branch's one-day changes and exams |
+| One `checkTimetable` per date with that date's facts; only blocked results and `teacher_unavailable_later` are taken | Decision 3 |
+| A two-grade group on a date off for one grade is listed cancelled "day off" until 5.6b stores the choice | Decision 4 |
+| A dated refusal that repeats a pattern refusal (rule, own entries, other branches, detail without the date) is not listed again | Decision 5 with correction 1 |
+| A lesson outside the availability entry of its date is a warning by date only under another entry than the start date's | Decision 6 |
+| Lessons the day cannot hold are listed and never refuse | Decision 7 |
+| A dated result names the own pattern entries, its date and another branch by its id only | Decision 8 |
+| "Needs a teacher", listed, not refused: a worked weekday the teacher is not available on; a teacher out from a date after the start; a Tutor row with no Tutor on the date or whose Tutor of the date clashes by time or travel | Decisions 9 to 11 |
+| "Not available on the real day" is decided per lesson: only a lesson whose grades follow another weekday on its date (`DatedLesson.followsWeekday`) becomes "needs a teacher"; a lesson of a grade that keeps its own weekday stays `date_blocked` | Review of #140 (owner, 18 October 2026): a calendar entry can cover a range of grades |
+| A Tutor of a date who is not the entry's teacher is checked by time and travel only (`checkTeacherTime`, as `followTutors`) | Build decision 13 |
+| Step 8 names a branch the start date's busy-elsewhere does not name "another branch" | Build decision 14 |
+
 ## 17 October 2026: publish, the route, its checks and one at a time (task 5.5a-1)
 
 Plan approved on pull request #139 with corrections 1 and 2; decisions 1 to 15 confirmed there, decision 16 added by correction 1. Flagged on issue #42.

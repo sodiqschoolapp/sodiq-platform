@@ -19,6 +19,7 @@ import {
   UNKNOWN,
   type DayTemplatesKit,
 } from '../../testing/day-templates-kit.js';
+import { LessonsKit, at } from '../../testing/lessons-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 
@@ -383,6 +384,8 @@ describe('publish', () => {
         quarterStarts: ['2026-11-09', '2027-01-11', '2027-03-30'],
         refusals: [],
         warnings: [],
+        cancelledLessons: [],
+        needsTeacher: [],
         canPublish: true,
       });
       // The check writes nothing (decision 13).
@@ -1162,6 +1165,505 @@ describe('publish', () => {
       yearEdit.release();
       expect(await yearEdit.done).toBeUndefined();
       expect(versionOf(await published).status).toBe('published');
+    });
+  });
+  // Task 5.5a-2a, pull request #140: every date of the version is checked
+  // (edge/timetable, Versions and drafts, "The pattern is valid but one date
+  // is not": "Publish … test[s] every affected date with the full rule set. A
+  // blocked conflict on any date stops the save and is listed by date").
+  // The scene's lesson is on Mondays at 08:00–08:45 from 12 October.
+  describe('every date of the version', () => {
+    /** The pattern entry of the scene's row. */
+    const entryOf = async (version: string) =>
+      (
+        await t.database.migrator
+          .selectFrom('pattern_entries')
+          .select('id')
+          .where('version_id', '=', version)
+          .orderBy('weekday')
+          .orderBy('start_minutes')
+          .execute()
+      ).map((one) => one.id);
+
+    /** A calendar entry of the branch, written as the calendar route writes it. */
+    const calendarEntry = (
+      branch: string,
+      values: {
+        kind: 'day_off' | 'special_day';
+        first: string;
+        template?: string;
+        follows?: number;
+      },
+    ) =>
+      t.database.migrator
+        .insertInto('calendar_entries')
+        .values({
+          branch_id: branch,
+          kind: values.kind,
+          name: values.kind === 'day_off' ? 'Holiday' : 'Short day',
+          first_date: values.first,
+          last_date: values.first,
+          day_template_id: values.template ?? null,
+          follows_weekday: values.follows ?? null,
+        })
+        .execute();
+
+    it("refuses only the dates of another branch's later lessons, naming that branch only (Done when)", async () => {
+      const lessons = await LessonsKit.create(t.database.migrator);
+      const other = await t.newBranch();
+      const s = await scene({
+        teacherFor: async (branch, subject) => {
+          const person = await load.teacher(branch, {
+            subjects: [{ subject, grades: [7] }],
+            further: [other],
+          });
+          await hours(branch, person.staffId);
+          return person.staffId;
+        },
+      });
+      const [low = '', high = ''] = [s.branch, other].sort();
+      await t.database.migrator
+        .insertInto('travel_times')
+        .values({ branch_low: low, branch_high: high, minutes: 30 })
+        .execute();
+      // The other branch's version from 16 November, as 5.5b will write its
+      // dated lessons: two Mondays at 08:00–08:45 with the same teacher, and a
+      // third at 09:00, 15 minutes after the scene's lesson ends.
+      const otherYear = await lessons.year(other);
+      const otherClass = await lessons.load.classes.schoolClass(other, otherYear.year, {
+        grade: 7,
+      });
+      const source = await lessons.source(
+        other,
+        otherYear.year,
+        [{ classId: otherClass, groupId: null, subjectId: s.subject }],
+        '2026-11-16',
+      );
+      const from = source.lessons[0];
+      if (from === undefined) throw new Error('No source.');
+      /** A dated lesson of the teacher in a branch, written as 5.5b will write it. */
+      const datedLesson = (
+        branch: string,
+        year: string,
+        quarter: string,
+        lesson: {
+          versionId: string;
+          patternBlockId: string;
+          loadRowId: string;
+          patternEntryId: string;
+        },
+        classId: string,
+        [date, start, end]: readonly [string, string, string],
+      ) =>
+        t.app.get(Transactions).run([branch], async (transaction) => {
+          const block = await transaction
+            .insertInto('lesson_blocks')
+            .values({
+              branch_id: branch,
+              academic_year_id: year,
+              quarter_id: quarter,
+              lesson_date: date,
+              starts_at: at(date, start),
+              ends_at: at(date, end),
+              version_id: lesson.versionId,
+              pattern_block_id: lesson.patternBlockId,
+            })
+            .returning(['id', 'lesson_date', 'starts_at', 'ends_at'])
+            .executeTakeFirstOrThrow();
+          await transaction
+            .insertInto('lessons')
+            .values({
+              branch_id: branch,
+              block_id: block.id,
+              lesson_date: block.lesson_date,
+              starts_at: block.starts_at,
+              ends_at: block.ends_at,
+              class_id: classId,
+              subject_id: s.subject,
+              load_row_id: lesson.loadRowId,
+              pattern_entry_id: lesson.patternEntryId,
+              teacher_id: s.teacherId,
+            })
+            .execute();
+        });
+      for (const when of [
+        ['2026-11-16', '08:00', '08:45'],
+        ['2026-11-23', '08:00', '08:45'],
+        ['2026-11-30', '09:00', '09:45'],
+      ] as const) {
+        await datedLesson(
+          other,
+          otherYear.year,
+          otherYear.quarters[1] ?? '',
+          { ...source, ...from },
+          otherClass,
+          when,
+        );
+      }
+      // A lesson of the teacher in the scene's own branch, of an earlier
+      // published version, on 7 December at the same time: the publish
+      // replaces it, so it is no clash (the own branch's claims are left out).
+      const ownClass = await load.classes.schoolClass(s.branch, s.year, {
+        grade: 7,
+        room: await load.classes.room(s.branch),
+      });
+      const ownSource = await lessons.source(
+        s.branch,
+        s.year,
+        [{ classId: ownClass, groupId: null, subjectId: s.subject }],
+        '2026-10-05',
+      );
+      const ownFrom = ownSource.lessons[0];
+      if (ownFrom === undefined) throw new Error('No source.');
+      const ownQuarter = await t.database.migrator
+        .selectFrom('quarters')
+        .select('id')
+        .where('academic_year_id', '=', s.year)
+        .where('number', '=', 2)
+        .executeTakeFirstOrThrow();
+      await datedLesson(s.branch, s.year, ownQuarter.id, { ...ownSource, ...ownFrom }, ownClass, [
+        '2026-12-07',
+        '08:00',
+        '08:45',
+      ]);
+      await load.freeEditLock(s.version);
+      const [entry] = await entryOf(s.version);
+      const answer = checkOf(await check(s.branch, s.version, MONDAY));
+      expect(answer.canPublish).toBe(false);
+      // The own entry, and the other branch by its id only: no lesson,
+      // class, room or claim of that branch (decision 8).
+      const dated = (date: string, rule: string, detail: Record<string, string | number>) => ({
+        code: 'date_blocked',
+        result: { rule, severity: 'blocked', weekday: 1, date, lessonIds: [entry], detail },
+      });
+      expect(answer.refusals).toEqual([
+        dated('2026-11-16', 'teacher_double', { branchId: other }),
+        dated('2026-11-23', 'teacher_double', { branchId: other }),
+        dated('2026-11-30', 'travel_time', { minutes: 30, gap: 15, branchId: other }),
+      ]);
+      const before = await written([s.version, source.versionId]);
+      const refused = await publish(s.branch, s.version, MONDAY);
+      refusedWith(refused, 409, 'publish_blocked');
+      // The whole detail of each refusal: the own entry and the date, nothing of the other branch.
+      expect((refused.body as { error: { details: unknown[] } }).error.details).toEqual(
+        [
+          ['2026-11-16', 'teacher_double'],
+          ['2026-11-23', 'teacher_double'],
+          ['2026-11-30', 'travel_time'],
+        ].map(([day = '', rule = '']) => ({
+          path: `dates.${day}.${rule}`,
+          code: 'date_blocked',
+          message: 'A reason the publish is refused.',
+          rule: { weekday: 1, lessonIds: [entry] },
+          day,
+        })),
+      );
+      expect(await written([s.version, source.versionId])).toEqual(before);
+      // From 7 December the version is clear of them, and the own branch's
+      // lesson that day is no clash (it fails with the own claims read).
+      expect(checkOf(await check(s.branch, s.version, '2026-12-07')).refusals).toEqual([]);
+    });
+
+    it('lists the dates under a later availability entry as warnings and publishes (Done when)', async () => {
+      const s = await scene({
+        teacherFor: async (branch, subject) => {
+          const person = await load.teacher(branch, { subjects: [{ subject, grades: [7] }] });
+          await hours(branch, person.staffId);
+          // From 4 January the teacher starts at 09:00 (edge/timetable, "A part-time teacher stops working Fridays from December").
+          await t.database.migrator
+            .updateTable('staff_availability')
+            .set({ valid_until: '2027-01-04' })
+            .where('staff_id', '=', person.staffId)
+            .execute();
+          await t.database.migrator
+            .updateTable('staff_availability_ranges')
+            .set({ valid_until: '2027-01-04' })
+            .where('staff_id', '=', person.staffId)
+            .execute();
+          const later = await t.database.migrator
+            .insertInto('staff_availability')
+            .values({ branch_id: branch, staff_id: person.staffId, valid_from: '2027-01-04' })
+            .returning(['id', 'valid_until'])
+            .executeTakeFirstOrThrow();
+          await t.database.migrator
+            .insertInto('staff_availability_ranges')
+            .values({
+              entry_id: later.id,
+              branch_id: branch,
+              staff_id: person.staffId,
+              weekday: 1,
+              start_minutes: 540,
+              end_minutes: 1440,
+              valid_from: '2027-01-04',
+              valid_until: later.valid_until,
+            })
+            .execute();
+          return person.staffId;
+        },
+      });
+      await load.freeEditLock(s.version);
+      const [entry] = await entryOf(s.version);
+      const answer = checkOf(await check(s.branch, s.version, MONDAY));
+      expect(answer.refusals).toEqual([]);
+      const later = answer.warnings.filter((one) => one.rule === 'teacher_unavailable_later');
+      // Every Monday of the quarters from the entry's start, by date; 4 January is in the vacation.
+      expect(later.slice(0, 3)).toEqual(
+        ['2027-01-11', '2027-01-18', '2027-01-25'].map((date) => ({
+          rule: 'teacher_unavailable_later',
+          severity: 'warning',
+          weekday: 1,
+          lessonIds: [entry],
+          detail: { date },
+          date,
+        })),
+      );
+      expect(later.every((one) => (one.date ?? '') >= '2027-01-11')).toBe(true);
+      expect(later.map((one) => one.date)).not.toContain('2027-03-22');
+      expect(versionOf(await publish(s.branch, s.version, MONDAY)).status).toBe('published');
+    });
+
+    it('lists the lessons a shortened day cannot hold and does not refuse them', async () => {
+      const s = await scene({ lessons: 2 });
+      const second = await post(`/api/timetable/versions/${s.version}/pattern`, s.branch, {
+        loadRowId: s.rowId,
+        weekday: 1,
+        slotPosition: 3,
+      });
+      expect(second.status, JSON.stringify(second.body)).toBe(201);
+      const lesson = await t.createSlotType(s.branch, 'Short lesson', 'lesson', 30);
+      const short = await t.createTemplate(s.branch, 'Short', [lesson]);
+      await calendarEntry(s.branch, { kind: 'special_day', first: '2026-11-16', template: short });
+      await load.freeEditLock(s.version);
+      const [, late] = await entryOf(s.version);
+      const answer = checkOf(await check(s.branch, s.version, MONDAY));
+      expect(answer.refusals).toEqual([]);
+      expect(answer.cancelledLessons).toEqual([
+        { date: '2026-11-16', reason: 'not_in_template', entryIds: [late] },
+      ]);
+      expect(versionOf(await publish(s.branch, s.version, MONDAY)).status).toBe('published');
+    });
+
+    it("lists a Saturday worked by Monday's timetable as needs a teacher for a teacher with no Saturday hours", async () => {
+      const s = await scene();
+      const regular = await t.database.migrator
+        .selectFrom('day_template_assignments')
+        .select('day_template_id')
+        .where('branch_id', '=', s.branch)
+        .executeTakeFirstOrThrow();
+      await calendarEntry(s.branch, {
+        kind: 'special_day',
+        first: '2026-11-21',
+        template: regular.day_template_id,
+        follows: 1,
+      });
+      await load.freeEditLock(s.version);
+      const [entry] = await entryOf(s.version);
+      const answer = checkOf(await check(s.branch, s.version, MONDAY));
+      expect(answer.refusals).toEqual([]);
+      expect(answer.needsTeacher).toEqual([
+        { date: '2026-11-21', entryId: entry, reason: 'not_available_real_day' },
+      ]);
+    });
+
+    it("refuses the date whose special template moves a lesson outside the teacher's hours, that date only (review of #140)", async () => {
+      // The teacher works 08:00–12:00; on Monday 23 November a special day's
+      // template starts at 15:00 (edge/timetable, "The pattern is valid but
+      // one date is not": "a special template that day").
+      const s = await scene({ hoursRange: [480, 720] });
+      const lesson = await t.database.migrator
+        .selectFrom('slot_types')
+        .select('id')
+        .where('branch_id', '=', s.branch)
+        .where('kind', '=', 'lesson')
+        .executeTakeFirstOrThrow();
+      const late = await t.createTemplate(s.branch, 'Afternoon', [lesson.id], '15:00');
+      await calendarEntry(s.branch, { kind: 'special_day', first: '2026-11-23', template: late });
+      await load.freeEditLock(s.version);
+      const [entry] = await entryOf(s.version);
+      const answer = checkOf(await check(s.branch, s.version, MONDAY));
+      expect(answer.refusals).toEqual([
+        {
+          code: 'date_blocked',
+          result: {
+            rule: 'teacher_unavailable',
+            severity: 'blocked',
+            weekday: 1,
+            date: '2026-11-23',
+            lessonIds: [entry],
+          },
+        },
+      ]);
+      expect(answer.needsTeacher).toEqual([]);
+      const before = await written([s.version]);
+      expect(blockedBy(await publish(s.branch, s.version, MONDAY))).toEqual([
+        { code: 'date_blocked', path: 'dates.2026-11-23.teacher_unavailable' },
+      ]);
+      expect(await written([s.version])).toEqual(before);
+      // From the next day the version is clear and publishes.
+      expect(checkOf(await check(s.branch, s.version, '2026-11-24')).refusals).toEqual([]);
+      expect(versionOf(await publish(s.branch, s.version, '2026-11-24')).status).toBe('published');
+    });
+
+    it("refuses the date of another branch's exam the teacher invigilates, naming that branch only (review of #140)", async () => {
+      const lessons = await LessonsKit.create(t.database.migrator);
+      const other = await t.newBranch();
+      const s = await scene({
+        teacherFor: async (branch, subject) => {
+          const person = await load.teacher(branch, {
+            subjects: [{ subject, grades: [7] }],
+            further: [other],
+          });
+          await hours(branch, person.staffId);
+          return person.staffId;
+        },
+      });
+      // The other branch's exam on Monday 30 November, 08:30–10:00, read
+      // through teacher_claims_elsewhere (decision 2).
+      const otherYear = await lessons.year(other);
+      const sitting = await lessons.load.classes.schoolClass(other, otherYear.year, { grade: 7 });
+      const room = await lessons.room(other);
+      await t.app.get(Transactions).run([other], async (transaction) => {
+        const exam = await transaction
+          .insertInto('exams')
+          .values({
+            branch_id: other,
+            academic_year_id: otherYear.year,
+            exam_date: '2026-11-30',
+            starts_at: at('2026-11-30', '08:30'),
+            ends_at: at('2026-11-30', '10:00'),
+            first_slot: 1,
+            last_slot: 2,
+            title: 'Quarter exam',
+            subject_id: s.subject,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        const examRoom = await transaction
+          .insertInto('exam_rooms')
+          .values({ branch_id: other, exam_id: exam.id, room_id: room })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('exam_room_classes')
+          .values({
+            branch_id: other,
+            exam_id: exam.id,
+            exam_room_id: examRoom.id,
+            class_id: sitting,
+          })
+          .execute();
+        await transaction
+          .insertInto('exam_invigilators')
+          .values({
+            branch_id: other,
+            exam_id: exam.id,
+            exam_room_id: examRoom.id,
+            staff_id: s.teacherId,
+          })
+          .execute();
+      });
+      await load.freeEditLock(s.version);
+      const [entry] = await entryOf(s.version);
+      const answer = checkOf(await check(s.branch, s.version, MONDAY));
+      expect(answer.refusals).toEqual([
+        {
+          code: 'date_blocked',
+          result: {
+            rule: 'teacher_double',
+            severity: 'blocked',
+            weekday: 1,
+            date: '2026-11-30',
+            lessonIds: [entry],
+            detail: { branchId: other },
+          },
+        },
+      ]);
+      const before = await written([s.version]);
+      expect(blockedBy(await publish(s.branch, s.version, MONDAY))).toEqual([
+        { code: 'date_blocked', path: 'dates.2026-11-30.teacher_double' },
+      ]);
+      expect(await written([s.version])).toEqual(before);
+      expect(checkOf(await check(s.branch, s.version, '2026-12-01')).refusals).toEqual([]);
+    });
+
+    it('lists the lessons of a teacher who leaves after the start as needs a teacher; one gone before is refused', async () => {
+      const s = await scene();
+      await load.status(s.teacherId, 'left', '2027-05-24');
+      await load.freeEditLock(s.version);
+      const [entry] = await entryOf(s.version);
+      const answer = checkOf(await check(s.branch, s.version, MONDAY));
+      expect(answer.refusals).toEqual([]);
+      expect(answer.needsTeacher).toEqual([
+        { date: '2027-05-24', entryId: entry, reason: 'teacher_out' },
+        { date: '2027-05-31', entryId: entry, reason: 'teacher_out' },
+      ]);
+      // A start on or after the leaving: the status on the start refuses, as in 5.5a-1.
+      const late = checkOf(await check(s.branch, s.version, '2027-05-24'));
+      expect(late.refusals.map((one) => one.code)).toContain('pattern_blocked');
+      expect(late.needsTeacher).toEqual([]);
+      expect(versionOf(await publish(s.branch, s.version, MONDAY)).status).toBe('published');
+    });
+
+    it('gives a Tutor lesson the Tutor of each date, and lists a clash of a later Tutor as needs a teacher', async () => {
+      let account = '';
+      const s = await scene({
+        lessons: 2,
+        placed: 2,
+        teacherFor: async (branch, subject) => {
+          const person = await load.teacher(branch, { subjects: [{ subject, grades: [7] }] });
+          await hours(branch, person.staffId);
+          account = person.accountId;
+          return person.staffId;
+        },
+      });
+      // Another class whose Tutor is a teacher free on Tuesdays until 16
+      // November; from then the scene's teacher, who teaches at that time.
+      const tutored = await load.classes.schoolClass(s.branch, s.year, {
+        grade: 7,
+        room: await load.classes.room(s.branch),
+      });
+      const first = await load.teacher(s.branch);
+      await hours(s.branch, first.staffId);
+      const changeover = new Date('2026-11-16T00:00:00+05:00');
+      await load.tutorOf(s.branch, tutored, first.accountId, { until: changeover });
+      await load.tutorOf(s.branch, tutored, account, { from: changeover });
+      const tutorSubject = await load.tutorSubject({ grades: [7] });
+      await t.database.migrator
+        .updateTable('subjects')
+        .set({ journal_type: 'attendance_only' })
+        .where('id', '=', tutorSubject)
+        .execute();
+      const created = await post(`/api/timetable/versions/${s.version}/load`, s.branch, {
+        classId: tutored,
+        groupId: null,
+        subjectId: tutorSubject,
+        teacherId: null,
+        lessonsPerWeek: 1,
+        roomId: null,
+        roomType: null,
+        doubleLessons: false,
+      });
+      expect(created.status, JSON.stringify(created.body)).toBe(201);
+      const tutorRow = (created.body as { id: string }).id;
+      await placeAt(s.branch, s.version, tutorRow, 2);
+      await confirmTemplates(s.branch, s.version);
+      await load.freeEditLock(s.version);
+      const tutorEntry = (
+        await t.database.migrator
+          .selectFrom('pattern_entries')
+          .select('id')
+          .where('load_row_id', '=', tutorRow)
+          .executeTakeFirstOrThrow()
+      ).id;
+      const answer = checkOf(await check(s.branch, s.version, MONDAY));
+      expect(answer.refusals).toEqual([]);
+      const needs = answer.needsTeacher.filter((one) => one.entryId === tutorEntry);
+      // Every Tuesday from 17 November, never before (the first Tutor is free).
+      expect(needs[0]).toEqual({ date: '2026-11-17', entryId: tutorEntry, reason: 'tutor_clash' });
+      expect(needs.every((one) => one.date >= '2026-11-17' && one.reason === 'tutor_clash')).toBe(
+        true,
+      );
+      expect(versionOf(await publish(s.branch, s.version, MONDAY)).status).toBe('published');
     });
   });
 });

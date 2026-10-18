@@ -47,7 +47,7 @@ class Results {
   private readonly seen = new Map<string, RuleResult>();
 
   constructor(
-    private readonly options: CheckOptions,
+    readonly options: CheckOptions,
     private readonly fixed: ReadonlySet<string>,
     private readonly mode: Facts['mode'],
   ) {}
@@ -490,6 +490,19 @@ function availableOn(
   );
 }
 
+/** Whether the availability entries of the branch in force differ between the two dates. */
+function entryChanged(
+  teacher: EngineTeacher,
+  branchId: string,
+  from: string,
+  date: string,
+): boolean {
+  const own = teacher.availability.filter((entry) => entry.branchId === branchId);
+  const before = inForceOn(own, from);
+  const after = inForceOn(own, date);
+  return before.length !== after.length || before.some((entry, index) => entry !== after[index]);
+}
+
 /**
  * A pattern: the first date of the weekday on which each later entry (or the
  * end of one) takes effect, up to the version's end, where the lesson falls
@@ -571,7 +584,21 @@ function checkTeacherOfLesson(
   const onDate = facts.mode === 'pattern' ? facts.startDate : placement.day;
   const weekday = weekdayOfDay(facts, placement.day);
   if (!availableOn(teacher, placement.branchId, onDate, weekday, placement.start, placement.end)) {
-    results.add('teacher_unavailable', placement.day, [placement]);
+    const from = results.options.availabilityFrom;
+    // A publish: a date under another entry than the start date's is a
+    // warning by date (06, Rules, availability row; task 5.5a-2a, decision 6).
+    const later =
+      facts.mode === 'dated' &&
+      from !== undefined &&
+      placement.day > from &&
+      entryChanged(teacher, placement.branchId, from, placement.day);
+    if (later) {
+      results.add('teacher_unavailable_later', placement.day, [placement], {
+        date: placement.day,
+      });
+    } else {
+      results.add('teacher_unavailable', placement.day, [placement]);
+    }
   } else if (facts.mode === 'pattern') {
     for (const later of laterUnavailableDates(teacher, placement, facts)) {
       results.add('teacher_unavailable_later', placement.day, [placement], { date: later });

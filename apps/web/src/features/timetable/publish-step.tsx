@@ -2,6 +2,7 @@ import {
   classDisplayName,
   type LoadRow,
   type PublishRefusal,
+  type RuleResultAnswer,
   type TimetableVersion,
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -19,7 +20,13 @@ import { nameOf } from '@/features/setup/setup-api';
 import { schoolDateText, weekdayName } from '@/lib/dates';
 import { numbersText } from './grid-conflicts';
 import { ruleText } from './rule-text';
-import { invalidateTimetable, loadQuery, publishCheckQuery, publishVersion } from './timetable-api';
+import {
+  gridQuery,
+  invalidateTimetable,
+  loadQuery,
+  publishCheckQuery,
+  publishVersion,
+} from './timetable-api';
 
 /** The class or group of a row as a person reads it. */
 const unitOf = (row: LoadRow): string =>
@@ -34,6 +41,8 @@ const unitOf = (row: LoadRow): string =>
  * shortcut, or any date"; task 5.5a-1, pull request #139): the start date,
  * every reason the draft cannot be published on it and the warnings, then
  * Publish after a confirmation. The server decides; this shows its check.
+ * Task 5.5a-2a: the reasons and warnings of a date, the lessons the day cannot
+ * hold and those that will need a teacher, each with its date.
  */
 export function PublishStep({
   version,
@@ -56,6 +65,8 @@ export function PublishStep({
     publishCheckQuery(branchId, version.id, startsOn === '' ? null : startsOn),
   );
   const load = useQuery(loadQuery(branchId, version.id));
+  // The load row of each pattern entry, and the other branches' names, for the lists of dates.
+  const grid = useQuery(gridQuery(branchId, version.id));
   const publish = useMutation({
     mutationFn: (date: string) => {
       key.current ??= crypto.randomUUID();
@@ -82,6 +93,35 @@ export function PublishStep({
   const rowName = (id: string | undefined): string | null => {
     const row = rows.find((one) => one.id === id);
     return row === undefined ? null : `${unitOf(row)}, ${nameOf(row.subject.names, language)}`;
+  };
+  const entryRow = new Map(
+    (grid.data?.blocks ?? []).flatMap((block) =>
+      block.lessons.map((lesson) => [lesson.id, lesson.loadRowId] as const),
+    ),
+  );
+  /** The lessons of entries as their rows read, joined. */
+  const lessonsText = (entryIds: readonly string[]): string =>
+    [...new Set(entryIds.flatMap((id) => rowName(entryRow.get(id)) ?? []))].join('; ');
+  const branchName = (id: string | number | undefined): string | null =>
+    grid.data?.facts.branches.find((one) => one.id === id)?.name ?? null;
+  /** A result of a date: its date, its rule, its lessons and another branch it meets. */
+  const datedText = (result: RuleResultAnswer): string => {
+    const other = result.detail?.['branchId'];
+    const branch = branchName(other);
+    return [
+      t('timetable.publish.refusals.date_blocked', {
+        date: schoolDateText(result.date ?? '', language),
+        rule: ruleText(t, result.rule),
+      }),
+      lessonsText(result.lessonIds),
+      other === undefined
+        ? null
+        : branch === null
+          ? t('timetable.publish.busyInAnother')
+          : t('timetable.publish.busyIn', { branch }),
+    ]
+      .filter(Boolean)
+      .join('. ');
   };
   const subjectName = (id: string | undefined): string | null => {
     const row = rows.find((one) => one.subject.id === id);
@@ -136,6 +176,10 @@ export function PublishStep({
           ? t('timetable.publish.refusals.subject_quarter_weights_any', { quarter })
           : t('timetable.publish.refusals.subject_quarter_weights', { subject: name, quarter });
       }
+      case 'date_blocked':
+        return refusal.result === undefined
+          ? t('timetable.publish.refusals.pattern_blocked_any')
+          : datedText(refusal.result);
       case 'version_later_published':
         return t('timetable.publish.refusals.version_later_published', {
           number: refusal.versionNumber ?? 0,
@@ -162,7 +206,9 @@ export function PublishStep({
   } else if (answer === undefined) {
     body = <LoadingOutline lines={4} />;
   } else {
-    const blocked = answer.refusals.some((one) => one.code === 'pattern_blocked');
+    const blocked = answer.refusals.some(
+      (one) => one.code === 'pattern_blocked' || one.code === 'date_blocked',
+    );
     body = (
       <div className="grid gap-4">
         {answer.refusals.length === 0 ? (
@@ -199,14 +245,60 @@ export function PublishStep({
               {answer.warnings.map((result, index) => (
                 <li key={index} className="flex items-start gap-2">
                   <WarningIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-                  <span>
-                    {[
-                      result.weekday === null ? null : weekdayName(language, result.weekday),
-                      ruleText(t, result.rule),
-                    ]
-                      .filter(Boolean)
-                      .join(': ')}
+                  <span data-date={result.date}>
+                    {result.date === undefined
+                      ? [
+                          result.weekday === null ? null : weekdayName(language, result.weekday),
+                          ruleText(t, result.rule),
+                        ]
+                          .filter(Boolean)
+                          .join(': ')
+                      : datedText(result)}
                   </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+        {answer.needsTeacher.length > 0 && (
+          <section aria-labelledby="publish-needs-teacher" className="grid gap-2">
+            <h3 id="publish-needs-teacher" className={SECTION_TITLE}>
+              {t('timetable.publish.needsTeacherTitle', { count: answer.needsTeacher.length })}
+            </h3>
+            <p className="text-sm">{t('timetable.publish.needsTeacherNote')}</p>
+            <ul className="grid gap-1 text-sm" data-needs-teacher="true">
+              {answer.needsTeacher.map((one) => (
+                <li key={`${one.entryId}@${one.date}`} data-reason={one.reason}>
+                  {[
+                    schoolDateText(one.date, language),
+                    lessonsText([one.entryId]),
+                    t(`timetable.publish.needsTeacher.${one.reason}`),
+                  ]
+                    .filter(Boolean)
+                    .join(': ')}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+        {answer.cancelledLessons.length > 0 && (
+          <section aria-labelledby="publish-cancelled" className="grid gap-2">
+            <h3 id="publish-cancelled" className={SECTION_TITLE}>
+              {t('timetable.publish.cancelledTitle', {
+                count: answer.cancelledLessons.reduce((sum, one) => sum + one.entryIds.length, 0),
+              })}
+            </h3>
+            <p className="text-sm">{t('timetable.publish.cancelledNote')}</p>
+            <ul className="grid gap-1 text-sm" data-cancelled="true">
+              {answer.cancelledLessons.map((one, index) => (
+                <li key={index} data-reason={one.reason}>
+                  {[
+                    schoolDateText(one.date, language),
+                    lessonsText(one.entryIds),
+                    t(`timetable.publish.cancelled.${one.reason}`),
+                  ]
+                    .filter(Boolean)
+                    .join(': ')}
                 </li>
               ))}
             </ul>

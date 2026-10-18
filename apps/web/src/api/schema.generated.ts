@@ -39299,7 +39299,7 @@ export interface operations {
                         quarterStarts: string[];
                         refusals: {
                             /** @enum {string} */
-                            code: "version_start_too_early" | "version_start_outside_year" | "version_later_published" | "draft_out_of_date" | "draft_not_ready" | "load_problem" | "pattern_blocked" | "load_mismatch" | "year_quarters" | "subject_daily_weights" | "subject_quarter_weights";
+                            code: "version_start_too_early" | "version_start_outside_year" | "version_later_published" | "draft_out_of_date" | "draft_not_ready" | "load_problem" | "pattern_blocked" | "date_blocked" | "load_mismatch" | "year_quarters" | "subject_daily_weights" | "subject_quarter_weights";
                             /** @enum {string} */
                             step?: "templates" | "load" | "teachers" | "rooms";
                             /** Format: uuid */
@@ -39318,6 +39318,8 @@ export interface operations {
                                 detail?: {
                                     [key: string]: number | string;
                                 };
+                                /** Format: date */
+                                date?: string;
                             };
                             versionNumber?: number;
                         }[];
@@ -39330,6 +39332,23 @@ export interface operations {
                             detail?: {
                                 [key: string]: number | string;
                             };
+                            /** Format: date */
+                            date?: string;
+                        }[];
+                        cancelledLessons: {
+                            /** Format: date */
+                            date: string;
+                            /** @enum {string} */
+                            reason: "not_in_template" | "day_off";
+                            entryIds: string[];
+                        }[];
+                        needsTeacher: {
+                            /** Format: date */
+                            date: string;
+                            /** Format: uuid */
+                            entryId: string;
+                            /** @enum {string} */
+                            reason: "no_tutor" | "tutor_clash" | "not_available_real_day" | "teacher_out";
                         }[];
                         canPublish: boolean;
                     };
@@ -42128,6 +42147,8 @@ export interface operations {
                             detail?: {
                                 [key: string]: number | string;
                             };
+                            /** Format: date */
+                            date?: string;
                         }[];
                     };
                 };
@@ -42568,6 +42589,8 @@ export interface operations {
                             detail?: {
                                 [key: string]: number | string;
                             };
+                            /** Format: date */
+                            date?: string;
                         }[];
                     };
                 };
@@ -43753,6 +43776,8 @@ export interface operations {
                             detail?: {
                                 [key: string]: number | string;
                             };
+                            /** Format: date */
+                            date?: string;
                         }[];
                     };
                 };
@@ -44212,6 +44237,8 @@ export interface operations {
                             detail?: {
                                 [key: string]: number | string;
                             };
+                            /** Format: date */
+                            date?: string;
                         }[];
                     };
                 };
@@ -44657,6 +44684,8 @@ export interface operations {
                             detail?: {
                                 [key: string]: number | string;
                             };
+                            /** Format: date */
+                            date?: string;
                         }[];
                     };
                 };
@@ -45118,6 +45147,8 @@ export interface operations {
                             detail?: {
                                 [key: string]: number | string;
                             };
+                            /** Format: date */
+                            date?: string;
                         }[];
                     };
                 };
@@ -45565,6 +45596,8 @@ export interface operations {
                             detail?: {
                                 [key: string]: number | string;
                             };
+                            /** Format: date */
+                            date?: string;
                         }[];
                     };
                 };
@@ -46014,6 +46047,8 @@ export interface operations {
                             detail?: {
                                 [key: string]: number | string;
                             };
+                            /** Format: date */
+                            date?: string;
                         }[];
                     };
                 };
@@ -46454,6 +46489,8 @@ export interface operations {
                             detail?: {
                                 [key: string]: number | string;
                             };
+                            /** Format: date */
+                            date?: string;
                         }[];
                     };
                 };
