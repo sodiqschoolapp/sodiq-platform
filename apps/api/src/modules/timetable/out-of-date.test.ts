@@ -118,21 +118,27 @@ describe('out-of-date drafts', () => {
       .orderBy('id')
       .execute();
 
-  /** The rows a bring-up-to-date writes, in a branch: what a refused one must leave. */
-  const rowsOf = async (branch: string) => ({
-    causes: await t.database.migrator
-      .selectFrom('timetable_version_out_of_date_causes')
-      .selectAll()
-      .where('branch_id', '=', branch)
-      .orderBy('id')
-      .execute(),
-    versions: await t.database.migrator
-      .selectFrom('timetable_versions')
-      .selectAll()
-      .where('branch_id', '=', branch)
-      .orderBy('id')
-      .execute(),
-  });
+  /**
+   * The rows a bring-up-to-date writes, in a branch: what a refused one must
+   * leave. Task 5.5a-3b-2 (permission review, must-fix 1): it also writes the
+   * load rows, the pattern, the pins and the locks of the draft.
+   */
+  const rowsOf = async (branch: string) => {
+    const of = (table: string) =>
+      sql<Record<string, unknown>>`select * from ${sql.table(table)} where branch_id = ${branch}`
+        .execute(t.database.migrator)
+        .then((found) => found.rows.map((one) => JSON.stringify(one)).sort());
+    return {
+      causes: await of('timetable_version_out_of_date_causes'),
+      versions: await of('timetable_versions'),
+      rows: await of('teaching_load_rows'),
+      blocks: await of('pattern_blocks'),
+      entries: await of('pattern_entries'),
+      blockClasses: await of('pattern_block_classes'),
+      pins: await of('timetable_pins'),
+      locks: await of('timetable_locks'),
+    };
+  };
 
   const draft = async (
     branch: string,

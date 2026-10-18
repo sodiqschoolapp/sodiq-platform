@@ -81,7 +81,8 @@ describe('bringing a draft up to date after a publish', () => {
     version: string,
     key: string,
     picks: readonly { item: string; side: 'draft' | 'published' }[] = [],
-  ) => post(`/api/timetable/versions/${version}/up-to-date`, branch, { key, picks });
+    cookie = t.admin,
+  ) => post(`/api/timetable/versions/${version}/up-to-date`, branch, { key, picks }, cookie);
 
   const publish = (branch: string, version: string, startsOn: string) =>
     request(t.kit.server)
@@ -149,6 +150,33 @@ describe('bringing a draft up to date after a publish', () => {
       .orderBy('pattern_blocks.weekday')
       .orderBy('pattern_blocks.slot_position')
       .execute();
+
+  const pinsOf = async (version: string) =>
+    (
+      await t.database.migrator
+        .selectFrom('timetable_pins')
+        .innerJoin('teaching_load_rows', 'teaching_load_rows.id', 'timetable_pins.load_row_id')
+        .select([
+          'teaching_load_rows.subject_id',
+          'timetable_pins.weekday',
+          'timetable_pins.slot_position',
+        ])
+        .where('timetable_pins.version_id', '=', version)
+        .execute()
+    )
+      .map((one) => [one.subject_id, one.weekday, one.slot_position])
+      .sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+
+  /** An account of the kit given a role in a branch. */
+  const roleIn = async (branch: string, role: 'principal' | 'academic_vice_principal') => {
+    const found = await t.database.migrator
+      .selectFrom('assignments')
+      .select('account_id')
+      .where('role', '=', role)
+      .where('branch_id', '=', t.north)
+      .executeTakeFirstOrThrow();
+    await load.classes.role(found.account_id, branch, role);
+  };
 
   const causesOf = (version: string) =>
     t.database.migrator
@@ -268,16 +296,52 @@ describe('bringing a draft up to date after a publish', () => {
     const e = await copy(branch, year, s, NOVEMBER);
     await place(branch, e, await rowOf(e, maths), 2, 1, double);
     await place(branch, e, await rowOf(e, art), 2, double ? 4 : 2);
-    await place(branch, e, await row(e, history), 3, 1);
+    const eHistory = await row(e, history);
+    await place(branch, e, eHistory, 3, 1);
+    okay(
+      await post(`/api/timetable/versions/${e}/pins`, branch, {
+        loadRowId: eHistory,
+        weekday: 3,
+        slotPosition: 1,
+      }),
+    );
     await confirm(branch, e);
     versionOf(await publish(branch, e, NOVEMBER));
+    let lockId: string | null = null;
     if (!double) {
+      // D pins its maths on Tuesday 2 and locks its art block (permission
+      // review, must-fix 2: the pins and the block locks a pick replaces).
       await place(branch, d, await rowOf(d, maths), 2, 2);
       await place(branch, d, await rowOf(d, art), 1, 2);
+      okay(
+        await post(`/api/timetable/versions/${d}/pins`, branch, {
+          loadRowId: await rowOf(d, maths),
+          weekday: 2,
+          slotPosition: 2,
+        }),
+      );
+      const artBlock = await t.database.migrator
+        .selectFrom('pattern_entries')
+        .select('block_id')
+        .where('load_row_id', '=', await rowOf(d, art))
+        .executeTakeFirstOrThrow();
+      okay(
+        await post(`/api/timetable/versions/${d}/locks`, branch, {
+          kind: 'block',
+          blockId: artBlock.block_id,
+        }),
+      );
+      lockId = (
+        await t.database.migrator
+          .selectFrom('timetable_locks')
+          .select('id')
+          .where('version_id', '=', d)
+          .executeTakeFirstOrThrow()
+      ).id;
     } else {
       await place(branch, d, await rowOf(d, art), 1, 4);
     }
-    return { branch, year, s, d, e, maths, art, history, classId, teacherId };
+    return { branch, year, s, d, e, maths, art, history, classId, teacherId, lockId };
   }
 
   const itemOf = (shown: OutOfDateAnswer, subject: string) => {
@@ -347,6 +411,13 @@ describe('bringing a draft up to date after a publish', () => {
       ]),
     );
     expect(placed).toHaveLength(3);
+    // The draft's maths pin stays; the published history pin comes with its row.
+    expect(await pinsOf(x.d)).toEqual(
+      [
+        [x.maths, 2, 2],
+        [x.history, 3, 1],
+      ].sort((a, b) => String(a[0]).localeCompare(String(b[0]))),
+    );
     const [entry] = await t.entries('timetable_version.up_to_date', x.d);
     expect(entry).toMatchObject({
       old_value: { outOfDate: true, fromVersionId: x.s },
@@ -390,7 +461,36 @@ describe('bringing a draft up to date after a publish', () => {
     ).toEqual(expect.arrayContaining([expect.stringMatching(/^pattern\./)]));
     expect(await rowsOf(x.branch)).toEqual(before);
     expect(await t.auditCount()).toBe(count);
-    versionOf(await upToDate(x.branch, x.d, shown.key, picks('published')));
+    // A pick of an item not listed (permission review, should-fix 5).
+    refusedWith(
+      await upToDate(x.branch, x.d, shown.key, [
+        ...picks('published'),
+        { item: 'class-z||maths', side: 'draft' },
+      ]),
+      409,
+      'out_of_date_changed',
+    );
+    expect(await rowsOf(x.branch)).toEqual(before);
+    // The Academic Vice Principal of the branch takes the draft and
+    // brings it up to date (permission review, should-fix 3).
+    await roleIn(x.branch, 'academic_vice_principal');
+    // The Super Admin's edit lock is let go, as after five minutes away.
+    await t.database.migrator
+      .updateTable('timetable_versions')
+      .set({ edit_holder_id: null, edit_seen_at: null })
+      .where('id', '=', x.d)
+      .execute();
+    versionOf(await upToDate(x.branch, x.d, shown.key, picks('published'), t.vicePrincipal));
+    // The draft's maths pin went with its maths; the history pin came; the art
+    // block's lock went with the block (0072 cascade).
+    expect(await pinsOf(x.d)).toEqual([[x.history, 3, 1]]);
+    expect(
+      await t.database.migrator
+        .selectFrom('timetable_locks')
+        .select('id')
+        .where('version_id', '=', x.d)
+        .execute(),
+    ).toEqual([]);
     expect(
       (await placementsOf(x.d)).map((one) => [one.subject_id, one.weekday, one.slot_position]),
     ).toEqual(
@@ -403,11 +503,14 @@ describe('bringing a draft up to date after a publish', () => {
     expect(entry).toMatchObject({
       new_value: {
         rows: { updated: [], inserted: [expect.objectContaining({ subjectId: x.history })] },
-        pins: { removed: [], added: [] },
+        pins: {
+          removed: [expect.objectContaining({ weekday: 2, slotPosition: 2 })],
+          added: [expect.objectContaining({ weekday: 3, slotPosition: 1 })],
+        },
         blocks: {
           removed: expect.arrayContaining([
-            expect.objectContaining({ weekday: 2, slotPosition: 2 }),
-            expect.objectContaining({ weekday: 1, slotPosition: 2 }),
+            expect.objectContaining({ weekday: 2, slotPosition: 2, locks: [] }),
+            expect.objectContaining({ weekday: 1, slotPosition: 2, locks: [x.lockId] }),
           ]) as unknown,
         },
       },
@@ -617,6 +720,31 @@ describe('bringing a draft up to date after a publish', () => {
       await get(`/api/timetable/versions/${other.d}/out-of-date`, x.branch),
       404,
       'not_found',
+    );
+    expect([await rowsOf(x.branch), await rowsOf(other.branch)]).toEqual(before);
+    expect(await t.auditCount()).toBe(count);
+    // The Principal reads the differences with their names and may not pick
+    // (permission review, should-fix 4); the Teacher may do neither.
+    await roleIn(other.branch, 'principal');
+    const read = answerOf(
+      await get(`/api/timetable/versions/${other.d}/out-of-date`, other.branch, t.principal),
+    );
+    expect(read.key).toBe(shown.key);
+    expect(read.items[0]?.rows[0]?.unitName).toEqual(expect.any(String));
+    refusedWith(
+      await upToDate(other.branch, other.d, shown.key, picks, t.principal),
+      403,
+      'permission_denied',
+    );
+    refusedWith(
+      await upToDate(other.branch, other.d, shown.key, picks, t.teacher),
+      403,
+      'permission_denied',
+    );
+    refusedWith(
+      await get(`/api/timetable/versions/${other.d}/out-of-date`, other.branch, t.teacher),
+      403,
+      'permission_denied',
     );
     expect([await rowsOf(x.branch), await rowsOf(other.branch)]).toEqual(before);
     expect(await t.auditCount()).toBe(count);
