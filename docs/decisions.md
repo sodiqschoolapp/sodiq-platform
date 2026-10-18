@@ -246,6 +246,26 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 18 October 2026: publish, the impact preview and the transition week (task 5.5a-2b-1)
+
+Plan approved on pull request #142 with corrections 1 and 2; decisions 1 to 13 confirmed there (10 changed by correction 2). Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** 5.5a-2b is split into 5.5a-2b-1 (the impact preview and the transition week) and 5.5a-2b-2 (the lessons kept on a shortened day) | Decision 1 |
+| The preview compares the draft with the published version in force before its start, expanded by `datedPattern` over the same dates; a first publish has every lesson created; from 5.5b the stored lessons | Decision 2 |
+| The same lesson: same class or group, subject, date, start and end; a different teacher or room is "changed"; the rest are paired as "moved" per class or group, subject and week; the others are created or removed | Decision 3 |
+| Lessons created as cancelled are left out of both sides | Decision 4 |
+| One line per kind, class or group, subject and both slots, with the count and the first and last date | Decision 5 |
+| Affected: the teachers, classes and rooms of every lesson not unchanged, on either side | Decision 6 |
+| Notified: affected persons with an account; never a vacancy; sending stays with 5.5c | Decision 7 |
+| Every vacancy of the draft's pattern with its lessons per week | Decision 8 |
+| No lesson can hold data before 5.5b and 6.1: the list of removals blocked by data comes with 5.5b | Decision 9 |
+| The transition week is the Monday-to-Sunday week of the start, shown when a date of it before the start has lessons; each date before the start from the published version in force on it; every class or group and subject listed, differences marked; cancelled lessons not counted | Decision 10 with corrections 1 and 2 and spec review must-fix 1 |
+| A differing transition week is published only with the key of its differing rows (SHA-256 of the start and the rows), else `transition_unacknowledged`; it narrows "Warnings never stop a publish" of 5.5a-1 for this warning only | Decision 11 |
+| The preview names records of the branch only | Decision 12 |
+| No route is added and none changes who may call it | Decision 13 |
+
 ## 17 October 2026: publish, the dated check of every date (task 5.5a-2a)
 
 Plan approved on pull request #140 with corrections 1 and 2; decisions 1 to 11 confirmed there. Flagged on issue #42.

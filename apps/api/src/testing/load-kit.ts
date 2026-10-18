@@ -45,9 +45,11 @@ export class LoadKit {
       subjects?: readonly ProfileSubject[];
       further?: readonly string[];
       accountId?: string;
+      noAccount?: boolean;
     } = {},
   ): Promise<{ staffId: string; accountId: string }> {
     const person = await this.classes.person(branch, input.languages ?? ['uz'], {
+      ...(input.noAccount === true ? { noAccount: true } : {}),
       ...(input.further === undefined ? {} : { further: input.further }),
       ...(input.accountId === undefined ? {} : { accountId: input.accountId }),
     });

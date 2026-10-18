@@ -29,6 +29,7 @@ import { branchOf } from '../classes/classes.service.js';
 import { dailyWeightsFit, quarterWeightsFit } from '../setup/subject-weights.js';
 import type { StoredLoadRow } from './load-facts.js';
 import { datedCheck } from './dated-check.js';
+import { impactOf, type Impact } from './impact.js';
 import { refusingPattern, TimetablePattern } from './pattern.service.js';
 import { resultAnswerOf } from './rule-answers.js';
 import { lockSubjects, Timetable, type VersionRow } from './timetable.service.js';
@@ -55,6 +56,8 @@ interface Findings {
   readonly warnings: RuleResultAnswer[];
   readonly cancelledLessons: CancelledLesson[];
   readonly needsTeacher: NeedsTeacherAnswer[];
+  /** Task 5.5a-2b-1; `null` when the start date itself is refused. */
+  readonly impact: Impact | null;
 }
 
 /** A refusal as a detail of `publish_blocked` (decision 12). */
@@ -70,11 +73,13 @@ function detailOf(refusal: PublishRefusal): ErrorDetail {
             : `subjects.${refusal.subjectId}.quarters.${String(refusal.quarter)}`
           : refusal.code === 'pattern_blocked' && refusal.result !== undefined
             ? `pattern.${refusal.result.rule}`
-            : refusal.code === 'date_blocked' && refusal.result?.date !== undefined
-              ? `dates.${refusal.result.date}.${refusal.result.rule}`
-              : refusal.code.startsWith('version_start')
-                ? 'startsOn'
-                : '';
+            : refusal.code === 'transition_unacknowledged'
+              ? 'transition'
+              : refusal.code === 'date_blocked' && refusal.result?.date !== undefined
+                ? `dates.${refusal.result.date}.${refusal.result.rule}`
+                : refusal.code.startsWith('version_start')
+                  ? 'startsOn'
+                  : '';
   return {
     path,
     code: refusal.code,
@@ -135,6 +140,7 @@ export class TimetablePublish {
         warnings: findings.warnings,
         cancelledLessons: findings.cancelledLessons,
         needsTeacher: findings.needsTeacher,
+        impact: findings.impact?.answer ?? null,
         canPublish: version.status === 'draft' && findings.refusals.length === 0,
       };
     });
@@ -163,14 +169,18 @@ export class TimetablePublish {
             key,
             scope: 'timetable.publish',
             accountId: access.accountId,
-            input: { versionId: id, startsOn: input.startsOn },
+            input: {
+              versionId: id,
+              startsOn: input.startsOn,
+              transitionKey: input.transitionKey ?? null,
+            },
           },
           async () =>
             (await this.publishLocked(
               transaction,
               access,
               id,
-              input.startsOn,
+              input,
               requestId,
             )) as unknown as JsonValue,
         );
@@ -183,9 +193,10 @@ export class TimetablePublish {
     transaction: Transaction,
     access: Access,
     id: string,
-    startsOn: string,
+    input: PublishBody,
     requestId: string,
   ): Promise<TimetableVersion> {
+    const { startsOn } = input;
     const branchId = branchOf(access);
     const named = await this.timetable.findVersion(transaction, branchId, id);
     await transaction
@@ -240,6 +251,12 @@ export class TimetablePublish {
       quarters,
       access.accountId,
     );
+    // Decision 11 with review correction 1: a transition week that differs
+    // from the load is published only with the key of what was shown.
+    const transitionKey = findings.impact?.answer.transition?.key ?? null;
+    if (transitionKey !== null && input.transitionKey !== transitionKey) {
+      findings.refusals.push({ code: 'transition_unacknowledged' });
+    }
     if (findings.refusals.length > 0) {
       throw new ApiException('publish_blocked', 409, undefined, findings.refusals.map(detailOf));
     }
@@ -301,6 +318,16 @@ export class TimetablePublish {
         inForceBefore: before === null ? null : { id: before.id, number: before.number },
         markedOutOfDate: marked.map((one) => one.id),
         ...(follow !== null && followChanged(follow) ? { tutorLessons: auditOf(follow) } : {}),
+        // Task 5.5a-2b-1, decision 11: the counts of the preview and the rows acknowledged.
+        impact: findings.impact?.answer.counts ?? null,
+        ...(transitionKey === null || findings.impact === null
+          ? {}
+          : {
+              transition: {
+                weekStart: findings.impact.answer.transition?.weekStart ?? null,
+                acknowledged: findings.impact.acknowledged.map((row) => ({ ...row })),
+              },
+            }),
       },
       requestId,
     });
@@ -337,7 +364,7 @@ export class TimetablePublish {
     }));
     if (refusals.length > 0) {
       // Outside the year or before tomorrow, nothing else is read on that date.
-      return { refusals, warnings: [], cancelledLessons: [], needsTeacher: [] };
+      return { refusals, warnings: [], cancelledLessons: [], needsTeacher: [], impact: null };
     }
     const version: VersionRow = { ...stored, starts_on: startsOn };
     const context = await this.timetable.contextOf(transaction, version);
@@ -416,6 +443,17 @@ export class TimetablePublish {
     }
 
     refusals.push(...(await this.settingsRefusals(transaction, version, rows, quarters, startsOn)));
+    // Task 5.5a-2b-1: the impact preview and the transition week.
+    const impact = await impactOf(
+      transaction,
+      {
+        versionRow: (versionId) => this.timetable.versionRow(transaction, versionId),
+        stateOf: (other) => this.pattern.stateOf(transaction, other, accountId),
+      },
+      state,
+      dated.dated,
+      startsOn,
+    );
     return {
       refusals,
       // Decision 6: the later entries by date, in place of the pattern's first dates.
@@ -427,6 +465,7 @@ export class TimetablePublish {
       ],
       cancelledLessons: dated.cancelled,
       needsTeacher: dated.needsTeacher,
+      impact,
     };
   }
 

@@ -233,3 +233,17 @@ export {
   type DatedPattern,
   type DatedPatternInput,
 } from './dated.js';
+// Task 5.5a-2b-1: the impact preview and the transition week of a publish.
+export {
+  impactLessonOf,
+  mondayOf,
+  publishImpact,
+  transitionWeek,
+  type ImpactChange,
+  type ImpactKind,
+  type ImpactLesson,
+  type ImpactSlot,
+  type PublishImpact,
+  type TransitionRow,
+  type TransitionWeek,
+} from './impact.js';

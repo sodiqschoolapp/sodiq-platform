@@ -19,6 +19,7 @@ import { useView } from '@/features/access/use-view';
 import { nameOf } from '@/features/setup/setup-api';
 import { schoolDateText, weekdayName } from '@/lib/dates';
 import { numbersText } from './grid-conflicts';
+import { PublishImpact } from './publish-impact';
 import { ruleText } from './rule-text';
 import {
   gridQuery,
@@ -61,6 +62,8 @@ export function PublishStep({
   const [startsOn, setStartsOn] = useState(version.startsOn);
   // One key per publish the person asks for: a retry of the same click repeats it harmlessly.
   const key = useRef<string | null>(null);
+  // Task 5.5a-2b-1: the transition key ticked; a new answer with another key is not ticked.
+  const [tickedKey, setTickedKey] = useState<string | null>(null);
   const check = useQuery(
     publishCheckQuery(branchId, version.id, startsOn === '' ? null : startsOn),
   );
@@ -68,9 +71,9 @@ export function PublishStep({
   // The load row of each pattern entry, and the other branches' names, for the lists of dates.
   const grid = useQuery(gridQuery(branchId, version.id));
   const publish = useMutation({
-    mutationFn: (date: string) => {
+    mutationFn: ({ date, transitionKey }: { date: string; transitionKey: string | null }) => {
       key.current ??= crypto.randomUUID();
-      return publishVersion(version.id, date, key.current);
+      return publishVersion(version.id, date, key.current, transitionKey);
     },
     onSettled: async () => {
       key.current = null;
@@ -184,6 +187,7 @@ export function PublishStep({
         return t('timetable.publish.refusals.version_later_published', {
           number: refusal.versionNumber ?? 0,
         });
+      case 'transition_unacknowledged':
       case 'version_start_too_early':
       case 'version_start_outside_year':
       case 'draft_out_of_date':
@@ -206,6 +210,8 @@ export function PublishStep({
   } else if (answer === undefined) {
     body = <LoadingOutline lines={4} />;
   } else {
+    const transitionKey = answer.impact?.transition?.key ?? null;
+    const ticked = transitionKey === null || tickedKey === transitionKey;
     const blocked = answer.refusals.some(
       (one) => one.code === 'pattern_blocked' || one.code === 'date_blocked',
     );
@@ -304,11 +310,21 @@ export function PublishStep({
             </ul>
           </section>
         )}
+        {answer.impact !== null && (
+          <PublishImpact
+            impact={answer.impact}
+            ticked={ticked}
+            canEdit={canEdit}
+            onTick={(on) => {
+              setTickedKey(on ? transitionKey : null);
+            }}
+          />
+        )}
         {publish.isError && <FailureAlert error={publish.error} />}
         {canEdit && (
           <div>
             <Button
-              disabled={!answer.canPublish || publish.isPending}
+              disabled={!answer.canPublish || !ticked || publish.isPending}
               onClick={() => {
                 void (async () => {
                   if (
@@ -320,13 +336,18 @@ export function PublishStep({
                       action: t('timetable.publish.action'),
                     })
                   ) {
-                    publish.mutate(startsOn);
+                    publish.mutate({ date: startsOn, transitionKey });
                   }
                 })();
               }}
             >
               {t('timetable.publish.action')}
             </Button>
+            {answer.canPublish && !ticked && (
+              <p className="mt-2 text-sm" data-tick-needed="true">
+                {t('timetable.publish.transition.tickNeeded')}
+              </p>
+            )}
           </div>
         )}
       </div>

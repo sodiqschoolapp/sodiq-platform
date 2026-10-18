@@ -329,13 +329,18 @@ export const publishCheckQuery = (
   });
 
 /** The publish of a draft from a start date (task 5.5a-1); `key` makes a repeat harmless. */
-export const publishVersion = (versionId: string, startsOn: string, key: string) =>
+export const publishVersion = (
+  versionId: string,
+  startsOn: string,
+  key: string,
+  transitionKey: string | null = null,
+) =>
   answerOf(
     api.POST('/api/timetable/versions/{id}/publish', {
       params: {
         header: { ...branchHeader(), 'Idempotency-Key': key },
         path: { id: versionId },
       },
-      body: { startsOn },
+      body: transitionKey === null ? { startsOn } : { startsOn, transitionKey },
     }),
   ).then((answer) => timetableVersionSchema.parse(answer));
