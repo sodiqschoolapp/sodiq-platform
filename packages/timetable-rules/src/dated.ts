@@ -90,6 +90,12 @@ export interface DatedLesson {
   readonly date: string;
   /** A Tutor row whose Tutor on the date is not the entry's teacher (decision 11). */
   readonly tutorFollowed: boolean;
+  /**
+   * The weekday the lesson's grades follow on the date: its block's weekday,
+   * another than the date's own on a worked Saturday (review of #140: decided
+   * per lesson, since a calendar entry can cover a range of grades only).
+   */
+  readonly followsWeekday: number;
 }
 
 export type DatedCancelReason = 'not_in_template' | 'day_off' | 'exam_week';
@@ -209,6 +215,7 @@ export function datedPattern(input: DatedPatternInput): DatedPattern {
           entryId: entry.id,
           date,
           tutorFollowed: teacherId !== null && teacherId !== entry.teacherId,
+          followsWeekday: block.weekday,
           placement: {
             id: datedId(entry.id, date),
             kind: 'lesson',

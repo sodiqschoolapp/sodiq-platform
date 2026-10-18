@@ -7,6 +7,7 @@ import {
   type DatedPublishInput,
 } from './publish.js';
 import type { RuleResult } from './rules.js';
+import { weekdayOf } from './templates.js';
 
 const year = {
   firstDate: '2026-09-02',
@@ -104,6 +105,7 @@ describe('datedPublishResults (task 5.5a-2a)', () => {
     entryId,
     date,
     tutorFollowed: false,
+    followsWeekday: weekdayOf(date),
     placement: {
       id: `${entryId}@${date}`,
       kind: 'lesson',
@@ -151,7 +153,6 @@ describe('datedPublishResults (task 5.5a-2a)', () => {
     lessons: new Map(),
     tutorNeeds: [],
     fixedBranch: (id) => FIXED[id] ?? null,
-    followsOther: () => false,
     outOnStart: () => false,
     ...extra,
   });
@@ -220,7 +221,8 @@ describe('datedPublishResults (task 5.5a-2a)', () => {
   });
 
   it('lists a worked Saturday outside the hours of the real day as needs a teacher', () => {
-    const saturday = lessonOf('e1', '2026-11-21');
+    // Worked by Monday's timetable.
+    const saturday = lessonOf('e1', '2026-11-21', { followsWeekday: 1 });
     const monday = lessonOf('e1', '2026-11-23');
     const found = datedPublishResults(
       base({
@@ -232,13 +234,34 @@ describe('datedPublishResults (task 5.5a-2a)', () => {
           [saturday.placement.id, saturday],
           [monday.placement.id, monday],
         ]),
-        followsOther: (date) => date === '2026-11-21',
       }),
     );
     expect(found.needsTeacher).toEqual([
       { date: '2026-11-21', entryId: 'e1', reason: 'not_available_real_day' },
     ]);
     expect(found.blocked.map((one) => one.day)).toEqual(['2026-11-23']);
+  });
+
+  it('decides "the real day" per lesson: a grade that keeps its own weekday stays refused (review of #140)', () => {
+    // Tuesday 17 November: grade 3 follows Friday's timetable, grade 7 keeps Tuesday.
+    const followsFriday = lessonOf('e3', '2026-11-17', { followsWeekday: 5 });
+    const ownTuesday = lessonOf('e7', '2026-11-17');
+    const found = datedPublishResults(
+      base({
+        dated: [
+          result('teacher_unavailable', '2026-11-17', ['e3@2026-11-17']),
+          result('teacher_unavailable', '2026-11-17', ['e7@2026-11-17']),
+        ],
+        lessons: new Map([
+          [followsFriday.placement.id, followsFriday],
+          [ownTuesday.placement.id, ownTuesday],
+        ]),
+      }),
+    );
+    expect(found.needsTeacher).toEqual([
+      { date: '2026-11-17', entryId: 'e3', reason: 'not_available_real_day' },
+    ]);
+    expect(found.blocked).toEqual([result('teacher_unavailable', '2026-11-17', ['e7@2026-11-17'])]);
   });
 
   it('lists a teacher out from a date after the start as needs a teacher; out on the start stays refused', () => {

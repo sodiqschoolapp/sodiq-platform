@@ -1465,6 +1465,127 @@ describe('publish', () => {
       ]);
     });
 
+    it("refuses the date whose special template moves a lesson outside the teacher's hours, that date only (review of #140)", async () => {
+      // The teacher works 08:00–12:00; on Monday 23 November a special day's
+      // template starts at 15:00 (edge/timetable, "The pattern is valid but
+      // one date is not": "a special template that day").
+      const s = await scene({ hoursRange: [480, 720] });
+      const lesson = await t.database.migrator
+        .selectFrom('slot_types')
+        .select('id')
+        .where('branch_id', '=', s.branch)
+        .where('kind', '=', 'lesson')
+        .executeTakeFirstOrThrow();
+      const late = await t.createTemplate(s.branch, 'Afternoon', [lesson.id], '15:00');
+      await calendarEntry(s.branch, { kind: 'special_day', first: '2026-11-23', template: late });
+      await load.freeEditLock(s.version);
+      const [entry] = await entryOf(s.version);
+      const answer = checkOf(await check(s.branch, s.version, MONDAY));
+      expect(answer.refusals).toEqual([
+        {
+          code: 'date_blocked',
+          result: {
+            rule: 'teacher_unavailable',
+            severity: 'blocked',
+            weekday: 1,
+            date: '2026-11-23',
+            lessonIds: [entry],
+          },
+        },
+      ]);
+      expect(answer.needsTeacher).toEqual([]);
+      const before = await written([s.version]);
+      expect(blockedBy(await publish(s.branch, s.version, MONDAY))).toEqual([
+        { code: 'date_blocked', path: 'dates.2026-11-23.teacher_unavailable' },
+      ]);
+      expect(await written([s.version])).toEqual(before);
+      // From the next day the version is clear and publishes.
+      expect(checkOf(await check(s.branch, s.version, '2026-11-24')).refusals).toEqual([]);
+      expect(versionOf(await publish(s.branch, s.version, '2026-11-24')).status).toBe('published');
+    });
+
+    it("refuses the date of another branch's exam the teacher invigilates, naming that branch only (review of #140)", async () => {
+      const lessons = await LessonsKit.create(t.database.migrator);
+      const other = await t.newBranch();
+      const s = await scene({
+        teacherFor: async (branch, subject) => {
+          const person = await load.teacher(branch, {
+            subjects: [{ subject, grades: [7] }],
+            further: [other],
+          });
+          await hours(branch, person.staffId);
+          return person.staffId;
+        },
+      });
+      // The other branch's exam on Monday 30 November, 08:30–10:00, read
+      // through teacher_claims_elsewhere (decision 2).
+      const otherYear = await lessons.year(other);
+      const sitting = await lessons.load.classes.schoolClass(other, otherYear.year, { grade: 7 });
+      const room = await lessons.room(other);
+      await t.app.get(Transactions).run([other], async (transaction) => {
+        const exam = await transaction
+          .insertInto('exams')
+          .values({
+            branch_id: other,
+            academic_year_id: otherYear.year,
+            exam_date: '2026-11-30',
+            starts_at: at('2026-11-30', '08:30'),
+            ends_at: at('2026-11-30', '10:00'),
+            first_slot: 1,
+            last_slot: 2,
+            title: 'Quarter exam',
+            subject_id: s.subject,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        const examRoom = await transaction
+          .insertInto('exam_rooms')
+          .values({ branch_id: other, exam_id: exam.id, room_id: room })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('exam_room_classes')
+          .values({
+            branch_id: other,
+            exam_id: exam.id,
+            exam_room_id: examRoom.id,
+            class_id: sitting,
+          })
+          .execute();
+        await transaction
+          .insertInto('exam_invigilators')
+          .values({
+            branch_id: other,
+            exam_id: exam.id,
+            exam_room_id: examRoom.id,
+            staff_id: s.teacherId,
+          })
+          .execute();
+      });
+      await load.freeEditLock(s.version);
+      const [entry] = await entryOf(s.version);
+      const answer = checkOf(await check(s.branch, s.version, MONDAY));
+      expect(answer.refusals).toEqual([
+        {
+          code: 'date_blocked',
+          result: {
+            rule: 'teacher_double',
+            severity: 'blocked',
+            weekday: 1,
+            date: '2026-11-30',
+            lessonIds: [entry],
+            detail: { branchId: other },
+          },
+        },
+      ]);
+      const before = await written([s.version]);
+      expect(blockedBy(await publish(s.branch, s.version, MONDAY))).toEqual([
+        { code: 'date_blocked', path: 'dates.2026-11-30.teacher_double' },
+      ]);
+      expect(await written([s.version])).toEqual(before);
+      expect(checkOf(await check(s.branch, s.version, '2026-12-01')).refusals).toEqual([]);
+    });
+
     it('lists the lessons of a teacher who leaves after the start as needs a teacher; one gone before is refused', async () => {
       const s = await scene();
       await load.status(s.teacherId, 'left', '2027-05-24');

@@ -347,13 +347,6 @@ export async function datedCheck(
     lessons: new Map(dated.lessons.map((lesson) => [lesson.placement.id, lesson])),
     tutorNeeds,
     fixedBranch: (id) => fixedBranches.get(id) ?? null,
-    followsOther: (date) =>
-      blocks.some((block) =>
-        block.grades.some((grade) => {
-          const day = dayOfDate(grade, date).dated;
-          return day.lessons && day.followsWeekday !== weekdayOf(date);
-        }),
-      ),
     outOnStart: (teacherId) => outOnStart.has(teacherId),
   });
   const answerOf = (result: RuleResult): RuleResultAnswer => {

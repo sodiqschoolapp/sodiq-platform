@@ -11,6 +11,7 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 The next sessions must know:
 
 - Until 5.5b writes dated lessons, the dated check meets another branch only through stored claims (exams today); the tests write the other branch's lessons as 5.5b will.
+- "Needs a teacher" for a teacher not available on the real day is decided per lesson (`DatedLesson.followsWeekday`, review of #140), never for the whole date.
 - `datedPublishResults` keys a repeat of a pattern refusal by rule, own entries, other branches and detail without the date; a dated answer names own pattern entries and `detail.branchId` only.
 - The next task is 5.5a-2b.
 

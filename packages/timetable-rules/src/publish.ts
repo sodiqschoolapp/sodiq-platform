@@ -12,7 +12,7 @@
  */
 import { patternIdOf, type DatedLesson } from './dated.js';
 import type { RuleResult } from './rules.js';
-import { firstOn } from './templates.js';
+import { firstOn, weekdayOf } from './templates.js';
 import type { EngineYear } from './placement.js';
 
 export interface StartChoices {
@@ -101,8 +101,6 @@ export interface DatedPublishInput {
   readonly tutorNeeds: readonly NeedsTeacher[];
   /** The branch of a busy-elsewhere placement, of the pattern or of a date; `null` for an own one. */
   readonly fixedBranch: (id: string) => string | null;
-  /** Whether the date follows another weekday than its own (a worked Saturday). */
-  readonly followsOther: (date: string) => boolean;
   /** Whether the teacher is inactive or left on the start date already. */
   readonly outOnStart: (teacherId: string) => boolean;
 }
@@ -137,7 +135,8 @@ function repeatKey(result: RuleResult, fixedBranch: (id: string) => string | nul
 /**
  * What the dated check of a publish does to it. A blocked result is, in this
  * order: "needs a teacher" for a teacher outside their hours on the
- * real day of a date that follows another weekday (decision 9), and for a
+ * real day of a lesson whose grades follow another weekday on its date
+ * (decision 9, decided per lesson: review of #140), and for a
  * teacher inactive or left from a date after the start (decision 10); left out
  * when it repeats a blocked result of the pattern (decision 5); else a refusal.
  * Of the warnings only `teacher_unavailable_later` is kept (decisions 3, 6).
@@ -165,7 +164,7 @@ export function datedPublishResults(input: DatedPublishInput): DatedPublishResul
     if (
       result.rule === 'teacher_unavailable' &&
       first !== undefined &&
-      input.followsOther(first.date)
+      first.followsWeekday !== weekdayOf(first.date)
     ) {
       need(first, 'not_available_real_day');
       continue;

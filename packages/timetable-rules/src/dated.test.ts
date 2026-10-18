@@ -170,6 +170,37 @@ describe('datedPattern', () => {
       'e-wed 2026-11-18',
       'e-wed 2026-11-21',
     ]);
+    // Each lesson names the weekday its grades follow on the date (review of #140, finding 1).
+    expect(found.lessons.map((one) => one.followsWeekday)).toEqual([3, 3]);
+  });
+
+  it('gives a lesson the weekday its own grades follow when other grades follow another (review of #140)', () => {
+    // On Tuesday 17 November grade 3 follows Friday; grade 7 keeps Tuesday.
+    const third = block('fri3', {
+      weekday: 5,
+      grades: [3],
+      entries: block('x').entries.map((entry) => ({
+        ...entry,
+        id: 'e-fri3',
+        classId: '3a',
+        classIds: ['3a'],
+      })),
+    });
+    const found = datedPattern(
+      input({
+        firstDate: '2026-11-17',
+        lastDate: '2026-11-17',
+        blocks: [third, block('tue7', { weekday: 2 })],
+        dayOn: (grade, date) =>
+          grade === 3
+            ? { lessons: true, day: WEEKLY, followsWeekday: 5, noRegularLessons: false }
+            : input().dayOn(grade, date),
+      }),
+    );
+    expect(found.lessons.map((one) => [one.entryId, one.followsWeekday])).toEqual([
+      ['e-fri3', 5],
+      ['e-tue7', 2],
+    ]);
   });
 
   it('cancels an exam week with no regular lessons as exam_week, unchecked', () => {

@@ -261,6 +261,9 @@ Plan approved on pull request #140 with corrections 1 and 2; decisions 1 to 11 c
 | Lessons the day cannot hold are listed and never refuse | Decision 7 |
 | A dated result names the own pattern entries, its date and another branch by its id only | Decision 8 |
 | "Needs a teacher", listed, not refused: a worked weekday the teacher is not available on; a teacher out from a date after the start; a Tutor row with no Tutor on the date or whose Tutor of the date clashes by time or travel | Decisions 9 to 11 |
+| "Not available on the real day" is decided per lesson: only a lesson whose grades follow another weekday on its date (`DatedLesson.followsWeekday`) becomes "needs a teacher"; a lesson of a grade that keeps its own weekday stays `date_blocked` | Review of #140 (owner, 18 October 2026): a calendar entry can cover a range of grades |
+| A Tutor of a date who is not the entry's teacher is checked by time and travel only (`checkTeacherTime`, as `followTutors`) | Build decision 13 |
+| Step 8 names a branch the start date's busy-elsewhere does not name "another branch" | Build decision 14 |
 
 ## 17 October 2026: publish, the route, its checks and one at a time (task 5.5a-1)
 
