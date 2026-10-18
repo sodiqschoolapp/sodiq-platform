@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import {
   BRANCH_HEADER,
+  listName,
   REQUEST_KEY_HEADER,
   outOfDateAnswerSchema,
   timetableVersionSchema,
@@ -443,13 +444,23 @@ describe('out-of-date drafts', () => {
         ])
         .execute();
       const answer = answerOf(await causesRoute(s.branch, s.version));
+      const roomName = (await roomRecord(room)).name;
+      const person = await t.database.migrator
+        .selectFrom('staff')
+        .select(['first_name', 'last_name'])
+        .where('id', '=', teacher)
+        .executeTakeFirstOrThrow();
+      const teacherName = listName({
+        firstName: person.first_name ?? '',
+        lastName: person.last_name ?? '',
+      });
       expect(answer.causes.map((one) => [one.kind, one.action, one.record])).toEqual([
         [
           'rooms',
           'room.edit',
           {
             id: room,
-            name: expect.any(String),
+            name: roomName,
             firstDate: null,
             lastDate: null,
             versionNumber: null,
@@ -471,7 +482,7 @@ describe('out-of-date drafts', () => {
           'staff.availability_set',
           {
             id: teacher,
-            name: expect.any(String),
+            name: teacherName,
             firstDate: null,
             lastDate: null,
             versionNumber: null,
