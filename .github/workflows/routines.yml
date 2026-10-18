@@ -229,14 +229,20 @@ jobs:
           head_ref=$(jq -r '.head.ref' "$RUNNER_TEMP/pull.json")
           # A fork that was deleted leaves head.repo null.
           head_repo=$(jq -r '.head.repo.full_name // ""' "$RUNNER_TEMP/pull.json")
+          # A verdict that lands on a pull request merged a moment earlier wakes
+          # no builder: there is nothing left to build.
+          state=$(jq -r '.state // ""' "$RUNNER_TEMP/pull.json")
           echo "Head branch: $head_ref"
           echo "Head repository: $head_repo"
+          echo "State: $state"
           echo "head_ref=$head_ref" >> "$GITHUB_OUTPUT"
           echo "head_repo=$head_repo" >> "$GITHUB_OUTPUT"
+          echo "state=$state" >> "$GITHUB_OUTPUT"
       - name: Fire the start routine
         if: >-
           steps.pr.outputs.head_repo == 'sodiqschoolapp/sodiq-platform'
           && startsWith(steps.pr.outputs.head_ref, 'task/')
+          && steps.pr.outputs.state == 'open'
         env:
           ROUTINE_URL: ${{ secrets.START_ROUTINE_URL }}
           ROUTINE_TOKEN: ${{ secrets.START_ROUTINE_TOKEN }}
