@@ -280,6 +280,7 @@ describe('the routes that work without sign-in', () => {
       'POST /api/timetable/versions/:id/rules/confirm',
       'POST /api/timetable/versions/:id/templates/confirm',
       'POST /api/timetable/versions/:id/up-to-date',
+      'POST /api/timetable/versions/:id/withdraw',
       'PUT /api/auth/language',
       'PUT /api/auth/photo',
       'PUT /api/classes/:id',
