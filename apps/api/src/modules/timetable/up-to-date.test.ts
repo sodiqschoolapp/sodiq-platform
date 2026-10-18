@@ -92,7 +92,7 @@ describe('bringing a draft up to date after a publish', () => {
       .set(REQUEST_KEY_HEADER, randomUUID())
       .send({ startsOn });
 
-  const copy = async (branch: string, year: string, from: string, startsOn: string) => {
+  const copy = async (branch: string, year: string, from: string | null, startsOn: string) => {
     const created = await post('/api/timetable/versions', branch, {
       academicYearId: year,
       startsOn,
@@ -214,39 +214,11 @@ describe('bringing a draft up to date after a publish', () => {
     };
   };
 
-  /**
-   * A branch whose published version S (from Monday 12 October) holds maths
-   * on Monday 1 and art on Monday 2; a draft D and a draft E copied from it,
-   * both from 2 November; E places maths on Tuesday 1, art on Tuesday 2 and a
-   * row of history (E's own) on Wednesday 1, and is published, which marks D.
-   * D places maths on Tuesday 2 and art on Monday 2. One teacher teaches all
-   * three; every lesson is once a week. With `double`, maths is twice a week
-   * as a double: S and E place it as a double, D leaves it unplaced.
-   */
-  async function scene(options: { double?: boolean } = {}) {
-    const branch = await t.newBranch();
-    const year = await load.classes.year(branch);
-    for (const [index, [start, end]] of QUARTERS.entries()) {
-      await t.database.migrator
-        .updateTable('quarters')
-        .set({ start_date: start, end_date: end })
-        .where('academic_year_id', '=', year)
-        .where('number', '=', index + 1)
-        .execute();
-    }
-    const lesson = await t.createSlotType(branch, 'Lesson', 'lesson', 45);
-    const pause = await t.createSlotType(branch, 'Break', 'break', 10);
-    const regular = await t.createTemplate(branch, 'Regular', [lesson, lesson, pause, lesson]);
-    await t.assign(branch, regular);
-    const subject = () => load.classes.subject({ grades: [7], journalType: 'attendance_only' });
-    const maths = await subject();
-    const art = await subject();
-    const history = await subject();
-    const room = await load.classes.room(branch);
-    const classId = await load.classes.schoolClass(branch, year, { grade: 7, room });
+  /** A teacher of the subjects in grade 7, free all day on every weekday. */
+  const availableTeacher = async (branch: string, subjects: readonly string[]) => {
     const teacherId = (
       await load.teacher(branch, {
-        subjects: [maths, art, history].map((one) => ({ subject: one, grades: [7] })),
+        subjects: subjects.map((one) => ({ subject: one, grades: [7] })),
       })
     ).staffId;
     const hours = await t.database.migrator
@@ -269,6 +241,46 @@ describe('bringing a draft up to date after a publish', () => {
         })
         .execute();
     }
+    return teacherId;
+  };
+
+  /** A branch and year with the quarters of `QUARTERS`. */
+  const yearIn = async (branch: string) => {
+    const year = await load.classes.year(branch);
+    for (const [index, [start, end]] of QUARTERS.entries()) {
+      await t.database.migrator
+        .updateTable('quarters')
+        .set({ start_date: start, end_date: end })
+        .where('academic_year_id', '=', year)
+        .where('number', '=', index + 1)
+        .execute();
+    }
+    return year;
+  };
+
+  /**
+   * A branch whose published version S (from Monday 12 October) holds maths
+   * on Monday 1 and art on Monday 2; a draft D and a draft E copied from it,
+   * both from 2 November; E places maths on Tuesday 1, art on Tuesday 2 and a
+   * row of history (E's own) on Wednesday 1, and is published, which marks D.
+   * D places maths on Tuesday 2 and art on Monday 2. One teacher teaches all
+   * three; every lesson is once a week. With `double`, maths is twice a week
+   * as a double: S and E place it as a double, D leaves it unplaced.
+   */
+  async function scene(options: { double?: boolean } = {}) {
+    const branch = await t.newBranch();
+    const year = await yearIn(branch);
+    const lesson = await t.createSlotType(branch, 'Lesson', 'lesson', 45);
+    const pause = await t.createSlotType(branch, 'Break', 'break', 10);
+    const regular = await t.createTemplate(branch, 'Regular', [lesson, lesson, pause, lesson]);
+    await t.assign(branch, regular);
+    const subject = () => load.classes.subject({ grades: [7], journalType: 'attendance_only' });
+    const maths = await subject();
+    const art = await subject();
+    const history = await subject();
+    const room = await load.classes.room(branch);
+    const classId = await load.classes.schoolClass(branch, year, { grade: 7, room });
+    const teacherId = await availableTeacher(branch, [maths, art, history]);
     const created = await post('/api/timetable/versions', branch, {
       academicYearId: year,
       startsOn: MONDAY,
@@ -598,6 +610,133 @@ describe('bringing a draft up to date after a publish', () => {
     expect(await causesOf(x.d)).toHaveLength(1);
   });
 
+  // Review round 1, finding 1: the panel names the rows a lesson shares its block with.
+  it('names the rows each lesson of a split shares its block with', async () => {
+    const branch = await t.newBranch();
+    const year = await yearIn(branch);
+    const lesson = await t.createSlotType(branch, 'Lesson', 'lesson', 45);
+    await t.assign(branch, await t.createTemplate(branch, 'Regular', [lesson, lesson]));
+    const english = await load.classes.subject({ grades: [7], journalType: 'attendance_only' });
+    const room = await load.classes.room(branch);
+    const classId = await load.classes.schoolClass(branch, year, { grade: 7, room });
+    const halves = [
+      await load.classes.group(branch, year, english, [classId], { name: 'English A' }),
+      await load.classes.group(branch, year, english, [classId], { name: 'English B' }),
+    ];
+    const created = await post('/api/timetable/versions', branch, {
+      academicYearId: year,
+      startsOn: MONDAY,
+      copyFrom: null,
+    });
+    expect(created.status, JSON.stringify(created.body)).toBe(201);
+    const s = (created.body as { id: string }).id;
+    const rows = [];
+    for (const groupId of halves) {
+      rows.push(
+        await load.row({
+          branch_id: branch,
+          version_id: s,
+          group_id: groupId,
+          subject_id: english,
+          teacher_id: await availableTeacher(branch, [english]),
+          lessons_per_week: 1,
+        }),
+      );
+    }
+    await place(branch, s, rows[0] ?? '', 1, 1);
+    await confirm(branch, s);
+    versionOf(await publish(branch, s, MONDAY));
+    const d = await copy(branch, year, s, NOVEMBER);
+    const e = await copy(branch, year, s, NOVEMBER);
+    // A copy carries no pattern: D places the split on Monday 1, E on Tuesday 1.
+    const halfOf = async (version: string) =>
+      (
+        await t.database.migrator
+          .selectFrom('teaching_load_rows')
+          .select('id')
+          .where('version_id', '=', version)
+          .where('group_id', '=', halves[0] ?? '')
+          .executeTakeFirstOrThrow()
+      ).id;
+    await place(branch, d, await halfOf(d), 1, 1);
+    await place(branch, e, await halfOf(e), 2, 1);
+    await confirm(branch, e);
+    versionOf(await publish(branch, e, NOVEMBER));
+    const { name_en } = await t.database.migrator
+      .selectFrom('subjects')
+      .select('name_en')
+      .where('id', '=', english)
+      .executeTakeFirstOrThrow();
+    const [item, ...rest] = (await shownOf(branch, d)).items;
+    expect(rest).toEqual([]);
+    const withOf = (groupId: string, side: 'draft' | 'published') =>
+      item?.rows
+        .find((one) => one.groupId === groupId)
+        ?.[side]?.placements.flatMap((one) => one.with)
+        .map((one) => [one.unitName, one.subjectNames.en]);
+    expect(withOf(halves[0] ?? '', 'draft')).toEqual([['English B', name_en]]);
+    expect(withOf(halves[1] ?? '', 'published')).toEqual([['English A', name_en]]);
+  });
+
+  // Review round 1, finding 2: decision 3's fallback compares a draft with a
+  // later version, whose template may have a slot the draft's lacks.
+  it("refuses a published lesson on a slot the draft's template lacks, and writes nothing", async () => {
+    const branch = await t.newBranch();
+    const year = await yearIn(branch);
+    const lesson = await t.createSlotType(branch, 'Lesson', 'lesson', 45);
+    const pause = await t.createSlotType(branch, 'Break', 'break', 10);
+    // Two lessons a day until 7 December; a fourth slot from then on.
+    await t.assign(branch, await t.createTemplate(branch, 'Short', [lesson, lesson]));
+    await t.assign(
+      branch,
+      await t.createTemplate(branch, 'Long', [lesson, lesson, pause, lesson]),
+      {},
+      '2026-12-07',
+    );
+    const maths = await load.classes.subject({ grades: [7], journalType: 'attendance_only' });
+    const room = await load.classes.room(branch);
+    const classId = await load.classes.schoolClass(branch, year, { grade: 7, room });
+    const teacherId = await availableTeacher(branch, [maths]);
+    const draft = await copy(branch, year, null, NOVEMBER);
+    const december = await copy(branch, year, null, '2026-12-07');
+    await place(
+      branch,
+      december,
+      await load.row({
+        branch_id: branch,
+        version_id: december,
+        class_id: classId,
+        subject_id: maths,
+        teacher_id: teacherId,
+        lessons_per_week: 1,
+      }),
+      1,
+      4,
+    );
+    await confirm(branch, december);
+    versionOf(await publish(branch, december, '2026-12-07'));
+    expect(await causesOf(draft)).toEqual([
+      { action: 'timetable_version.publish', record_id: december },
+    ]);
+    // No version is in force on 2 November: the earliest published one is compared.
+    const shown = await shownOf(branch, draft);
+    expect(shown.other?.id).toBe(december);
+    const before = await rowsOf(branch);
+    const count = await t.auditCount();
+    const refused = await upToDate(
+      branch,
+      draft,
+      shown.key,
+      shown.items.map((one) => ({ item: one.key, side: 'published' })),
+    );
+    refusedWith(refused, 409, 'up_to_date_blocked');
+    expect((refused.body as { error: { details: unknown[] } }).error.details).toEqual([
+      expect.objectContaining({ path: 'slots.1.4', code: 'pattern_no_slot' }),
+    ]);
+    expect(await rowsOf(branch)).toEqual(before);
+    expect(await t.auditCount()).toBe(count);
+  });
+
   describe('the version compared (decision 3)', () => {
     /** A branch and year with versions written directly: no rows, only starts and statuses. */
     async function versions() {
@@ -647,6 +786,30 @@ describe('bringing a draft up to date after a publish', () => {
       versionOf(await upToDate(v.branch, marked, shown.key));
       expect(await causesOf(marked)).toEqual([]);
       expect(await fromOf(marked)).toBe(first);
+      // The later version's cause is cleared, and the publish of the draft
+      // asks the chain question about it (review round 1, finding 3).
+      const { number } = await t.database.migrator
+        .selectFrom('timetable_versions')
+        .select('number')
+        .where('id', '=', later)
+        .executeTakeFirstOrThrow();
+      const check = publishCheckSchema.parse(
+        okay(
+          await get(
+            `/api/timetable/versions/${marked}/publish-check?startsOn=${NOVEMBER}`,
+            v.branch,
+          ),
+        ).body,
+      );
+      expect(check.refusals).toContainEqual(
+        expect.objectContaining({ code: 'version_later_published', versionNumber: number }),
+      );
+      expect(check.refusals.map((one) => one.code)).not.toContain('draft_out_of_date');
+      const refused = await publish(v.branch, marked, NOVEMBER);
+      refusedWith(refused, 409, 'publish_blocked');
+      expect((refused.body as { error: { details: unknown[] } }).error.details).toContainEqual(
+        expect.objectContaining({ code: 'version_later_published', path: 'chain' }),
+      );
     });
 
     it('takes the earliest published version when none is in force, and confirms only with none at all', async () => {

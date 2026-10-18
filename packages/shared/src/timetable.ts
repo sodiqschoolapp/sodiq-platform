@@ -1405,8 +1405,14 @@ export const upToDateValuesSchema = z.object({
       slotPosition: z.int().min(1),
       roomId: z.uuid().nullable(),
       roomName: z.string().nullable(),
-      /** The keys of the other rows of its block. */
-      with: z.array(z.string()),
+      /** The other rows of its block: their keys and names. */
+      with: z.array(
+        z.object({
+          key: z.string(),
+          unitName: z.string(),
+          subjectNames: z.object({ uz: z.string(), ru: z.string(), en: z.string() }),
+        }),
+      ),
       /** The slot of the other half of a double; `null` for a single lesson. */
       pairedWith: z.object({ weekday: weekdaySchema, slotPosition: z.int().min(1) }).nullable(),
     }),

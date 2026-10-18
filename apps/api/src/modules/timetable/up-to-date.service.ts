@@ -19,6 +19,7 @@ import {
   draftDifferences,
   pickedItems,
   publishRefusals,
+  rowOfMergeKey,
   takenPlan,
   type MergeItem,
   type MergeValues,
@@ -671,12 +672,10 @@ export class TimetableUpToDate {
         .execute();
     }
     // The blocks are placed on the rows as written, read again.
+    // The template and the blocks are those the check before writing read, and
+    // it refused a slot the draft lacks: here only the final row ids are mapped.
     const state = await this.pattern.stateOf(transaction, version, accountId);
-    const details: ErrorDetail[] = [];
-    const blocks = this.blocksTaken(state, published, plan, finalId, details);
-    if (details.length > 0) {
-      throw new ApiException('up_to_date_blocked', 409, undefined, details);
-    }
+    const blocks = this.blocksTaken(state, published, plan, finalId, []);
     const addedBlocks = [];
     for (const block of blocks) {
       const { block: written, entries } = await writeBlock(
@@ -731,9 +730,15 @@ export class TimetableUpToDate {
     const ids = (list: (string | null)[]) => [
       ...new Set(list.flatMap((one) => (one === null ? [] : [one]))),
     ];
-    const classIds = ids(rows.map((one) => one.classId));
-    const groupIds = ids(rows.map((one) => one.groupId));
-    const subjectIds = ids(rows.map((one) => one.subjectId));
+    // The rows a lesson shares its block with, named too: on the side the
+    // draft started from they need not be rows of the item.
+    const withRows = sides.flatMap((one) =>
+      one.placements.flatMap((placement) => placement.with.map(rowOfMergeKey)),
+    );
+    const named = [...rows, ...withRows];
+    const classIds = ids(named.map((one) => one.classId));
+    const groupIds = ids(named.map((one) => one.groupId));
+    const subjectIds = ids(named.map((one) => one.subjectId));
     const staffIds = ids(sides.map((one) => one.teacherId));
     const roomIds = ids([
       ...sides.map((one) => one.roomId),
@@ -809,7 +814,14 @@ export class TimetableUpToDate {
                       weekday: weekdaySchema.parse(placement.pairedWith.weekday),
                       slotPosition: placement.pairedWith.slotPosition,
                     },
-              with: [...placement.with],
+              with: placement.with.map((key) => {
+                const row = rowOfMergeKey(key);
+                return {
+                  key,
+                  unitName: unitName.get(row.classId ?? row.groupId ?? '') ?? '',
+                  subjectNames: subjectNames.get(row.subjectId) ?? { uz: '', ru: '', en: '' },
+                };
+              }),
               roomName: placement.roomId === null ? null : (roomName.get(placement.roomId) ?? null),
             })),
             pins: one.pins.map((pin) => ({

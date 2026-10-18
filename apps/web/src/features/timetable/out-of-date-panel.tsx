@@ -1,4 +1,5 @@
 import {
+  roomTypeSchema,
   weekdaySchema,
   type ErrorDetail,
   type OutOfDateCause,
@@ -291,7 +292,7 @@ function ItemCard({
               </tr>
             </thead>
             <tbody>
-              {FIELDS.map((field) => (
+              {fieldsOf(row).map((field) => (
                 <tr key={field} className="border-t align-top">
                   <th scope="row" className="py-1 pr-3 text-left font-medium">
                     {t(`timetable.outOfDate.fields.${field}`)}
@@ -324,7 +325,31 @@ function ItemCard({
   );
 }
 
-const FIELDS = ['teacher', 'room', 'lessons', 'placements', 'pins'] as const;
+const FIELDS = [
+  'teacher',
+  'room',
+  'lessons',
+  'shortReason',
+  'mixedBlock',
+  'placements',
+  'pins',
+] as const;
+
+type Field = (typeof FIELDS)[number];
+
+/**
+ * Every field the comparison counts (`draftDifferences`), so an item never
+ * shows identical columns (review round 1). The short reason and the mixed
+ * block are rows only when a side holds one.
+ */
+function fieldsOf(row: UpToDateItem['rows'][number]): Field[] {
+  const sides = [row.base, row.draft, row.published];
+  return FIELDS.filter(
+    (field) =>
+      (field !== 'shortReason' || sides.some((one) => one !== null && one.shortReason !== null)) &&
+      (field !== 'mixedBlock' || sides.some((one) => one?.mixedBlock === true)),
+  );
+}
 
 /** One field of one side of a row. */
 function FieldText({
@@ -332,7 +357,7 @@ function FieldText({
   values,
   tutorRow,
 }: {
-  field: (typeof FIELDS)[number];
+  field: Field;
   values: UpToDateValues | null;
   tutorRow: boolean;
 }): React.JSX.Element {
@@ -355,8 +380,19 @@ function FieldText({
             : (values.teacherName ?? t('timetable.outOfDate.recordGone'))}
         </span>
       );
-    case 'room':
-      return <span>{values.roomName ?? t('timetable.outOfDate.noRoom')}</span>;
+    case 'room': {
+      const roomType = roomTypeSchema.safeParse(values.roomType);
+      return (
+        <span>
+          {values.roomName ??
+            (roomType.success
+              ? t('timetable.load.roomTypeOption', {
+                  type: t(`setup.rooms.types.${roomType.data}`),
+                })
+              : t('timetable.outOfDate.noRoom'))}
+        </span>
+      );
+    }
     case 'lessons':
       return (
         <span>
@@ -365,6 +401,14 @@ function FieldText({
             : t('timetable.outOfDate.lessons', { count: values.lessonsPerWeek })}
         </span>
       );
+    case 'shortReason':
+      return values.shortReason === null ? (
+        <span className="text-muted-foreground">{t('timetable.outOfDate.noReason')}</span>
+      ) : (
+        <span>{values.shortReason}</span>
+      );
+    case 'mixedBlock':
+      return <span>{values.mixedBlock ? t('timetable.load.yes') : t('timetable.load.no')}</span>;
     case 'placements':
       return values.placements.length === 0 ? (
         <span className="text-muted-foreground">{t('timetable.outOfDate.notPlaced')}</span>
@@ -375,7 +419,18 @@ function FieldText({
               {[
                 slot(one),
                 one.roomName,
-                one.pairedWith === null ? null : t('timetable.outOfDate.double'),
+                one.pairedWith === null
+                  ? null
+                  : t('timetable.outOfDate.doubleWith', { slot: slot(one.pairedWith) }),
+                one.with.length === 0
+                  ? null
+                  : t('timetable.outOfDate.with', {
+                      rows: one.with
+                        .map(
+                          (other) => `${other.unitName}, ${nameOf(other.subjectNames, language)}`,
+                        )
+                        .join('; '),
+                    }),
               ]
                 .filter(Boolean)
                 .join(', ')}

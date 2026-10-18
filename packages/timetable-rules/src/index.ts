@@ -265,6 +265,7 @@ export {
   draftDifferences,
   mergeRowKey,
   pickedItems,
+  rowOfMergeKey,
   takenPlan,
   type MergeEntry,
   type MergeItem,

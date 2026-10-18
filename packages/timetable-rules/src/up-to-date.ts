@@ -99,6 +99,20 @@ export const mergeRowKey = (one: {
   subjectId: string;
 }): string => `${one.classId ?? ''}|${one.groupId ?? ''}|${one.subjectId}`;
 
+/** The class or group and subject a row key names (the reverse of `mergeRowKey`). */
+export function rowOfMergeKey(key: string): {
+  classId: string | null;
+  groupId: string | null;
+  subjectId: string;
+} {
+  const [classId = '', groupId = '', subjectId = ''] = key.split('|');
+  return {
+    classId: classId === '' ? null : classId,
+    groupId: groupId === '' ? null : groupId,
+    subjectId,
+  };
+}
+
 const bySlot = (
   a: { weekday: number; slotPosition: number },
   b: { weekday: number; slotPosition: number },

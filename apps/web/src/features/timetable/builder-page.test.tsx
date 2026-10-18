@@ -1412,6 +1412,96 @@ describe('a draft out of date', () => {
     });
   });
 
+  it('shows every field that makes an item a difference: room type, short reason, mixed block, block and double', async () => {
+    const noRoom = { roomId: null, roomName: null };
+    const placed = (more: object) => [
+      {
+        weekday: 1,
+        slotPosition: 1,
+        roomId: uid(981),
+        roomName: 'Room 12',
+        with: [],
+        pairedWith: null,
+        ...more,
+      },
+    ];
+    const only = (key: string, sides: object) => ({
+      key,
+      rows: [itemRow(key, key, sides)],
+      changedBy: 'draft',
+      defaultPick: 'draft',
+    });
+    await outOfDate([PUBLISH], {
+      comparison: {
+        ...COMPARISON,
+        items: [
+          only('type', {
+            base: values(noRoom),
+            draft: values({ ...noRoom, roomType: 'laboratory' }),
+            published: values(noRoom),
+          }),
+          only('reason', { draft: values({ shortReason: 'Exam week' }) }),
+          only('mixed', { draft: values({ mixedBlock: true }) }),
+          only('block', {
+            draft: values({
+              placements: placed({
+                with: [
+                  {
+                    key: 'art',
+                    unitName: '7 Cambridge',
+                    subjectNames: { uz: 'Art', ru: 'Art', en: 'Art' },
+                  },
+                ],
+              }),
+            }),
+          }),
+          only('pair', {
+            draft: values({ placements: placed({ pairedWith: { weekday: 1, slotPosition: 2 } }) }),
+          }),
+        ],
+      },
+    });
+    const found = await panel();
+    const cells = async (item: string, field: string) =>
+      waitFor(() => {
+        const row = [
+          ...(found.querySelector(`[data-item="${item}"]`)?.querySelectorAll('tbody tr') ?? []),
+        ].find((one) => one.querySelector('th')?.textContent === field);
+        if (row === undefined) throw new Error(`No ${field} of ${item}.`);
+        return [...row.querySelectorAll('td')].map((cell) => cell.textContent);
+      });
+    const fields = en.timetable.outOfDate.fields;
+    const typeText = en.timetable.load.roomTypeOption.replace(
+      '{{type}}',
+      en.setup.rooms.types.laboratory,
+    );
+    expect(await cells('type', fields.room)).toEqual([
+      en.timetable.outOfDate.noRoom,
+      typeText,
+      en.timetable.outOfDate.noRoom,
+    ]);
+    const none = en.timetable.outOfDate.noReason;
+    expect(await cells('reason', fields.shortReason)).toEqual([none, 'Exam week', none]);
+    const { yes, no } = en.timetable.load;
+    expect(await cells('mixed', fields.mixedBlock)).toEqual([no, yes, no]);
+    const monday = en.timetable.outOfDate.slot.replace('{{weekday}}', 'Monday');
+    const plain = `${monday.replace('{{position}}', '1')}, Room 12`;
+    expect(await cells('block', fields.placements)).toEqual([
+      plain,
+      `${plain}, ${en.timetable.outOfDate.with.replace('{{rows}}', '7 Cambridge, Art')}`,
+      plain,
+    ]);
+    expect(await cells('pair', fields.placements)).toEqual([
+      plain,
+      `${plain}, ${en.timetable.outOfDate.doubleWith.replace('{{slot}}', monday.replace('{{position}}', '2'))}`,
+      plain,
+    ]);
+    // A row without a short reason or a mixed block on any side has no such row.
+    expect(await cells('type', fields.room)).toHaveLength(3);
+    await expect(cells('type', fields.shortReason)).rejects.toThrow();
+    await expect(cells('type', fields.mixedBlock)).rejects.toThrow();
+  });
+
   it('takes one side everywhere, and shows the rules a refusal names', async () => {
     const calls = await outOfDate([PUBLISH], {
       comparison: COMPARISON,

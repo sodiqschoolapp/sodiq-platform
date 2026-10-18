@@ -188952,7 +188952,41 @@
                                           "with": {
                                             "type": "array",
                                             "items": {
-                                              "type": "string"
+                                              "type": "object",
+                                              "properties": {
+                                                "key": {
+                                                  "type": "string"
+                                                },
+                                                "unitName": {
+                                                  "type": "string"
+                                                },
+                                                "subjectNames": {
+                                                  "type": "object",
+                                                  "properties": {
+                                                    "uz": {
+                                                      "type": "string"
+                                                    },
+                                                    "ru": {
+                                                      "type": "string"
+                                                    },
+                                                    "en": {
+                                                      "type": "string"
+                                                    }
+                                                  },
+                                                  "required": [
+                                                    "uz",
+                                                    "ru",
+                                                    "en"
+                                                  ],
+                                                  "additionalProperties": false
+                                                }
+                                              },
+                                              "required": [
+                                                "key",
+                                                "unitName",
+                                                "subjectNames"
+                                              ],
+                                              "additionalProperties": false
                                             }
                                           },
                                           "pairedWith": {
@@ -189221,7 +189255,41 @@
                                           "with": {
                                             "type": "array",
                                             "items": {
-                                              "type": "string"
+                                              "type": "object",
+                                              "properties": {
+                                                "key": {
+                                                  "type": "string"
+                                                },
+                                                "unitName": {
+                                                  "type": "string"
+                                                },
+                                                "subjectNames": {
+                                                  "type": "object",
+                                                  "properties": {
+                                                    "uz": {
+                                                      "type": "string"
+                                                    },
+                                                    "ru": {
+                                                      "type": "string"
+                                                    },
+                                                    "en": {
+                                                      "type": "string"
+                                                    }
+                                                  },
+                                                  "required": [
+                                                    "uz",
+                                                    "ru",
+                                                    "en"
+                                                  ],
+                                                  "additionalProperties": false
+                                                }
+                                              },
+                                              "required": [
+                                                "key",
+                                                "unitName",
+                                                "subjectNames"
+                                              ],
+                                              "additionalProperties": false
                                             }
                                           },
                                           "pairedWith": {
@@ -189490,7 +189558,41 @@
                                           "with": {
                                             "type": "array",
                                             "items": {
-                                              "type": "string"
+                                              "type": "object",
+                                              "properties": {
+                                                "key": {
+                                                  "type": "string"
+                                                },
+                                                "unitName": {
+                                                  "type": "string"
+                                                },
+                                                "subjectNames": {
+                                                  "type": "object",
+                                                  "properties": {
+                                                    "uz": {
+                                                      "type": "string"
+                                                    },
+                                                    "ru": {
+                                                      "type": "string"
+                                                    },
+                                                    "en": {
+                                                      "type": "string"
+                                                    }
+                                                  },
+                                                  "required": [
+                                                    "uz",
+                                                    "ru",
+                                                    "en"
+                                                  ],
+                                                  "additionalProperties": false
+                                                }
+                                              },
+                                              "required": [
+                                                "key",
+                                                "unitName",
+                                                "subjectNames"
+                                              ],
+                                              "additionalProperties": false
                                             }
                                           },
                                           "pairedWith": {

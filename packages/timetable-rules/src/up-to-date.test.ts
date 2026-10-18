@@ -3,6 +3,7 @@ import {
   draftDifferences,
   mergeRowKey,
   pickedItems,
+  rowOfMergeKey,
   takenPlan,
   type MergeEntry,
   type MergeRow,
@@ -201,7 +202,8 @@ describe('draftDifferences', () => {
       ],
       entries: [
         entry(`${prefix}-e1`, `${prefix}-g1`, `${prefix}-b1`),
-        entry(`${prefix}-e2`, `${prefix}-g2`, `${prefix}-b1`, { roomId: 'room-2' }),
+        // Each half in a block of its own: only their shared class and subject join them.
+        entry(`${prefix}-e2`, `${prefix}-g2`, `${prefix}-b2`, { roomId: 'room-2' }),
       ],
       pins: [],
     });
@@ -221,9 +223,24 @@ describe('draftDifferences', () => {
       pins: [],
     };
     const unplaced: MergeVersion = { ...pairing, entries: [] };
-    const [item, ...rest] = draftDifferences(null, unplaced, pairing);
-    expect(rest).toEqual([]);
-    expect(item?.rows.map((one) => one.key)).toEqual(['|boys|pe', '|girls|tech']);
+    // The pairing on the published side only, then on the draft side only.
+    for (const [draft, published] of [
+      [unplaced, pairing],
+      [pairing, unplaced],
+    ] as const) {
+      const [item, ...rest] = draftDifferences(null, draft, published);
+      expect(rest).toEqual([]);
+      expect(item?.rows.map((one) => one.key)).toEqual(['|boys|pe', '|girls|tech']);
+    }
+  });
+});
+
+describe('rowOfMergeKey', () => {
+  it('reads back the class or group and subject of a row key', () => {
+    expect(rowOfMergeKey(maths)).toEqual({ classId: 'class-a', groupId: null, subjectId: 'maths' });
+    expect(
+      rowOfMergeKey(mergeRowKey({ classId: null, groupId: 'group-1', subjectId: 'english' })),
+    ).toEqual({ classId: null, groupId: 'group-1', subjectId: 'english' });
   });
 });
 

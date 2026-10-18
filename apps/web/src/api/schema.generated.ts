@@ -39404,7 +39404,15 @@ export interface operations {
                                         /** Format: uuid */
                                         roomId: string | null;
                                         roomName: string | null;
-                                        with: string[];
+                                        with: {
+                                            key: string;
+                                            unitName: string;
+                                            subjectNames: {
+                                                uz: string;
+                                                ru: string;
+                                                en: string;
+                                            };
+                                        }[];
                                         pairedWith: {
                                             weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
                                             slotPosition: number;
@@ -39433,7 +39441,15 @@ export interface operations {
                                         /** Format: uuid */
                                         roomId: string | null;
                                         roomName: string | null;
-                                        with: string[];
+                                        with: {
+                                            key: string;
+                                            unitName: string;
+                                            subjectNames: {
+                                                uz: string;
+                                                ru: string;
+                                                en: string;
+                                            };
+                                        }[];
                                         pairedWith: {
                                             weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
                                             slotPosition: number;
@@ -39462,7 +39478,15 @@ export interface operations {
                                         /** Format: uuid */
                                         roomId: string | null;
                                         roomName: string | null;
-                                        with: string[];
+                                        with: {
+                                            key: string;
+                                            unitName: string;
+                                            subjectNames: {
+                                                uz: string;
+                                                ru: string;
+                                                en: string;
+                                            };
+                                        }[];
                                         pairedWith: {
                                             weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
                                             slotPosition: number;
