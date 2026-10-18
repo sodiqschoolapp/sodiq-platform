@@ -714,6 +714,7 @@ describe('pinSlots', () => {
       impact: null,
       shortenedDays: [],
       unusedKeeps: [],
+      chain: null,
       canPublish: true,
     };
     const checkRoute = `GET /api/timetable/versions/${VERSION.id}/publish-check`;
@@ -848,6 +849,75 @@ describe('pinSlots', () => {
       });
     });
 
+    // Task 5.5a-3a, pull request #145: edge/timetable, Versions and drafts,
+    // the question of a publish before a later published version.
+    it('asks what happens to the later versions, keeps carry off with its reason, and sends the answer with its key', async () => {
+      const KEY = 'a'.repeat(64);
+      const LATER = { id: uid(901), number: 4, startsOn: '2026-11-09' };
+      const chainOf = (carryOffered: boolean) => ({
+        key: KEY,
+        later: [LATER],
+        carryOffered,
+        carryReason: carryOffered ? null : 'other_changes',
+        changes: [],
+        carried: [],
+      });
+      // The check with an answer refuses nothing; the fake API has no query, so a flag tells them apart.
+      let chosen = false;
+      const calls = await openPage({
+        path: `/timetable/builder?version=${VERSION.id}&step=publish`,
+        extra: {
+          [checkRoute]: () =>
+            json(
+              chosen
+                ? { ...CHECK, chain: chainOf(false) }
+                : {
+                    ...CHECK,
+                    canPublish: false,
+                    refusals: [{ code: 'version_later_published', versionNumber: 4 }],
+                    chain: chainOf(false),
+                  },
+            ),
+          [publishRoute]: () => json({ ...VERSION, status: 'published' }),
+        },
+      });
+      const later = await waitFor(() => {
+        const found = document.querySelector('[data-later] li');
+        if (found === null) throw new Error('No later versions yet.');
+        return found;
+      });
+      expect(later.textContent).toBe('Version 4, from 9 November 2026');
+      expect(screen.getByRole('button', { name: en.timetable.publish.action })).toHaveProperty(
+        'disabled',
+        true,
+      );
+      const carry = screen.getByRole('radio', { name: en.timetable.publish.chain.answers.carry });
+      expect(carry).toHaveProperty('disabled', true);
+      expect(document.querySelector('[data-hint="carry"]')?.textContent).toBe(
+        en.timetable.publish.chain.notOffered.other_changes,
+      );
+      chosen = true;
+      fireEvent.click(
+        screen.getByRole('radio', { name: en.timetable.publish.chain.answers.run_until }),
+      );
+      await waitFor(() => {
+        expect(
+          calls.filter((call) => call.route === checkRoute).map((call) => call.query),
+        ).toContain('?startsOn=2026-10-19&chain=run_until');
+      });
+      await screen.findByText(en.timetable.publish.nothingRefused);
+      fireEvent.click(screen.getByRole('button', { name: en.timetable.publish.action }));
+      const dialog = await screen.findByRole('alertdialog');
+      fireEvent.click(within(dialog).getByRole('button', { name: en.timetable.publish.action }));
+      await waitFor(() => {
+        expect(calls.find((call) => call.route === publishRoute)?.body).toEqual({
+          startsOn: '2026-10-19',
+          chain: 'run_until',
+          laterKey: KEY,
+        });
+      });
+    });
+
     // Task 5.5a-2b-2, pull request #143: the lessons kept on a shortened day.
     describe('a shortened day', () => {
       const keepRoute = `PUT /api/timetable/versions/${VERSION.id}/day-keeps`;
@@ -966,6 +1036,7 @@ describe('pinSlots', () => {
               ...CHECK,
               impact: {
                 beforeVersion: { id: uid(950), number: 1 },
+                carried: [],
                 counts: { created: 0, moved: 0, removed: 0, changed: 12, unchanged: 40 },
                 changes: [
                   {
@@ -1067,6 +1138,7 @@ describe('pinSlots', () => {
               ...CHECK,
               impact: {
                 beforeVersion: { id: uid(950), number: 1 },
+                carried: [],
                 counts: { created: 0, moved: 0, removed: 0, changed: 0, unchanged: 40 },
                 changes: [],
                 teachers: [],

@@ -2636,6 +2636,8 @@ export const uz: Texts<'one' | 'other'> = {
         edit_lock: 'Dars jadvali qoralamasi tahrirlash uchun olindi',
         publish: 'Dars jadvali versiyasi eʼlon qilindi',
         out_of_date: 'Eʼlon tufayli qoralama eskirgan deb belgilandi',
+        replace: 'Eʼlon qilingan versiya oldinroq boshlanadigan versiya bilan almashtirildi',
+        carry: 'Oʻqituvchi yoki xona oʻzgarishi eʼlon qilingan versiyaga oʻtkazildi',
         day_keep: 'Qoralamaning qisqartirilgan kunida qoladigan darslar tanlandi',
       },
       timetable_lock: {
@@ -3356,14 +3358,56 @@ export const uz: Texts<'one' | 'other'> = {
         tick: 'Oʻtish haftasi darslarini tekshirdim',
         tickNeeded: 'Eʼlon qilish uchun oʻtish haftasini belgilang.',
       },
+      chain: {
+        title: 'Keyingi eʼlon qilingan versiyalar',
+        intro:
+          'Bu qoralama eʼlon qilingan versiyadan oldin boshlanadi. Keyingi versiyalar bilan nima boʻlishini tanlang.',
+        laterItem: '{{number}}-versiya, {{date}} dan',
+        answers: {
+          run_until: 'Oʻsha versiya boshlanguncha amal qilsin',
+          replace: 'Keyingi versiyalarni almashtirish',
+          carry: 'Oʻzgarishni ularga oʻtkazish',
+        },
+        hints: {
+          run_until:
+            'Bu versiya keyingisi boshlanishidan bir kun oldin tugaydi. Keyingi versiyalar oʻzgarmaydi.',
+          replace: 'Keyingi versiyalar qaytarib olinadi. Bu versiya yil oxirigacha amal qiladi.',
+          carry:
+            'Xuddi shu oʻqituvchi va xona oʻzgarishlari bu darslar hali bor har bir keyingi versiyaga kiritiladi.',
+        },
+        notOffered: {
+          no_source: 'Taklif qilinmaydi: qoralama boshqa versiyadan nusxa olinmagan.',
+          nothing_changed:
+            'Taklif qilinmaydi: nusxa olingan versiyadan birorta oʻqituvchi yoki xona farq qilmaydi.',
+          other_changes:
+            'Taklif qilinmaydi: qoralama nusxa olingan versiyadan nafaqat oʻqituvchilar va xonalar bilan farq qiladi.',
+        },
+        changesTitle: 'Oʻtkaziladigan oʻzgarishlar',
+        change: {
+          teacher: '{{lesson}}: oʻqituvchi {{before}} → {{after}}',
+          row_room: '{{lesson}}: yuklama qatori xonasi {{before}} → {{after}}',
+          entry_room: '{{lesson}}, {{day}}, {{slot}}-dars: xona {{before}} → {{after}}',
+        },
+        none: 'yoʻq',
+        carriedTitle: 'Keyingi versiyalar',
+        carried: '{{number}}-versiya: oʻzgartirildi. Oʻzgargan darslar: {{lessons}}.',
+        nothingToCarry: '{{number}}-versiya: oʻtkaziladigan narsa yoʻq.',
+        left: '{{number}}-versiya: oʻzgarmadi, chunki oʻzgarish bloklovchi ziddiyatga uchraydi.',
+      },
       refusals: {
+        chain_carry_not_offered:
+          'Oʻzgarishni oʻtkazish faqat qoralama nusxa olingan versiyadan faqat oʻqituvchilar va xonalar bilan farq qilganda taklif qilinadi.',
+        chain_start_taken:
+          '{{number}}-versiya shu sanada boshlanadi. «Keyingi versiyalarni almashtirish»ni yoki boshqa sanani tanlang.',
+        chain_changed:
+          'Tekshirganingizdan keyin keyingi eʼlon qilingan versiyalar oʻzgardi. Ularni qayta tekshirib, tanlang.',
         transition_unacknowledged:
           'Oʻtish haftasi darslari yuklamaga mos emas yoki tekshirilgandan keyin oʻzgardi. Ularni qayta tekshiring va belgilang.',
         version_start_too_early:
           'Boshlanish sanasi eng erta ertaga. Bugungi oʻzgarish — bir kunlik oʻzgarish.',
         version_start_outside_year: 'Boshlanish sanasi oʻquv yilidan tashqarida.',
         version_later_published:
-          '{{number}}-versiya shu yoki keyingi sanadan allaqachon eʼlon qilingan. Hozircha oldingi sanani tanlang.',
+          '{{number}}-versiya shu yoki keyingi sanadan allaqachon eʼlon qilingan. Keyingi versiyalar bilan nima boʻlishini quyida tanlang.',
         draft_out_of_date:
           'Bu qoralama boshlangandan keyin boshqa versiya eʼlon qilindi. Avval qoralamani yangilang.',
         draft_not_ready: '«{{step}}» qadami tayyor emas.',

@@ -16,6 +16,7 @@ import {
   type MoveRecord,
   type PinRecord,
   type PlaceRecord,
+  type PublishChain,
   type PreferenceWeights,
   type RearrangeRecord,
   type SwapRecord,
@@ -321,9 +322,11 @@ export const publishCheckQuery = (
   branchId: string | null,
   versionId: string | null,
   startsOn: string | null,
+  /** Task 5.5a-3a: the answer to the later published versions, when one is chosen. */
+  chain: PublishChain | null = null,
 ) =>
   queryOptions({
-    queryKey: [...timetableKey(branchId), 'load', versionId, 'publish-check', startsOn],
+    queryKey: [...timetableKey(branchId), 'load', versionId, 'publish-check', startsOn, chain],
     queryFn: async () =>
       publishCheckSchema.parse(
         await answerOf(
@@ -331,7 +334,8 @@ export const publishCheckQuery = (
             params: {
               header: branchHeader(),
               path: { id: versionId ?? '' },
-              query: { startsOn: startsOn ?? '' },
+              query:
+                chain === null ? { startsOn: startsOn ?? '' } : { startsOn: startsOn ?? '', chain },
             },
           }),
         ),
@@ -345,6 +349,8 @@ export const publishVersion = (
   startsOn: string,
   key: string,
   transitionKey: string | null = null,
+  /** Task 5.5a-3a: the answer and the key of the later versions shown. */
+  chain: { chain: PublishChain; laterKey: string } | null = null,
 ) =>
   answerOf(
     api.POST('/api/timetable/versions/{id}/publish', {
@@ -352,6 +358,10 @@ export const publishVersion = (
         header: { ...branchHeader(), 'Idempotency-Key': key },
         path: { id: versionId },
       },
-      body: transitionKey === null ? { startsOn } : { startsOn, transitionKey },
+      body: {
+        startsOn,
+        ...(transitionKey === null ? {} : { transitionKey }),
+        ...(chain === null ? {} : chain),
+      },
     }),
   ).then((answer) => timetableVersionSchema.parse(answer));

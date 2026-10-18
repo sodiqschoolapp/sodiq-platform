@@ -2615,6 +2615,8 @@ export const en = {
         edit_lock: 'Draft timetable version taken for editing',
         publish: 'Timetable version published',
         out_of_date: 'Draft marked out of date by a publish',
+        replace: 'Published version replaced by an earlier start',
+        carry: 'Teacher or room change carried into a published version',
         day_keep: 'Lessons kept on a shortened day of a draft chosen',
       },
       timetable_lock: {
@@ -3329,14 +3331,56 @@ export const en = {
         tick: 'I have checked the lessons of the transition week',
         tickNeeded: 'Tick the transition week to publish.',
       },
+      chain: {
+        title: 'Later published versions',
+        intro:
+          'This draft starts before a published version. Choose what happens to the versions that follow.',
+        laterItem: 'Version {{number}}, from {{date}}',
+        answers: {
+          run_until: 'Run until that version starts',
+          replace: 'Replace the versions that follow',
+          carry: 'Carry the change into them',
+        },
+        hints: {
+          run_until:
+            'This version ends the day before the next one starts. The later versions stay as they are.',
+          replace: 'The later versions are withdrawn. This version runs to the end of the year.',
+          carry:
+            'The same teacher and room changes are made in every later version that still has those lessons.',
+        },
+        notOffered: {
+          no_source: 'Not offered: this draft was not copied from another version.',
+          nothing_changed:
+            'Not offered: no teacher or room differs from the version it was copied from.',
+          other_changes:
+            'Not offered: this draft differs from the version it was copied from in more than teachers and rooms.',
+        },
+        changesTitle: 'Changes to carry',
+        change: {
+          teacher: '{{lesson}}: teacher {{before}} → {{after}}',
+          row_room: '{{lesson}}: room of the load row {{before}} → {{after}}',
+          entry_room: '{{lesson}}, {{day}}, slot {{slot}}: room {{before}} → {{after}}',
+        },
+        none: 'none',
+        carriedTitle: 'Later versions',
+        carried: 'Version {{number}}: changed. Lessons changed: {{lessons}}.',
+        nothingToCarry: 'Version {{number}}: nothing to carry.',
+        left: 'Version {{number}}: left as it is, because a change meets a blocked conflict.',
+      },
       refusals: {
+        chain_carry_not_offered:
+          'Carrying the change is offered only when this draft differs from the version it was copied from in nothing but teachers and rooms.',
+        chain_start_taken:
+          'Version {{number}} starts on this date. Choose "Replace the versions that follow", or another date.',
+        chain_changed:
+          'The later published versions changed since you checked them. Check them again and choose.',
         transition_unacknowledged:
           'The lessons of the transition week differ from the load, or changed since you checked them. Check them again and tick the box.',
         version_start_too_early:
           'The start date is tomorrow at the earliest. A change for today is a one-day change.',
         version_start_outside_year: 'The start date is outside the academic year.',
         version_later_published:
-          'Version {{number}} is already published from this date or a later one. Choose an earlier date for now.',
+          'Version {{number}} is already published from this date or a later one. Choose below what happens to the later versions.',
         draft_out_of_date:
           'Another version was published after this draft was started. Bring the draft up to date first.',
         draft_not_ready: 'Step "{{step}}" is not ready.',
