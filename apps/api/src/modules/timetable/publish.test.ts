@@ -286,6 +286,16 @@ describe('publish', () => {
       .where('id', '=', id)
       .executeTakeFirstOrThrow();
 
+  /** The causes of a version's mark out of date (task 5.5a-3b-1, decision 7), oldest first. */
+  const causesOf = (id: string) =>
+    t.database.migrator
+      .selectFrom('timetable_version_out_of_date_causes')
+      .select(['action', 'record_id', 'caused_at'])
+      .where('version_id', '=', id)
+      .orderBy('caused_at')
+      .orderBy('id')
+      .execute();
+
   /** Every row a publish writes, in both branches named: what a refused one must leave. */
   /**
    * Every row a publish writes, in every branch of the versions named, each
@@ -763,13 +773,11 @@ describe('publish', () => {
       const otherYear = await load.version(s.branch, nextYear, { startsOn: '2027-09-06' });
       await load.freeEditLock(s.version);
       versionOf(await publish(s.branch, s.version, MONDAY));
-      const marked = await Promise.all(
-        [sibling, child, grandchild, otherYear].map(
-          async (id) => (await versionRow(id)).out_of_date_at,
-        ),
-      );
-      expect(marked.map((one) => one !== null)).toEqual([true, false, false, false]);
-      expect(marked[0]).toEqual(t.clock.now());
+      const marked = await Promise.all([sibling, child, grandchild, otherYear].map(causesOf));
+      expect(marked.map((one) => one.length)).toEqual([1, 0, 0, 0]);
+      expect(marked[0]).toEqual([
+        { action: 'timetable_version.publish', record_id: s.version, caused_at: t.clock.now() },
+      ]);
       const [entry] = await t.entries('timetable_version.out_of_date', sibling);
       expect(entry).toMatchObject({ new_value: { outOfDate: true, publishedId: s.version } });
       const [published] = await t.entries('timetable_version.publish', s.version);
@@ -780,7 +788,7 @@ describe('publish', () => {
       };
       expect(list.versions.find((one) => one.id === sibling)?.outOfDate).toBe(true);
       const copy = await draft(s.branch, s.year, sibling);
-      expect((await versionRow(copy)).out_of_date_at).toEqual(t.clock.now());
+      expect(await causesOf(copy)).toEqual(marked[0]);
     });
 
     it('refuses a draft marked out of date', async () => {

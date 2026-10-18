@@ -17,6 +17,7 @@ import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { exportList, oneCell, type ExportColumn } from '../audit/export-list.js';
 import { changesOf, notFound, refusingDuplicates } from './setup-refusals.js';
+import { markDraftsOutOfDate } from '../timetable/out-of-date.js';
 
 interface RoomRow {
   id: string;
@@ -59,6 +60,15 @@ const fieldsOf = (room: Room): RoomRecord => ({
   shared: room.shared,
   maxSimultaneousLessons: room.maxSimultaneousLessons,
 });
+
+/** The fields of a room the timetable reads (`pattern-facts.ts`): a change of one marks drafts. */
+const TIMETABLE_FIELDS = [
+  'type',
+  'capacity',
+  'status',
+  'shared',
+  'maxSimultaneousLessons',
+] as const satisfies readonly (keyof RoomRecord)[];
 
 function roomsIn(transaction: Transaction) {
   return transaction
@@ -280,6 +290,19 @@ export class Rooms {
           newValue: changes.newValue,
           requestId,
         });
+        // Task 5.5a-3b-1, decision 2: only what a draft reads of a room marks
+        // its drafts out of date; a new name or floor does not.
+        if (TIMETABLE_FIELDS.some((key) => key in changes.newValue)) {
+          await markDraftsOutOfDate(transaction, this.audit, {
+            branchId: this.branchOf(access),
+            action: 'room.edit',
+            recordId: id,
+            dates: 'every_year',
+            actorId: access.accountId,
+            assignmentId: access.assignmentId,
+            requestId,
+          });
+        }
         return this.readRoom(transaction, id);
       }),
     );

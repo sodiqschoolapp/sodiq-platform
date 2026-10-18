@@ -115,21 +115,39 @@ describe('publish in the database', () => {
     expect(await statusOf(version)).toBe('draft');
   });
 
+  // Task 5.5a-3b-1, decision 7: the mark is its causes (0077); the edit lock
+  // stays guarded by `timetable_versions_mark_draft`.
   it('writes the mark and the edit lock on a draft', async () => {
     const { branch, version } = await draft();
-    await inBranch(branch, (transaction) =>
-      transaction
+    await inBranch(branch, async (transaction) => {
+      await transaction
         .updateTable('timetable_versions')
-        .set({ out_of_date_at: new Date(NOW), edit_holder_id: null, edit_seen_at: null })
+        .set({ edit_holder_id: null, edit_seen_at: new Date(NOW) })
         .where('id', '=', version)
-        .execute(),
-    );
+        .execute();
+      await transaction
+        .insertInto('timetable_version_out_of_date_causes')
+        .values({
+          branch_id: branch,
+          version_id: version,
+          action: 'timetable_version.publish',
+          record_id: null,
+          caused_at: new Date(NOW),
+        })
+        .execute();
+    });
     const row = await database.migrator
       .selectFrom('timetable_versions')
-      .select('out_of_date_at')
+      .select('edit_seen_at')
       .where('id', '=', version)
       .executeTakeFirstOrThrow();
-    expect(row.out_of_date_at).toEqual(new Date(NOW));
+    expect(row.edit_seen_at).toEqual(new Date(NOW));
+    const causes = await database.migrator
+      .selectFrom('timetable_version_out_of_date_causes')
+      .select('caused_at')
+      .where('version_id', '=', version)
+      .execute();
+    expect(causes).toEqual([{ caused_at: new Date(NOW) }]);
   });
 
   it('changes no column of a published version', async () => {
@@ -141,7 +159,7 @@ describe('publish in the database', () => {
       { templates_confirmed: JSON.stringify([]) },
       { weight_main_room: 4 },
       { rules_confirmed: JSON.stringify({}) },
-      { out_of_date_at: new Date(NOW) },
+      { edit_holder_id: null },
       { edit_seen_at: new Date(NOW) },
     ] as const;
     for (const set of changes) {

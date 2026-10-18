@@ -935,6 +935,16 @@ export interface TimetablePins {
   weekday: number;
 }
 
+export interface TimetableVersionOutOfDateCauses {
+  action: string;
+  branch_id: string;
+  caused_at: Timestamp;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  record_id: string | null;
+  version_id: string;
+}
+
 export interface TimetableVersions {
   academic_year_id: string;
   branch_id: string;
@@ -945,7 +955,6 @@ export interface TimetableVersions {
   id: Generated<string>;
   left_rows: Generated<Json>;
   number: number;
-  out_of_date_at: Timestamp | null;
   rules_confirmed: Json | null;
   starts_on: string;
   status: Generated<string>;
@@ -1044,6 +1053,7 @@ export interface DB {
   timetable_day_keeps: TimetableDayKeeps;
   timetable_locks: TimetableLocks;
   timetable_pins: TimetablePins;
+  timetable_version_out_of_date_causes: TimetableVersionOutOfDateCauses;
   timetable_versions: TimetableVersions;
   travel_times: TravelTimes;
 }

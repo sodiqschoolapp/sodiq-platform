@@ -496,6 +496,10 @@ export const ERROR_CODES = [
   'group_transfer_subject',
   /** The version is not a draft: its load and start date no longer change (task 3.4a). */
   'version_not_draft',
+  /** A publish marked the draft out of date; bringing it up to date after a publish comes with task 5.5a-3b-2 (task 5.5a-3b-1, decision 5). */
+  'draft_out_of_date_by_publish',
+  /** The causes of the mark are not the ones shown: another change marked the draft since (task 5.5a-3b-1). */
+  'out_of_date_changed',
   /** The academic year of the version is closed (task 3.4a). */
   'timetable_year_closed',
   /** The intended start date of a draft is before today (task 3.4a, decision 5). */

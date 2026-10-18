@@ -83,6 +83,7 @@ import {
   refusingConstraints,
   refusingDuplicates,
 } from '../setup/setup-refusals.js';
+import { markDraftsOutOfDate } from '../timetable/out-of-date.js';
 import { closeOpenResetLinks } from '../auth/reset-links.js';
 import {
   followTutorEnds,
@@ -947,6 +948,17 @@ export class Staff {
                 })),
                 newValue: ended.map((entry) => ({ id: entry.id, until: entry.ends })),
                 reason: 'branch_removed',
+                requestId,
+              });
+              // Task 5.5a-3b-1 (spec review must-fix 3): the drafts of the
+              // removed branch, in the years from the day the hours end.
+              await markDraftsOutOfDate(transaction, this.audit, {
+                branchId: removed.branch_id,
+                action: 'staff.availability_end',
+                recordId: id,
+                dates: [{ from, until: null }],
+                actorId: access.accountId,
+                assignmentId: superAdmin,
                 requestId,
               });
             }

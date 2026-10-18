@@ -58,6 +58,7 @@ import {
   refusingConstraints,
   refusingDuplicates,
 } from './setup-refusals.js';
+import { markDraftsOutOfDate } from '../timetable/out-of-date.js';
 
 /** A refusal of 409 that names the fields to show it beside. */
 function refused(code: ErrorCode, paths: readonly string[] = []): ApiException {
@@ -186,6 +187,31 @@ export class DayTemplates {
         ),
       refusals,
     );
+  }
+
+  /**
+   * The drafts of the branch in the years that end on or after `from` are
+   * marked out of date (task 5.5a-3b-1, decisions 2 and 3).
+   */
+  private markDrafts(
+    context: Context,
+    action:
+      | 'slot_type.length_change'
+      | 'day_template.version_create'
+      | 'day_template_assignment.set'
+      | 'day_template_assignment.end',
+    id: string,
+    from: string,
+  ): Promise<void> {
+    return markDraftsOutOfDate(context.transaction, this.audit, {
+      branchId: context.branchId,
+      action,
+      recordId: id,
+      dates: [{ from, until: null }],
+      actorId: context.access.accountId,
+      assignmentId: context.access.assignmentId,
+      requestId: context.requestId,
+    });
   }
 
   private record(
@@ -373,6 +399,7 @@ export class DayTemplates {
         },
       },
     );
+    await this.markDrafts(context, 'slot_type.length_change', id, change.from);
   }
 
   /** A new length from a date (answer 12): the length in force is cut there, a later planned one stays. */
@@ -661,6 +688,7 @@ export class DayTemplates {
         },
       },
     );
+    await this.markDrafts(context, 'day_template.version_create', id, record.from);
   }
 
   /** New slots or a new start time from a date (answer 12): the version in force is cut there. */
@@ -870,6 +898,7 @@ export class DayTemplates {
         },
       },
     );
+    await this.markDrafts(context, 'day_template_assignment.set', id, schedule.validFrom);
     return id;
   }
 
@@ -914,6 +943,7 @@ export class DayTemplates {
       { type: 'day_template_assignment', id },
       { oldValue: { validUntil: row.validUntil }, newValue: { validUntil } },
     );
+    await this.markDrafts(context, 'day_template_assignment.end', id, change.from);
   }
 
   /** The end of a setting from a date; the default is replaced, never ended (decision 8). */

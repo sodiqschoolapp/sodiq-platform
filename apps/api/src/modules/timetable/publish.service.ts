@@ -28,7 +28,7 @@ import {
 } from '@sodiq/timetable-rules';
 import { sql } from 'kysely';
 import { RequestKeys } from '../../database/request-keys.js';
-import { Transactions, transactionMoment, type Transaction } from '../../database/transactions.js';
+import { Transactions, type Transaction } from '../../database/transactions.js';
 import type { JsonValue } from '../../database/types.generated.js';
 import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
@@ -49,6 +49,7 @@ import {
 } from './chain.js';
 import { datedCheck, datedLessonsOf } from './dated-check.js';
 import { impactOf, type Impact } from './impact.js';
+import { markPublished, outOfDateColumn } from './out-of-date.js';
 import { refusingPattern, TimetablePattern } from './pattern.service.js';
 import { resultAnswerOf } from './rule-answers.js';
 import { lockSubjects, Timetable, type VersionRow } from './timetable.service.js';
@@ -343,7 +344,8 @@ export class TimetablePublish {
       .where('branch_id', '=', branchId)
       .where('academic_year_id', '=', named.academic_year_id)
       .orderBy('id')
-      .forUpdate()
+      // Task 5.5a-3b-1, decision 8: a cause's foreign key is not blocked.
+      .forNoKeyUpdate()
       .execute();
     let version = await this.timetable.lockDraft(transaction, access, id, requestId);
     const today = await this.timetable.todayIn(transaction, branchId);
@@ -396,10 +398,9 @@ export class TimetablePublish {
     if (findings.refusals.length > 0) {
       throw new ApiException('publish_blocked', 409, undefined, findings.refusals.map(detailOf));
     }
-    const moment = await transactionMoment(transaction);
     const versions = await transaction
       .selectFrom('timetable_versions')
-      .select(['id', 'number', 'status', 'starts_on', 'from_version_id', 'out_of_date_at'])
+      .select(['id', 'number', 'status', 'starts_on', 'from_version_id', outOfDateColumn])
       .where('branch_id', '=', branchId)
       .where('academic_year_id', '=', version.academic_year_id)
       .orderBy('id')
@@ -417,7 +418,8 @@ export class TimetablePublish {
       .where('id', '=', id)
       .execute();
     // Decision 4: every other draft of the branch and year is marked, unless
-    // the published version is in its chain of sources.
+    // the published version is in its chain of sources; a draft already marked
+    // gets the publish's cause too (task 5.5a-3b-1, spec review must-fix 2).
     const sourceOf = new Map(versions.map((one) => [one.id, one.from_version_id]));
     const descends = (draftId: string): boolean => {
       const seen = new Set<string>();
@@ -430,16 +432,8 @@ export class TimetablePublish {
       return false;
     };
     const marked = versions.filter(
-      (one) =>
-        one.id !== id && one.status === 'draft' && one.out_of_date_at === null && !descends(one.id),
+      (one) => one.id !== id && one.status === 'draft' && !descends(one.id),
     );
-    for (const draft of marked) {
-      await transaction
-        .updateTable('timetable_versions')
-        .set({ out_of_date_at: moment })
-        .where('id', '=', draft.id)
-        .execute();
-    }
     // Task 5.5a-3a: the answer to the later published versions.
     const replaced = input.chain === 'replace' ? findings.later : [];
     for (const later of replaced) {
@@ -490,18 +484,14 @@ export class TimetablePublish {
       },
       requestId,
     });
-    for (const draft of marked) {
-      await this.audit.record(transaction, {
-        branchId,
-        actorId: access.accountId,
-        assignmentId: access.assignmentId,
-        action: 'timetable_version.out_of_date',
-        record: { type: 'timetable_version', id: draft.id },
-        oldValue: { outOfDate: false },
-        newValue: { outOfDate: true, publishedId: id, publishedNumber: version.number },
-        requestId,
-      });
-    }
+    await markPublished(transaction, this.audit, marked, {
+      branchId,
+      id,
+      number: version.number,
+      actorId: access.accountId,
+      assignmentId: access.assignmentId,
+      requestId,
+    });
     for (const later of replaced) {
       await this.audit.record(transaction, {
         branchId,
@@ -632,7 +622,7 @@ export class TimetablePublish {
         runEnd = end < startsOn ? startsOn : end;
       }
     }
-    if (version.out_of_date_at !== null) {
+    if (version.out_of_date) {
       refusals.push({ code: 'draft_out_of_date' });
     }
 

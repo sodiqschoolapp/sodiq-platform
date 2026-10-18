@@ -179,7 +179,7 @@ async function followDrafts(
     return;
   }
   // The lock order of a load write: the year FOR SHARE, then the version FOR
-  // UPDATE (3.4a), so an edit of the draft at the same moment waits or is
+  // NO KEY UPDATE (3.4a, 5.5a-3b-1), so an edit of the draft at the same moment waits or is
   // waited for.
   const years = [...new Set(versions.map((one) => one.academic_year_id))].sort();
   await transaction
@@ -198,7 +198,8 @@ async function followDrafts(
       versions.map((one) => one.id),
     )
     .orderBy('id')
-    .forUpdate()
+    // Task 5.5a-3b-1, decision 8: a cause's foreign key is not blocked.
+    .forNoKeyUpdate()
     .execute();
   const tutors = await readTutorRows(transaction, classIds);
   for (const version of versions) {
