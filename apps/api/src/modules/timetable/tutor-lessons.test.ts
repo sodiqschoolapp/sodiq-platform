@@ -633,6 +633,9 @@ describe('Tutor lessons follow the Tutor', () => {
       // The end changed it: marked, and the old Tutor told.
       expect(await markOf(lessonId)).not.toBeNull();
       expect(await noticesOf(own.tutor.accountId)).toHaveLength(1);
+      expect((await entry('class.tutor_ended', own.classId)).new_value).toMatchObject({
+        notices: { notified: 1, marked: 1 },
+      });
       await clearMarks([lessonId]);
 
       // The new Tutor teaches another class at that time.
@@ -713,13 +716,10 @@ describe('Tutor lessons follow the Tutor', () => {
       });
       expect(await markOf(lessonId)).not.toBeNull();
       expect(await noticesOf(b.accountId)).toHaveLength(1);
-      const toVacancy = await database.migrator
-        .selectFrom('notifications')
-        .innerJoin('staff', 'staff.account_id', 'notifications.account_id')
-        .select('notifications.id')
-        .where('staff.id', '=', vacancy)
-        .execute();
-      expect(toVacancy).toEqual([]);
+      // The old teacher is the vacancy: one notice in all, the new Tutor's.
+      expect((await entry('class.tutor_given', own.classId)).new_value).toMatchObject({
+        notices: { notified: 1, marked: 1 },
+      });
     });
 
     it('sends one notice for a role end over two classes, and again for its taking back', async () => {
@@ -787,6 +787,43 @@ describe('Tutor lessons follow the Tutor', () => {
       expect(await teachersOf([mid, late])).toEqual([a.staffId, a.staffId]);
       expect(await noticesOf(a.accountId)).toHaveLength(3);
       expect((await marksOf([mid, late])).map((mark) => mark !== null)).toEqual([false, true]);
+    });
+
+    // Decision 1: one notice per person per branch of the request (code
+    // review should-fix 2).
+    it('sends one notice in each branch for a `left` of a Tutor of classes in two branches', async () => {
+      const a = await tutorPerson([south]);
+      const southRole = await lessons.load.classes.role(a.accountId, south, 'tutor');
+      const northClass = await newClass();
+      const southClass = await newClass(south);
+      await lessons.load.classes.tutorRow(north, northClass, a.assignmentId);
+      await lessons.load.classes.tutorRow(south, southClass, southRole);
+      const northLesson = await tutorLesson(northClass, a.staffId, '2026-10-29');
+      const southLesson = await lesson({
+        classId: southClass,
+        date: '2026-10-30',
+        start: '09:00',
+        end: '09:45',
+        teacherId: a.staffId,
+        rowTeacherId: a.staffId,
+        branch: south,
+      });
+      await post(
+        `/api/people/staff/${a.staffId}/status`,
+        { status: 'left', from: '2026-10-28' },
+        admin,
+      ).expect(200);
+      expect(await teachersOf([northLesson, southLesson])).toEqual([null, null]);
+      const notices = await noticesOf(a.accountId);
+      expect(notices.map((one) => one.branch_id).sort()).toEqual([north, south].sort());
+      const northNotice = notices.find((one) => one.branch_id === north);
+      const southNotice = notices.find((one) => one.branch_id === south);
+      expect(sideOf(northNotice?.data, 'before')).toEqual(['2026-10-29 09:00 changed']);
+      expect(sideOf(southNotice?.data, 'before')).toEqual(['2026-10-30 09:00 changed']);
+      expect((await marksOf([northLesson, southLesson])).every((mark) => mark !== null)).toBe(true);
+      expect((await entry('staff.status', a.staffId)).details).toMatchObject({
+        notices: { notified: 2, marked: 2 },
+      });
     });
 
     it('leaves no notice and no mark after a preview, which runs the give and rolls it back', async () => {
