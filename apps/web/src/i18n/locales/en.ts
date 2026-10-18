@@ -357,10 +357,11 @@ export const en = {
       'One of the two records has a class or group move after today. Cancel that move first, then merge.',
     version_not_draft:
       'This version is no longer a draft: its load and start date do not change. Start a new draft to change the load.',
-    draft_out_of_date_by_publish:
-      'Another version was published after this draft was started. Bringing a draft up to date after a publish is not available yet.',
+    up_to_date_blocked:
+      'These picks break a timetable rule or a load rule. Change the picks listed and try again.',
+    up_to_date_pick_missing: 'Choose the draft or the published version for every difference.',
     out_of_date_changed:
-      'The draft was marked out of date again while you looked. Check what changed and bring it up to date again.',
+      'The draft, the published version or what marked the draft changed while you looked. Check what changed and bring it up to date again.',
     timetable_year_closed:
       'The academic year of this version is closed: nothing in it changes. Work in a planned or current year.',
     version_start_past: 'The start date is before today. Choose today or a later date.',

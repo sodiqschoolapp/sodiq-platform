@@ -61,7 +61,7 @@ import { auditOf, followChanged, followVersion } from './tutor-lessons.js';
  * busy elsewhere after the wait (`06`, Teachers who work in several branches,
  * Two drafts at once: "The first to publish stands").
  */
-const PUBLISH_LOCK = 550_001;
+export const PUBLISH_LOCK = 550_001;
 
 /** The quarters of the year, dated or not, by number. */
 interface QuarterRow {

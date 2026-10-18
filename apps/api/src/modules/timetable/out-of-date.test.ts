@@ -94,8 +94,19 @@ describe('out-of-date drafts', () => {
 
   const causesRoute = (branch: string, version: string, cookie = t.admin) =>
     get(`/api/timetable/versions/${version}/out-of-date`, branch, cookie);
-  const upToDate = (branch: string, version: string, key: string, cookie = t.admin) =>
-    post(`/api/timetable/versions/${version}/up-to-date`, branch, { key }, cookie);
+  const upToDate = (
+    branch: string,
+    version: string,
+    key: string,
+    cookie = t.admin,
+    picks?: readonly { item: string; side: string }[],
+  ) =>
+    post(
+      `/api/timetable/versions/${version}/up-to-date`,
+      branch,
+      picks === undefined ? { key } : { key, picks },
+      cookie,
+    );
 
   /** The causes of a version as stored, oldest first. */
   const causesOf = (id: string) =>
@@ -392,7 +403,9 @@ describe('out-of-date drafts', () => {
       expect(answerOf(await causesRoute(s.branch, published)).causes).toEqual([]);
     });
 
-    it('adds the cause of a publish to a draft a setup change already marked, which then waits for 5.5a-3b-2', async () => {
+    // Task 5.5a-3b-2, decision 2 (Look first, the requirement changed): the
+    // refusal `draft_out_of_date_by_publish` held only "until 5.5a-3b-2".
+    it('adds the cause of a publish to a draft a setup change already marked; both are cleared with the picks', async () => {
       const p = await publishable();
       const sibling = await draft(p.branch, p.year);
       await widenRoom(p.branch, p.room);
@@ -408,12 +421,19 @@ describe('out-of-date drafts', () => {
         new_value: { outOfDate: true, publishedId: p.version },
       });
       const shown = answerOf(await causesRoute(p.branch, sibling));
-      refusedWith(
-        await upToDate(p.branch, sibling, shown.key),
-        409,
-        'draft_out_of_date_by_publish',
-      );
+      expect(shown.other?.id).toBe(p.version);
+      expect(shown.items.map((one) => [one.changedBy, one.defaultPick])).toEqual([['both', null]]);
+      refusedWith(await upToDate(p.branch, sibling, shown.key), 409, 'up_to_date_pick_missing');
       expect(await causesOf(sibling)).toHaveLength(2);
+      const picks = shown.items.map((one) => ({ item: one.key, side: 'draft' }));
+      versionOf(await upToDate(p.branch, sibling, shown.key, t.admin, picks));
+      expect(await causesOf(sibling)).toEqual([]);
+      const after = await t.database.migrator
+        .selectFrom('timetable_versions')
+        .select('from_version_id')
+        .where('id', '=', sibling)
+        .executeTakeFirstOrThrow();
+      expect(after.from_version_id).toBe(p.version);
     });
   });
 

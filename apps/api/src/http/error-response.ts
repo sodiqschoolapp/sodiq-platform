@@ -266,9 +266,10 @@ const MESSAGE: Record<ErrorCode, string> = {
     'The date of the return or restore is outside the academic year of the class.',
   group_transfer_subject: 'The group is of another subject.',
   version_not_draft: 'The version is not a draft.',
-  draft_out_of_date_by_publish:
-    'A publish marked the draft out of date; bringing it up to date after a publish is not built yet.',
-  out_of_date_changed: 'The draft was marked out of date again since the causes were read.',
+  up_to_date_blocked: 'The picks bring a blocked result or a load problem; the details list them.',
+  up_to_date_pick_missing: 'Every difference listed needs a pick.',
+  out_of_date_changed:
+    'The causes, the published version compared or the differences changed since they were read.',
   timetable_year_closed: 'The academic year of the version is closed.',
   version_start_past: 'The start date is before today.',
   version_start_outside_year: 'The start date is outside the academic year.',

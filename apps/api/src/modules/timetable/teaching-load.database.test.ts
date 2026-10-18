@@ -311,7 +311,11 @@ describe('teaching load in the database', () => {
 
     it('keeps its year, number and source, and its left rows are only dismissed', async () => {
       const draft = await kit.version(north, northYear);
-      for (const values of [{ number: 77 }, { from_version_id: draft }]) {
+      // Task 5.5a-3b-2, decision 1 (Look first, a requirement changed): a
+      // draft's source changes when it is brought up to date (0078); the
+      // source of a version that is not a draft stays fixed
+      // (`up-to-date.database.test.ts`).
+      for (const values of [{ number: 77 }]) {
         expect(
           (
             await refusal(
@@ -348,13 +352,12 @@ describe('teaching load in the database', () => {
     // Task 5.5a-1 (0073) grants the status to publish; its trigger
     // `timetable_versions_status` lets a draft only be published
     // (publish.database.test.ts).
-    it('grants no write of its year, number or source, and no delete', async () => {
+    // Task 5.5a-3b-2, decision 1 (Look first, a requirement changed): 0078
+    // grants the update of the source, which `timetable_versions_fixed`
+    // allows on a draft only (`up-to-date.database.test.ts`).
+    it('grants no write of its year or number, and no delete', async () => {
       const draft = await kit.version(north, northYear);
-      for (const values of [
-        { academic_year_id: southYear },
-        { number: 50 },
-        { from_version_id: null },
-      ]) {
+      for (const values of [{ academic_year_id: southYear }, { number: 50 }]) {
         const refused = await refusal(
           inBranch(north, (transaction) =>
             transaction

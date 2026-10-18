@@ -260,3 +260,22 @@ export {
   type CarryRow,
   type CarryVersion,
 } from './carry.js';
+// Task 5.5a-3b-2: bringing a draft up to date after a publish.
+export {
+  draftDifferences,
+  mergeRowKey,
+  pickedItems,
+  takenPlan,
+  type MergeEntry,
+  type MergeItem,
+  type MergeItemRow,
+  type MergePick,
+  type MergePin,
+  type MergePlacement,
+  type MergeRow,
+  type MergeSide,
+  type MergeValues,
+  type MergeVersion,
+  type PickedItems,
+  type TakenPlan,
+} from './up-to-date.js';

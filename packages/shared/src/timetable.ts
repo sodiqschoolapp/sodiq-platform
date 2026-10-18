@@ -1379,17 +1379,95 @@ export const outOfDateCauseSchema = z.object({
 
 export type OutOfDateCause = z.infer<typeof outOfDateCauseSchema>;
 
-/** The causes of a draft's mark and the key that bringing it up to date sends back. */
+/** A side of a difference of a draft brought up to date after a publish (task 5.5a-3b-2). */
+export const UP_TO_DATE_SIDES = ['draft', 'published'] as const;
+
+export const upToDateSideSchema = z.enum(UP_TO_DATE_SIDES);
+
+export type UpToDateSide = z.infer<typeof upToDateSideSchema>;
+
+/** What one side (the version the draft started from, the draft, the published version) holds of a load row. */
+export const upToDateValuesSchema = z.object({
+  /** `null` for a Tutor row: its teacher follows the Tutor (decision 6). */
+  teacherId: z.uuid().nullable(),
+  teacherName: z.string().nullable(),
+  roomId: z.uuid().nullable(),
+  roomName: z.string().nullable(),
+  lessonsPerWeek: z.int().min(0),
+  roomType: z.string().nullable(),
+  doubleLessons: z.boolean(),
+  mixedBlock: z.boolean(),
+  shortReason: z.string().nullable(),
+  /** The lessons of the row in the weekly pattern, by weekday and slot position. */
+  placements: z.array(
+    z.object({
+      weekday: z.int().min(1).max(7),
+      slotPosition: z.int().min(1),
+      roomId: z.uuid().nullable(),
+      roomName: z.string().nullable(),
+      /** The keys of the other rows of its block. */
+      with: z.array(z.string()),
+      /** The slot of the other half of a double; `null` for a single lesson. */
+      pairedWith: z
+        .object({ weekday: z.int().min(1).max(7), slotPosition: z.int().min(1) })
+        .nullable(),
+    }),
+  ),
+  pins: z.array(z.object({ weekday: z.int().min(1).max(7), slotPosition: z.int().min(1) })),
+});
+
+export type UpToDateValues = z.infer<typeof upToDateValuesSchema>;
+
+/**
+ * One difference between the draft and the published version it is compared
+ * with, picked whole (task 5.5a-3b-2, decisions 5 and 7): its rows, who
+ * changed it against the version the draft started from, the default pick.
+ */
+export const upToDateItemSchema = z.object({
+  key: z.string(),
+  rows: z.array(
+    z.object({
+      key: z.string(),
+      classId: z.uuid().nullable(),
+      groupId: z.uuid().nullable(),
+      /** The class's or group's name. */
+      unitName: z.string(),
+      subjectId: z.uuid(),
+      subjectNames: z.object({ uz: z.string(), ru: z.string(), en: z.string() }),
+      tutorRow: z.boolean(),
+      base: upToDateValuesSchema.nullable(),
+      draft: upToDateValuesSchema.nullable(),
+      published: upToDateValuesSchema.nullable(),
+    }),
+  ),
+  changedBy: z.enum(['draft', 'published', 'both']),
+  defaultPick: upToDateSideSchema.nullable(),
+});
+
+export type UpToDateItem = z.infer<typeof upToDateItemSchema>;
+
+/**
+ * The causes of a draft's mark and the key that bringing it up to date sends
+ * back. Task 5.5a-3b-2: with a publish cause, the published version compared
+ * (decision 3), the version the draft started from, and the differences.
+ */
 export const outOfDateAnswerSchema = z.object({
   causes: z.array(outOfDateCauseSchema),
   key: transitionKeySchema,
+  other: z.object({ id: z.uuid(), number: z.int().min(1), startsOn: schoolDateSchema }).nullable(),
+  base: z.object({ id: z.uuid(), number: z.int().min(1) }).nullable(),
+  items: z.array(upToDateItemSchema),
 });
 
 export type OutOfDateAnswer = z.infer<typeof outOfDateAnswerSchema>;
 
-/** Bringing a draft up to date: the key of the causes shown. */
+/** Bringing a draft up to date: the key of what was shown, and a pick for every difference (task 5.5a-3b-2). */
 export const upToDateBodySchema = z.strictObject({
   key: transitionKeySchema,
+  picks: z
+    .array(z.strictObject({ item: z.string().min(1).max(2000), side: upToDateSideSchema }))
+    .max(2000)
+    .default([]),
 });
 
 export type UpToDateBody = z.infer<typeof upToDateBodySchema>;
