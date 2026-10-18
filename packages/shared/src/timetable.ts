@@ -1342,7 +1342,13 @@ export const outOfDateActionSchema = z.enum(
   Object.keys(OUT_OF_DATE_ACTIONS) as [OutOfDateAction, ...OutOfDateAction[]],
 );
 
-export const OUT_OF_DATE_KINDS = ['publish', 'calendar', 'templates', 'availability', 'rooms'] as const;
+export const OUT_OF_DATE_KINDS = [
+  'publish',
+  'calendar',
+  'templates',
+  'availability',
+  'rooms',
+] as const;
 
 export const outOfDateKindSchema = z.enum(OUT_OF_DATE_KINDS);
 

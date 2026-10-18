@@ -3410,7 +3410,8 @@ export const en = {
       title: 'What changed',
       none: 'Nothing is listed.',
       bring: 'Bring up to date',
-      byPublish: 'A publish marked this draft. Bringing a draft up to date after a publish is not available yet.',
+      byPublish:
+        'A publish marked this draft. Bringing a draft up to date after a publish is not available yet.',
       check: 'Reasons it cannot be published now: {{refusals}}. Warnings: {{warnings}}.',
       openCheck: 'Open the check',
       earlierPublish: 'A publish before this list was kept',

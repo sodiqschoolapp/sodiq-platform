@@ -177,7 +177,9 @@ describe('out-of-date drafts', () => {
 
   /** The draft's edit lock taken by the kit's Super Admin, with a write of its start date. */
   const takeEditLock = async (branch: string, version: string) =>
-    versionOf(await patch(`/api/timetable/versions/${version}`, branch, { startsOn: '2026-10-19' }));
+    versionOf(
+      await patch(`/api/timetable/versions/${version}`, branch, { startsOn: '2026-10-19' }),
+    );
 
   /** A room edit that changes its capacity: a change the timetable reads. */
   const widenRoom = async (branch: string, room: string, capacity = 31) =>
@@ -703,37 +705,37 @@ describe('out-of-date drafts', () => {
     const heldCalendar =
       (branch: string, date = '2026-11-11') =>
       async (transaction: Transaction) => {
-      await transaction
-        .selectFrom('branches')
-        .select('id')
-        .where('id', '=', branch)
-        .forUpdate()
-        .execute();
-      const entry = await transaction
-        .insertInto('calendar_entries')
-        .values({
-          branch_id: branch,
-          kind: 'day_off',
-          name: 'Sports day',
-          first_date: date,
-          last_date: date,
-        })
-        .returning('id')
-        .executeTakeFirstOrThrow();
-      await audit().record(transaction, {
-        branchId: branch,
-        actorId: null,
-        action: 'calendar_entry.create',
-        record: { type: 'calendar_entry', id: entry.id },
-      });
-      await markDraftsOutOfDate(transaction, audit(), {
-        branchId: branch,
-        action: 'calendar_entry.create',
-        recordId: entry.id,
-        dates: [{ from: date, until: date }],
-        actorId: null,
-      });
-    };
+        await transaction
+          .selectFrom('branches')
+          .select('id')
+          .where('id', '=', branch)
+          .forUpdate()
+          .execute();
+        const entry = await transaction
+          .insertInto('calendar_entries')
+          .values({
+            branch_id: branch,
+            kind: 'day_off',
+            name: 'Sports day',
+            first_date: date,
+            last_date: date,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await audit().record(transaction, {
+          branchId: branch,
+          actorId: null,
+          action: 'calendar_entry.create',
+          record: { type: 'calendar_entry', id: entry.id },
+        });
+        await markDraftsOutOfDate(transaction, audit(), {
+          branchId: branch,
+          action: 'calendar_entry.create',
+          recordId: entry.id,
+          dates: [{ from: date, until: date }],
+          actorId: null,
+        });
+      };
 
     /**
      * What a draft write writes: the year for share, the version for no key

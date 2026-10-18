@@ -1068,52 +1068,51 @@ export class Timetable {
     input: UpToDateBody,
     requestId: string,
   ): Promise<TimetableVersion> {
-    return refusingConstraints(
-      () =>
-        this.transactions.run(access.branchIds, async (transaction) => {
-          const named = await this.namedVersion(transaction, branchOf(access), id);
-          if (named.status === 'draft' && (await storedCauses(transaction, id)).length === 0) {
-            return this.answerOf(transaction, id, access.accountId);
-          }
-          await this.lockDraft(transaction, access, id, requestId);
-          const causes = await storedCauses(transaction, id);
-          if (causes.length === 0) {
-            return this.answerOf(transaction, id, access.accountId);
-          }
-          if (causes.some(isPublishCause)) {
-            throw refused('draft_out_of_date_by_publish');
-          }
-          if (input.key !== causesKey(id, causes)) {
-            throw refused('out_of_date_changed');
-          }
-          await transaction
-            .deleteFrom('timetable_version_out_of_date_causes')
-            .where(
-              'id',
-              'in',
-              causes.map((one) => one.id),
-            )
-            .execute();
-          await this.audit.record(transaction, {
-            branchId: branchOf(access),
-            actorId: access.accountId,
-            assignmentId: access.assignmentId,
-            action: 'timetable_version.up_to_date',
-            record: { type: 'timetable_version', id },
-            oldValue: {
-              outOfDate: true,
-              causes: causes.map((one) => ({
-                id: one.id,
-                action: one.action,
-                recordId: one.record_id,
-                causedAt: one.caused_at.toISOString(),
-              })),
-            },
-            newValue: { outOfDate: false },
-            requestId,
-          });
+    return refusingConstraints(() =>
+      this.transactions.run(access.branchIds, async (transaction) => {
+        const named = await this.namedVersion(transaction, branchOf(access), id);
+        if (named.status === 'draft' && (await storedCauses(transaction, id)).length === 0) {
           return this.answerOf(transaction, id, access.accountId);
-        }),
+        }
+        await this.lockDraft(transaction, access, id, requestId);
+        const causes = await storedCauses(transaction, id);
+        if (causes.length === 0) {
+          return this.answerOf(transaction, id, access.accountId);
+        }
+        if (causes.some(isPublishCause)) {
+          throw refused('draft_out_of_date_by_publish');
+        }
+        if (input.key !== causesKey(id, causes)) {
+          throw refused('out_of_date_changed');
+        }
+        await transaction
+          .deleteFrom('timetable_version_out_of_date_causes')
+          .where(
+            'id',
+            'in',
+            causes.map((one) => one.id),
+          )
+          .execute();
+        await this.audit.record(transaction, {
+          branchId: branchOf(access),
+          actorId: access.accountId,
+          assignmentId: access.assignmentId,
+          action: 'timetable_version.up_to_date',
+          record: { type: 'timetable_version', id },
+          oldValue: {
+            outOfDate: true,
+            causes: causes.map((one) => ({
+              id: one.id,
+              action: one.action,
+              recordId: one.record_id,
+              causedAt: one.caused_at.toISOString(),
+            })),
+          },
+          newValue: { outOfDate: false },
+          requestId,
+        });
+        return this.answerOf(transaction, id, access.accountId);
+      }),
     );
   }
 

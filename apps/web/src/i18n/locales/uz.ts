@@ -3435,8 +3435,10 @@ export const uz: Texts<'one' | 'other'> = {
       title: 'Nima oʻzgardi',
       none: 'Hech narsa koʻrsatilmagan.',
       bring: 'Yangilash',
-      byPublish: 'Bu qoralamani eʼlon eskirgan deb belgiladi. Eʼlondan keyin qoralamani yangilash hali mavjud emas.',
-      check: 'Hozir eʼlon qilib boʻlmasligi sabablari: {{refusals}}. Ogohlantirishlar: {{warnings}}.',
+      byPublish:
+        'Bu qoralamani eʼlon eskirgan deb belgiladi. Eʼlondan keyin qoralamani yangilash hali mavjud emas.',
+      check:
+        'Hozir eʼlon qilib boʻlmasligi sabablari: {{refusals}}. Ogohlantirishlar: {{warnings}}.',
       openCheck: 'Tekshiruvni ochish',
       earlierPublish: 'Bu roʻyxat yuritilishidan oldingi eʼlon',
       recordGone: 'Endi mavjud boʻlmagan yozuv',

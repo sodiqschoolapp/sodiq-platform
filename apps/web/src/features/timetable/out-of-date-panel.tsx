@@ -102,9 +102,7 @@ export function OutOfDatePanel({
         <ul className="grid gap-1 text-sm">
           {causes.data.causes.map((cause) => (
             <li key={cause.id} data-cause={cause.action}>
-              <span className="font-semibold">
-                {t(`audit.actions.${cause.action}`)}
-              </span>
+              <span className="font-semibold">{t(`audit.actions.${cause.action}`)}</span>
               {': '}
               {recordText(cause)}
               {' · '}

@@ -244,7 +244,11 @@ export class Calendar {
    */
   private markDrafts(
     context: Context,
-    action: 'calendar_entry.create' | 'calendar_entry.edit' | 'calendar_entry.archive' | 'calendar_entry.restore',
+    action:
+      | 'calendar_entry.create'
+      | 'calendar_entry.edit'
+      | 'calendar_entry.archive'
+      | 'calendar_entry.restore',
     id: string,
     dates: readonly { firstDate: string; lastDate: string }[],
   ): Promise<void> {
