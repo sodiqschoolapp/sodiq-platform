@@ -666,7 +666,7 @@ How to read the task lines:
   - Build: the journal record (one per class or group and subject per year) created, closed and reopened at publish, without cells: its runs are the days the published chain's load has it.
   - Done when: publishing a load with a new subject creates exactly one journal and removing it closes that journal.
 
-- [ ] **5.5c-2a Publish: withdraw** (5.5c-2 split in two, pull request #156, decision 1)
+- [x] **5.5c-2a Publish: withdraw** (5.5c-2 split in two, pull request #156, decision 1)
   - Read: `06` (How surprises are prevented), `edge/timetable` (Versions and drafts), `edge/developer-rules`.
   - Build: withdraw before the start date; the version in force before it runs again over its dates; the journals synced again after it (`syncJournals`, `apps/api/src/modules/timetable/journals.ts`); the drafts of the branch and year marked out of date.
   - Done when: a version withdrawn before its start has no dated lessons left, the version in force before it runs again over its dates, and a journal only it opened has no run.

@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 18 October 2026: task 5.5c-2a Publish: withdraw
+
+- `POST /api/timetable/versions/:id/withdraw` (timetable edit, request key) archives a published version before its start; the published version in force before it runs again over its dates, its dated lessons written by `writeDatedLessons` after the full rule set on that run (`withdraw_blocked`), or, with none before it, the dates are left empty (`removeDatedLessons`).
+- The journals are synced again, every draft of the branch and year gets a cause `timetable_version.withdraw` (0082), brought up to date as after a publish; the load page has a Withdraw button.
+- Left out: "Classes taught" and the vacancy kept (5.5c-2b); notices of a withdraw (5.5c-3).
+
+The next sessions must know:
+
+- A version that runs again is read as if it started on the withdrawn start (`.claude/rules/timetable.md`); its pattern's `teacher_inactive` and Tutor-row results are left to the dated check, which makes them "needs a teacher".
+- `lockPublishChain`, `refusingPublish` and `datedAuditOf` (`publish.service.ts`) are shared by the publish and the withdraw.
+- The next task is 5.5c-2b.
+
 ## 18 October 2026: task 5.5c-1 Publish: journals at publish
 
 - A `journals` table (0081) holds one journal per class or group, subject and year, without cells; its `runs` are the days the published chain's load has it, gaps kept, the last run with no end.
