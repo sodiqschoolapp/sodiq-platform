@@ -137,10 +137,14 @@ At claude.ai/code/routines, **New routine**:
 
 ```
 Read .claude/skills/review-pr/SKILL.md in this repository and follow it.
-Review the pull request named in the routine-fire-payload block if there is one;
-otherwise every open pull request against main that needs a review (its head sha
-is not the sha named in its newest [review]; compare commits, never times), as
-the skill says, and pick up every open pull request from a task/ branch whose
+Review the pull request named in the routine-fire-payload block if there is one
+(when the head sha it names is no longer the pull request's head, stop: the run
+fired for the newer push reviews it); otherwise every open pull request against
+main that needs a review (its head sha is not the sha named in its newest
+[review]; compare commits, never times), as the skill says, leaving out one whose
+head sha has a check run (checks or e2e) still running or completed less than 30
+minutes ago (the bridge fired a review run for that push; two runs on one head
+post conflicting verdicts), and pick up every open pull request from a task/ branch whose
 newest [review] is "ready to merge" at its head sha (its merge step). A pull
 request whose newest [review] is a CI red verdict at its head sha also needs a
 review once every check run of that sha has completed with success after a
@@ -334,7 +338,7 @@ The hourly schedules stay, as the second net. The routines' own GitHub triggers 
 ## When something goes wrong
 
 - No routine run after an event (a pull request opened or pushed, a `[review]`, a merge): the bridge is the only way an event reaches a routine (the routines have an API trigger and an hourly schedule, no GitHub trigger), so look first at the run of `routines.yml` under the Actions tab of the repository. A red run names the HTTP status (401: the token was revoked or regenerated, update its secret; a missing secret is named); a green run prints the address of the session it started, and that session tells the rest. A skipped job means the event did not match (not a `task/` branch, a fork's pull request, a comment that does not start with `[review] approved` or `[review] changes needed` or whose author is not `abbosc`). Either way the routine's next hourly run picks the pull request up.
-- Two or more `[review]` verdicts at the same sha: two reviewer runs met (here on #93 and #102, which agreed). The rounds are counted by distinct sha, so they are one round. A `ready to merge` is merged only while it is the newest verdict at its sha (`review-pr` step 10): in procurement, task 2.11 was merged on 16 October 2026 seconds after a second run's `changes needed` at the same sha, and its two findings were lost. If it happens again, open both routines at claude.ai/code/routines and check that each has only its API trigger and its schedule; remove any GitHub trigger that came back.
+- Two or more `[review]` verdicts at the same sha: two reviewer runs met (here on #93 and #102, which agreed, and on #140, which did not: the merge was held for the owner for five hours). Since 18 October 2026 the hourly run leaves a head alone while its checks run or for 30 minutes after, so only the bridged run reviews it (`review-pr` step 1). The rounds are counted by distinct sha, so they are one round. A `ready to merge` is merged only while it is the newest verdict at its sha (`review-pr` step 10): in procurement, task 2.11 was merged on 16 October 2026 seconds after a second run's `changes needed` at the same sha, and its two findings were lost. If it happens again, open both routines at claude.ai/code/routines and check that each has only its API trigger and its schedule; remove any GitHub trigger that came back.
 - A session that stopped and does not continue: open it at claude.ai/code and send "read the review on the pull request and proceed". An expired session is restored with its conversation when opened.
 - A pull request with the label `needs-owner` (the comment that set it starts with `@abbosc`): the reviewer stopped after three rounds, the builder after three red CI runs, a merge was refused, or a task pull request touched the loop's own rules. The start routine starts nothing while it is open. The owner reads the findings, decides in a comment (a `[review] …` of their own, or the answer the rounds were missing), removes the label, and the loop goes on.
 - A task that stalled after a review (no reaction to an `approved` or `changes needed` for 30 minutes, or no commit and no comment for 45 minutes) is resumed by the next hourly run of the start routine, which posts "Resumed by the start routine." and continues; nothing to do. A pull request with `needs-owner` is never resumed.
