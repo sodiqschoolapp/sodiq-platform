@@ -198,7 +198,7 @@ jobs:
 
   # A [review] approved or changes needed by abbosc on a task pull request of
   # this repository: the builder should wake now. The start routine watches for "Acting on the review." for
-  # ten minutes and resumes the task when it does not come (cloud-loop.md, §6).
+  # five minutes and resumes the task when it does not come (cloud-loop.md, §6).
   wake-builder:
     if: >-
       github.event_name == 'issue_comment'
