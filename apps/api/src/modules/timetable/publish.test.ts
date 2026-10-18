@@ -365,6 +365,13 @@ describe('publish', () => {
         .orderBy('id')
         .execute(),
       t.auditCount(),
+      // Task 5.5c-1: the journals a publish opens and changes.
+      t.database.migrator
+        .selectFrom('journals')
+        .selectAll()
+        .where('branch_id', 'in', branches)
+        .orderBy('id')
+        .execute(),
     ]);
   };
 
@@ -1589,9 +1596,13 @@ describe('publish', () => {
       const s = await scene();
       const key = randomUUID();
       const first = versionOf(await publish(s.branch, s.version, MONDAY, t.admin, key));
+      // Task 5.5c-1: the journals and their entries as the first publish left them.
+      const journals = await written([s.version]);
       const again = versionOf(await publish(s.branch, s.version, MONDAY, t.admin, key));
       expect(again).toEqual(first);
       expect(await t.entries('timetable_version.publish', s.version)).toHaveLength(1);
+      expect(await written([s.version])).toEqual(journals);
+      expect(journals[11]).toHaveLength(1);
     });
 
     it('sent while the first waits for the publish lock, gets the same answer (review correction 2)', async () => {
@@ -1630,6 +1641,8 @@ describe('publish', () => {
       const before = await written([s.version, theirs.version]);
       expect(before[8].length).toBeGreaterThan(0);
       expect(new Set(before[8].map((one) => one.branch_id)).size).toBe(2);
+      // Task 5.5c-1: journals of both branches, which the Tutor rows added would change.
+      expect(new Set(before[11].map((one) => one.branch_id)).size).toBe(2);
       for (const cookie of [t.admin, t.vicePrincipal]) {
         for (const id of [theirs.version, UNKNOWN]) {
           refusedWith(await publish(s.branch, id, '2026-10-19', cookie), 404, 'not_found');
@@ -4736,6 +4749,460 @@ describe('publish', () => {
             one.result?.rule === 'travel_time' && one.result.detail?.['branchId'] === b.branch,
         ),
       ).toBe(true);
+    });
+  });
+
+  // Task 5.5c-1, pull request #155: edge/timetable, Versions and drafts:
+  // "Journals are created and closed at publish. There is one journal per
+  // class or group and subject in a year; adding a removed subject again
+  // reopens its journal." 06, What a change does to existing data: "Subject
+  // added to a class during the year ... A new journal starts on that date";
+  // "Subject removed from a class ... The journal is closed and stays
+  // readable". A journal's runs are the days the published load has it
+  // (decision 3), the last with no end (decision 10).
+  describe('the journals', () => {
+    const journalsOf = (branch: string) =>
+      t.database.migrator
+        .selectFrom('journals')
+        .select(['id', 'class_id', 'group_id', 'subject_id', sql<string>`runs::text`.as('runs')])
+        .where('branch_id', '=', branch)
+        .orderBy('id')
+        .execute();
+    const runsOf = async (
+      branch: string,
+      unit: { classId?: string; groupId?: string },
+      subject: string,
+    ) =>
+      (await journalsOf(branch))
+        .filter(
+          (one) =>
+            one.subject_id === subject &&
+            one.class_id === (unit.classId ?? null) &&
+            one.group_id === (unit.groupId ?? null),
+        )
+        .map((one) => one.runs);
+
+    /** A copy of `from` with every row placed, row `i` (by id) on weekday `i + 1`, its templates confirmed. */
+    const placedAll = async (branch: string, year: string, from: string) => {
+      const copy = await draft(branch, year, from);
+      const rows = await t.database.migrator
+        .selectFrom('teaching_load_rows')
+        .select('id')
+        .where('version_id', '=', copy)
+        .orderBy('id')
+        .execute();
+      for (const [index, row] of rows.entries()) {
+        await placeAt(branch, copy, row.id, index + 1);
+      }
+      await confirmTemplates(branch, copy);
+      return copy;
+    };
+
+    /** A second subject of the scene's class with its own teacher, as a row of `version`. */
+    const withArt = async (s: { branch: string; classId: string }, version: string) => {
+      const art = await load.classes.subject({ grades: [7], journalType: 'attendance_only' });
+      const teacher = (await load.teacher(s.branch, { subjects: [{ subject: art, grades: [7] }] }))
+        .staffId;
+      await hours(s.branch, teacher);
+      const rowId = await load.row({
+        branch_id: s.branch,
+        version_id: version,
+        class_id: s.classId,
+        subject_id: art,
+        teacher_id: teacher,
+        lessons_per_week: 1,
+      });
+      return { art, rowId };
+    };
+
+    const publishEntry = async (version: string) =>
+      (await t.entries('timetable_version.publish', version))[0]?.new_value as {
+        journals: { opened: number; changed: number };
+      };
+
+    it('creates exactly one journal for a subject added, closes it when removed and reopens the same one', async () => {
+      const s = await scene();
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      expect(await runsOf(s.branch, { classId: s.classId }, s.subject)).toEqual([
+        '{[2026-10-12,)}',
+      ]);
+      expect(await publishEntry(s.version)).toMatchObject({ journals: { opened: 1, changed: 0 } });
+      const maths = (await journalsOf(s.branch))[0];
+
+      // From 9 November with Art added: one journal more, from that date.
+      const withArtDraft = await draft(s.branch, s.year, s.version);
+      const { art, rowId } = await withArt(s, withArtDraft);
+      await t.database.migrator
+        .deleteFrom('pattern_blocks')
+        .where('version_id', '=', withArtDraft)
+        .execute();
+      const rows = await t.database.migrator
+        .selectFrom('teaching_load_rows')
+        .select('id')
+        .where('version_id', '=', withArtDraft)
+        .where('id', '<>', rowId)
+        .execute();
+      await placeAt(s.branch, withArtDraft, rows[0]?.id ?? '', 1);
+      await placeAt(s.branch, withArtDraft, rowId, 2);
+      await confirmTemplates(s.branch, withArtDraft);
+      await load.freeEditLock(withArtDraft);
+      versionOf(await publish(s.branch, withArtDraft, '2026-11-09'));
+      expect(await journalsOf(s.branch)).toHaveLength(2);
+      expect(await runsOf(s.branch, { classId: s.classId }, art)).toEqual(['{[2026-11-09,)}']);
+      expect((await journalsOf(s.branch)).find((one) => one.id === maths?.id)).toEqual(maths);
+      expect(await publishEntry(withArtDraft)).toMatchObject({
+        journals: { opened: 1, changed: 0 },
+      });
+      const artJournal = (await journalsOf(s.branch)).find((one) => one.subject_id === art);
+      const opened = await t.entries('journal.open', artJournal?.id);
+      expect(opened).toHaveLength(1);
+      expect(opened[0]?.new_value).toMatchObject({
+        classId: s.classId,
+        groupId: null,
+        subjectId: art,
+        versionId: withArtDraft,
+        runs: '{[2026-11-09,)}',
+      });
+
+      // From 11 January without Art: the same journal, closed from that date.
+      const withoutArt = await placedCopy(s.branch, s.year, s.version);
+      versionOf(await publish(s.branch, withoutArt, '2027-01-11'));
+      expect(await journalsOf(s.branch)).toHaveLength(2);
+      expect(await runsOf(s.branch, { classId: s.classId }, art)).toEqual([
+        '{[2026-11-09,2027-01-11)}',
+      ]);
+      const closed = await t.entries('journal.runs', artJournal?.id);
+      expect(
+        closed.map((one) => [one.old_value, (one.new_value as { runs: string }).runs]),
+      ).toEqual([[{ runs: '{[2026-11-09,)}' }, '{[2026-11-09,2027-01-11)}']]);
+      expect(await publishEntry(withoutArt)).toMatchObject({ journals: { opened: 0, changed: 1 } });
+
+      // From 30 March with Art again: the same journal reopened, the gap kept.
+      const again = await placedAll(s.branch, s.year, withArtDraft);
+      versionOf(await publish(s.branch, again, '2027-03-30'));
+      expect(await journalsOf(s.branch)).toHaveLength(2);
+      expect(await runsOf(s.branch, { classId: s.classId }, art)).toEqual([
+        '{[2026-11-09,2027-01-11),[2027-03-30,)}',
+      ]);
+      expect(await t.entries('journal.open', artJournal?.id)).toHaveLength(1);
+      expect(await t.entries('journal.runs', artJournal?.id)).toHaveLength(2);
+      // The class's maths journal ran through all four versions and never changed.
+      expect((await journalsOf(s.branch)).find((one) => one.id === maths?.id)).toEqual(maths);
+      expect(await t.entries('journal.runs', maths?.id)).toHaveLength(0);
+
+      // A longer year, then a publish: the journals stay open, their last run
+      // with no end, never the year's last date (decision 10).
+      await t.database.migrator
+        .updateTable('academic_years')
+        .set({ end_date: '2027-06-15' })
+        .where('id', '=', s.year)
+        .execute();
+      const afterLonger = await placedAll(s.branch, s.year, again);
+      versionOf(await publish(s.branch, afterLonger, '2027-04-12'));
+      expect(await runsOf(s.branch, { classId: s.classId }, s.subject)).toEqual([
+        '{[2026-10-12,)}',
+      ]);
+      expect(await runsOf(s.branch, { classId: s.classId }, art)).toEqual([
+        '{[2026-11-09,2027-01-11),[2027-03-30,)}',
+      ]);
+    });
+
+    it('changes no journal of another branch', async () => {
+      const theirs = await scene();
+      versionOf(await publish(theirs.branch, theirs.version, MONDAY));
+      const before = await journalsOf(theirs.branch);
+      expect(before).toHaveLength(1);
+      const s = await scene();
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      const next = await draft(s.branch, s.year, s.version);
+      const { rowId } = await withArt(s, next);
+      await t.database.migrator
+        .deleteFrom('pattern_blocks')
+        .where('version_id', '=', next)
+        .execute();
+      const [mathsRow] = await t.database.migrator
+        .selectFrom('teaching_load_rows')
+        .select('id')
+        .where('version_id', '=', next)
+        .where('id', '<>', rowId)
+        .execute();
+      await placeAt(s.branch, next, mathsRow?.id ?? '', 1);
+      await placeAt(s.branch, next, rowId, 2);
+      await confirmTemplates(s.branch, next);
+      await load.freeEditLock(next);
+      versionOf(await publish(s.branch, next, '2026-11-09'));
+      expect(await journalsOf(s.branch)).toHaveLength(2);
+      expect(await journalsOf(theirs.branch)).toEqual(before);
+    });
+
+    it('under "run until" with the same load changes no journal', async () => {
+      const s = await scene();
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      const later = await placedCopy(s.branch, s.year, s.version);
+      versionOf(await publish(s.branch, later, '2026-11-09'));
+      const before = await journalsOf(s.branch);
+      const fix = await placedCopy(s.branch, s.year, s.version);
+      const until = checkOf(await check(s.branch, fix, '2026-10-19&chain=run_until')).chain?.key;
+      const published = await request(t.kit.server)
+        .post(`/api/timetable/versions/${fix}/publish`)
+        .set('Cookie', t.admin)
+        .set(BRANCH_HEADER, s.branch)
+        .set(REQUEST_KEY_HEADER, randomUUID())
+        .send({ startsOn: '2026-10-19', chain: 'run_until', laterKey: until });
+      versionOf(published);
+      expect(await journalsOf(s.branch)).toEqual(before);
+      expect(await t.entries('journal.runs', before[0]?.id)).toHaveLength(0);
+    });
+
+    it('under "replace" closes a journal the fix drops from the fix\'s start', async () => {
+      const s = await scene();
+      // The first version has Art too, on Tuesday.
+      const { art, rowId } = await withArt(s, s.version);
+      await placeAt(s.branch, s.version, rowId, 2);
+      await load.freeEditLock(s.version);
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      const later = await placedAll(s.branch, s.year, s.version);
+      versionOf(await publish(s.branch, later, '2026-11-09'));
+      // A fix of the first version without Art, replacing the later one from 26 October.
+      const fix = await draft(s.branch, s.year, s.version);
+      await t.database.migrator
+        .deleteFrom('pattern_blocks')
+        .where('version_id', '=', fix)
+        .execute();
+      await t.database.migrator
+        .deleteFrom('teaching_load_rows')
+        .where('version_id', '=', fix)
+        .where('subject_id', '=', art)
+        .execute();
+      const [mathsRow] = await t.database.migrator
+        .selectFrom('teaching_load_rows')
+        .select('id')
+        .where('version_id', '=', fix)
+        .execute();
+      await placeAt(s.branch, fix, mathsRow?.id ?? '', 1);
+      await confirmTemplates(s.branch, fix);
+      await load.freeEditLock(fix);
+      const replaceKey = checkOf(await check(s.branch, fix, '2026-10-26&chain=replace')).chain?.key;
+      const replaced = await request(t.kit.server)
+        .post(`/api/timetable/versions/${fix}/publish`)
+        .set('Cookie', t.admin)
+        .set(BRANCH_HEADER, s.branch)
+        .set(REQUEST_KEY_HEADER, randomUUID())
+        .send({ startsOn: '2026-10-26', chain: 'replace', laterKey: replaceKey });
+      versionOf(replaced);
+      expect(await runsOf(s.branch, { classId: s.classId }, art)).toEqual([
+        '{[2026-10-12,2026-10-26)}',
+      ]);
+      expect(await runsOf(s.branch, { classId: s.classId }, s.subject)).toEqual([
+        '{[2026-10-12,)}',
+      ]);
+    });
+
+    it('gives one journal per class and subject to the four quarters published in one afternoon', async () => {
+      const s = await scene();
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      let from = s.version;
+      for (const [, [start]] of QUARTERS.slice(1).entries()) {
+        const next = await placedCopy(s.branch, s.year, from);
+        versionOf(await publish(s.branch, next, start));
+        from = next;
+      }
+      expect((await journalsOf(s.branch)).map((one) => one.runs)).toEqual(['{[2026-10-12,)}']);
+      expect(await t.entries('journal.open', (await journalsOf(s.branch))[0]?.id)).toHaveLength(1);
+    });
+
+    it('gives a tie on a start to the higher number (review correction 1)', async () => {
+      for (const artOnHigher of [true, false]) {
+        const s = await scene();
+        versionOf(await publish(s.branch, s.version, MONDAY));
+        const lower = await load.version(s.branch, s.year, { startsOn: '2026-11-09' });
+        const higher = await load.version(s.branch, s.year, { startsOn: '2026-11-09' });
+        const { art } = await withArt(s, artOnHigher ? higher : lower);
+        await load.setVersion(lower, 'published');
+        await load.setVersion(higher, 'published');
+        const last = await placedCopy(s.branch, s.year, s.version);
+        versionOf(await publish(s.branch, last, '2027-01-11'));
+        expect(await runsOf(s.branch, { classId: s.classId }, art)).toEqual(
+          artOnHigher ? ['{[2026-11-09,2027-01-11)}'] : [],
+        );
+        // The higher number has no maths row: maths has a gap over its run.
+        expect(await runsOf(s.branch, { classId: s.classId }, s.subject)).toEqual([
+          '{[2026-10-12,2026-11-09),[2027-01-11,)}',
+        ]);
+      }
+    });
+
+    it('closes the class journal and opens two group journals when the subject is split from the third quarter', async () => {
+      const s = await scene();
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      const groups = [
+        await load.classes.group(s.branch, s.year, s.subject, [s.classId]),
+        await load.classes.group(s.branch, s.year, s.subject, [s.classId]),
+      ];
+      const split = await draft(s.branch, s.year, s.version);
+      await t.database.migrator
+        .deleteFrom('pattern_blocks')
+        .where('version_id', '=', split)
+        .execute();
+      await t.database.migrator
+        .deleteFrom('teaching_load_rows')
+        .where('version_id', '=', split)
+        .execute();
+      const groupRows: string[] = [];
+      for (const group of groups) {
+        const teacher = (
+          await load.teacher(s.branch, { subjects: [{ subject: s.subject, grades: [7] }] })
+        ).staffId;
+        await hours(s.branch, teacher);
+        groupRows.push(
+          await load.row({
+            branch_id: s.branch,
+            version_id: split,
+            group_id: group,
+            subject_id: s.subject,
+            teacher_id: teacher,
+            lessons_per_week: 1,
+          }),
+        );
+      }
+      await placeAt(s.branch, split, groupRows[0] ?? '', 1);
+      await confirmTemplates(s.branch, split);
+      await load.freeEditLock(split);
+      versionOf(await publish(s.branch, split, '2027-01-11'));
+      expect(await runsOf(s.branch, { classId: s.classId }, s.subject)).toEqual([
+        '{[2026-10-12,2027-01-11)}',
+      ]);
+      for (const group of groups) {
+        expect(await runsOf(s.branch, { groupId: group }, s.subject)).toEqual(['{[2027-01-11,)}']);
+      }
+    });
+
+    it('under "replace" leaves a journal only the archived version had with no run, and changes none under "carry"', async () => {
+      const s = await scene();
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      const later = await draft(s.branch, s.year, s.version);
+      const { art, rowId } = await withArt(s, later);
+      await t.database.migrator
+        .deleteFrom('pattern_blocks')
+        .where('version_id', '=', later)
+        .execute();
+      const [mathsRow] = await t.database.migrator
+        .selectFrom('teaching_load_rows')
+        .select('id')
+        .where('version_id', '=', later)
+        .where('id', '<>', rowId)
+        .execute();
+      await placeAt(s.branch, later, mathsRow?.id ?? '', 1);
+      await placeAt(s.branch, later, rowId, 2);
+      await confirmTemplates(s.branch, later);
+      await load.freeEditLock(later);
+      versionOf(await publish(s.branch, later, '2026-11-09'));
+      expect(await runsOf(s.branch, { classId: s.classId }, art)).toEqual(['{[2026-11-09,)}']);
+      const before = await journalsOf(s.branch);
+
+      // Carry: a fix of A with another room only; the journals stay as they are.
+      const room2 = await load.classes.room(s.branch);
+      const carryFix = await placedCopy(s.branch, s.year, s.version);
+      const block = await t.database.migrator
+        .selectFrom('pattern_blocks')
+        .select('id')
+        .where('version_id', '=', carryFix)
+        .executeTakeFirstOrThrow();
+      const entry = await t.database.migrator
+        .selectFrom('pattern_entries')
+        .select('id')
+        .where('version_id', '=', carryFix)
+        .executeTakeFirstOrThrow();
+      const roomed = await post(
+        `/api/timetable/versions/${carryFix}/pattern/${block.id}/room`,
+        s.branch,
+        {
+          lessonId: entry.id,
+          roomId: room2,
+        },
+      );
+      expect(roomed.status, JSON.stringify(roomed.body)).toBe(200);
+      const chainKey = async (version: string, chain: string) => {
+        const answer = checkOf(await check(s.branch, version, `2026-10-19&chain=${chain}`));
+        if (answer.chain === null) throw new Error('A later version is shown.');
+        return answer.chain.key;
+      };
+      const publishChain = async (version: string, chain: string) => {
+        const laterKey = await chainKey(version, chain);
+        return request(t.kit.server)
+          .post(`/api/timetable/versions/${version}/publish`)
+          .set('Cookie', t.admin)
+          .set(BRANCH_HEADER, s.branch)
+          .set(REQUEST_KEY_HEADER, randomUUID())
+          .send({ startsOn: '2026-10-19', chain, laterKey });
+      };
+      versionOf(await publishChain(carryFix, 'carry'));
+      expect(await journalsOf(s.branch)).toEqual(before);
+
+      // Replace from 26 October: the version with Art is archived before it started.
+      const replaceFix = await placedCopy(s.branch, s.year, s.version);
+      const replaceKey = checkOf(await check(s.branch, replaceFix, '2026-10-26&chain=replace'))
+        .chain?.key;
+      const replaced = await request(t.kit.server)
+        .post(`/api/timetable/versions/${replaceFix}/publish`)
+        .set('Cookie', t.admin)
+        .set(BRANCH_HEADER, s.branch)
+        .set(REQUEST_KEY_HEADER, randomUUID())
+        .send({
+          startsOn: '2026-10-26',
+          chain: 'replace',
+          laterKey: replaceKey,
+        });
+      versionOf(replaced);
+      expect(await runsOf(s.branch, { classId: s.classId }, art)).toEqual(['{}']);
+      expect(await runsOf(s.branch, { classId: s.classId }, s.subject)).toEqual([
+        '{[2026-10-12,)}',
+      ]);
+      expect(await journalsOf(s.branch)).toHaveLength(2);
+    });
+
+    it('gives a Tutor subject row and a vacancy row their journals like any row (decision 4)', async () => {
+      const s = await scene();
+      // Attendance only, as the Homework slot is: no weights asked.
+      const tutorSubject = await load.tutorSubject({ grades: [7] });
+      await t.database.migrator
+        .updateTable('subjects')
+        .set({ journal_type: 'attendance_only', rating_exam: false })
+        .where('id', '=', tutorSubject)
+        .execute();
+      const art = await load.classes.subject({ grades: [7], journalType: 'attendance_only' });
+      const vacancy = await load.vacancy(s.branch, { subjects: [{ subject: art, grades: [7] }] });
+      await hours(s.branch, vacancy);
+      const vacancyRow = await load.row({
+        branch_id: s.branch,
+        version_id: s.version,
+        class_id: s.classId,
+        subject_id: art,
+        teacher_id: vacancy,
+        lessons_per_week: 1,
+      });
+      await placeAt(s.branch, s.version, vacancyRow, 3);
+      const tutor = await load.teacher(s.branch);
+      await hours(s.branch, tutor.staffId);
+      await load.tutorOf(s.branch, s.classId, tutor.accountId);
+      const created = await post(`/api/timetable/versions/${s.version}/load`, s.branch, {
+        classId: s.classId,
+        groupId: null,
+        subjectId: tutorSubject,
+        teacherId: null,
+        lessonsPerWeek: 1,
+        roomId: null,
+        roomType: null,
+        doubleLessons: false,
+      });
+      expect(created.status, JSON.stringify(created.body)).toBe(201);
+      await placeAt(s.branch, s.version, (created.body as { id: string }).id, 2);
+      await load.freeEditLock(s.version);
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      expect(await runsOf(s.branch, { classId: s.classId }, tutorSubject)).toEqual([
+        '{[2026-10-12,)}',
+      ]);
+      expect(await runsOf(s.branch, { classId: s.classId }, art)).toEqual(['{[2026-10-12,)}']);
     });
   });
 });

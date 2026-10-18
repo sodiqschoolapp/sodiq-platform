@@ -2502,6 +2502,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       timetable_lock: 'Замок черновика',
       pattern_block: 'Урок недельного шаблона',
       pattern_entry: 'Урок блока шаблона',
+      journal: 'Журнал',
       teaching_load_row: 'Строка учебной нагрузки',
     },
     actions: {
@@ -2760,6 +2761,10 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       },
       pattern_entry: {
         room: 'Изменён кабинет урока в сетке черновика',
+      },
+      journal: {
+        open: 'Журнал открыт при публикации',
+        runs: 'Дни журнала изменены публикацией',
       },
       teaching_load: {
         create: 'Добавлена строка учебной нагрузки',

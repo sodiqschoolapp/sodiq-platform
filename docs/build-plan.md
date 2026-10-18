@@ -661,16 +661,26 @@ How to read the task lines:
   - From 5.5a-2b-1 (pull request #142, decisions 2 and 9): the impact preview compares the draft with the published version in force before its start expanded by `datedPattern` (`apps/api/src/modules/timetable/impact.ts`); once this task stores dated lessons, its "before" side and the transition week's dates before the start are the stored lessons (with their one-day changes), and the preview lists the lessons holding data that block a removal (`06`, How surprises are prevented, Impact preview: "any lesson holding data that blocks a removal").
   - From 5.5b-1 (pull request #152, decision 9): once 6.1 adds the cells, the preview lists the lessons holding data that a removal would leave in place.
 
-- [ ] **5.5c Publish: journals, notices and withdraw**
-  - Read: `06` (How surprises are prevented), `07` (first paragraph), `edge/timetable` (Versions and drafts), `edge/developer-rules`.
-  - Build: the journal record (one per class or group and subject per year) created or closed at publish, without cells; notices to affected teachers through 0.9; the "changed" mark for a week; withdraw before the start date.
+- [x] **5.5c-1 Publish: journals at publish** (5.5c split in three, pull request #155, decision 1)
+  - Read: `06` (What a change does to existing data), `07` (first paragraph), `edge/timetable` (Versions and drafts, After publishing), `edge/developer-rules`.
+  - Build: the journal record (one per class or group and subject per year) created, closed and reopened at publish, without cells: its runs are the days the published chain's load has it.
   - Done when: publishing a load with a new subject creates exactly one journal and removing it closes that journal.
+
+- [ ] **5.5c-2 Publish: withdraw**
+  - Read: `06` (How surprises are prevented), `04` (Teacher and staff record, Vacancy), `edge/timetable` (Versions and drafts), `edge/developer-rules`.
+  - Build: withdraw before the start date; the journals synced again after it (`syncJournals`, `apps/api/src/modules/timetable/journals.ts`); "Classes taught" on the staff record from the published load.
+  - Done when: a version withdrawn before its start has no dated lessons left, the version in force before it runs again over its dates, and a journal only it opened has no run.
   - From 3.4a (pull request #99): `04`, Teacher and staff record, Academic, "Classes taught, filled from the teaching load", is read from the published load; a vacancy that "held a load" is closed and kept (`04`, Vacancy) once 5.5 publishes it.
-  - From 2.1 (pull request #52, decision 4): `edge/calculation`, "'Rating exam' is switched off, or a subject becomes attendance only, in week 5": "These switches are stored per quarter. They are free before the quarter's first lesson." The journal stores the rating exam switch and the journal type per quarter; until now they are one school-wide value on `subjects`.
   - From 5.1a (pull request #107, correction 6): withdraw before the start date removes the version's dated lessons; the delete grant on `lessons` and `lesson_blocks` comes in a migration of its own.
   - From 3.6a (pull request #118, decision 4): the students a Teacher reads come from `taughtAt` (`apps/api/src/modules/access/taught-scope.ts`): the classes and groups of the teacher's rows in the published version in force of each year not closed, on `greatest(today, the year's start)`; "Classes taught" reads the same, and publishing makes a Teacher's Students list fill.
+  - From 5.5a-3a (pull request #145, decision 10): withdraw uses the transition published → archived of 0076, allowed only before the version's start.
+
+- [ ] **5.5c-3 Publish: notices and the changed mark**
+  - Read: `06` (How surprises are prevented, Changes after publishing, Views and outputs), `edge/timetable` (After publishing, "One publish changes thousands of lessons").
+  - Build: notices to affected teachers through 0.9 (one per person per event, with the week before and after; none when the week did not change), for a publish, a carry and a Tutor change; the "changed" mark for a week on every timetable view.
+  - Done when: a publish that changes one teacher's lessons notifies that teacher once and no teacher whose week is the same, and the changed lessons carry the mark for seven days.
   - From 3.6c-2 (pull request #125, decision 9 with review correction 5): a change of a class's Tutor that moves its dated Tutor lessons (`followTutors`) notifies the old and the new Tutor as a teacher change does, and the lessons it moved carry the "changed" mark for a week.
-  - From 5.5a-3a (pull request #145, decision 10): a carry notifies the teachers of the later versions it changed; withdraw uses the transition published → archived of 0076, allowed only before the version's start.
+  - From 5.5a-3a (pull request #145, decision 10): a carry notifies the teachers of the later versions it changed.
 
 - [ ] **5.6a One-day changes**
   - Read: `06` (Changes after publishing), `edge/timetable` (After publishing, Versions and drafts).
@@ -813,9 +823,10 @@ How to read the task lines:
   - From 3.6b-2 (pull request #120, decision 11): when marks and attendance exist, the list `year_cut_holds` of `db/migrations/0064` gains the days with a mark or an attendance entry, and a shorter year is refused with them (L128).
 
 - [ ] **8.2 Rating exam and comments**
-  - Read: `07` (Entering data, Layout), `edge/journal` (Entering).
+  - Read: `07` (Entering data, Layout), `edge/journal` (Entering), `edge/calculation`.
   - Build: the rating exam score per student per quarter in rating subjects, with "did not sit" and "exempt"; comments on a mark or score and notes per student per lesson, each "staff only" or "visible to parents"; keyboard entry rules.
   - Done when: a non-rating subject has no exam column.
+  - From 2.1 (pull request #52, decision 4; moved from 5.5c by 5.5c-1, pull request #155, decision 2 with review correction 3): `edge/calculation`, "'Rating exam' is switched off, or a subject becomes attendance only, in week 5": "These switches are stored per quarter. They are free before the quarter's first lesson." The journal stores the rating exam switch and the journal type per quarter; until now they are one school-wide value on `subjects`. Until then the publish check (`settingsRefusals`, `publish.service.ts`), the journal grid and the attendance-only journals (6.2, 6.3) read the school-wide `subjects.journal_type` and `rating_exam` and the branch's `subject_quarter_weights.rating_exam`; this task stores the switches per journal and quarter and moves those readers, which 9.1 then reads.
   - From 2.1 (pull request #52, decision 4): `edge/calculation`: "In a started quarter the change is refused while scores exist." `PUT /api/setup/subjects/:id` refuses a change of the rating exam switch or the journal type while a started quarter holds scores of the subject, with its test.
   - From 2.4b-1 (pull request #68): the tables of numbers and comments reference `students` with no action, as the line of 6.1 says, so a student with them is never deleted.
   - From 4.3 (pull request #104, row table): reads `edge/calculation`, "The rating exam" (one column per rating journal and quarter, an exam date set by the teacher or the Academic Vice Principal, whole numbers 0 to 100 from that date with the edit period and unlock of a lesson; a score, "did not sit" set by the teacher, or "exempt" set only by the Academic Vice Principal; a late sitting or a retake replaces the score with a required reason, history kept), "A student is exempt on the exam day" (the cell shows "exempt on exam day, pending"; the teacher may later enter a score, otherwise the Academic Vice Principal sets "exempt"; pending is passed to `packages/calc` as no entry) and "The exam is not held for one group this quarter" ("not held" per journal and quarter, set by the Academic Vice Principal).

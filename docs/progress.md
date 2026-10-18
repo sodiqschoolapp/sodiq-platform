@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 18 October 2026: task 5.5c-1 Publish: journals at publish
+
+- A `journals` table (0081) holds one journal per class or group, subject and year, without cells; its `runs` are the days the published chain's load has it, gaps kept, the last run with no end.
+- Every publish brings the journals of its branch and year in line with the whole chain (`syncJournals`, `apps/api/src/modules/timetable/journals.ts`): a new one is opened, a removed one closed, one added again reopened (the same row); audit `journal.open` and `journal.runs`, counted on the publish entry.
+- Left out: withdraw and "Classes taught" (5.5c-2); notices and the changed mark (5.5c-3); the per-quarter switches (8.2); cells and the journal page (6.1, 6.2).
+
+The next sessions must know:
+
+- A journal is closed on a day outside its `runs`; never read "closed" from the year's last date (a longer year keeps an open run open).
+- The runs read the published versions with `laterVersionsOf`, a tie on a start to the higher number (`runsOf`); withdraw must call `syncJournals` after it archives.
+- A journal's lessons are those of its class or group, subject and year: lessons have no journal column.
+- The next task is 5.5c-2.
+
 ## 18 October 2026: task 5.5b-2 Publish: the preview from the stored lessons
 
 - The impact preview, each carried version's preview and the transition week's dates before the start read the dated lessons stored in the branch (`storedImpactLessons`, `apps/api/src/modules/timetable/stored-lessons.ts`), by branch and dates as the writer reads them; a version with no stored block (published before 0079) is still expanded from its pattern.

@@ -265,6 +265,23 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 18 October 2026: publish, journals at publish (task 5.5c-1)
+
+Plan approved on pull request #155 with corrections 1 to 3; decisions 1 to 10 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a task split). 5.5c is split into 5.5c-1 (journals at publish), 5.5c-2 (withdraw, "Classes taught", the vacancy kept) and 5.5c-3 (notices and the changed mark) | Decision 1 |
+| **Look first** (a From line moved). The per-quarter journal type and rating exam switch go to 8.2, which names the readers that move from the school-wide values (the publish check, 6.2, 6.3, 9.1) | Decision 2 with correction 3 |
+| A journal's `runs` (`datemultirange`) are the days the published chain's load has it, gaps kept; closed on a day outside them | Decision 3 |
+| Every load row's class or group and subject gets a journal, Tutor subjects, attendance-only subjects and vacancies' rows included | Decision 4 |
+| Lessons have no journal column | Decision 5 |
+| No route, screen or permission | Decision 6 |
+| Audit `journal.open` and `journal.runs` in the `timetable` group | Decision 7 |
+| A journal no run has keeps its row with empty runs | Decision 8 |
+| The sync reads the whole chain of the year; a tie on a start goes to the higher number | Decision 9, correction 1 |
+| The last run has no upper bound | Decision 10 |
+
 ## 18 October 2026: publish, the preview from the stored lessons (task 5.5b-2)
 
 Plan approved on pull request #154 with corrections 1 to 3; decisions 1 to 7 confirmed there. Flagged on issue #42.
