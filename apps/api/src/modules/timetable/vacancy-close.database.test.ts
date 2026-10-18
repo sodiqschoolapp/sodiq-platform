@@ -129,7 +129,7 @@ describe('the close of a vacancy in the database', () => {
     clockAt(moment).run([place.branch], async (transaction) =>
       sql<{ version_id: string | null; version_number: number | null; lesson_date: string | null }>`
         select version_id, version_number, lesson_date
-        from vacancy_close_holders(${place.vacancy}::uuid, ${day}::date)
+        from vacancy_close_holders(${place.vacancy}::uuid, ${place.branch}::uuid, ${day}::date)
       `
         .execute(transaction)
         .then((found) => found.rows),
@@ -310,23 +310,61 @@ describe('the close of a vacancy in the database', () => {
     const ended = await naming(place, EARLY);
     await later(place, TODAY);
     const found = await sql<{ version_id: string | null }>`
-      select version_id from vacancy_close_holders(${place.vacancy}::uuid, ${TODAY}::date)
+      select version_id
+      from vacancy_close_holders(${place.vacancy}::uuid, ${place.branch}::uuid, ${TODAY}::date)
     `.execute(database.migrator);
     expect(found.rows).toEqual([{ version_id: ended }]);
   });
 
-  it('refuses an application caller a vacancy of another branch, with no rows', async () => {
-    const place = await fresh();
-    await naming(place, EARLY);
-    const other = await fresh();
-    const refused = await outcome(
-      clockAt(NOW).run([other.branch], (transaction) =>
-        sql`select * from vacancy_close_holders(${place.vacancy}::uuid, ${TODAY}::date)`.execute(
-          transaction,
+  // Review correction 1 and the permission review of the code: the branch is
+  // a parameter, a branch of the transaction, and the record a vacancy of it.
+  describe('refuses an application caller', () => {
+    const holdersAs = (branches: string[], record: string, branch: string) =>
+      outcome(
+        clockAt(NOW).run(branches, (transaction) =>
+          sql`select * from vacancy_close_holders(${record}::uuid, ${branch}::uuid, ${TODAY}::date)`.execute(
+            transaction,
+          ),
         ),
-      ),
-    );
-    expect(refused).toBe('vacancy_not_in_branch');
+      );
+
+    it('nothing for its own vacancy, which a version holds', async () => {
+      const place = await fresh();
+      await naming(place, EARLY);
+      expect(await holdersAs([place.branch], place.vacancy, place.branch)).toBe('written');
+    });
+
+    it('a vacancy of another branch, named with its own branch or with that one', async () => {
+      const place = await fresh();
+      await naming(place, EARLY);
+      const other = await fresh();
+      expect(await holdersAs([other.branch], place.vacancy, other.branch)).toBe(
+        'vacancy_not_in_branch',
+      );
+      expect(await holdersAs([other.branch], place.vacancy, place.branch)).toBe(
+        'vacancy_not_in_branch',
+      );
+    });
+
+    it('a person who works in both branches, named by the load of the other one', async () => {
+      const place = await fresh();
+      const other = await fresh();
+      const person = await kit.load.teacher(other.branch, {
+        subjects: [{ subject, grades: [7] }],
+        further: [place.branch],
+      });
+      await naming(other, EARLY, 'published', person.staffId);
+      expect(await holdersAs([place.branch], person.staffId, place.branch)).toBe(
+        'vacancy_not_in_branch',
+      );
+    });
+
+    it('an unknown record', async () => {
+      const place = await fresh();
+      expect(
+        await holdersAs([place.branch], '0199a000-0000-7000-8000-000000000099', place.branch),
+      ).toBe('vacancy_not_in_branch');
+    });
   });
 
   it('never refuses a closed row with an empty range (0055 guard kept)', async () => {

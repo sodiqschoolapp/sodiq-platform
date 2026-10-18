@@ -141,8 +141,21 @@ describe('classes taught on the staff record', () => {
   it('leaves out the rows of another branch', async () => {
     const southClass = await load.classes.schoolClass(t.south, southYear, { grade: 7 });
     await version(t.south, southYear, EARLY, [{ classId: southClass, subjectId: subject }]);
-    const taught = await taughtOf(t.vicePrincipal);
-    expect(taught.flatMap((one) => one.entries.map((entry) => entry.id))).not.toContain(southClass);
+    // The Super Admin's transaction holds every branch (permission review of
+    // the code): only the branch of the request keeps the South's rows out.
+    for (const cookie of [t.vicePrincipal, t.admin]) {
+      const taught = await taughtOf(cookie);
+      expect(taught.map((one) => one.academicYearId)).not.toContain(southYear);
+      expect(taught.flatMap((one) => one.entries.map((entry) => entry.id))).not.toContain(
+        southClass,
+      );
+    }
+    // The same record read in the South lists the South's class.
+    const south = staffDetailSchema.parse(
+      (await t.get(`/api/people/staff/${teacher.staffId}`, t.south, t.admin).expect(200)).body,
+    ).classesTaught;
+    expect(south.map((one) => one.academicYearId)).toEqual([southYear]);
+    expect(south[0]?.entries.map((entry) => entry.id)).toEqual([southClass]);
   });
 
   it('gives the same classes and groups as the scope of a Teacher', async () => {

@@ -192,4 +192,35 @@ describe('a vacancy closed and kept', () => {
     await lessonOn(source, TODAY, today);
     await post(`/api/people/vacancies/${today}/close`).expect(200);
   });
+
+  // The permission review of the code: another branch's vacancy that its own
+  // load holds is 404 before anything reads past the row filter.
+  it('answers 404 for a vacancy of another branch that its load holds', async () => {
+    const southYear = await kit.load.classes.year(t.south);
+    const southClass = await kit.load.classes.schoolClass(t.south, southYear, { grade: 7 });
+    const south = await kit.load.vacancy(t.south, { subjects: [{ subject, grades: [7] }] });
+    const version = await kit.load.version(t.south, southYear, { startsOn: LATER });
+    await kit.load.row({
+      branch_id: t.south,
+      version_id: version,
+      class_id: southClass,
+      subject_id: subject,
+      teacher_id: south,
+    });
+    await kit.load.setVersion(version, 'published');
+    for (const cookie of [t.vicePrincipal, t.admin]) {
+      for (const action of ['close', 'delete']) {
+        const before = await rowsOf();
+        const response = await t.post(
+          `/api/people/vacancies/${south}/${action}`,
+          t.north,
+          {},
+          cookie,
+        );
+        refusedWith(response, 404, 'not_found');
+        expect(JSON.stringify(response.body)).not.toContain(version);
+        expect(await rowsOf()).toEqual(before);
+      }
+    }
+  });
 });

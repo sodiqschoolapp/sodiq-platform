@@ -15,11 +15,14 @@
 -- of any version names the vacancy, and the rows of a published or archived
 -- version are never deleted (`load_version_draft`).
 
--- What still holds a vacancy for a close from `from_day`, past the row filter:
--- one row per version that holds it (`lesson_date` null), and one row with the
--- first date of the lessons under it (the version null). A vacancy has one
--- branch; an application caller gets an error for a record that is not a
--- vacancy of a branch of its transaction (review correction 1). The owner (the
+-- What still holds a vacancy of `branch_ref` for a close from `from_day`, past
+-- the row filter: one row per version of that branch that holds it
+-- (`lesson_date` null), and one row with the first date of its lessons in that
+-- branch (the version null). A vacancy has one branch. An application caller
+-- gets an error unless `branch_ref` is a branch of its transaction and the
+-- record is a vacancy linked to it (review correction 1; the permission review
+-- of the code: the branch is a parameter, as `teacher_claims_elsewhere` takes
+-- it, so a transaction holding several branches reads one). The owner (the
 -- migrator, and the fixtures of the tests) passes the row filter anyway.
 --
 -- "Today" is the branch's, read from the moment of the transaction (`app.now`)
@@ -38,7 +41,7 @@
 --   day bounds the lessons only, never the versions (review correction 3).
 -- Without a moment nothing has started and no year has passed, so every
 -- published row and every lesson from `from_day` holds.
-create function vacancy_close_holders(record_id uuid, from_day date)
+create function vacancy_close_holders(record_id uuid, branch_ref uuid, from_day date)
 returns table (version_id uuid, version_number integer, lesson_date date)
 language plpgsql
 stable
@@ -49,29 +52,30 @@ declare
   zone text;
   today date;
 begin
-  if session_user is distinct from current_user and not exists (
-    select 1 from public.staff s
-    join public.staff_branches b on b.staff_id = s.id
-    where s.id = vacancy_close_holders.record_id
-      and s.kind = 'vacancy'
-      and b.branch_id = any (public.app_branch_ids())
+  if session_user is distinct from current_user and not (
+    vacancy_close_holders.branch_ref = any (public.app_branch_ids())
+    and exists (
+      select 1 from public.staff s
+      join public.staff_branches b on b.staff_id = s.id
+      where s.id = vacancy_close_holders.record_id
+        and s.kind = 'vacancy'
+        and b.branch_id = vacancy_close_holders.branch_ref
+    )
   ) then
     raise exception 'vacancy_not_in_branch'
       using errcode = 'check_violation', constraint = 'vacancy_not_in_branch';
   end if;
   select br.time_zone into zone
-    from public.staff_branches b
-    join public.branches br on br.id = b.branch_id
-    where b.staff_id = vacancy_close_holders.record_id
-    order by b.branch_id
-    limit 1;
+    from public.branches br
+    where br.id = vacancy_close_holders.branch_ref;
   today := (public.class_tutors_moment() at time zone zone)::date;
 
   return query
     select v.id, v.number::integer, null::date
     from public.timetable_versions v
     join public.academic_years y on y.id = v.academic_year_id
-    where exists (
+    where v.branch_id = vacancy_close_holders.branch_ref
+      and exists (
         select 1 from public.teaching_load_rows r
         where r.version_id = v.id and r.teacher_id = vacancy_close_holders.record_id
       )
@@ -96,27 +100,37 @@ begin
   return query
     select null::uuid, null::integer, min(l.lesson_date)
     from public.lessons l
-    where l.teacher_id = vacancy_close_holders.record_id
+    where l.branch_id = vacancy_close_holders.branch_ref
+      and l.teacher_id = vacancy_close_holders.record_id
       and l.lesson_date >= vacancy_close_holders.from_day
       and coalesce(l.lesson_date > today, true)
     having min(l.lesson_date) is not null;
 end;
 $$;
 
-revoke execute on function vacancy_close_holders(uuid, date) from public;
-grant execute on function vacancy_close_holders(uuid, date) to sodiq_app;
+revoke execute on function vacancy_close_holders(uuid, uuid, date) from public;
+grant execute on function vacancy_close_holders(uuid, uuid, date) to sodiq_app;
 
 -- The deferred refusal of a closed row of 0055, its guard kept (review
 -- correction 2): a closed row with an empty range (withdrawn) is never
--- refused; one in force is refused while anything holds the vacancy from its
--- first day.
+-- refused; one in force is refused while anything holds the vacancy in its
+-- branch from its first day. Its branch is read here as the invoker: a
+-- closing transaction that does not hold it sees no link, and the function
+-- then refuses the close (`vacancy_not_in_branch`).
 create or replace function staff_statuses_vacancy_load() returns trigger
 language plpgsql
 set search_path = pg_catalog, public
 as $$
 begin
   if (new.valid_until is null or new.valid_until > new.valid_from)
-    and exists (select 1 from vacancy_close_holders(new.staff_id, new.valid_from)) then
+    and exists (
+      select 1 from vacancy_close_holders(
+        new.staff_id,
+        (select b.branch_id from staff_branches b where b.staff_id = new.staff_id
+          order by b.branch_id limit 1),
+        new.valid_from
+      )
+    ) then
     raise exception 'vacancy_has_load'
       using errcode = 'check_violation', constraint = 'vacancy_has_load';
   end if;

@@ -327,7 +327,7 @@ export class Vacancies {
           await this.vacancyOf(transaction, id, branchId, true);
           const today = await this.todayIn(transaction, branchId);
           if (status === 'closed') {
-            await this.refuseHolders(transaction, id, today);
+            await this.refuseHolders(transaction, id, branchId, today);
           }
           const statuses = await this.statusesOf(transaction, id, true);
           const current = statuses.find((row) => inForceOn(row, today));
@@ -475,13 +475,14 @@ export class Vacancies {
   private async refuseHolders(
     transaction: Transaction,
     id: string,
+    branchId: string,
     today: SchoolDate,
   ): Promise<void> {
     const holders = await sql<{
       version_id: string | null;
       version_number: number | null;
       lesson_date: string | null;
-    }>`select version_id, version_number, lesson_date from vacancy_close_holders(${id}::uuid, ${today}::date)`.execute(
+    }>`select version_id, version_number, lesson_date from vacancy_close_holders(${id}::uuid, ${branchId}::uuid, ${today}::date)`.execute(
       transaction,
     );
     if (holders.rows.length > 0) {
