@@ -24,6 +24,10 @@ Decided once, valid for every task. A session reads this section at its start (`
 | The module and feature names are `auth`, `access`, `audit`, `notifications`, `setup`, `people`, `classes`, `timetable`, `journal`, `plans`, `results`, `feedback` | `CLAUDE.md`, Repository layout; `feedback` was added for task 0.8b-3. |
 | At most 3 Super Admins (`MAX_SUPER_ADMINS` in `packages/shared/src/roles.ts`); changing it means the constant, its test and the spec row together | Decided by the owner in 0.7a. |
 
+## 18 October 2026: the builder checks the plan against what it built
+
+Decided by the owner on 18 October 2026. Of 61 must-fixes in the code reviews of tasks 2.4 to 5.5a-3b, the largest and rising kind (10, 9 of them from #120 on) was a test the approved plan named, or a correction of its approval, not built and not named in the report. `finish-task` step 5 now lists them and finds each one in the diff before the pull request is marked ready. Two further self-checks (proving each new guard test can fail, and running the diff against the rule files) were left for after the release: they raise quality but would cost more time than the review rounds they save.
+
 ## 18 October 2026: one review run per head, two reads inside it
 
 Decided by the owner on 18 October 2026 ("do what is best and professional"), after #140: two reviewer runs of the same head posted `changes needed` and `ready to merge` 9 seconds apart, the merge was held for the owner for five hours, and the `changes needed` was the correct one (a refusal turned into a pass).
