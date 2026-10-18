@@ -1,4 +1,5 @@
 import {
+  dayKeepSchema,
   draftReadinessSchema,
   gridSchema,
   loadRowSchema,
@@ -8,6 +9,7 @@ import {
   publishCheckSchema,
   timetableVersionListSchema,
   timetableVersionSchema,
+  type DayKeepBody,
   type LessonRoomRecord,
   type LoadRowEdit,
   type LoadRowRecord,
@@ -200,6 +202,15 @@ export const createPin = (versionId: string, pin: PinRecord) =>
       body: pin,
     }),
   ).then((answer) => draftReadinessSchema.parse(answer));
+
+/** Step 8: the lessons a class keeps on a shortened day (task 5.5a-2b-2); an empty list removes the choice. */
+export const setDayKeep = (versionId: string, body: DayKeepBody) =>
+  answerOf(
+    api.PUT('/api/timetable/versions/{id}/day-keeps', {
+      params: { header: branchHeader(), path: { id: versionId } },
+      body: { ...body, slotPositions: [...body.slotPositions] },
+    }),
+  ).then((answer) => dayKeepSchema.parse(answer));
 
 /** Step 5: a pin removed (task 5.3b-2). */
 export const deletePin = (versionId: string, pinId: string) =>
