@@ -368,6 +368,17 @@ export const publishVersion = (
     }),
   ).then((answer) => timetableVersionSchema.parse(answer));
 
+/** The withdraw of a published version before its start (task 5.5c-2a); `key` makes a repeat harmless. */
+export const withdrawVersion = (versionId: string, key: string) =>
+  answerOf(
+    api.POST('/api/timetable/versions/{id}/withdraw', {
+      params: {
+        header: { ...branchHeader(), 'Idempotency-Key': key },
+        path: { id: versionId },
+      },
+    }),
+  ).then((answer) => timetableVersionSchema.parse(answer));
+
 /** The causes of a draft's mark out of date and their key (task 5.5a-3b-1). */
 export const outOfDateQuery = (branchId: string | null, versionId: string | null) =>
   queryOptions({

@@ -51,7 +51,10 @@ export interface MarkActor {
 /** A change that marks drafts (decision 2) and the dates it touches (decision 3). */
 export interface OutOfDateChange extends MarkActor {
   readonly branchId: string;
-  readonly action: Exclude<OutOfDateAction, 'timetable_version.publish'>;
+  readonly action: Exclude<
+    OutOfDateAction,
+    'timetable_version.publish' | 'timetable_version.withdraw'
+  >;
   readonly recordId: string;
   /** `every_year`: every year of the branch that is not closed. */
   readonly dates: readonly TouchedDates[] | 'every_year';
@@ -164,6 +167,27 @@ export function markPublished(
 }
 
 /**
+ * A withdraw's cause on every draft of its branch and year (task 5.5c-2a,
+ * decision 6), a draft that started from the withdrawn version included.
+ */
+export function markWithdrawn(
+  transaction: Transaction,
+  audit: Audit,
+  drafts: readonly { id: string; out_of_date: boolean }[],
+  withdrawn: MarkActor & { branchId: string; id: string; number: number },
+): Promise<void> {
+  return addCauses(transaction, audit, drafts, {
+    branchId: withdrawn.branchId,
+    action: 'timetable_version.withdraw',
+    recordId: withdrawn.id,
+    details: { withdrawnId: withdrawn.id, withdrawnNumber: withdrawn.number },
+    actorId: withdrawn.actorId,
+    ...(withdrawn.assignmentId === undefined ? {} : { assignmentId: withdrawn.assignmentId }),
+    ...(withdrawn.requestId === undefined ? {} : { requestId: withdrawn.requestId }),
+  });
+}
+
+/**
  * A copy takes the causes of its source when the source is a draft (5.5a-1
  * decision 14; review correction 2: a published source is read as up to date).
  */
@@ -217,9 +241,12 @@ export function causesKey(versionId: string, causes: readonly { id: string }[]):
     .digest('hex');
 }
 
-/** Whether a stored action is a publish (decision 5). */
+/**
+ * Whether a stored action changed the published chain: a publish (decision
+ * 5), or a withdraw (task 5.5c-2a, decision 6), brought up to date the same way.
+ */
 export const isPublishCause = (cause: { action: string }): boolean =>
-  cause.action === 'timetable_version.publish';
+  cause.action === 'timetable_version.publish' || cause.action === 'timetable_version.withdraw';
 
 type CauseRecord = NonNullable<OutOfDateCause['record']>;
 
@@ -342,7 +369,7 @@ async function recordsOf(
       .execute();
     for (const row of rows) found.set(row.id, named(row.id, row.name));
   }
-  const versions = idsOf(['publish']);
+  const versions = idsOf(['publish', 'withdraw']);
   if (versions.length > 0) {
     const rows = await transaction
       .selectFrom('timetable_versions')

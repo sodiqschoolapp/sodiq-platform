@@ -334,54 +334,7 @@ export class TimetablePublish {
     const { startsOn } = input;
     const branchId = branchOf(access);
     const named = await this.timetable.findVersion(transaction, branchId, id);
-    await transaction
-      .selectFrom('branches')
-      .select('id')
-      .where('id', '=', branchId)
-      .forKeyShare()
-      .execute();
-    await transaction
-      .selectFrom('academic_years')
-      .select('id')
-      .where('id', '=', named.academic_year_id)
-      .forShare()
-      .execute();
-    // Task 5.5b-1 (spec review must-fix 5): the people of the branch FOR KEY
-    // SHARE before the versions, the lock the lessons' keys to them take. A
-    // status change holds its person FOR UPDATE and then waits for the
-    // versions inside `followTutors`; taking it here first, the publish waits
-    // for such a change, or the change waits for the publish, never both.
-    await transaction
-      .selectFrom('staff')
-      .select('staff.id')
-      .where('staff.id', 'in', (eb) =>
-        eb.selectFrom('staff_branches').select('staff_id').where('branch_id', '=', branchId),
-      )
-      .orderBy('staff.id')
-      .forKeyShare()
-      .execute();
-    // Review of #152, finding 1: the classes of the year FOR KEY SHARE too,
-    // the lock the lessons' keys to them take. An archive holds its class FOR
-    // UPDATE and then waits for the versions inside `followTutors`. The other
-    // parents a lesson names (groups, rooms, subjects, quarters) have no
-    // holder FOR UPDATE that reaches `followTutors`.
-    await transaction
-      .selectFrom('classes')
-      .select('id')
-      .where('branch_id', '=', branchId)
-      .where('academic_year_id', '=', named.academic_year_id)
-      .orderBy('id')
-      .forKeyShare()
-      .execute();
-    await transaction
-      .selectFrom('timetable_versions')
-      .select('id')
-      .where('branch_id', '=', branchId)
-      .where('academic_year_id', '=', named.academic_year_id)
-      .orderBy('id')
-      // Task 5.5a-3b-1, decision 8: a cause's foreign key is not blocked.
-      .forNoKeyUpdate()
-      .execute();
+    await lockPublishChain(transaction, branchId, named.academic_year_id);
     let version = await this.timetable.lockDraft(transaction, access, id, requestId);
     const today = await this.timetable.todayIn(transaction, branchId);
     const quarters = await this.quartersOf(transaction, version);
@@ -989,6 +942,69 @@ function engineYearOf(version: VersionRow, quarters: readonly QuarterRow[]): Eng
 }
 
 /**
+ * The locks a write of the published chain takes after `PUBLISH_LOCK`, in
+ * this order (a publish, task 5.5a-1; a withdraw, task 5.5c-2a): the branch
+ * row FOR KEY SHARE; the year FOR SHARE; the people of the branch and the
+ * classes of the year FOR KEY SHARE in the order of their id (task 5.5b-1);
+ * every version of the branch and year FOR NO KEY UPDATE in the order of
+ * their id, the order `followTutors` takes.
+ */
+export async function lockPublishChain(
+  transaction: Transaction,
+  branchId: string,
+  yearId: string,
+): Promise<void> {
+  await transaction
+    .selectFrom('branches')
+    .select('id')
+    .where('id', '=', branchId)
+    .forKeyShare()
+    .execute();
+  await transaction
+    .selectFrom('academic_years')
+    .select('id')
+    .where('id', '=', yearId)
+    .forShare()
+    .execute();
+  // Task 5.5b-1 (spec review must-fix 5): the people of the branch FOR KEY
+  // SHARE before the versions, the lock the lessons' keys to them take. A
+  // status change holds its person FOR UPDATE and then waits for the
+  // versions inside `followTutors`; taking it here first, the publish waits
+  // for such a change, or the change waits for the publish, never both.
+  await transaction
+    .selectFrom('staff')
+    .select('staff.id')
+    .where('staff.id', 'in', (eb) =>
+      eb.selectFrom('staff_branches').select('staff_id').where('branch_id', '=', branchId),
+    )
+    .orderBy('staff.id')
+    .forKeyShare()
+    .execute();
+  // Review of #152, finding 1: the classes of the year FOR KEY SHARE too,
+  // the lock the lessons' keys to them take. An archive holds its class FOR
+  // UPDATE and then waits for the versions inside `followTutors`. The other
+  // parents a lesson names (groups, rooms, subjects, quarters) have no
+  // holder FOR UPDATE that reaches `followTutors`.
+  await transaction
+    .selectFrom('classes')
+    .select('id')
+    .where('branch_id', '=', branchId)
+    .where('academic_year_id', '=', yearId)
+    .orderBy('id')
+    .forKeyShare()
+    .execute();
+  await transaction
+    .selectFrom('timetable_versions')
+    .select('id')
+    .where('branch_id', '=', branchId)
+    .where('academic_year_id', '=', yearId)
+    .orderBy('id')
+    // Task 5.5a-3b-1, decision 8: a cause's foreign key is not blocked.
+    .forNoKeyUpdate()
+    .execute();
+}
+
+/**
  * A refusal of a check of the database (23514, 23P01), which a carry write
  * leaves its version for (decision 8); never one that only a fault of the
  * code raises (task 5.5b-1, decision 10).
@@ -1028,7 +1044,7 @@ const CODE_FAULTS = new Set([
  * checked every date first. A deadlock or a failed serialization is
  * `timetable_busy` too.
  */
-const PUBLISH_REFUSALS: Readonly<Record<string, ErrorCode>> = {
+export const PUBLISH_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   ...PATTERN_REFUSALS,
   time_claims_teacher_excl: 'timetable_busy',
   time_claims_room_excl: 'timetable_busy',
@@ -1040,9 +1056,12 @@ const PUBLISH_REFUSALS: Readonly<Record<string, ErrorCode>> = {
 
 const BUSY_CODES = new Set(['40P01', '40001']);
 
-async function refusingPublish<T>(work: () => Promise<T>): Promise<T> {
+export async function refusingPublish<T>(
+  work: () => Promise<T>,
+  refusals: Readonly<Record<string, ErrorCode>> = PUBLISH_REFUSALS,
+): Promise<T> {
   try {
-    return await refusingConstraints(work, PUBLISH_REFUSALS);
+    return await refusingConstraints(work, refusals);
   } catch (error) {
     if (BUSY_CODES.has(String((error as { code?: unknown }).code))) {
       throw new ApiException('timetable_busy', 409);
@@ -1056,7 +1075,7 @@ const datedOfCarry = (write: DatedWrite | undefined) =>
   write === undefined ? {} : { datedLessons: datedAuditOf(write) };
 
 /** The part of an audit entry that names what a write of dated lessons did (decision 12). */
-function datedAuditOf(write: DatedWrite) {
+export function datedAuditOf(write: DatedWrite) {
   return {
     firstDate: write.firstDate,
     lastDate: write.lastDate,

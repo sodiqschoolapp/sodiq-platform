@@ -162,6 +162,9 @@ export function OutOfDatePanel({
       {answer.causes.some((one) => one.kind === 'publish') && (
         <p className="text-sm">{t('timetable.outOfDate.byPublish')}</p>
       )}
+      {answer.causes.some((one) => one.kind === 'withdraw') && (
+        <p className="text-sm">{t('timetable.outOfDate.byWithdraw')}</p>
+      )}
       {answer.other !== null && (
         <div className="grid gap-3" data-comparison="true">
           <p className="text-sm">

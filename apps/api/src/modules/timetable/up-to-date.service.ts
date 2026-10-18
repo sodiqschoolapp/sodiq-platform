@@ -251,7 +251,15 @@ export class TimetableUpToDate {
           comparison.other !== null && comparison.draft !== null && comparison.published !== null
             ? await this.writePicks(transaction, version, comparison, input, access.accountId)
             : null;
-        const fromAfter = comparison.other?.id ?? version.from_version_id;
+        // Task 5.5c-2a (decision 6): with no published version to compare, a
+        // source that never ran (withdrawn, or replaced) is no longer named.
+        const fromAfter =
+          comparison.other?.id ??
+          (version.from_version_id !== null &&
+          (await this.timetable.versionRow(transaction, version.from_version_id)).status ===
+            'archived'
+            ? null
+            : version.from_version_id);
         if (fromAfter !== version.from_version_id) {
           await transaction
             .updateTable('timetable_versions')
@@ -286,7 +294,9 @@ export class TimetableUpToDate {
           newValue: {
             outOfDate: false,
             ...(comparison.other === null
-              ? {}
+              ? fromAfter === version.from_version_id
+                ? {}
+                : { fromVersionId: fromAfter }
               : {
                   comparedVersionId: comparison.other.id,
                   fromVersionId: fromAfter,

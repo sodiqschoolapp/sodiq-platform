@@ -106,12 +106,17 @@ const OUT_STATUSES = ['inactive', 'left', 'closed'];
  *
  * The version runs to the year's end: a publish before a later published
  * version is refused until 5.5a-3 (5.5a-1, decision 3).
+ *
+ * `outOnStart: false` (task 5.5c-2a, decision 5): a teacher out on the start
+ * makes the lesson "needs a teacher", as on a later date, never a refusal; a
+ * withdraw writes a published version, which cannot be edited.
  */
 export async function datedCheck(
   transaction: Transaction,
   state: PatternState,
   startsOn: string,
   patternBlocked: readonly RuleResult[],
+  options: { readonly outOnStart?: boolean } = {},
 ): Promise<DatedFindings> {
   const { model } = state.pattern;
   const { data } = model;
@@ -234,7 +239,7 @@ export async function datedCheck(
     lessons: new Map(dated.lessons.map((lesson) => [lesson.placement.id, lesson])),
     tutorNeeds,
     fixedBranch: (id) => fixedBranches.get(id) ?? null,
-    outOnStart: (teacherId) => outOnStart.has(teacherId),
+    outOnStart: (teacherId) => options.outOnStart !== false && outOnStart.has(teacherId),
   });
   const answerOf = (result: RuleResult): RuleResultAnswer => {
     const own = new Set<string>();

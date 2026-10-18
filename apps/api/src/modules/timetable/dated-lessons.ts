@@ -704,3 +704,88 @@ async function wantedOf(
       compare(a.date, b.date) || a.start - b.start || compare(a.patternBlockId, b.patternBlockId),
   );
 }
+
+/**
+ * Deletes every stored lesson and block of the branch from `firstDate` to
+ * `lastDate` (task 5.5c-2a, decision 11): a withdraw of the first version of
+ * the chain leaves its dates with no version. The database refuses a delete
+ * dated today or earlier (0079); before 6.1 no lesson holds data.
+ */
+export async function removeDatedLessons(
+  transaction: Transaction,
+  branchId: string,
+  firstDate: string,
+  lastDate: string,
+): Promise<DatedWrite> {
+  await sql`set constraints all deferred`.execute(transaction);
+  const blocks = await transaction
+    .selectFrom('lesson_blocks')
+    .select('id')
+    .where('branch_id', '=', branchId)
+    .where('lesson_date', '>=', firstDate)
+    .where('lesson_date', '<=', lastDate)
+    .orderBy('id')
+    .forUpdate()
+    .execute();
+  const rows = await transaction
+    .selectFrom('lessons')
+    .select([
+      'id',
+      sql<string>`lesson_date::text`.as('lesson_date'),
+      'starts_at',
+      'ends_at',
+      'class_id',
+      'group_id',
+      'subject_id',
+      'teacher_id',
+      'room_id',
+      'cancel_cause',
+    ])
+    .where('branch_id', '=', branchId)
+    .where('lesson_date', '>=', firstDate)
+    .where('lesson_date', '<=', lastDate)
+    .orderBy('id')
+    .forUpdate()
+    .execute();
+  for (let index = 0; index < rows.length; index += BATCH) {
+    await transaction
+      .deleteFrom('lessons')
+      .where(
+        'id',
+        'in',
+        rows.slice(index, index + BATCH).map((one) => one.id),
+      )
+      .execute();
+  }
+  for (let index = 0; index < blocks.length; index += BATCH) {
+    await transaction
+      .deleteFrom('lesson_blocks')
+      .where(
+        'id',
+        'in',
+        blocks.slice(index, index + BATCH).map((one) => one.id),
+      )
+      .execute();
+  }
+  await sql`set constraints all immediate`.execute(transaction);
+  return {
+    firstDate,
+    lastDate,
+    created: 0,
+    kept: 0,
+    cancelled: 0,
+    removed: rows.map((row) => ({
+      id: row.id,
+      date: row.lesson_date,
+      startsAt: row.starts_at.toISOString(),
+      endsAt: row.ends_at.toISOString(),
+      classId: row.class_id,
+      groupId: row.group_id,
+      subjectId: row.subject_id,
+      teacherId: row.teacher_id,
+      roomId: row.room_id,
+      cancelCause: row.cancel_cause,
+    })),
+    changed: [],
+  };
+}

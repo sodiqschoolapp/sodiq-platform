@@ -190,6 +190,8 @@ export const AUDIT_ACTION_GROUPS = {
     // Task 5.5a-3a: later published versions replaced by a publish, or changed by a carry.
     'timetable_version.replace',
     'timetable_version.carry',
+    // Task 5.5c-2a: a published version withdrawn before its start.
+    'timetable_version.withdraw',
     // Task 5.5a-2b-2: the lessons a class keeps on a shortened day of a draft.
     'timetable_version.day_keep',
     // Task 5.3b-2: pinned lessons of step 5.

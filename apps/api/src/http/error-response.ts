@@ -295,6 +295,10 @@ const MESSAGE: Record<ErrorCode, string> = {
   timetable_busy: 'Another change of the timetable was being saved.',
   draft_not_ready: 'A step of the draft is not ready.',
   publish_blocked: 'The draft cannot be published; the details list why.',
+  version_not_published: 'The version is not published.',
+  withdraw_started: 'The version has started; it can no longer be withdrawn.',
+  withdraw_blocked:
+    'The version that would run again meets a blocked conflict; the details list each.',
   load_unit_year: 'The class or group is of another academic year.',
   load_unit_archived: 'The class or group is archived.',
   load_group_subject: "The subject is not the group's.",

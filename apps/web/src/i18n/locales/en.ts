@@ -401,6 +401,11 @@ export const en = {
     timetable_busy: 'Another change of the timetable was being saved. Try again.',
     publish_blocked:
       'The draft cannot be published yet. Step 8 lists every reason; settle them and publish again.',
+    version_not_published: 'Only a published version can be withdrawn. Read the list again.',
+    withdraw_started:
+      'This version has started, so it can no longer be withdrawn. Publish a new version to change it.',
+    withdraw_blocked:
+      'The version that would run again meets a blocked conflict on the dates listed. Settle them, then withdraw again.',
     draft_not_ready: 'A step of the draft is not ready. Finish the steps marked not ready first.',
     load_unit_year:
       "That class or group is of another academic year than the version. Choose one of the version's year.",
@@ -2626,6 +2631,7 @@ export const en = {
         up_to_date: 'Draft brought up to date',
         replace: 'Published version replaced by an earlier start',
         carry: 'Teacher or room change carried into a published version',
+        withdraw: 'Published version withdrawn before its start',
         day_keep: 'Lessons kept on a shortened day of a draft chosen',
       },
       timetable_lock: {
@@ -3420,6 +3426,8 @@ export const en = {
       bring: 'Bring up to date',
       byPublish:
         'A publish marked this draft. For every difference, keep the draft or take the published version.',
+      byWithdraw:
+        'A withdrawn version marked this draft. For every difference, keep the draft or take the version in force.',
       compared: 'Compared with version {{number}}, in force from {{date}}.',
       startedFrom: 'This draft started from version {{number}}.',
       noBase: 'This draft did not start from another version.',
@@ -3586,6 +3594,14 @@ export const en = {
       startsOnText: 'Starts on {{date}}',
       fromVersion: 'Copied from version {{number}}',
       newDraft: 'New draft',
+      withdraw: 'Withdraw',
+      withdrawTitle: 'Withdraw version {{number}}?',
+      withdrawText:
+        'It is withdrawn before it starts on {{date}}. Version {{earlier}} runs again over its dates.',
+      withdrawTextNone:
+        'It is withdrawn before it starts on {{date}}. No version runs over its dates.',
+      withdrawBlocked: '{{date}}: {{rule}}',
+      everyWeek: 'Every week',
       newDraftTitle: 'New draft',
       year: 'Academic year',
       copyFrom: 'Start from',
