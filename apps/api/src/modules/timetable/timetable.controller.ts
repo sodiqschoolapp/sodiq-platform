@@ -134,7 +134,7 @@ export class TimetableController {
     @ValidParams(timetableVersionParamsSchema) params: TimetableVersionParams,
     @ValidQuery(publishCheckQuerySchema) query: PublishCheckQuery,
   ): Promise<PublishCheck> {
-    return this.publisher.check(access, params.id, query.startsOn);
+    return this.publisher.check(access, params.id, query.startsOn, query.chain);
   }
 
   /** Step 8: the lessons a class keeps on a shortened day of a draft (task 5.5a-2b-2, decisions 2, 6 and 8). */

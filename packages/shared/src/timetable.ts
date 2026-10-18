@@ -970,6 +970,12 @@ export const PUBLISH_REFUSALS = [
   'subject_quarter_weights',
   // Task 5.5a-2b-1, decision 11: a transition week that differs from the load, not acknowledged.
   'transition_unacknowledged',
+  // Task 5.5a-3a: "carry the change into them" sent when it is not offered;
+  // "run until" or "carry" on the start of a published version (decision 5);
+  // later versions other than those shown (spec review of the plan, should-fix 2).
+  'chain_carry_not_offered',
+  'chain_start_taken',
+  'chain_changed',
 ] as const;
 
 export const publishRefusalCodeSchema = z.enum(PUBLISH_REFUSALS);
@@ -995,6 +1001,17 @@ export const publishRefusalSchema = z.object({
   /** `version_later_published`: the number of the published version. */
   versionNumber: z.int().min(1).optional(),
 });
+
+/**
+ * The answer to a publish before a later published version (task 5.5a-3a;
+ * `edge/timetable`, Versions and drafts: "'run until that version starts',
+ * 'replace the versions that follow', or ... 'carry the change into them'").
+ */
+export const PUBLISH_CHAINS = ['run_until', 'replace', 'carry'] as const;
+
+export const publishChainSchema = z.enum(PUBLISH_CHAINS);
+
+export type PublishChain = z.infer<typeof publishChainSchema>;
 
 export type PublishRefusal = z.infer<typeof publishRefusalSchema>;
 
@@ -1106,6 +1123,25 @@ export const publishImpactSchema = z.object({
       key: transitionKeySchema.nullable(),
     })
     .nullable(),
+  /**
+   * Task 5.5a-3a (decision 7, spec review must-fix 1): under "carry", each
+   * carried version's lessons over its own run, before and after the change;
+   * their teachers, classes and rooms are counted above.
+   */
+  carried: z.array(
+    z.object({
+      versionId: z.uuid(),
+      number: z.int().min(1),
+      counts: z.object({
+        created: z.int().min(0),
+        moved: z.int().min(0),
+        removed: z.int().min(0),
+        changed: z.int().min(0),
+        unchanged: z.int().min(0),
+      }),
+      changes: z.array(impactChangeSchema),
+    }),
+  ),
   /** The names of what the preview names (decision 12). */
   names: z.object({
     units: z.array(
@@ -1129,8 +1165,54 @@ export const publishImpactSchema = z.object({
 
 export type PublishImpactAnswer = z.infer<typeof publishImpactSchema>;
 
+/** One change carried into later versions (task 5.5a-3a, decision 4): a row's teacher or room, an entry's room. */
+export const carryChangeSchema = z.object({
+  kind: z.enum(['teacher', 'row_room', 'entry_room']),
+  classId: z.uuid().nullable(),
+  groupId: z.uuid().nullable(),
+  subjectId: z.uuid(),
+  /** `entry_room`: the entry's weekday and slot position. */
+  weekday: weekdaySchema.optional(),
+  slotPosition: z.int().min(1).max(20).optional(),
+  before: z.uuid().nullable(),
+  after: z.uuid().nullable(),
+});
+
+export type CarryChangeAnswer = z.infer<typeof carryChangeSchema>;
+
+/**
+ * The later published versions of a publish and what each answer does to
+ * them (task 5.5a-3a). `key` goes back with the publish (`laterKey`).
+ */
+export const publishChainAnswerSchema = z.object({
+  key: transitionKeySchema,
+  later: z.array(z.object({ id: z.uuid(), number: z.int().min(1), startsOn: schoolDateSchema })),
+  carryOffered: z.boolean(),
+  /** Why carry is not offered: no source, nothing changed, or another change. */
+  carryReason: z.enum(['no_source', 'nothing_changed', 'other_changes']).nullable(),
+  changes: z.array(carryChangeSchema),
+  /** With `chain=carry`: each later version, carried or left as it is (decision 8). */
+  carried: z.array(
+    z.object({
+      versionId: z.uuid(),
+      number: z.int().min(1),
+      startsOn: schoolDateSchema,
+      /** The number of changes the version takes; 0: nothing to carry. */
+      applied: z.int().min(0),
+      left: z.boolean(),
+      refusals: z.array(publishRefusalSchema),
+    }),
+  ),
+});
+
+export type PublishChainAnswer = z.infer<typeof publishChainAnswerSchema>;
+
 /** The start date a publish is checked on. */
-export const publishCheckQuerySchema = z.object({ startsOn: schoolDateSchema });
+export const publishCheckQuerySchema = z.object({
+  startsOn: schoolDateSchema,
+  /** Task 5.5a-3a: the answer the check and the preview follow. */
+  chain: publishChainSchema.optional(),
+});
 
 export type PublishCheckQuery = z.infer<typeof publishCheckQuerySchema>;
 
@@ -1142,6 +1224,9 @@ export const publishBodySchema = z.strictObject({
    * (`PublishImpact.transition.key`), when it differs from the load.
    */
   transitionKey: transitionKeySchema.optional(),
+  /** Task 5.5a-3a: the answer to the later published versions, with the key of those shown. */
+  chain: publishChainSchema.optional(),
+  laterKey: transitionKeySchema.optional(),
 });
 
 export type PublishBody = z.infer<typeof publishBodySchema>;
@@ -1222,6 +1307,8 @@ export const publishCheckSchema = z.object({
   shortenedDays: z.array(shortenedDaySchema),
   /** Task 5.5a-2b-2, decisions 3 and 11: stored choices that decide nothing on their date. */
   unusedKeeps: z.array(z.object({ date: schoolDateSchema, classId: z.uuid() })),
+  /** Task 5.5a-3a: `null` when no published version of the year starts on or after the start. */
+  chain: publishChainAnswerSchema.nullable(),
   canPublish: z.boolean(),
 });
 

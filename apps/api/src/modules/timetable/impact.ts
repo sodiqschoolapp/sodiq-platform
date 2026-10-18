@@ -12,6 +12,7 @@ import {
   publishImpact,
   transitionWeek,
   type DatedPattern,
+  type ImpactChange,
   type ImpactLesson,
 } from '@sodiq/timetable-rules';
 import type { Transaction } from '../../database/transactions.js';
@@ -61,16 +62,20 @@ export async function impactOf(
   draft: PatternState,
   draftDated: DatedPattern,
   startsOn: string,
+  carried: readonly CarriedImpact[] = [],
 ): Promise<Impact> {
   const { data } = draft.pattern.model;
   const lastDate = data.versionEnd;
+  // Task 5.5a-3a, decision 7: every published version of the year up to the
+  // draft's last date, so that after a replace each date reads the version in
+  // force on it before the publish; a version runs until the next starts.
   const published = await transaction
     .selectFrom('timetable_versions')
     .select(['id', 'number', 'starts_on'])
     .where('branch_id', '=', draft.version.branch_id)
     .where('academic_year_id', '=', draft.version.academic_year_id)
     .where('status', '=', 'published')
-    .where('starts_on', '<', startsOn)
+    .where('starts_on', '<=', lastDate)
     .orderBy('starts_on', 'desc')
     .orderBy('number', 'desc')
     .execute();
@@ -90,10 +95,29 @@ export async function impactOf(
   };
 
   const beforeVersion = inForceOn(startsOn);
-  const before =
-    beforeVersion === null ? [] : await lessonsOf(beforeVersion.id, startsOn, lastDate);
+  const before: ImpactLesson[] = [];
+  for (const stretch of stretchesOf(published, startsOn, lastDate)) {
+    before.push(...(await lessonsOf(stretch.id, stretch.from, stretch.to)));
+  }
   const after = draftDated.lessons.map(impactLessonOf);
-  const impact = publishImpact({ before, after });
+  const own = publishImpact({ before, after });
+  // Spec review must-fix 1: each carried version over its own run.
+  const carriedImpacts = carried.map((one) => ({
+    one,
+    impact: publishImpact({
+      before: one.before.lessons.map(impactLessonOf),
+      after: one.after.lessons.map(impactLessonOf),
+    }),
+  }));
+  const together = (pick: (one: typeof own) => readonly string[]) =>
+    [...new Set([own, ...carriedImpacts.map((one) => one.impact)].flatMap(pick))].sort();
+  const impact = {
+    ...own,
+    teacherIds: together((one) => one.teacherIds),
+    classIds: together((one) => one.classIds),
+    roomIds: together((one) => one.roomIds),
+  };
+  const allChanges = [...own.changes, ...carriedImpacts.flatMap((one) => one.impact.changes)];
 
   // The week's dates before the start, each from the version in force on it.
   const weekStart = mondayOf(startsOn);
@@ -141,11 +165,11 @@ export async function impactOf(
   // A class reached only through a group lesson is in `classIds` alone (review of #142).
   const unitIds = new Set<string>([
     ...impact.classIds,
-    ...impact.changes.flatMap((one) => [one.unitId, ...one.classIds]),
+    ...allChanges.flatMap((one) => [one.unitId, ...one.classIds]),
     ...(week?.rows ?? []).map((one) => one.unitId),
   ]);
   const subjectIds = new Set<string>([
-    ...impact.changes.map((one) => one.subjectId),
+    ...allChanges.map((one) => one.subjectId),
     ...(week?.rows ?? []).map((one) => one.subjectId),
   ]);
   const teacherIds = new Set<string>([...impact.teacherIds, ...vacancies.keys()]);
@@ -209,11 +233,12 @@ export async function impactOf(
       beforeVersion:
         beforeVersion === null ? null : { id: beforeVersion.id, number: beforeVersion.number },
       counts: impact.counts,
-      changes: impact.changes.map((change) => ({
-        ...change,
-        classIds: [...change.classIds],
-        before: change.before === null ? null : slotAnswer(change.before),
-        after: change.after === null ? null : slotAnswer(change.after),
+      changes: impact.changes.map(changeAnswer),
+      carried: carriedImpacts.map(({ one, impact: carriedImpact }) => ({
+        versionId: one.versionId,
+        number: one.number,
+        counts: carriedImpact.counts,
+        changes: carriedImpact.changes.map(changeAnswer),
       })),
       // Decisions 6 and 7: a vacancy is never notified; a person only with an account.
       teachers: impact.teacherIds.map((id) => {
@@ -261,6 +286,47 @@ export async function impactOf(
     acknowledged: differing.map((row) => ({ ...row })),
   };
 }
+
+/** A carried version's lessons over its run, before and after the change (task 5.5a-3a). */
+export interface CarriedImpact {
+  readonly versionId: string;
+  readonly number: number;
+  readonly before: DatedPattern;
+  readonly after: DatedPattern;
+}
+
+/**
+ * The stretches of `from` to `to`, each with the published version in force
+ * on it (`published` latest start first, ties by the higher number); dates
+ * before the first version are in none.
+ */
+function stretchesOf(
+  published: readonly { id: string; starts_on: string }[],
+  from: string,
+  to: string,
+): { id: string; from: string; to: string }[] {
+  const stretches: { id: string; from: string; to: string }[] = [];
+  const ascending = [...published].reverse();
+  for (const [index, version] of ascending.entries()) {
+    const next = ascending.slice(index + 1).find((other) => other.starts_on > version.starts_on);
+    // A tie on a start goes to the higher number, later in this order.
+    if (ascending.slice(index + 1).some((other) => other.starts_on === version.starts_on)) {
+      continue;
+    }
+    const start = version.starts_on > from ? version.starts_on : from;
+    const end =
+      next === undefined ? to : addDays(next.starts_on, -1) < to ? addDays(next.starts_on, -1) : to;
+    if (start <= end) stretches.push({ id: version.id, from: start, to: end });
+  }
+  return stretches;
+}
+
+const changeAnswer = (change: ImpactChange) => ({
+  ...change,
+  classIds: [...change.classIds],
+  before: change.before === null ? null : slotAnswer(change.before),
+  after: change.after === null ? null : slotAnswer(change.after),
+});
 
 const slotAnswer = (slot: {
   weekday: number;

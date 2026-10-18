@@ -1207,4 +1207,11 @@ export {
   type ImpactChangeAnswer,
   type PublishImpactAnswer,
   type TransitionRowAnswer,
+  PUBLISH_CHAINS,
+  carryChangeSchema,
+  publishChainAnswerSchema,
+  publishChainSchema,
+  type CarryChangeAnswer,
+  type PublishChain,
+  type PublishChainAnswer,
 } from './timetable.js';

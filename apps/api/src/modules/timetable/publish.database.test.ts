@@ -95,7 +95,10 @@ describe('publish in the database', () => {
       constraint: 'timetable_versions_status',
     });
     await setStatus(branch, version, 'published');
-    for (const status of ['draft', 'archived'] as const) {
+    // Task 5.5a-3a, decision 2 (Look first): published to archived is allowed
+    // for a version that has not started; publish-chain.database.test.ts
+    // tests it and its refusals.
+    for (const status of ['draft'] as const) {
       const refused = await refusal(setStatus(branch, version, status));
       expect(refused).toMatchObject({
         code: CHECK_VIOLATION,

@@ -1,6 +1,8 @@
 import {
   classDisplayName,
+  type CarryChangeAnswer,
   type LoadRow,
+  type PublishChain,
   type PublishRefusal,
   type RuleResultAnswer,
   type TimetableVersion,
@@ -19,6 +21,7 @@ import { useView } from '@/features/access/use-view';
 import { nameOf } from '@/features/setup/setup-api';
 import { schoolDateText, weekdayName } from '@/lib/dates';
 import { numbersText } from './grid-conflicts';
+import { PublishChainQuestion } from './publish-chain';
 import { PublishImpact } from './publish-impact';
 import { classNameFrom, PublishShortened } from './publish-shortened';
 import { ruleText } from './rule-text';
@@ -66,16 +69,26 @@ export function PublishStep({
   const key = useRef<string | null>(null);
   // Task 5.5a-2b-1: the transition key ticked; a new answer with another key is not ticked.
   const [tickedKey, setTickedKey] = useState<string | null>(null);
+  // Task 5.5a-3a: the answer to the later published versions, chosen by the person.
+  const [chain, setChain] = useState<PublishChain | null>(null);
   const check = useQuery(
-    publishCheckQuery(branchId, version.id, startsOn === '' ? null : startsOn),
+    publishCheckQuery(branchId, version.id, startsOn === '' ? null : startsOn, chain),
   );
   const load = useQuery(loadQuery(branchId, version.id));
   // The load row of each pattern entry, and the other branches' names, for the lists of dates.
   const grid = useQuery(gridQuery(branchId, version.id));
   const publish = useMutation({
-    mutationFn: ({ date, transitionKey }: { date: string; transitionKey: string | null }) => {
+    mutationFn: ({
+      date,
+      transitionKey,
+      answered,
+    }: {
+      date: string;
+      transitionKey: string | null;
+      answered: { chain: PublishChain; laterKey: string } | null;
+    }) => {
       key.current ??= crypto.randomUUID();
-      return publishVersion(version.id, date, key.current, transitionKey);
+      return publishVersion(version.id, date, key.current, transitionKey, answered);
     },
     onSettled: async () => {
       key.current = null;
@@ -189,6 +202,12 @@ export function PublishStep({
         return t('timetable.publish.refusals.version_later_published', {
           number: refusal.versionNumber ?? 0,
         });
+      case 'chain_start_taken':
+        return t('timetable.publish.refusals.chain_start_taken', {
+          number: refusal.versionNumber ?? 0,
+        });
+      case 'chain_carry_not_offered':
+      case 'chain_changed':
       case 'transition_unacknowledged':
       case 'version_start_too_early':
       case 'version_start_outside_year':
@@ -213,6 +232,19 @@ export function PublishStep({
     body = <LoadingOutline lines={4} />;
   } else {
     const transitionKey = answer.impact?.transition?.key ?? null;
+    // A choice counts only while later versions are shown; the key goes with it.
+    const answered =
+      answer.chain === null || chain === null ? null : { chain, laterKey: answer.chain.key };
+    /** The class or group and subject of a change to carry, from the draft's load. */
+    const changeLesson = (change: CarryChangeAnswer): string => {
+      const row = rows.find(
+        (one) =>
+          one.subject.id === change.subjectId && one.unit.id === (change.classId ?? change.groupId),
+      );
+      return row === undefined
+        ? t('timetable.publish.impact.unknownSubject')
+        : `${unitOf(row)}, ${nameOf(row.subject.names, language)}`;
+    };
     const ticked = transitionKey === null || tickedKey === transitionKey;
     const blocked = answer.refusals.some(
       (one) => one.code === 'pattern_blocked' || one.code === 'date_blocked',
@@ -312,6 +344,16 @@ export function PublishStep({
             </ul>
           </section>
         )}
+        {answer.chain !== null && (
+          <PublishChainQuestion
+            answer={answer.chain}
+            impact={answer.impact}
+            chosen={chain}
+            onChoose={setChain}
+            canEdit={canEdit}
+            lessonName={changeLesson}
+          />
+        )}
         <PublishShortened
           versionId={version.id}
           answer={answer}
@@ -348,7 +390,7 @@ export function PublishStep({
                       action: t('timetable.publish.action'),
                     })
                   ) {
-                    publish.mutate({ date: startsOn, transitionKey });
+                    publish.mutate({ date: startsOn, transitionKey, answered });
                   }
                 })();
               }}
