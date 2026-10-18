@@ -861,6 +861,52 @@ describe('Tutor lessons follow the Tutor', () => {
       await post(`/api/classes/${UNKNOWN}/archive`).expect(404);
       expect(await rowsOf()).toEqual(before);
     });
+
+    // Task 5.5c-3b: the role end, the status change and the role give now
+    // send notices and mark lessons through the follow (.claude/rules/api.md:
+    // the rows of those tables too, with Tutor lessons in both branches that
+    // a follow would move). The Super Admin's transaction holds every branch.
+    it('answer 404 for another branch’s or an unknown person or role on the routes of a role, and write nothing', async () => {
+      const own = await tutoredClass();
+      await tutorLesson(own.classId, own.tutor.staffId, '2026-10-27');
+      const southClass = await newClass(south);
+      const southPerson = await lessons.load.classes.person(south, ['uz']);
+      const southRole = await lessons.load.classes.role(southPerson.accountId, south, 'tutor');
+      await lessons.load.classes.tutorRow(south, southClass, southRole);
+      await lesson({
+        classId: southClass,
+        date: '2026-10-27',
+        start: '09:00',
+        end: '09:45',
+        teacherId: southPerson.staffId,
+        rowTeacherId: southPerson.staffId,
+        branch: south,
+      });
+      const before = await rowsOf();
+      const staffPath = (id: string) => `/api/people/staff/${id}`;
+      const endBody = { from: '2026-10-19' };
+      await post(`${staffPath(southPerson.staffId)}/roles/${southRole}/end`, endBody, admin).expect(
+        404,
+      );
+      await post(`${staffPath(own.tutor.staffId)}/roles/${southRole}/end`, endBody, admin).expect(
+        404,
+      );
+      await post(
+        `${staffPath(UNKNOWN)}/roles/${own.tutor.assignmentId}/end`,
+        endBody,
+        admin,
+      ).expect(404);
+      await post(`${staffPath(own.tutor.staffId)}/roles/${UNKNOWN}/end`, endBody, admin).expect(
+        404,
+      );
+      const leftBody = { status: 'left', from: '2026-10-19' };
+      await post(`${staffPath(southPerson.staffId)}/status`, leftBody, admin).expect(404);
+      await post(`${staffPath(UNKNOWN)}/status`, leftBody, admin).expect(404);
+      const giveBody = { role: 'teacher', branchId: north, from: '2026-10-19' };
+      await post(`${staffPath(southPerson.staffId)}/roles`, giveBody, admin).expect(404);
+      await post(`${staffPath(UNKNOWN)}/roles`, giveBody, admin).expect(404);
+      expect(await rowsOf()).toEqual(before);
+    });
   });
 
   describe('the end of the Tutor role', () => {
