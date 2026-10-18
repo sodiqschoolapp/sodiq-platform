@@ -363,7 +363,7 @@ export const uz: Texts<'one' | 'other'> = {
     version_not_draft:
       'Bu versiya endi qoralama emas: uning yuklamasi va boshlanish sanasi oʻzgarmaydi. Yuklamani oʻzgartirish uchun yangi qoralama boshlang.',
     up_to_date_blocked:
-      'Bu tanlov jadval yoki yuklama qoidasini buzadi. Belgilangan tanlovni oʻzgartiring va qayta urinib koʻring.',
+      'Bu tanlov quyida koʻrsatilgan jadval yoki yuklama qoidalarini buzadi. Bunga sabab boʻlgan tanlovni oʻzgartiring va qayta urinib koʻring.',
     up_to_date_pick_missing: 'Har bir farq uchun qoralamani yoki eʼlon qilingan versiyani tanlang.',
     out_of_date_changed:
       'Siz koʻrayotganingizda qoralama, eʼlon qilingan versiya yoki belgi sabablari oʻzgardi. Nima oʻzgarganini tekshiring va uni qayta yangilang.',

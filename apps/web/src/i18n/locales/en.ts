@@ -358,7 +358,7 @@ export const en = {
     version_not_draft:
       'This version is no longer a draft: its load and start date do not change. Start a new draft to change the load.',
     up_to_date_blocked:
-      'These picks break a timetable rule or a load rule. Change the picks listed and try again.',
+      'These picks break the timetable or load rules listed below. Change a pick that causes them and try again.',
     up_to_date_pick_missing: 'Choose the draft or the published version for every difference.',
     out_of_date_changed:
       'The draft, the published version or what marked the draft changed while you looked. Check what changed and bring it up to date again.',
