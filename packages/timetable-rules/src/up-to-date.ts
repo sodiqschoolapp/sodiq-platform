@@ -264,7 +264,11 @@ export function draftDifferences(
     const changedBy =
       draftChanged && publishedChanged ? 'both' : draftChanged ? 'draft' : 'published';
     items.push({
-      key: members.join(','),
+      // The smallest row key of the item: a row is in one item only, so it
+      // names the item, and it stays short however many rows the item joins
+      // (review round 3: the joined keys of a grade-wide split passed the
+      // 2000 characters of `upToDateBodySchema`). `members` is sorted.
+      key: members[0] ?? '',
       rows,
       changedBy,
       defaultPick: changedBy === 'both' ? null : changedBy,

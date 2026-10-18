@@ -209,7 +209,7 @@ describe('draftDifferences', () => {
     });
     const items = draftDifferences(split('s', 't1'), split('d', 't1'), split('p', 't5'));
     expect(items.map((one) => [one.key, one.rows.map((r) => r.key)])).toEqual([
-      ['|group-1|english,|group-2|english', ['|group-1|english', '|group-2|english']],
+      ['|group-1|english', ['|group-1|english', '|group-2|english']],
     ]);
   });
 
@@ -232,6 +232,44 @@ describe('draftDifferences', () => {
       expect(rest).toEqual([]);
       expect(item?.rows.map((one) => one.key)).toEqual(['|boys|pe', '|girls|tech']);
     }
+  });
+});
+
+describe('the key of an item', () => {
+  // Review round 3: the key was every row key of the item joined, so an item
+  // of a grade-wide split passed the 2000 characters a pick may hold
+  // (`upToDateBodySchema`) and could not be picked.
+  it('is the smallest row key, as short for a split of forty groups as for one row', () => {
+    const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+    const english = uuid(999);
+    const split = (prefix: string, room: string): MergeVersion => {
+      const groups = Array.from({ length: 40 }, (_, n) => uuid(n + 1));
+      return {
+        rows: groups.map((groupId) =>
+          row(`${prefix}-${groupId}`, {
+            classId: null,
+            groupId,
+            subjectId: english,
+            classIds: [uuid(500 + (Number(groupId.slice(-3)) % 6))],
+          }),
+        ),
+        // All forty groups in one block: one item.
+        entries: groups.map((groupId, n) =>
+          entry(`${prefix}-e${n}`, `${prefix}-${groupId}`, `${prefix}-b`, { roomId: room }),
+        ),
+        pins: [],
+      };
+    };
+    const items = draftDifferences(null, split('d', 'room-1'), split('p', 'room-2'));
+    expect(items.map((one) => one.rows.length)).toEqual([40]);
+    const [item] = items;
+    const smallest = mergeRowKey({ classId: null, groupId: uuid(1), subjectId: english });
+    expect(item?.key).toBe(smallest);
+    expect(item?.rows.map((one) => one.key).join(',').length).toBeGreaterThan(2000);
+    expect(pickedItems(items, [{ item: smallest, side: 'published' }])).toEqual({
+      ok: true,
+      published: items,
+    });
   });
 });
 

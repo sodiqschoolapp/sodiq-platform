@@ -711,6 +711,73 @@ describe('bringing a draft up to date after a publish', () => {
     expect(withOf(halves[1] ?? '', 'published')).toEqual([['English A', name_en]]);
   });
 
+  // Review round 3: the key of an item was every row key joined, so the item
+  // of a split of thirty groups (2,250 characters) was refused by the body
+  // schema and the draft could never be brought up to date.
+  it('takes a split of thirty groups whole, its item named by a short key', async () => {
+    const branch = await t.newBranch();
+    const year = await yearIn(branch);
+    const lesson = await t.createSlotType(branch, 'Lesson', 'lesson', 45);
+    await t.assign(branch, await t.createTemplate(branch, 'Regular', [lesson, lesson]));
+    const english = await load.classes.subject({ grades: [7], journalType: 'attendance_only' });
+    const room = await load.classes.room(branch);
+    const classId = await load.classes.schoolClass(branch, year, { grade: 7, room });
+    const groups: string[] = [];
+    for (let n = 1; n <= 30; n += 1) {
+      groups.push(
+        await load.classes.group(branch, year, english, [classId], { name: `English ${n}` }),
+      );
+    }
+    const created = await post('/api/timetable/versions', branch, {
+      academicYearId: year,
+      startsOn: MONDAY,
+      copyFrom: null,
+    });
+    expect(created.status, JSON.stringify(created.body)).toBe(201);
+    const s = (created.body as { id: string }).id;
+    for (const groupId of groups) {
+      await load.row({
+        branch_id: branch,
+        version_id: s,
+        group_id: groupId,
+        subject_id: english,
+        teacher_id: await availableTeacher(branch, [english]),
+        lessons_per_week: 1,
+      });
+    }
+    const firstOf = async (version: string) =>
+      (
+        await t.database.migrator
+          .selectFrom('teaching_load_rows')
+          .select('id')
+          .where('version_id', '=', version)
+          .where('group_id', '=', groups[0] ?? '')
+          .executeTakeFirstOrThrow()
+      ).id;
+    await place(branch, s, await firstOf(s), 1, 1);
+    await confirm(branch, s);
+    versionOf(await publish(branch, s, MONDAY));
+    const d = await copy(branch, year, s, NOVEMBER);
+    const e = await copy(branch, year, s, NOVEMBER);
+    await place(branch, d, await firstOf(d), 1, 1);
+    await place(branch, e, await firstOf(e), 2, 1);
+    await confirm(branch, e);
+    versionOf(await publish(branch, e, NOVEMBER));
+
+    const shown = await shownOf(branch, d);
+    const [item, ...rest] = shown.items;
+    expect(rest).toEqual([]);
+    expect(item?.rows).toHaveLength(30);
+    expect(item?.rows.map((one) => one.key).join(',').length).toBeGreaterThan(2000);
+    expect(item?.key.length).toBeLessThanOrEqual(75);
+    versionOf(await upToDate(branch, d, shown.key, [{ item: item?.key ?? '', side: 'published' }]));
+    const placed = await placementsOf(d);
+    expect(placed).toHaveLength(30);
+    expect(placed.every((one) => one.weekday === 2 && one.slot_position === 1)).toBe(true);
+    expect(await fromOf(d)).toBe(e);
+    expect(await causesOf(d)).toEqual([]);
+  });
+
   // Review round 1, finding 2: decision 3's fallback compares a draft with a
   // later version, whose template may have a slot the draft's lacks.
   it("refuses a published lesson on a slot the draft's template lacks, and writes nothing", async () => {
