@@ -138,8 +138,10 @@ export async function impactOf(
   }
 
   // The names of what the preview names (decision 12): records of the branch only.
+  // A class reached only through a group lesson is in `classIds` alone (review of #142).
   const unitIds = new Set<string>([
-    ...impact.changes.map((one) => one.unitId),
+    ...impact.classIds,
+    ...impact.changes.flatMap((one) => [one.unitId, ...one.classIds]),
     ...(week?.rows ?? []).map((one) => one.unitId),
   ]);
   const subjectIds = new Set<string>([

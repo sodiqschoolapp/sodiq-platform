@@ -1801,6 +1801,47 @@ describe('publish', () => {
       expect(entry?.new_value).not.toHaveProperty('transition');
     });
 
+    it('names every class a changed group lesson draws from, with no lesson of its own changed (review of #142)', async () => {
+      const s = await scene();
+      const classB = await load.classes.schoolClass(s.branch, s.year, {
+        grade: 7,
+        room: await load.classes.room(s.branch),
+      });
+      const english = await load.classes.subject({ grades: [7], journalType: 'attendance_only' });
+      const group = await load.classes.group(s.branch, s.year, english, [s.classId, classB]);
+      const [first, second] = [
+        (await load.teacher(s.branch, { subjects: [{ subject: english, grades: [7] }] })).staffId,
+        (await load.teacher(s.branch, { subjects: [{ subject: english, grades: [7] }] })).staffId,
+      ];
+      await hours(s.branch, first);
+      await hours(s.branch, second);
+      /** A draft of the class row as published and the group row with the teacher given, on Tuesday. */
+      const withGroup = async (teacherId: string) => {
+        const version = await draftOf(s, [
+          { subject: s.subject, teacherId: s.teacherId, weekdays: [1] },
+        ]);
+        const rowId = await load.row({
+          branch_id: s.branch,
+          version_id: version,
+          group_id: group,
+          subject_id: english,
+          teacher_id: teacherId,
+          lessons_per_week: 1,
+        });
+        await placeAt(s.branch, version, rowId, 2);
+        await confirmTemplates(s.branch, version);
+        return version;
+      };
+      versionOf(await publish(s.branch, await withGroup(first), MONDAY));
+      const impact = await impactOf(s.branch, await withGroup(second), NEXT_MONDAY);
+      // Only the teacher of the group lesson changed; the class's own lesson did not.
+      expect(impact.changes.map((one) => [one.kind, one.unitId])).toEqual([['changed', group]]);
+      expect(impact.counts).toMatchObject({ moved: 0, removed: 0, created: 0 });
+      expect([...impact.classIds].sort()).toEqual([s.classId, classB].sort());
+      const named = new Set(impact.names.units.map((one) => one.id));
+      for (const id of [...impact.classIds, group]) expect(named.has(id), id).toBe(true);
+    });
+
     it('shows the transition week of a Wednesday start against the load and needs its acknowledgement (Done when)', async () => {
       // The earlier version: Monday and Tuesday; the draft: Wednesday and Thursday.
       const s = await scene({ lessons: 2, placed: 2 });
