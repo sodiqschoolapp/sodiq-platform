@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 18 October 2026: task 5.5b-1 Publish: the dated lessons written
+
+- A publish writes the dated lessons of its version over its run (`writeDatedLessons`, `apps/api/src/modules/timetable/dated-lessons.ts`), from the dated check's expansion: an unchanged lesson keeps its row and block, re-pointed; a teacher or room change is made in place; the rest is created or removed; nothing dated today or earlier (0079 refuses a delete or re-point).
+- "Replace" gives the archived versions' dates to the new version; "carry" rewrites each carried version's lessons inside its savepoint. The publish answers `timetable_busy` for a clash committed at the same moment.
+- Left out: the preview from the stored lessons (5.5b-2); one-day changes and exams kept after a publish (5.6a, 5.6c); lessons with data kept (6.1); journals and notices (5.5c).
+
+The next sessions must know:
+
+- A write that creates or removes dated lessons runs `set constraints all deferred` and ends `immediate` (`writeDatedLessons`); a lesson never changes block.
+- Lock order of a publish: the publish lock, the branch, the year, the branch's people `for key share`, the year's versions; `followTutors` takes the versions first too.
+- The next task is 5.5b-2.
+
 ## 18 October 2026: task 5.5a-3b-2 Publish: bringing a draft up to date after a publish
 
 - A draft marked by a publish is compared with the published version in force on the later of its start and tomorrow; `GET .../out-of-date` lists every difference item by item (rows of one subject whose classes meet, or that share a block, with their load fields, lessons in the week and pins), beside the version the draft started from, with who changed it and a default pick.

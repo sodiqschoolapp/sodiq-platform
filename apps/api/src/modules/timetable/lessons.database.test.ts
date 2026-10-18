@@ -1227,7 +1227,10 @@ describe('dated lessons and their time claims in the database', () => {
       expect(await claimsOf(block.block)).toHaveLength(2);
     });
 
-    it('refuses a change of class, group or subject, and any delete of a lesson or a block', async () => {
+    // Task 5.5b-1 (decision 2, Look first): a lesson or block dated after today
+    // may be deleted by a publish; one dated today or earlier is refused by
+    // date (dated-lessons.database.test.ts), no longer by a missing grant.
+    it('refuses a change of class, group or subject', async () => {
       const block = await place(north, { date: '2026-11-12', start: '10:00', end: '10:45' }, [
         { classId: await schoolClass() },
       ]);
@@ -1240,23 +1243,6 @@ describe('dated lessons and their time claims in the database', () => {
               .set({ class_id: oxford })
               .where('id', '=', block.lessons[0] ?? '')
               .execute(),
-          ),
-        ),
-      ).toMatchObject({ code: INSUFFICIENT_PRIVILEGE });
-      expect(
-        await refusal(
-          inBranch(north, (transaction) =>
-            transaction
-              .deleteFrom('lessons')
-              .where('id', '=', block.lessons[0] ?? '')
-              .execute(),
-          ),
-        ),
-      ).toMatchObject({ code: INSUFFICIENT_PRIVILEGE });
-      expect(
-        await refusal(
-          inBranch(north, (transaction) =>
-            transaction.deleteFrom('lesson_blocks').where('id', '=', block.block).execute(),
           ),
         ),
       ).toMatchObject({ code: INSUFFICIENT_PRIVILEGE });

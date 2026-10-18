@@ -42,6 +42,8 @@ export interface DatedFindings {
   readonly cancelled: CancelledLesson[];
   /** The lessons of the dates, for the impact preview (task 5.5a-2b-1). */
   readonly dated: DatedPattern;
+  /** The first moment of each date in branch time, for the lessons written (task 5.5b-1). */
+  readonly begins: (date: string) => Date;
 }
 
 /** A dated row of a class or group, half-open. */
@@ -172,7 +174,9 @@ export async function datedCheck(
       teachers: teachersOn(date),
       classStudents: (classId) => classOn(classId, date),
       dayOf: (_branch, grade) => dayOfDate(grade, date).engine,
-      loadRows: [],
+      // Task 5.5b-1 (From 5.4c-3b): the rows, so that `checkBlocks` knows
+      // one block of the load and a pairing by date too.
+      loadRows: model.facts.loadRows,
       otherDrafts: [],
     };
     const fixed = elsewhere.get(date) ?? [];
@@ -237,6 +241,7 @@ export async function datedCheck(
         : [{ date: one.date, reason: one.reason, entryIds: [...one.entryIds] }],
     ),
     dated,
+    begins,
   };
 }
 

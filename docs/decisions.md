@@ -261,6 +261,29 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 18 October 2026: publish, the dated lessons written (task 5.5b-1)
+
+Plan approved on pull request #152 with corrections 1 to 3; decisions 1 to 13 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a task split). 5.5b is split into 5.5b-1 (the dated lessons written at publish, the chain, the database guards) and 5.5b-2 (the preview from the stored lessons) | Decision 1 |
+| **Look first** (a grant widened by a requirement). Delete on `lessons` and `lesson_blocks` and an update of their version, pattern block, load row and entry are granted (0079); a delete or a re-point dated today or earlier, or with no moment of the transaction, is refused, and a re-point is checked at the commit as an insert is (`lesson_repoint`); `lessons.database.test.ts` no longer expects the delete refused for want of a grant | Decision 2; 5.1a decision 12 left both to this task |
+| **Look first** (a Build line moved). Stored one-day changes applied again after a publish go to 5.6a, exams kept after a publish to 5.6c: neither can be stored before them; a kept lesson keeps a cancel of cause `reason` or `exam` | Decision 8 |
+| **Look first** (a test changed by a requirement). `tutor-lessons.test.ts`, "a give that waited for a lesson write": the write at the same moment is a teacher set on a stored lesson, no longer a new lesson, since only a publish writes one and it holds the year's versions that a follow now locks first | Decision 11 |
+| An unchanged lesson is re-pointed to the new version, its block with it | Decision 3 |
+| The same lesson: class or group, subject, date, start and end, paired one to one as `publishImpact` pairs; a lesson created cancelled pairs only with one cancelled with the same cause at the same pattern times | Decision 4, spec review must-fix 1 |
+| A new dated block reuses the stored block holding most of its kept lessons, the smaller id on a tie, each stored block once | Decision 5, spec review must-fix 2 |
+| A cancelled lesson takes its pattern block's times | Decision 6 |
+| "Needs a teacher" is a null teacher; a vacancy always keeps its id | Decision 7 |
+| A lesson holding data cannot exist before 6.1 | Decision 9 |
+| The guards a change at the same moment can raise, a deadlock and a failed serialization answer `timetable_busy` with the code only; the guards only a fault of the code raises stay 500 | Decision 10 |
+| `followTutors` locks every version of its classes' years `for no key update` (once for all the classes of `followTutorEnds`) | Decision 11 |
+| **Build decision** (in place of decision 11's `lockPerson` `for no key update` and review correction 2). A person's record stays `for update` under a status change: `department-moves.test.ts` shows a department move must wait for a load row in flight that names the person, which `for no key update` lets pass. The publish instead takes the people of its branch `for key share` before the versions, so it waits for a status change before it holds them, or the change waits for the publish | Spec review must-fix 5; found by `pnpm test:changed` |
+| The audit keeps every removed lesson with its fields and every changed lesson's teacher and room before and after; created lessons are counted | Decision 12 |
+| The write runs after every check and the status update, its commit checks deferred for its length | Decision 13, spec review must-fix 3 |
+| A carried version's lessons are written inside its savepoint, from the carry's own check | Spec review must-fix 4 |
+
 ## 18 October 2026: bringing a draft up to date after a publish (task 5.5a-3b-2)
 
 Plan approved on pull request #148 with corrections 1 to 3; decisions 1 to 14 confirmed there. Flagged on issue #42.

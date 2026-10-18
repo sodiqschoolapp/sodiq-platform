@@ -5,6 +5,7 @@ import {
   type CancelledLesson,
   type DayKeep,
   type DayKeepBody,
+  type ErrorCode,
   type ErrorDetail,
   type NeedsTeacherAnswer,
   type PublishBody,
@@ -34,6 +35,7 @@ import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
+import { refusingConstraints } from '../setup/setup-refusals.js';
 import { dailyWeightsFit, quarterWeightsFit } from '../setup/subject-weights.js';
 import type { StoredLoadRow } from './load-facts.js';
 import {
@@ -47,10 +49,11 @@ import {
   type CarryResult,
   type LaterVersion,
 } from './chain.js';
-import { datedCheck, datedLessonsOf } from './dated-check.js';
+import { datedCheck, datedLessonsOf, type DatedFindings } from './dated-check.js';
+import { writeDatedLessons, type DatedWrite } from './dated-lessons.js';
 import { impactOf, type Impact } from './impact.js';
 import { markPublished, outOfDateColumn } from './out-of-date.js';
-import { refusingPattern, TimetablePattern } from './pattern.service.js';
+import { PATTERN_REFUSALS, TimetablePattern, type PatternState } from './pattern.service.js';
 import { resultAnswerOf } from './rule-answers.js';
 import { lockSubjects, Timetable, type VersionRow } from './timetable.service.js';
 import { auditOf, followChanged, followVersion } from './tutor-lessons.js';
@@ -85,6 +88,8 @@ interface Findings {
   readonly chain: PublishChainAnswer | null;
   readonly later: readonly LaterVersion[];
   readonly carried: readonly CarryResult[];
+  /** Task 5.5b-1: the version over its run and its dated check, what its lessons are written from; `null` when the start is refused. */
+  readonly written: { readonly state: PatternState; readonly findings: DatedFindings } | null;
 }
 
 /** A refusal as a detail of `publish_blocked` (decision 12). */
@@ -131,7 +136,8 @@ function detailOf(refusal: PublishRefusal): ErrorDetail {
  *
  * Lock order (spec review of the plan, must-fix 1 and should-fix 9): the
  * school's publish lock; the branch row FOR KEY SHARE; the year FOR SHARE;
- * every version of the branch and year FOR UPDATE in the order of their id,
+ * the people of the branch FOR KEY SHARE in the order of their id (task
+ * 5.5b-1); every version of the branch and year FOR UPDATE in the order of their id,
  * the order `followTutors` takes; then `lockDraft`, whose row lock is held.
  */
 @Injectable()
@@ -284,7 +290,7 @@ export class TimetablePublish {
     requestId: string,
   ): Promise<TimetableVersion> {
     const branchId = branchOf(access);
-    return refusingPattern(() =>
+    return refusingPublish(() =>
       this.transactions.run(access.branchIds, async (transaction) => {
         await sql`select pg_advisory_xact_lock(${PUBLISH_LOCK})`.execute(transaction);
         await this.timetable.findVersion(transaction, branchId, id);
@@ -337,6 +343,20 @@ export class TimetablePublish {
       .select('id')
       .where('id', '=', named.academic_year_id)
       .forShare()
+      .execute();
+    // Task 5.5b-1 (spec review must-fix 5): the people of the branch FOR KEY
+    // SHARE before the versions, the lock the lessons' keys to them take. A
+    // status change holds its person FOR UPDATE and then waits for the
+    // versions inside `followTutors`; taking it here first, the publish waits
+    // for such a change, or the change waits for the publish, never both.
+    await transaction
+      .selectFrom('staff')
+      .select('staff.id')
+      .where('staff.id', 'in', (eb) =>
+        eb.selectFrom('staff_branches').select('staff_id').where('branch_id', '=', branchId),
+      )
+      .orderBy('staff.id')
+      .forKeyShare()
       .execute();
     await transaction
       .selectFrom('timetable_versions')
@@ -443,14 +463,29 @@ export class TimetablePublish {
         .where('id', '=', later.id)
         .execute();
     }
+    // Task 5.5b-1: the dated lessons of the new version over its run; under
+    // "replace" its run reaches the year's end, over the archived versions'.
+    if (findings.written === null) {
+      throw new Error('A publish with no refusal has its dated check.');
+    }
+    const lessons = await writeDatedLessons(
+      transaction,
+      findings.written.state,
+      findings.written.findings,
+      startsOn,
+      findings.written.state.pattern.model.data.versionEnd,
+    );
     const carried: CarryResult[] = [];
     const carryLeft: CarryResult[] = [];
+    const carriedLessons = new Map<string, DatedWrite>();
     for (const result of input.chain === 'carry' ? findings.carried : []) {
       if (result.into.applied.length === 0) continue;
-      if (result.left || !(await this.carryWrite(transaction, result))) {
+      const write = result.left ? null : await this.carryWrite(transaction, result);
+      if (write === null) {
         carryLeft.push(result);
       } else {
         carried.push(result);
+        if (write !== true) carriedLessons.set(result.version.id, write);
       }
     }
     await this.audit.record(transaction, {
@@ -473,6 +508,7 @@ export class TimetablePublish {
         ...(follow !== null && followChanged(follow) ? { tutorLessons: auditOf(follow) } : {}),
         // Task 5.5a-2b-1, decision 11: the counts of the preview and the rows acknowledged.
         impact: findings.impact?.answer.counts ?? null,
+        datedLessons: datedAuditOf(lessons),
         ...(transitionKey === null || findings.impact === null
           ? {}
           : {
@@ -518,6 +554,7 @@ export class TimetablePublish {
           changes: result.into.applied.map((one) => ({ ...one })),
           rows: result.into.rows.map((one) => ({ ...one })),
           entries: result.into.entries.map((one) => ({ ...one })),
+          ...datedOfCarry(carriedLessons.get(result.version.id)),
         },
         requestId,
       });
@@ -528,9 +565,15 @@ export class TimetablePublish {
   /**
    * The changes of a carry written into a later version (decision 3), under
    * a savepoint of its own: a refusal of the database that the engine did not
-   * foresee leaves that version as it is (decision 8). True when written.
+   * foresee leaves that version as it is (decision 8), its dated lessons
+   * included (task 5.5b-1, spec review must-fix 4): they are written inside
+   * the savepoint, from what the carry's check built. `null` when left; what
+   * the lessons' write did, or `true` with no lesson to write.
    */
-  private async carryWrite(transaction: Transaction, result: CarryResult): Promise<boolean> {
+  private async carryWrite(
+    transaction: Transaction,
+    result: CarryResult,
+  ): Promise<DatedWrite | true | null> {
     await sql`savepoint carry_write`.execute(transaction);
     try {
       for (const row of result.into.rows) {
@@ -549,15 +592,27 @@ export class TimetablePublish {
           .where('version_id', '=', result.version.id)
           .execute();
       }
+      const written =
+        result.written === null
+          ? true
+          : await writeDatedLessons(
+              transaction,
+              result.written.state,
+              result.written.findings,
+              result.version.starts_on,
+              result.written.lastDate,
+            );
       // Every constraint is immediate since the publish's own `set constraints
-      // all immediate`, so a refusal comes here, inside the savepoint.
+      // all immediate`, and again at the end of the lessons' write, so a
+      // refusal comes here, inside the savepoint.
       await sql`release savepoint carry_write`.execute(transaction);
-      return true;
+      return written;
     } catch (error) {
       if (!isCheckRefusal(error)) throw error;
       await sql`rollback to savepoint carry_write`.execute(transaction);
       await sql`release savepoint carry_write`.execute(transaction);
-      return false;
+      await sql`set constraints all immediate`.execute(transaction);
+      return null;
     }
   }
 
@@ -591,6 +646,7 @@ export class TimetablePublish {
         chain: null,
         later: [],
         carried: [],
+        written: null,
       };
     }
     const version: VersionRow = { ...stored, starts_on: startsOn };
@@ -799,6 +855,7 @@ export class TimetablePublish {
       chain: chainAnswer,
       later,
       carried,
+      written: { state, findings: dated },
     };
   }
 
@@ -906,10 +963,72 @@ function engineYearOf(version: VersionRow, quarters: readonly QuarterRow[]): Eng
   };
 }
 
-/** A refusal of a check of the database (23514, 23P01), which a carry write leaves its version for (decision 8). */
+/**
+ * A refusal of a check of the database (23514, 23P01), which a carry write
+ * leaves its version for (decision 8); never one that only a fault of the
+ * code raises (task 5.5b-1, decision 10).
+ */
 function isCheckRefusal(error: unknown): boolean {
-  const code = (error as { code?: unknown } | null)?.code;
-  return code === '23514' || code === '23P01';
+  const failure = error as { code?: unknown; constraint?: unknown } | null;
+  return (
+    (failure?.code === '23514' || failure?.code === '23P01') &&
+    !(typeof failure.constraint === 'string' && CODE_FAULTS.has(failure.constraint))
+  );
+}
+
+/** The guards of 0079 that only a fault of the code can raise: errors of the server (decision 10). */
+const CODE_FAULTS = new Set(['lesson_delete_past', 'lesson_repoint', 'lesson_repoint_past']);
+
+/**
+ * The refusals of a publish (task 5.5b-1, decision 10; 5.5b From 5.1a): the
+ * pattern's, and the guards of the lessons that a change written at the same
+ * moment can raise, as `timetable_busy` with the code only; the rule engine
+ * checked every date first. A deadlock or a failed serialization is
+ * `timetable_busy` too.
+ */
+const PUBLISH_REFUSALS: Readonly<Record<string, ErrorCode>> = {
+  ...PATTERN_REFUSALS,
+  time_claims_teacher_excl: 'timetable_busy',
+  time_claims_room_excl: 'timetable_busy',
+  time_claims_class_excl: 'timetable_busy',
+  room_shared_full: 'timetable_busy',
+  room_shared_capacity: 'timetable_busy',
+  lesson_block_student_twice: 'timetable_busy',
+  lesson_double_pair: 'timetable_busy',
+};
+
+const BUSY_CODES = new Set(['40P01', '40001']);
+
+async function refusingPublish<T>(work: () => Promise<T>): Promise<T> {
+  try {
+    return await refusingConstraints(work, PUBLISH_REFUSALS);
+  } catch (error) {
+    if (BUSY_CODES.has(String((error as { code?: unknown }).code))) {
+      throw new ApiException('timetable_busy', 409);
+    }
+    throw error;
+  }
+}
+
+/** The dated lessons of a carry entry, when the carry wrote any. */
+const datedOfCarry = (write: DatedWrite | undefined) =>
+  write === undefined ? {} : { datedLessons: datedAuditOf(write) };
+
+/** The part of an audit entry that names what a write of dated lessons did (decision 12). */
+function datedAuditOf(write: DatedWrite) {
+  return {
+    firstDate: write.firstDate,
+    lastDate: write.lastDate,
+    created: write.created,
+    kept: write.kept,
+    cancelled: write.cancelled,
+    removed: write.removed.map((one) => ({ ...one })),
+    changed: write.changed.map((one) => ({
+      id: one.id,
+      teacherId: { ...one.teacherId },
+      roomId: { ...one.roomId },
+    })),
+  };
 }
 
 /** Decision 6: tomorrow at the earliest, and inside the year. */

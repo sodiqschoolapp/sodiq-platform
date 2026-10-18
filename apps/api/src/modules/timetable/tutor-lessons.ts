@@ -126,9 +126,49 @@ export async function followTutors(
   if (wanted.length === 0) {
     return follow;
   }
+  await lockYearVersions(transaction, wanted);
   await followDrafts(transaction, wanted, null, follow);
   await followLessons(transaction, wanted, from, follow);
   return follow;
+}
+
+/**
+ * Every version of the classes' years, drafts and published, `for no key
+ * update` in the order of their id after the years `for share`: the locks a
+ * publish takes before it reads the Tutors and writes the dated lessons
+ * (task 5.5b-1, decision 11). A change of Tutor and a publish then run one
+ * after the other: the later reads what the earlier wrote, the Tutors or the
+ * lessons. A caller that follows several classes one by one takes it once
+ * for all of them first (`followTutorEnds`, spec review should-fix 4).
+ */
+export async function lockYearVersions(
+  transaction: Transaction,
+  classIds: readonly string[],
+): Promise<void> {
+  if (classIds.length === 0) return;
+  const years = await transaction
+    .selectFrom('classes')
+    .select('academic_year_id')
+    .distinct()
+    .where('id', 'in', classIds)
+    .orderBy('academic_year_id')
+    .execute();
+  const yearIds = years.map((one) => one.academic_year_id);
+  if (yearIds.length === 0) return;
+  await transaction
+    .selectFrom('academic_years')
+    .select('id')
+    .where('id', 'in', yearIds)
+    .orderBy('id')
+    .forShare()
+    .execute();
+  await transaction
+    .selectFrom('timetable_versions')
+    .select('id')
+    .where('academic_year_id', 'in', yearIds)
+    .orderBy('id')
+    .forNoKeyUpdate()
+    .execute();
 }
 
 /**
