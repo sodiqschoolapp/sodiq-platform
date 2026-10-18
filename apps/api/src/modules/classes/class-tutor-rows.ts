@@ -8,7 +8,12 @@ import {
 } from '@sodiq/shared';
 import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
-import { emptyFollow, followTutors, type TutorFollow } from '../timetable/tutor-lessons.js';
+import {
+  emptyFollow,
+  followTutors,
+  lockYearVersions,
+  type TutorFollow,
+} from '../timetable/tutor-lessons.js';
 
 /**
  * The refusals of the database for classes and their Tutors
@@ -201,6 +206,9 @@ export async function followTutorEnds(
     earliest.set(row.classId, Math.min(at, earliest.get(row.classId) ?? at));
   }
   const all = emptyFollow();
+  // Task 5.5b-1 (spec review should-fix 4): the versions of every class's
+  // year at once, in the order of their id, before the classes one by one.
+  await lockYearVersions(transaction, [...earliest.keys()].sort());
   for (const classId of [...earliest.keys()].sort()) {
     const one = await followTutors(transaction, [classId], new Date(earliest.get(classId) ?? 0));
     all.moved.push(...one.moved);

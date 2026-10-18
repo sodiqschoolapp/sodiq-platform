@@ -776,7 +776,9 @@ describe('bringing a draft up to date after a publish', () => {
     expect(placed.every((one) => one.weekday === 2 && one.slot_position === 1)).toBe(true);
     expect(await fromOf(d)).toBe(e);
     expect(await causesOf(d)).toEqual([]);
-  });
+    // Two publishes of thirty group lessons write their dated lessons up to
+    // the year's end (5.5b-1): about 5 s alone, past 30 s on a loaded CI runner.
+  }, 120_000);
 
   // Review round 1, finding 2: decision 3's fallback compares a draft with a
   // later version, whose template may have a slot the draft's lacks.

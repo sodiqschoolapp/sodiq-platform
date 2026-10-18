@@ -342,8 +342,69 @@ describe('publish', () => {
         .execute(t.database.migrator)
         .then((result) => result.rows),
       t.database.migrator.selectFrom('request_keys').selectAll().orderBy('key').execute(),
+      // Task 5.5b-1: the dated lessons, their blocks and claims.
+      t.database.migrator
+        .selectFrom('lesson_blocks')
+        .selectAll()
+        .where('branch_id', 'in', branches)
+        .orderBy('id')
+        .execute(),
+      t.database.migrator
+        .selectFrom('lessons')
+        .selectAll()
+        .where('branch_id', 'in', branches)
+        .orderBy('id')
+        .execute(),
+      t.database.migrator
+        .selectFrom('time_claims')
+        .selectAll()
+        .where('branch_id', 'in', branches)
+        .orderBy('id')
+        .execute(),
       t.auditCount(),
     ]);
+  };
+
+  /** The dated lessons of a branch with their blocks (task 5.5b-1), by date, start and id. */
+  const lessonsOf = (branch: string) =>
+    t.database.migrator
+      .selectFrom('lessons')
+      .innerJoin('lesson_blocks', 'lesson_blocks.id', 'lessons.block_id')
+      .select([
+        'lessons.id',
+        'lessons.block_id',
+        sql<string>`lessons.lesson_date::text`.as('date'),
+        'lessons.starts_at',
+        'lessons.ends_at',
+        'lessons.class_id',
+        'lessons.group_id',
+        'lessons.subject_id',
+        'lessons.load_row_id',
+        'lessons.pattern_entry_id',
+        'lessons.teacher_id',
+        'lessons.room_id',
+        'lessons.cancel_cause',
+        'lesson_blocks.version_id',
+        'lesson_blocks.quarter_id',
+        'lesson_blocks.double_pair_id',
+      ])
+      .where('lessons.branch_id', '=', branch)
+      .orderBy('lessons.lesson_date')
+      .orderBy('lessons.starts_at')
+      .orderBy('lessons.id')
+      .execute();
+
+  /** The school dates of a weekday from `from` to `to`, inside the quarters (`QUARTERS`). */
+  const schoolDates = (weekday: number, from: string, to = '2027-05-31') => {
+    const dates: string[] = [];
+    for (const [start, end] of QUARTERS) {
+      for (let day = new Date(`${start}T00:00:00Z`); ; day.setUTCDate(day.getUTCDate() + 1)) {
+        const date = day.toISOString().slice(0, 10);
+        if (date > end) break;
+        if (date >= from && date <= to && (day.getUTCDay() || 7) === weekday) dates.push(date);
+      }
+    }
+    return dates;
   };
 
   /**
@@ -964,6 +1025,38 @@ describe('publish', () => {
       return { ...s, a: s.version, b, c, fix, second, room2 };
     }
 
+    /**
+     * Task 5.5b-1: the lessons from 19 October as the fix gives them, the
+     * others as they were; every lesson keeps its id (one per Monday).
+     */
+    const expectLessons = async (
+      s: { branch: string; classId: string; fix: string; second: string; room2: string },
+      all: Awaited<ReturnType<typeof lessonsOf>>,
+      fixed: (date: string) => boolean,
+      teacherFrom?: (date: string) => boolean,
+    ) => {
+      // The scene's class only: another class of a later version shares its dates.
+      const before = all.filter((one) => one.class_id === s.classId);
+      const after = (await lessonsOf(s.branch)).filter((one) => one.class_id === s.classId);
+      expect(after.map((one) => one.id)).toEqual(before.map((one) => one.id));
+      expect(after.map((one) => one.date)).toEqual(schoolDates(1, MONDAY));
+      for (const [index, one] of after.entries()) {
+        const was = before[index];
+        if (fixed(one.date)) {
+          expect(one).toMatchObject({
+            version_id: s.fix,
+            teacher_id: s.second,
+            room_id: s.room2,
+            block_id: was?.block_id,
+          });
+        } else if (teacherFrom?.(one.date) === true) {
+          expect(one).toEqual({ ...was, teacher_id: s.second, room_id: s.room2 });
+        } else {
+          expect(one).toEqual(was);
+        }
+      }
+    };
+
     /** The key of the later versions a check shows with an answer. */
     const laterKey = async (branch: string, version: string, startsOn: string, chain: string) => {
       const answer = checkOf(await checkChain(branch, version, startsOn, chain));
@@ -988,6 +1081,10 @@ describe('publish', () => {
         await rowsOf(s.c),
         await entriesOf(s.c),
       ];
+      const lessonsBefore = await lessonsOf(s.branch);
+      // A ran until B, B until C, C to the year's end: each Monday once.
+      expect(lessonsBefore.map((one) => one.date)).toEqual(schoolDates(1, MONDAY));
+      expect([...new Set(lessonsBefore.map((one) => one.version_id))]).toEqual([s.a, s.b, s.c]);
       const chain = await laterKey(s.branch, s.fix, '2026-10-19', 'run_until');
       expect(chain.later.map((one) => one.id)).toEqual([s.b, s.c]);
       const answer = checkOf(await checkChain(s.branch, s.fix, '2026-10-19', 'run_until'));
@@ -1005,6 +1102,8 @@ describe('publish', () => {
         await rowsOf(s.c),
         await entriesOf(s.c),
       ]).toEqual(before);
+      // Task 5.5b-1: the fix's two Mondays only; B's and C's lessons as they were.
+      await expectLessons(s, lessonsBefore, (date) => date >= '2026-10-19' && date < '2026-11-09');
       const [entry] = await t.entries('timetable_version.publish', s.fix);
       expect(entry?.new_value).toMatchObject({
         chain: 'run_until',
@@ -1020,7 +1119,10 @@ describe('publish', () => {
       const answer = checkOf(await checkChain(s.branch, s.fix, '2026-10-19', 'replace'));
       expect(answer.refusals).toEqual([]);
       expect(lastDateOf(answer)).toBe('2027-05-31');
+      const lessonsBefore = await lessonsOf(s.branch);
       versionOf(await publishChain(s.branch, s.fix, '2026-10-19', 'replace', chain.key));
+      // Task 5.5b-1: the archived versions' dates are the fix's, each lesson kept.
+      await expectLessons(s, lessonsBefore, (date) => date >= '2026-10-19');
       expect((await versionRow(s.b)).status).toBe('archived');
       expect((await versionRow(s.c)).status).toBe('archived');
       expect((await versionRow(s.a)).status).toBe('published');
@@ -1057,7 +1159,19 @@ describe('publish', () => {
       );
       expect(answer.impact?.roomIds).toEqual(expect.arrayContaining([s.room2]));
       const key = answer.chain?.key;
+      const lessonsBefore = await lessonsOf(s.branch);
       versionOf(await publishChain(s.branch, s.fix, '2026-10-19', 'carry', key));
+      // Task 5.5b-1: B's and C's lessons keep their version and take the carried teacher and room.
+      await expectLessons(
+        s,
+        lessonsBefore,
+        (date) => date >= '2026-10-19' && date < '2026-11-09',
+        (date) => date >= '2026-11-09',
+      );
+      const [carriedB] = await t.entries('timetable_version.carry', s.b);
+      expect(carriedB?.new_value).toMatchObject({
+        datedLessons: { firstDate: '2026-11-09', lastDate: '2027-01-10', created: 0, removed: [] },
+      });
       for (const id of [s.b, s.c]) {
         expect((await rowsOf(id)).map((one) => one.teacher_id)).toEqual([s.second]);
         expect(await entriesOf(id)).toEqual([
@@ -1098,8 +1212,19 @@ describe('publish', () => {
       expect(left).toMatchObject({ applied: 2, left: true });
       expect(left?.refusals.map((one) => one.code)).toContain('pattern_blocked');
       expect(answer.impact?.carried.map((one) => one.versionId)).toEqual([s.b, s.c]);
+      const lessonsBefore = await lessonsOf(s.branch);
       versionOf(await publishChain(s.branch, s.fix, '2026-10-19', 'carry', answer.chain?.key));
       expect([await rowsOf(d), await entriesOf(d)]).toEqual(before);
+      // Task 5.5b-1 (spec review should-fix 10): D's lessons as they were, B's and C's carried.
+      await expectLessons(
+        s,
+        lessonsBefore,
+        (date) => date >= '2026-10-19' && date < '2026-11-09',
+        (date) => date >= '2026-11-09' && date < '2027-03-30',
+      );
+      expect((await lessonsOf(s.branch)).filter((one) => one.date >= '2027-03-30')).toEqual(
+        lessonsBefore.filter((one) => one.date >= '2027-03-30'),
+      );
       expect(await t.entries('timetable_version.carry', d)).toHaveLength(0);
       for (const id of [s.b, s.c]) {
         expect((await rowsOf(id)).map((one) => one.teacher_id)).toEqual([s.second]);
@@ -1409,13 +1534,21 @@ describe('publish', () => {
 
   describe('another branch', () => {
     it("answers 404 for another branch's version and an unknown one, and changes nothing", async () => {
-      const s = await scene();
-      const theirs = await scene();
-      await viceIn(s.branch);
+      const first = await scene();
+      const firstTheirs = await scene();
+      await viceIn(first.branch);
+      // Task 5.5b-1 (.claude/rules/api.md): stored lessons a publish would
+      // change, in both branches, from a published version of each.
+      versionOf(await publish(first.branch, first.version, MONDAY));
+      versionOf(await publish(firstTheirs.branch, firstTheirs.version, MONDAY));
+      const s = { ...first, version: await placedDraft(first) };
+      const theirs = { ...firstTheirs, version: await placedDraft(firstTheirs) };
       // Rows a publish would change, in both branches (permission review, must-fix 2).
       await withMoreToChange(s);
       await withMoreToChange(theirs);
       const before = await written([s.version, theirs.version]);
+      expect(before[8].length).toBeGreaterThan(0);
+      expect(new Set(before[8].map((one) => one.branch_id)).size).toBe(2);
       for (const cookie of [t.admin, t.vicePrincipal]) {
         for (const id of [theirs.version, UNKNOWN]) {
           refusedWith(await publish(s.branch, id, '2026-10-19', cookie), 404, 'not_found');
@@ -1697,6 +1830,344 @@ describe('publish', () => {
       expect(await yearEdit.done).toBeUndefined();
       expect(versionOf(await published).status).toBe('published');
     });
+    /**
+     * Task 5.5b-1 (decision 11): a scene with a Tutor row of the class on
+     * Tuesday, the first Tutor until 16 November and a second Tutor's role
+     * ready to give from then; the scene's own teacher teaches Monday.
+     */
+    async function tutorScene() {
+      const s = await scene();
+      const tutorSubject = await load.tutorSubject({ grades: [7] });
+      await t.database.migrator
+        .updateTable('subjects')
+        .set({ journal_type: 'attendance_only' })
+        .where('id', '=', tutorSubject)
+        .execute();
+      const first = await load.teacher(s.branch);
+      await hours(s.branch, first.staffId);
+      const second = await load.teacher(s.branch);
+      await hours(s.branch, second.staffId);
+      await load.tutorOf(s.branch, s.classId, first.accountId, {
+        until: new Date('2026-11-16T00:00:00+05:00'),
+      });
+      const created = await post(`/api/timetable/versions/${s.version}/load`, s.branch, {
+        classId: s.classId,
+        groupId: null,
+        subjectId: tutorSubject,
+        teacherId: null,
+        lessonsPerWeek: 1,
+        roomId: null,
+        roomType: null,
+        doubleLessons: false,
+      });
+      expect(created.status, JSON.stringify(created.body)).toBe(201);
+      await placeAt(s.branch, s.version, (created.body as { id: string }).id, 2);
+      await confirmTemplates(s.branch, s.version);
+      await load.freeEditLock(s.version);
+      const secondRole = await load.classes.role(second.accountId, s.branch, 'tutor');
+      return { ...s, tutorSubject, first, second, secondRole };
+    }
+
+    /** The class's Tutor lessons (Tuesdays) by date with their teacher. */
+    const tutorLessonsOf = async (s: { branch: string; tutorSubject: string }) =>
+      (await lessonsOf(s.branch))
+        .filter((one) => one.subject_id === s.tutorSubject)
+        .map((one) => [one.date, one.teacher_id] as const);
+
+    /** Two real requests that meet on the year's versions, the first sent first (decision 11). */
+    async function behindVersions(
+      s: { branch: string; year: string },
+      first: () => Promise<Response>,
+      second: () => Promise<Response>,
+      hold: (transaction: Transaction) => Promise<unknown> = (transaction) =>
+        transaction
+          .selectFrom('timetable_versions')
+          .select('id')
+          .where('academic_year_id', '=', s.year)
+          .orderBy('id')
+          .forNoKeyUpdate()
+          .execute(),
+    ): Promise<[Response, Response]> {
+      const gate = await holdOpen([s.branch], async (transaction) => {
+        await hold(transaction);
+      });
+      const one = first().then((response) => response);
+      await expect.poll(() => waiting(), { timeout: 20_000, interval: 25 }).toBe(1);
+      const two = second().then((response) => response);
+      await expect.poll(() => waiting(), { timeout: 20_000, interval: 25 }).toBe(2);
+      gate.release();
+      expect(await gate.done).toBeUndefined();
+      return Promise.all([one, two]);
+    }
+
+    it('writes the Tutor lessons with no teacher after the Tutor ends (no Tutor on the date)', async () => {
+      const s = await tutorScene();
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      for (const [date, teacher] of await tutorLessonsOf(s)) {
+        expect(teacher).toBe(date < '2026-11-16' ? s.first.staffId : null);
+      }
+    });
+
+    // Review of #152, finding 2 (edge/timetable, Structure: "Their teacher is
+    // always the class's Tutor in force on the lesson's date").
+    it('gives a Tutor lesson created cancelled the Tutor of its date, not the Tutor of the row', async () => {
+      const s = await tutorScene();
+      const given = await post(`/api/classes/${s.classId}/tutors`, s.branch, {
+        assignmentId: s.secondRole,
+        kind: 'tutor',
+        from: '2026-11-16',
+        until: null,
+      });
+      expect(given.status, JSON.stringify(given.body)).toBe(201);
+      const regular = await t.database.migrator
+        .selectFrom('day_template_assignments')
+        .select('day_template_id')
+        .where('branch_id', '=', s.branch)
+        .executeTakeFirstOrThrow();
+      await t.database.migrator
+        .insertInto('calendar_entries')
+        .values({
+          branch_id: s.branch,
+          kind: 'special_day',
+          name: 'Exam week',
+          first_date: '2026-11-24',
+          last_date: '2026-11-24',
+          day_template_id: regular.day_template_id,
+          exam_week: 'no_regular_lessons',
+        })
+        .execute();
+      await load.freeEditLock(s.version);
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      const lessons = (await lessonsOf(s.branch)).filter(
+        (one) => one.subject_id === s.tutorSubject,
+      );
+      const cancelled = lessons.filter((one) => one.cancel_cause !== null);
+      expect(cancelled.map((one) => [one.date, one.cancel_cause, one.teacher_id])).toEqual([
+        ['2026-11-24', 'exam_week', s.second.staffId],
+      ]);
+      // The held Tutor lessons around it carry the same Tutor.
+      const around = lessons.filter(
+        (one) => one.date === '2026-11-17' || one.date === '2026-12-01',
+      );
+      expect(around.map((one) => one.teacher_id)).toEqual([s.second.staffId, s.second.staffId]);
+    });
+
+    it('gives the Tutor lessons to the new Tutor when a Tutor give and a publish meet, in either order (decision 11)', async () => {
+      for (const order of [0, 1]) {
+        const s = await tutorScene();
+        const give = () =>
+          post(`/api/classes/${s.classId}/tutors`, s.branch, {
+            assignmentId: s.secondRole,
+            kind: 'tutor',
+            from: '2026-11-16',
+            until: null,
+          });
+        const send = () => publish(s.branch, s.version, MONDAY);
+        const [one, two] = await behindVersions(
+          s,
+          order === 0 ? send : give,
+          order === 0 ? give : send,
+        );
+        const [published, given] = order === 0 ? [one, two] : [two, one];
+        expect(versionOf(published).status).toBe('published');
+        expect(given.status, JSON.stringify(given.body)).toBe(201);
+        const lessons = await tutorLessonsOf(s);
+        expect(lessons.map(([date]) => date)).toEqual(schoolDates(2, MONDAY));
+        for (const [date, teacher] of lessons) {
+          expect(teacher).toBe(date < '2026-11-16' ? s.first.staffId : s.second.staffId);
+        }
+      }
+    });
+
+    it('lets a leaving and a publish both commit, in either order, the Tutor lessons after the leaving with no teacher (must-fix 5)', async () => {
+      for (const order of [0, 1]) {
+        const s = await tutorScene();
+        const leave = () =>
+          post(`/api/people/staff/${s.first.staffId}/status`, s.branch, {
+            status: 'left',
+            from: '2026-11-02',
+          });
+        const send = () => publish(s.branch, s.version, MONDAY);
+        const [one, two] = await behindVersions(
+          s,
+          order === 0 ? send : leave,
+          order === 0 ? leave : send,
+        );
+        const [published, left] = order === 0 ? [one, two] : [two, one];
+        expect(versionOf(published).status).toBe('published');
+        expect(left.status, JSON.stringify(left.body)).toBe(200);
+        // Review correction 1: the Tutor lessons only; the leaving does not
+        // touch a teacher's regular lessons before 5.7a.
+        for (const [date, teacher] of await tutorLessonsOf(s)) {
+          expect(teacher).toBe(date < '2026-11-02' ? s.first.staffId : null);
+        }
+      }
+    });
+
+    // Review of #152, finding 1: an archive holds its class FOR UPDATE; the
+    // publish takes the classes FOR KEY SHARE before the versions, so neither
+    // waits for both. Round 2, finding 1: the archive behind a publish meets
+    // the lessons it wrote and is refused.
+    it('runs an archive of the class and a publish one after the other, in either order, with no deadlock', async () => {
+      for (const order of [0, 1]) {
+        const s = await tutorScene();
+        const archive = () => post(`/api/classes/${s.classId}/archive`, s.branch, {});
+        const send = () => publish(s.branch, s.version, MONDAY);
+        // Publish first: the publish holds the class `for key share` and waits
+        // at the held versions; the archive waits for the class. Archive
+        // first: both wait at the class held `for update`, the archive in
+        // front (round 2: the archive no longer takes the versions).
+        const [one, two] = await behindVersions(
+          s,
+          order === 0 ? send : archive,
+          order === 0 ? archive : send,
+          order === 0
+            ? undefined
+            : (transaction) =>
+                transaction
+                  .selectFrom('classes')
+                  .select('id')
+                  .where('id', '=', s.classId)
+                  .forUpdate()
+                  .execute(),
+        );
+        const [published, archived] = order === 0 ? [one, two] : [two, one];
+        if (order === 1) {
+          // Archived first: the publish reads the archived class and is refused.
+          expect(archived.status, JSON.stringify(archived.body)).toBe(200);
+          refusedWith(published, 409, 'publish_blocked');
+          expect(await tutorLessonsOf(s)).toEqual([]);
+          continue;
+        }
+        // Published first (round 2, finding 1): the class now has lessons after
+        // today, so the archive is refused (`classes_lessons_guard`, 0080),
+        // and the Tutor lessons keep their Tutor.
+        expect(versionOf(published).status).toBe('published');
+        refusedWith(archived, 409, 'class_has_lessons');
+        const lessons = await tutorLessonsOf(s);
+        expect(lessons.length).toBeGreaterThan(0);
+        for (const [date, teacher] of lessons) {
+          expect(teacher).toBe(date < '2026-11-16' ? s.first.staffId : null);
+        }
+      }
+    });
+
+    // Build decision (spec review must-fix 5, review correction 2): the
+    // record of a person stays FOR UPDATE under a status change (a
+    // department move must still wait for a load row naming the person); the
+    // publish takes the people of the branch FOR KEY SHARE before the
+    // versions, so it waits for such a change before it holds them.
+    it('takes the people of the branch before the versions: a publish behind a held person holds no version', async () => {
+      const s = await tutorScene();
+      const person = await holdOpen([s.branch], async (transaction) => {
+        await transaction
+          .selectFrom('staff')
+          .select('id')
+          .where('id', '=', s.first.staffId)
+          .forUpdate()
+          .execute();
+      });
+      const sent = publish(s.branch, s.version, MONDAY).then((response) => response);
+      await expect.poll(() => waiting(), { timeout: 20_000, interval: 25 }).toBe(1);
+      // The versions are free while the publish waits: a status change could take them.
+      await t.app
+        .get(Transactions)
+        .run([s.branch], (transaction) =>
+          transaction
+            .selectFrom('timetable_versions')
+            .select('id')
+            .where('academic_year_id', '=', s.year)
+            .orderBy('id')
+            .forNoKeyUpdate()
+            .noWait()
+            .execute(),
+        );
+      person.release();
+      expect(await person.done).toBeUndefined();
+      expect(versionOf(await sent).status).toBe('published');
+    });
+
+    it('answers timetable_busy, with no detail and nothing written, when a clashing lesson commits during the write (must-fix 7)', async () => {
+      const lessons = await LessonsKit.create(t.database.migrator);
+      const other = await t.newBranch();
+      const s = await scene({
+        teacherFor: async (branch, subject) => {
+          const person = await load.teacher(branch, {
+            subjects: [{ subject, grades: [7] }],
+            further: [other],
+          });
+          await hours(branch, person.staffId);
+          return person.staffId;
+        },
+      });
+      const otherYear = await lessons.year(other);
+      const otherClass = await lessons.load.classes.schoolClass(other, otherYear.year, {
+        grade: 7,
+      });
+      const source = await lessons.source(other, otherYear.year, [
+        { classId: otherClass, groupId: null, subjectId: s.subject },
+      ]);
+      await load.freeEditLock(s.version);
+      const before = await written([s.version, source.versionId]);
+      // Another branch's lesson of the teacher on Monday 19 October at
+      // 08:00, written and not yet committed: the dated check cannot see it.
+      const held = await holdOpen([other], async (transaction) => {
+        const block = await transaction
+          .insertInto('lesson_blocks')
+          .values({
+            branch_id: other,
+            academic_year_id: otherYear.year,
+            quarter_id: otherYear.quarters[0] ?? '',
+            lesson_date: '2026-10-19',
+            starts_at: at('2026-10-19', '08:00'),
+            ends_at: at('2026-10-19', '08:45'),
+            version_id: source.versionId,
+            pattern_block_id: source.patternBlockId,
+          })
+          .returning(['id', 'lesson_date', 'starts_at', 'ends_at'])
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('lessons')
+          .values({
+            branch_id: other,
+            block_id: block.id,
+            lesson_date: block.lesson_date,
+            starts_at: block.starts_at,
+            ends_at: block.ends_at,
+            class_id: otherClass,
+            subject_id: s.subject,
+            load_row_id: source.lessons[0]?.loadRowId ?? '',
+            pattern_entry_id: source.lessons[0]?.patternEntryId ?? '',
+            teacher_id: s.teacherId,
+          })
+          .execute();
+      });
+      const sent = publish(s.branch, s.version, MONDAY).then((response) => response);
+      // The publish's write waits on the held lesson's claim.
+      await expect.poll(() => waiting(), { timeout: 20_000, interval: 25 }).toBe(1);
+      held.release();
+      expect(await held.done).toBeUndefined();
+      const refused = await sent;
+      refusedWith(refused, 409, 'timetable_busy');
+      expect((refused.body as { error: { details?: unknown } }).error.details ?? []).toEqual([]);
+      const after = await written([s.version, source.versionId]);
+      // The held side's own block, lesson and claims are its; the publish wrote nothing.
+      const own = (rows: Awaited<typeof before>) => [
+        rows[0],
+        rows[1],
+        rows[2],
+        rows[3],
+        rows[4],
+        rows[5],
+        rows[6],
+        rows[7].filter((one) => one.branch_id === s.branch),
+        rows[8].filter((one) => one.branch_id === s.branch),
+        rows[9].filter((one) => one.branch_id === s.branch),
+        rows[10],
+      ];
+      expect(own(after)).toEqual(own(before));
+      expect((await versionRow(s.version)).status).toBe('draft');
+    });
   });
   // Task 5.5a-2a, pull request #140: every date of the version is checked
   // (edge/timetable, Versions and drafts, "The pattern is valid but one date
@@ -1972,6 +2443,25 @@ describe('publish', () => {
         { date: '2026-11-16', reason: 'not_in_template', entryIds: [late] },
       ]);
       expect(versionOf(await publish(s.branch, s.version, MONDAY)).status).toBe('published');
+      // Task 5.5b-1 (decision 6): the first lesson at the short day's times,
+      // the other written cancelled at its pattern times, with no claim.
+      const day = (await lessonsOf(s.branch)).filter((one) => one.date === '2026-11-16');
+      expect(
+        day.map((one) => [one.starts_at, one.ends_at, one.cancel_cause, one.pattern_entry_id]),
+      ).toEqual([
+        [at('2026-11-16', '08:00'), at('2026-11-16', '08:30'), null, expect.any(String)],
+        [at('2026-11-16', '08:55'), at('2026-11-16', '09:40'), 'not_in_template', late],
+      ]);
+      const claims = await t.database.migrator
+        .selectFrom('time_claims')
+        .select('lesson_id')
+        .where(
+          'lesson_id',
+          'in',
+          day.map((one) => one.id),
+        )
+        .execute();
+      expect(claims.map((one) => one.lesson_id)).toEqual([day[0]?.id]);
     });
 
     it("lists a Saturday worked by Monday's timetable as needs a teacher for a teacher with no Saturday hours", async () => {
@@ -1994,6 +2484,24 @@ describe('publish', () => {
       expect(answer.needsTeacher).toEqual([
         { date: '2026-11-21', entryId: entry, reason: 'not_available_real_day' },
       ]);
+      // Task 5.5b-1 (spec review should-fix 7): Monday's lesson on the
+      // Saturday, written with no teacher; the Mondays keep theirs.
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      const written = await lessonsOf(s.branch);
+      const saturday = written.filter((one) => one.date === '2026-11-21');
+      expect(saturday).toEqual([
+        expect.objectContaining({
+          starts_at: at('2026-11-21', '08:00'),
+          pattern_entry_id: entry,
+          teacher_id: null,
+          cancel_cause: null,
+        }),
+      ]);
+      expect(
+        written
+          .filter((one) => one.date !== '2026-11-21')
+          .every((one) => one.teacher_id === s.teacherId),
+      ).toBe(true);
     });
 
     it("refuses the date whose special template moves a lesson outside the teacher's hours, that date only (review of #140)", async () => {
@@ -2133,6 +2641,13 @@ describe('publish', () => {
       expect(late.refusals.map((one) => one.code)).toContain('pattern_blocked');
       expect(late.needsTeacher).toEqual([]);
       expect(versionOf(await publish(s.branch, s.version, MONDAY)).status).toBe('published');
+      // Task 5.5b-1: the lessons from the leaving have no teacher.
+      const written = await lessonsOf(s.branch);
+      expect(written.filter((one) => one.teacher_id === null).map((one) => one.date)).toEqual([
+        '2027-05-24',
+        '2027-05-31',
+      ]);
+      expect(written.find((one) => one.date === '2027-05-17')?.teacher_id).toBe(s.teacherId);
     });
 
     it('gives a Tutor lesson the Tutor of each date, and lists a clash of a later Tutor as needs a teacher', async () => {
@@ -2195,6 +2710,13 @@ describe('publish', () => {
         true,
       );
       expect(versionOf(await publish(s.branch, s.version, MONDAY)).status).toBe('published');
+      // Task 5.5b-1 (From 3.6c-2; spec review must-fix 8): the first Tutor
+      // until 16 November, no teacher from the clash on.
+      const tutorLessons = (await lessonsOf(s.branch)).filter((one) => one.class_id === tutored);
+      expect(tutorLessons.map((one) => one.date)).toEqual(schoolDates(2, '2026-10-12'));
+      for (const one of tutorLessons) {
+        expect(one.teacher_id).toBe(one.date < '2026-11-17' ? first.staffId : null);
+      }
     });
   });
 
@@ -2967,6 +3489,854 @@ describe('publish', () => {
       expect(onShortDay(cleared).map((one) => [one.kind, one.subjectId])).toEqual(
         expect.arrayContaining([['removed', s.other]]),
       );
+    });
+  });
+  // Task 5.5b-1, pull request #152: the dated lessons a publish writes
+  // (docs/spec/06-timetable.md, Model, Dated lesson: "On publishing, dated
+  // lessons are created up to the end of the academic year ... Days off
+  // produce no lessons"; edge/timetable, Versions and drafts: "An unchanged
+  // lesson keeps its identity ... Only real differences are created or
+  // removed"; How surprises are prevented: "Publishing or regenerating cannot
+  // change any lesson dated today or earlier"). The scene's day: 08:00–08:45,
+  // 08:55–09:40, 09:50–10:35.
+  describe('the dated lessons written', () => {
+    const calendarEntry = (
+      branch: string,
+      values: {
+        kind: 'day_off' | 'special_day';
+        first: string;
+        template?: string;
+        examWeek?: boolean;
+      },
+    ) =>
+      t.database.migrator
+        .insertInto('calendar_entries')
+        .values({
+          branch_id: branch,
+          kind: values.kind,
+          name: values.kind === 'day_off' ? 'Holiday' : 'Exam week',
+          first_date: values.first,
+          last_date: values.first,
+          day_template_id: values.template ?? null,
+          exam_week: values.examWeek === true ? 'no_regular_lessons' : null,
+        })
+        .execute();
+
+    const regularOf = async (branch: string) =>
+      (
+        await t.database.migrator
+          .selectFrom('day_template_assignments')
+          .select('day_template_id')
+          .where('branch_id', '=', branch)
+          .executeTakeFirstOrThrow()
+      ).day_template_id;
+
+    const placeSlot = async (
+      branch: string,
+      version: string,
+      loadRowId: string,
+      weekday: number,
+      slotPosition: number,
+      extra: object = {},
+    ) => {
+      const placed = await post(`/api/timetable/versions/${version}/pattern`, branch, {
+        loadRowId,
+        weekday,
+        slotPosition,
+        ...extra,
+      });
+      expect(placed.status, JSON.stringify(placed.body)).toBe(201);
+    };
+
+    /** The one load row of a copy of `from`, unplaced. */
+    const copyOf = async (branch: string, year: string, from: string) => {
+      const copy = await draft(branch, year, from);
+      const row = await t.database.migrator
+        .selectFrom('teaching_load_rows')
+        .select('id')
+        .where('version_id', '=', copy)
+        .executeTakeFirstOrThrow();
+      return { copy, rowId: row.id };
+    };
+
+    const publishEntryOf = async (version: string) =>
+      (await t.entries('timetable_version.publish', version))[0]?.new_value as {
+        datedLessons: {
+          firstDate: string;
+          lastDate: string;
+          created: number;
+          kept: number;
+          cancelled: number;
+          removed: { id: string }[];
+          changed: { id: string; teacherId: { from: string | null; to: string | null } }[];
+        };
+      };
+
+    it('writes one lesson per school date from the start to the end of the year, with its moments, quarter and claim', async () => {
+      const s = await scene();
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      const written = await lessonsOf(s.branch);
+      // Every Monday of the four quarters from 12 October: none in the vacations.
+      expect(written.map((one) => one.date)).toEqual(schoolDates(1, MONDAY));
+      const quarters = await t.database.migrator
+        .selectFrom('quarters')
+        .select(['id', 'number'])
+        .where('academic_year_id', '=', s.year)
+        .execute();
+      const quarterOf = (date: string) => {
+        const index = QUARTERS.findIndex(([start, end]) => start <= date && date <= end);
+        return quarters.find((one) => one.number === index + 1)?.id;
+      };
+      const [entry] = await t.database.migrator
+        .selectFrom('pattern_entries')
+        .select(['id', 'room_id'])
+        .where('version_id', '=', s.version)
+        .execute();
+      for (const one of written) {
+        expect(one).toMatchObject({
+          starts_at: at(one.date, '08:00'),
+          ends_at: at(one.date, '08:45'),
+          class_id: s.classId,
+          subject_id: s.subject,
+          load_row_id: s.rowId,
+          pattern_entry_id: entry?.id,
+          teacher_id: s.teacherId,
+          room_id: entry?.room_id ?? null,
+          cancel_cause: null,
+          version_id: s.version,
+          quarter_id: quarterOf(one.date),
+          double_pair_id: null,
+        });
+      }
+      const claims = await t.database.migrator
+        .selectFrom('time_claims')
+        .select(['lesson_id', 'teacher_id'])
+        .where('branch_id', '=', s.branch)
+        .where('kind', '=', 'lesson')
+        .execute();
+      expect(claims.map((one) => one.lesson_id).sort()).toEqual(
+        written.map((one) => one.id).sort(),
+      );
+      expect((await publishEntryOf(s.version)).datedLessons).toEqual({
+        firstDate: MONDAY,
+        lastDate: '2027-05-31',
+        created: written.length,
+        kept: 0,
+        cancelled: 0,
+        removed: [],
+        changed: [],
+      });
+    });
+
+    it('starts a version on a Wednesday: no lesson on the Monday and Tuesday before it (Done when)', async () => {
+      const s = await scene({ lessons: 3, placed: 3 });
+      const wednesday = '2026-10-14';
+      const answer = checkOf(await check(s.branch, s.version, wednesday));
+      const transitionKey = answer.impact?.transition?.key;
+      versionOf(
+        await publish(s.branch, s.version, wednesday, t.admin, randomUUID(), {
+          ...(transitionKey === undefined || transitionKey === null ? {} : { transitionKey }),
+        }),
+      );
+      const dates = (await lessonsOf(s.branch)).map((one) => one.date);
+      expect(dates.filter((one) => one < '2026-10-19')).toEqual([wednesday]);
+      expect(dates.filter((one) => one >= '2026-10-19' && one < '2026-10-26')).toEqual([
+        '2026-10-19',
+        '2026-10-20',
+        '2026-10-21',
+      ]);
+      expect(dates).toEqual(
+        [
+          ...schoolDates(1, wednesday),
+          ...schoolDates(2, wednesday),
+          ...schoolDates(3, wednesday),
+        ].sort(),
+      );
+    });
+
+    // Second opinion of round 2: a second version from a Wednesday over stored
+    // lessons; the Monday and Tuesday of its week keep the earlier version's rows.
+    it('publishes a second version from a Wednesday over stored lessons: Monday and Tuesday of its week stay the earlier version', async () => {
+      const s = await scene({ lessons: 3, placed: 3 });
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      const before = await lessonsOf(s.branch);
+      const wednesday = '2026-10-21';
+      const next = await copyOf(s.branch, s.year, s.version);
+      for (const weekday of [3, 4, 5]) await placeSlot(s.branch, next.copy, next.rowId, weekday, 1);
+      await confirmTemplates(s.branch, next.copy);
+      await load.freeEditLock(next.copy);
+      const answer = checkOf(await check(s.branch, next.copy, wednesday));
+      const transitionKey = answer.impact?.transition?.key;
+      versionOf(
+        await publish(s.branch, next.copy, wednesday, t.admin, randomUUID(), {
+          ...(transitionKey === undefined || transitionKey === null ? {} : { transitionKey }),
+        }),
+      );
+      const after = await lessonsOf(s.branch);
+      const wasOn = (date: string) => before.find((one) => one.date === date);
+      const isOn = (date: string) => after.find((one) => one.date === date);
+      // Before the start: the earlier version's rows, untouched.
+      for (const date of ['2026-10-19', '2026-10-20']) {
+        expect(isOn(date)).toEqual(wasOn(date));
+        expect(isOn(date)?.version_id).toBe(s.version);
+      }
+      // The Wednesday in the same slot: kept, re-pointed to the new version.
+      expect(isOn(wednesday)?.id).toBe(wasOn(wednesday)?.id);
+      expect(isOn(wednesday)?.version_id).toBe(next.copy);
+      // Thursday and Friday created; the later Mondays and Tuesdays removed.
+      for (const date of ['2026-10-22', '2026-10-23']) {
+        expect(wasOn(date)).toBeUndefined();
+        expect(isOn(date)?.version_id).toBe(next.copy);
+      }
+      expect(
+        after
+          .filter((one) => one.date >= '2026-10-26' && one.date < '2026-11-02')
+          .map((one) => one.date),
+      ).toEqual(['2026-10-28', '2026-10-29', '2026-10-30']);
+    });
+
+    it('writes no lesson on a holiday inside a week, and the whole week on either side (Done when)', async () => {
+      const s = await scene({ lessons: 3, placed: 3 });
+      await calendarEntry(s.branch, { kind: 'day_off', first: '2026-10-20' });
+      await load.freeEditLock(s.version);
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      const dates = (await lessonsOf(s.branch)).map((one) => one.date);
+      expect(dates.filter((one) => one < '2026-11-01')).toEqual([
+        '2026-10-12',
+        '2026-10-13',
+        '2026-10-14',
+        '2026-10-19',
+        '2026-10-21',
+        '2026-10-26',
+        '2026-10-27',
+        '2026-10-28',
+      ]);
+    });
+
+    it('writes the lessons of a week with no regular lessons cancelled "exam week", with no claim', async () => {
+      const s = await scene();
+      await calendarEntry(s.branch, {
+        kind: 'special_day',
+        first: '2026-11-23',
+        template: await regularOf(s.branch),
+        examWeek: true,
+      });
+      await load.freeEditLock(s.version);
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      const day = (await lessonsOf(s.branch)).filter((one) => one.date === '2026-11-23');
+      expect(day).toEqual([
+        expect.objectContaining({
+          starts_at: at('2026-11-23', '08:00'),
+          cancel_cause: 'exam_week',
+          teacher_id: s.teacherId,
+        }),
+      ]);
+      const claims = await t.database.migrator
+        .selectFrom('time_claims')
+        .select('id')
+        .where('lesson_id', '=', day[0]?.id ?? '')
+        .execute();
+      expect(claims).toEqual([]);
+      expect((await publishEntryOf(s.version)).datedLessons.cancelled).toBe(1);
+    });
+
+    it('keeps a vacancy on its lessons, as their teacher', async () => {
+      let vacancy = '';
+      const s = await scene({
+        teacherFor: async (branch, subject) => {
+          vacancy = await load.vacancy(branch, { subjects: [{ subject, grades: [7] }] });
+          await hours(branch, vacancy);
+          return vacancy;
+        },
+      });
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      const written = await lessonsOf(s.branch);
+      expect(written.length).toBeGreaterThan(0);
+      expect(written.every((one) => one.teacher_id === vacancy)).toBe(true);
+    });
+
+    /** The claims of a branch's lessons and blocks: kind, lesson, block, class and teacher. */
+    const claimsOf = async (branch: string) =>
+      (
+        await t.database.migrator
+          .selectFrom('time_claims')
+          .select(['kind', 'lesson_id', 'block_id', 'class_id', 'teacher_id'])
+          .where('branch_id', '=', branch)
+          .execute()
+      )
+        .map((one) =>
+          one.kind === 'lesson'
+            ? `lesson|${one.lesson_id ?? ''}|${one.teacher_id ?? ''}`
+            : `${one.kind}|${one.block_id ?? ''}|${one.class_id ?? ''}`,
+        )
+        .sort();
+
+    /** The claims the lessons of a branch should hold: one per lesson with its teacher, one per class of each block. */
+    const claimsWanted = (
+      lessons: Awaited<ReturnType<typeof lessonsOf>>,
+      classesOf: (one: Awaited<ReturnType<typeof lessonsOf>>[number]) => readonly string[],
+    ) => {
+      const blockClasses = new Set<string>();
+      const wanted: string[] = [];
+      for (const one of lessons) {
+        wanted.push(`lesson|${one.id}|${one.teacher_id ?? ''}`);
+        for (const classId of classesOf(one))
+          blockClasses.add(`block_class|${one.block_id}|${classId}`);
+      }
+      return [...wanted, ...blockClasses].sort();
+    };
+
+    const deleteRow = async (branch: string, version: string, rowId: string) => {
+      const deleted = await request(t.kit.server)
+        .delete(`/api/timetable/versions/${version}/load/${rowId}`)
+        .set('Cookie', t.admin)
+        .set(BRANCH_HEADER, branch);
+      expect(deleted.status, JSON.stringify(deleted.body)).toBe(204);
+    };
+
+    // Review of #152, finding 4: the paths of blocks of several lessons
+    // (`.claude/rules/api.md`, each branch of a function that chooses where
+    // rows go). Parallel groups of English: G1 of class A, G2 of class B and
+    // G3 across both, one block of the load (3.4b decision 2), on Wednesday
+    // at 08:00. Without G3, G1 and G2 are two blocks of their own at 08:00.
+    it('keeps a block of three groups on a republish, then splits it: one group keeps the block, the other moves to a block of its own, the third is removed', async () => {
+      const s = await scene();
+      const classB = await load.classes.schoolClass(s.branch, s.year, { grade: 7 });
+      const english = await load.classes.subject({ grades: [7], journalType: 'attendance_only' });
+      const groups = [
+        await load.classes.group(s.branch, s.year, english, [s.classId]),
+        await load.classes.group(s.branch, s.year, english, [classB]),
+        await load.classes.group(s.branch, s.year, english, [s.classId, classB]),
+      ];
+      const teachers: string[] = [];
+      while (teachers.length < groups.length) {
+        const person = (
+          await load.teacher(s.branch, { subjects: [{ subject: english, grades: [7] }] })
+        ).staffId;
+        await hours(s.branch, person);
+        teachers.push(person);
+      }
+      const rowsOf = async (version: string) =>
+        t.database.migrator
+          .selectFrom('teaching_load_rows')
+          .select(['id', 'group_id'])
+          .where('version_id', '=', version)
+          .where('subject_id', '=', english)
+          .execute();
+      for (const [index, group] of groups.entries()) {
+        await load.row({
+          branch_id: s.branch,
+          version_id: s.version,
+          group_id: group,
+          subject_id: english,
+          teacher_id: teachers[index] ?? '',
+          lessons_per_week: 1,
+        });
+      }
+      const [first] = await rowsOf(s.version);
+      await placeSlot(s.branch, s.version, first?.id ?? '', 3, 1);
+      await confirmTemplates(s.branch, s.version);
+      await load.freeEditLock(s.version);
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      const classesOf = (one: { class_id: string | null; group_id: string | null }) =>
+        one.class_id !== null
+          ? [one.class_id]
+          : one.group_id === groups[0]
+            ? [s.classId]
+            : one.group_id === groups[1]
+              ? [classB]
+              : [s.classId, classB];
+      const englishOf = async () =>
+        (await lessonsOf(s.branch)).filter((one) => one.subject_id === english);
+      const one = await englishOf();
+      // One block of three lessons per Wednesday (a pairing of the load as one block).
+      const wednesdays = schoolDates(3, MONDAY);
+      expect([...new Set(one.map((lesson) => lesson.date))]).toEqual(wednesdays);
+      for (const date of wednesdays) {
+        const day = one.filter((lesson) => lesson.date === date);
+        expect(day.map((lesson) => lesson.group_id).sort()).toEqual([...groups].sort());
+        expect(new Set(day.map((lesson) => lesson.block_id)).size).toBe(1);
+      }
+      expect(await claimsOf(s.branch)).toEqual(claimsWanted(await lessonsOf(s.branch), classesOf));
+
+      // The same block again from 19 October: every lesson and block stays,
+      // re-pointed to the copy.
+      const again = await draft(s.branch, s.year, s.version);
+      for (const row of await t.database.migrator
+        .selectFrom('teaching_load_rows')
+        .select('id')
+        .where('version_id', '=', again)
+        .where('subject_id', '=', s.subject)
+        .execute()) {
+        await placeAt(s.branch, again, row.id, 1);
+      }
+      const [againFirst] = await rowsOf(again);
+      await placeSlot(s.branch, again, againFirst?.id ?? '', 3, 1);
+      await confirmTemplates(s.branch, again);
+      await load.freeEditLock(again);
+      versionOf(await publish(s.branch, again, '2026-10-19'));
+      const two = await englishOf();
+      expect(two.map((lesson) => [lesson.id, lesson.block_id])).toEqual(
+        one.map((lesson) => [lesson.id, lesson.block_id]),
+      );
+      for (const lesson of two.filter((x) => x.date >= '2026-10-19')) {
+        expect(lesson.version_id).toBe(again);
+      }
+      expect(await claimsOf(s.branch)).toEqual(claimsWanted(await lessonsOf(s.branch), classesOf));
+
+      // From 26 October without G3: G1 and G2 each a block of its own at 08:00.
+      const split = await draft(s.branch, s.year, again);
+      for (const row of await t.database.migrator
+        .selectFrom('teaching_load_rows')
+        .select('id')
+        .where('version_id', '=', split)
+        .where('subject_id', '=', s.subject)
+        .execute()) {
+        await placeAt(s.branch, split, row.id, 1);
+      }
+      const splitRows = await rowsOf(split);
+      const rowOfGroup = (group: string | undefined) =>
+        splitRows.find((row) => row.group_id === group)?.id ?? '';
+      await deleteRow(s.branch, split, rowOfGroup(groups[2]));
+      await placeSlot(s.branch, split, rowOfGroup(groups[0]), 3, 1);
+      await placeSlot(s.branch, split, rowOfGroup(groups[1]), 3, 1);
+      await confirmTemplates(s.branch, split);
+      await load.freeEditLock(split);
+      versionOf(await publish(s.branch, split, '2026-10-26'));
+      const three = await englishOf();
+      expect(three.filter((lesson) => lesson.date < '2026-10-26')).toEqual(
+        two.filter((lesson) => lesson.date < '2026-10-26'),
+      );
+      const removed: string[] = [];
+      for (const date of wednesdays.filter((day) => day >= '2026-10-26')) {
+        const before = two.filter((lesson) => lesson.date === date);
+        const after = three.filter((lesson) => lesson.date === date);
+        const [block] = new Set(before.map((lesson) => lesson.block_id));
+        expect(after.map((lesson) => lesson.group_id).sort()).toEqual(
+          [groups[0], groups[1]].sort(),
+        );
+        expect(after.map((lesson) => lesson.starts_at)).toEqual([
+          at(date, '08:00'),
+          at(date, '08:00'),
+        ]);
+        // Two blocks: one is the stored block, with its lesson kept; the
+        // other is new, its lesson created again (a lesson never changes
+        // block, 0058).
+        expect(new Set(after.map((lesson) => lesson.block_id)).size).toBe(2);
+        const kept = after.filter((lesson) => lesson.block_id === block);
+        const moved = after.filter((lesson) => lesson.block_id !== block);
+        expect(kept).toHaveLength(1);
+        expect(moved).toHaveLength(1);
+        expect(before.find((lesson) => lesson.id === kept[0]?.id)?.group_id).toBe(
+          kept[0]?.group_id,
+        );
+        expect(before.some((lesson) => lesson.id === moved[0]?.id)).toBe(false);
+        expect(after.every((lesson) => lesson.version_id === split)).toBe(true);
+        removed.push(
+          ...before
+            .filter((lesson) => !after.some((x) => x.id === lesson.id))
+            .map((lesson) => lesson.id),
+        );
+      }
+      // G3's lesson out of the kept block, and the moved group's old lesson.
+      const audit = (await publishEntryOf(split)).datedLessons;
+      expect(audit.removed.map((x) => x.id).sort()).toEqual(removed.sort());
+      expect(await claimsOf(s.branch)).toEqual(claimsWanted(await lessonsOf(s.branch), classesOf));
+    });
+
+    // Review of #152, finding 4: class A's physical education and technology
+    // each split into two mixed halves (5.4c-3b). A pairing is one block of
+    // two lessons; the splits again put a new lesson into a kept block and
+    // take a stored one out of it.
+    it('writes a pairing as one block of two lessons, keeps it on a republish, and moves one half of each block when the splits come back', async () => {
+      const s = await scene();
+      const pe = await load.classes.subject({ grades: [7], journalType: 'attendance_only' });
+      const tech = await load.classes.subject({ grades: [7], journalType: 'attendance_only' });
+      const teacherOf = async (subject: string) => {
+        const person = (await load.teacher(s.branch, { subjects: [{ subject, grades: [7] }] }))
+          .staffId;
+        await hours(s.branch, person);
+        return person;
+      };
+      // A coach for each half, so that the split can sit in one slot.
+      const coach = await teacherOf(pe);
+      const coachB = await teacherOf(pe);
+      const techA = await teacherOf(tech);
+      const techB = await teacherOf(tech);
+      const peBoysGroup = await load.classes.group(s.branch, s.year, pe, [s.classId]);
+      const peGirlsGroup = await load.classes.group(s.branch, s.year, pe, [s.classId]);
+      const techBoysGroup = await load.classes.group(s.branch, s.year, tech, [s.classId]);
+      const techGirlsGroup = await load.classes.group(s.branch, s.year, tech, [s.classId]);
+      const halves: [string, string, string][] = [
+        [peBoysGroup, pe, coach],
+        [peGirlsGroup, pe, coachB],
+        [techBoysGroup, tech, techA],
+        [techGirlsGroup, tech, techB],
+      ];
+      const rowsIn = async (version: string) => {
+        const rows = await t.database.migrator
+          .selectFrom('teaching_load_rows')
+          .select(['id', 'group_id'])
+          .where('version_id', '=', version)
+          .execute();
+        return (group: string) => rows.find((row) => row.group_id === group)?.id ?? '';
+      };
+      for (const [group, subject, teacherId] of halves) {
+        await load.row({
+          branch_id: s.branch,
+          version_id: s.version,
+          group_id: group,
+          subject_id: subject,
+          teacher_id: teacherId,
+          lessons_per_week: 1,
+          mixed_block: true,
+        });
+      }
+      const pairings = async (version: string) => {
+        const rowOf = await rowsIn(version);
+        await placeSlot(s.branch, version, rowOf(peBoysGroup), 3, 1, {
+          partnerRowId: rowOf(techGirlsGroup),
+        });
+        await placeSlot(s.branch, version, rowOf(peGirlsGroup), 3, 3, {
+          partnerRowId: rowOf(techBoysGroup),
+        });
+      };
+      await pairings(s.version);
+      await confirmTemplates(s.branch, s.version);
+      await load.freeEditLock(s.version);
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      const groupsOf = (lessons: Awaited<ReturnType<typeof lessonsOf>>, block: string) =>
+        lessons
+          .filter((one) => one.block_id === block)
+          .map((one) => one.group_id)
+          .sort();
+      const blocksOf = (lessons: Awaited<ReturnType<typeof lessonsOf>>, date: string) => {
+        const day = lessons.filter((one) => one.date === date && one.group_id !== null);
+        const at8 = day.find((one) => one.starts_at.getTime() === at(date, '08:00').getTime());
+        const at9 = day.find((one) => one.starts_at.getTime() === at(date, '08:55').getTime());
+        return { first: at8?.block_id ?? '', second: at9?.block_id ?? '' };
+      };
+      const classesOf = () => [s.classId];
+      const one = await lessonsOf(s.branch);
+      const wednesdays = schoolDates(3, MONDAY);
+      for (const date of wednesdays) {
+        const { first, second } = blocksOf(one, date);
+        expect(groupsOf(one, first)).toEqual([peBoysGroup, techGirlsGroup].sort());
+        expect(groupsOf(one, second)).toEqual([peGirlsGroup, techBoysGroup].sort());
+      }
+      expect(await claimsOf(s.branch)).toEqual(claimsWanted(one, classesOf));
+
+      // The same pairings from 19 October: every lesson and block stays.
+      const again = await draft(s.branch, s.year, s.version);
+      const againRow = await rowsIn(again);
+      await placeAt(
+        s.branch,
+        again,
+        (
+          await t.database.migrator
+            .selectFrom('teaching_load_rows')
+            .select('id')
+            .where('version_id', '=', again)
+            .where('subject_id', '=', s.subject)
+            .executeTakeFirstOrThrow()
+        ).id,
+        1,
+      );
+      expect(againRow(peBoysGroup)).not.toBe('');
+      await pairings(again);
+      await confirmTemplates(s.branch, again);
+      await load.freeEditLock(again);
+      versionOf(await publish(s.branch, again, '2026-10-19'));
+      const two = await lessonsOf(s.branch);
+      expect(two.map((x) => [x.id, x.block_id])).toEqual(one.map((x) => [x.id, x.block_id]));
+      expect(await claimsOf(s.branch)).toEqual(claimsWanted(two, classesOf));
+
+      // From 26 October the two splits: physical education at 08:00,
+      // technology at 08:55. Each stored block is kept by the half that stays
+      // in its slot; the other half of each block is created in the other.
+      const splits = await draft(s.branch, s.year, again);
+      const rowOf = await rowsIn(splits);
+      await placeAt(
+        s.branch,
+        splits,
+        (
+          await t.database.migrator
+            .selectFrom('teaching_load_rows')
+            .select('id')
+            .where('version_id', '=', splits)
+            .where('subject_id', '=', s.subject)
+            .executeTakeFirstOrThrow()
+        ).id,
+        1,
+      );
+      await placeSlot(s.branch, splits, rowOf(peBoysGroup), 3, 1);
+      await placeSlot(s.branch, splits, rowOf(techBoysGroup), 3, 3);
+      await confirmTemplates(s.branch, splits);
+      await load.freeEditLock(splits);
+      versionOf(await publish(s.branch, splits, '2026-10-26'));
+      const three = await lessonsOf(s.branch);
+      expect(three.filter((x) => x.date < '2026-10-26')).toEqual(
+        two.filter((x) => x.date < '2026-10-26'),
+      );
+      for (const date of wednesdays.filter((day) => day >= '2026-10-26')) {
+        const was = blocksOf(two, date);
+        const now = blocksOf(three, date);
+        // The blocks stay, with the new halves.
+        expect(now).toEqual(was);
+        expect(groupsOf(three, now.first)).toEqual([peBoysGroup, peGirlsGroup].sort());
+        expect(groupsOf(three, now.second)).toEqual([techBoysGroup, techGirlsGroup].sort());
+        const idOf = (lessons: typeof three, group: string) =>
+          lessons.find((x) => x.date === date && x.group_id === group)?.id;
+        // The halves that stayed in their slot keep their lessons.
+        expect(idOf(three, peBoysGroup)).toBe(idOf(two, peBoysGroup));
+        expect(idOf(three, techBoysGroup)).toBe(idOf(two, techBoysGroup));
+        // The halves that changed slot are created again.
+        expect(idOf(three, peGirlsGroup)).not.toBe(idOf(two, peGirlsGroup));
+        expect(idOf(three, techGirlsGroup)).not.toBe(idOf(two, techGirlsGroup));
+      }
+      expect(await claimsOf(s.branch)).toEqual(claimsWanted(three, classesOf));
+    });
+
+    it('writes a double as two blocks of one pair per date, keeps it on a republish, and clears it when undone', async () => {
+      const s = await scene({ lessons: 2, placed: 0 });
+      await t.database.migrator
+        .updateTable('teaching_load_rows')
+        .set({ double_lessons: true })
+        .where('id', '=', s.rowId)
+        .execute();
+      await placeSlot(s.branch, s.version, s.rowId, 1, 1, { double: true });
+      await confirmTemplates(s.branch, s.version);
+      await load.freeEditLock(s.version);
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      const first = await lessonsOf(s.branch);
+      const byDate = new Map<string, typeof first>();
+      for (const one of first) byDate.set(one.date, [...(byDate.get(one.date) ?? []), one]);
+      const pairs = new Set<string | null>();
+      for (const [date, day] of byDate) {
+        expect(day.map((one) => one.starts_at)).toEqual([at(date, '08:00'), at(date, '08:55')]);
+        expect(day[0]?.double_pair_id).not.toBeNull();
+        expect(day[1]?.double_pair_id).toBe(day[0]?.double_pair_id);
+        expect(day[0]?.block_id).not.toBe(day[1]?.block_id);
+        pairs.add(day[0]?.double_pair_id ?? null);
+      }
+      // A pair of its own on each date (0058 counts a pair across all dates).
+      expect(pairs.size).toBe(byDate.size);
+
+      // The same double again from 19 October: the blocks and their pairs stay.
+      const again = await copyOf(s.branch, s.year, s.version);
+      await placeSlot(s.branch, again.copy, again.rowId, 1, 1, { double: true });
+      await confirmTemplates(s.branch, again.copy);
+      await load.freeEditLock(again.copy);
+      versionOf(await publish(s.branch, again.copy, '2026-10-19'));
+      const second = await lessonsOf(s.branch);
+      expect(second.map((one) => [one.id, one.block_id, one.double_pair_id])).toEqual(
+        first.map((one) => [one.id, one.block_id, one.double_pair_id]),
+      );
+
+      // Two single lessons in the same slots from 26 October: no pair any more.
+      const undone = await copyOf(s.branch, s.year, again.copy);
+      await placeSlot(s.branch, undone.copy, undone.rowId, 1, 1);
+      await placeSlot(s.branch, undone.copy, undone.rowId, 1, 3);
+      await confirmTemplates(s.branch, undone.copy);
+      await load.freeEditLock(undone.copy);
+      versionOf(await publish(s.branch, undone.copy, '2026-10-26'));
+      const third = await lessonsOf(s.branch);
+      expect(third.map((one) => one.id)).toEqual(first.map((one) => one.id));
+      for (const one of third) {
+        expect(one.double_pair_id).toBe(
+          one.date < '2026-10-26' ? first.find((was) => was.id === one.id)?.double_pair_id : null,
+        );
+      }
+    });
+
+    it('keeps the unchanged lessons of a second version, changes a teacher and a room in place, and moves a lesson (06, What a change does)', async () => {
+      const s = await scene({ lessons: 2, placed: 2 });
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      const before = await lessonsOf(s.branch);
+      const second = (
+        await load.teacher(s.branch, { subjects: [{ subject: s.subject, grades: [7] }] })
+      ).staffId;
+      await hours(s.branch, second);
+      const room2 = await load.classes.room(s.branch);
+      const next = await copyOf(s.branch, s.year, s.version);
+      const edited = await t.patch(
+        `/api/timetable/versions/${next.copy}/load/${next.rowId}`,
+        s.branch,
+        {
+          teacherId: second,
+          lessonsPerWeek: 2,
+          roomId: null,
+          roomType: null,
+          doubleLessons: false,
+        },
+        t.admin,
+      );
+      expect(edited.status, JSON.stringify(edited.body)).toBe(200);
+      // Monday in the same slot, Tuesday moved to the second lesson slot.
+      await placeSlot(s.branch, next.copy, next.rowId, 1, 1);
+      await placeSlot(s.branch, next.copy, next.rowId, 2, 3);
+      const monday = await t.database.migrator
+        .selectFrom('pattern_entries')
+        .select(['id', 'block_id'])
+        .where('version_id', '=', next.copy)
+        .where('weekday', '=', 1)
+        .executeTakeFirstOrThrow();
+      const roomed = await post(
+        `/api/timetable/versions/${next.copy}/pattern/${monday.block_id}/room`,
+        s.branch,
+        { lessonId: monday.id, roomId: room2 },
+      );
+      expect(roomed.status, JSON.stringify(roomed.body)).toBe(200);
+      await confirmTemplates(s.branch, next.copy);
+      await load.freeEditLock(next.copy);
+      versionOf(await publish(s.branch, next.copy, '2026-10-19'));
+
+      const after = await lessonsOf(s.branch);
+      // Before the start: as they were.
+      expect(after.filter((one) => one.date < '2026-10-19')).toEqual(
+        before.filter((one) => one.date < '2026-10-19'),
+      );
+      const mondaysBefore = before
+        .filter((one) => one.date >= '2026-10-19' && one.date.length > 0)
+        .filter((one) => new Date(`${one.date}T00:00:00Z`).getUTCDay() === 1);
+      const mondaysAfter = after
+        .filter((one) => one.date >= '2026-10-19')
+        .filter((one) => new Date(`${one.date}T00:00:00Z`).getUTCDay() === 1);
+      expect(mondaysAfter.map((one) => [one.id, one.block_id])).toEqual(
+        mondaysBefore.map((one) => [one.id, one.block_id]),
+      );
+      for (const one of mondaysAfter) {
+        expect(one).toMatchObject({
+          version_id: next.copy,
+          load_row_id: next.rowId,
+          pattern_entry_id: monday.id,
+          teacher_id: second,
+          room_id: room2,
+        });
+      }
+      const tuesdaysBefore = before.filter(
+        (one) => one.date >= '2026-10-19' && new Date(`${one.date}T00:00:00Z`).getUTCDay() === 2,
+      );
+      const tuesdaysAfter = after.filter(
+        (one) => one.date >= '2026-10-19' && new Date(`${one.date}T00:00:00Z`).getUTCDay() === 2,
+      );
+      expect(tuesdaysAfter.map((one) => one.date)).toEqual(tuesdaysBefore.map((one) => one.date));
+      for (const one of tuesdaysAfter) {
+        expect(one.starts_at).toEqual(at(one.date, '08:55'));
+        expect(tuesdaysBefore.some((was) => was.id === one.id)).toBe(false);
+      }
+      // The audit keeps every value before (decision 12).
+      const audit = (await publishEntryOf(next.copy)).datedLessons;
+      expect(audit).toMatchObject({
+        firstDate: '2026-10-19',
+        created: tuesdaysAfter.length,
+        kept: mondaysAfter.length,
+      });
+      expect(audit.removed).toEqual(
+        tuesdaysBefore.map((one) => ({
+          id: one.id,
+          date: one.date,
+          startsAt: one.starts_at.toISOString(),
+          endsAt: one.ends_at.toISOString(),
+          classId: s.classId,
+          groupId: null,
+          subjectId: s.subject,
+          teacherId: s.teacherId,
+          roomId: one.room_id,
+          cancelCause: null,
+        })),
+      );
+      expect(audit.changed).toEqual(
+        mondaysBefore.map((one) => ({
+          id: one.id,
+          teacherId: { from: s.teacherId, to: second },
+          roomId: { from: one.room_id, to: room2 },
+        })),
+      );
+    });
+
+    it('keeps both lessons of one subject on a shortened day with a choice when the same pattern is published again (spec review must-fix 1)', async () => {
+      // Three lessons of one row on Monday (slots 1, 3 and 5); on 16 November
+      // a day of two 45-minute slots at the regular times keeps the first and
+      // the third: the third takes the second slot, 08:55, where the second,
+      // not kept, is written cancelled at its own pattern times, 08:55 too.
+      const s = await scene({ lessons: 3 });
+      await placeSlot(s.branch, s.version, s.rowId, 1, 3);
+      await placeSlot(s.branch, s.version, s.rowId, 1, 5);
+      const lesson = await t.createSlotType(s.branch, 'Exam lesson', 'lesson', 45);
+      const pause = await t.createSlotType(s.branch, 'Exam break', 'break', 10);
+      const short = await t.createTemplate(s.branch, 'Two lessons', [lesson, pause, lesson]);
+      await calendarEntry(s.branch, { kind: 'special_day', first: '2026-11-16', template: short });
+      await confirmTemplates(s.branch, s.version);
+      const kept = await t.put(
+        `/api/timetable/versions/${s.version}/day-keeps`,
+        s.branch,
+        { classId: s.classId, date: '2026-11-16', slotPositions: [1, 5] },
+        t.admin,
+      );
+      expect(kept.status, JSON.stringify(kept.body)).toBe(200);
+      await load.freeEditLock(s.version);
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      const day = (await lessonsOf(s.branch)).filter((one) => one.date === '2026-11-16');
+      expect(
+        day
+          .map((one) => [one.starts_at, one.cancel_cause] as const)
+          .sort(
+            (x, y) => x[0].getTime() - y[0].getTime() || (x[1] ?? '').localeCompare(y[1] ?? ''),
+          ),
+      ).toEqual([
+        [at('2026-11-16', '08:00'), null],
+        [at('2026-11-16', '08:55'), null],
+        [at('2026-11-16', '08:55'), 'not_in_template'],
+      ]);
+
+      const again = await copyOf(s.branch, s.year, s.version);
+      for (const slot of [1, 3, 5]) await placeSlot(s.branch, again.copy, again.rowId, 1, slot);
+      await confirmTemplates(s.branch, again.copy);
+      await load.freeEditLock(again.copy);
+      versionOf(await publish(s.branch, again.copy, '2026-10-19'));
+      const after = (await lessonsOf(s.branch)).filter((one) => one.date === '2026-11-16');
+      expect(after.map((one) => [one.id, one.starts_at, one.cancel_cause])).toEqual(
+        day.map((one) => [one.id, one.starts_at, one.cancel_cause]),
+      );
+      const audit = (await publishEntryOf(again.copy)).datedLessons;
+      expect(audit).toMatchObject({ created: 0, removed: [], changed: [] });
+    });
+
+    it("refuses by date another branch's later version published through the route, from its stored lessons (From 5.5a-2a)", async () => {
+      // A teacher of two branches: here until 09:00, there from 09:00, 30
+      // minutes of travel. The other branch publishes from 16 November with
+      // its lesson at 09:00, 15 minutes after this branch's ends.
+      const a = await scene({ hoursRange: [0, 540] });
+      const b = await scene({
+        startTime: '09:00',
+        teacherFor: async (branch, subject) => {
+          await t.database.migrator
+            .insertInto('staff_branches')
+            .values({ staff_id: a.teacherId, branch_id: branch, is_main: false })
+            .execute();
+          await load.profile(a.teacherId, [{ subject, grades: [7] }]);
+          await hours(branch, a.teacherId, [540, 1440]);
+          return a.teacherId;
+        },
+      });
+      const [low = '', high = ''] = [a.branch, b.branch].sort();
+      await t.database.migrator
+        .insertInto('travel_times')
+        .values({ branch_low: low, branch_high: high, minutes: 30 })
+        .execute();
+      await load.freeEditLock(b.version);
+      versionOf(await publish(b.branch, b.version, '2026-11-16'));
+      await load.freeEditLock(a.version);
+      const answer = checkOf(await check(a.branch, a.version, MONDAY));
+      const dated = answer.refusals.filter((one) => one.code === 'date_blocked');
+      expect(dated.map((one) => one.result?.date)).toEqual(schoolDates(1, '2026-11-16'));
+      expect(
+        dated.every(
+          (one) =>
+            one.result?.rule === 'travel_time' && one.result.detail?.['branchId'] === b.branch,
+        ),
+      ).toBe(true);
     });
   });
 });

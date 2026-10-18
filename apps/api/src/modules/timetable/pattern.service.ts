@@ -54,7 +54,7 @@ const DEADLOCK = '40P01';
  * deadlock of the shared-room locks of two drafts is `timetable_busy`. The
  * detail of an exclusion error is never passed on (5.5b's From 5.1a line).
  */
-const PATTERN_REFUSALS: Readonly<Record<string, ErrorCode>> = {
+export const PATTERN_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   ...LOAD_REFUSALS,
   pattern_entries_teacher_excl: 'pattern_clash',
   pattern_entries_room_excl: 'pattern_clash',

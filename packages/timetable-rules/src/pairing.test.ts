@@ -3,6 +3,8 @@
 // girls have technology, and the reverse in another slot."
 import { describe, expect, it } from 'vitest';
 import { checkTimetable } from './check.js';
+import type { Facts, Placement } from './placement.js';
+import { weekdayOf } from './templates.js';
 import { patternModel, type PatternFactsData, type PatternRowData } from './facts-data.js';
 import {
   blockPlacements,
@@ -342,6 +344,56 @@ describe('a pairing in the rule engine', () => {
         .filter((one) => one.rule === 'double_not_allowed')
         .map((one) => [...one.lessonIds].sort()),
     ).toEqual([['x2:tech-g', 'x:tech-g']]);
+  });
+});
+
+// Task 5.5b-1 (From 5.4c-3b): the dated check gives the engine the load rows,
+// so a dated block is checked as one block of the load or a pairing too.
+describe('a pairing on a date', () => {
+  const DATE = '2026-11-16';
+  const datedFacts = (m = model): Facts => ({
+    ...m.facts,
+    mode: 'dated',
+    dayOf: (branchId, grade, day) => m.facts.dayOf(branchId, grade, String(weekdayOf(day))),
+  });
+  const onDate = (blocks: readonly PatternBlock[], m = model): Placement[] =>
+    checkedPlacements(m, blocks).map((one) => ({ ...one, day: DATE }));
+  const datedRules = (blocks: readonly PatternBlock[], m = model) =>
+    checkTimetable(onDate(blocks, m), datedFacts(m))
+      .filter((one) => one.rule !== 'load_mismatch')
+      .map((one) => [one.rule, one.detail]);
+
+  it('gives a pairing of partners no result, and split_apart with its rows for halves that are not partners', () => {
+    expect(datedRules([block('x', ['pe-b', 'tech-g'], 1, 1)])).toEqual([]);
+    const data = mixedData();
+    const plain = patternModel({
+      ...data,
+      rows: data.rows.map((one) => ({ ...one, mixedBlock: false })),
+    });
+    expect(datedRules([block('x', ['pe-b', 'tech-g'], 1, 1, plain)], plain)).toEqual([
+      ['split_apart', { rows: 2 }],
+    ]);
+  });
+
+  it('reads double lessons allowed from the rows on a date: none for rows that allow them (spec review should-fix 5)', () => {
+    const data = mixedData();
+    const pairOf = (allowed: readonly string[]) => {
+      const m = patternModel({
+        ...data,
+        rows: data.rows.map((one) =>
+          allowed.includes(one.id) ? { ...one, doubleLessons: true } : one,
+        ),
+      });
+      return datedRules(
+        [
+          block('x', ['pe-b', 'tech-g'], 1, 1, m, 'dp'),
+          block('x2', ['pe-b', 'tech-g'], 1, 3, m, 'dp'),
+        ],
+        m,
+      ).map(([rule]) => rule);
+    };
+    expect(pairOf(['pe-b', 'tech-g'])).not.toContain('double_not_allowed');
+    expect(pairOf(['pe-b'])).toContain('double_not_allowed');
   });
 });
 

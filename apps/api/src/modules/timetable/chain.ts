@@ -12,7 +12,7 @@ import {
   type DatedPattern,
 } from '@sodiq/timetable-rules';
 import type { Transaction } from '../../database/transactions.js';
-import { datedCheck } from './dated-check.js';
+import { datedCheck, type DatedFindings } from './dated-check.js';
 import type { StoredLoadRow } from './load-facts.js';
 import { withRunEnd } from './pattern-facts.js';
 import type { PatternState } from './pattern.service.js';
@@ -121,6 +121,16 @@ export interface CarryResult {
   /** The version's lessons over its run before and after the change (the preview, decision 7). */
   readonly before: DatedPattern | null;
   readonly after: DatedPattern | null;
+  /**
+   * The version as the carry changes it, over its run, with its dated check:
+   * what its dated lessons are written from (task 5.5b-1, spec review
+   * must-fix 4); `null` when nothing applies.
+   */
+  readonly written: {
+    readonly state: PatternState;
+    readonly findings: DatedFindings;
+    readonly lastDate: string;
+  } | null;
 }
 
 /** How a carry reads a version's state, its rows changed, and the load problems of its rows. */
@@ -153,7 +163,15 @@ export async function carryResultOf(
   const unchanged = runningUntil(await reader.stateOf(row), runEnd);
   const into = carryInto(carryVersionOf(unchanged), changes);
   if (into.applied.length === 0) {
-    return { version: later, into, left: false, refusals: [], before: null, after: null };
+    return {
+      version: later,
+      into,
+      left: false,
+      refusals: [],
+      before: null,
+      after: null,
+      written: null,
+    };
   }
   const rowChanges = new Map(into.rows.map((one) => [one.id, one]));
   const rows = unchanged.rows.map((one) => {
@@ -221,5 +239,6 @@ export async function carryResultOf(
     refusals,
     before: datedBefore.dated,
     after: datedAfter.dated,
+    written: { state: changed, findings: datedAfter, lastDate: runEnd },
   };
 }
