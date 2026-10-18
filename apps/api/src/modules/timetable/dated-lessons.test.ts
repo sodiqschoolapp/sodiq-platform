@@ -90,6 +90,8 @@ describe('the pairing of stored and new dated lessons', () => {
           unitId: 'class-princeton',
           cancelCause: 'not_in_template',
         }),
+        // Held, of the same class, subject, date and times as the week off.
+        stored('lesson-c', 'block-c', { unitId: 'class-princeton' }),
       ],
       [{ lessons: [held] }, { lessons: [weekOff] }],
     );

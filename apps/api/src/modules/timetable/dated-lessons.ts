@@ -355,8 +355,12 @@ export async function writeDatedLessons(
   });
   const taken = new Set(paired.reused.filter((one): one is string => one !== null));
 
-  // The removed lessons first: a new lesson of a reused block may take the
-  // class of one (`lessons_block_class_key`).
+  // The removed lessons first, so the unique keys of a block
+  // (`lessons_block_class_key`, `lessons_block_group_key`) never meet a
+  // lesson on its way out. No case of it arises today (review of #152): a
+  // class lesson is a block of one, and a group of one subject has one
+  // lesson at a time, which pairs; the order keeps the write safe whatever
+  // pairs.
   const kept = new Set([...pairOf.values()].map((one) => one.id));
   const removedRows = stored.filter((one) => !kept.has(one.id));
   for (let index = 0; index < removedRows.length; index += BATCH) {
@@ -489,13 +493,18 @@ export async function writeDatedLessons(
           double_pair_id: datedPair.get(block) ?? null,
         })),
       )
-      .returning('id')
+      .returning(['id', 'pattern_block_id', sql<string>`lesson_date::text`.as('lesson_date')])
       .execute();
-    part.forEach((block, at) => {
-      const id = ids[at]?.id;
+    // Review of #152, finding 3: matched by the pattern block and the date,
+    // unique per wanted block; `returning` gives the rows in no set order.
+    const idOf = new Map(
+      ids.map((one) => [`${one.pattern_block_id ?? ''}@${one.lesson_date}`, one.id]),
+    );
+    for (const block of part) {
+      const id = idOf.get(`${block.patternBlockId}@${block.date}`);
       if (id === undefined) throw new Error('A block was not inserted.');
       blockIds.set(block, id);
-    });
+    }
   }
   const inserts = wantedBlocks.flatMap((block) =>
     block.lessons
@@ -640,7 +649,8 @@ async function wantedOf(
         groupId: row.groupId,
         unitId: row.classId ?? row.groupId ?? '',
         subjectId: row.subjectId,
-        teacherId: row.teacherId,
+        // Review of #152, finding 2: a Tutor row's takes the Tutor of its date.
+        teacherId: findings.cancelledTeacher(pattern.id, entry.id, cancelled.date),
         roomId: entry.roomId,
         cause: cancelled.reason,
       });

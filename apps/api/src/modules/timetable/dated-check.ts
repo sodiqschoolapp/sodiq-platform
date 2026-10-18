@@ -44,6 +44,14 @@ export interface DatedFindings {
   readonly dated: DatedPattern;
   /** The first moment of each date in branch time, for the lessons written (task 5.5b-1). */
   readonly begins: (date: string) => Date;
+  /**
+   * The teacher of a lesson of a pattern block created cancelled on a date
+   * (review of #152, finding 2): for a Tutor row, the class's Tutor of the
+   * date at the block's start, `null` with none (edge/timetable, Structure:
+   * "Their teacher is always the class's Tutor in force on the lesson's
+   * date"); for any other row, the entry's teacher or vacancy.
+   */
+  readonly cancelledTeacher: (blockId: string, entryId: string, date: string) => string | null;
 }
 
 /** A dated row of a class or group, half-open. */
@@ -86,7 +94,7 @@ export async function datedCheck(
   const { data } = model;
   const branchId = data.branchId;
   const lastDate = data.versionEnd;
-  const { dated, begins, classOn, dayOfDate, branch } = await datedLessonsOf(
+  const { dated, begins, classOn, dayOfDate, branch, cancelledTeacher } = await datedLessonsOf(
     transaction,
     state,
     startsOn,
@@ -242,6 +250,7 @@ export async function datedCheck(
     ),
     dated,
     begins,
+    cancelledTeacher,
   };
 }
 
@@ -419,6 +428,21 @@ export async function datedLessonsOf(
   });
 
   const MINUTE = 60_000;
+  const tutorOn = (classId: string, date: string, start: number) =>
+    tutorAt(tutorRows.get(classId) ?? [], new Date(begins(date).getTime() + start * MINUTE));
+  const entryOf = new Map(
+    blocks.flatMap((block) =>
+      block.entries.map((entry) => [`${block.id}|${entry.id}`, { block, entry }] as const),
+    ),
+  );
+  const cancelledTeacher = (blockId: string, entryId: string, date: string): string | null => {
+    const found = entryOf.get(`${blockId}|${entryId}`);
+    if (found === undefined) throw new Error(`No entry ${entryId} in block ${blockId}.`);
+    const { block, entry } = found;
+    return entry.tutorRow && entry.classId !== null
+      ? tutorOn(entry.classId, date, block.start)
+      : entry.teacherId;
+  };
   const dated = datedPattern({
     branchId,
     firstDate: startsOn,
@@ -431,8 +455,7 @@ export async function datedLessonsOf(
     },
     dayOn: (grade, date) => dayOfDate(grade, date).dated,
     studentsOn,
-    tutorOn: (classId, date, start) =>
-      tutorAt(tutorRows.get(classId) ?? [], new Date(begins(date).getTime() + start * MINUTE)),
+    tutorOn,
     gradeOf: (classId) => {
       const grade = gradeOfClass.get(classId);
       if (grade === undefined) throw new Error(`No grade of class ${classId}.`);
@@ -441,7 +464,7 @@ export async function datedLessonsOf(
     keptOn: (classId, date) => keptOf.get(`${classId}|${date}`) ?? null,
   });
 
-  return { dated, begins, classOn, dayOfDate, branch };
+  return { dated, begins, classOn, dayOfDate, branch, cancelledTeacher };
 }
 
 /** The stored choices of the lessons kept on a shortened day of a version between two dates (task 5.5a-2b-2). */

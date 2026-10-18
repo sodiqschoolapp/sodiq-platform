@@ -136,9 +136,10 @@ function detailOf(refusal: PublishRefusal): ErrorDetail {
  *
  * Lock order (spec review of the plan, must-fix 1 and should-fix 9): the
  * school's publish lock; the branch row FOR KEY SHARE; the year FOR SHARE;
- * the people of the branch FOR KEY SHARE in the order of their id (task
- * 5.5b-1); every version of the branch and year FOR UPDATE in the order of their id,
- * the order `followTutors` takes; then `lockDraft`, whose row lock is held.
+ * the people of the branch and the classes of the year FOR KEY SHARE in the
+ * order of their id (task 5.5b-1); every version of the branch and year FOR
+ * NO KEY UPDATE in the order of their id, the order `followTutors` takes;
+ * then `lockDraft`, whose row lock is held.
  */
 @Injectable()
 export class TimetablePublish {
@@ -356,6 +357,19 @@ export class TimetablePublish {
         eb.selectFrom('staff_branches').select('staff_id').where('branch_id', '=', branchId),
       )
       .orderBy('staff.id')
+      .forKeyShare()
+      .execute();
+    // Review of #152, finding 1: the classes of the year FOR KEY SHARE too,
+    // the lock the lessons' keys to them take. An archive holds its class FOR
+    // UPDATE and then waits for the versions inside `followTutors`. The other
+    // parents a lesson names (groups, rooms, subjects, quarters) have no
+    // holder FOR UPDATE that reaches `followTutors`.
+    await transaction
+      .selectFrom('classes')
+      .select('id')
+      .where('branch_id', '=', branchId)
+      .where('academic_year_id', '=', named.academic_year_id)
+      .orderBy('id')
       .forKeyShare()
       .execute();
     await transaction
@@ -977,7 +991,14 @@ function isCheckRefusal(error: unknown): boolean {
 }
 
 /** The guards of 0079 that only a fault of the code can raise: errors of the server (decision 10). */
-const CODE_FAULTS = new Set(['lesson_delete_past', 'lesson_repoint', 'lesson_repoint_past']);
+// `lesson_double_pair` too (review of #152): the writer makes the pair ids,
+// and `PUBLISH_LOCK` serialises the publishes that could meet on one.
+const CODE_FAULTS = new Set([
+  'lesson_delete_past',
+  'lesson_repoint',
+  'lesson_repoint_past',
+  'lesson_double_pair',
+]);
 
 /**
  * The refusals of a publish (task 5.5b-1, decision 10; 5.5b From 5.1a): the
@@ -994,7 +1015,6 @@ const PUBLISH_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   room_shared_full: 'timetable_busy',
   room_shared_capacity: 'timetable_busy',
   lesson_block_student_twice: 'timetable_busy',
-  lesson_double_pair: 'timetable_busy',
 };
 
 const BUSY_CODES = new Set(['40P01', '40001']);

@@ -283,6 +283,9 @@ Plan approved on pull request #152 with corrections 1 to 3; decisions 1 to 13 co
 | The audit keeps every removed lesson with its fields and every changed lesson's teacher and room before and after; created lessons are counted | Decision 12 |
 | The write runs after every check and the status update, its commit checks deferred for its length | Decision 13, spec review must-fix 3 |
 | A carried version's lessons are written inside its savepoint, from the carry's own check | Spec review must-fix 4 |
+| The publish takes the classes of its branch and year `for key share` before the versions, as it takes the people: an archive holds its class `for update` and then takes the versions in `followTutors`. No holder of a group, room, subject or quarter `for update` reaches `followTutors` | Code review of #152, finding 1 |
+| A lesson of a Tutor row created cancelled takes the class's Tutor of its date at its block's start, `null` with none (`DatedFindings.cancelledTeacher`) | Code review of #152, finding 2; edge/timetable, Structure |
+| `lesson_double_pair` is a fault of the code (500), never `timetable_busy`: the writer makes the pair ids and the publish lock serialises publishes | Code review of #152, second opinion |
 
 ## 18 October 2026: bringing a draft up to date after a publish (task 5.5a-3b-2)
 
