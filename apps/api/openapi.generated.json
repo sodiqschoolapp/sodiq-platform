@@ -1796,6 +1796,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -2583,6 +2584,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -3651,6 +3653,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -4359,6 +4362,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -5077,6 +5081,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -5882,6 +5887,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -6621,6 +6627,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -7317,6 +7324,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -8019,6 +8027,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -8709,6 +8718,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -9423,6 +9433,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -10117,6 +10128,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -10811,6 +10823,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -11496,6 +11509,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -12181,6 +12195,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -12846,6 +12861,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -13511,6 +13527,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -14222,6 +14239,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -14982,6 +15000,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -15675,6 +15694,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -16447,6 +16467,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -17211,6 +17232,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -17966,6 +17988,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -18656,6 +18679,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -19424,6 +19448,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -20152,6 +20177,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -20880,6 +20906,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -21592,6 +21619,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -22304,6 +22332,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -22976,6 +23005,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -23648,6 +23678,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -24355,6 +24386,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -25074,6 +25106,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -25805,6 +25838,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -26510,6 +26544,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -27256,6 +27291,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -27994,6 +28030,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -28706,6 +28743,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -29432,6 +29470,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -30156,6 +30195,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -30886,6 +30926,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -31590,6 +31631,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -32294,6 +32336,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -32985,6 +33028,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -33781,6 +33825,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -34563,6 +34608,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -35353,6 +35399,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -36161,6 +36208,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -36933,6 +36981,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -37705,6 +37754,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -38452,6 +38502,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -39277,6 +39328,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -40036,6 +40088,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -40837,6 +40890,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -42111,6 +42165,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -42881,6 +42936,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -43749,6 +43805,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -44994,6 +45051,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -45874,6 +45932,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -46636,6 +46695,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -47398,6 +47458,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -48198,6 +48259,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -48867,6 +48929,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -49556,6 +49619,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -50263,6 +50327,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -50953,6 +51018,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -51666,6 +51732,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -52372,6 +52439,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -53053,6 +53121,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -53714,6 +53783,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -54399,6 +54469,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -55216,6 +55287,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -56146,6 +56218,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -56841,6 +56914,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -57783,6 +57857,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -58626,6 +58701,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -59437,6 +59513,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -60248,6 +60325,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -60992,6 +61070,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -61775,6 +61854,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -62529,6 +62609,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -63396,6 +63477,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -64053,6 +64135,81 @@
                       "format": "uuid",
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                     },
+                    "classesTaught": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "academicYearId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "startDate": {
+                            "type": "string",
+                            "format": "date",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                          },
+                          "endDate": {
+                            "type": "string",
+                            "format": "date",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                          },
+                          "entries": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "class",
+                                    "group"
+                                  ]
+                                },
+                                "id": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "grade": {
+                                  "nullable": true,
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "subjectIds": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "id",
+                                "grade",
+                                "name",
+                                "subjectIds"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": [
+                          "academicYearId",
+                          "startDate",
+                          "endDate",
+                          "entries"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "sex": {
                       "type": "string",
                       "enum": [
@@ -64231,6 +64388,7 @@
                     "status",
                     "planned",
                     "photoId",
+                    "classesTaught",
                     "sex",
                     "birthDate",
                     "jshshir",
@@ -64560,6 +64718,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -65256,6 +65415,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -65785,6 +65945,81 @@
                       "format": "uuid",
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                     },
+                    "classesTaught": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "academicYearId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "startDate": {
+                            "type": "string",
+                            "format": "date",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                          },
+                          "endDate": {
+                            "type": "string",
+                            "format": "date",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                          },
+                          "entries": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "class",
+                                    "group"
+                                  ]
+                                },
+                                "id": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "grade": {
+                                  "nullable": true,
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "subjectIds": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "id",
+                                "grade",
+                                "name",
+                                "subjectIds"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": [
+                          "academicYearId",
+                          "startDate",
+                          "endDate",
+                          "entries"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "sex": {
                       "type": "string",
                       "enum": [
@@ -65963,6 +66198,7 @@
                     "status",
                     "planned",
                     "photoId",
+                    "classesTaught",
                     "sex",
                     "birthDate",
                     "jshshir",
@@ -66292,6 +66528,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -66959,6 +67196,81 @@
                       "format": "uuid",
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                     },
+                    "classesTaught": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "academicYearId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "startDate": {
+                            "type": "string",
+                            "format": "date",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                          },
+                          "endDate": {
+                            "type": "string",
+                            "format": "date",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                          },
+                          "entries": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "class",
+                                    "group"
+                                  ]
+                                },
+                                "id": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "grade": {
+                                  "nullable": true,
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "subjectIds": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "id",
+                                "grade",
+                                "name",
+                                "subjectIds"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": [
+                          "academicYearId",
+                          "startDate",
+                          "endDate",
+                          "entries"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "sex": {
                       "type": "string",
                       "enum": [
@@ -67137,6 +67449,7 @@
                     "status",
                     "planned",
                     "photoId",
+                    "classesTaught",
                     "sex",
                     "birthDate",
                     "jshshir",
@@ -67466,6 +67779,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -68234,6 +68548,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -68817,6 +69132,81 @@
                       "format": "uuid",
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                     },
+                    "classesTaught": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "academicYearId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "startDate": {
+                            "type": "string",
+                            "format": "date",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                          },
+                          "endDate": {
+                            "type": "string",
+                            "format": "date",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                          },
+                          "entries": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "class",
+                                    "group"
+                                  ]
+                                },
+                                "id": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "grade": {
+                                  "nullable": true,
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "subjectIds": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "id",
+                                "grade",
+                                "name",
+                                "subjectIds"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": [
+                          "academicYearId",
+                          "startDate",
+                          "endDate",
+                          "entries"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "sex": {
                       "type": "string",
                       "enum": [
@@ -68995,6 +69385,7 @@
                     "status",
                     "planned",
                     "photoId",
+                    "classesTaught",
                     "sex",
                     "birthDate",
                     "jshshir",
@@ -69324,6 +69715,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -69883,6 +70275,81 @@
                       "format": "uuid",
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                     },
+                    "classesTaught": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "academicYearId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "startDate": {
+                            "type": "string",
+                            "format": "date",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                          },
+                          "endDate": {
+                            "type": "string",
+                            "format": "date",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                          },
+                          "entries": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "class",
+                                    "group"
+                                  ]
+                                },
+                                "id": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "grade": {
+                                  "nullable": true,
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "subjectIds": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "id",
+                                "grade",
+                                "name",
+                                "subjectIds"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": [
+                          "academicYearId",
+                          "startDate",
+                          "endDate",
+                          "entries"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "sex": {
                       "type": "string",
                       "enum": [
@@ -70061,6 +70528,7 @@
                     "status",
                     "planned",
                     "photoId",
+                    "classesTaught",
                     "sex",
                     "birthDate",
                     "jshshir",
@@ -70390,6 +70858,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -70948,6 +71417,81 @@
                       "format": "uuid",
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                     },
+                    "classesTaught": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "academicYearId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "startDate": {
+                            "type": "string",
+                            "format": "date",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                          },
+                          "endDate": {
+                            "type": "string",
+                            "format": "date",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                          },
+                          "entries": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "class",
+                                    "group"
+                                  ]
+                                },
+                                "id": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "grade": {
+                                  "nullable": true,
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "subjectIds": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "id",
+                                "grade",
+                                "name",
+                                "subjectIds"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": [
+                          "academicYearId",
+                          "startDate",
+                          "endDate",
+                          "entries"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "sex": {
                       "type": "string",
                       "enum": [
@@ -71157,6 +71701,7 @@
                     "status",
                     "planned",
                     "photoId",
+                    "classesTaught",
                     "sex",
                     "birthDate",
                     "jshshir",
@@ -71487,6 +72032,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -72140,6 +72686,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -73008,6 +73555,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -73690,6 +74238,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -74339,6 +74888,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -75207,6 +75757,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -76126,6 +76677,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -77024,6 +77576,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -77932,6 +78485,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -78559,6 +79113,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -79202,6 +79757,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -79997,6 +80553,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -80812,6 +81369,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -81607,6 +82165,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -82271,6 +82830,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -82935,6 +83495,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -83622,6 +84183,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -84376,6 +84938,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -84922,6 +85485,81 @@
                       "format": "uuid",
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                     },
+                    "classesTaught": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "academicYearId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "startDate": {
+                            "type": "string",
+                            "format": "date",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                          },
+                          "endDate": {
+                            "type": "string",
+                            "format": "date",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                          },
+                          "entries": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "class",
+                                    "group"
+                                  ]
+                                },
+                                "id": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "grade": {
+                                  "nullable": true,
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "subjectIds": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "id",
+                                "grade",
+                                "name",
+                                "subjectIds"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": [
+                          "academicYearId",
+                          "startDate",
+                          "endDate",
+                          "entries"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "sex": {
                       "type": "string",
                       "enum": [
@@ -85100,6 +85738,7 @@
                     "status",
                     "planned",
                     "photoId",
+                    "classesTaught",
                     "sex",
                     "birthDate",
                     "jshshir",
@@ -85429,6 +86068,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -86057,6 +86697,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -86699,6 +87340,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -87674,6 +88316,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -88637,6 +89280,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -89363,6 +90007,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -90194,6 +90839,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -90887,6 +91533,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -91650,6 +92297,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -92491,6 +93139,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -93254,6 +93903,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -94017,6 +94667,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -94647,6 +95298,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -95620,6 +96272,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -97799,6 +98452,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -98437,6 +99091,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -99154,6 +99809,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -99866,6 +100522,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -101631,6 +102288,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -103570,6 +104228,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -105365,6 +106024,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -106060,6 +106720,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -107858,6 +108519,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -109644,6 +110306,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -111436,6 +112099,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -113268,6 +113932,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -115054,6 +115719,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -116858,6 +117524,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -117515,6 +118182,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -119312,6 +119980,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -121113,6 +121782,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -122899,6 +123569,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -124691,6 +125362,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -126485,6 +127157,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -128277,6 +128950,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -130054,6 +130728,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -131840,6 +132515,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -133020,6 +133696,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -134818,6 +135495,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -136595,6 +137273,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -137249,6 +137928,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -137962,6 +138642,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -138673,6 +139354,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -140487,6 +141169,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -141231,6 +141914,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -142510,6 +143194,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -144332,6 +145017,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -144979,6 +145665,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -145607,6 +146294,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -146249,6 +146937,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -147005,6 +147694,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -147643,6 +148333,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -148344,6 +149035,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -149125,6 +149817,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -149966,6 +150659,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -150794,6 +151488,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -151446,6 +152141,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -152176,6 +152872,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -153134,6 +153831,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -153917,6 +154615,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -154679,6 +155378,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -156040,6 +156740,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -157434,6 +158135,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -158481,6 +159183,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -159208,6 +159911,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -159895,6 +160599,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -160575,6 +161280,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -161487,6 +162193,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -162534,6 +163241,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -163269,6 +163977,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -163942,6 +164651,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -164636,6 +165346,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -165641,6 +166352,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -166702,6 +167414,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -167707,6 +168420,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -168712,6 +169426,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -169758,6 +170473,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -170608,6 +171324,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -171643,6 +172360,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -172359,6 +173077,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -173150,6 +173869,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -173876,6 +174596,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -174709,6 +175430,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -175681,6 +176403,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -176412,6 +177135,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -177216,6 +177940,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -177910,6 +178635,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -178603,6 +179329,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -179524,6 +180251,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -180500,6 +181228,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -181421,6 +182150,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -182358,6 +183088,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -183109,6 +183840,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -183899,6 +184631,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -184660,6 +185393,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -185421,6 +186155,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -186100,6 +186835,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -186794,6 +187530,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -187567,6 +188304,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -188353,6 +189091,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -189141,6 +189880,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -190946,6 +191686,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -191758,6 +192499,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -194162,6 +194904,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -194862,6 +195605,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -195674,6 +196418,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -196449,6 +197194,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -197699,6 +198445,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -198645,6 +199392,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -199410,6 +200158,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -201572,6 +202321,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -203734,6 +204484,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -205968,6 +206719,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -208212,6 +208964,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -208977,6 +209730,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -211442,6 +212196,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -213781,6 +214536,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -216017,6 +216773,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -218189,6 +218946,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -220518,6 +221276,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -222959,6 +223718,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -225323,6 +226083,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -227782,6 +228543,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -230189,6 +230951,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -232556,6 +233319,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -234895,6 +235659,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -235663,6 +236428,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -236600,6 +237366,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -237238,6 +238005,7 @@
                             "load_block_teacher",
                             "load_group_gaps",
                             "vacancy_has_load",
+                            "vacancy_in_load",
                             "request_refused",
                             "internal_error"
                           ]
@@ -237896,6 +238664,7 @@
                   "load_block_teacher",
                   "load_group_gaps",
                   "vacancy_has_load",
+                  "vacancy_in_load",
                   "request_refused",
                   "internal_error"
                 ]

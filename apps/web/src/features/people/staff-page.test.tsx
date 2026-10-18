@@ -131,6 +131,7 @@ const detailOf = (row: StaffListItem, fields: Partial<StaffDetail> = {}): StaffD
   },
   today: '2026-10-10',
   sameAsRelative: null,
+  classesTaught: [],
   ...fields,
 });
 
@@ -591,6 +592,70 @@ describe('the staff page', () => {
       expect(shell.router.state.location.pathname).toBe('/people/parents');
     });
     expect(shell.router.state.location.search).toMatchObject({ open: parent.id });
+  });
+
+  // 04, Teacher and staff record, Academic: "Classes taught, filled from the
+  // teaching load" (task 5.5c-2b).
+  it('lists the classes taught with their subjects, by year when two years have them', async () => {
+    const classesTaught = [
+      {
+        academicYearId: uid(80),
+        startDate: '2026-09-01',
+        endDate: '2027-05-31',
+        entries: [
+          {
+            kind: 'class' as const,
+            id: uid(81),
+            grade: 7,
+            name: 'Oxford',
+            subjectIds: [MATHEMATICS.id],
+          },
+          {
+            kind: 'group' as const,
+            id: uid(82),
+            grade: null,
+            name: '7-M-1',
+            subjectIds: [uid(99)],
+          },
+        ],
+      },
+      {
+        academicYearId: uid(83),
+        startDate: '2027-09-01',
+        endDate: '2028-05-31',
+        entries: [
+          {
+            kind: 'class' as const,
+            id: uid(84),
+            grade: 8,
+            name: 'Oxford',
+            subjectIds: [MATHEMATICS.id],
+          },
+        ],
+      },
+    ];
+    openList('academic_vice_principal', {}, 'en', { classesTaught });
+    renderApp(PATH);
+    fireEvent.click(await screen.findByText('Karimov Akmal', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
+    const term = await within(panel).findByText(en.people.staff.classesTaught, { selector: 'dt' });
+    const lines = [...(term.parentElement?.querySelectorAll('dd') ?? [])].map(
+      (line) => line.textContent,
+    );
+    // A subject the list does not hold is left out of the brackets, never a blank.
+    expect(lines).toEqual([
+      '2026–2027: 7 Oxford (Mathematics); 7-M-1',
+      '2027–2028: 8 Oxford (Mathematics)',
+    ]);
+  });
+
+  it('says "None" when the person teaches no class', async () => {
+    openList('academic_vice_principal');
+    renderApp(PATH);
+    fireEvent.click(await screen.findByText('Karimov Akmal', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
+    const term = await within(panel).findByText(en.people.staff.classesTaught, { selector: 'dt' });
+    expect(term.parentElement?.querySelector('dd')?.textContent).toBe(en.people.staff.none);
   });
 
   it('shows no "Also a parent" line when the person is marked as no relative', async () => {

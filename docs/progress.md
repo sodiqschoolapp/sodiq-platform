@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 18 October 2026: task 5.5c-2b Publish: "Classes taught" and the vacancy kept
+
+- The staff record shows "Classes taught": per year not closed, the classes and groups with their subjects of the person's rows in the published version in force, read by `taughtRows` (`apps/api/src/modules/access/taught-scope.ts`), the query `taughtAt` reads too.
+- A vacancy closes once no row of a draft or of a published version that can still run names it and no lesson dated after today is under it (`vacancy_close_holders`, 0083, read by the route and the 0055 trigger); it stays listed. Delete answers `vacancy_in_load` while any load row names it.
+- Left out: notices (5.5c-3); when a fill closes the vacancy, and a closed vacancy refused on a lesson's teacher (5.7a, From line).
+
+The next sessions must know:
+
+- A published version stops holding a vacancy only when a later version of its chain has started or its year has passed: one that has not started can still be withdrawn and bring the earlier back.
+- `vacancy_close_holders` refuses an application caller a vacancy outside its branches; the owner (the migrator, test fixtures) passes.
+- The next task is 5.5c-3.
+
 ## 18 October 2026: task 5.5c-2a Publish: withdraw
 
 - `POST /api/timetable/versions/:id/withdraw` (timetable edit, request key) archives a published version before its start; the published version in force before it runs again over its dates, its dated lessons written by `writeDatedLessons` after the full rule set on that run (`withdraw_blocked`), or, with none before it, the dates are left empty (`removeDatedLessons`).

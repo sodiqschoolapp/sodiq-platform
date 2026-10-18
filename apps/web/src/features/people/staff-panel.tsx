@@ -1,4 +1,5 @@
 import {
+  academicYearName,
   classDisplayName,
   phoneText,
   gradeRanges,
@@ -642,6 +643,36 @@ function TeachingSection({
             <div className="grid gap-0.5">
               <dt className="text-muted-foreground">{t('people.staff.languagesTitle')}</dt>
               <dd>{languageText(staff.languages)}</dd>
+            </div>
+            {/* "Classes taught, filled from the teaching load" (task 5.5c-2b), by year when two years have entries. */}
+            <div className="grid gap-0.5">
+              <dt className="text-muted-foreground">{t('people.staff.classesTaught')}</dt>
+              {staff.classesTaught.length === 0 ? (
+                <dd>{t('people.staff.none')}</dd>
+              ) : (
+                staff.classesTaught.map((year) => {
+                  const list = year.entries
+                    .map((entry) => {
+                      const unit =
+                        entry.grade === null
+                          ? entry.name
+                          : classDisplayName(entry.grade, entry.name);
+                      const names = entry.subjectIds.map(subjectName).filter((name) => name !== '');
+                      return names.length === 0 ? unit : `${unit} (${names.join(', ')})`;
+                    })
+                    .join('; ');
+                  return (
+                    <dd key={year.academicYearId}>
+                      {staff.classesTaught.length === 1
+                        ? list
+                        : t('people.staff.classesTaughtOfYear', {
+                            year: academicYearName(year.startDate, year.endDate),
+                            list,
+                          })}
+                    </dd>
+                  );
+                })
+              )}
             </div>
           </dl>
           {staff.rights.teaching && (

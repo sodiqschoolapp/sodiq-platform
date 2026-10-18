@@ -16,7 +16,7 @@ import {
 } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { CLOCK } from '../../clock/clock.module.js';
-import { Transactions, type Transaction } from '../../database/transactions.js';
+import { Transactions, transactionMoment, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import type { XlsxFile } from '../../http/xlsx.js';
 import type { JsonValue } from '../../database/types.generated.js';
@@ -49,8 +49,21 @@ const VACANCY_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   staff_statuses_no_overlap: 'request_refused',
   staff_statuses_kind: 'request_refused',
   vacancy_not_deletable: 'request_refused',
-  // Task 3.4a (04, Vacancy): a load row names the vacancy (db/migrations/0055).
+  // Task 3.4a (04, Vacancy): a load row names the vacancy (db/migrations/0055);
+  // from task 5.5c-2b, a row that can still run or a future lesson (0083).
   vacancy_has_load: 'vacancy_has_load',
+  // The route checked the record against the branch first.
+  vacancy_not_in_branch: 'request_refused',
+};
+
+/**
+ * The refusals of a delete (task 5.5c-2b, decision 3): the backstop of
+ * `vacancy_delete` refuses while any load row names the vacancy, which the
+ * delete answers with its own text.
+ */
+const DELETE_REFUSALS: Readonly<Record<string, ErrorCode>> = {
+  ...VACANCY_REFUSALS,
+  vacancy_has_load: 'vacancy_in_load',
 };
 
 const refused = (code: ErrorCode): ApiException => new ApiException(code, 409);
@@ -312,10 +325,10 @@ export class Vacancies {
             await this.lockBranch(transaction, branchId);
           }
           await this.vacancyOf(transaction, id, branchId, true);
-          if (status === 'closed') {
-            await this.refuseLoad(transaction, id);
-          }
           const today = await this.todayIn(transaction, branchId);
+          if (status === 'closed') {
+            await this.refuseHolders(transaction, id, branchId, today);
+          }
           const statuses = await this.statusesOf(transaction, id, true);
           const current = statuses.find((row) => inForceOn(row, today));
           if (current?.status === status) {
@@ -362,8 +375,9 @@ export class Vacancies {
   }
 
   /**
-   * `04`: "One that never held a load can be deleted": refused while a load
-   * row names it (task 3.4a, decision 6). The audit entry holds the whole vacancy with its history, the
+   * `04`: "One that never held a load can be deleted; one that did is closed
+   * and kept": refused while a load row of any version names it (task 3.4a,
+   * decision 6; task 5.5c-2b, decision 3). The audit entry holds the whole vacancy with its history, the
    * only copy left (review of pull request #57, correction 1).
    */
   delete(access: Access, id: string, requestId: string): Promise<void> {
@@ -372,7 +386,7 @@ export class Vacancies {
       () =>
         this.transactions.run(access.branchIds, async (transaction) => {
           await this.vacancyOf(transaction, id, branchId, true);
-          await this.refuseLoad(transaction, id);
+          await this.refuseNamed(transaction, id);
           const fields = await this.fieldsOfStored(transaction, id);
           const statuses = await this.statusesOf(transaction, id, true);
           const entries = await transaction
@@ -422,7 +436,7 @@ export class Vacancies {
           });
           await sql`select vacancy_delete(${id}::uuid)`.execute(transaction);
         }),
-      VACANCY_REFUSALS,
+      DELETE_REFUSALS,
     );
   }
 
@@ -434,7 +448,8 @@ export class Vacancies {
       .select('time_zone')
       .where('id', '=', branchId)
       .executeTakeFirstOrThrow();
-    return schoolDateOf(this.clock.now(), branch.time_zone);
+    // The moment the database compares too (`vacancy_close_holders`, 0083).
+    return schoolDateOf(await transactionMoment(transaction), branch.time_zone);
   }
 
   /** The branch row, so that two names are checked one after the other (decision 5). */
@@ -448,32 +463,74 @@ export class Vacancies {
   }
 
   /**
-   * `04`, Vacancy: "A vacancy cannot be closed while a load row names it"
-   * (task 3.4a). Read after the record's FOR UPDATE, in a statement of its
-   * own: a load write holds the record FOR KEY SHARE, so a row being written
-   * is committed before this reads. `details` names the versions.
+   * `04`, Vacancy: "A vacancy cannot be closed while a load row names it or a
+   * future lesson is under it" (task 3.4a; narrowed by task 5.5c-2b, decision
+   * 1): what `vacancy_close_holders` (0083) gives, the query the deferred
+   * refusal reads too: the versions whose rows can still run, and the first
+   * lesson dated after today. Read after the record's FOR UPDATE, in a
+   * statement of its own: a load write and a lesson naming the vacancy hold
+   * the record FOR KEY SHARE, so one being written is committed before this
+   * reads.
    */
-  private async refuseLoad(transaction: Transaction, id: string): Promise<void> {
-    const rows = await transaction
-      .selectFrom('teaching_load_rows')
-      .innerJoin('timetable_versions', 'timetable_versions.id', 'teaching_load_rows.version_id')
-      .select([
-        'teaching_load_rows.id',
-        'timetable_versions.id as version_id',
-        'timetable_versions.number',
-      ])
-      .where('teaching_load_rows.teacher_id', '=', id)
-      .orderBy('timetable_versions.number')
-      .orderBy('teaching_load_rows.id')
-      .execute();
-    if (rows.length > 0) {
+  private async refuseHolders(
+    transaction: Transaction,
+    id: string,
+    branchId: string,
+    today: SchoolDate,
+  ): Promise<void> {
+    const holders = await sql<{
+      version_id: string | null;
+      version_number: number | null;
+      lesson_date: string | null;
+    }>`select version_id, version_number, lesson_date from vacancy_close_holders(${id}::uuid, ${branchId}::uuid, ${today}::date)`.execute(
+      transaction,
+    );
+    if (holders.rows.length > 0) {
       throw new ApiException(
         'vacancy_has_load',
         409,
         undefined,
+        holders.rows.map((row) =>
+          row.version_id === null
+            ? {
+                path: 'lessons',
+                code: 'vacancy_has_load',
+                message: `A lesson on ${String(row.lesson_date)} is under the vacancy.`,
+              }
+            : {
+                path: 'load',
+                code: 'vacancy_has_load',
+                message: `Version ${String(row.version_number)} has a load row that names the vacancy.`,
+                recordId: row.version_id,
+              },
+        ),
+      );
+    }
+  }
+
+  /**
+   * The delete's refusal (task 3.4a; task 5.5c-2b, decision 3): any load row
+   * of any version names the vacancy, a published or archived one included.
+   * Read after the record's FOR UPDATE, in a statement of its own.
+   */
+  private async refuseNamed(transaction: Transaction, id: string): Promise<void> {
+    const rows = await transaction
+      .selectFrom('teaching_load_rows')
+      .innerJoin('timetable_versions', 'timetable_versions.id', 'teaching_load_rows.version_id')
+      .select(['timetable_versions.id as version_id', 'timetable_versions.number'])
+      .distinct()
+      .where('teaching_load_rows.teacher_id', '=', id)
+      .orderBy('timetable_versions.number')
+      .orderBy('timetable_versions.id')
+      .execute();
+    if (rows.length > 0) {
+      throw new ApiException(
+        'vacancy_in_load',
+        409,
+        undefined,
         rows.map((row) => ({
           path: 'load',
-          code: 'vacancy_has_load',
+          code: 'vacancy_in_load',
           message: `Version ${String(row.number)} has a load row that names the vacancy.`,
           recordId: row.version_id,
         })),

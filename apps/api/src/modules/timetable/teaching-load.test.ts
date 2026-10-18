@@ -1284,13 +1284,14 @@ describe('draft versions and the teaching load', () => {
 
     it('is neither closed nor deleted while the row names it, and is once the row is gone', async () => {
       const { version, row, vacancy } = await namedVacancy();
-      for (const path of [
-        `/api/people/vacancies/${vacancy}/close`,
-        `/api/people/vacancies/${vacancy}/delete`,
-      ]) {
+      // Task 5.5c-2b, decision 3: the delete answers a code of its own.
+      for (const [path, code] of [
+        [`/api/people/vacancies/${vacancy}/close`, 'vacancy_has_load'],
+        [`/api/people/vacancies/${vacancy}/delete`, 'vacancy_in_load'],
+      ] as const) {
         const before = await rowsOf();
         const response = await post(path);
-        refusedWith(response, 409, 'vacancy_has_load');
+        refusedWith(response, 409, code);
         expect((response.body as { error: { details: unknown[] } }).error.details).toEqual([
           expect.objectContaining({ recordId: version.id }),
         ]);

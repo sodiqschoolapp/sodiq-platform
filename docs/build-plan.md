@@ -673,7 +673,7 @@ How to read the task lines:
   - From 5.1a (pull request #107, correction 6): withdraw before the start date removes the version's dated lessons; the delete grant on `lessons` and `lesson_blocks` comes in a migration of its own.
   - From 5.5a-3a (pull request #145, decision 10): withdraw uses the transition published → archived of 0076, allowed only before the version's start.
 
-- [ ] **5.5c-2b Publish: "Classes taught" and the vacancy kept** (5.5c-2 split in two, pull request #156, decision 1)
+- [x] **5.5c-2b Publish: "Classes taught" and the vacancy kept** (5.5c-2 split in two, pull request #156, decision 1)
   - Read: `04` (Teacher and staff record, Vacancy), `06` (Changes after publishing: Filling a vacancy), `edge/timetable` (After publishing: the vacancy rows), `edge/developer-rules`.
   - Build: "Classes taught" on the staff record from the published load; the vacancy closed and kept: close refused while a load row of a draft or of a published version not yet ended names it or a future lesson is under it (`04`, Vacancy: "A vacancy cannot be closed while a load row names it or a future lesson is under it. One that never held a load can be deleted; one that did is closed and kept."), the 0055 trigger `staff_statuses_vacancy_load` narrowed to the same rows, delete still refused for a vacancy that ever held a load.
   - Done when: a vacancy whose published rows have all ended and that has no future lesson can be closed and stays listed, one with a future lesson is refused, and "Classes taught" lists the classes and groups of the published load in force.
@@ -719,6 +719,7 @@ How to read the task lines:
   - Done when: an absence entered in one branch reaches the Academic Vice Principal of the other.
   - From 3.6c-2 (pull request #125, decision 11): an absence on a Tutor lesson is kept by a later `followTutors`, which must not give the lesson back to the absent Tutor; the inactive status of a Tutor sends the Tutor lessons from its date to "needs a teacher" (a `left` already does, through the end of the Tutor role).
   - From 5.5b-1 (pull request #152, review correction 1): a leaving does not yet touch a teacher's regular lessons; a leaving that commits while a publish writes leaves the publish's regular lessons after the leaving with the teacher, and this task lists them like any other future lesson of the leaving (`06`, How surprises are prevented, "No lesson without a teacher or room"). The publish already writes a lesson after a leaving known when it runs with no teacher (`teacher_out`).
+  - From 5.5c-2b (pull request #157, review correction 3): `06`, Filling a vacancy: "A vacancy with no load left is closed." The close reads `vacancy_close_holders` (0083) and stays as narrow as it is: a later published version counts as started only from its start day, so a fill from tomorrow cannot close the vacancy in its own step (until the fill's version starts it can still be withdrawn and the earlier rows hold); this task decides when such a vacancy is closed. A write that puts a lesson under a staff record (`lessons.teacher_id`: the fill, an absence that gives lessons back) refuses a closed vacancy; nothing in `lessons_check` reads the teacher's status today, and only a publish writes the column now, through rows that `load_teacher_status` checks.
 
 - [ ] **5.7b Substitution**
   - Read: `06` (Changes after publishing), `edge/timetable` (After publishing).
@@ -726,6 +727,7 @@ How to read the task lines:
   - Done when: the exception "no teacher of the subject is free" works as the edge case says.
   - From 5.2 (pull request #109, decision 17, correction 3): a substitute is a placement with `substitute: true`; `substitute_language` is a warning that needs a confirmation, `substitute_vacancy` blocks, and the option `noSubjectTeacherFree` of `checkTimetable` turns `teacher_subject`, `teacher_grade` and `teacher_unavailable` of the substitute's own lesson (`substitute: true`, `mode: 'dated'`) into warnings with a tick; every other lesson keeps them blocked, and double booking stays blocked.
   - From 3.6c-2 (pull request #125, decision 11): a substitution on a Tutor lesson is kept by a later `followTutors`; the substitute of a Tutor lesson needs the subject in the profile like any substitute (`teacherProblems` skips the profile rule for the class's Tutor only).
+  - From 5.5c-2b (pull request #157, review decision 10): a substitution never puts a vacancy on a lesson (`substitute_vacancy` blocks), so it needs no check of a closed vacancy; the writes of `lessons.teacher_id` that do (a fill, an absence that gives lessons back) refuse a closed vacancy by the From line of 5.7a.
 
 - [ ] **5.8 Protection and version history**
   - Read: `06` (Protection), `03` (Quarters), `edge/timetable` (Versions and drafts).

@@ -398,8 +398,37 @@ export const staffRightsSchema = z.object({
 
 export type StaffRights = z.infer<typeof staffRightsSchema>;
 
+/**
+ * "Classes taught, filled from the teaching load" (`04`, Teacher and staff
+ * record, Academic; task 5.5c-2b): for each academic year of the branch of
+ * the request that is not closed, the classes and groups of the person's rows
+ * in the published version in force on the year's day (today, or the year's
+ * first day when that is later), with their subjects; the years by start.
+ */
+export const classesTaughtSchema = z.array(
+  z.object({
+    academicYearId: z.uuid(),
+    startDate: schoolDateSchema,
+    endDate: schoolDateSchema,
+    /** Classes first, by grade and name, then groups by name. */
+    entries: z.array(
+      z.object({
+        kind: z.enum(['class', 'group']),
+        id: z.uuid(),
+        /** The grade of a class; `null` for a group, whose name holds it. */
+        grade: z.int().nullable(),
+        name: z.string(),
+        subjectIds: z.array(z.uuid()),
+      }),
+    ),
+  }),
+);
+
+export type ClassesTaught = z.infer<typeof classesTaughtSchema>;
+
 /** A person as the record route answers it. */
 export const staffDetailSchema = staffListItemSchema.extend({
+  classesTaught: classesTaughtSchema,
   sex: sexSchema,
   /** `null` while hidden from the Principal (decision 9); `identityHidden` says so. */
   birthDate: schoolDateSchema.nullable(),
