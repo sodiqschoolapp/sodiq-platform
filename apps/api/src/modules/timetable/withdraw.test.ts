@@ -620,16 +620,24 @@ describe('withdraw', () => {
       expect(await written([s.version, source.versionId])).toEqual(before);
     });
 
-    // Spec review must-fix 1: a blocked result of the pattern refuses too.
-    it('refuses with the pattern when the version that would run again meets another branch’s weekly lesson', async () => {
-      const { s, other, otherYear, otherClass } = await sharedTeacher();
-      versionOf(await publish(s.branch, s.version, MONDAY));
-      const b = await copyOf(s, s.version, { mathsDay: 2 });
-      versionOf(await publish(s.branch, b.version, NOVEMBER));
-      // The other branch's published pattern holds the teacher on Mondays at
-      // 08:00 from 12 October, every week (as `LessonsKit.source` writes one):
-      // in force on the day A's pattern is read on (5.4b-1, busy elsewhere).
-      const versionId = await load.version(other, otherYear.year, { startsOn: MONDAY });
+    /**
+     * A published version of another branch from `startsOn`, its pattern
+     * holding the scene's teacher on Mondays at 08:00, as `LessonsKit.source`
+     * writes one; with `empty`, a version with no lesson.
+     */
+    async function weeklyElsewhere(
+      other: string,
+      year: string,
+      otherClass: string,
+      s: { subject: string; teacherId: string },
+      startsOn: string,
+      empty = false,
+    ) {
+      const versionId = await load.version(other, year, { startsOn });
+      if (empty) {
+        await load.setVersion(versionId, 'published');
+        return { versionId, blockId: null, rowId: null };
+      }
       const block = await t.database.migrator
         .insertInto('pattern_blocks')
         .values({
@@ -664,13 +672,32 @@ describe('withdraw', () => {
         })
         .execute();
       await load.setVersion(versionId, 'published');
+      return { versionId, blockId: block.id, rowId };
+    }
+
+    // Spec review must-fix 1: a blocked result of the pattern refuses too.
+    it('refuses with the pattern when the version that would run again meets another branch’s weekly lesson', async () => {
+      const { s, other, otherYear, otherClass } = await sharedTeacher();
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      const b = await copyOf(s, s.version, { mathsDay: 2 });
+      versionOf(await publish(s.branch, b.version, NOVEMBER));
+      // The other branch's published pattern holds the teacher on Mondays at
+      // 08:00 from 12 October, every week, and still on 9 November, the day
+      // the version that runs again is read on (code review must-fix 1).
+      const { versionId, blockId, rowId } = await weeklyElsewhere(
+        other,
+        otherYear.year,
+        otherClass,
+        s,
+        MONDAY,
+      );
       const source = { versionId };
       const before = await written([s.version, source.versionId]);
       const refused = await withdraw(s.branch, b.version);
       const details = blockedBy(refused);
       expect(details.map((one) => one.code)).toContain('pattern_blocked');
       // Permission review S2: no id of the other branch's pattern is named.
-      const otherIds = [versionId, block.id, rowId];
+      const otherIds = [versionId, blockId, rowId];
       const otherEntries = await t.database.migrator
         .selectFrom('pattern_entries')
         .select('id')
@@ -681,6 +708,23 @@ describe('withdraw', () => {
         expect(named).not.toContain(id);
       }
       expect(await written([s.version, source.versionId])).toEqual(before);
+    });
+
+    // Code review must-fix 1: the pattern is read on the withdrawn start, not
+    // on the start of the version that runs again.
+    it('goes ahead when another branch’s weekly lesson ends before the withdrawn start', async () => {
+      const { s, other, otherYear, otherClass } = await sharedTeacher();
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      const b = await copyOf(s, s.version, { mathsDay: 2 });
+      versionOf(await publish(s.branch, b.version, NOVEMBER));
+      // In force on 12 October, A's start; replaced from 2 November by a
+      // version with no lesson of the teacher.
+      await weeklyElsewhere(other, otherYear.year, otherClass, s, MONDAY);
+      await weeklyElsewhere(other, otherYear.year, otherClass, s, '2026-11-02', true);
+      versionOf(await withdraw(s.branch, b.version));
+      const fromNovember = (await lessonsOf(s.branch)).filter((one) => one.date >= NOVEMBER);
+      expect(fromNovember.length).toBeGreaterThan(0);
+      expect(fromNovember.every((one) => one.version_id === s.version)).toBe(true);
     });
 
     // Spec review must-fix 2 (decision 5): a teacher who left is "needs a
@@ -706,8 +750,24 @@ describe('withdraw', () => {
     it('marks every draft of the branch and year, one started from the withdrawn version too', async () => {
       const s = await twoVersions();
       const fromB = await draft(s.branch, s.year, s.b);
+      // Code review should-fix 5: from 16 November, when B was in force
+      // before the withdraw and A is after it.
+      await t.database.migrator
+        .updateTable('timetable_versions')
+        .set({ starts_on: '2026-11-16' })
+        .where('id', '=', fromB)
+        .execute();
       const fresh = await draft(s.branch, s.year);
       const elsewhere = await scene();
+      // Code review must-fix 2: a draft of another year of the same branch.
+      const nextYear = await load.classes.year(s.branch, 'planned', '2027-09-01', '2028-05-31');
+      const created = await post('/api/timetable/versions', s.branch, {
+        academicYearId: nextYear,
+        startsOn: '2027-09-06',
+        copyFrom: null,
+      });
+      expect(created.status, JSON.stringify(created.body)).toBe(201);
+      const nextYearDraft = (created.body as { id: string }).id;
       versionOf(await withdraw(s.branch, s.b));
       for (const id of [fromB, fresh]) {
         expect(await causesOf(id)).toEqual([
@@ -715,6 +775,7 @@ describe('withdraw', () => {
         ]);
       }
       expect(await causesOf(elsewhere.version)).toEqual([]);
+      expect(await causesOf(nextYearDraft)).toEqual([]);
       const entry = (await t.entries('timetable_version.withdraw', s.b))[0];
       expect((entry?.new_value as { markedOutOfDate: string[] }).markedOutOfDate.sort()).toEqual(
         [fromB, fresh].sort(),
@@ -957,16 +1018,12 @@ describe('withdraw', () => {
         // Published first: A runs again only until D's start; D's lessons stay.
         expect(versionOf(published).status).toBe('published');
         const after = await lessonsOf(s.branch);
-        expect(
-          after
-            .filter((one) => one.date >= '2026-12-07')
-            .every((one) => one.version_id === d.version),
-        ).toBe(true);
-        expect(
-          after
-            .filter((one) => one.date >= NOVEMBER && one.date < '2026-12-07')
-            .every((one) => one.version_id === s.a),
-        ).toBe(true);
+        const ofD = after.filter((one) => one.date >= '2026-12-07');
+        const between = after.filter((one) => one.date >= NOVEMBER && one.date < '2026-12-07');
+        expect(ofD.length).toBeGreaterThan(0);
+        expect(between.length).toBeGreaterThan(0);
+        expect(ofD.every((one) => one.version_id === d.version)).toBe(true);
+        expect(between.every((one) => one.version_id === s.a)).toBe(true);
       }
     });
 
@@ -1079,17 +1136,24 @@ describe('withdraw', () => {
         const [withdrawn, left] = order === 0 ? [one, two] : [two, one];
         expect(versionOf(withdrawn).status).toBe('archived');
         expect(left.status, JSON.stringify(left.body)).toBe(200);
-        for (const [date, teacher] of await tutorLessonsOf(s)) {
+        const lessons = await tutorLessonsOf(s);
+        expect(lessons.length).toBeGreaterThan(0);
+        for (const [date, teacher] of lessons) {
           expect(teacher).toBe(date < '2026-11-02' ? s.first.staffId : null);
         }
       }
     });
 
-    it('runs an archive of the class and a withdraw one after the other, in either order, the archive refused', async () => {
+    // Code review must-fix 3: the first version of the chain withdrawn, so
+    // that the class has lessons after today only while it stands; which
+    // side commits first decides whether the archive goes through.
+    it('runs an archive of the class and a withdraw one after the other, in either order, the archive deciding by the lessons left', async () => {
       for (const order of [0, 1]) {
-        const s = await tutorVersions();
+        const s = await scene();
+        versionOf(await publish(s.branch, s.version, NOVEMBER));
+        expect((await lessonsOf(s.branch)).length).toBeGreaterThan(0);
         const archive = () => post(`/api/classes/${s.classId}/archive`, s.branch, {});
-        const take = () => withdraw(s.branch, s.b);
+        const take = () => withdraw(s.branch, s.version);
         const [one, two] = await inOrder(
           s.branch,
           order === 0
@@ -1106,9 +1170,14 @@ describe('withdraw', () => {
         );
         const [withdrawn, archived] = order === 0 ? [one, two] : [two, one];
         expect(versionOf(withdrawn).status).toBe('archived');
-        // The class has lessons after today on either side: A's.
-        refusedWith(archived, 409, 'class_has_lessons');
-        expect((await tutorLessonsOf(s)).length).toBeGreaterThan(0);
+        expect(await lessonsOf(s.branch)).toEqual([]);
+        if (order === 0) {
+          // Withdrawn first: no lesson is left, so the class is archived.
+          expect(archived.status, JSON.stringify(archived.body)).toBe(200);
+        } else {
+          // Archive first: the class still has the version's lessons.
+          refusedWith(archived, 409, 'class_has_lessons');
+        }
       }
     });
   });

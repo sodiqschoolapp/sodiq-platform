@@ -10,6 +10,7 @@ import {
   addDays,
   checkTimetable,
   checkedPlacements,
+  patternIdOf,
   publishRefusals,
 } from '@sodiq/timetable-rules';
 import { sql } from 'kysely';
@@ -159,21 +160,51 @@ export class TimetableWithdraw {
     if (earlier === null) {
       lessons = await removeDatedLessons(transaction, branchId, version.starts_on, runEnd);
     } else {
-      const row = await this.timetable.versionRow(transaction, earlier.id);
-      earlierNumber = row.number;
+      const stored = await this.timetable.versionRow(transaction, earlier.id);
+      earlierNumber = stored.number;
+      // Code review must-fix 1: the version is read as if it started on the
+      // withdrawn start, the first day it runs again: its facts (busy
+      // elsewhere, availability, statuses) on the later of that day and
+      // today, as a publish reads a draft on its start.
+      // A Tutor row takes the class's Tutor of that day, as a publish reads
+      // its draft on a changed start; with none, no teacher.
+      const row = { ...stored, starts_on: version.starts_on };
+      const rows = await this.timetable.withVersionTutors(
+        transaction,
+        await this.timetable.contextOf(transaction, row),
+        await this.timetable.rowsOf(transaction, earlier.id),
+      );
       const state = runningUntil(
-        await this.pattern.stateOf(transaction, row, access.accountId),
+        await this.pattern.stateOf(transaction, row, access.accountId, rows),
         runEnd,
       );
       // Decision 5: the full rule set. A teacher out is "needs a teacher" on
       // each date (`teacher_inactive` of the pattern is decided by date), never
-      // a refusal: the version cannot be edited (spec review must-fix 2).
+      // a refusal: the version cannot be edited (spec review must-fix 2). So is
+      // a Tutor lesson: the dated check gives it the Tutor of each date, checked
+      // by time and travel, or "needs a teacher" with none (3.6c-2 decision 11).
+      const tutorSubjects = new Set(
+        state.pattern.model.data.subjects.filter((one) => one.tutorSubject).map((one) => one.id),
+      );
+      const tutorRows = new Set(
+        state.rows
+          .filter((one) => one.class_id !== null && tutorSubjects.has(one.subject_id))
+          .map((one) => one.id),
+      );
+      const rowOfLesson = new Map(
+        state.blocks.flatMap((block) =>
+          block.lessons.map((one) => [one.id, one.loadRowId] as const),
+        ),
+      );
+      const ofTutorRows = (ids: readonly string[]) =>
+        ids.length > 0 &&
+        ids.every((id) => tutorRows.has(rowOfLesson.get(patternIdOf(id)?.id ?? id) ?? ''));
       const patternBlocked = publishRefusals(
         checkTimetable(
           checkedPlacements(state.pattern.model, state.blocks),
           state.pattern.model.facts,
         ),
-      ).blocked.filter((one) => one.rule !== 'teacher_inactive');
+      ).blocked.filter((one) => one.rule !== 'teacher_inactive' && !ofTutorRows(one.lessonIds));
       const dated = await datedCheck(transaction, state, version.starts_on, patternBlocked, {
         outOnStart: false,
       });
