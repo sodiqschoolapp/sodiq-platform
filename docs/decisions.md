@@ -272,7 +272,7 @@ Plan approved on pull request #157 with corrections 1 to 4; decisions 1 to 9 con
 | Decision | Reason |
 | --- | --- |
 | **Look first** (a trigger narrowed by a requirement; the spec read against its own text). `staff_statuses_vacancy_load` (0055) refuses only while a row of a draft, or of a published version that can still run, names the vacancy, or a lesson dated after today is under it (0083) | Decision 1: read literally, "cannot be closed while a load row names it" would make "one that did is closed and kept" impossible; `/spec-change` wording on issue #42 |
-| **Look first** (a pinned list changed). The `SECURITY DEFINER` allow-list entry `vacancy_load_rows(uuid)` is replaced by `vacancy_close_holders(uuid,date)`, which refuses an application caller a vacancy outside its branches | Decision 9, correction 1 |
+| **Look first** (a pinned list changed). The `SECURITY DEFINER` allow-list entry `vacancy_load_rows(uuid)` is replaced by `vacancy_close_holders(uuid,uuid,date)`, which takes the branch as a parameter and refuses an application caller a branch outside its transaction or a record that is not a vacancy of it | Decision 9, correction 1 |
 | A published version holds until a later version of its chain has started or its year has passed; the close day bounds the lessons only | Decision 2, correction 3 |
 | The delete answers `vacancy_in_load` on every path; `vacancy_delete` is unchanged | Decision 3 |
 | A future lesson is dated after today, cancelled or not, as 0080 | Decision 4 |
