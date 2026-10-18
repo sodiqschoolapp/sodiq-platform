@@ -232,6 +232,8 @@ export {
   type DatedNoTutor,
   type DatedPattern,
   type DatedPatternInput,
+  type DatedShortened,
+  type DatedUnusedKeep,
 } from './dated.js';
 // Task 5.5a-2b-1: the impact preview and the transition week of a publish.
 export {

@@ -21,6 +21,21 @@
  * - `exam_week`: an exam week with "no regular lessons", a bulk cancel with
  *   that reason (edge/time-dates-calendar, "The last week of a quarter").
  * A vacation date (in no quarter), a day off and a weekday off give nothing.
+ *
+ * The lessons kept on a shortened day (task 5.5a-2b-2, pull request #143):
+ * the day is shortened for a class when a lesson of the class on the weekday
+ * it follows has no slot of its number on the date. There, a stored choice of
+ * the Academic Vice Principal (`keptOn`: the slot positions of the lessons
+ * kept) decides (edge/time-dates-calendar, "A shortened day": "The Academic
+ * Vice Principal can choose which lessons are kept"): a kept lesson whose
+ * number the date has keeps that slot; the other kept lessons, in their order
+ * in the day, take the lesson slots no kept lesson holds (review correction
+ * 1); a lesson not kept, or with no slot left, is cancelled
+ * `not_in_template` (decision 5). A stored position that holds no lesson of
+ * the class is ignored and named (decision 11); a choice on a day that is not
+ * shortened, or none of whose positions holds a lesson, is unused (decision 3).
+ * A lesson of several classes takes the time each class gives it, and is
+ * cancelled `not_in_template` when they differ (decision 4).
  */
 import type { Day } from './day.js';
 import type { Placement } from './placement.js';
@@ -46,6 +61,8 @@ export interface DatedEntry {
 export interface DatedBlock {
   readonly id: string;
   readonly weekday: number;
+  /** The block's position in the day template, breaks included (`pattern_blocks.slot_position`). */
+  readonly slotPosition: number;
   readonly start: number;
   readonly end: number;
   readonly doublePairId: string | null;
@@ -81,6 +98,10 @@ export interface DatedPatternInput {
   readonly studentsOn: (unitId: string, date: string) => readonly string[];
   /** The teacher of a Tutor row's lesson on a date at its start minute; `null`: no Tutor. */
   readonly tutorOn: (classId: string, date: string, start: number) => string | null;
+  /** The grade of a class. */
+  readonly gradeOf: (classId: string) => number;
+  /** The slot positions a class keeps on a shortened date (task 5.5a-2b-2); `null` with no choice. */
+  readonly keptOn: (classId: string, date: string) => readonly number[] | null;
 }
 
 /** A lesson of a date: the engine's placement and where it comes from. */
@@ -114,10 +135,38 @@ export interface DatedNoTutor {
   readonly entryId: string;
 }
 
+/** A date shortened for a class: its lessons of the day and those kept (task 5.5a-2b-2). */
+export interface DatedShortened {
+  readonly date: string;
+  readonly classId: string;
+  /** The lesson slots of the day. */
+  readonly lessonSlots: number;
+  /** The class's lessons on the weekday the date follows, in their order in the day. */
+  readonly lessons: readonly {
+    readonly blockId: string;
+    readonly slotPosition: number;
+    readonly entryIds: readonly string[];
+  }[];
+  /** The slot positions kept: the choice's that hold a lesson, or the default's. */
+  readonly kept: readonly number[];
+  /** Whether a stored choice decides the date. */
+  readonly chosen: boolean;
+  /** Stored positions that hold no lesson of the class (decision 11). */
+  readonly missingPositions: readonly number[];
+}
+
+/** A stored choice that decides nothing on its date (decision 3). */
+export interface DatedUnusedKeep {
+  readonly date: string;
+  readonly classId: string;
+}
+
 export interface DatedPattern {
   readonly lessons: readonly DatedLesson[];
   readonly cancelled: readonly DatedCancelled[];
   readonly noTutor: readonly DatedNoTutor[];
+  readonly shortened: readonly DatedShortened[];
+  readonly unusedKeeps: readonly DatedUnusedKeep[];
 }
 
 /** The date `days` after `date`. */
@@ -141,7 +190,115 @@ type BlockOnDate =
   | { readonly kind: 'cancelled'; readonly reason: DatedCancelReason }
   | { readonly kind: 'lessons'; readonly start: number; readonly end: number };
 
-function blockOn(block: DatedBlock, date: string, input: DatedPatternInput): BlockOnDate {
+/** The lesson number of a block in the weekly day of a grade; `null` when its times are not there. */
+function weeklyNumber(block: DatedBlock, grade: number, input: DatedPatternInput): number | null {
+  return (
+    input
+      .weeklyDay(grade, block.weekday)
+      ?.slots.find((slot) => slot.start === block.start && slot.end === block.end)?.lessonNumber ??
+    null
+  );
+}
+
+/** The classes of a block's lessons. */
+const classesOf = (block: DatedBlock): string[] => [
+  ...new Set(block.entries.flatMap((entry) => entry.classIds)),
+];
+
+/**
+ * The lesson numbers a stored choice gives a class's blocks on a date
+ * (`null`: cancelled), and what the date shows for the class; `chosen` is
+ * `null` where no choice decides.
+ */
+interface ClassOnDate {
+  readonly shortened: DatedShortened | null;
+  readonly unused: boolean;
+  readonly chosen: ReadonlyMap<string, number | null> | null;
+}
+
+function classOn(
+  classId: string,
+  blocks: readonly DatedBlock[],
+  date: string,
+  input: DatedPatternInput,
+): ClassOnDate {
+  const grade = input.gradeOf(classId);
+  const stored = input.keptOn(classId, date);
+  const day = input.dayOn(grade, date);
+  if (!day.lessons) {
+    return { shortened: null, unused: stored !== null, chosen: null };
+  }
+  const own = blocks
+    .filter((block) => block.weekday === day.followsWeekday)
+    .sort((a, b) => a.slotPosition - b.slotPosition);
+  const numbers = new Map(own.map((block) => [block.id, weeklyNumber(block, grade, input)]));
+  const daySlots = day.day.slots.flatMap((slot) =>
+    slot.lessonNumber === null ? [] : [slot.lessonNumber],
+  );
+  const held = (number: number | null | undefined) =>
+    number !== null && number !== undefined && daySlots.includes(number);
+  const shortened = own.some((block) => {
+    const number = numbers.get(block.id);
+    return number !== null && number !== undefined && !held(number);
+  });
+  if (!shortened) {
+    return { shortened: null, unused: stored !== null, chosen: null };
+  }
+  const positions = new Set(own.map((block) => block.slotPosition));
+  const named = stored === null ? [] : [...new Set(stored)].sort((a, b) => a - b);
+  const keptBlocks = own.filter((block) => named.includes(block.slotPosition));
+  const lessons = own.map((block) => ({
+    blockId: block.id,
+    slotPosition: block.slotPosition,
+    entryIds: block.entries.map((entry) => entry.id),
+  }));
+  const base = { date, classId, lessonSlots: daySlots.length, lessons };
+  if (keptBlocks.length === 0) {
+    return {
+      shortened: {
+        ...base,
+        kept: own.filter((block) => held(numbers.get(block.id))).map((block) => block.slotPosition),
+        chosen: false,
+        missingPositions: named,
+      },
+      unused: stored !== null,
+      chosen: null,
+    };
+  }
+  // Review correction 1: a kept lesson keeps the slot of its number; the
+  // others take the free lesson slots in their order in the day.
+  const chosen = new Map<string, number | null>(own.map((block) => [block.id, null]));
+  const taken = new Set<number>();
+  for (const block of keptBlocks) {
+    const number = numbers.get(block.id);
+    if (held(number) && number !== null && number !== undefined) {
+      chosen.set(block.id, number);
+      taken.add(number);
+    }
+  }
+  const free = daySlots.filter((number) => !taken.has(number));
+  for (const block of keptBlocks) {
+    if (chosen.get(block.id) !== null) continue;
+    chosen.set(block.id, free.shift() ?? null);
+  }
+  return {
+    shortened: {
+      ...base,
+      kept: keptBlocks.map((block) => block.slotPosition),
+      chosen: true,
+      missingPositions: named.filter((one) => !positions.has(one)),
+    },
+    unused: false,
+    chosen,
+  };
+}
+
+function blockOn(
+  block: DatedBlock,
+  date: string,
+  input: DatedPatternInput,
+  chosenOf: (classId: string) => ReadonlyMap<string, number | null> | null,
+): BlockOnDate {
   const days = block.grades.map((grade) => ({ grade, day: input.dayOn(grade, date) }));
   const holding = days.filter((one) => one.day.lessons && one.day.followsWeekday === block.weekday);
   if (holding.length === 0) {
@@ -157,17 +314,26 @@ function blockOn(block: DatedBlock, date: string, input: DatedPatternInput): Blo
   if (holding.some((one) => one.day.lessons && one.day.noRegularLessons)) {
     return { kind: 'cancelled', reason: 'exam_week' };
   }
+  // Each class of the block gives it a slot: a stored choice's, or the
+  // block's own lesson number in its grade's day (decision 4).
   const times = new Set<string>();
-  for (const one of holding) {
-    if (!one.day.lessons) continue;
-    const weekly = input.weeklyDay(one.grade, block.weekday);
-    const number = weekly?.slots.find(
-      (slot) => slot.start === block.start && slot.end === block.end,
-    )?.lessonNumber;
+  const classes = classesOf(block);
+  const sources =
+    classes.length === 0
+      ? holding.map((one) => ({ grade: one.grade, classId: null }))
+      : classes.map((classId) => ({ grade: input.gradeOf(classId), classId }));
+  for (const source of sources) {
+    const day = input.dayOn(source.grade, date);
+    if (!day.lessons) {
+      return { kind: 'cancelled', reason: 'not_in_template' };
+    }
+    const chosen = source.classId === null ? null : chosenOf(source.classId);
+    const number =
+      chosen === null ? weeklyNumber(block, source.grade, input) : (chosen.get(block.id) ?? null);
     const slot =
-      number === undefined || number === null
+      number === null
         ? undefined
-        : one.day.day.slots.find((candidate) => candidate.lessonNumber === number);
+        : day.day.slots.find((candidate) => candidate.lessonNumber === number);
     if (slot === undefined) {
       return { kind: 'cancelled', reason: 'not_in_template' };
     }
@@ -186,12 +352,28 @@ export function datedPattern(input: DatedPatternInput): DatedPattern {
   const lessons: DatedLesson[] = [];
   const cancelled: DatedCancelled[] = [];
   const noTutor: DatedNoTutor[] = [];
+  const shortened: DatedShortened[] = [];
+  const unusedKeeps: DatedUnusedKeep[] = [];
+  const blocksOfClass = new Map<string, DatedBlock[]>();
+  for (const block of input.blocks) {
+    for (const classId of classesOf(block)) {
+      blocksOfClass.set(classId, [...(blocksOfClass.get(classId) ?? []), block]);
+    }
+  }
+  const classIds = [...blocksOfClass.keys()].sort();
   for (let date = input.firstDate; date <= input.lastDate; date = addDays(date, 1)) {
     if (!input.quarters.some((one) => one.firstDate <= date && date <= one.lastDate)) {
       continue;
     }
+    const chosenByClass = new Map<string, ReadonlyMap<string, number | null>>();
+    for (const classId of classIds) {
+      const found = classOn(classId, blocksOfClass.get(classId) ?? [], date, input);
+      if (found.shortened !== null) shortened.push(found.shortened);
+      if (found.unused) unusedKeeps.push({ date, classId });
+      if (found.chosen !== null) chosenByClass.set(classId, found.chosen);
+    }
     for (const block of input.blocks) {
-      const found = blockOn(block, date, input);
+      const found = blockOn(block, date, input, (classId) => chosenByClass.get(classId) ?? null);
       if (found.kind === 'none') continue;
       if (found.kind === 'cancelled') {
         cancelled.push({
@@ -242,5 +424,5 @@ export function datedPattern(input: DatedPatternInput): DatedPattern {
       }
     }
   }
-  return { lessons, cancelled, noTutor };
+  return { lessons, cancelled, noTutor, shortened, unusedKeeps };
 }
