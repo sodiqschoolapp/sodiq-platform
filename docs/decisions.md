@@ -41,7 +41,7 @@ Decided by the owner on 16 October 2026, to save usage before 25 October (the ac
 
 | Decision | Reason |
 | --- | --- |
-| **One spec review of the code, not two**: `finish-task` step 3 asks only the `permission-reviewer` (when routes changed); the review routine does the spec review of the code. The `spec-reviewer` still checks the plan | The builder's spec review and the routine's review checked the same diff; the builder's two subagents were about 30% of a builder session |
+| **One spec review of the code, not two** (in part superseded on 18 October 2026: the review run asks the `spec-reviewer` for a second opinion; the builder still asks none): `finish-task` step 3 asks only the `permission-reviewer` (when routes changed); the review routine does the spec review of the code. The `spec-reviewer` still checks the plan | The builder's spec review and the routine's review checked the same diff; the builder's two subagents were about 30% of a builder session |
 | **The handbook is paused until the release**: no task updates `docs/handbook/`; the definition-of-done line, the `finish-task` step, the reviewer check line and the light handbook review are removed; tasks 3.7 and 9.6 are deferred | Written once from the finished platform, it costs one pass instead of a page in every task |
 | **Deferred until after 25 October**: 3.7, 5.7c (Free now board), 8.3b (live updates), 8.3c (offline entry), 9.3b (analytics), 9.5a, 9.5b, 9.5c (closing the year, rollover, a new year, the full-year simulation), 9.6, in a section after Phase 10 | Not needed for the release on the test site; year-end work is needed in June 2027 |
 
