@@ -496,9 +496,11 @@ export const ERROR_CODES = [
   'group_transfer_subject',
   /** The version is not a draft: its load and start date no longer change (task 3.4a). */
   'version_not_draft',
-  /** A publish marked the draft out of date; bringing it up to date after a publish comes with task 5.5a-3b-2 (task 5.5a-3b-1, decision 5). */
-  'draft_out_of_date_by_publish',
-  /** The causes of the mark are not the ones shown: another change marked the draft since (task 5.5a-3b-1). */
+  /** The picks of bringing a draft up to date bring a blocked result or a load problem; the details list them (task 5.5a-3b-2, decision 8). */
+  'up_to_date_blocked',
+  /** Bringing a draft up to date after a publish needs one pick for every difference listed (task 5.5a-3b-2, decision 7). */
+  'up_to_date_pick_missing',
+  /** The causes of the mark, the published version compared or the differences are not the ones shown (tasks 5.5a-3b-1 and 5.5a-3b-2). */
   'out_of_date_changed',
   /** The academic year of the version is closed (task 3.4a). */
   'timetable_year_closed',

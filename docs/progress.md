@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 18 October 2026: task 5.5a-3b-2 Publish: bringing a draft up to date after a publish
+
+- A draft marked by a publish is compared with the published version in force on the later of its start and tomorrow; `GET .../out-of-date` lists every difference item by item (rows of one subject whose classes meet, or that share a block, with their load fields, lessons in the week and pins), beside the version the draft started from, with who changed it and a default pick.
+- `POST .../up-to-date` takes a pick per item, checks the result with the rule engine before writing (`up_to_date_blocked`), writes the picks, clears the causes and makes the draft name the version compared (0078). The builder's panel shows the three sides and the picks.
+- Left out: dated lessons, notices and journals (5.5b, 5.5c); a copy that takes the pattern (5.8).
+
+The next sessions must know:
+
+- `writeBlock` (`pattern.service.ts`) writes a block with no audit entry; the grid's `insertBlock` adds `pattern_block.create`. A taken double gets a new `double_pair_id`: 0058 counts a pair across versions.
+- 0078 lets `from_version_id` change on a draft only; that the new source is published is the route's rule, under `PUBLISH_LOCK`.
+- The next task is 5.5b.
+
 ## 18 October 2026: task 5.5a-3b-1 Publish: out-of-date drafts after a change of the setup
 
 - A change of the calendar, the day templates, a teacher's hours or a room's use marks the drafts of its branch in the years it touches out of date, in its transaction, with an audit entry each; the mark is its causes (`timetable_version_out_of_date_causes`, 0077), and `out_of_date_at` is gone. A publish adds its cause to every draft it marks, marked or not.

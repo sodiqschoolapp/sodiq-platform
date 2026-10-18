@@ -1248,6 +1248,8 @@ describe('a draft out of date', () => {
       causesPending?: boolean;
       branchFail?: boolean;
       checkFail?: boolean;
+      comparison?: { other: object; base: object | null; items: readonly object[] };
+      bring?: () => Response | Promise<Response>;
     } = {},
   ) {
     let marked = true;
@@ -1263,10 +1265,18 @@ describe('a draft out of date', () => {
             ? new Promise<Response>(() => undefined)
             : options.causesFail === true
               ? json({ error: { code: 'internal_error', message: 'x', requestId: 'r' } }, 500)
-              : json({ causes: marked ? causes : [], key: KEY }),
+              : json({
+                  causes: marked ? causes : [],
+                  key: KEY,
+                  other: null,
+                  base: null,
+                  items: [],
+                  ...(marked ? options.comparison : {}),
+                }),
         [`GET /api/timetable/versions/${VERSION.id}/publish-check`]: () =>
           options.checkFail === true ? json(FAILED, 500) : json(CHECK),
         [bringRoute]: () => {
+          if (options.bring !== undefined) return options.bring();
           marked = false;
           return json({ ...VERSION, outOfDate: false });
         },
@@ -1298,30 +1308,241 @@ describe('a draft out of date', () => {
     await waitFor(() => {
       expect(document.querySelector('[data-out-of-date-panel]')).toBeNull();
     });
-    expect(calls.find((call) => call.route === bringRoute)?.body).toEqual({ key: KEY });
+    expect(calls.find((call) => call.route === bringRoute)?.body).toEqual({ key: KEY, picks: [] });
     expect(document.querySelector('[data-out-of-date="true"]')).toBeNull();
   });
 
-  it('switches the button off with its reason while a publish marked the draft', async () => {
-    const calls = await outOfDate([
-      CALENDAR,
+  // Task 5.5a-3b-2: after a publish, the differences and a pick per difference.
+  const PUBLISH = {
+    id: uid(963),
+    kind: 'publish',
+    action: 'timetable_version.publish',
+    causedAt: '2026-10-10T09:10:00.000Z',
+    record: { id: uid(970), name: null, firstDate: null, lastDate: null, versionNumber: 3 },
+  };
+  const values = (more: object = {}) => ({
+    teacherId: uid(980),
+    teacherName: 'Karimova N.',
+    roomId: uid(981),
+    roomName: 'Room 12',
+    lessonsPerWeek: 1,
+    roomType: null,
+    doubleLessons: false,
+    mixedBlock: false,
+    shortReason: null,
+    placements: [
       {
-        id: uid(963),
-        kind: 'publish',
-        action: 'timetable_version.publish',
-        causedAt: '2026-10-10T09:10:00.000Z',
-        record: null,
+        weekday: 1,
+        slotPosition: 1,
+        roomId: uid(981),
+        roomName: 'Room 12',
+        with: [],
+        pairedWith: null,
       },
-    ]);
+    ],
+    pins: [],
+    ...more,
+  });
+  const itemRow = (key: string, subject: string, sides: object) => ({
+    key,
+    classId: uid(990),
+    groupId: null,
+    unitName: '7 Oxford',
+    subjectId: uid(991),
+    subjectNames: { uz: subject, ru: subject, en: subject },
+    tutorRow: false,
+    base: values(),
+    draft: values(),
+    published: values(),
+    ...sides,
+  });
+  const COMPARISON = {
+    other: { id: uid(970), number: 3, startsOn: '2026-11-02' },
+    base: { id: uid(971), number: 1 },
+    items: [
+      {
+        key: 'maths',
+        rows: [
+          itemRow('maths', 'Maths', {
+            draft: values({ teacherName: 'Rahimov A.' }),
+            published: values({ roomName: 'Room 14' }),
+          }),
+        ],
+        changedBy: 'both',
+        defaultPick: null,
+      },
+      {
+        key: 'art',
+        rows: [itemRow('art', 'Art', { published: values({ lessonsPerWeek: 2 }) })],
+        changedBy: 'published',
+        defaultPick: 'published',
+      },
+    ],
+  };
+
+  it('shows both sides of every difference, needs a pick for each and sends the picks', async () => {
+    const calls = await outOfDate([CALENDAR, PUBLISH], { comparison: COMPARISON });
     const found = await panel();
-    expect([...found.querySelectorAll('li')][1]?.textContent).toContain(
-      en.timetable.outOfDate.earlierPublish,
-    );
     expect(within(found).getByText(en.timetable.outOfDate.byPublish)).toBeTruthy();
-    expect(
-      within(found).getByRole('button', { name: en.timetable.outOfDate.bring }),
-    ).toHaveProperty('disabled', true);
-    expect(calls.some((call) => call.route === bringRoute)).toBe(false);
+    const maths = await waitFor(() => {
+      const item = found.querySelector('[data-item="maths"]');
+      if (item === null) throw new Error('No item yet.');
+      return item as HTMLElement;
+    });
+    expect(within(maths).getByText(en.timetable.outOfDate.changedBy.both)).toBeTruthy();
+    const teacherRow = [...maths.querySelectorAll('tbody tr')][0];
+    expect([...(teacherRow?.querySelectorAll('td') ?? [])].map((cell) => cell.textContent)).toEqual(
+      ['Karimova N.', 'Rahimov A.', 'Karimova N.'],
+    );
+    const bring = within(found).getByRole('button', { name: en.timetable.outOfDate.bring });
+    // Maths changed on both sides: no default pick, so the button waits.
+    expect(bring).toHaveProperty('disabled', true);
+    expect(within(found).getByText(en.timetable.outOfDate.pickNeeded)).toBeTruthy();
+    fireEvent.click(within(maths).getByRole('radio', { name: en.timetable.outOfDate.keepDraft }));
+    expect(bring).toHaveProperty('disabled', false);
+    fireEvent.click(bring);
+    await waitFor(() => {
+      expect(calls.find((call) => call.route === bringRoute)?.body).toEqual({
+        key: KEY,
+        picks: [
+          { item: 'maths', side: 'draft' },
+          { item: 'art', side: 'published' },
+        ],
+      });
+    });
+  });
+
+  it('shows every field that makes an item a difference: room type, short reason, mixed block, block and double', async () => {
+    const noRoom = { roomId: null, roomName: null };
+    const placed = (more: object) => [
+      {
+        weekday: 1,
+        slotPosition: 1,
+        roomId: uid(981),
+        roomName: 'Room 12',
+        with: [],
+        pairedWith: null,
+        ...more,
+      },
+    ];
+    const only = (key: string, sides: object) => ({
+      key,
+      rows: [itemRow(key, key, sides)],
+      changedBy: 'draft',
+      defaultPick: 'draft',
+    });
+    await outOfDate([PUBLISH], {
+      comparison: {
+        ...COMPARISON,
+        items: [
+          only('type', {
+            base: values(noRoom),
+            draft: values({ ...noRoom, roomType: 'laboratory' }),
+            published: values(noRoom),
+          }),
+          only('reason', { draft: values({ shortReason: 'Exam week' }) }),
+          only('mixed', { draft: values({ mixedBlock: true }) }),
+          only('block', {
+            draft: values({
+              placements: placed({
+                with: [
+                  {
+                    key: 'art',
+                    unitName: '7 Cambridge',
+                    subjectNames: { uz: 'Art', ru: 'Art', en: 'Art' },
+                  },
+                ],
+              }),
+            }),
+          }),
+          only('pair', {
+            draft: values({ placements: placed({ pairedWith: { weekday: 1, slotPosition: 2 } }) }),
+          }),
+        ],
+      },
+    });
+    const found = await panel();
+    const cells = async (item: string, field: string) =>
+      waitFor(() => {
+        const row = [
+          ...(found.querySelector(`[data-item="${item}"]`)?.querySelectorAll('tbody tr') ?? []),
+        ].find((one) => one.querySelector('th')?.textContent === field);
+        if (row === undefined) throw new Error(`No ${field} of ${item}.`);
+        return [...row.querySelectorAll('td')].map((cell) => cell.textContent);
+      });
+    const fields = en.timetable.outOfDate.fields;
+    const typeText = en.timetable.load.roomTypeOption.replace(
+      '{{type}}',
+      en.setup.rooms.types.laboratory,
+    );
+    expect(await cells('type', fields.room)).toEqual([
+      en.timetable.outOfDate.noRoom,
+      typeText,
+      en.timetable.outOfDate.noRoom,
+    ]);
+    const none = en.timetable.outOfDate.noReason;
+    expect(await cells('reason', fields.shortReason)).toEqual([none, 'Exam week', none]);
+    const { yes, no } = en.timetable.load;
+    expect(await cells('mixed', fields.mixedBlock)).toEqual([no, yes, no]);
+    const monday = en.timetable.outOfDate.slot.replace('{{weekday}}', 'Monday');
+    const plain = `${monday.replace('{{position}}', '1')}, Room 12`;
+    expect(await cells('block', fields.placements)).toEqual([
+      plain,
+      `${plain}, ${en.timetable.outOfDate.with.replace('{{rows}}', '7 Cambridge, Art')}`,
+      plain,
+    ]);
+    expect(await cells('pair', fields.placements)).toEqual([
+      plain,
+      `${plain}, ${en.timetable.outOfDate.doubleWith.replace('{{slot}}', monday.replace('{{position}}', '2'))}`,
+      plain,
+    ]);
+    // A row without a short reason or a mixed block on any side has no such row.
+    expect(await cells('type', fields.room)).toHaveLength(3);
+    await expect(cells('type', fields.shortReason)).rejects.toThrow();
+    await expect(cells('type', fields.mixedBlock)).rejects.toThrow();
+  });
+
+  it('takes one side everywhere, and shows the rules a refusal names', async () => {
+    const calls = await outOfDate([PUBLISH], {
+      comparison: COMPARISON,
+      bring: () =>
+        json(
+          {
+            error: {
+              code: 'up_to_date_blocked',
+              message: 'x',
+              requestId: 'r',
+              details: [
+                {
+                  path: 'pattern.teacher_double',
+                  code: 'teacher_double',
+                  message: 'x',
+                  rule: { weekday: 2, lessonIds: [] },
+                },
+              ],
+            },
+          },
+          409,
+        ),
+    });
+    const found = await panel();
+    fireEvent.click(
+      await within(found).findByRole('button', { name: en.timetable.outOfDate.allPublished }),
+    );
+    fireEvent.click(within(found).getByRole('button', { name: en.timetable.outOfDate.bring }));
+    await waitFor(() => {
+      expect(found.querySelector('[data-refused]')?.textContent).toBe(
+        `${en.timetable.rule.teacher_double} (Tuesday)`,
+      );
+    });
+    expect(calls.find((call) => call.route === bringRoute)?.body).toEqual({
+      key: KEY,
+      picks: [
+        { item: 'maths', side: 'published' },
+        { item: 'art', side: 'published' },
+      ],
+    });
+    expect(within(found).getByText(en.errors.up_to_date_blocked)).toBeTruthy();
   });
 
   it('shows the Principal the causes with no button', async () => {

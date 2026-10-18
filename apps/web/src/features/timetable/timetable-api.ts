@@ -24,6 +24,7 @@ import {
   type TimetableLockRecord,
   type TimetableVersionCreate,
   type TimetableVersionEdit,
+  type UpToDateSide,
 } from '@sodiq/shared';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { api, branchHeader } from '@/api/client';
@@ -382,11 +383,18 @@ export const outOfDateQuery = (branchId: string | null, versionId: string | null
     enabled: branchId !== null && versionId !== null,
   });
 
-/** A draft brought up to date after a change of the setup, with the key of the causes shown. */
-export const bringUpToDate = (versionId: string, key: string) =>
+/**
+ * A draft brought up to date with the key of what was shown (task 5.5a-3b-1);
+ * after a publish, with a pick for every difference (task 5.5a-3b-2).
+ */
+export const bringUpToDate = (
+  versionId: string,
+  key: string,
+  picks: readonly { item: string; side: UpToDateSide }[] = [],
+) =>
   answerOf(
     api.POST('/api/timetable/versions/{id}/up-to-date', {
       params: { header: branchHeader(), path: { id: versionId } },
-      body: { key },
+      body: { key, picks: [...picks] },
     }),
   ).then((answer) => timetableVersionSchema.parse(answer));

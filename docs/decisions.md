@@ -261,6 +261,26 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 18 October 2026: bringing a draft up to date after a publish (task 5.5a-3b-2)
+
+Plan approved on pull request #148 with corrections 1 to 3; decisions 1 to 14 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a trigger widened by a requirement). `timetable_versions_fixed` (0055) lets a draft's `from_version_id` change (0078, with its update grant); the source of a published or archived version stays fixed; the route names a published version only, under the publish lock | Decision 1, review correction 1; "the draft then names the published version as the one it started from" |
+| **Look first** (tests changed by a requirement). The test that expected `draft_out_of_date_by_publish` now brings the draft up to date; `teaching-load.database.test.ts` no longer expects `from_version_id` refused on a draft or ungranted | Decision 2; 5.5a-3b-1 decision 5 held that refusal "until 5.5a-3b-2" |
+| The version compared is the published version in force on the later of the draft's start and tomorrow in branch time, else the year's earliest published version, else none; a publish cause of a later version is cleared with the others | Decision 3, spec review must-fix 1 and should-fix 3 |
+| The base is the draft's source as stored now; it sets labels and defaults only, every difference is listed and picked | Decision 4 |
+| An item is the rows of one subject whose classes meet, or that share a block on either side, taken whole: load fields, lessons in the week (with the double pairing) and pins | Decision 5, spec review must-fix 2 |
+| A Tutor row's teacher is never a difference; a Tutor row added takes the draft's Tutor | Decision 6 |
+| The default pick is the side that changed, none when both did; every item needs a pick (`up_to_date_pick_missing`) | Decision 7 |
+| The picks are checked in memory before any write: a new blocked result, a slot the draft's template lacks, or a new load problem of a row taken refuses `up_to_date_blocked` with the list | Decisions 8 and 12 |
+| The start date, step 5's rules and weights, left rows, shortened-day choices and class, teacher and day locks stay the draft's; a block lock goes with its block | Decision 9 |
+| The publish lock first, then the draft's | Decision 10 |
+| The key covers the causes, the version compared and every item; a pick of an item not listed is `out_of_date_changed` | Decision 11 |
+| One audit entry `timetable_version.up_to_date` holds the picks and every row, block, entry, pin and cascaded block lock removed and added; `writeBlock` writes blocks without the grid's own entry | Decision 13, review correction 2 |
+| A draft may name a version that names it; the publish's chain walk stops on a version seen | Decision 14 |
+
 ## 18 October 2026: out-of-date drafts after a change of the setup (task 5.5a-3b-1)
 
 Plan approved on pull request #146 with corrections 1 to 4; decisions 1 to 12 confirmed there. Flagged on issue #42.

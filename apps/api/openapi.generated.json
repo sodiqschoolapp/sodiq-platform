@@ -1742,7 +1742,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -2524,7 +2525,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -3587,7 +3589,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -4290,7 +4293,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -5003,7 +5007,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -5803,7 +5808,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -6537,7 +6543,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -7228,7 +7235,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -7925,7 +7933,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -8610,7 +8619,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -9319,7 +9329,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -10008,7 +10019,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -10697,7 +10709,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -11377,7 +11390,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -12057,7 +12071,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -12717,7 +12732,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -13377,7 +13393,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -14083,7 +14100,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -14838,7 +14856,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -15526,7 +15545,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -16293,7 +16313,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -17052,7 +17073,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -17802,7 +17824,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -18487,7 +18510,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -19250,7 +19274,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -19973,7 +19998,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -20696,7 +20722,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -21403,7 +21430,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -22110,7 +22138,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -22777,7 +22806,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -23444,7 +23474,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -24146,7 +24177,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -24860,7 +24892,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -25586,7 +25619,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -26286,7 +26320,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -27027,7 +27062,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -27760,7 +27796,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -28467,7 +28504,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -29188,7 +29226,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -29907,7 +29946,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -30632,7 +30672,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -31331,7 +31372,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -32030,7 +32072,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -32716,7 +32759,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -33507,7 +33551,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -34284,7 +34329,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -35069,7 +35115,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -35872,7 +35919,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -36639,7 +36687,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -37406,7 +37455,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -38148,7 +38198,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -38968,7 +39019,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -39722,7 +39774,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -40518,7 +40571,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -41787,7 +41841,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -42552,7 +42607,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -43415,7 +43471,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -44655,7 +44712,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -45530,7 +45588,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -46287,7 +46346,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -47044,7 +47104,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -47839,7 +47900,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -48503,7 +48565,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -49187,7 +49250,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -49889,7 +49953,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -50574,7 +50639,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -51282,7 +51348,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -51983,7 +52050,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -52659,7 +52727,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -53315,7 +53384,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -53995,7 +54065,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -54807,7 +54878,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -55732,7 +55804,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -56422,7 +56495,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -57359,7 +57433,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -58197,7 +58272,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -59003,7 +59079,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -59809,7 +59886,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -60548,7 +60626,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -61326,7 +61405,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -62075,7 +62155,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -62937,7 +63018,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -64096,7 +64178,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -64787,7 +64870,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -65818,7 +65902,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -66987,7 +67072,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -67750,7 +67836,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -68835,7 +68922,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -69896,7 +69984,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -70988,7 +71077,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -71636,7 +71726,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -72499,7 +72590,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -73176,7 +73268,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -73820,7 +73913,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -74683,7 +74777,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -75597,7 +75692,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -76490,7 +76586,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -77393,7 +77490,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -78015,7 +78113,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -78653,7 +78752,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -79443,7 +79543,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -80253,7 +80354,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -81043,7 +81145,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -81702,7 +81805,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -82361,7 +82465,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -83043,7 +83148,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -83792,7 +83898,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -84840,7 +84947,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -85463,7 +85571,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -86100,7 +86209,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -87070,7 +87180,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -88028,7 +88139,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -88749,7 +88861,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -89575,7 +89688,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -90263,7 +90377,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -91021,7 +91136,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -91857,7 +91973,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -92615,7 +92732,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -93373,7 +93491,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -93998,7 +94117,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -94966,7 +95086,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -97140,7 +97261,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -97773,7 +97895,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -98485,7 +98608,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -99192,7 +99316,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -100952,7 +101077,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -102886,7 +103012,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -104676,7 +104803,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -105366,7 +105494,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -107159,7 +107288,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -108940,7 +109070,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -110727,7 +110858,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -112554,7 +112686,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -114335,7 +114468,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -116134,7 +116268,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -116786,7 +116921,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -118578,7 +118714,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -120374,7 +120511,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -122155,7 +122293,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -123942,7 +124081,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -125731,7 +125871,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -127518,7 +127659,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -129290,7 +129432,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -131071,7 +131214,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -132246,7 +132390,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -134039,7 +134184,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -135811,7 +135957,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -136460,7 +136607,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -137168,7 +137316,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -137874,7 +138023,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -139683,7 +139833,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -140422,7 +140573,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -141696,7 +141848,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -143513,7 +143666,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -144155,7 +144309,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -144778,7 +144933,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -145415,7 +145571,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -146166,7 +146323,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -146799,7 +146957,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -147495,7 +147654,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -148271,7 +148431,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -149107,7 +149268,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -149930,7 +150092,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -150577,7 +150740,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -151302,7 +151466,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -152255,7 +152420,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -153033,7 +153199,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -153790,7 +153957,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -155146,7 +155314,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -156535,7 +156704,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -157577,7 +157747,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -158299,7 +158470,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -158981,7 +159153,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -159656,7 +159829,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -160563,7 +160737,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -161605,7 +161780,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -162335,7 +162511,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -163003,7 +163180,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -163692,7 +163870,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -164692,7 +164871,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -165748,7 +165928,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -166748,7 +166929,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -167748,7 +167930,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -168789,7 +168972,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -169634,7 +169818,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -170664,7 +170849,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -171375,7 +171561,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -172161,7 +172348,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -172882,7 +173070,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -173710,7 +173899,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -174677,7 +174867,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -175403,7 +175594,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -176202,7 +176394,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -176891,7 +177084,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -177579,7 +177773,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -178495,7 +178690,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -179466,7 +179662,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -180382,7 +180579,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -181314,7 +181512,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -182060,7 +182259,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -182845,7 +183045,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -183601,7 +183802,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -184357,7 +184559,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -185031,7 +185234,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -185720,7 +185924,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -186488,7 +186693,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -187269,7 +187475,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -188052,7 +188259,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -188524,11 +188732,1072 @@
                     "key": {
                       "type": "string",
                       "pattern": "^[0-9a-f]{64}$"
+                    },
+                    "other": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "number": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "startsOn": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "number",
+                        "startsOn"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "base": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "number": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "number"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "key": {
+                            "type": "string"
+                          },
+                          "rows": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "key": {
+                                  "type": "string"
+                                },
+                                "classId": {
+                                  "nullable": true,
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "groupId": {
+                                  "nullable": true,
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "unitName": {
+                                  "type": "string"
+                                },
+                                "subjectId": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "subjectNames": {
+                                  "type": "object",
+                                  "properties": {
+                                    "uz": {
+                                      "type": "string"
+                                    },
+                                    "ru": {
+                                      "type": "string"
+                                    },
+                                    "en": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "uz",
+                                    "ru",
+                                    "en"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "tutorRow": {
+                                  "type": "boolean"
+                                },
+                                "base": {
+                                  "nullable": true,
+                                  "type": "object",
+                                  "properties": {
+                                    "teacherId": {
+                                      "nullable": true,
+                                      "type": "string",
+                                      "format": "uuid",
+                                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                    },
+                                    "teacherName": {
+                                      "nullable": true,
+                                      "type": "string"
+                                    },
+                                    "roomId": {
+                                      "nullable": true,
+                                      "type": "string",
+                                      "format": "uuid",
+                                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                    },
+                                    "roomName": {
+                                      "nullable": true,
+                                      "type": "string"
+                                    },
+                                    "lessonsPerWeek": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "roomType": {
+                                      "nullable": true,
+                                      "type": "string"
+                                    },
+                                    "doubleLessons": {
+                                      "type": "boolean"
+                                    },
+                                    "mixedBlock": {
+                                      "type": "boolean"
+                                    },
+                                    "shortReason": {
+                                      "nullable": true,
+                                      "type": "string"
+                                    },
+                                    "placements": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "weekday": {
+                                            "anyOf": [
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  1
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  2
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  3
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  4
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  5
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  6
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  7
+                                                ]
+                                              }
+                                            ]
+                                          },
+                                          "slotPosition": {
+                                            "type": "integer",
+                                            "minimum": 1,
+                                            "maximum": 9007199254740991
+                                          },
+                                          "roomId": {
+                                            "nullable": true,
+                                            "type": "string",
+                                            "format": "uuid",
+                                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                          },
+                                          "roomName": {
+                                            "nullable": true,
+                                            "type": "string"
+                                          },
+                                          "with": {
+                                            "type": "array",
+                                            "items": {
+                                              "type": "object",
+                                              "properties": {
+                                                "key": {
+                                                  "type": "string"
+                                                },
+                                                "unitName": {
+                                                  "type": "string"
+                                                },
+                                                "subjectNames": {
+                                                  "type": "object",
+                                                  "properties": {
+                                                    "uz": {
+                                                      "type": "string"
+                                                    },
+                                                    "ru": {
+                                                      "type": "string"
+                                                    },
+                                                    "en": {
+                                                      "type": "string"
+                                                    }
+                                                  },
+                                                  "required": [
+                                                    "uz",
+                                                    "ru",
+                                                    "en"
+                                                  ],
+                                                  "additionalProperties": false
+                                                }
+                                              },
+                                              "required": [
+                                                "key",
+                                                "unitName",
+                                                "subjectNames"
+                                              ],
+                                              "additionalProperties": false
+                                            }
+                                          },
+                                          "pairedWith": {
+                                            "nullable": true,
+                                            "type": "object",
+                                            "properties": {
+                                              "weekday": {
+                                                "anyOf": [
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      1
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      2
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      3
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      4
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      5
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      6
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      7
+                                                    ]
+                                                  }
+                                                ]
+                                              },
+                                              "slotPosition": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "maximum": 9007199254740991
+                                              }
+                                            },
+                                            "required": [
+                                              "weekday",
+                                              "slotPosition"
+                                            ],
+                                            "additionalProperties": false
+                                          }
+                                        },
+                                        "required": [
+                                          "weekday",
+                                          "slotPosition",
+                                          "roomId",
+                                          "roomName",
+                                          "with",
+                                          "pairedWith"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    },
+                                    "pins": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "weekday": {
+                                            "anyOf": [
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  1
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  2
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  3
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  4
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  5
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  6
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  7
+                                                ]
+                                              }
+                                            ]
+                                          },
+                                          "slotPosition": {
+                                            "type": "integer",
+                                            "minimum": 1,
+                                            "maximum": 9007199254740991
+                                          }
+                                        },
+                                        "required": [
+                                          "weekday",
+                                          "slotPosition"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "teacherId",
+                                    "teacherName",
+                                    "roomId",
+                                    "roomName",
+                                    "lessonsPerWeek",
+                                    "roomType",
+                                    "doubleLessons",
+                                    "mixedBlock",
+                                    "shortReason",
+                                    "placements",
+                                    "pins"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "draft": {
+                                  "nullable": true,
+                                  "type": "object",
+                                  "properties": {
+                                    "teacherId": {
+                                      "nullable": true,
+                                      "type": "string",
+                                      "format": "uuid",
+                                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                    },
+                                    "teacherName": {
+                                      "nullable": true,
+                                      "type": "string"
+                                    },
+                                    "roomId": {
+                                      "nullable": true,
+                                      "type": "string",
+                                      "format": "uuid",
+                                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                    },
+                                    "roomName": {
+                                      "nullable": true,
+                                      "type": "string"
+                                    },
+                                    "lessonsPerWeek": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "roomType": {
+                                      "nullable": true,
+                                      "type": "string"
+                                    },
+                                    "doubleLessons": {
+                                      "type": "boolean"
+                                    },
+                                    "mixedBlock": {
+                                      "type": "boolean"
+                                    },
+                                    "shortReason": {
+                                      "nullable": true,
+                                      "type": "string"
+                                    },
+                                    "placements": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "weekday": {
+                                            "anyOf": [
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  1
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  2
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  3
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  4
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  5
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  6
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  7
+                                                ]
+                                              }
+                                            ]
+                                          },
+                                          "slotPosition": {
+                                            "type": "integer",
+                                            "minimum": 1,
+                                            "maximum": 9007199254740991
+                                          },
+                                          "roomId": {
+                                            "nullable": true,
+                                            "type": "string",
+                                            "format": "uuid",
+                                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                          },
+                                          "roomName": {
+                                            "nullable": true,
+                                            "type": "string"
+                                          },
+                                          "with": {
+                                            "type": "array",
+                                            "items": {
+                                              "type": "object",
+                                              "properties": {
+                                                "key": {
+                                                  "type": "string"
+                                                },
+                                                "unitName": {
+                                                  "type": "string"
+                                                },
+                                                "subjectNames": {
+                                                  "type": "object",
+                                                  "properties": {
+                                                    "uz": {
+                                                      "type": "string"
+                                                    },
+                                                    "ru": {
+                                                      "type": "string"
+                                                    },
+                                                    "en": {
+                                                      "type": "string"
+                                                    }
+                                                  },
+                                                  "required": [
+                                                    "uz",
+                                                    "ru",
+                                                    "en"
+                                                  ],
+                                                  "additionalProperties": false
+                                                }
+                                              },
+                                              "required": [
+                                                "key",
+                                                "unitName",
+                                                "subjectNames"
+                                              ],
+                                              "additionalProperties": false
+                                            }
+                                          },
+                                          "pairedWith": {
+                                            "nullable": true,
+                                            "type": "object",
+                                            "properties": {
+                                              "weekday": {
+                                                "anyOf": [
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      1
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      2
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      3
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      4
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      5
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      6
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      7
+                                                    ]
+                                                  }
+                                                ]
+                                              },
+                                              "slotPosition": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "maximum": 9007199254740991
+                                              }
+                                            },
+                                            "required": [
+                                              "weekday",
+                                              "slotPosition"
+                                            ],
+                                            "additionalProperties": false
+                                          }
+                                        },
+                                        "required": [
+                                          "weekday",
+                                          "slotPosition",
+                                          "roomId",
+                                          "roomName",
+                                          "with",
+                                          "pairedWith"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    },
+                                    "pins": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "weekday": {
+                                            "anyOf": [
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  1
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  2
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  3
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  4
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  5
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  6
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  7
+                                                ]
+                                              }
+                                            ]
+                                          },
+                                          "slotPosition": {
+                                            "type": "integer",
+                                            "minimum": 1,
+                                            "maximum": 9007199254740991
+                                          }
+                                        },
+                                        "required": [
+                                          "weekday",
+                                          "slotPosition"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "teacherId",
+                                    "teacherName",
+                                    "roomId",
+                                    "roomName",
+                                    "lessonsPerWeek",
+                                    "roomType",
+                                    "doubleLessons",
+                                    "mixedBlock",
+                                    "shortReason",
+                                    "placements",
+                                    "pins"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "published": {
+                                  "nullable": true,
+                                  "type": "object",
+                                  "properties": {
+                                    "teacherId": {
+                                      "nullable": true,
+                                      "type": "string",
+                                      "format": "uuid",
+                                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                    },
+                                    "teacherName": {
+                                      "nullable": true,
+                                      "type": "string"
+                                    },
+                                    "roomId": {
+                                      "nullable": true,
+                                      "type": "string",
+                                      "format": "uuid",
+                                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                    },
+                                    "roomName": {
+                                      "nullable": true,
+                                      "type": "string"
+                                    },
+                                    "lessonsPerWeek": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "roomType": {
+                                      "nullable": true,
+                                      "type": "string"
+                                    },
+                                    "doubleLessons": {
+                                      "type": "boolean"
+                                    },
+                                    "mixedBlock": {
+                                      "type": "boolean"
+                                    },
+                                    "shortReason": {
+                                      "nullable": true,
+                                      "type": "string"
+                                    },
+                                    "placements": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "weekday": {
+                                            "anyOf": [
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  1
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  2
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  3
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  4
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  5
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  6
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  7
+                                                ]
+                                              }
+                                            ]
+                                          },
+                                          "slotPosition": {
+                                            "type": "integer",
+                                            "minimum": 1,
+                                            "maximum": 9007199254740991
+                                          },
+                                          "roomId": {
+                                            "nullable": true,
+                                            "type": "string",
+                                            "format": "uuid",
+                                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                          },
+                                          "roomName": {
+                                            "nullable": true,
+                                            "type": "string"
+                                          },
+                                          "with": {
+                                            "type": "array",
+                                            "items": {
+                                              "type": "object",
+                                              "properties": {
+                                                "key": {
+                                                  "type": "string"
+                                                },
+                                                "unitName": {
+                                                  "type": "string"
+                                                },
+                                                "subjectNames": {
+                                                  "type": "object",
+                                                  "properties": {
+                                                    "uz": {
+                                                      "type": "string"
+                                                    },
+                                                    "ru": {
+                                                      "type": "string"
+                                                    },
+                                                    "en": {
+                                                      "type": "string"
+                                                    }
+                                                  },
+                                                  "required": [
+                                                    "uz",
+                                                    "ru",
+                                                    "en"
+                                                  ],
+                                                  "additionalProperties": false
+                                                }
+                                              },
+                                              "required": [
+                                                "key",
+                                                "unitName",
+                                                "subjectNames"
+                                              ],
+                                              "additionalProperties": false
+                                            }
+                                          },
+                                          "pairedWith": {
+                                            "nullable": true,
+                                            "type": "object",
+                                            "properties": {
+                                              "weekday": {
+                                                "anyOf": [
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      1
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      2
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      3
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      4
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      5
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      6
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "number",
+                                                    "enum": [
+                                                      7
+                                                    ]
+                                                  }
+                                                ]
+                                              },
+                                              "slotPosition": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "maximum": 9007199254740991
+                                              }
+                                            },
+                                            "required": [
+                                              "weekday",
+                                              "slotPosition"
+                                            ],
+                                            "additionalProperties": false
+                                          }
+                                        },
+                                        "required": [
+                                          "weekday",
+                                          "slotPosition",
+                                          "roomId",
+                                          "roomName",
+                                          "with",
+                                          "pairedWith"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    },
+                                    "pins": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "weekday": {
+                                            "anyOf": [
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  1
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  2
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  3
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  4
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  5
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  6
+                                                ]
+                                              },
+                                              {
+                                                "type": "number",
+                                                "enum": [
+                                                  7
+                                                ]
+                                              }
+                                            ]
+                                          },
+                                          "slotPosition": {
+                                            "type": "integer",
+                                            "minimum": 1,
+                                            "maximum": 9007199254740991
+                                          }
+                                        },
+                                        "required": [
+                                          "weekday",
+                                          "slotPosition"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "teacherId",
+                                    "teacherName",
+                                    "roomId",
+                                    "roomName",
+                                    "lessonsPerWeek",
+                                    "roomType",
+                                    "doubleLessons",
+                                    "mixedBlock",
+                                    "shortReason",
+                                    "placements",
+                                    "pins"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "required": [
+                                "key",
+                                "classId",
+                                "groupId",
+                                "unitName",
+                                "subjectId",
+                                "subjectNames",
+                                "tutorRow",
+                                "base",
+                                "draft",
+                                "published"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "changedBy": {
+                            "type": "string",
+                            "enum": [
+                              "draft",
+                              "published",
+                              "both"
+                            ]
+                          },
+                          "defaultPick": {
+                            "nullable": true,
+                            "type": "string",
+                            "enum": [
+                              "draft",
+                              "published"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "key",
+                          "rows",
+                          "changedBy",
+                          "defaultPick"
+                        ],
+                        "additionalProperties": false
+                      }
                     }
                   },
                   "required": [
                     "causes",
-                    "key"
+                    "key",
+                    "other",
+                    "base",
+                    "items"
                   ],
                   "additionalProperties": false
                 }
@@ -188789,7 +190058,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -189166,6 +190436,33 @@
                   "key": {
                     "type": "string",
                     "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "picks": {
+                    "default": [],
+                    "maxItems": 2000,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "item": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 2000
+                        },
+                        "side": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "published"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "item",
+                        "side"
+                      ],
+                      "additionalProperties": false
+                    }
                   }
                 },
                 "required": [
@@ -189569,7 +190866,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -191968,7 +193266,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -192663,7 +193962,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -193470,7 +194770,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -194715,7 +196016,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -195656,7 +196958,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -196416,7 +197719,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -198573,7 +199877,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -200730,7 +202035,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -202959,7 +204265,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -205198,7 +206505,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -205958,7 +207266,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -208418,7 +209727,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -210752,7 +212062,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -212983,7 +214294,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -215150,7 +216462,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -217474,7 +218787,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -219910,7 +221224,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -222269,7 +223584,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -224723,7 +226039,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -227125,7 +228442,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -229487,7 +230805,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -231821,7 +233140,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -232584,7 +233904,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -233516,7 +234837,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -234149,7 +235471,8 @@
                             "student_merge_grade",
                             "group_transfer_subject",
                             "version_not_draft",
-                            "draft_out_of_date_by_publish",
+                            "up_to_date_blocked",
+                            "up_to_date_pick_missing",
                             "out_of_date_changed",
                             "timetable_year_closed",
                             "version_start_past",
@@ -234802,7 +236125,8 @@
                   "student_merge_grade",
                   "group_transfer_subject",
                   "version_not_draft",
-                  "draft_out_of_date_by_publish",
+                  "up_to_date_blocked",
+                  "up_to_date_pick_missing",
                   "out_of_date_changed",
                   "timetable_year_closed",
                   "version_start_past",

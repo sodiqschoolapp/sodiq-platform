@@ -7,8 +7,6 @@ import {
   schoolDateOf,
   timetableVersionStatusSchema,
   type DraftReadiness,
-  type OutOfDateAnswer,
-  type UpToDateBody,
   type ErrorCode,
   type ErrorDetail,
   type Load,
@@ -81,14 +79,7 @@ import {
   type VersionContext,
 } from './load-facts.js';
 import { blockRowOf, readBlockGroups } from './load-blocks.js';
-import {
-  causeAnswers,
-  causesKey,
-  copyCauses,
-  isPublishCause,
-  outOfDateColumn,
-  storedCauses,
-} from './out-of-date.js';
+import { copyCauses, outOfDateColumn } from './out-of-date.js';
 import { auditOf, followChanged, followVersion } from './tutor-lessons.js';
 import { checkPins, pinRowsOf, readPins, type StoredPin } from './pins-check.js';
 import { blockedRefusal } from './rule-answers.js';
@@ -1044,80 +1035,8 @@ export class Timetable {
     });
   }
 
-  /**
-   * The causes of a draft's mark, oldest first, and their key (task 5.5a-3b-1,
-   * pull request #146). A version that is not a draft lists none (decision 7).
-   */
-  outOfDate(access: Access, id: string): Promise<OutOfDateAnswer> {
-    return this.transactions.run(access.branchIds, async (transaction) => {
-      const named = await this.namedVersion(transaction, branchOf(access), id);
-      const causes = named.status === 'draft' ? await storedCauses(transaction, id) : [];
-      return { causes: await causeAnswers(transaction, causes), key: causesKey(id, causes) };
-    });
-  }
-
-  /**
-   * Brings a draft up to date after a change of the setup (task 5.5a-3b-1,
-   * decision 4): a draft write that deletes exactly the causes shown, by the
-   * key of their ids. A publish cause waits for 5.5a-3b-2 (decision 5). A draft
-   * with no cause is answered as it is, and nothing is written (decision 10).
-   */
-  bringUpToDate(
-    access: Access,
-    id: string,
-    input: UpToDateBody,
-    requestId: string,
-  ): Promise<TimetableVersion> {
-    return refusingConstraints(() =>
-      this.transactions.run(access.branchIds, async (transaction) => {
-        const named = await this.namedVersion(transaction, branchOf(access), id);
-        if (named.status === 'draft' && (await storedCauses(transaction, id)).length === 0) {
-          return this.answerOf(transaction, id, access.accountId);
-        }
-        await this.lockDraft(transaction, access, id, requestId);
-        const causes = await storedCauses(transaction, id);
-        if (causes.length === 0) {
-          return this.answerOf(transaction, id, access.accountId);
-        }
-        if (causes.some(isPublishCause)) {
-          throw refused('draft_out_of_date_by_publish');
-        }
-        if (input.key !== causesKey(id, causes)) {
-          throw refused('out_of_date_changed');
-        }
-        await transaction
-          .deleteFrom('timetable_version_out_of_date_causes')
-          .where(
-            'id',
-            'in',
-            causes.map((one) => one.id),
-          )
-          .execute();
-        await this.audit.record(transaction, {
-          branchId: branchOf(access),
-          actorId: access.accountId,
-          assignmentId: access.assignmentId,
-          action: 'timetable_version.up_to_date',
-          record: { type: 'timetable_version', id },
-          oldValue: {
-            outOfDate: true,
-            causes: causes.map((one) => ({
-              id: one.id,
-              action: one.action,
-              recordId: one.record_id,
-              causedAt: one.caused_at.toISOString(),
-            })),
-          },
-          newValue: { outOfDate: false },
-          requestId,
-        });
-        return this.answerOf(transaction, id, access.accountId);
-      }),
-    );
-  }
-
   /** A version of the branch, its status; another branch's or unknown: 404. */
-  private async namedVersion(
+  async namedVersion(
     transaction: Transaction,
     branchId: string,
     id: string,

@@ -80,6 +80,7 @@ import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { TimetablePattern } from './pattern.service.js';
 import { TimetablePublish } from './publish.service.js';
+import { TimetableUpToDate } from './up-to-date.service.js';
 import { Timetable } from './timetable.service.js';
 
 /**
@@ -94,6 +95,7 @@ export class TimetableController {
     private readonly timetable: Timetable,
     private readonly pattern: TimetablePattern,
     private readonly publisher: TimetablePublish,
+    private readonly upToDate: TimetableUpToDate,
   ) {}
 
   @Get('versions')
@@ -126,7 +128,7 @@ export class TimetableController {
     return this.timetable.editVersion(access, params.id, input, requestId);
   }
 
-  /** The causes of a draft's mark out of date and their key (task 5.5a-3b-1). */
+  /** The causes of a draft's mark out of date and their key (task 5.5a-3b-1), and the differences after a publish (task 5.5a-3b-2). */
   @Get('versions/:id/out-of-date')
   @Requires('timetable', 'view')
   @Returns(outOfDateAnswerSchema)
@@ -134,10 +136,10 @@ export class TimetableController {
     @CurrentAccess() access: Access,
     @ValidParams(timetableVersionParamsSchema) params: TimetableVersionParams,
   ): Promise<OutOfDateAnswer> {
-    return this.timetable.outOfDate(access, params.id);
+    return this.upToDate.outOfDate(access, params.id);
   }
 
-  /** Brings a draft up to date after a change of the setup (task 5.5a-3b-1, decision 4). */
+  /** Brings a draft up to date after a change of the setup (task 5.5a-3b-1, decision 4) or a publish, with the picks (task 5.5a-3b-2). */
   @Post('versions/:id/up-to-date')
   @HttpCode(200)
   @Requires('timetable', 'edit')
@@ -148,7 +150,7 @@ export class TimetableController {
     @ValidBody(upToDateBodySchema) input: UpToDateBody,
     @RequestId() requestId: string,
   ): Promise<TimetableVersion> {
-    return this.timetable.bringUpToDate(access, params.id, input, requestId);
+    return this.upToDate.bringUpToDate(access, params.id, input, requestId);
   }
 
   /**
