@@ -308,6 +308,7 @@ describe('the routes that work without sign-in', () => {
       'PUT /api/setup/subjects/:id/daily-weights',
       'PUT /api/setup/subjects/:id/quarter-weights/:quarterId',
       'PUT /api/setup/travel-times',
+      'PUT /api/timetable/versions/:id/day-keeps',
       'PUT /api/timetable/versions/:id/preferences',
     ]);
   });

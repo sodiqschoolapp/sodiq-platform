@@ -232,6 +232,7 @@ describe('OpenAPI document', () => {
         '/api/setup/travel-times',
         '/api/timetable/versions',
         '/api/timetable/versions/{id}',
+        '/api/timetable/versions/{id}/day-keeps',
         '/api/timetable/versions/{id}/edit-lock',
         '/api/timetable/versions/{id}/grid',
         '/api/timetable/versions/{id}/load',
