@@ -102,7 +102,8 @@ interface Wanted {
   readonly cause: string | null;
 }
 
-interface StoredRow {
+/** A stored lesson as the writer and the preview read it (task 5.5b-2). */
+export interface StoredRow {
   readonly id: string;
   readonly block_id: string;
   readonly lesson_date: string;
@@ -194,7 +195,7 @@ export function pairDated<W extends PairWanted>(
   ) => `${held}|${unit}|${subject}|${date}|${String(start)}|${String(end)}`;
   const storedByKey = new Map<string, PairStored[]>();
   for (const row of [...stored].sort((a, b) => compare(a.id, b.id))) {
-    const generated = row.cancelCause !== null && GENERATED_CAUSES.has(row.cancelCause);
+    const generated = isGeneratedCause(row.cancelCause);
     push(
       storedByKey,
       keyOf(
@@ -269,6 +270,68 @@ export function pairDated<W extends PairWanted>(
 }
 
 /**
+ * A stored lesson as `pairDated` reads it, its times in minutes from
+ * `begins` of its date; the preview reads it the same way (task 5.5b-2).
+ */
+export function storedPairOf(
+  row: Omit<StoredRow, 'load_row_id' | 'pattern_entry_id'>,
+  begins: (date: string) => Date,
+): PairStored {
+  const minutesOf = (moment: Date) =>
+    Math.round((moment.getTime() - begins(row.lesson_date).getTime()) / MINUTE);
+  return {
+    id: row.id,
+    blockId: row.block_id,
+    date: row.lesson_date,
+    start: minutesOf(row.starts_at),
+    end: minutesOf(row.ends_at),
+    unitId: row.class_id ?? row.group_id ?? '',
+    subjectId: row.subject_id,
+    teacherId: row.teacher_id,
+    roomId: row.room_id,
+    cancelCause: row.cancel_cause,
+  };
+}
+
+/** Whether a stored cancel is one the expansion writes, not a one-day change. */
+export const isGeneratedCause = (cause: string | null): boolean =>
+  cause !== null && GENERATED_CAUSES.has(cause);
+
+/** The vacancies among `teacherIds`. */
+export async function vacanciesOf(
+  transaction: Transaction,
+  teacherIds: readonly string[],
+): Promise<Set<string>> {
+  const ids = [...new Set(teacherIds)];
+  if (ids.length === 0) return new Set();
+  const rows = await transaction
+    .selectFrom('staff')
+    .select('id')
+    .where('id', 'in', ids)
+    .where('kind', '=', 'vacancy')
+    .execute();
+  return new Set(rows.map((one) => one.id));
+}
+
+/**
+ * The teacher a dated lesson is written with (decision 7, should-fix 6): a
+ * lesson in the needs-a-teacher list has none, a vacancy keeps its own. The
+ * preview gives its "after" side the same (task 5.5b-2).
+ */
+export function writtenTeacherOf(
+  needs: ReadonlySet<string>,
+  vacancies: ReadonlySet<string>,
+  lesson: { readonly entryId: string; readonly date: string; readonly teacherId: string | null },
+): string | null {
+  const teacher = lesson.teacherId;
+  const needed = needs.has(needKeyOf(lesson.entryId, lesson.date));
+  return needed && (teacher === null || !vacancies.has(teacher)) ? null : teacher;
+}
+
+/** The key of a lesson in the needs-a-teacher list. */
+export const needKeyOf = (entryId: string, date: string): string => `${entryId}@${date}`;
+
+/**
  * Writes the dated lessons of `state`'s version from `firstDate` to
  * `lastDate`, the dates its dated check (`findings`) expanded.
  */
@@ -283,8 +346,6 @@ export async function writeDatedLessons(
   const branchId = model.data.branchId;
   const versionId = state.version.id;
   const begins = findings.begins;
-  const minutesOf = (date: string, moment: Date) =>
-    Math.round((moment.getTime() - begins(date).getTime()) / MINUTE);
 
   await sql`set constraints all deferred`.execute(transaction);
 
@@ -331,18 +392,7 @@ export async function writeDatedLessons(
   // The pairs and the blocks reused (must-fix 1 and 2).
   const rowOf = new Map(stored.map((row) => [row.id, row]));
   const paired = pairDated(
-    stored.map((row) => ({
-      id: row.id,
-      blockId: row.block_id,
-      date: row.lesson_date,
-      start: minutesOf(row.lesson_date, row.starts_at),
-      end: minutesOf(row.lesson_date, row.ends_at),
-      unitId: row.class_id ?? row.group_id ?? '',
-      subjectId: row.subject_id,
-      teacherId: row.teacher_id,
-      roomId: row.room_id,
-      cancelCause: row.cancel_cause,
-    })),
+    stored.map((row) => storedPairOf(row, begins)),
     wantedBlocks,
   );
   const pairOf = new Map<Wanted, StoredRow>();
@@ -584,20 +634,11 @@ async function wantedOf(
   findings: DatedFindings,
 ): Promise<WantedBlock[]> {
   const { model } = state.pattern;
-  const teacherIds = [...new Set(model.data.rows.map((row) => row.teacherId))];
-  const vacancies = new Set(
-    teacherIds.length === 0
-      ? []
-      : (
-          await transaction
-            .selectFrom('staff')
-            .select('id')
-            .where('id', 'in', teacherIds)
-            .where('kind', '=', 'vacancy')
-            .execute()
-        ).map((one) => one.id),
+  const vacancies = await vacanciesOf(
+    transaction,
+    model.data.rows.map((row) => row.teacherId),
   );
-  const needs = new Set(findings.needsTeacher.map((one) => `${one.entryId}@${one.date}`));
+  const needs = new Set(findings.needsTeacher.map((one) => needKeyOf(one.entryId, one.date)));
   const patternBlocks = new Map(state.blocks.map((one) => [one.id, one]));
   const blocks = new Map<string, WantedBlock>();
   const blockOf = (patternBlockId: string, date: string, start: number, end: number) => {
@@ -614,8 +655,6 @@ async function wantedOf(
     const { placement } = lesson;
     const patternBlockId = patternIdOf(placement.blockId ?? '')?.id ?? '';
     const loadRowId = placement.loadRowId ?? '';
-    const teacher = placement.teacherIds[0] ?? null;
-    const needed = needs.has(`${lesson.entryId}@${lesson.date}`);
     blockOf(patternBlockId, lesson.date, placement.start, placement.end).lessons.push({
       patternBlockId,
       entryId: lesson.entryId,
@@ -627,7 +666,11 @@ async function wantedOf(
       groupId: placement.groupId,
       unitId: placement.classId ?? placement.groupId ?? '',
       subjectId: placement.subjectId ?? '',
-      teacherId: needed && (teacher === null || !vacancies.has(teacher)) ? null : teacher,
+      teacherId: writtenTeacherOf(needs, vacancies, {
+        entryId: lesson.entryId,
+        date: lesson.date,
+        teacherId: placement.teacherIds[0] ?? null,
+      }),
       roomId: placement.roomId,
       cause: null,
     });

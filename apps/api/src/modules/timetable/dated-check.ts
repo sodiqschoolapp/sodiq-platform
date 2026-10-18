@@ -54,6 +54,29 @@ export interface DatedFindings {
   readonly cancelledTeacher: (blockId: string, entryId: string, date: string) => string | null;
 }
 
+/**
+ * The first moment of each date from `firstDate` to `lastDate` in the time
+ * zone, as a lookup that throws for a date outside them; the dated check, the
+ * lessons written and the preview read stored moments with it (task 5.5b-2).
+ */
+export async function dayBeginnings(
+  transaction: Transaction,
+  timeZone: string,
+  firstDate: string,
+  lastDate: string,
+): Promise<(date: string) => Date> {
+  const { rows } = await sql<{ day: string; begins: Date }>`
+    select d::date::text as day, (d::date::timestamp at time zone ${timeZone}) as begins
+    from generate_series(${firstDate}::date, ${lastDate}::date, interval '1 day') d
+  `.execute(transaction);
+  const beginsOf = new Map(rows.map((row) => [row.day, row.begins]));
+  return (date: string): Date => {
+    const found = beginsOf.get(date);
+    if (found === undefined) throw new Error(`No start of ${date}.`);
+    return found;
+  };
+}
+
 /** A dated row of a class or group, half-open. */
 interface MemberRow {
   readonly unit_id: string;
@@ -319,11 +342,7 @@ export async function datedLessonsOf(
       transaction,
       rows.flatMap((row) => (row.classId === null ? [] : [row.classId])),
     ),
-    // The first moment of each date in branch time.
-    sql<{ day: string; begins: Date }>`
-      select d::date::text as day, (d::date::timestamp at time zone ${branch.time_zone}) as begins
-      from generate_series(${startsOn}::date, ${lastDate}::date + 1, interval '1 day') d
-    `.execute(transaction),
+    dayBeginnings(transaction, branch.time_zone, startsOn, addDays(lastDate, 1)),
     classIds.length === 0
       ? Promise.resolve([] as { id: string; grade: number }[])
       : transaction
@@ -339,12 +358,7 @@ export async function datedLessonsOf(
     const key = `${keep.class_id}|${keep.kept_on}`;
     keptOf.set(key, [...(keptOf.get(key) ?? []), keep.slot_position]);
   }
-  const beginsOf = new Map(dayStarts.rows.map((row) => [row.day, row.begins]));
-  const begins = (date: string): Date => {
-    const found = beginsOf.get(date);
-    if (found === undefined) throw new Error(`No start of ${date}.`);
-    return found;
-  };
+  const begins = dayStarts;
 
   const membersOn = (list: readonly MemberRow[]) => {
     const byUnit = new Map<string, MemberRow[]>();

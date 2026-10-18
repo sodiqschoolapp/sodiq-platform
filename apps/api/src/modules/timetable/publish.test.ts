@@ -1183,6 +1183,63 @@ describe('publish', () => {
       }
     });
 
+    it('compares a carried version with its stored lessons, and gives its lessons after a leaving no teacher (task 5.5b-2)', async () => {
+      const s = await chainScene();
+      // C's lesson of 18 January has another room, as a one-day change will
+      // give it; the second teacher leaves on 1 March, inside C's run.
+      const room3 = await load.classes.room(s.branch);
+      await t.app
+        .get(Transactions)
+        .run([s.branch], (transaction) =>
+          transaction
+            .updateTable('lessons')
+            .set({ room_id: room3 })
+            .where('branch_id', '=', s.branch)
+            .where('lesson_date', '=', '2027-01-18')
+            .execute(),
+        );
+      expect((await lessonsOf(s.branch)).find((one) => one.date === '2027-01-18')?.room_id).toBe(
+        room3,
+      );
+      await load.status(s.second, 'left', '2027-03-01');
+      const answer = checkOf(await checkChain(s.branch, s.fix, '2026-10-19', 'carry'));
+      expect(answer.refusals).toEqual([]);
+      const carriedC = answer.impact?.carried.find((one) => one.versionId === s.c);
+      const lines = (carriedC?.changes ?? []).map((one) => ({
+        kind: one.kind,
+        beforeRoom: one.before?.roomId,
+        afterTeachers: one.after?.teacherIds,
+        firstDate: one.firstDate,
+        lastDate: one.lastDate,
+      }));
+      // The stored room is the before side of its date; from the leaving, no teacher.
+      expect(lines).toEqual(
+        expect.arrayContaining([
+          {
+            kind: 'changed',
+            beforeRoom: room3,
+            afterTeachers: [s.second],
+            firstDate: '2027-01-18',
+            lastDate: '2027-01-18',
+          },
+          {
+            kind: 'changed',
+            beforeRoom: s.room,
+            afterTeachers: [],
+            firstDate: '2027-03-01',
+            lastDate: '2027-05-31',
+          },
+        ]),
+      );
+      versionOf(await publishChain(s.branch, s.fix, '2026-10-19', 'carry', answer.chain?.key));
+      // What the preview showed is what was written.
+      const after = (await lessonsOf(s.branch)).filter((one) => one.date >= '2027-01-11');
+      expect(after.find((one) => one.date === '2027-01-18')?.room_id).toBe(s.room2);
+      expect(after.filter((one) => one.teacher_id === null).map((one) => one.date)[0]).toBe(
+        '2027-03-01',
+      );
+    });
+
     it('leaves a later version where the change meets a blocked conflict, carrying the others', async () => {
       // D, a copy of C from the fourth quarter, where the second teacher
       // already teaches another class on Monday in the first lesson.
@@ -3085,6 +3142,258 @@ describe('publish', () => {
         'validation_failed',
       );
       expect((await versionRow(s.version)).status).toBe('draft');
+    });
+
+    // Task 5.5b-2, pull request #154: the preview from the stored lessons
+    // (06, How surprises are prevented, Impact preview; edge/timetable,
+    // Versions and drafts: "An unchanged lesson keeps its identity"). A write
+    // to the stored lessons stands for a later one-day change; it runs in a
+    // transaction of the application, with the moment that 0079 reads
+    // (review correction 1).
+    describe('from the stored lessons (task 5.5b-2)', () => {
+      const directly = (branch: string, work: (transaction: Transaction) => Promise<unknown>) =>
+        t.app.get(Transactions).run([branch], work);
+
+      it('lists a lesson stored with no teacher the same on both sides, with no change, and a vacancy kept (Done when)', async () => {
+        const s = await scene();
+        // A teacher who leaves after the start: the expansion keeps the
+        // teacher on those dates and the check lists them `teacher_out`, so
+        // the publish writes them with no teacher (5.5b-1, decision 7).
+        await load.status(s.teacherId, 'left', '2027-05-24');
+        const music = await load.classes.subject({ grades: [7], journalType: 'attendance_only' });
+        const vacancy = await load.vacancy(s.branch, {
+          subjects: [{ subject: music, grades: [7] }],
+        });
+        await hours(s.branch, vacancy);
+        const vacancyRow = await load.row({
+          branch_id: s.branch,
+          version_id: s.version,
+          class_id: s.classId,
+          subject_id: music,
+          teacher_id: vacancy,
+          lessons_per_week: 1,
+        });
+        await placeAt(s.branch, s.version, vacancyRow, 2);
+        await confirmTemplates(s.branch, s.version);
+        await load.freeEditLock(s.version);
+        const first = checkOf(await check(s.branch, s.version, MONDAY));
+        expect(first.refusals).toEqual([]);
+        expect(
+          first.needsTeacher.filter((one) => one.reason === 'teacher_out').map((one) => one.date),
+        ).toEqual(['2027-05-24', '2027-05-31']);
+        // The first publish's preview already shows what it writes: no teacher from the leaving.
+        expect(
+          first.impact?.changes
+            .filter((one) => one.subjectId === s.subject)
+            .map((one) => [one.after?.teacherIds, one.firstDate, one.lastDate]),
+        ).toEqual([
+          [[s.teacherId], MONDAY, '2027-05-17'],
+          [[], '2027-05-24', '2027-05-31'],
+        ]);
+        versionOf(await publish(s.branch, s.version, MONDAY));
+        const stored = await lessonsOf(s.branch);
+        expect(
+          stored
+            .filter((one) => one.subject_id === s.subject && one.teacher_id === null)
+            .map((one) => one.date),
+        ).toEqual(['2027-05-24', '2027-05-31']);
+        expect(
+          stored
+            .filter((one) => one.subject_id === music)
+            .every((one) => one.teacher_id === vacancy),
+        ).toBe(true);
+
+        const version = await draftOf(s, [
+          { subject: s.subject, teacherId: s.teacherId, weekdays: [1] },
+          { subject: music, teacherId: vacancy, weekdays: [2] },
+        ]);
+        const impact = await impactOf(s.branch, version, NEXT_MONDAY);
+        expect(impact.changes).toEqual([]);
+        expect(impact.counts).toMatchObject({ created: 0, moved: 0, removed: 0, changed: 0 });
+        // Every lesson from 19 October, of both rows, unchanged.
+        expect(impact.counts.unchanged).toBe(
+          stored.filter((one) => one.date >= NEXT_MONDAY && one.cancel_cause === null).length,
+        );
+        expect(impact.teachers).toEqual([]);
+        expect(impact.vacancies).toEqual([{ id: vacancy, lessonsPerWeek: 1 }]);
+      });
+
+      it('reads the room a stored lesson has, and the publish writes the change the preview lists', async () => {
+        const s = await scene();
+        versionOf(await publish(s.branch, s.version, MONDAY));
+        const room2 = await load.classes.room(s.branch);
+        await directly(s.branch, (transaction) =>
+          transaction
+            .updateTable('lessons')
+            .set({ room_id: room2 })
+            .where('branch_id', '=', s.branch)
+            .where('lesson_date', '=', '2026-10-26')
+            .execute(),
+        );
+        const moved = (await lessonsOf(s.branch)).find((one) => one.date === '2026-10-26');
+        expect(moved?.room_id).toBe(room2);
+        const version = await draftOf(s, [
+          { subject: s.subject, teacherId: s.teacherId, weekdays: [1] },
+        ]);
+        const impact = await impactOf(s.branch, version, NEXT_MONDAY);
+        expect(impact.changes).toEqual([
+          expect.objectContaining({
+            kind: 'changed',
+            unitId: s.classId,
+            subjectId: s.subject,
+            before: expect.objectContaining({ roomId: room2 }),
+            after: expect.objectContaining({ roomId: s.room }),
+            count: 1,
+            firstDate: '2026-10-26',
+            lastDate: '2026-10-26',
+          }),
+        ]);
+        expect(impact.roomIds).toEqual([room2, s.room].sort());
+        versionOf(await publish(s.branch, version, NEXT_MONDAY));
+        const [entry] = await t.entries('timetable_version.publish', version);
+        expect(entry?.new_value).toMatchObject({
+          datedLessons: {
+            changed: [
+              {
+                id: moved?.id,
+                teacherId: { from: s.teacherId, to: s.teacherId },
+                roomId: { from: room2, to: s.room },
+              },
+            ],
+          },
+        });
+      });
+
+      it('gives a Tutor lesson of a clash no teacher on the after side, as written, and no change on the next preview', async () => {
+        let account = '';
+        const s = await scene({
+          lessons: 2,
+          placed: 2,
+          teacherFor: async (branch, subject) => {
+            const person = await load.teacher(branch, { subjects: [{ subject, grades: [7] }] });
+            await hours(branch, person.staffId);
+            account = person.accountId;
+            return person.staffId;
+          },
+        });
+        // As in "gives a Tutor lesson the Tutor of each date": from 16
+        // November the other class's Tutor is the scene's teacher, who
+        // teaches at that time on Tuesdays.
+        const tutored = await load.classes.schoolClass(s.branch, s.year, {
+          grade: 7,
+          room: await load.classes.room(s.branch),
+        });
+        const firstTutor = await load.teacher(s.branch);
+        await hours(s.branch, firstTutor.staffId);
+        const changeover = new Date('2026-11-16T00:00:00+05:00');
+        await load.tutorOf(s.branch, tutored, firstTutor.accountId, { until: changeover });
+        await load.tutorOf(s.branch, tutored, account, { from: changeover });
+        const tutorSubject = await load.tutorSubject({ grades: [7] });
+        await t.database.migrator
+          .updateTable('subjects')
+          .set({ journal_type: 'attendance_only' })
+          .where('id', '=', tutorSubject)
+          .execute();
+        /** The Tutor row of a version, placed on Tuesday. */
+        const tutorRowOf = async (version: string) => {
+          const created = await post(`/api/timetable/versions/${version}/load`, s.branch, {
+            classId: tutored,
+            groupId: null,
+            subjectId: tutorSubject,
+            teacherId: null,
+            lessonsPerWeek: 1,
+            roomId: null,
+            roomType: null,
+            doubleLessons: false,
+          });
+          expect(created.status, JSON.stringify(created.body)).toBe(201);
+          await placeAt(s.branch, version, (created.body as { id: string }).id, 2);
+          await confirmTemplates(s.branch, version);
+          await load.freeEditLock(version);
+        };
+        await tutorRowOf(s.version);
+        const first = await impactOf(s.branch, s.version, MONDAY);
+        // The first publish's after side: the first Tutor until 16 November, none from the clash.
+        expect(
+          first.changes
+            .filter((one) => one.subjectId === tutorSubject)
+            .map((one) => [one.after?.teacherIds, one.firstDate]),
+        ).toEqual([
+          [[firstTutor.staffId], '2026-10-13'],
+          [[], '2026-11-17'],
+        ]);
+        versionOf(await publish(s.branch, s.version, MONDAY));
+        const written = (await lessonsOf(s.branch)).filter((one) => one.class_id === tutored);
+        expect(written.filter((one) => one.teacher_id === null).map((one) => one.date)[0]).toBe(
+          '2026-11-17',
+        );
+
+        const version = await draftOf(s, [
+          { subject: s.subject, teacherId: s.teacherId, weekdays: [1, 2] },
+        ]);
+        await tutorRowOf(version);
+        const impact = await impactOf(s.branch, version, NEXT_MONDAY);
+        expect(impact.changes).toEqual([]);
+        expect(impact.counts).toMatchObject({ created: 0, moved: 0, removed: 0, changed: 0 });
+      });
+
+      it('counts the stored lessons of the week before a Thursday start, none cancelled', async () => {
+        const s = await scene({ lessons: 3, placed: 3 });
+        versionOf(await publish(s.branch, s.version, MONDAY));
+        // Monday 19 October is after today (10 October): 0079 lets it go.
+        await directly(s.branch, async (transaction) => {
+          const monday = await transaction
+            .selectFrom('lessons')
+            .select('block_id')
+            .where('branch_id', '=', s.branch)
+            .where('lesson_date', '=', NEXT_MONDAY)
+            .executeTakeFirstOrThrow();
+          await transaction.deleteFrom('lessons').where('block_id', '=', monday.block_id).execute();
+          await transaction.deleteFrom('lesson_blocks').where('id', '=', monday.block_id).execute();
+          await transaction
+            .updateTable('lessons')
+            .set({ cancel_cause: 'reason', cancel_reason: 'School concert' })
+            .where('branch_id', '=', s.branch)
+            .where('lesson_date', '=', '2026-10-20')
+            .execute();
+        });
+        const week = (await lessonsOf(s.branch)).filter(
+          (one) => one.date >= NEXT_MONDAY && one.date <= '2026-10-25',
+        );
+        expect(week.map((one) => [one.date, one.cancel_cause])).toEqual([
+          ['2026-10-20', 'reason'],
+          ['2026-10-21', null],
+        ]);
+        const version = await draftOf(s, [
+          { subject: s.subject, teacherId: s.teacherId, weekdays: [4, 5] },
+        ]);
+        const impact = await impactOf(s.branch, version, '2026-10-22');
+        // Wednesday only; from the pattern it would be 3.
+        expect(impact.transition?.rows).toEqual([
+          expect.objectContaining({ before: 1, after: 2, lessonsPerWeek: 2, differs: true }),
+        ]);
+      });
+
+      it('reads a version with no stored lessons from its pattern, never as an empty timetable', async () => {
+        const s = await scene({ lessons: 2, placed: 2 });
+        versionOf(await publish(s.branch, s.version, MONDAY));
+        // As a version published before 0079: every date is after today.
+        await directly(s.branch, async (transaction) => {
+          await transaction.deleteFrom('lessons').where('branch_id', '=', s.branch).execute();
+          await transaction.deleteFrom('lesson_blocks').where('branch_id', '=', s.branch).execute();
+        });
+        expect(await lessonsOf(s.branch)).toEqual([]);
+        const version = await draftOf(s, [
+          { subject: s.subject, teacherId: s.teacherId, weekdays: [1, 2] },
+        ]);
+        const impact = await impactOf(s.branch, version, WEDNESDAY);
+        expect(impact.counts).toMatchObject({ created: 0, moved: 0, removed: 0, changed: 0 });
+        expect(impact.counts.unchanged).toBeGreaterThan(40);
+        expect(impact.changes).toEqual([]);
+        expect(impact.transition?.rows).toEqual([
+          expect.objectContaining({ before: 2, after: 0, lessonsPerWeek: 2, differs: false }),
+        ]);
+      });
     });
   });
 
