@@ -68,13 +68,19 @@ jobs:
           : > "$RUNNER_TEMP/comments.jsonl"
           page=1
           while :; do
-            curl --fail-with-body --silent --show-error --max-time 30 \
+            # A failed read fires the run: a review too many is harmless, a
+            # revised plan left unreviewed stalls the task.
+            if ! curl --fail-with-body --silent --show-error --max-time 30 \
               --retry 3 --retry-all-errors \
               --output "$RUNNER_TEMP/page.json" \
               --header "Authorization: Bearer $GH_TOKEN" \
               --header "Accept: application/vnd.github+json" \
               --header "X-GitHub-Api-Version: 2022-11-28" \
-              "$COMMENTS_URL?per_page=100&page=$page"
+              "$COMMENTS_URL?per_page=100&page=$page"; then
+              echo "The comments could not be read: the review run fires."
+              echo "fire=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
             count=$(jq 'length' "$RUNNER_TEMP/page.json")
             jq -c '.[]' "$RUNNER_TEMP/page.json" >> "$RUNNER_TEMP/comments.jsonl"
             [ "$count" -lt 100 ] && break

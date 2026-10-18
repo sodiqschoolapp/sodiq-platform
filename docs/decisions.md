@@ -24,6 +24,17 @@ Decided once, valid for every task. A session reads this section at its start (`
 | The module and feature names are `auth`, `access`, `audit`, `notifications`, `setup`, `people`, `classes`, `timetable`, `journal`, `plans`, `results`, `feedback` | `CLAUDE.md`, Repository layout; `feedback` was added for task 0.8b-3. |
 | At most 3 Super Admins (`MAX_SUPER_ADMINS` in `packages/shared/src/roles.ts`); changing it means the constant, its test and the spec row together | Decided by the owner in 0.7a. |
 
+## 18 October 2026: one review run per head, two reads inside it
+
+Decided by the owner on 18 October 2026 ("do what is best and professional"), after #140: two reviewer runs of the same head posted `changes needed` and `ready to merge` 9 seconds apart, the merge was held for the owner for five hours, and the `changes needed` was the correct one (a refusal turned into a pass).
+
+| Decision | Reason |
+| --- | --- |
+| **One review run per head**: the bridge fires no review run for a push to a draft whose newest `[review]` is `approved`; the hourly run leaves a head alone while its checks run and for 60 minutes after; a run whose payload head is stale stops | Two runs started by accident race and contradict each other; on #140 both were the bridge's (the last push of the build and the "ready for review" of the same head) |
+| **Two reads inside the one run**: the code review asks the `spec-reviewer` agent for an independent second opinion; a must-fix of either is a finding unless disproved with file and line. This brings back the second spec review of the code removed on 16 October (below), now inside the review run | Of the two reviews of #140, one missed a refusal turned into a pass; in procurement a second run's findings were real too (2.11). About 5 to 10 minutes more per code review |
+| **A disagreement at one sha ends as `changes needed`**: the merging run posts an earlier `changes needed` at that sha again as the newest verdict instead of merging; the owner overrules with "(owner's decision)" or merges by hand | The builder, the start routine and the bridge all act on the newest verdict, so the stricter one has to be the newest |
+| **Three check lines**: a named doubt that could let a blocked case through is a must-fix; a claim that the data cannot hold a case is checked against the migrations; every planned test is built or named as left out | Exactly what the `ready to merge` of #140 let through |
+
 ## 16 October 2026: a lighter loop until the release
 
 Decided by the owner on 16 October 2026, to save usage before 25 October (the account's weekly limit was reached and paid usage costs about $20 an hour while the loop runs).
