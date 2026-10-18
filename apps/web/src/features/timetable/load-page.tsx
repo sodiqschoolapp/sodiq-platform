@@ -420,6 +420,25 @@ export function LoadPage(): React.JSX.Element {
           other.startsOn < one.startsOn,
       )
       .sort((a, b) => b.startsOn.localeCompare(a.startsOn) || b.number - a.number)[0];
+  // Task 5.5c-2a: asks first, naming the version and the one that runs again.
+  const askWithdraw = async (one: TimetableVersion) => {
+    const earlier = earlierOf(one);
+    const date = schoolDateText(one.startsOn, language);
+    if (
+      await confirm({
+        title: t('timetable.load.withdrawTitle', { number: one.number }),
+        text:
+          earlier === undefined
+            ? t('timetable.load.withdrawTextNone', { date })
+            : t('timetable.load.withdrawText', { date, earlier: earlier.number }),
+        names: [versionLabel(one)],
+        action: t('timetable.load.withdraw'),
+        destructive: true,
+      })
+    ) {
+      withdraw.mutate(one.id);
+    }
+  };
   const rowName = (row: LoadRow) => `${unitText(row)}, ${nameOf(row.subject.names, language)}`;
   const leftRows = load.data?.leftRows ?? [];
 
@@ -470,23 +489,8 @@ export function LoadPage(): React.JSX.Element {
             <Button
               variant="destructive"
               disabled={withdraw.isPending}
-              onClick={async () => {
-                const earlier = earlierOf(chosen);
-                const date = schoolDateText(chosen.startsOn, language);
-                if (
-                  await confirm({
-                    title: t('timetable.load.withdrawTitle', { number: chosen.number }),
-                    text:
-                      earlier === undefined
-                        ? t('timetable.load.withdrawTextNone', { date })
-                        : t('timetable.load.withdrawText', { date, earlier: earlier.number }),
-                    names: [versionLabel(chosen)],
-                    action: t('timetable.load.withdraw'),
-                    destructive: true,
-                  })
-                ) {
-                  withdraw.mutate(chosen.id);
-                }
+              onClick={() => {
+                void askWithdraw(chosen);
               }}
             >
               {t('timetable.load.withdraw')}
