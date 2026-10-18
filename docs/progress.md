@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 18 October 2026: task 5.5b-2 Publish: the preview from the stored lessons
+
+- The impact preview, each carried version's preview and the transition week's dates before the start read the dated lessons stored in the branch (`storedImpactLessons`, `apps/api/src/modules/timetable/stored-lessons.ts`), by branch and dates as the writer reads them; a version with no stored block (published before 0079) is still expanded from its pattern.
+- The "after" sides carry the teacher the publish writes (`writtenTeacherOf`, shared with `writeDatedLessons`): needs a teacher is no teacher, a vacancy keeps its own.
+- Left out: the lessons holding data that block a removal (6.1); one-day changes, absences and exams sorted into kept, needs a decision and dropped (5.6a, 5.6c); journals, notices and withdraw (5.5c).
+
+The next sessions must know:
+
+- A stored lesson's minutes come from `storedPairOf` with `dayBeginnings` (`dated-check.ts`); read stored moments with them, never a second formula.
+- The preview leaves out lessons the expansion created cancelled and keeps a one-day cancel as a lesson held; the transition week counts no cancelled lesson.
+- The next task is 5.5c.
+
 ## 18 October 2026: task 5.5b-1 Publish: the dated lessons written
 
 - A publish writes the dated lessons of its version over its run (`writeDatedLessons`, `apps/api/src/modules/timetable/dated-lessons.ts`), from the dated check's expansion: an unchanged lesson keeps its row and block, re-pointed; a teacher or room change is made in place; the rest is created or removed; nothing dated today or earlier (0079 refuses a delete or re-point).

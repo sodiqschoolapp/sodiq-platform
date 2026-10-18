@@ -261,6 +261,20 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 18 October 2026: publish, the preview from the stored lessons (task 5.5b-2)
+
+Plan approved on pull request #154 with corrections 1 to 3; decisions 1 to 7 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| The "before" side is the stored lessons of the branch on the dates, read as the writer reads them; lessons the expansion created cancelled are left out, a one-day cancel (`exam`, `reason`) is kept as a lesson held | Decision 1; 5.5a-2b-1 decision 4, 5.5b-1 decision 8 |
+| A published version with no stored lesson block (published before 0079) is read from its pattern, without needs-a-teacher marks | Decision 2; `docs/progress.md`, 5.5b-1 |
+| A stored lesson's weekday is its pattern block's, its classes its unit's, its minutes the writer's (`storedPairOf`) | Decision 3; spec review should-fixes 2 and 3 |
+| The transition week counts no cancelled stored lesson, of any cause | Decision 4; 5.5a-2b-1 decision 10 |
+| The "after" sides, the draft's and each carried version's, take the teacher the publish writes (`writtenTeacherOf`) | Decision 5; 5.5b-1 decision 7 |
+| The lessons holding data that block a removal come with 6.1 | Decision 6; 5.5b-1 decision 9 |
+| No route, permission or migration changes | Decision 7 |
+
 ## 18 October 2026: publish, the dated lessons written (task 5.5b-1)
 
 Plan approved on pull request #152 with corrections 1 to 3; decisions 1 to 13 confirmed there. Flagged on issue #42.
