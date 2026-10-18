@@ -162,6 +162,9 @@ test('the top bar is one row at laptop width, Rooms fits, and More shows Send fe
   const roleSwitch = bar.getByRole('button', { name: new RegExp(`^${en.switcher.rolePrefix}`) });
   await roleSwitch.click();
   await page.getByRole('menuitemradio', { name: en.roles.teacher }).click();
+  // The closing menu stays where the wide bar put it during its exit animation;
+  // measured at 768 px it widened the page (CI of pull request #142).
+  await expect(page.getByRole('menu')).toHaveCount(0);
   const branch = bar.getByLabel(en.switcher.branch);
   await expect(branch).toBeVisible();
   await branch.selectOption({ label: 'Top bar browser test branch' });
