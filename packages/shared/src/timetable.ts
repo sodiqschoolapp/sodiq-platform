@@ -1147,6 +1147,56 @@ export const publishBodySchema = z.strictObject({
 export type PublishBody = z.infer<typeof publishBodySchema>;
 
 /**
+ * A date shortened for a class (task 5.5a-2b-2, edge/time-dates-calendar, "A
+ * shortened day"): the lesson slots of the day, the class's lessons on the
+ * weekday the date follows (their slot positions and pattern entries), the
+ * positions kept (the stored choice, or by their order in the day) and the
+ * stored positions that hold no lesson of the class (decision 11).
+ */
+export const shortenedDaySchema = z.object({
+  date: schoolDateSchema,
+  classId: z.uuid(),
+  lessonSlots: z.int().min(0),
+  lessons: z.array(
+    z.object({
+      slotPosition: z.int().min(1).max(PIN_SLOT_POSITION_MAX),
+      entryIds: z.array(z.uuid()),
+    }),
+  ),
+  kept: z.array(z.int().min(1).max(PIN_SLOT_POSITION_MAX)),
+  chosen: z.boolean(),
+  missingPositions: z.array(z.int().min(1).max(PIN_SLOT_POSITION_MAX)),
+});
+
+export type ShortenedDay = z.infer<typeof shortenedDaySchema>;
+
+/**
+ * The choice of the lessons a class keeps on a shortened day of a draft (task
+ * 5.5a-2b-2, decision 2): the slot positions of the lessons kept, breaks
+ * included, in the template of the weekday the date follows. An empty list
+ * removes the choice (decision 6).
+ */
+export const dayKeepBodySchema = z.strictObject({
+  classId: z.uuid(),
+  date: schoolDateSchema,
+  slotPositions: z
+    .array(z.int().min(1).max(PIN_SLOT_POSITION_MAX))
+    .max(PIN_SLOT_POSITION_MAX)
+    .refine((list) => new Set(list).size === list.length, { message: 'Each slot once.' }),
+});
+
+export type DayKeepBody = z.infer<typeof dayKeepBodySchema>;
+
+/** A choice as stored, the positions in their order in the day. */
+export const dayKeepSchema = z.object({
+  classId: z.uuid(),
+  date: schoolDateSchema,
+  slotPositions: z.array(z.int().min(1).max(PIN_SLOT_POSITION_MAX)),
+});
+
+export type DayKeep = z.infer<typeof dayKeepSchema>;
+
+/**
  * What a publish on a date would do, written nowhere (decision 13): the dates
  * offered (decision 15), every refusal and the warnings of the pattern.
  */
@@ -1168,6 +1218,10 @@ export const publishCheckSchema = z.object({
   needsTeacher: z.array(needsTeacherSchema),
   /** Task 5.5a-2b-1: `null` while the start date itself is refused (nothing else is read then). */
   impact: publishImpactSchema.nullable(),
+  /** Task 5.5a-2b-2: the dates shortened for a class, with the lessons kept. */
+  shortenedDays: z.array(shortenedDaySchema),
+  /** Task 5.5a-2b-2, decisions 3 and 11: stored choices that decide nothing on their date. */
+  unusedKeeps: z.array(z.object({ date: schoolDateSchema, classId: z.uuid() })),
   canPublish: z.boolean(),
 });
 

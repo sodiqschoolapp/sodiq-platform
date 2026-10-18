@@ -3,12 +3,15 @@ import {
   PUBLISH_STEPS,
   timetableVersionSchema,
   type CancelledLesson,
+  type DayKeep,
+  type DayKeepBody,
   type ErrorDetail,
   type NeedsTeacherAnswer,
   type PublishBody,
   type PublishCheck,
   type PublishRefusal,
   type RuleResultAnswer,
+  type ShortenedDay,
   type TimetableVersion,
 } from '@sodiq/shared';
 import {
@@ -28,7 +31,7 @@ import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { dailyWeightsFit, quarterWeightsFit } from '../setup/subject-weights.js';
 import type { StoredLoadRow } from './load-facts.js';
-import { datedCheck } from './dated-check.js';
+import { datedCheck, datedLessonsOf } from './dated-check.js';
 import { impactOf, type Impact } from './impact.js';
 import { refusingPattern, TimetablePattern } from './pattern.service.js';
 import { resultAnswerOf } from './rule-answers.js';
@@ -58,6 +61,9 @@ interface Findings {
   readonly needsTeacher: NeedsTeacherAnswer[];
   /** Task 5.5a-2b-1; `null` when the start date itself is refused. */
   readonly impact: Impact | null;
+  /** Task 5.5a-2b-2: the dates shortened for a class and the stored choices unused. */
+  readonly shortenedDays: ShortenedDay[];
+  readonly unusedKeeps: { date: string; classId: string }[];
 }
 
 /** A refusal as a detail of `publish_blocked` (decision 12). */
@@ -141,8 +147,99 @@ export class TimetablePublish {
         cancelledLessons: findings.cancelledLessons,
         needsTeacher: findings.needsTeacher,
         impact: findings.impact?.answer ?? null,
+        shortenedDays: findings.shortenedDays,
+        unusedKeeps: findings.unusedKeeps,
         canPublish: version.status === 'draft' && findings.refusals.length === 0,
       };
+    });
+  }
+
+  /**
+   * The choice of the lessons a class keeps on a shortened day of a draft
+   * (task 5.5a-2b-2, pull request #143; edge/time-dates-calendar, "A
+   * shortened day": "The Academic Vice Principal can choose which lessons are
+   * kept"), stored per version, date and class (decision 2) under the draft's
+   * edit lock (decision 8). An empty list only removes the choice, whatever
+   * the date and the day (spec review of the plan, must-fix 1); a choice is
+   * refused for today or earlier (decision 10, review correction 2), on a date
+   * that is not shortened for the class, with a position that is not a lesson
+   * of the class, or with more lessons than the day's lesson slots (decision 6).
+   */
+  setDayKeep(access: Access, id: string, input: DayKeepBody, requestId: string): Promise<DayKeep> {
+    const branchId = branchOf(access);
+    return this.transactions.run(access.branchIds, async (transaction) => {
+      const version = await this.timetable.lockDraft(transaction, access, id, requestId);
+      const known = await transaction
+        .selectFrom('classes')
+        .select('id')
+        .where('id', '=', input.classId)
+        .where('branch_id', '=', branchId)
+        .executeTakeFirst();
+      if (known === undefined) {
+        throw new ApiException('not_found', 404);
+      }
+      const positions = [...input.slotPositions].sort((a, b) => a - b);
+      if (positions.length > 0) {
+        if (input.date <= (await this.timetable.todayIn(transaction, branchId))) {
+          throw new ApiException('day_keep_date_passed', 409);
+        }
+        const state = await this.pattern.stateOf(transaction, version, access.accountId);
+        const { dated } = await datedLessonsOf(transaction, state, input.date, input.date);
+        const day = dated.shortened.find((one) => one.classId === input.classId);
+        if (day === undefined) {
+          throw new ApiException('day_keep_not_short', 409);
+        }
+        if (positions.some((one) => !day.lessons.some((lesson) => lesson.slotPosition === one))) {
+          throw new ApiException('day_keep_lessons', 409);
+        }
+        if (positions.length > day.lessonSlots) {
+          throw new ApiException('day_keep_too_many', 409);
+        }
+      }
+      const stored = await transaction
+        .selectFrom('timetable_day_keeps')
+        .select('slot_position')
+        .where('version_id', '=', id)
+        .where('class_id', '=', input.classId)
+        .where('kept_on', '=', input.date)
+        .orderBy('slot_position')
+        .execute();
+      const before = stored.map((row) => row.slot_position);
+      const answer = { classId: input.classId, date: input.date, slotPositions: positions };
+      if (before.join(',') === positions.join(',')) {
+        return answer;
+      }
+      await transaction
+        .deleteFrom('timetable_day_keeps')
+        .where('version_id', '=', id)
+        .where('class_id', '=', input.classId)
+        .where('kept_on', '=', input.date)
+        .execute();
+      if (positions.length > 0) {
+        await transaction
+          .insertInto('timetable_day_keeps')
+          .values(
+            positions.map((slotPosition) => ({
+              branch_id: branchId,
+              version_id: id,
+              class_id: input.classId,
+              kept_on: input.date,
+              slot_position: slotPosition,
+            })),
+          )
+          .execute();
+      }
+      await this.audit.record(transaction, {
+        branchId,
+        actorId: access.accountId,
+        assignmentId: access.assignmentId,
+        action: 'timetable_version.day_keep',
+        record: { type: 'timetable_version', id },
+        oldValue: { classId: input.classId, date: input.date, slotPositions: before },
+        newValue: answer,
+        requestId,
+      });
+      return answer;
     });
   }
 
@@ -364,7 +461,15 @@ export class TimetablePublish {
     }));
     if (refusals.length > 0) {
       // Outside the year or before tomorrow, nothing else is read on that date.
-      return { refusals, warnings: [], cancelledLessons: [], needsTeacher: [], impact: null };
+      return {
+        refusals,
+        warnings: [],
+        cancelledLessons: [],
+        needsTeacher: [],
+        impact: null,
+        shortenedDays: [],
+        unusedKeeps: [],
+      };
     }
     const version: VersionRow = { ...stored, starts_on: startsOn };
     const context = await this.timetable.contextOf(transaction, version);
@@ -466,6 +571,19 @@ export class TimetablePublish {
       cancelledLessons: dated.cancelled,
       needsTeacher: dated.needsTeacher,
       impact,
+      shortenedDays: dated.dated.shortened.map((one) => ({
+        date: one.date,
+        classId: one.classId,
+        lessonSlots: one.lessonSlots,
+        lessons: one.lessons.map((lesson) => ({
+          slotPosition: lesson.slotPosition,
+          entryIds: [...lesson.entryIds],
+        })),
+        kept: [...one.kept],
+        chosen: one.chosen,
+        missingPositions: [...one.missingPositions],
+      })),
+      unusedKeeps: dated.dated.unusedKeeps.map((one) => ({ ...one })),
     };
   }
 
