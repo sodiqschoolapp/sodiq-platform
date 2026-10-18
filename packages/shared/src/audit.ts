@@ -211,6 +211,9 @@ export const AUDIT_ACTION_GROUPS = {
     'teaching_load.create',
     'teaching_load.edit',
     'teaching_load.delete',
+    // Task 5.5c-1: journals opened, and their days changed, by a publish.
+    'journal.open',
+    'journal.runs',
   ],
   exports: [
     'building.export',

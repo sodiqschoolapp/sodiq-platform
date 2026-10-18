@@ -52,6 +52,7 @@ import {
 import { datedCheck, datedLessonsOf, type DatedFindings } from './dated-check.js';
 import { writeDatedLessons, type DatedWrite } from './dated-lessons.js';
 import { impactOf, type Impact } from './impact.js';
+import { syncJournals } from './journals.js';
 import { markPublished, outOfDateColumn } from './out-of-date.js';
 import { PATTERN_REFUSALS, TimetablePattern, type PatternState } from './pattern.service.js';
 import { resultAnswerOf } from './rule-answers.js';
@@ -502,6 +503,12 @@ export class TimetablePublish {
         if (write !== true) carriedLessons.set(result.version.id, write);
       }
     }
+    // Task 5.5c-1: the journals of the year follow the chain as it now stands.
+    const journals = await syncJournals(transaction, this.audit, version, {
+      actorId: access.accountId,
+      assignmentId: access.assignmentId,
+      requestId,
+    });
     await this.audit.record(transaction, {
       branchId,
       actorId: access.accountId,
@@ -523,6 +530,7 @@ export class TimetablePublish {
         // Task 5.5a-2b-1, decision 11: the counts of the preview and the rows acknowledged.
         impact: findings.impact?.answer.counts ?? null,
         datedLessons: datedAuditOf(lessons),
+        journals: { ...journals },
         ...(transitionKey === null || findings.impact === null
           ? {}
           : {

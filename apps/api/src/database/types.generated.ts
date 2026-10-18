@@ -377,6 +377,17 @@ export interface Groups {
   version: Generated<number>;
 }
 
+export interface Journals {
+  academic_year_id: string;
+  branch_id: string;
+  class_id: string | null;
+  created_at: Generated<Timestamp>;
+  group_id: string | null;
+  id: Generated<string>;
+  runs: string;
+  subject_id: string;
+}
+
 export interface KnownDevices {
   account_id: string;
   first_signed_in_at: Timestamp;
@@ -1006,6 +1017,7 @@ export interface DB {
   group_classes: GroupClasses;
   group_memberships: GroupMemberships;
   groups: Groups;
+  journals: Journals;
   known_devices: KnownDevices;
   lesson_block_class_outs: LessonBlockClassOuts;
   lesson_blocks: LessonBlocks;

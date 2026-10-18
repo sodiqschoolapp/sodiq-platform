@@ -2387,6 +2387,7 @@ export const en = {
       timetable_lock: 'Lock of a draft',
       pattern_block: 'Lesson of the weekly pattern',
       pattern_entry: 'Lesson of a pattern block',
+      journal: 'Journal',
     },
     actions: {
       auth: {
@@ -2644,6 +2645,10 @@ export const en = {
       },
       pattern_entry: {
         room: 'Room of a lesson changed in the grid of a draft',
+      },
+      journal: {
+        open: 'Journal opened at a publish',
+        runs: 'Days of a journal changed by a publish',
       },
       teaching_load: {
         create: 'Teaching load row added',

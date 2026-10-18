@@ -2407,6 +2407,7 @@ export const uz: Texts<'one' | 'other'> = {
       timetable_lock: 'Qoralama qulfi',
       pattern_block: 'Haftalik shablon darsi',
       pattern_entry: 'Shablon blokidagi dars',
+      journal: 'Jurnal',
       teaching_load_row: 'Oʻquv yuklamasi qatori',
     },
     actions: {
@@ -2665,6 +2666,10 @@ export const uz: Texts<'one' | 'other'> = {
       },
       pattern_entry: {
         room: 'Qoralama jadvalidagi dars xonasi oʻzgartirildi',
+      },
+      journal: {
+        open: 'Nashrda jurnal ochildi',
+        runs: 'Nashr jurnal kunlarini oʻzgartirdi',
       },
       teaching_load: {
         create: 'Oʻquv yuklamasi qatori qoʻshildi',
