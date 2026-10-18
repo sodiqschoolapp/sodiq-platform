@@ -680,13 +680,18 @@ How to read the task lines:
   - From 3.4a (pull request #99): `04`, Teacher and staff record, Academic, "Classes taught, filled from the teaching load", is read from the published load; a vacancy that "held a load" is closed and kept (`04`, Vacancy) once 5.5 publishes it.
   - From 3.6a (pull request #118, decision 4): the students a Teacher reads come from `taughtAt` (`apps/api/src/modules/access/taught-scope.ts`): the classes and groups of the teacher's rows in the published version in force of each year not closed, on `greatest(today, the year's start)`; "Classes taught" reads the same, and publishing makes a Teacher's Students list fill.
 
-- [ ] **5.5c-3 Publish: notices and the changed mark**
+- [x] **5.5c-3a Publish: notices and the changed mark of a publish and a withdraw** (5.5c-3 split in two, pull request #158, decision 1)
   - Read: `06` (How surprises are prevented, Changes after publishing, Views and outputs), `edge/timetable` (After publishing, "One publish changes thousands of lessons").
-  - Build: notices to affected teachers through 0.9 (one per person per event, with the week before and after; none when the week did not change), for a publish, a carry and a Tutor change; the "changed" mark for a week on every timetable view.
+  - Build: notices to affected teachers through 0.9 (one per person per event, with the week before and after; none when the week did not change), for a publish with its replace and carries, and a withdraw; the "changed" mark stored for a week (`lesson_changes`, `isMarkedChanged`).
   - Done when: a publish that changes one teacher's lessons notifies that teacher once and no teacher whose week is the same, and the changed lessons carry the mark for seven days.
-  - From 3.6c-2 (pull request #125, decision 9 with review correction 5): a change of a class's Tutor that moves its dated Tutor lessons (`followTutors`) notifies the old and the new Tutor as a teacher change does, and the lessons it moved carry the "changed" mark for a week.
   - From 5.5a-3a (pull request #145, decision 10): a carry notifies the teachers of the later versions it changed.
   - From 5.5c-2a (pull request #156, decision 8): a withdraw notifies the affected teachers, as a publish does (`06`, Views and outputs: "When a published timetable changes, the affected teachers are notified at once").
+
+- [ ] **5.5c-3b Publish: the notice and the changed mark of a Tutor change** (5.5c-3 split in two, pull request #158, decision 1)
+  - Read: `06` (How surprises are prevented, Changes after publishing, Views and outputs), `edge/timetable` (After publishing, "One publish changes thousands of lessons"; Structure, the Homework slot row).
+  - Build: the notice and the mark of every path that calls `followTutors` (give, end, archive, role end and its taking back, `left` and its taking back), with `snapshotWeek` and `sendWeekChanges` (`apps/api/src/modules/timetable/week-changes.ts`) or the same comparison, and a kind of its own.
+  - Done when: a change of a class's Tutor that moves its Tutor lessons notifies the old and the new Tutor once each, with the week before and after, and the lessons it moved carry the mark.
+  - From 3.6c-2 (pull request #125, decision 9 with review correction 5): a change of a class's Tutor that moves its dated Tutor lessons (`followTutors`) notifies the old and the new Tutor as a teacher change does, and the lessons it moved carry the "changed" mark for a week.
 
 - [ ] **5.6a One-day changes**
   - Read: `06` (Changes after publishing), `edge/timetable` (After publishing, Versions and drafts).
@@ -743,6 +748,7 @@ How to read the task lines:
   - Read: `06` (Views and outputs), `edge/system-behaviour`.
   - Build: teacher, class, room and branch views; the teacher home page with today's lessons from all branches; the version number and "valid from" on prints; PDF and Excel export.
   - Done when: exported PDFs show Uzbek Latin and Cyrillic correctly.
+  - From 5.5c-3a (pull request #158, decision 2): the "changed" mark shown on the class, teacher, room and branch views and on the teacher home page (`06`, How surprises are prevented: "Changed lessons carry a 'changed' mark on every timetable view for a week"): a lesson is marked while `isMarkedChanged` (`packages/shared/src/timetable.ts`) is true for its `lesson_changes.changed_at` (0084) and the clock of the request.
 
 - [ ] **5.10 Solver service**
   - Read: `06` (Auto-generation, Rules), `13`, `edge/timetable` (Generator and editing).

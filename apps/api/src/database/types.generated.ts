@@ -419,6 +419,12 @@ export interface LessonBlocks {
   version_id: string;
 }
 
+export interface LessonChanges {
+  branch_id: string;
+  changed_at: Timestamp;
+  lesson_id: string;
+}
+
 export interface Lessons {
   block_id: string;
   branch_id: string;
@@ -1021,6 +1027,7 @@ export interface DB {
   known_devices: KnownDevices;
   lesson_block_class_outs: LessonBlockClassOuts;
   lesson_blocks: LessonBlocks;
+  lesson_changes: LessonChanges;
   lessons: Lessons;
   notifications: Notifications;
   password_reset_links: PasswordResetLinks;

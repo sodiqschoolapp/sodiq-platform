@@ -254,6 +254,11 @@ export {
   type NotificationKind,
   type NotificationList,
   type NotificationParams,
+  WEEK_CHANGE_KINDS,
+  WEEK_LESSONS_MAX,
+  weekLessonSchema,
+  type WeekChangeKind,
+  type WeekLesson,
 } from './notifications.js';
 export {
   ACTIONS,
@@ -1166,6 +1171,8 @@ export {
   type DraftReadiness,
   timetableVersionCreateSchema,
   DRAFT_EDIT_LOCK_MINUTES,
+  CHANGED_MARK_DAYS,
+  isMarkedChanged,
   TIMETABLE_LOCK_KINDS,
   timetableLockRecordSchema,
   timetableLockSchema,

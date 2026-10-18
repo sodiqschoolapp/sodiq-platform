@@ -257,6 +257,100 @@ describe('the notifications of the top bar', () => {
     expect(items(dialog)[0]).toContain(en.notifications.kinds.unknown);
   });
 
+  // Task 5.5c-3a: "One notice per person per event, with the week before and
+  // after" (edge/timetable, After publishing); a one-day cancel is shown as
+  // such (review correction 3), a line that differs says so in words.
+  describe('a notice of a timetable change', () => {
+    const lesson = {
+      date: '2026-10-19',
+      start: '08:00',
+      end: '08:45',
+      unit: '7 Oxford',
+      subject: { uz: 'Matematika', ru: 'Математика', en: 'Mathematics' },
+      room: 'Room 101',
+      cancelled: false,
+    };
+    const PUBLISHED: Notification = {
+      ...MONDAY,
+      kind: 'timetable.published',
+      data: {
+        number: '3',
+        weekStart: '2026-10-19',
+        before: [lesson, { ...lesson, date: '2026-10-20', cancelled: true }],
+        after: [
+          { ...lesson, date: '2026-10-20', cancelled: true },
+          { ...lesson, date: '2026-10-21', room: null },
+        ],
+      },
+    };
+    const WITHDRAWN: Notification = {
+      ...ROOM,
+      kind: 'timetable.withdrawn',
+      data: { number: '4', weekStart: '2026-11-09', before: [lesson], after: [] },
+    };
+    const lines = (dialog: HTMLElement, side: 'week-before' | 'week-after') =>
+      within(dialog)
+        .getAllByTestId(side)
+        .map((list) => [...list.querySelectorAll('li')].map((one) => one.textContent));
+
+    it('shows the text and the week before and after, the changed and cancelled lines marked', async () => {
+      open({ [LIST]: () => json({ unreadCount: 1, items: [PUBLISHED, WITHDRAWN] }) });
+      const dialog = await openDialog('en', 1);
+      expect(
+        within(dialog).getByText(
+          en.notifications.kinds.timetable.published.replace('{{number}}', '3'),
+        ),
+      ).toBeDefined();
+      expect(within(dialog).getByText('Week of 19 October 2026')).toBeDefined();
+      const [before, withdrawnBefore] = lines(dialog, 'week-before');
+      expect(before).toEqual([
+        'Monday, 19 October · 08:00–08:45 · 7 Oxford · Mathematics · Room 101 · changed',
+        'Tuesday, 20 October · 08:00–08:45 · 7 Oxford · Mathematics · Room 101 · cancelled',
+      ]);
+      expect(lines(dialog, 'week-after')).toEqual([
+        [
+          'Tuesday, 20 October · 08:00–08:45 · 7 Oxford · Mathematics · Room 101 · cancelled',
+          'Wednesday, 21 October · 08:00–08:45 · 7 Oxford · Mathematics · no room · changed',
+        ],
+      ]);
+      // A withdraw that leaves the teacher no lesson that week.
+      expect(withdrawnBefore).toEqual([
+        'Monday, 19 October · 08:00–08:45 · 7 Oxford · Mathematics · Room 101 · changed',
+      ]);
+      expect(within(dialog).getByText(en.notifications.week.none)).toBeDefined();
+      expect(
+        within(dialog).getByText(
+          en.notifications.kinds.timetable.withdrawn.replace('{{number}}', '4'),
+        ),
+      ).toBeDefined();
+    });
+
+    it('speaks the language of the tab', async () => {
+      open({ [LIST]: () => json({ unreadCount: 1, items: [PUBLISHED] }) }, 'ru');
+      const dialog = await openDialog('ru', 1);
+      expect(
+        within(dialog).getByText(
+          ru.notifications.kinds.timetable.published.replace('{{number}}', '3'),
+        ),
+      ).toBeDefined();
+      expect(lines(dialog, 'week-after')[0]?.[1]).toBe(
+        'Среда, 21 октября · 08:00–08:45 · 7 Oxford · Математика · без кабинета · изменён',
+      );
+    });
+
+    it('shows no week for data it cannot read', async () => {
+      open({
+        [LIST]: () =>
+          json({
+            unreadCount: 1,
+            items: [{ ...PUBLISHED, data: { number: '3', weekStart: 'x' } }],
+          }),
+      });
+      const dialog = await openDialog('en', 1);
+      expect(within(dialog).queryAllByTestId('week-before')).toEqual([]);
+    });
+  });
+
   it('close with the Close button and with Escape', async () => {
     open();
     const dialog = await openDialog('en', 1);

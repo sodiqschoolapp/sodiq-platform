@@ -3043,7 +3043,21 @@ export const uz: Texts<'one' | 'other'> = {
       timetable: {
         draft_taken_over:
           '{{name}} 5 daqiqa faollik boʻlmaganidan soʻng dars jadvali {{number}}-qoralamasini tahrirlashni oʻz zimmasiga oldi. Saqlangan oʻzgarishlaringiz qoldi.',
+        published:
+          'Dars jadvalining {{number}}-versiyasi eʻlon qilindi va darslaringiz oʻzgardi. Haftangiz oldin va keyin:',
+        withdrawn:
+          'Dars jadvalining {{number}}-versiyasi qaytarib olindi va darslaringiz oʻzgardi. Haftangiz oldin va keyin:',
       },
+    },
+    // The week before and after of a notice of a timetable change (task 5.5c-3a).
+    week: {
+      title: '{{date}} haftasi',
+      before: 'Oldin',
+      after: 'Keyin',
+      none: 'Dars yoʻq',
+      noRoom: 'xonasiz',
+      cancelled: 'bekor qilingan',
+      changed: 'oʻzgardi',
     },
   },
   timetable: {

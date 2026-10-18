@@ -1211,4 +1211,74 @@ describe('withdraw', () => {
       ).rejects.toMatchObject({ constraint: 'timetable_version_out_of_date_causes_action_check' });
     });
   });
+
+  // Task 5.5c-3a, pull request #158 (5.5c-2a decision 8): "When a published
+  // timetable changes, the affected teachers are notified at once" (`06`,
+  // Views and outputs); one notice per person, with the week before and after
+  // (edge/timetable, After publishing).
+  describe('notices', () => {
+    const noticesOf = (branch: string) =>
+      t.database.migrator
+        .selectFrom('notifications')
+        .select(['account_id', 'branch_id', 'data'])
+        .where('branch_id', '=', branch)
+        .where('kind', '=', 'timetable.withdrawn')
+        .orderBy('account_id')
+        .execute();
+    const accountOf = async (staffId: string) =>
+      (
+        await t.database.migrator
+          .selectFrom('staff')
+          .select('account_id')
+          .where('id', '=', staffId)
+          .executeTakeFirstOrThrow()
+      ).account_id;
+    const marksOf = (branch: string) =>
+      t.database.migrator
+        .selectFrom('lesson_changes')
+        .select('lesson_id')
+        .where('branch_id', '=', branch)
+        .execute();
+
+    it('notifies the teacher whose lessons the withdraw removes, and not one whose week is the same', async () => {
+      const v = await twoVersions();
+      const artRow = await t.database.migrator
+        .selectFrom('teaching_load_rows')
+        .select('teacher_id')
+        .where('version_id', '=', v.b)
+        .where('subject_id', '=', v.art)
+        .executeTakeFirstOrThrow();
+      if (artRow.teacher_id === null) throw new Error('Art has its teacher.');
+      // B's publish marked its Art lessons; they go with their lessons.
+      expect((await marksOf(v.branch)).length).toBeGreaterThan(0);
+      versionOf(await withdraw(v.branch, v.b));
+      const notices = await noticesOf(v.branch);
+      expect(notices.map((one) => one.account_id)).toEqual([await accountOf(artRow.teacher_id)]);
+      const number = (await versionRow(v.b)).number;
+      expect(notices[0]?.data).toMatchObject({
+        number: String(number),
+        weekStart: NOVEMBER,
+        before: [{ date: '2026-11-10', cancelled: false }],
+        after: [],
+      });
+      // A's maths lessons are as B had them: nothing is marked, and the removed lessons' marks are gone.
+      expect(await marksOf(v.branch)).toEqual([]);
+      const [entry] = await t.entries('timetable_version.withdraw', v.b);
+      expect(entry?.new_value).toMatchObject({ notices: { notified: 1, marked: 0 } });
+    });
+
+    it('notifies the teacher of a version withdrawn with none before it', async () => {
+      const s = await scene();
+      versionOf(await publish(s.branch, s.version, NOVEMBER));
+      versionOf(await withdraw(s.branch, s.version));
+      const notices = await noticesOf(s.branch);
+      expect(notices.map((one) => one.account_id)).toEqual([await accountOf(s.teacherId)]);
+      expect(notices[0]?.branch_id).toBe(s.branch);
+      expect(notices[0]?.data).toMatchObject({
+        weekStart: NOVEMBER,
+        before: [{ date: NOVEMBER }],
+        after: [],
+      });
+    });
+  });
 });

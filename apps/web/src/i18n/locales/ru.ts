@@ -3172,7 +3172,21 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       timetable: {
         draft_taken_over:
           '{{name}} перехватил(а) черновик расписания {{number}} после 5 минут без активности. Ваши сохранённые изменения остались.',
+        published:
+          'Опубликована версия расписания {{number}}, ваши уроки изменились. Ваша неделя до и после:',
+        withdrawn:
+          'Версия расписания {{number}} отозвана, ваши уроки изменились. Ваша неделя до и после:',
       },
+    },
+    // The week before and after of a notice of a timetable change (task 5.5c-3a).
+    week: {
+      title: 'Неделя с {{date}}',
+      before: 'До',
+      after: 'После',
+      none: 'Уроков нет',
+      noRoom: 'без кабинета',
+      cancelled: 'отменён',
+      changed: 'изменён',
     },
   },
   timetable: {

@@ -31,36 +31,70 @@ export async function storedImpactLessons(
     readonly cancelled: 'one_day' | 'none';
   },
 ): Promise<ImpactLesson[]> {
+  const rows = await storedLessonRows(transaction, { ...input, lock: false });
+  return rows.map((row) => row.lesson);
+}
+
+/** A stored lesson as `storedImpactLessons` gives it, with what a notice and the mark need. */
+export interface StoredLesson {
+  readonly id: string;
+  readonly lesson: ImpactLesson;
+  /** The cause of a one-day cancel kept on it (`reason`, `exam`), `null` for none. */
+  readonly cancelCause: string | null;
+  /** Its "changed" mark (`lesson_changes`, 0084), `null` for none. */
+  readonly changedAt: Date | null;
+}
+
+/**
+ * The rows of `storedImpactLessons`, with each lesson's id, one-day cancel and
+ * mark (task 5.5c-3a, spec review should-fix 4: one reader). With `lock`, the
+ * lessons are read `for update`, as the writer reads them (`writeDatedLessons`,
+ * `removeDatedLessons`): the side read before a publish or withdraw writes
+ * stays as read until its commit (spec review should-fix 2).
+ */
+export async function storedLessonRows(
+  transaction: Transaction,
+  input: {
+    readonly branchId: string;
+    readonly firstDate: string;
+    readonly lastDate: string;
+    readonly classIdsOf: (unitId: string) => readonly string[] | undefined;
+    readonly cancelled: 'one_day' | 'none';
+    readonly lock: boolean;
+  },
+): Promise<StoredLesson[]> {
   if (input.firstDate > input.lastDate) return [];
   const branch = await transaction
     .selectFrom('branches')
     .select('time_zone')
     .where('id', '=', input.branchId)
     .executeTakeFirstOrThrow();
+  const query = transaction
+    .selectFrom('lessons')
+    .innerJoin('lesson_blocks', 'lesson_blocks.id', 'lessons.block_id')
+    .innerJoin('pattern_blocks', 'pattern_blocks.id', 'lesson_blocks.pattern_block_id')
+    .leftJoin('lesson_changes', 'lesson_changes.lesson_id', 'lessons.id')
+    .select([
+      'lessons.id',
+      'lessons.block_id',
+      sql<string>`lessons.lesson_date::text`.as('lesson_date'),
+      'lessons.starts_at',
+      'lessons.ends_at',
+      'lessons.class_id',
+      'lessons.group_id',
+      'lessons.subject_id',
+      'lessons.teacher_id',
+      'lessons.room_id',
+      'lessons.cancel_cause',
+      'pattern_blocks.weekday',
+      'lesson_changes.changed_at',
+    ])
+    .where('lessons.branch_id', '=', input.branchId)
+    .where('lessons.lesson_date', '>=', input.firstDate)
+    .where('lessons.lesson_date', '<=', input.lastDate)
+    .orderBy('lessons.id');
   const [rows, begins] = await Promise.all([
-    transaction
-      .selectFrom('lessons')
-      .innerJoin('lesson_blocks', 'lesson_blocks.id', 'lessons.block_id')
-      .innerJoin('pattern_blocks', 'pattern_blocks.id', 'lesson_blocks.pattern_block_id')
-      .select([
-        'lessons.id',
-        'lessons.block_id',
-        sql<string>`lessons.lesson_date::text`.as('lesson_date'),
-        'lessons.starts_at',
-        'lessons.ends_at',
-        'lessons.class_id',
-        'lessons.group_id',
-        'lessons.subject_id',
-        'lessons.teacher_id',
-        'lessons.room_id',
-        'lessons.cancel_cause',
-        'pattern_blocks.weekday',
-      ])
-      .where('lessons.branch_id', '=', input.branchId)
-      .where('lessons.lesson_date', '>=', input.firstDate)
-      .where('lessons.lesson_date', '<=', input.lastDate)
-      .orderBy('lessons.id')
-      .execute(),
+    (input.lock ? query.forUpdate('lessons') : query).execute(),
     dayBeginnings(transaction, branch.time_zone, input.firstDate, input.lastDate),
   ]);
   return rows.flatMap((row) => {
@@ -72,15 +106,20 @@ export async function storedImpactLessons(
     const pair = storedPairOf(row, begins);
     return [
       {
-        date: pair.date,
-        weekday: row.weekday,
-        start: pair.start,
-        end: pair.end,
-        unitId: pair.unitId,
-        subjectId: pair.subjectId,
-        classIds: input.classIdsOf(pair.unitId) ?? (row.class_id === null ? [] : [row.class_id]),
-        teacherIds: pair.teacherId === null ? [] : [pair.teacherId],
-        roomId: pair.roomId,
+        id: row.id,
+        cancelCause: row.cancel_cause,
+        changedAt: row.changed_at,
+        lesson: {
+          date: pair.date,
+          weekday: row.weekday,
+          start: pair.start,
+          end: pair.end,
+          unitId: pair.unitId,
+          subjectId: pair.subjectId,
+          classIds: input.classIdsOf(pair.unitId) ?? (row.class_id === null ? [] : [row.class_id]),
+          teacherIds: pair.teacherId === null ? [] : [pair.teacherId],
+          roomId: pair.roomId,
+        },
       },
     ];
   });

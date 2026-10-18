@@ -20,6 +20,7 @@ import type { JsonValue } from '../../database/types.generated.js';
 import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
+import { Notifications } from '../notifications/notifications.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { laterVersionsOf, runningUntil } from './chain.js';
 import { datedCheck } from './dated-check.js';
@@ -36,6 +37,7 @@ import {
 } from './publish.service.js';
 import { resultAnswerOf } from './rule-answers.js';
 import { Timetable } from './timetable.service.js';
+import { sendWeekChanges, snapshotWeek } from './week-changes.js';
 
 /**
  * The refusals of a withdraw: the publish's, and the trigger of 0076 on the
@@ -85,6 +87,7 @@ export class TimetableWithdraw {
     private readonly requestKeys: RequestKeys,
     private readonly timetable: Timetable,
     private readonly pattern: TimetablePattern,
+    private readonly notifications: Notifications,
   ) {}
 
   /** Permission and the version's branch before the request key (`.claude/rules/api.md`). */
@@ -149,6 +152,8 @@ export class TimetableWithdraw {
       .sort()[0];
     const runEnd = next === undefined ? version.end_date : addDays(next, -1);
 
+    // Task 5.5c-3a: the lessons before the withdraw, read before its write.
+    const week = await snapshotWeek(transaction, branchId, version.starts_on, runEnd);
     await transaction
       .updateTable('timetable_versions')
       .set({ status: 'archived' })
@@ -232,6 +237,11 @@ export class TimetableWithdraw {
       assignmentId: access.assignmentId,
       requestId,
     };
+    // Task 5.5c-3a: one notice per affected teacher (5.5c-2a decision 8), and the changed lessons marked.
+    const notices = await sendWeekChanges(transaction, this.notifications, week, {
+      kind: 'timetable.withdrawn',
+      number: version.number,
+    });
     const journals = await syncJournals(transaction, this.audit, version, actor);
     const drafts = await transaction
       .selectFrom('timetable_versions')
@@ -254,6 +264,7 @@ export class TimetableWithdraw {
         runsAgainUntil: earlier === null ? null : runEnd,
         datedLessons: datedAuditOf(lessons),
         journals: { ...journals },
+        notices: { ...notices },
         markedOutOfDate: drafts.map((one) => one.id),
       },
       requestId,

@@ -5,6 +5,8 @@ import {
   NOTIFICATION_KIND_NAMES,
   NOTIFICATION_KINDS,
   NOTIFICATION_LIST_LIMIT,
+  WEEK_CHANGE_KINDS,
+  WEEK_LESSONS_MAX,
   notificationKindSchema,
   notificationListSchema,
   notificationSchema,
@@ -46,6 +48,51 @@ describe('the kinds of notification', () => {
     expect(schema.safeParse({ text: 'x'.repeat(501) }).success).toBe(false);
     expect(schema.safeParse({ text: 'Hello', extra: 1 }).success).toBe(false);
     expect(schema.safeParse({}).success).toBe(false);
+  });
+});
+
+// Task 5.5c-3a: "One notice per person per event, with the week before and
+// after" (edge/timetable, After publishing).
+describe('the notices of a timetable change', () => {
+  const lesson = {
+    date: '2026-10-19',
+    start: '08:00',
+    end: '08:45',
+    unit: '7 Oxford',
+    subject: { uz: 'Matematika', ru: 'Математика', en: 'Mathematics' },
+    room: 'Room 101',
+    cancelled: false,
+  };
+  const week = { number: '3', weekStart: '2026-10-19', before: [lesson], after: [] };
+
+  it('carry the number, the week and its lessons on both sides, for each kind', () => {
+    for (const kind of WEEK_CHANGE_KINDS) {
+      const schema = NOTIFICATION_KINDS[kind];
+      expect(schema.parse(week)).toEqual(week);
+      expect(schema.safeParse({ ...week, after: [{ ...lesson, room: null }] }).success).toBe(true);
+    }
+  });
+
+  it('refuse a teacher in a lesson, a time not on the clock and more lessons than the most', () => {
+    const schema = NOTIFICATION_KINDS['timetable.published'];
+    // A vacancy never appears in a notice: a lesson names no teacher.
+    expect(schema.safeParse({ ...week, before: [{ ...lesson, teacher: 'x' }] }).success).toBe(
+      false,
+    );
+    expect(schema.safeParse({ ...week, before: [{ ...lesson, start: '8:00' }] }).success).toBe(
+      false,
+    );
+    expect(schema.safeParse({ ...week, before: [{ ...lesson, end: '24:00' }] }).success).toBe(
+      false,
+    );
+    expect(
+      schema.safeParse({
+        ...week,
+        after: Array.from({ length: WEEK_LESSONS_MAX + 1 }, () => lesson),
+      }).success,
+    ).toBe(false);
+    expect(schema.safeParse({ ...week, number: '0' }).success).toBe(false);
+    expect(schema.safeParse({ ...week, weekStart: '19.10.2026' }).success).toBe(false);
   });
 });
 

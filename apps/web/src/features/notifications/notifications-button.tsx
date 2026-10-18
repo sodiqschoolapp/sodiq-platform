@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/dialog';
 import { NOTIFICATIONS_KEY, notificationsQuery } from './notifications-api';
 import { formatMoment } from '@/lib/dates';
+import { WeekChange } from './week-change';
 
 /**
  * The text of a notification, from the kind and its data, in the language of
@@ -142,6 +143,7 @@ export function NotificationsButton() {
                       )}
                     </span>
                   </button>
+                  <WeekChange item={item} />
                 </li>
               );
             })}

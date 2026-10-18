@@ -2,8 +2,10 @@ import { randomUUID } from 'node:crypto';
 import {
   BRANCH_HEADER,
   REQUEST_KEY_HEADER,
+  isMarkedChanged,
   publishCheckSchema,
   timetableVersionSchema,
+  weekLessonSchema,
   type PublishCheck,
   type TimetableVersion,
 } from '@sodiq/shared';
@@ -14,6 +16,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   dayTemplatesKit,
   MONDAY,
+  START,
   TODAY,
   TOMORROW,
   UNKNOWN,
@@ -35,6 +38,11 @@ const versionOf = (response: Response): TimetableVersion => {
   expect(response.status, JSON.stringify(response.body)).toBe(200);
   return timetableVersionSchema.parse(response.body);
 };
+
+/** A moment before the clock, for a mark of an earlier change. */
+const EARLIER = new Date('2026-10-08T10:00:00Z');
+
+const DAY = 86_400_000;
 
 const checkOf = (response: Response): PublishCheck => {
   expect(response.status, JSON.stringify(response.body)).toBe(200);
@@ -372,6 +380,13 @@ describe('publish', () => {
         .where('branch_id', 'in', branches)
         .orderBy('id')
         .execute(),
+      // Task 5.5c-3a: the "changed" marks.
+      t.database.migrator
+        .selectFrom('lesson_changes')
+        .selectAll()
+        .where('branch_id', 'in', branches)
+        .orderBy('lesson_id')
+        .execute(),
     ]);
   };
 
@@ -399,6 +414,45 @@ describe('publish', () => {
         'lesson_blocks.double_pair_id',
       ])
       .where('lessons.branch_id', '=', branch)
+      .orderBy('lessons.lesson_date')
+      .orderBy('lessons.starts_at')
+      .orderBy('lessons.id')
+      .execute();
+
+  /** The notices of a timetable change in a branch for a version's number (task 5.5c-3a). */
+  const noticesOf = (branch: string, kind: string, number: number) =>
+    t.database.migrator
+      .selectFrom('notifications')
+      .select(['account_id', 'branch_id', 'kind', 'data'])
+      .where('branch_id', '=', branch)
+      .where('kind', '=', kind)
+      .where(sql<boolean>`data->>'number' = ${String(number)}`)
+      .orderBy('account_id')
+      .execute();
+
+  /** The accounts of staff records, in their order. */
+  const accountsOf = async (staffIds: readonly string[]) => {
+    const rows = await t.database.migrator
+      .selectFrom('staff')
+      .select(['id', 'account_id'])
+      .where('id', 'in', [...staffIds])
+      .execute();
+    return staffIds.map((id) => rows.find((one) => one.id === id)?.account_id ?? null);
+  };
+
+  /** The "changed" marks of a branch with their lessons, by date and start (task 5.5c-3a). */
+  const marksOf = (branch: string) =>
+    t.database.migrator
+      .selectFrom('lesson_changes')
+      .innerJoin('lessons', 'lessons.id', 'lesson_changes.lesson_id')
+      .select([
+        'lessons.id',
+        sql<string>`lessons.lesson_date::text`.as('date'),
+        'lessons.class_id',
+        'lessons.subject_id',
+        'lesson_changes.changed_at',
+      ])
+      .where('lesson_changes.branch_id', '=', branch)
       .orderBy('lessons.lesson_date')
       .orderBy('lessons.starts_at')
       .orderBy('lessons.id')
@@ -1271,6 +1325,28 @@ describe('publish', () => {
       expect(carriedC?.counts.changed).toBeGreaterThan(15);
     });
 
+    // Task 5.5c-3a: a carry is part of its publish's event (decision 6):
+    // one notice per person, as the preview names them (5.5a-3a decision 10).
+    it('notifies each teacher of the fix and of the versions it carries into once, as the preview names them', async () => {
+      const s = await chainScene();
+      const answer = checkOf(await checkChain(s.branch, s.fix, '2026-10-19', 'carry'));
+      const shown = (answer.impact?.teachers ?? [])
+        .filter((one) => one.notified)
+        .map((one) => one.id);
+      expect(shown.sort()).toEqual([s.teacherId, s.second].sort());
+      const version = versionOf(
+        await publishChain(s.branch, s.fix, '2026-10-19', 'carry', answer.chain?.key),
+      );
+      const notices = await noticesOf(s.branch, 'timetable.published', version.number);
+      expect(notices.map((one) => one.account_id).sort()).toEqual((await accountsOf(shown)).sort());
+      for (const notice of notices) {
+        expect(notice.data).toMatchObject({ weekStart: '2026-10-19' });
+      }
+      // Every lesson of the class from the fix's start, in the fix's run and in B's and C's, is marked.
+      const marked = (await marksOf(s.branch)).filter((one) => one.class_id === s.classId);
+      expect(marked.map((one) => one.date)).toEqual(schoolDates(1, '2026-10-19'));
+    });
+
     it('leaves a later version where the change meets a blocked conflict, carrying the others', async () => {
       // D, a copy of C from the fourth quarter, where the second teacher
       // already teaches another class on Monday in the first lesson.
@@ -1314,6 +1390,13 @@ describe('publish', () => {
         lessonsBefore.filter((one) => one.date >= '2027-03-30'),
       );
       expect(await t.entries('timetable_version.carry', d)).toHaveLength(0);
+      // Task 5.5c-3a (spec review should-fix 6): a version left marks nothing
+      // (the other class's lessons were marked by D's own publish, before the fix).
+      expect(
+        (await marksOf(s.branch)).filter(
+          (one) => one.date >= '2027-03-30' && one.class_id === s.classId,
+        ),
+      ).toEqual([]);
       for (const id of [s.b, s.c]) {
         expect((await rowsOf(id)).map((one) => one.teacher_id)).toEqual([s.second]);
       }
@@ -5203,6 +5286,274 @@ describe('publish', () => {
         '{[2026-10-12,)}',
       ]);
       expect(await runsOf(s.branch, { classId: s.classId }, art)).toEqual(['{[2026-10-12,)}']);
+    });
+  });
+
+  // Task 5.5c-3a, pull request #158: notices and the changed mark
+  // (docs/spec/06-timetable.md, How surprises are prevented, Everyone is
+  // told: "Each affected teacher receives a notice showing before and after.
+  // Changed lessons carry a 'changed' mark on every timetable view for a
+  // week."; edge/timetable, After publishing: "One notice per person per
+  // event, with the week before and after. A teacher whose week did not
+  // change gets none."; Teachers who work in several branches: "Every notice
+  // to the teacher names the branch").
+  describe('notices and the changed mark', () => {
+    /** A teacher of a second subject in the scene's branch, with hours, and the subject. */
+    async function artOf(branch: string, input: { noAccount?: boolean } = {}) {
+      const art = await load.classes.subject({ grades: [7], journalType: 'attendance_only' });
+      const teacher = await load.teacher(branch, {
+        subjects: [{ subject: art, grades: [7] }],
+        ...input,
+      });
+      await hours(branch, teacher.staffId);
+      return { art, teacherId: teacher.staffId };
+    }
+
+    /** The scene with Art on Tuesday by a second teacher, published from Monday 12 October. */
+    async function published() {
+      const s = await scene();
+      const { art, teacherId: artTeacher } = await artOf(s.branch);
+      const artRow = await load.row({
+        branch_id: s.branch,
+        version_id: s.version,
+        class_id: s.classId,
+        subject_id: art,
+        teacher_id: artTeacher,
+        lessons_per_week: 1,
+      });
+      await placeAt(s.branch, s.version, artRow, 2);
+      await load.freeEditLock(s.version);
+      const first = versionOf(await publish(s.branch, s.version, MONDAY));
+      return { ...s, art, artTeacher, first };
+    }
+
+    /** A copy of the published version with maths on `mathsDay` and Art on Tuesday. */
+    async function fixOf(s: Awaited<ReturnType<typeof published>>, mathsDay: number) {
+      const fix = await draft(s.branch, s.year, s.version);
+      await t.database.migrator
+        .deleteFrom('pattern_blocks')
+        .where('version_id', '=', fix)
+        .execute();
+      const rows = await t.database.migrator
+        .selectFrom('teaching_load_rows')
+        .select(['id', 'subject_id'])
+        .where('version_id', '=', fix)
+        .orderBy('id')
+        .execute();
+      for (const row of rows) {
+        await placeAt(s.branch, fix, row.id, row.subject_id === s.subject ? mathsDay : 2);
+      }
+      await confirmTemplates(s.branch, fix);
+      await load.freeEditLock(fix);
+      return { fix, rows };
+    }
+
+    it('notifies once the teacher whose lessons a publish changes, and no teacher whose week is the same', async () => {
+      const s = await published();
+      // The first publish: both teachers are told, nothing is marked (decision 4).
+      const firstNotices = await noticesOf(s.branch, 'timetable.published', s.first.number);
+      expect(firstNotices.map((one) => one.account_id).sort()).toEqual(
+        (await accountsOf([s.teacherId, s.artTeacher])).sort(),
+      );
+      expect(await marksOf(s.branch)).toEqual([]);
+      // An Art lesson marked a week earlier, by an earlier change.
+      const art = (await lessonsOf(s.branch)).find(
+        (one) => one.subject_id === s.art && one.date === '2026-10-20',
+      );
+      if (art === undefined) throw new Error('Art is on Tuesday 20 October.');
+      await t.database.migrator
+        .insertInto('lesson_changes')
+        .values({ lesson_id: art.id, branch_id: s.branch, changed_at: EARLIER })
+        .execute();
+
+      const { fix } = await fixOf(s, 3);
+      const version = versionOf(await publish(s.branch, fix, '2026-10-19'));
+      const notices = await noticesOf(s.branch, 'timetable.published', version.number);
+      expect(notices.map((one) => one.account_id)).toEqual(await accountsOf([s.teacherId]));
+      const [notice] = notices;
+      expect(notice?.branch_id).toBe(s.branch);
+      const room = await t.database.migrator
+        .selectFrom('rooms')
+        .select('name')
+        .where('id', '=', s.room)
+        .executeTakeFirstOrThrow();
+      const week = notice?.data as { weekStart: string; before: unknown[]; after: unknown[] };
+      expect(week.weekStart).toBe('2026-10-19');
+      expect(week.before.map((one) => weekLessonSchema.parse(one))).toMatchObject([
+        { date: '2026-10-19', start: '08:00', end: '08:45', room: room.name, cancelled: false },
+      ]);
+      expect(week.after.map((one) => weekLessonSchema.parse(one))).toMatchObject([
+        { date: '2026-10-21', start: '08:00', end: '08:45', room: room.name, cancelled: false },
+      ]);
+
+      // Done when: the changed lessons carry the mark, from the publish for seven days.
+      const marks = await marksOf(s.branch);
+      expect(marks.filter((one) => one.subject_id === s.subject).map((one) => one.date)).toEqual(
+        schoolDates(3, '2026-10-19'),
+      );
+      const now = new Date(START);
+      for (const one of marks.filter((mark) => mark.subject_id === s.subject)) {
+        expect(one.changed_at).toEqual(now);
+        expect(isMarkedChanged(one.changed_at, new Date(now.getTime() + 7 * DAY - 60_000))).toBe(
+          true,
+        );
+        expect(isMarkedChanged(one.changed_at, new Date(now.getTime() + 7 * DAY))).toBe(false);
+      }
+      // The unchanged Art lessons are not marked; the one marked before keeps its moment.
+      expect(marks.filter((one) => one.subject_id === s.art)).toEqual([
+        expect.objectContaining({ id: art.id, changed_at: EARLIER }),
+      ]);
+      const [entry] = await t.entries('timetable_version.publish', fix);
+      expect(entry?.new_value).toMatchObject({
+        notices: { notified: 1, marked: schoolDates(3, '2026-10-19').length },
+      });
+    });
+
+    it('keeps a mark in the branch of its lesson', async () => {
+      const s = await published();
+      const [one] = await lessonsOf(s.branch);
+      if (one === undefined) throw new Error('The scene has lessons.');
+      const other = await t.newBranch();
+      await expect(
+        t.database.migrator
+          .insertInto('lesson_changes')
+          .values({ lesson_id: one.id, branch_id: other, changed_at: EARLIER })
+          .execute(),
+      ).rejects.toMatchObject({ code: '23503', constraint: 'lesson_changes_lesson_fkey' });
+    });
+
+    it('shows the whole week of a start on a Wednesday', async () => {
+      const s = await published();
+      // Maths moves from Monday to Thursday from Wednesday 21 October.
+      const { fix } = await fixOf(s, 4);
+      const answer = checkOf(await check(s.branch, fix, '2026-10-21'));
+      const version = versionOf(
+        await publish(s.branch, fix, '2026-10-21', t.admin, randomUUID(), {
+          ...(answer.impact?.transition?.key == null
+            ? {}
+            : { transitionKey: answer.impact.transition.key }),
+        }),
+      );
+      const [notice, ...more] = await noticesOf(s.branch, 'timetable.published', version.number);
+      expect(more).toEqual([]);
+      expect(notice?.account_id).toBe((await accountsOf([s.teacherId]))[0]);
+      const week = notice?.data as {
+        weekStart: string;
+        before: { date: string }[];
+        after: { date: string }[];
+      };
+      expect(week.weekStart).toBe('2026-10-19');
+      // Monday 19 October is before the start, the same on both sides.
+      expect(week.before.map((one) => one.date)).toEqual(['2026-10-19']);
+      expect(week.after.map((one) => one.date)).toEqual(['2026-10-19', '2026-10-22']);
+      // Thursday 22 October is marked: its week had lessons before (decision 4).
+      expect(
+        (await marksOf(s.branch))
+          .filter((one) => one.subject_id === s.subject)
+          .map((one) => one.date)
+          .slice(0, 1),
+      ).toEqual(['2026-10-22']);
+    });
+
+    it('never notifies a vacancy or a person without an account', async () => {
+      const s = await scene();
+      const { art, teacherId: noAccount } = await artOf(s.branch, { noAccount: true });
+      const artRow = await load.row({
+        branch_id: s.branch,
+        version_id: s.version,
+        class_id: s.classId,
+        subject_id: art,
+        teacher_id: noAccount,
+        lessons_per_week: 1,
+      });
+      await placeAt(s.branch, s.version, artRow, 2);
+      const music = await load.classes.subject({ grades: [7], journalType: 'attendance_only' });
+      const vacancy = await load.vacancy(s.branch, { subjects: [{ subject: music, grades: [7] }] });
+      await hours(s.branch, vacancy);
+      const musicRow = await load.row({
+        branch_id: s.branch,
+        version_id: s.version,
+        class_id: s.classId,
+        subject_id: music,
+        teacher_id: vacancy,
+        lessons_per_week: 1,
+      });
+      await placeAt(s.branch, s.version, musicRow, 3);
+      await load.freeEditLock(s.version);
+      const answer = checkOf(await check(s.branch, s.version, MONDAY));
+      expect(
+        (answer.impact?.teachers ?? []).filter((one) => one.notified).map((one) => one.id),
+      ).toEqual([s.teacherId]);
+      const version = versionOf(await publish(s.branch, s.version, MONDAY));
+      const all = await t.database.migrator
+        .selectFrom('notifications')
+        .select('account_id')
+        .where('branch_id', '=', s.branch)
+        .execute();
+      expect(all.map((one) => one.account_id)).toEqual(await accountsOf([s.teacherId]));
+      const [entry] = await t.entries('timetable_version.publish', s.version);
+      expect(entry?.new_value).toMatchObject({ notices: { notified: 1, marked: 0 } });
+      expect(version.status).toBe('published');
+    });
+
+    it('notifies the teachers the preview names, with a one-day cancel changed and removed', async () => {
+      const s = await published();
+      // One-day cancels (`reason`) on Monday's maths and Tuesday's Art of the week of 19 October.
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ cancel_cause: 'reason', cancel_reason: 'Excursion to the museum' })
+        .where('branch_id', '=', s.branch)
+        .where('lesson_date', 'in', ['2026-10-19', '2026-10-20'])
+        .execute();
+      // The fix moves maths to Wednesday (Monday's cancelled lesson is removed)
+      // and gives Art to a third teacher (Tuesday's cancelled lesson changes teacher).
+      const { fix, rows } = await fixOf(s, 3);
+      const third = (await load.teacher(s.branch, { subjects: [{ subject: s.art, grades: [7] }] }))
+        .staffId;
+      await hours(s.branch, third);
+      const artRow = rows.find((one) => one.subject_id === s.art);
+      if (artRow === undefined) throw new Error('The copy has its Art row.');
+      const edited = await t.patch(
+        `/api/timetable/versions/${fix}/load/${artRow.id}`,
+        s.branch,
+        {
+          teacherId: third,
+          lessonsPerWeek: 1,
+          roomId: null,
+          roomType: null,
+          doubleLessons: false,
+        },
+        t.admin,
+      );
+      expect(edited.status, JSON.stringify(edited.body)).toBe(200);
+      await load.freeEditLock(fix);
+      const answer = checkOf(await check(s.branch, fix, '2026-10-19'));
+      const shown = (answer.impact?.teachers ?? [])
+        .filter((one) => one.notified)
+        .map((one) => one.id);
+      expect(shown.sort()).toEqual([s.teacherId, s.artTeacher, third].sort());
+      const version = versionOf(await publish(s.branch, fix, '2026-10-19'));
+      const notices = await noticesOf(s.branch, 'timetable.published', version.number);
+      expect(notices.map((one) => one.account_id).sort()).toEqual((await accountsOf(shown)).sort());
+      // The Art teacher's week before shows Tuesday's lesson, cancelled (review correction 3).
+      const [artAccount] = await accountsOf([s.artTeacher]);
+      const artWeek = notices.find((one) => one.account_id === artAccount)?.data as {
+        weekStart: string;
+        before: { date: string; cancelled: boolean }[];
+        after: unknown[];
+      };
+      expect(artWeek.weekStart).toBe('2026-10-19');
+      expect(artWeek.before).toMatchObject([{ date: '2026-10-20', cancelled: true }]);
+      expect(artWeek.after).toEqual([]);
+    });
+
+    it('marks nothing and notifies nobody when a publish is refused', async () => {
+      const s = await published();
+      const { fix } = await fixOf(s, 3);
+      const before = await written([s.version, fix]);
+      // Today is no start: refused.
+      blockedBy(await publish(s.branch, fix, TODAY));
+      expect(await written([s.version, fix])).toEqual(before);
     });
   });
 });
