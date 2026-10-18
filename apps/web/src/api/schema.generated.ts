@@ -39289,6 +39289,7 @@ export interface operations {
         parameters: {
             query: {
                 startsOn: string;
+                chain?: "run_until" | "replace" | "carry";
             };
             header: {
                 "X-Branch-Id": string;
@@ -39315,7 +39316,7 @@ export interface operations {
                         quarterStarts: string[];
                         refusals: {
                             /** @enum {string} */
-                            code: "version_start_too_early" | "version_start_outside_year" | "version_later_published" | "draft_out_of_date" | "draft_not_ready" | "load_problem" | "pattern_blocked" | "date_blocked" | "load_mismatch" | "year_quarters" | "subject_daily_weights" | "subject_quarter_weights" | "transition_unacknowledged";
+                            code: "version_start_too_early" | "version_start_outside_year" | "version_later_published" | "draft_out_of_date" | "draft_not_ready" | "load_problem" | "pattern_blocked" | "date_blocked" | "load_mismatch" | "year_quarters" | "subject_daily_weights" | "subject_quarter_weights" | "transition_unacknowledged" | "chain_carry_not_offered" | "chain_start_taken" | "chain_changed";
                             /** @enum {string} */
                             step?: "templates" | "load" | "teachers" | "rooms";
                             /** Format: uuid */
@@ -39439,6 +39440,48 @@ export interface operations {
                                 }[];
                                 key: string | null;
                             } | null;
+                            carried: {
+                                /** Format: uuid */
+                                versionId: string;
+                                number: number;
+                                counts: {
+                                    created: number;
+                                    moved: number;
+                                    removed: number;
+                                    changed: number;
+                                    unchanged: number;
+                                };
+                                changes: {
+                                    /** @enum {string} */
+                                    kind: "created" | "moved" | "removed" | "changed";
+                                    /** Format: uuid */
+                                    unitId: string;
+                                    /** Format: uuid */
+                                    subjectId: string;
+                                    classIds: string[];
+                                    before: {
+                                        weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+                                        start: number;
+                                        end: number;
+                                        teacherIds: string[];
+                                        /** Format: uuid */
+                                        roomId: string | null;
+                                    } | null;
+                                    after: {
+                                        weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+                                        start: number;
+                                        end: number;
+                                        teacherIds: string[];
+                                        /** Format: uuid */
+                                        roomId: string | null;
+                                    } | null;
+                                    count: number;
+                                    /** Format: date */
+                                    firstDate: string;
+                                    /** Format: date */
+                                    lastDate: string;
+                                }[];
+                            }[];
                             names: {
                                 units: {
                                     /** Format: uuid */
@@ -39489,6 +39532,70 @@ export interface operations {
                             /** Format: uuid */
                             classId: string;
                         }[];
+                        chain: {
+                            key: string;
+                            later: {
+                                /** Format: uuid */
+                                id: string;
+                                number: number;
+                                /** Format: date */
+                                startsOn: string;
+                            }[];
+                            carryOffered: boolean;
+                            /** @enum {string|null} */
+                            carryReason: "no_source" | "nothing_changed" | "other_changes" | null;
+                            changes: {
+                                /** @enum {string} */
+                                kind: "teacher" | "row_room" | "entry_room";
+                                /** Format: uuid */
+                                classId: string | null;
+                                /** Format: uuid */
+                                groupId: string | null;
+                                /** Format: uuid */
+                                subjectId: string;
+                                weekday?: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+                                slotPosition?: number;
+                                /** Format: uuid */
+                                before: string | null;
+                                /** Format: uuid */
+                                after: string | null;
+                            }[];
+                            carried: {
+                                /** Format: uuid */
+                                versionId: string;
+                                number: number;
+                                /** Format: date */
+                                startsOn: string;
+                                applied: number;
+                                left: boolean;
+                                refusals: {
+                                    /** @enum {string} */
+                                    code: "version_start_too_early" | "version_start_outside_year" | "version_later_published" | "draft_out_of_date" | "draft_not_ready" | "load_problem" | "pattern_blocked" | "date_blocked" | "load_mismatch" | "year_quarters" | "subject_daily_weights" | "subject_quarter_weights" | "transition_unacknowledged" | "chain_carry_not_offered" | "chain_start_taken" | "chain_changed";
+                                    /** @enum {string} */
+                                    step?: "templates" | "load" | "teachers" | "rooms";
+                                    /** Format: uuid */
+                                    loadRowId?: string;
+                                    /** @enum {string} */
+                                    problem?: "load_unit_year" | "load_unit_archived" | "load_group_subject" | "load_subject_archived" | "load_subject_grade" | "load_group_no_shared_slot" | "load_split_and_whole" | "load_mixed_not_split" | "load_no_tutor" | "load_tutor_row_teacher" | "load_teacher_branch" | "load_teacher_status" | "load_teacher_subject" | "load_teacher_grade" | "load_teacher_language" | "load_block_mixed" | "load_block_lessons" | "load_block_teacher" | "load_room_closed" | "load_group_gaps";
+                                    /** Format: uuid */
+                                    subjectId?: string;
+                                    quarter?: number;
+                                    result?: {
+                                        rule: string;
+                                        /** @enum {string} */
+                                        severity: "blocked" | "warning";
+                                        weekday: (1 | 2 | 3 | 4 | 5 | 6 | 7) | null;
+                                        lessonIds: string[];
+                                        detail?: {
+                                            [key: string]: number | string;
+                                        };
+                                        /** Format: date */
+                                        date?: string;
+                                    };
+                                    versionNumber?: number;
+                                }[];
+                            }[];
+                        } | null;
                         canPublish: boolean;
                     };
                 };
@@ -39720,6 +39827,9 @@ export interface operations {
                     /** Format: date */
                     startsOn: string;
                     transitionKey?: string;
+                    /** @enum {string} */
+                    chain?: "run_until" | "replace" | "carry";
+                    laterKey?: string;
                 };
             };
         };

@@ -390,6 +390,7 @@ describe('publish', () => {
         needsTeacher: [],
         shortenedDays: [],
         unusedKeeps: [],
+        chain: null,
         canPublish: true,
       });
       // Task 5.5a-2b-1: a first publish from a Monday.
@@ -494,14 +495,15 @@ describe('publish', () => {
   });
 
   describe('what refuses a publish', () => {
-    it('refuses a start on or before a published version of the year (decision 3)', async () => {
+    // Task 5.5a-3a: until the question is answered (the chain tests below).
+    it('refuses a start on or before a published version of the year without an answer', async () => {
       const s = await scene();
       const later = await placedCopy(s.branch, s.year, s.version);
       versionOf(await publish(s.branch, later, '2026-10-26'));
       for (const date of ['2026-10-19', '2026-10-26']) {
         expect(blockedBy(await publish(s.branch, s.version, date))).toContainEqual({
           code: 'version_later_published',
-          path: '',
+          path: 'chain',
         });
       }
     });
@@ -848,6 +850,387 @@ describe('publish', () => {
     });
   });
 
+  // Task 5.5a-3a, pull request #145: edge/timetable, Versions and drafts, "A
+  // version is published to start on 1 December, then a fix must start on 12
+  // November. Published versions form a chain ordered by start date.
+  // Publishing before an already published later version asks: 'run until
+  // that version starts', 'replace the versions that follow', or — offered
+  // only when the new version differs from the version it started from in
+  // nothing but the teachers or rooms of entries — 'carry the change into
+  // them' ... a later version where a change meets a blocked conflict is
+  // listed and left as it is."
+  describe('the chain', () => {
+    const checkChain = (branch: string, version: string, startsOn: string, chain?: string) =>
+      check(branch, `${version}`, `${startsOn}${chain === undefined ? '' : `&chain=${chain}`}`);
+    const publishChain = (
+      branch: string,
+      version: string,
+      startsOn: string,
+      chain: string,
+      laterKey: string | undefined,
+      key: string = randomUUID(),
+    ) =>
+      request(t.kit.server)
+        .post(`/api/timetable/versions/${version}/publish`)
+        .set('Cookie', t.admin)
+        .set(BRANCH_HEADER, branch)
+        .set(REQUEST_KEY_HEADER, key)
+        .send({ startsOn, chain, ...(laterKey === undefined ? {} : { laterKey }) });
+
+    const rowsOf = (version: string) =>
+      t.database.migrator
+        .selectFrom('teaching_load_rows')
+        .select(['id', 'class_id', 'teacher_id', 'room_id'])
+        .where('version_id', '=', version)
+        .orderBy('id')
+        .execute();
+    const entriesOf = (version: string) =>
+      t.database.migrator
+        .selectFrom('pattern_entries')
+        .select(['id', 'teacher_id', 'room_id'])
+        .where('version_id', '=', version)
+        .orderBy('id')
+        .execute();
+
+    /**
+     * Version A published from Monday 12 October, B (a copy of A) from the
+     * second quarter, 9 November, C (a copy of B) from the third, 11 January;
+     * then a fix, a copy of A, with the row's teacher changed to a second
+     * teacher and the lesson's room to a second room, to start on Monday 19
+     * October, mid-quarter: a fix before two later versions.
+     */
+    async function chainScene(
+      more: (
+        s: Awaited<ReturnType<typeof scene>> & { c: string; second: string },
+      ) => Promise<void> = () => Promise.resolve(),
+    ) {
+      const s = await scene();
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      const b = await placedCopy(s.branch, s.year, s.version);
+      versionOf(await publish(s.branch, b, '2026-11-09'));
+      const c = await placedCopy(s.branch, s.year, b);
+      versionOf(await publish(s.branch, c, '2027-01-11'));
+      const second = (
+        await load.teacher(s.branch, { subjects: [{ subject: s.subject, grades: [7] }] })
+      ).staffId;
+      await hours(s.branch, second);
+      // Published versions after C come before the fix is drafted, so the fix is not out of date.
+      await more({ ...s, c, second });
+      const room2 = await load.classes.room(s.branch);
+      const fix = await placedCopy(s.branch, s.year, s.version);
+      const [fixRow] = await rowsOf(fix);
+      if (fixRow === undefined) throw new Error('The copy has its row.');
+      const edited = await t.patch(
+        `/api/timetable/versions/${fix}/load/${fixRow.id}`,
+        s.branch,
+        {
+          teacherId: second,
+          lessonsPerWeek: 1,
+          roomId: null,
+          roomType: null,
+          doubleLessons: false,
+        },
+        t.admin,
+      );
+      expect(edited.status, JSON.stringify(edited.body)).toBe(200);
+      const block = await t.database.migrator
+        .selectFrom('pattern_blocks')
+        .select('id')
+        .where('version_id', '=', fix)
+        .executeTakeFirstOrThrow();
+      const [fixEntry] = await entriesOf(fix);
+      if (fixEntry === undefined) throw new Error('The copy has its lesson.');
+      const roomed = await post(
+        `/api/timetable/versions/${fix}/pattern/${block.id}/room`,
+        s.branch,
+        { lessonId: fixEntry.id, roomId: room2 },
+      );
+      expect(roomed.status, JSON.stringify(roomed.body)).toBe(200);
+      return { ...s, a: s.version, b, c, fix, second, room2 };
+    }
+
+    /** The key of the later versions a check shows with an answer. */
+    const laterKey = async (branch: string, version: string, startsOn: string, chain: string) => {
+      const answer = checkOf(await checkChain(branch, version, startsOn, chain));
+      if (answer.chain === null) throw new Error('A later version is shown.');
+      return answer.chain;
+    };
+
+    /** The last date of the fix's lessons in its preview. */
+    const lastDateOf = (answer: PublishCheck) =>
+      (answer.impact?.changes ?? [])
+        .map((one) => one.lastDate)
+        .sort()
+        .at(-1);
+
+    // The task's "Done when": a fix published mid-quarter before two later
+    // versions, with each of the three answers.
+    it('runs until the next version starts, leaving both later versions as they are', async () => {
+      const s = await chainScene();
+      const before = [
+        await rowsOf(s.b),
+        await entriesOf(s.b),
+        await rowsOf(s.c),
+        await entriesOf(s.c),
+      ];
+      const chain = await laterKey(s.branch, s.fix, '2026-10-19', 'run_until');
+      expect(chain.later.map((one) => one.id)).toEqual([s.b, s.c]);
+      const answer = checkOf(await checkChain(s.branch, s.fix, '2026-10-19', 'run_until'));
+      expect(answer.refusals).toEqual([]);
+      // The From line of 5.5a-2a: the dates end the day before B starts (the
+      // last Monday before the autumn break, which ends on 8 November).
+      expect(lastDateOf(answer)).toBe('2026-10-26');
+      versionOf(await publishChain(s.branch, s.fix, '2026-10-19', 'run_until', chain.key));
+      for (const id of [s.a, s.b, s.c, s.fix]) {
+        expect((await versionRow(id)).status).toBe('published');
+      }
+      expect([
+        await rowsOf(s.b),
+        await entriesOf(s.b),
+        await rowsOf(s.c),
+        await entriesOf(s.c),
+      ]).toEqual(before);
+      const [entry] = await t.entries('timetable_version.publish', s.fix);
+      expect(entry?.new_value).toMatchObject({
+        chain: 'run_until',
+        replaced: [],
+        carried: [],
+        carryLeft: [],
+      });
+    });
+
+    it('replaces the versions that follow, running to the end of the year', async () => {
+      const s = await chainScene();
+      const chain = await laterKey(s.branch, s.fix, '2026-10-19', 'replace');
+      const answer = checkOf(await checkChain(s.branch, s.fix, '2026-10-19', 'replace'));
+      expect(answer.refusals).toEqual([]);
+      expect(lastDateOf(answer)).toBe('2027-05-31');
+      versionOf(await publishChain(s.branch, s.fix, '2026-10-19', 'replace', chain.key));
+      expect((await versionRow(s.b)).status).toBe('archived');
+      expect((await versionRow(s.c)).status).toBe('archived');
+      expect((await versionRow(s.a)).status).toBe('published');
+      for (const id of [s.b, s.c]) {
+        const [entry] = await t.entries('timetable_version.replace', id);
+        expect(entry?.new_value).toMatchObject({ status: 'archived', replacedById: s.fix });
+      }
+    });
+
+    it('carries the teacher and the room into both later versions, in the same preview', async () => {
+      const s = await chainScene();
+      const answer = checkOf(await checkChain(s.branch, s.fix, '2026-10-19', 'carry'));
+      expect(answer.refusals).toEqual([]);
+      expect(answer.chain?.carryOffered).toBe(true);
+      expect(answer.chain?.changes.map((one) => one.kind).sort()).toEqual([
+        'entry_room',
+        'teacher',
+      ]);
+      expect(
+        answer.chain?.carried.map((one) => ({
+          id: one.versionId,
+          applied: one.applied,
+          left: one.left,
+        })),
+      ).toEqual([
+        { id: s.b, applied: 2, left: false },
+        { id: s.c, applied: 2, left: false },
+      ]);
+      // Spec review must-fix 1: the carried versions' lessons, teachers and rooms are in the preview.
+      expect(answer.impact?.carried.map((one) => one.versionId)).toEqual([s.b, s.c]);
+      expect(answer.impact?.carried.every((one) => one.counts.changed > 0)).toBe(true);
+      expect(answer.impact?.teachers.map((one) => one.id)).toEqual(
+        expect.arrayContaining([s.teacherId, s.second]),
+      );
+      expect(answer.impact?.roomIds).toEqual(expect.arrayContaining([s.room2]));
+      const key = answer.chain?.key;
+      versionOf(await publishChain(s.branch, s.fix, '2026-10-19', 'carry', key));
+      for (const id of [s.b, s.c]) {
+        expect((await rowsOf(id)).map((one) => one.teacher_id)).toEqual([s.second]);
+        expect(await entriesOf(id)).toEqual([
+          expect.objectContaining({ teacher_id: s.second, room_id: s.room2 }),
+        ]);
+        expect((await versionRow(id)).status).toBe('published');
+        const [entry] = await t.entries('timetable_version.carry', id);
+        expect(entry?.new_value).toMatchObject({ fromVersionId: s.fix });
+      }
+    });
+
+    it('leaves a later version where the change meets a blocked conflict, carrying the others', async () => {
+      // D, a copy of C from the fourth quarter, where the second teacher
+      // already teaches another class on Monday in the first lesson.
+      let d = '';
+      const s = await chainScene(async (scene) => {
+        d = await placedCopy(scene.branch, scene.year, scene.c);
+        const room3 = await load.classes.room(scene.branch);
+        const otherClass = await load.classes.schoolClass(scene.branch, scene.year, {
+          grade: 7,
+          room: room3,
+        });
+        const otherRow = await load.row({
+          branch_id: scene.branch,
+          version_id: d,
+          class_id: otherClass,
+          subject_id: scene.subject,
+          teacher_id: scene.second,
+          lessons_per_week: 1,
+        });
+        await placeAt(scene.branch, d, otherRow, 1);
+        versionOf(await publish(scene.branch, d, '2027-03-30'));
+      });
+      const before = [await rowsOf(d), await entriesOf(d)];
+      const answer = checkOf(await checkChain(s.branch, s.fix, '2026-10-19', 'carry'));
+      expect(answer.refusals).toEqual([]);
+      const left = answer.chain?.carried.find((one) => one.versionId === d);
+      expect(left).toMatchObject({ applied: 2, left: true });
+      expect(left?.refusals.map((one) => one.code)).toContain('pattern_blocked');
+      expect(answer.impact?.carried.map((one) => one.versionId)).toEqual([s.b, s.c]);
+      versionOf(await publishChain(s.branch, s.fix, '2026-10-19', 'carry', answer.chain?.key));
+      expect([await rowsOf(d), await entriesOf(d)]).toEqual(before);
+      expect(await t.entries('timetable_version.carry', d)).toHaveLength(0);
+      for (const id of [s.b, s.c]) {
+        expect((await rowsOf(id)).map((one) => one.teacher_id)).toEqual([s.second]);
+      }
+      const [entry] = await t.entries('timetable_version.publish', s.fix);
+      expect(entry?.new_value).toMatchObject({
+        chain: 'carry',
+        carried: [{ id: s.b }, { id: s.c }],
+        carryLeft: [{ id: d }],
+      });
+    });
+
+    it('refuses without an answer, and a refused publish changes nothing', async () => {
+      const s = await chainScene();
+      const before = await written([s.fix]);
+      expect(blockedBy(await publish(s.branch, s.fix, '2026-10-19'))).toContainEqual({
+        code: 'version_later_published',
+        path: 'chain',
+      });
+      // A replace and a carry refused for another reason (the key) write nothing either.
+      for (const chain of ['replace', 'carry']) {
+        expect(
+          blockedBy(await publishChain(s.branch, s.fix, '2026-10-19', chain, '0'.repeat(64))),
+        ).toContainEqual({
+          code: 'chain_changed',
+          path: 'chain',
+        });
+      }
+      expect(await written([s.fix])).toEqual(before);
+    });
+
+    it('refuses carry for a draft with no source and for one that differs in more than teachers and rooms', async () => {
+      const s = await chainScene();
+      const noSource = await placedDraft(s);
+      const answer = checkOf(await checkChain(s.branch, noSource, '2026-10-19', 'carry'));
+      expect(answer.chain).toMatchObject({ carryOffered: false, carryReason: 'no_source' });
+      expect(answer.refusals).toContainEqual({ code: 'chain_carry_not_offered' });
+      const key = answer.chain?.key;
+      expect(
+        blockedBy(await publishChain(s.branch, noSource, '2026-10-19', 'carry', key)),
+      ).toContainEqual({
+        code: 'chain_carry_not_offered',
+        path: 'chain',
+      });
+      const [fixRow] = await rowsOf(s.fix);
+      const edited = await t.patch(
+        `/api/timetable/versions/${s.fix}/load/${fixRow?.id ?? ''}`,
+        s.branch,
+        { teacherId: null, lessonsPerWeek: 2, roomId: null, roomType: null, doubleLessons: false },
+        t.admin,
+      );
+      expect(edited.status, JSON.stringify(edited.body)).toBe(200);
+      const other = checkOf(await checkChain(s.branch, s.fix, '2026-10-19', 'carry'));
+      expect(other.chain).toMatchObject({ carryOffered: false, carryReason: 'other_changes' });
+      expect(other.refusals).toContainEqual({ code: 'chain_carry_not_offered' });
+    });
+
+    it('refuses run until and carry on the start of a published version, and replaces it with replace', async () => {
+      const s = await chainScene();
+      for (const chain of ['run_until', 'carry']) {
+        const key = (await laterKey(s.branch, s.fix, '2026-11-09', chain)).key;
+        expect(
+          blockedBy(await publishChain(s.branch, s.fix, '2026-11-09', chain, key)),
+        ).toContainEqual({
+          code: 'chain_start_taken',
+          path: 'chain',
+        });
+      }
+      const key = (await laterKey(s.branch, s.fix, '2026-11-09', 'replace')).key;
+      versionOf(await publishChain(s.branch, s.fix, '2026-11-09', 'replace', key));
+      expect((await versionRow(s.b)).status).toBe('archived');
+      expect((await versionRow(s.c)).status).toBe('archived');
+    });
+
+    it("writes nothing on a check with any answer, and names only the branch's own versions", async () => {
+      const s = await chainScene();
+      const theirs = await chainScene();
+      const before = await written([s.fix, theirs.fix]);
+      for (const chain of ['run_until', 'replace', 'carry']) {
+        const answer = checkOf(await checkChain(s.branch, s.fix, '2026-10-19', chain));
+        expect(answer.chain?.later.map((one) => one.id)).toEqual([s.b, s.c]);
+      }
+      expect(await written([s.fix, theirs.fix])).toEqual(before);
+    });
+
+    it('refuses the key of a publish sent again with another answer', async () => {
+      const s = await chainScene();
+      const chain = await laterKey(s.branch, s.fix, '2026-10-19', 'run_until');
+      const key = randomUUID();
+      versionOf(await publishChain(s.branch, s.fix, '2026-10-19', 'run_until', chain.key, key));
+      refusedWith(
+        await publishChain(s.branch, s.fix, '2026-10-19', 'replace', chain.key, key),
+        409,
+        'request_key_reused',
+      );
+      expect((await versionRow(s.b)).status).toBe('published');
+    });
+
+    // Spec review of the plan, should-fix 1: the database lets a carry change
+    // a published version's teachers and rooms; the routes of a draft still refuse.
+    it('still refuses the load and room routes on a later published version', async () => {
+      const s = await chainScene();
+      const [row] = await rowsOf(s.b);
+      const [entry] = await entriesOf(s.b);
+      const block = await t.database.migrator
+        .selectFrom('pattern_blocks')
+        .select('id')
+        .where('version_id', '=', s.b)
+        .executeTakeFirstOrThrow();
+      const before = [await rowsOf(s.b), await entriesOf(s.b), await t.auditCount()];
+      refusedWith(
+        await t.patch(
+          `/api/timetable/versions/${s.b}/load/${row?.id ?? ''}`,
+          s.branch,
+          {
+            teacherId: s.second,
+            lessonsPerWeek: 1,
+            roomId: null,
+            roomType: null,
+            doubleLessons: false,
+          },
+          t.admin,
+        ),
+        409,
+        'version_not_draft',
+      );
+      refusedWith(
+        await post(`/api/timetable/versions/${s.b}/pattern/${block.id}/room`, s.branch, {
+          lessonId: entry?.id ?? '',
+          roomId: s.room2,
+        }),
+        409,
+        'version_not_draft',
+      );
+      expect([await rowsOf(s.b), await entriesOf(s.b), await t.auditCount()]).toEqual(before);
+    });
+
+    it('ignores an answer when no later version is published', async () => {
+      const s = await scene();
+      const answer = checkOf(await checkChain(s.branch, s.version, MONDAY, 'replace'));
+      expect(answer.chain).toBeNull();
+      expect(answer.refusals).toEqual([]);
+      versionOf(await publishChain(s.branch, s.version, MONDAY, 'replace', undefined));
+    });
+  });
+
   describe('a repeat', () => {
     it('refuses a key of another account, of another date and a missing key, changing nothing (permission review, must-fix 1)', async () => {
       const s = await scene();
@@ -1093,6 +1476,47 @@ describe('publish', () => {
         expect(versionOf(one).status).toBe('published');
         expect(blockedBy(two)).toEqual([{ code: 'pattern_blocked', path: 'pattern.travel_time' }]);
       }
+    });
+
+    // Task 5.5a-3a (spec review of the plan, should-fix 2 and 3): the first
+    // publish replaces B and stands at 19 October; the second, sent with the
+    // key of the check it made while B was the later version, waits on the
+    // publish lock and is refused `chain_changed`: its replace would now
+    // archive the first, which it was never shown. It writes nothing.
+    it('refuses a replace whose later versions changed while it waited', async () => {
+      const s = await scene();
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      const b = await placedCopy(s.branch, s.year, s.version);
+      versionOf(await publish(s.branch, b, '2026-11-09'));
+      const x = await placedCopy(s.branch, s.year, s.version);
+      const y = await placedCopy(s.branch, s.year, s.version);
+      const keyOf = async (version: string) => {
+        const answer = checkOf(await check(s.branch, version, '2026-10-19&chain=replace'));
+        return answer.chain?.key ?? '';
+      };
+      const [xKey, yKey] = [await keyOf(x), await keyOf(y)];
+      expect(yKey).not.toBe('');
+      const send = (version: string, key: string) =>
+        request(t.kit.server)
+          .post(`/api/timetable/versions/${version}/publish`)
+          .set('Cookie', t.admin)
+          .set(BRANCH_HEADER, s.branch)
+          .set(REQUEST_KEY_HEADER, randomUUID())
+          .send({ startsOn: '2026-10-19', chain: 'replace', laterKey: key });
+      const [one, two] = await inOrder(
+        [s.branch],
+        () => send(x, xKey),
+        () => send(y, yKey),
+      );
+      expect(versionOf(one).status).toBe('published');
+      expect((await versionRow(b)).status).toBe('archived');
+      expect(blockedBy(two)).toEqual([
+        { code: 'draft_out_of_date', path: '' },
+        { code: 'chain_changed', path: 'chain' },
+      ]);
+      expect((await versionRow(y)).status).toBe('draft');
+      expect((await versionRow(x)).status).toBe('published');
+      expect(await t.entries('timetable_version.publish', y)).toHaveLength(0);
     });
 
     it('takes the drafts of the year in the order of their id, as a Tutor change does (must-fix 1)', async () => {

@@ -187993,6 +187993,19 @@
             }
           },
           {
+            "name": "chain",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "run_until",
+                "replace",
+                "carry"
+              ]
+            }
+          },
+          {
             "name": "id",
             "required": true,
             "in": "path",
@@ -188064,7 +188077,10 @@
                               "year_quarters",
                               "subject_daily_weights",
                               "subject_quarter_weights",
-                              "transition_unacknowledged"
+                              "transition_unacknowledged",
+                              "chain_carry_not_offered",
+                              "chain_start_taken",
+                              "chain_changed"
                             ]
                           },
                           "step": {
@@ -188816,6 +188832,299 @@
                           ],
                           "additionalProperties": false
                         },
+                        "carried": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "versionId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "number": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 9007199254740991
+                              },
+                              "counts": {
+                                "type": "object",
+                                "properties": {
+                                  "created": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "moved": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "removed": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "changed": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "unchanged": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  }
+                                },
+                                "required": [
+                                  "created",
+                                  "moved",
+                                  "removed",
+                                  "changed",
+                                  "unchanged"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "changes": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "created",
+                                        "moved",
+                                        "removed",
+                                        "changed"
+                                      ]
+                                    },
+                                    "unitId": {
+                                      "type": "string",
+                                      "format": "uuid",
+                                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                    },
+                                    "subjectId": {
+                                      "type": "string",
+                                      "format": "uuid",
+                                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                    },
+                                    "classIds": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                      }
+                                    },
+                                    "before": {
+                                      "nullable": true,
+                                      "type": "object",
+                                      "properties": {
+                                        "weekday": {
+                                          "anyOf": [
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                1
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                2
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                3
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                4
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                5
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                6
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                7
+                                              ]
+                                            }
+                                          ]
+                                        },
+                                        "start": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 1440
+                                        },
+                                        "end": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 1440
+                                        },
+                                        "teacherIds": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string",
+                                            "format": "uuid",
+                                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                          }
+                                        },
+                                        "roomId": {
+                                          "nullable": true,
+                                          "type": "string",
+                                          "format": "uuid",
+                                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                        }
+                                      },
+                                      "required": [
+                                        "weekday",
+                                        "start",
+                                        "end",
+                                        "teacherIds",
+                                        "roomId"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "after": {
+                                      "nullable": true,
+                                      "type": "object",
+                                      "properties": {
+                                        "weekday": {
+                                          "anyOf": [
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                1
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                2
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                3
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                4
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                5
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                6
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                7
+                                              ]
+                                            }
+                                          ]
+                                        },
+                                        "start": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 1440
+                                        },
+                                        "end": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 1440
+                                        },
+                                        "teacherIds": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string",
+                                            "format": "uuid",
+                                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                          }
+                                        },
+                                        "roomId": {
+                                          "nullable": true,
+                                          "type": "string",
+                                          "format": "uuid",
+                                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                        }
+                                      },
+                                      "required": [
+                                        "weekday",
+                                        "start",
+                                        "end",
+                                        "teacherIds",
+                                        "roomId"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "count": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "firstDate": {
+                                      "type": "string",
+                                      "format": "date",
+                                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                                    },
+                                    "lastDate": {
+                                      "type": "string",
+                                      "format": "date",
+                                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "unitId",
+                                    "subjectId",
+                                    "classIds",
+                                    "before",
+                                    "after",
+                                    "count",
+                                    "firstDate",
+                                    "lastDate"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": [
+                              "versionId",
+                              "number",
+                              "counts",
+                              "changes"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
                         "names": {
                           "type": "object",
                           "properties": {
@@ -188956,6 +189265,7 @@
                         "roomIds",
                         "vacancies",
                         "transition",
+                        "carried",
                         "names"
                       ],
                       "additionalProperties": false
@@ -189061,6 +189371,392 @@
                         "additionalProperties": false
                       }
                     },
+                    "chain": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "key": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{64}$"
+                        },
+                        "later": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "number": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 9007199254740991
+                              },
+                              "startsOn": {
+                                "type": "string",
+                                "format": "date",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "number",
+                              "startsOn"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "carryOffered": {
+                          "type": "boolean"
+                        },
+                        "carryReason": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "no_source",
+                            "nothing_changed",
+                            "other_changes"
+                          ]
+                        },
+                        "changes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "teacher",
+                                  "row_room",
+                                  "entry_room"
+                                ]
+                              },
+                              "classId": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "groupId": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "subjectId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "weekday": {
+                                "anyOf": [
+                                  {
+                                    "type": "number",
+                                    "enum": [
+                                      1
+                                    ]
+                                  },
+                                  {
+                                    "type": "number",
+                                    "enum": [
+                                      2
+                                    ]
+                                  },
+                                  {
+                                    "type": "number",
+                                    "enum": [
+                                      3
+                                    ]
+                                  },
+                                  {
+                                    "type": "number",
+                                    "enum": [
+                                      4
+                                    ]
+                                  },
+                                  {
+                                    "type": "number",
+                                    "enum": [
+                                      5
+                                    ]
+                                  },
+                                  {
+                                    "type": "number",
+                                    "enum": [
+                                      6
+                                    ]
+                                  },
+                                  {
+                                    "type": "number",
+                                    "enum": [
+                                      7
+                                    ]
+                                  }
+                                ]
+                              },
+                              "slotPosition": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 20
+                              },
+                              "before": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "after": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "classId",
+                              "groupId",
+                              "subjectId",
+                              "before",
+                              "after"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "carried": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "versionId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "number": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 9007199254740991
+                              },
+                              "startsOn": {
+                                "type": "string",
+                                "format": "date",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                              },
+                              "applied": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "left": {
+                                "type": "boolean"
+                              },
+                              "refusals": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "code": {
+                                      "type": "string",
+                                      "enum": [
+                                        "version_start_too_early",
+                                        "version_start_outside_year",
+                                        "version_later_published",
+                                        "draft_out_of_date",
+                                        "draft_not_ready",
+                                        "load_problem",
+                                        "pattern_blocked",
+                                        "date_blocked",
+                                        "load_mismatch",
+                                        "year_quarters",
+                                        "subject_daily_weights",
+                                        "subject_quarter_weights",
+                                        "transition_unacknowledged",
+                                        "chain_carry_not_offered",
+                                        "chain_start_taken",
+                                        "chain_changed"
+                                      ]
+                                    },
+                                    "step": {
+                                      "type": "string",
+                                      "enum": [
+                                        "templates",
+                                        "load",
+                                        "teachers",
+                                        "rooms"
+                                      ]
+                                    },
+                                    "loadRowId": {
+                                      "type": "string",
+                                      "format": "uuid",
+                                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                    },
+                                    "problem": {
+                                      "type": "string",
+                                      "enum": [
+                                        "load_unit_year",
+                                        "load_unit_archived",
+                                        "load_group_subject",
+                                        "load_subject_archived",
+                                        "load_subject_grade",
+                                        "load_group_no_shared_slot",
+                                        "load_split_and_whole",
+                                        "load_mixed_not_split",
+                                        "load_no_tutor",
+                                        "load_tutor_row_teacher",
+                                        "load_teacher_branch",
+                                        "load_teacher_status",
+                                        "load_teacher_subject",
+                                        "load_teacher_grade",
+                                        "load_teacher_language",
+                                        "load_block_mixed",
+                                        "load_block_lessons",
+                                        "load_block_teacher",
+                                        "load_room_closed",
+                                        "load_group_gaps"
+                                      ]
+                                    },
+                                    "subjectId": {
+                                      "type": "string",
+                                      "format": "uuid",
+                                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                    },
+                                    "quarter": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 4
+                                    },
+                                    "result": {
+                                      "type": "object",
+                                      "properties": {
+                                        "rule": {
+                                          "type": "string",
+                                          "pattern": "^[a-z_]+$"
+                                        },
+                                        "severity": {
+                                          "type": "string",
+                                          "enum": [
+                                            "blocked",
+                                            "warning"
+                                          ]
+                                        },
+                                        "weekday": {
+                                          "nullable": true,
+                                          "anyOf": [
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                1
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                2
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                3
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                4
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                5
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                6
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                7
+                                              ]
+                                            }
+                                          ]
+                                        },
+                                        "lessonIds": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "detail": {
+                                          "type": "object",
+                                          "additionalProperties": {
+                                            "anyOf": [
+                                              {
+                                                "type": "number"
+                                              },
+                                              {
+                                                "type": "string"
+                                              }
+                                            ]
+                                          }
+                                        },
+                                        "date": {
+                                          "type": "string",
+                                          "format": "date",
+                                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                                        }
+                                      },
+                                      "required": [
+                                        "rule",
+                                        "severity",
+                                        "weekday",
+                                        "lessonIds"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "versionNumber": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 9007199254740991
+                                    }
+                                  },
+                                  "required": [
+                                    "code"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": [
+                              "versionId",
+                              "number",
+                              "startsOn",
+                              "applied",
+                              "left",
+                              "refusals"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "later",
+                        "carryOffered",
+                        "carryReason",
+                        "changes",
+                        "carried"
+                      ],
+                      "additionalProperties": false
+                    },
                     "canPublish": {
                       "type": "boolean"
                     }
@@ -189077,6 +189773,7 @@
                     "impact",
                     "shortenedDays",
                     "unusedKeeps",
+                    "chain",
                     "canPublish"
                   ],
                   "additionalProperties": false
@@ -190419,6 +191116,18 @@
                     "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
                   },
                   "transitionKey": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "chain": {
+                    "type": "string",
+                    "enum": [
+                      "run_until",
+                      "replace",
+                      "carry"
+                    ]
+                  },
+                  "laterKey": {
                     "type": "string",
                     "pattern": "^[0-9a-f]{64}$"
                   }

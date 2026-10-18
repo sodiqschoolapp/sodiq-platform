@@ -362,8 +362,12 @@ export async function readPatternFacts(
     otherDrafts: draftRows.map((row) => elsewherePlacement(lessonOf(row), false)).sort(byId),
     branches: otherBranches,
   };
-  const model = patternModel(data);
+  return patternFactsOf(data);
+}
 
+/** The facts of a pattern from its data. */
+function patternFactsOf(data: PatternFactsData): PatternFacts {
+  const model = patternModel(data);
   return {
     facts: model.facts,
     data,
@@ -372,6 +376,17 @@ export async function readPatternFacts(
       model.placementOf(model.rowOf(row.id), { ...at, roomId: row.room_id, doublePairId: null }),
     dayOfRow: (row, weekday) => model.dayOfRows([model.rowOf(row.id)], weekday),
   };
+}
+
+/**
+ * The facts of a version that runs until `versionEnd` in place of the year's
+ * end (task 5.5a-3a): a version published before a later published version
+ * ends the day before that version starts (the From line of 5.5a-2a).
+ */
+export function withRunEnd(pattern: PatternFacts, versionEnd: string): PatternFacts {
+  return pattern.data.versionEnd === versionEnd
+    ? pattern
+    : patternFactsOf({ ...pattern.data, versionEnd });
 }
 
 /** A row of `timetable_busy_elsewhere` or `timetable_drafts_elsewhere` (0071). */

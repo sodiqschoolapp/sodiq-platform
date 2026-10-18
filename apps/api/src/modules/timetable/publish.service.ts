@@ -8,13 +8,18 @@ import {
   type ErrorDetail,
   type NeedsTeacherAnswer,
   type PublishBody,
+  type PublishChain,
+  type PublishChainAnswer,
   type PublishCheck,
   type PublishRefusal,
   type RuleResultAnswer,
   type ShortenedDay,
   type TimetableVersion,
+  weekdaySchema,
 } from '@sodiq/shared';
 import {
+  addDays,
+  carryChanges,
   checkTimetable,
   checkedPlacements,
   publishRefusals,
@@ -31,6 +36,17 @@ import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { dailyWeightsFit, quarterWeightsFit } from '../setup/subject-weights.js';
 import type { StoredLoadRow } from './load-facts.js';
+import {
+  carryResultOf,
+  carryVersionOf,
+  laterKeyOf,
+  laterVersionsOf,
+  runEndOf,
+  runningUntil,
+  type CarryReader,
+  type CarryResult,
+  type LaterVersion,
+} from './chain.js';
 import { datedCheck, datedLessonsOf } from './dated-check.js';
 import { impactOf, type Impact } from './impact.js';
 import { refusingPattern, TimetablePattern } from './pattern.service.js';
@@ -64,6 +80,10 @@ interface Findings {
   /** Task 5.5a-2b-2: the dates shortened for a class and the stored choices unused. */
   readonly shortenedDays: ShortenedDay[];
   readonly unusedKeeps: { date: string; classId: string }[];
+  /** Task 5.5a-3a: the later published versions and what the answer does to them. */
+  readonly chain: PublishChainAnswer | null;
+  readonly later: readonly LaterVersion[];
+  readonly carried: readonly CarryResult[];
 }
 
 /** A refusal as a detail of `publish_blocked` (decision 12). */
@@ -81,11 +101,13 @@ function detailOf(refusal: PublishRefusal): ErrorDetail {
             ? `pattern.${refusal.result.rule}`
             : refusal.code === 'transition_unacknowledged'
               ? 'transition'
-              : refusal.code === 'date_blocked' && refusal.result?.date !== undefined
-                ? `dates.${refusal.result.date}.${refusal.result.rule}`
-                : refusal.code.startsWith('version_start')
-                  ? 'startsOn'
-                  : '';
+              : refusal.code.startsWith('chain_') || refusal.code === 'version_later_published'
+                ? 'chain'
+                : refusal.code === 'date_blocked' && refusal.result?.date !== undefined
+                  ? `dates.${refusal.result.date}.${refusal.result.rule}`
+                  : refusal.code.startsWith('version_start')
+                    ? 'startsOn'
+                    : '';
   return {
     path,
     code: refusal.code,
@@ -122,7 +144,7 @@ export class TimetablePublish {
   ) {}
 
   /** What a publish on the date would refuse and warn, written nowhere (decision 13). */
-  check(access: Access, id: string, startsOn: string): Promise<PublishCheck> {
+  check(access: Access, id: string, startsOn: string, chain?: PublishChain): Promise<PublishCheck> {
     const branchId = branchOf(access);
     return this.transactions.run(access.branchIds, async (transaction) => {
       const version = await this.timetable.findVersion(transaction, branchId, id);
@@ -136,6 +158,7 @@ export class TimetablePublish {
         choices.earliest,
         quarters,
         access.accountId,
+        chain,
       );
       return {
         startsOn,
@@ -149,6 +172,7 @@ export class TimetablePublish {
         impact: findings.impact?.answer ?? null,
         shortenedDays: findings.shortenedDays,
         unusedKeeps: findings.unusedKeeps,
+        chain: findings.chain,
         canPublish: version.status === 'draft' && findings.refusals.length === 0,
       };
     });
@@ -273,6 +297,8 @@ export class TimetablePublish {
               versionId: id,
               startsOn: input.startsOn,
               transitionKey: input.transitionKey ?? null,
+              chain: input.chain ?? null,
+              laterKey: input.laterKey ?? null,
             },
           },
           async () =>
@@ -350,7 +376,17 @@ export class TimetablePublish {
       earliest,
       quarters,
       access.accountId,
+      input.chain,
     );
+    // Task 5.5a-3a (spec review of the plan, should-fix 2): the answer counts
+    // only for the later versions that were shown.
+    if (
+      findings.chain !== null &&
+      input.chain !== undefined &&
+      input.laterKey !== findings.chain.key
+    ) {
+      findings.refusals.push({ code: 'chain_changed' });
+    }
     // Decision 11 with review correction 1: a transition week that differs
     // from the load is published only with the key of what was shown.
     const transitionKey = findings.impact?.answer.transition?.key ?? null;
@@ -404,6 +440,25 @@ export class TimetablePublish {
         .where('id', '=', draft.id)
         .execute();
     }
+    // Task 5.5a-3a: the answer to the later published versions.
+    const replaced = input.chain === 'replace' ? findings.later : [];
+    for (const later of replaced) {
+      await transaction
+        .updateTable('timetable_versions')
+        .set({ status: 'archived' })
+        .where('id', '=', later.id)
+        .execute();
+    }
+    const carried: CarryResult[] = [];
+    const carryLeft: CarryResult[] = [];
+    for (const result of input.chain === 'carry' ? findings.carried : []) {
+      if (result.into.applied.length === 0) continue;
+      if (result.left || !(await this.carryWrite(transaction, result))) {
+        carryLeft.push(result);
+      } else {
+        carried.push(result);
+      }
+    }
     await this.audit.record(transaction, {
       branchId,
       actorId: access.accountId,
@@ -417,6 +472,10 @@ export class TimetablePublish {
         startsOn,
         inForceBefore: before === null ? null : { id: before.id, number: before.number },
         markedOutOfDate: marked.map((one) => one.id),
+        chain: findings.chain === null ? null : (input.chain ?? null),
+        replaced: replaced.map((one) => ({ id: one.id, number: one.number })),
+        carried: carried.map((one) => ({ id: one.version.id, number: one.version.number })),
+        carryLeft: carryLeft.map((one) => ({ id: one.version.id, number: one.version.number })),
         ...(follow !== null && followChanged(follow) ? { tutorLessons: auditOf(follow) } : {}),
         // Task 5.5a-2b-1, decision 11: the counts of the preview and the rows acknowledged.
         impact: findings.impact?.answer.counts ?? null,
@@ -443,7 +502,73 @@ export class TimetablePublish {
         requestId,
       });
     }
+    for (const later of replaced) {
+      await this.audit.record(transaction, {
+        branchId,
+        actorId: access.accountId,
+        assignmentId: access.assignmentId,
+        action: 'timetable_version.replace',
+        record: { type: 'timetable_version', id: later.id },
+        oldValue: { status: 'published', number: later.number, startsOn: later.starts_on },
+        newValue: { status: 'archived', replacedById: id, replacedByNumber: version.number },
+        requestId,
+      });
+    }
+    for (const result of carried) {
+      await this.audit.record(transaction, {
+        branchId,
+        actorId: access.accountId,
+        assignmentId: access.assignmentId,
+        action: 'timetable_version.carry',
+        record: { type: 'timetable_version', id: result.version.id },
+        oldValue: null,
+        newValue: {
+          fromVersionId: id,
+          fromNumber: version.number,
+          changes: result.into.applied.map((one) => ({ ...one })),
+          rows: result.into.rows.map((one) => ({ ...one })),
+          entries: result.into.entries.map((one) => ({ ...one })),
+        },
+        requestId,
+      });
+    }
     return this.timetable.answerOf(transaction, id, access.accountId);
+  }
+
+  /**
+   * The changes of a carry written into a later version (decision 3), under
+   * a savepoint of its own: a refusal of the database that the engine did not
+   * foresee leaves that version as it is (decision 8). True when written.
+   */
+  private async carryWrite(transaction: Transaction, result: CarryResult): Promise<boolean> {
+    await sql`savepoint carry_write`.execute(transaction);
+    try {
+      for (const row of result.into.rows) {
+        await transaction
+          .updateTable('teaching_load_rows')
+          .set({ teacher_id: row.teacherId, room_id: row.roomId })
+          .where('id', '=', row.id)
+          .where('version_id', '=', result.version.id)
+          .execute();
+      }
+      for (const entry of result.into.entries) {
+        await transaction
+          .updateTable('pattern_entries')
+          .set({ room_id: entry.roomId })
+          .where('id', '=', entry.id)
+          .where('version_id', '=', result.version.id)
+          .execute();
+      }
+      // Every constraint is immediate since the publish's own `set constraints
+      // all immediate`, so a refusal comes here, inside the savepoint.
+      await sql`release savepoint carry_write`.execute(transaction);
+      return true;
+    } catch (error) {
+      if (!isCheckRefusal(error)) throw error;
+      await sql`rollback to savepoint carry_write`.execute(transaction);
+      await sql`release savepoint carry_write`.execute(transaction);
+      return false;
+    }
   }
 
   /**
@@ -458,6 +583,7 @@ export class TimetablePublish {
     earliest: string,
     quarters: readonly QuarterRow[],
     accountId: string,
+    chain?: PublishChain,
   ): Promise<Findings> {
     const refusals: PublishRefusal[] = startProblems(stored, startsOn, earliest).map((code) => ({
       code,
@@ -472,6 +598,9 @@ export class TimetablePublish {
         impact: null,
         shortenedDays: [],
         unusedKeeps: [],
+        chain: null,
+        later: [],
+        carried: [],
       };
     }
     const version: VersionRow = { ...stored, starts_on: startsOn };
@@ -485,19 +614,23 @@ export class TimetablePublish {
             await this.timetable.rowsOf(transaction, version.id),
           );
 
-    // Decision 3: until 5.5a-3 asks its question.
-    const later = await transaction
-      .selectFrom('timetable_versions')
-      .select('number')
-      .where('branch_id', '=', version.branch_id)
-      .where('academic_year_id', '=', version.academic_year_id)
-      .where('status', '=', 'published')
-      .where('starts_on', '>=', startsOn)
-      .orderBy('starts_on')
-      .orderBy('number')
-      .executeTakeFirst();
-    if (later !== undefined) {
-      refusals.push({ code: 'version_later_published', versionNumber: later.number });
+    // Task 5.5a-3a: a publish before a later published version asks its
+    // question. "Run until" and "carry" end the new version the day before
+    // the next start (decision 5: never on that start); "replace" runs it to
+    // the year's end. With no answer yet, it is read as "run until".
+    const later = await laterVersionsOf(transaction, version, startsOn);
+    const first = later[0];
+    let runEnd = version.end_date;
+    if (first !== undefined) {
+      if (chain === undefined) {
+        refusals.push({ code: 'version_later_published', versionNumber: first.number });
+      } else if (chain !== 'replace' && first.starts_on === startsOn) {
+        refusals.push({ code: 'chain_start_taken', versionNumber: first.number });
+      }
+      if (chain !== 'replace') {
+        const end = addDays(first.starts_on, -1);
+        runEnd = end < startsOn ? startsOn : end;
+      }
     }
     if (version.out_of_date_at !== null) {
       refusals.push({ code: 'draft_out_of_date' });
@@ -525,7 +658,10 @@ export class TimetablePublish {
       }
     }
 
-    const state = await this.pattern.stateOf(transaction, version, accountId, rows);
+    const state = runningUntil(
+      await this.pattern.stateOf(transaction, version, accountId, rows),
+      runEnd,
+    );
     const sorted = publishRefusals(
       checkTimetable(
         checkedPlacements(state.pattern.model, state.blocks),
@@ -551,6 +687,77 @@ export class TimetablePublish {
     }
 
     refusals.push(...(await this.settingsRefusals(transaction, version, rows, quarters, startsOn)));
+
+    // Task 5.5a-3a: carry is offered by the difference from the source
+    // (decision 4); under "carry" each later version is checked in memory
+    // over its own run (decision 8).
+    let chainAnswer: PublishChainAnswer | null = null;
+    const carried: CarryResult[] = [];
+    if (first !== undefined) {
+      const source =
+        version.from_version_id === null
+          ? null
+          : carryVersionOf(
+              await this.pattern.stateOf(
+                transaction,
+                await this.timetable.versionRow(transaction, version.from_version_id),
+                accountId,
+              ),
+            );
+      const offer = carryChanges(source, carryVersionOf(state));
+      if (chain === 'carry' && !offer.offered) {
+        refusals.push({ code: 'chain_carry_not_offered' });
+      }
+      if (chain === 'carry' && offer.offered) {
+        const reader: CarryReader = {
+          stateOf: (other, otherRows) =>
+            this.pattern.stateOf(transaction, other, accountId, otherRows),
+          versionRow: (versionId) => this.timetable.versionRow(transaction, versionId),
+          loadProblems: async (other, otherRows) =>
+            (
+              await this.timetable.readinessOf(transaction, other.branch_id, other, otherRows)
+            ).load.problemRows.map((one) => ({ id: one.id, problems: one.problems })),
+        };
+        for (const [index, one] of later.entries()) {
+          carried.push(
+            await carryResultOf(
+              transaction,
+              reader,
+              one,
+              runEndOf(later, index + 1, version.end_date),
+              offer.changes,
+            ),
+          );
+        }
+      }
+      chainAnswer = {
+        key: laterKeyOf(version.id, startsOn, later),
+        later: later.map((one) => ({ id: one.id, number: one.number, startsOn: one.starts_on })),
+        carryOffered: offer.offered,
+        carryReason: offer.offered ? null : offer.reason,
+        changes: offer.offered
+          ? offer.changes.map((one) => ({
+              kind: one.kind,
+              classId: one.classId,
+              groupId: one.groupId,
+              subjectId: one.subjectId,
+              ...(one.kind === 'entry_room'
+                ? { weekday: weekdaySchema.parse(one.weekday), slotPosition: one.slotPosition }
+                : {}),
+              before: one.before,
+              after: one.after,
+            }))
+          : [],
+        carried: carried.map((one) => ({
+          versionId: one.version.id,
+          number: one.version.number,
+          startsOn: one.version.starts_on,
+          applied: one.into.applied.length,
+          left: one.left,
+          refusals: one.refusals,
+        })),
+      };
+    }
     // Task 5.5a-2b-1: the impact preview and the transition week.
     const impact = await impactOf(
       transaction,
@@ -561,6 +768,18 @@ export class TimetablePublish {
       state,
       dated.dated,
       startsOn,
+      carried.flatMap((one) =>
+        one.left || one.before === null || one.after === null
+          ? []
+          : [
+              {
+                versionId: one.version.id,
+                number: one.version.number,
+                before: one.before,
+                after: one.after,
+              },
+            ],
+      ),
     );
     return {
       refusals,
@@ -587,6 +806,9 @@ export class TimetablePublish {
         missingPositions: [...one.missingPositions],
       })),
       unusedKeeps: dated.dated.unusedKeeps.map((one) => ({ ...one })),
+      chain: chainAnswer,
+      later,
+      carried,
     };
   }
 
@@ -692,6 +914,12 @@ function engineYearOf(version: VersionRow, quarters: readonly QuarterRow[]): Eng
         : [{ firstDate: quarter.start_date, lastDate: quarter.end_date }],
     ),
   };
+}
+
+/** A refusal of a check of the database (23514, 23P01), which a carry write leaves its version for (decision 8). */
+function isCheckRefusal(error: unknown): boolean {
+  const code = (error as { code?: unknown } | null)?.code;
+  return code === '23514' || code === '23P01';
 }
 
 /** Decision 6: tomorrow at the earliest, and inside the year. */

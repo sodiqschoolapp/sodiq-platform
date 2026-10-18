@@ -1,4 +1,6 @@
+import type { Updateable } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import type { DB } from '../../database/types.generated.js';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
@@ -143,15 +145,12 @@ describe('the chain of published versions in the database', () => {
         .executeTakeFirstOrThrow()
     ).status;
 
-  const setRow = (f: Fixture, set: Parameters<ReturnType<Transaction['updateTable']>['set']>[0]) =>
+  const setRow = (f: Fixture, set: Updateable<DB['teaching_load_rows']>) =>
     inBranch(f.branch, (transaction) =>
       transaction.updateTable('teaching_load_rows').set(set).where('id', '=', f.row).execute(),
     );
 
-  const setEntry = (
-    f: Fixture,
-    set: Parameters<ReturnType<Transaction['updateTable']>['set']>[0],
-  ) =>
+  const setEntry = (f: Fixture, set: Updateable<DB['pattern_entries']>) =>
     inBranch(f.branch, (transaction) =>
       transaction.updateTable('pattern_entries').set(set).where('id', '=', f.entry).execute(),
     );
