@@ -611,7 +611,7 @@ How to read the task lines:
   - Done when: a shortened day of 5 slots for a class with 7 lessons keeps the two lessons chosen in place of the last two, and the dated check, the cancelled list and the preview follow the choice.
   - From 5.5a-2b (pull request #142, decision 1, Look first): split into 5.5a-2b-1 (the impact preview and the transition week) and 5.5a-2b-2 (the choice of which lessons of a shortened day are kept).
 
-- [ ] **5.5a-2c Publish: the readers that follow the published version**
+- [x] **5.5a-2c Publish: the readers that follow the published version** (pull request #144)
   - Read: `05` (Group, Teaching load), `edge/students-classes-groups`, `edge/timetable` (Versions and drafts), `edge/developer-rules`.
   - Build: `class_group_subjects` and `department_move_loads` read the published version in force, as the two From lines below say.
   - Done when: a group subject of the published load binds a class membership from the version's start, and a department move counts a published version that runs past its date.
