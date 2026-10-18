@@ -6,9 +6,8 @@ name: Routines
 # API triggers. The routines have no GitHub triggers of their own (removed by
 # the owner on 11 October 2026: they ran a second reviewer for every event);
 # their hourly schedules stay as a second net. Two review runs of one head can
-# post conflicting verdicts (#140), so a fire call waits up to two minutes for
-# its answer and is retried only on a refused connection or a transient error
-# (curl --retry), never on every error. Each job only sends a POST; no
+# post conflicting verdicts (#140), so a fire call is retried only when the
+# request never left (no name, no connection, failed TLS handshake). Each job only sends a POST; no
 # code is checked out or run.
 #
 # The repository is public since 13 October 2026 (docs/decisions.md): a job
@@ -102,8 +101,7 @@ jobs:
               echo "fire=true" >> "$GITHUB_OUTPUT" ;;
           esac
       # Values go through env, never into the command text. The token is never
-      # printed. The call waits up to two minutes and retries only on a refused
-      # connection or a transient error, to keep a second session rare.
+      # printed.
       - name: Fire the review routine
         if: steps.need.outputs.fire == 'true'
         env:
@@ -120,16 +118,25 @@ jobs:
           text="Pull request #$NUMBER ($ACTION, head $HEAD_SHA)"
           echo "Payload: $text"
           body=$(jq -n --arg text "$text" '{text: $text}')
-          code=0
-          status=$(curl --fail-with-body --silent --show-error --max-time 120 \
-            --retry 3 --retry-connrefused \
-            --output "$RUNNER_TEMP/response.json" --write-out '%{http_code}' \
-            --request POST "$ROUTINE_URL" \
-            --header "Authorization: Bearer $ROUTINE_TOKEN" \
-            --header "anthropic-beta: experimental-cc-routine-2026-04-01" \
-            --header "anthropic-version: 2023-06-01" \
-            --header "Content-Type: application/json" \
-            --data "$body") || code=$?
+          # Retried only when the request never left (curl exit 6: no name,
+          # 7: no connection, 35: TLS handshake failed); any other failure
+          # turns the job red and the hourly run takes the pull request up.
+          # A retry after a slow or failed answer could start a second session.
+          for attempt in 1 2 3 4; do
+            code=0
+            status=$(curl --fail-with-body --silent --show-error --max-time 60 \
+              --output "$RUNNER_TEMP/response.json" --write-out '%{http_code}' \
+              --request POST "$ROUTINE_URL" \
+              --header "Authorization: Bearer $ROUTINE_TOKEN" \
+              --header "anthropic-beta: experimental-cc-routine-2026-04-01" \
+              --header "anthropic-version: 2023-06-01" \
+              --header "Content-Type: application/json" \
+              --data "$body") || code=$?
+            case "$code" in
+              6|7|35) echo "Attempt $attempt: no connection (curl exit $code)"; sleep 10 ;;
+              *) break ;;
+            esac
+          done
           echo "HTTP status: $status"
           if [ "$code" -ne 0 ]; then
             echo "::error::The review routine was not fired (curl exit $code)."
@@ -162,16 +169,25 @@ jobs:
           text="Merged #$NUMBER"
           echo "Payload: $text"
           body=$(jq -n --arg text "$text" '{text: $text}')
-          code=0
-          status=$(curl --fail-with-body --silent --show-error --max-time 120 \
-            --retry 3 --retry-connrefused \
-            --output "$RUNNER_TEMP/response.json" --write-out '%{http_code}' \
-            --request POST "$ROUTINE_URL" \
-            --header "Authorization: Bearer $ROUTINE_TOKEN" \
-            --header "anthropic-beta: experimental-cc-routine-2026-04-01" \
-            --header "anthropic-version: 2023-06-01" \
-            --header "Content-Type: application/json" \
-            --data "$body") || code=$?
+          # Retried only when the request never left (curl exit 6: no name,
+          # 7: no connection, 35: TLS handshake failed); any other failure
+          # turns the job red and the hourly run takes the pull request up.
+          # A retry after a slow or failed answer could start a second session.
+          for attempt in 1 2 3 4; do
+            code=0
+            status=$(curl --fail-with-body --silent --show-error --max-time 60 \
+              --output "$RUNNER_TEMP/response.json" --write-out '%{http_code}' \
+              --request POST "$ROUTINE_URL" \
+              --header "Authorization: Bearer $ROUTINE_TOKEN" \
+              --header "anthropic-beta: experimental-cc-routine-2026-04-01" \
+              --header "anthropic-version: 2023-06-01" \
+              --header "Content-Type: application/json" \
+              --data "$body") || code=$?
+            case "$code" in
+              6|7|35) echo "Attempt $attempt: no connection (curl exit $code)"; sleep 10 ;;
+              *) break ;;
+            esac
+          done
           echo "HTTP status: $status"
           if [ "$code" -ne 0 ]; then
             echo "::error::The start routine was not fired (curl exit $code)."
@@ -235,16 +251,25 @@ jobs:
           text="Review on #$NUMBER: $first_line"
           echo "Payload: $text"
           body=$(jq -n --arg text "$text" '{text: $text}')
-          code=0
-          status=$(curl --fail-with-body --silent --show-error --max-time 120 \
-            --retry 3 --retry-connrefused \
-            --output "$RUNNER_TEMP/response.json" --write-out '%{http_code}' \
-            --request POST "$ROUTINE_URL" \
-            --header "Authorization: Bearer $ROUTINE_TOKEN" \
-            --header "anthropic-beta: experimental-cc-routine-2026-04-01" \
-            --header "anthropic-version: 2023-06-01" \
-            --header "Content-Type: application/json" \
-            --data "$body") || code=$?
+          # Retried only when the request never left (curl exit 6: no name,
+          # 7: no connection, 35: TLS handshake failed); any other failure
+          # turns the job red and the hourly run takes the pull request up.
+          # A retry after a slow or failed answer could start a second session.
+          for attempt in 1 2 3 4; do
+            code=0
+            status=$(curl --fail-with-body --silent --show-error --max-time 60 \
+              --output "$RUNNER_TEMP/response.json" --write-out '%{http_code}' \
+              --request POST "$ROUTINE_URL" \
+              --header "Authorization: Bearer $ROUTINE_TOKEN" \
+              --header "anthropic-beta: experimental-cc-routine-2026-04-01" \
+              --header "anthropic-version: 2023-06-01" \
+              --header "Content-Type: application/json" \
+              --data "$body") || code=$?
+            case "$code" in
+              6|7|35) echo "Attempt $attempt: no connection (curl exit $code)"; sleep 10 ;;
+              *) break ;;
+            esac
+          done
           echo "HTTP status: $status"
           if [ "$code" -ne 0 ]; then
             echo "::error::The start routine was not fired (curl exit $code)."
