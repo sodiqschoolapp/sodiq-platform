@@ -377,7 +377,7 @@ export const en = {
       'Every lesson of the class fits on that date, or it has none, so there is nothing to choose. Read the check again.',
     day_keep_lessons:
       'A lesson ticked is no longer a lesson of the class on that date. Read the check again and tick again.',
-    day_keep_too_many: 'More lessons are ticked than the day has lesson slots. Untick a lesson.',
+    day_keep_over_slots: 'More lessons are ticked than the day has lesson slots. Untick a lesson.',
     pattern_blocked:
       'This lesson cannot go there: a rule of the timetable blocks it. Choose a slot marked free or warning.',
     pattern_no_slot:

@@ -193,7 +193,7 @@ export class TimetablePublish {
           throw new ApiException('day_keep_lessons', 409);
         }
         if (positions.length > day.lessonSlots) {
-          throw new ApiException('day_keep_too_many', 409);
+          throw new ApiException('day_keep_over_slots', 409);
         }
       }
       const stored = await transaction

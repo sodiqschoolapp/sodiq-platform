@@ -384,7 +384,7 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu sanada sinfning barcha darslari sigʻadi yoki uning darsi yoʻq, shuning uchun tanlash kerak emas. Tekshiruvni yangilang.',
     day_keep_lessons:
       'Belgilangan dars endi bu sanada sinfning darsi emas. Tekshiruvni yangilang va qayta belgilang.',
-    day_keep_too_many:
+    day_keep_over_slots:
       'Kundagi dars slotlaridan koʻp dars belgilangan. Bir darsdan belgini olib tashlang.',
     pattern_blocked:
       'Bu darsni bu yerga qoʻyib boʻlmaydi: uni dars jadvalining qoidasi taqiqlaydi. Boʻsh yoki ogohlantirishli slotni tanlang.',

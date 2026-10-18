@@ -278,7 +278,7 @@ const MESSAGE: Record<ErrorCode, string> = {
   day_keep_date_passed: 'The lessons kept can be chosen from tomorrow on only.',
   day_keep_not_short: 'The date is not a shortened day for the class.',
   day_keep_lessons: 'A slot chosen is not a lesson of the class on that date.',
-  day_keep_too_many: 'More lessons are chosen than the day has lesson slots.',
+  day_keep_over_slots: 'More lessons are chosen than the day has lesson slots.',
   pattern_blocked: 'A blocked rule refuses the lesson at that slot.',
   pattern_no_slot: 'The weekday has no slot at that position for the lesson.',
   pattern_mixed_partner:

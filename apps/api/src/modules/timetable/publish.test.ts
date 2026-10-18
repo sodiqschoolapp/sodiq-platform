@@ -2277,7 +2277,7 @@ describe('publish', () => {
       refusedWith(await choose('2026-11-03', [1]), 409, 'day_keep_not_short');
       refusedWith(await choose('2026-11-17', [1]), 409, 'day_keep_not_short');
       refusedWith(await choose(SHORT_DATE, [1, 7]), 409, 'day_keep_lessons');
-      refusedWith(await choose(SHORT_DATE, [1, 3, 5]), 409, 'day_keep_too_many');
+      refusedWith(await choose(SHORT_DATE, [1, 3, 5]), 409, 'day_keep_over_slots');
       refusedWith(await choose(SHORT_DATE, [1, 1]), 400, 'validation_failed');
       expect(await unchanged()).toEqual(start);
     });

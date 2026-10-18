@@ -521,7 +521,7 @@ export const ERROR_CODES = [
   /** A slot position chosen is not a lesson of the class on that date (task 5.5a-2b-2, decision 6). */
   'day_keep_lessons',
   /** More lessons are chosen than the day has lesson slots (task 5.5a-2b-2, decision 6). */
-  'day_keep_too_many',
+  'day_keep_over_slots',
   /** A blocked rule of the timetable refuses the lesson at that slot; the rules are in the details (task 5.4a, decision 4). */
   'pattern_blocked',
   /** The weekday has no slot at that position for the grades of the lesson (task 5.4a). */
