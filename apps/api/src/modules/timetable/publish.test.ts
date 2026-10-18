@@ -22,6 +22,9 @@ import {
 import { LessonsKit, at } from '../../testing/lessons-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
+import { datedLessonsOf } from './dated-check.js';
+import { TimetablePattern } from './pattern.service.js';
+import { Timetable } from './timetable.service.js';
 
 const refusedWith = (response: Response, status: number, code: string) => {
   expect(response.status, JSON.stringify(response.body)).toBe(status);
@@ -1238,6 +1241,27 @@ describe('publish', () => {
       expect(after.filter((one) => one.teacher_id === null).map((one) => one.date)[0]).toBe(
         '2027-03-01',
       );
+    });
+
+    it('reads a carried version with no stored lessons from its pattern (task 5.5b-2, decision 2)', async () => {
+      const s = await chainScene();
+      // C as a version published before 0079: its dates are after today.
+      await t.app.get(Transactions).run([s.branch], async (transaction) => {
+        const blocks = await transaction
+          .selectFrom('lesson_blocks')
+          .select('id')
+          .where('version_id', '=', s.c)
+          .execute();
+        const ids = blocks.map((one) => one.id);
+        await transaction.deleteFrom('lessons').where('block_id', 'in', ids).execute();
+        await transaction.deleteFrom('lesson_blocks').where('id', 'in', ids).execute();
+      });
+      expect((await lessonsOf(s.branch)).filter((one) => one.date >= '2027-01-11')).toEqual([]);
+      const answer = checkOf(await checkChain(s.branch, s.fix, '2026-10-19', 'carry'));
+      expect(answer.refusals).toEqual([]);
+      const carriedC = answer.impact?.carried.find((one) => one.versionId === s.c);
+      expect(carriedC?.counts).toMatchObject({ created: 0, moved: 0, removed: 0 });
+      expect(carriedC?.counts.changed).toBeGreaterThan(15);
     });
 
     it('leaves a later version where the change meets a blocked conflict, carrying the others', async () => {
@@ -3190,6 +3214,26 @@ describe('publish', () => {
           [[s.teacherId], MONDAY, '2027-05-17'],
           [[], '2027-05-24', '2027-05-31'],
         ]);
+        // Review correction 3: the expansion itself still names the teacher on those dates.
+        const raw = await t.app.get(Transactions).run([s.branch], async (transaction) => {
+          const state = await t.app
+            .get(TimetablePattern)
+            .stateOf(
+              transaction,
+              await t.app.get(Timetable).versionRow(transaction, s.version),
+              randomUUID(),
+            );
+          return (await datedLessonsOf(transaction, state, '2027-05-24', '2027-05-31')).dated
+            .lessons;
+        });
+        expect(
+          raw
+            .filter((one) => one.placement.subjectId === s.subject)
+            .map((one) => [one.date, one.placement.teacherIds]),
+        ).toEqual([
+          ['2027-05-24', [s.teacherId]],
+          ['2027-05-31', [s.teacherId]],
+        ]);
         versionOf(await publish(s.branch, s.version, MONDAY));
         const stored = await lessonsOf(s.branch);
         expect(
@@ -3216,6 +3260,53 @@ describe('publish', () => {
         );
         expect(impact.teachers).toEqual([]);
         expect(impact.vacancies).toEqual([{ id: vacancy, lessonsPerWeek: 1 }]);
+      });
+
+      it('keeps a stored lesson with a one-day cancel on the before side and leaves out one the expansion cancelled (decision 1)', async () => {
+        const s = await scene();
+        versionOf(await publish(s.branch, s.version, MONDAY));
+        // 26 October cancelled with a reason, as a one-day change will; 16
+        // November with a cause only the expansion writes.
+        await directly(s.branch, async (transaction) => {
+          await transaction
+            .updateTable('lessons')
+            .set({ cancel_cause: 'reason', cancel_reason: 'School concert' })
+            .where('branch_id', '=', s.branch)
+            .where('lesson_date', '=', '2026-10-26')
+            .execute();
+          await transaction
+            .updateTable('lessons')
+            .set({ cancel_cause: 'day_off' })
+            .where('branch_id', '=', s.branch)
+            .where('lesson_date', '=', '2026-11-16')
+            .execute();
+        });
+        const stored = await lessonsOf(s.branch);
+        expect(
+          stored
+            .filter((one) => one.cancel_cause !== null)
+            .map((one) => [one.date, one.cancel_cause]),
+        ).toEqual([
+          ['2026-10-26', 'reason'],
+          ['2026-11-16', 'day_off'],
+        ]);
+        const version = await draftOf(s, [
+          { subject: s.subject, teacherId: s.teacherId, weekdays: [1] },
+        ]);
+        const impact = await impactOf(s.branch, version, NEXT_MONDAY);
+        // The draft holds 16 November: its lesson is created, the one cancelled
+        // by a reason pairs as a lesson held.
+        expect(impact.changes).toHaveLength(1);
+        expect(impact.changes[0]).toMatchObject({
+          kind: 'created',
+          count: 1,
+          firstDate: '2026-11-16',
+          lastDate: '2026-11-16',
+        });
+        expect(impact.counts).toMatchObject({ created: 1, moved: 0, removed: 0, changed: 0 });
+        expect(impact.counts.unchanged).toBe(
+          stored.filter((one) => one.date >= NEXT_MONDAY && one.date !== '2026-11-16').length,
+        );
       });
 
       it('reads the room a stored lesson has, and the publish writes the change the preview lists', async () => {

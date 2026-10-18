@@ -307,7 +307,7 @@ export async function datedLessonsOf(
   const rows = data.rows;
   const classIds = [...new Set(data.units.flatMap((unit) => unit.classIds))].sort();
   const groupIds = data.units.filter((unit) => unit.kind === 'group').map((unit) => unit.id);
-  const [classMembers, groupMembers, tutorRows, dayStarts, classGrades, keeps] = await Promise.all([
+  const [classMembers, groupMembers, tutorRows, begins, classGrades, keeps] = await Promise.all([
     classIds.length === 0
       ? Promise.resolve([] as MemberRow[])
       : transaction
@@ -358,8 +358,6 @@ export async function datedLessonsOf(
     const key = `${keep.class_id}|${keep.kept_on}`;
     keptOf.set(key, [...(keptOf.get(key) ?? []), keep.slot_position]);
   }
-  const begins = dayStarts;
-
   const membersOn = (list: readonly MemberRow[]) => {
     const byUnit = new Map<string, MemberRow[]>();
     for (const row of list) {
