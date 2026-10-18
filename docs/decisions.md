@@ -265,6 +265,7 @@ Plan approved on pull request #142 with corrections 1 and 2; decisions 1 to 13 c
 | A differing transition week is published only with the key of its differing rows (SHA-256 of the start and the rows), else `transition_unacknowledged`; it narrows "Warnings never stop a publish" of 5.5a-1 for this warning only | Decision 11 |
 | The preview names records of the branch only | Decision 12 |
 | No route is added and none changes who may call it | Decision 13 |
+| The transition key is the SHA-256 of the draft, the start date and the differing rows, so a key shown for one draft never acknowledges another | Build decision 14 (permission review, should-fix 4) |
 
 ## 17 October 2026: publish, the dated check of every date (task 5.5a-2a)
 

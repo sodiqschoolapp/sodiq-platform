@@ -32,9 +32,17 @@ export interface Impact {
   readonly acknowledged: readonly TransitionRowAnswer[];
 }
 
-/** Decision 11 with review correction 1: the key of the differing rows of a start. */
-export function transitionKeyOf(startsOn: string, rows: readonly TransitionRowAnswer[]): string {
-  return createHash('sha256').update(JSON.stringify({ startsOn, rows })).digest('hex');
+/**
+ * Decision 11 with review correction 1: the key of the differing rows of a
+ * draft on a start; the draft is part of it, so a key shown for one draft
+ * never acknowledges another (permission review, should-fix 4).
+ */
+export function transitionKeyOf(
+  versionId: string,
+  startsOn: string,
+  rows: readonly TransitionRowAnswer[],
+): string {
+  return createHash('sha256').update(JSON.stringify({ versionId, startsOn, rows })).digest('hex');
 }
 
 /**
@@ -227,7 +235,10 @@ export async function impactOf(
               weekStart: week.weekStart,
               weekEnd: week.weekEnd,
               rows: week.rows.map((row) => ({ ...row })),
-              key: differing.length === 0 ? null : transitionKeyOf(startsOn, differing),
+              key:
+                differing.length === 0
+                  ? null
+                  : transitionKeyOf(draft.version.id, startsOn, differing),
             },
       names: {
         units: unitNames,

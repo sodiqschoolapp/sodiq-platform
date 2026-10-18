@@ -436,7 +436,14 @@ describe('publish', () => {
         .where('branch_id', '=', t.north)
         .executeTakeFirstOrThrow();
       await load.classes.role(principal.account_id, s.branch, 'principal');
-      expect(checkOf(await check(s.branch, s.version, MONDAY, t.principal)).canPublish).toBe(true);
+      const answer = checkOf(await check(s.branch, s.version, MONDAY, t.principal));
+      expect(answer.canPublish).toBe(true);
+      // Task 5.5a-2b-1 (permission review, should-fix 2): the Principal reads the
+      // preview too, with the branch's teacher only.
+      expect(answer.impact?.teachers).toEqual([
+        { id: s.teacherId, vacancy: false, notified: true },
+      ]);
+      expect(answer.impact?.names.teachers.map((one) => one.id)).toEqual([s.teacherId]);
       expect((await publish(s.branch, s.version, MONDAY, t.principal)).status).toBe(403);
     });
   });
@@ -1920,6 +1927,68 @@ describe('publish', () => {
       // Monday from version 1, Tuesday from version 2; Friday from the draft.
       expect(impact.transition?.rows).toEqual([
         expect.objectContaining({ before: 2, after: 1, lessonsPerWeek: 1, differs: true }),
+      ]);
+    });
+
+    it('refuses the same request key with another transition key (permission review, should-fix 1)', async () => {
+      const s = await scene();
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      const version = await draftOf(s, [
+        { subject: s.subject, teacherId: s.teacherId, weekdays: [1] },
+      ]);
+      const key = randomUUID();
+      versionOf(await publish(s.branch, version, WEDNESDAY, t.admin, key));
+      const after = await written([version]);
+      refusedWith(
+        await publish(s.branch, version, WEDNESDAY, t.admin, key, {
+          transitionKey: 'b'.repeat(64),
+        }),
+        409,
+        'request_key_reused',
+      );
+      expect(await written([version])).toEqual(after);
+    });
+
+    it("reads only the own branch's earlier version, lessons and names when both branches have one (permission review, should-fix 3)", async () => {
+      const s = await scene({ lessons: 2, placed: 2 });
+      const other = await scene({ lessons: 2, placed: 2 });
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      versionOf(await publish(other.branch, other.version, MONDAY));
+      const second = await load.teacher(s.branch, {
+        subjects: [{ subject: s.subject, grades: [7] }],
+      });
+      await hours(s.branch, second.staffId);
+      const version = await draftOf(s, [
+        { subject: s.subject, teacherId: second.staffId, weekdays: [3, 4] },
+      ]);
+      const impact = await impactOf(s.branch, version, WEDNESDAY);
+      expect(impact.beforeVersion?.id).toBe(s.version);
+      const own = new Set([s.classId, s.subject, s.teacherId, second.staffId, s.room]);
+      const ids = [
+        ...impact.changes.flatMap((one) => [
+          one.unitId,
+          one.subjectId,
+          ...one.classIds,
+          ...[one.before, one.after].flatMap((slot) =>
+            slot === null
+              ? []
+              : [...slot.teacherIds, ...(slot.roomId === null ? [] : [slot.roomId])],
+          ),
+        ]),
+        ...impact.teachers.map((one) => one.id),
+        ...impact.classIds,
+        ...impact.roomIds,
+        ...(impact.transition?.rows ?? []).flatMap((row) => [row.unitId, row.subjectId]),
+        ...impact.names.units.map((one) => one.id),
+        ...impact.names.subjects.map((one) => one.id),
+        ...impact.names.teachers.map((one) => one.id),
+        ...impact.names.rooms.map((one) => one.id),
+      ];
+      expect(ids.length).toBeGreaterThan(0);
+      expect(ids.filter((id) => !own.has(id))).toEqual([]);
+      // The earlier lessons are the own branch's only: two a week, as the own version has.
+      expect(impact.transition?.rows).toEqual([
+        expect.objectContaining({ before: 2, after: 2, lessonsPerWeek: 2 }),
       ]);
     });
 
