@@ -265,6 +265,19 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 18 October 2026: the notice and the changed mark of a Tutor change (task 5.5c-3b)
+
+Plan approved on pull request #159 with corrections 1 to 3; decisions 1 to 7 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a reading of the spec). One request is one event for "one notice per person per event": a give, an end, a role end, a taking back, a status change with all the roles it ends or gives back send at most one notice to a person per branch | Decision 1 |
+| The side before is the side after with each changed lesson's teacher set back to its first teacher; no snapshot of the branch | Decision 2: the follow locks the lessons and writes only their teacher |
+| Kind `timetable.tutor_changed`, data `{ weekStart, before, after }`, no version number and no class named; `WEEK_KINDS` lists the kinds the web draws weeks for, `WEEK_CHANGE_KINDS` stays the version kinds | Decisions 3 and 5; spec review should-fix 5 |
+| A lesson is changed when its teacher after the request differs from before; only those are marked and notified; draft rows are neither | Decision 4; spec review must-fixes 1 and 2 |
+| `Assignments.end` takes `notifications` as a required input; the audit entries of a give, an end, a role end and a status change carry `notices: { notified, marked }`; the role give of the account section sends after `endRoles` without counts | Decision 6; review corrections 1 and 2 |
+| The class archive runs no follow and sends nothing | Decision 7; 0080 |
+
 ## 18 October 2026: notices and the changed mark of a publish and a withdraw (task 5.5c-3a)
 
 Plan approved on pull request #158 with corrections 1 to 3; decisions 1 to 10 confirmed there. Flagged on issue #42.

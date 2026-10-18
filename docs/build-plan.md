@@ -687,7 +687,7 @@ How to read the task lines:
   - From 5.5a-3a (pull request #145, decision 10): a carry notifies the teachers of the later versions it changed.
   - From 5.5c-2a (pull request #156, decision 8): a withdraw notifies the affected teachers, as a publish does (`06`, Views and outputs: "When a published timetable changes, the affected teachers are notified at once").
 
-- [ ] **5.5c-3b Publish: the notice and the changed mark of a Tutor change** (5.5c-3 split in two, pull request #158, decision 1)
+- [x] **5.5c-3b Publish: the notice and the changed mark of a Tutor change** (5.5c-3 split in two, pull request #158, decision 1)
   - Read: `06` (How surprises are prevented, Changes after publishing, Views and outputs), `edge/timetable` (After publishing, "One publish changes thousands of lessons"; Structure, the Homework slot row).
   - Build: the notice and the mark of every path that calls `followTutors` (give, end, archive, role end and its taking back, `left` and its taking back), with `snapshotWeek` and `sendWeekChanges` (`apps/api/src/modules/timetable/week-changes.ts`) or the same comparison, and a kind of its own.
   - Done when: a change of a class's Tutor that moves its Tutor lessons notifies the old and the new Tutor once each, with the week before and after, and the lessons it moved carry the mark.
