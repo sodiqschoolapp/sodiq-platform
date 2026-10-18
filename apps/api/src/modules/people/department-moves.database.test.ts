@@ -385,6 +385,93 @@ describe('department_move_loads in the database', () => {
     });
   });
 
+  describe('the run of a published version (task 5.5a-2c, decision 7)', () => {
+    /**
+     * One STEAM teacher of a STEAM subject on a class row of each version
+     * given, the versions published in the order given once their rows are
+     * written (a row is written only in a draft).
+     */
+    async function chain(
+      versions: readonly { startsOn: string; published: boolean }[],
+    ): Promise<{ teacher: string; rows: string[]; branch: string }> {
+      const own = await ownBranch();
+      const subject = await kit.classes.subject({ grades: [7] });
+      const classId = await kit.classes.schoolClass(own.branch, own.year, {
+        grade: 7,
+        language: 'uz',
+      });
+      const { staffId } = await kit.teacher(own.branch, { subjects: [{ subject, grades: [7] }] });
+      const rows: string[] = [];
+      const ids: string[] = [];
+      for (const version of versions) {
+        const id = await kit.version(own.branch, own.year, { startsOn: version.startsOn });
+        rows.push(
+          await kit.row({
+            branch_id: own.branch,
+            version_id: id,
+            class_id: classId,
+            subject_id: subject,
+            teacher_id: staffId,
+          }),
+        );
+        ids.push(id);
+      }
+      for (const [index, version] of versions.entries()) {
+        if (version.published) {
+          await kit.setVersion(ids[index] ?? '', 'published');
+        }
+      }
+      return { teacher: staffId, rows, branch: own.branch };
+    }
+
+    const rowsOf = async (branch: string, teacher: string, startsOn: string) =>
+      (await loads(branch, { teacher, department: national, startsOn })).map((line) => line.row_id);
+
+    it('counts a published version up to the day before the next published start, today before both', async () => {
+      // Today is 15 October; v1 runs from 19 October to 1 November, v2 from 2 November.
+      const { teacher, rows, branch } = await chain([
+        { startsOn: '2026-10-19', published: true },
+        { startsOn: '2026-11-02', published: true },
+      ]);
+      const [first, second] = rows;
+      expect((await rowsOf(branch, teacher, '2026-10-20')).sort()).toEqual([first, second].sort());
+      expect((await rowsOf(branch, teacher, '2026-11-01')).sort()).toEqual([first, second].sort());
+      expect(await rowsOf(branch, teacher, '2026-11-02')).toEqual([second]);
+      expect(await rowsOf(branch, teacher, '2026-11-10')).toEqual([second]);
+    });
+
+    it('lets a draft end no run: a published version followed by a draft still counts, and the draft too', async () => {
+      const { teacher, rows, branch } = await chain([
+        { startsOn: '2026-10-19', published: true },
+        { startsOn: '2026-11-09', published: false },
+      ]);
+      expect((await rowsOf(branch, teacher, '2026-11-10')).sort()).toEqual([...rows].sort());
+    });
+
+    it('counts a draft whose start is before a later published version', async () => {
+      const { teacher, rows, branch } = await chain([
+        { startsOn: '2026-10-19', published: false },
+        { startsOn: '2026-11-02', published: true },
+      ]);
+      expect((await rowsOf(branch, teacher, '2026-11-10')).sort()).toEqual([...rows].sort());
+    });
+
+    it('gives the run of two published versions with the same start to the higher number', async () => {
+      const { teacher, rows, branch } = await chain([
+        { startsOn: '2026-10-19', published: true },
+        { startsOn: '2026-10-19', published: true },
+      ]);
+      expect(await rowsOf(branch, teacher, '2026-10-19')).toEqual([rows[1]]);
+    });
+
+    it('does not end a run by a published version of another branch', async () => {
+      const { teacher, rows, branch } = await chain([{ startsOn: '2026-10-19', published: true }]);
+      const other = await ownBranch();
+      await kit.version(other.branch, other.year, { startsOn: '2026-11-02', status: 'published' });
+      expect(await rowsOf(branch, teacher, '2026-11-10')).toEqual(rows);
+    });
+  });
+
   describe('the branches (decision 3)', () => {
     it('gives another branch’s rows as a count with no id', async () => {
       const subject = await kit.classes.subject({ grades: [7] });

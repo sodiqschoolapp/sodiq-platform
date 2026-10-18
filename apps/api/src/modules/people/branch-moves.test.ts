@@ -12,6 +12,7 @@ import { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { ClassesKit } from '../../testing/classes-kit.js';
+import { LoadKit } from '../../testing/load-kit.js';
 import { MembersKit } from '../../testing/members-kit.js';
 import {
   dayTemplatesKit,
@@ -943,6 +944,120 @@ describe('the move of a student to another branch', () => {
       expect(await rowsOf()).toEqual(before);
       const detail = accepted(await accept(moveId, { classId: russian, confirmLanguage: true }));
       expect(detail.class?.id).toBe(russian);
+    });
+  });
+
+  describe('the groups of the published version (task 5.5a-2c, decision 5)', () => {
+    /**
+     * A branch of its own whose class Yale draws two English groups, A and B
+     * (both active); version 1 published from `first` teaches English in A
+     * only, version 2 from `second` in B only. Before `first` the active
+     * groups bind.
+     */
+    async function chain(first: string, second: string) {
+      const kit = new LoadKit(t.database.migrator);
+      const west = await t.newBranch();
+      const year = await classes.year(west);
+      const english = await classes.subject({ grades: [7] });
+      const yale = await classes.schoolClass(west, year, { grade: 7 });
+      const a = await classes.group(west, year, english, [yale], { name: 'A' });
+      const b = await classes.group(west, year, english, [yale], { name: 'B' });
+      const { staffId } = await kit.teacher(west, {
+        subjects: [{ subject: english, grades: [7] }],
+      });
+      for (const [startsOn, group] of [
+        [first, a],
+        [second, b],
+      ] as const) {
+        const version = await kit.version(west, year, { startsOn });
+        await kit.row({
+          branch_id: west,
+          version_id: version,
+          group_id: group,
+          subject_id: english,
+          teacher_id: staffId,
+        });
+        await kit.setVersion(version, 'published');
+      }
+      return { west, english, yale, a, b };
+    }
+
+    /** A pupil of the North released to the branch from the date. */
+    async function releasedTo(west: string, from: string) {
+      const facts = await pupil();
+      const detail = accepted(await release(facts.student.id, { to: west, from }));
+      const moveId = detail.branchMove?.id;
+      if (moveId === undefined) {
+        throw new Error('The release is not on the record.');
+      }
+      return { ...facts, moveId };
+    }
+
+    it('offers the groups of every stretch from the date, and writes the chosen one only where it is taught', async () => {
+      const { west, english, yale, a, b } = await chain('2026-11-02', '2026-12-07');
+      const { student, moveId } = await releasedTo(west, TODAY);
+      const response = await t.get(
+        `/api/people/branch-moves/${moveId}/groups?classId=${yale}`,
+        west,
+      );
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      const subject = branchMoveGroupsSchema
+        .parse(response.body)
+        .subjects.find((one) => one.subjectId === english);
+      expect(subject?.groups.map((group) => group.id).sort()).toEqual([a, b].sort());
+      accepted(
+        await accept(
+          moveId,
+          { classId: yale, groups: [{ subjectId: english, groupId: a }] },
+          t.admin,
+          west,
+        ),
+      );
+      const rows = (await groupRowsOf(student.id)).filter((row) => row.branch_id === west);
+      // A until version 2 starts (the active groups and version 1 both teach
+      // it), then B, placed automatically.
+      expect(rows).toEqual([
+        expect.objectContaining({
+          group_id: a,
+          valid_from: TODAY,
+          valid_until: '2026-12-07',
+          cause: 'branch_move',
+          review: false,
+        }),
+        expect.objectContaining({
+          group_id: b,
+          valid_from: '2026-12-07',
+          valid_until: '2027-06-01',
+          cause: 'automatic',
+          review: true,
+        }),
+      ]);
+    });
+
+    it('refuses a group of the class the published version does not teach from the date', async () => {
+      // Version 2 is in force from 28 September, before the release's date.
+      const { west, english, yale, a, b } = await chain('2026-09-14', '2026-09-28');
+      const { moveId } = await releasedTo(west, TODAY);
+      const response = await t.get(
+        `/api/people/branch-moves/${moveId}/groups?classId=${yale}`,
+        west,
+      );
+      const subject = branchMoveGroupsSchema
+        .parse(response.body)
+        .subjects.find((one) => one.subjectId === english);
+      expect(subject?.groups.map((group) => group.id)).toEqual([b]);
+      const before = await rowsOf();
+      refusedWith(
+        await accept(
+          moveId,
+          { classId: yale, groups: [{ subjectId: english, groupId: a }] },
+          t.admin,
+          west,
+        ),
+        409,
+        'branch_move_group',
+      );
+      expect(await rowsOf()).toEqual(before);
     });
   });
 
