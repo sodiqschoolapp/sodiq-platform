@@ -12,6 +12,7 @@ The next sessions must know:
 
 - `snapshotWeek` must be read after the publish lock and before the first write of lessons, and `sendWeekChanges` after the last; both live in `apps/api/src/modules/timetable/week-changes.ts`, with `storedLessonRows` (`stored-lessons.ts`) as the one reader of stored lessons.
 - A week with no stored lesson before the event gets no mark (a first publish), but its teachers are notified.
+- `keyOf` (`week-changes.ts`) does not compare the cancel: once 5.6a stores one-day cancels, a lesson cancelled on one side only pairs as unchanged; 5.6a handles it (its From line).
 - The next task is 5.5c-3b.
 
 ## 18 October 2026: task 5.5c-2b Publish: "Classes taught" and the vacancy kept

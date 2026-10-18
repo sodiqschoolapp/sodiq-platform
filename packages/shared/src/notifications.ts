@@ -25,8 +25,9 @@ export const NOTIFICATION_KIND_MAX_LENGTH = 100;
  * are the `{{names}}` of the text and nothing else; a plural form is not
  * chosen by them (the web passes the data as `replace`, not as options).
  * The one exception: the kinds of `WEEK_CHANGE_KINDS` also carry the lists
- * `before` and `after`, which no text interpolates; the web shows them as a
- * table under the text (`week-change.tsx`; task 5.5c-3a, review correction 2).
+ * `before` and `after`, which no text interpolates; the web shows them as two
+ * lists under the text (`week-change.tsx`; task 5.5c-3a, review correction 2,
+ * build decision 11).
  *
  * `sample.message` exists for the tests and the browser tests of task 0.9; no
  * route of the application sends one.
