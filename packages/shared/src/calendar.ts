@@ -116,10 +116,12 @@ export type CalendarEntryRecord = z.infer<typeof calendarEntryRecordSchema>;
  * of the stored one-day changes and bulk cancels the preview showed
  * (`CalendarLessons.dayChanges.key`) and a choice for each "needs a
  * decision" item, as a publish sends them; without them, a save over dates
- * with nothing stored, as before.
+ * with nothing stored, as before. Strict, so that a misspelt field is refused
+ * rather than dropped (permission review should-fix 5).
  */
-export const calendarSaveSchema = calendarEntryFields
-  .extend({
+export const calendarSaveSchema = z
+  .strictObject({
+    ...calendarEntryFields.shape,
     dayChangesKey: transitionKeySchema.optional(),
     dayDecisions: dayDecisionsSchema.optional(),
   })

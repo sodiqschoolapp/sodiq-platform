@@ -1005,7 +1005,16 @@ describe('calendar entries after publishing', () => {
       const shown = await preview(s.branch, { action: 'create', record: dayOff(OCT19) });
       expect(shown.lessons.dayChanges.kept.map((one) => one.key)).toEqual([change?.id]);
 
-      okay(await create(s.branch, withDays(dayOff(OCT19), shown)), 201);
+      // Saved by the Academic Vice Principal assigned in the branch
+      // (permission review should-fix 3).
+      const vice = await t.database.migrator
+        .selectFrom('assignments')
+        .select('account_id')
+        .where('role', '=', 'academic_vice_principal')
+        .where('branch_id', '=', t.north)
+        .executeTakeFirstOrThrow();
+      await load.classes.role(vice.account_id, s.branch, 'academic_vice_principal');
+      okay(await create(s.branch, withDays(dayOff(OCT19), shown), t.vicePrincipal), 201);
 
       expect(await lessonsOn(s.branch, OCT19)).toEqual([]);
       expect((await lessonById(moving.id))?.date).toBe(OCT26);
@@ -1439,11 +1448,29 @@ describe('calendar entries after publishing', () => {
     it('lists what the save then does and writes nothing', async () => {
       const s = await scene();
       const other = await scene();
+      // Task 5.6b-2a (permission review should-fix 1): the other branch holds a
+      // room change and a bulk cancel on the same date, which the Super
+      // Admin's preview and save of this branch neither list nor touch.
+      const roomed = await lessonOf(other, OCT19, other.seniorId);
+      okay(
+        await keyed(`/api/timetable/lessons/${roomed.id}/room`, other.branch, {
+          roomId: await load.classes.room(other.branch),
+          reason: 'The room is painted',
+        }),
+      );
+      await bulkCancel(other, { date: OCT19, classIds: [other.classId], lessonNumbers: [1] });
       const rows = [await storedRowsOf(s.branch), await storedRowsOf(other.branch)];
       const before = await t.auditCount();
 
       const shown = await preview(s.branch, { action: 'create', record: dayOff(OCT19) });
 
+      expect(shown.lessons.dayChanges).toEqual({
+        key: shown.lessons.dayChanges.key,
+        kept: [],
+        decide: [],
+        dropped: [],
+        bulk: [],
+      });
       expect(await storedRowsOf(s.branch)).toEqual(rows[0]);
       expect(await storedRowsOf(other.branch)).toEqual(rows[1]);
       expect(await t.auditCount()).toBe(before);
@@ -1538,8 +1565,8 @@ describe('calendar entries after publishing', () => {
   // .claude/rules/api.md: an id of another branch or an unknown one is 404,
   // with every row the save now writes unchanged in both branches.
   it("answers 404 for another branch's or an unknown entry or template, with the lessons of both branches unchanged", async () => {
-    const north = await scene();
-    const south = await scene();
+    const north = await scene({ group: true });
+    const south = await scene({ group: true });
     const southEntry = okay(await create(south.branch, dayOff(OCT26)), 201);
     const northEntry = okay(await create(north.branch, specialDay(OCT19, OCT19, north.short)), 201);
     // A draft in each branch, which a save would mark out of date (permission review must-fix 2).
@@ -1553,9 +1580,13 @@ describe('calendar entries after publishing', () => {
       .where('branch_id', '=', t.north)
       .executeTakeFirstOrThrow();
     await load.classes.role(vice.account_id, north.branch, 'academic_vice_principal');
-    // Task 5.6b-2a: a room change in each branch on 16 November, which a save
-    // of that date would end, and a pattern block of the south.
+    // Task 5.6b-2a (permission review must-fix 1): in each branch, rows of
+    // every table the save writes: a room change on 16 November, which a save
+    // of that date would end; a bulk cancel of that date keeping the group's
+    // block (`bulk_cancel_blocks`); and a room change of 23 November ended
+    // by a day off (`lesson_day_change_ends`). And a pattern block of the south.
     const changeOf: Record<string, string> = {};
+    const bulkOf: Record<string, string> = {};
     for (const one of [north, south]) {
       const lesson = await lessonOf(one, '2026-11-16', one.seniorId);
       okay(
@@ -1565,7 +1596,45 @@ describe('calendar entries after publishing', () => {
         }),
       );
       changeOf[one.branch] = (await changesOf(lesson.id))[0]?.id ?? '';
+      bulkOf[one.branch] = (
+        await bulkCancel(
+          one,
+          { date: '2026-11-16', classIds: [one.seniorId], lessonNumbers: [3] },
+          'keep',
+        )
+      ).id;
+      const ended = await lessonOf(one, '2026-11-23', one.seniorId);
+      t.clock.advance(1000);
+      try {
+        okay(
+          await keyed(`/api/timetable/lessons/${ended.id}/room`, one.branch, {
+            roomId: await load.classes.room(one.branch),
+            reason: 'The room is painted',
+          }),
+        );
+      } finally {
+        t.clock.set(START);
+      }
+      const record = dayOff('2026-11-23');
+      okay(
+        await create(
+          one.branch,
+          withDays(record, await preview(one.branch, { action: 'create', record })),
+        ),
+        201,
+      );
     }
+    for (const one of [north, south]) {
+      expect(await endsOf(one.branch)).toHaveLength(1);
+      expect(
+        await t.database.migrator
+          .selectFrom('bulk_cancel_blocks')
+          .select('block_id')
+          .where('branch_id', '=', one.branch)
+          .execute(),
+      ).toHaveLength(1);
+    }
+    const southLesson = await lessonOf(south, '2026-11-16', south.classId);
     const southBlock = await t.database.migrator
       .selectFrom('pattern_blocks')
       .select('id')
@@ -1594,13 +1663,17 @@ describe('calendar entries after publishing', () => {
               record: dayOff(OCT26),
             }),
         ]) {
-          expect((await attempt()).status).toBe(404);
+          refusedWith(await attempt(), 404, 'not_found');
         }
       }
       // Task 5.6b-2a (decision 11): a key or a block of a decision of
       // another branch, or unknown, on every save that takes them.
       const decisionsOf = [
+        // A key names a one-day change, a lesson (a one-lesson cancel) or a
+        // bulk cancel (permission review should-fix 2).
         [{ key: changeOf[south.branch] ?? '', choice: 'drop' }],
+        [{ key: southLesson.id, choice: 'drop' }],
+        [{ key: bulkOf[south.branch] ?? '', choice: 'drop' }],
         [{ key: UNKNOWN, choice: 'drop' }],
         ...[southBlock.id, UNKNOWN].map((blockId) => [
           {
@@ -1630,7 +1703,7 @@ describe('calendar entries after publishing', () => {
               dayDecisions,
             }),
         ]) {
-          expect((await attempt()).status).toBe(404);
+          refusedWith(await attempt(), 404, 'not_found');
         }
       }
       for (const template of [south.short, UNKNOWN]) {
@@ -1655,7 +1728,7 @@ describe('calendar entries after publishing', () => {
               record: specialDay(OCT19, OCT19, template),
             }),
         ]) {
-          expect((await attempt()).status).toBe(404);
+          refusedWith(await attempt(), 404, 'not_found');
         }
       }
     }
@@ -1957,7 +2030,14 @@ describe('calendar entries after publishing', () => {
       .where('version_id', '=', next)
       .execute();
     for (const row of rows) {
-      await placeAt(s.branch, next, row.id, 1, row.subject_id === s.maths ? 1 : 3);
+      // The group of a group scene keeps its own slot 5.
+      await placeAt(
+        s.branch,
+        next,
+        row.id,
+        1,
+        row.subject_id === s.maths ? 1 : row.subject_id === s.history ? 3 : 5,
+      );
     }
     await confirmTemplates(s.branch, next);
     await load.freeEditLock(next);

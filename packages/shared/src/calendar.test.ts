@@ -121,6 +121,7 @@ describe('calendarSaveSchema', () => {
 
   it('refuses a key of another shape, a choice not known, and the entry’s own refusals', () => {
     expect(calendarSaveSchema.safeParse({ ...dayOff, dayChangesKey: 'short' }).success).toBe(false);
+    expect(calendarSaveSchema.safeParse({ ...dayOff, dayDecision: [] }).success).toBe(false);
     expect(
       calendarSaveSchema.safeParse({ ...dayOff, dayDecisions: [{ key: change, choice: 'later' }] })
         .success,
