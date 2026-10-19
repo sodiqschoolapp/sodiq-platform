@@ -757,7 +757,7 @@ How to read the task lines:
   - Read: `edge/time-dates-calendar` ("A day off for grade 9 only, and a group joins 9 Edinburgh and 10 Brown"), `edge/timetable` (Structure), `edge/exemptions`.
   - Build: for a group of two grades, the choice per block, once for every date of the entry: cancel its lessons "day off", or keep them and exempt the grade that is off (kept lessons take the template of the grade that has school); stored and applied again by a later publish and withdraw; a lesson of the group in a slot that does not match in both templates created cancelled "not in the day's template" and listed per group.
   - Done when: both choices and the unmatched slot have a test, and a later publish keeps the choice.
-  - From 5.6b-1 (pull request #167, decision 11): until this task a calendar save over published dates writes such a block as the expansion writes it, cancelled "day off" (`blockOn`, 5.5a-2a decision 4); 5.6b-1 has no test of it (its report says why).
+  - From 5.6b-1 (pull request #167, decision 11): until this task a calendar save over published dates writes such a block as the expansion writes it, cancelled "day off" (`blockOn`, 5.5a-2a decision 4), and the test "for grade 9 only writes a group of grades 9 and 10 cancelled 'day off' (interim, until 5.6b-3)" of `calendar-lessons.test.ts` asserts that interim outcome; this task changes it.
 
 - [ ] **5.6b-4 Day template and slot length changes after publishing**
   - Read: `edge/time-dates-calendar` ("A slot type's length or a day template is changed mid-year", the Friday row), `06` (What a change does to existing data), `edge/timetable` (Exams).

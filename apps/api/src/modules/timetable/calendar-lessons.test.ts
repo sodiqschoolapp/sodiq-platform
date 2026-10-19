@@ -197,7 +197,7 @@ describe('calendar entries after publishing', () => {
    * the grade-7 class in slot 1 and history of the grade-10 class in slot 3,
    * both on Mondays, each with its own teacher.
    */
-  async function scene() {
+  async function scene(input: { group?: boolean } = {}) {
     const branch = await t.newBranch();
     const year = await load.classes.year(branch);
     for (const [index, [start, end]] of QUARTERS.entries()) {
@@ -255,6 +255,31 @@ describe('calendar entries after publishing', () => {
     });
     await placeAt(branch, version, rowId, 1, 1);
     await placeAt(branch, version, seniorRow, 1, 3);
+    // With `group`: physical education of a group of a grade-9 class and the
+    // grade-10 class (`edge/timetable`, Structure, "Physical education joins a
+    // grade-9 and a grade-10 class"), in slot 5 on Mondays.
+    let groupId: string | null = null;
+    if (input.group === true) {
+      const nineId = await load.classes.schoolClass(branch, year, {
+        grade: 9,
+        room: await load.classes.room(branch),
+      });
+      const sport = await load.classes.subject({ grades: [9, 10], journalType: 'attendance_only' });
+      const coach = (
+        await load.teacher(branch, { subjects: [{ subject: sport, grades: [9, 10] }] })
+      ).staffId;
+      await hours(branch, coach);
+      groupId = await load.classes.group(branch, year, sport, [nineId, seniorId]);
+      const groupRow = await load.row({
+        branch_id: branch,
+        version_id: version,
+        group_id: groupId,
+        subject_id: sport,
+        teacher_id: coach,
+        lessons_per_week: 1,
+      });
+      await placeAt(branch, version, groupRow, 1, 5);
+    }
     await confirmTemplates(branch, version);
     await load.freeEditLock(version);
     const published = await publish(branch, version, MONDAY);
@@ -275,6 +300,7 @@ describe('calendar entries after publishing', () => {
       seniorRow,
       regular,
       short,
+      groupId,
     };
   }
 
@@ -319,6 +345,7 @@ describe('calendar entries after publishing', () => {
         'lessons.block_id',
         sql<string>`lessons.lesson_date::text`.as('date'),
         'lessons.class_id',
+        'lessons.group_id',
         'lessons.subject_id',
         'lessons.teacher_id',
         'lessons.cancel_cause',
@@ -430,6 +457,26 @@ describe('calendar entries after publishing', () => {
       expect((await noticesOf(s.branch)).map((one) => one.account_id)).toEqual([
         await accountOf(s.seniorTeacher),
       ]);
+    });
+
+    // Interim until 5.6b-3 (decision 11): the choice per block is not asked
+    // yet, the block is written as the expansion writes it (`blockOn`). This
+    // is not the rule of `edge/time-dates-calendar`, "A day off for grade 9
+    // only, and a group joins 9 Edinburgh and 10 Brown"; 5.6b-3 replaces it.
+    it('for grade 9 only writes a group of grades 9 and 10 cancelled "day off" (interim, until 5.6b-3)', async () => {
+      const s = await scene({ group: true });
+      const before = (await lessonsOn(s.branch, OCT19)).find((one) => one.group_id === s.groupId);
+      expect(before?.cancel_cause).toBeNull();
+
+      okay(await create(s.branch, dayOff(OCT19, OCT19, { gradeFrom: 9, gradeTo: 9 })), 201);
+
+      const after = await lessonsOn(s.branch, OCT19);
+      expect(
+        after.filter((one) => one.group_id === s.groupId).map((one) => one.cancel_cause),
+      ).toEqual(['day_off']);
+      expect(
+        after.filter((one) => one.class_id === s.seniorId).map((one) => one.cancel_cause),
+      ).toEqual([null]);
     });
 
     it('taken back creates the lessons again from the version in force, checked like a publish', async () => {
@@ -593,6 +640,74 @@ describe('calendar entries after publishing', () => {
   });
 
   describe('what the save refuses', () => {
+    it("refuses a school day given back when a lesson meets the teacher's exam in another branch at that time, with nothing written", async () => {
+      const s = await scene();
+      const saved = okay(await create(s.branch, dayOff(OCT19)), 201);
+      // The maths teacher invigilates an exam in another branch on 19 October
+      // from 08:00 to 08:45, the time of the maths lesson given back.
+      const other = await t.newBranch();
+      const otherYear = await load.classes.year(other);
+      await t.database.migrator
+        .insertInto('staff_branches')
+        .values({ staff_id: s.teacherId, branch_id: other, is_main: false })
+        .execute();
+      const otherClass = await load.classes.schoolClass(other, otherYear, {
+        grade: 7,
+        room: await load.classes.room(other),
+      });
+      const otherRoom = await load.classes.room(other);
+      await t.database.migrator.transaction().execute(async (transaction) => {
+        const written = await transaction
+          .insertInto('exams')
+          .values({
+            branch_id: other,
+            academic_year_id: otherYear,
+            exam_date: OCT19,
+            starts_at: new Date(`${OCT19}T08:00:00+05:00`),
+            ends_at: new Date(`${OCT19}T08:45:00+05:00`),
+            first_slot: 1,
+            last_slot: 1,
+            title: 'Quarter exam',
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        const room = await transaction
+          .insertInto('exam_rooms')
+          .values({ branch_id: other, exam_id: written.id, room_id: otherRoom })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('exam_room_classes')
+          .values({
+            branch_id: other,
+            exam_id: written.id,
+            exam_room_id: room.id,
+            class_id: otherClass,
+          })
+          .execute();
+        await transaction
+          .insertInto('exam_invigilators')
+          .values({
+            branch_id: other,
+            exam_id: written.id,
+            exam_room_id: room.id,
+            staff_id: s.teacherId,
+          })
+          .execute();
+      });
+      const rows = await storedRowsOf(s.branch);
+      const before = await t.auditCount();
+
+      const refused = await post(`/api/setup/calendar-entries/${saved.id}/archive`, s.branch);
+
+      refusedWith(refused, 409, 'calendar_blocked');
+      expect(
+        detailsOf(refused).every((one) => one.code === 'date_blocked' && one.day === OCT19),
+      ).toBe(true);
+      expect(await storedRowsOf(s.branch)).toEqual(rows);
+      expect(await t.auditCount()).toBe(before);
+    });
+
     it("refuses a school day given back when a lesson falls outside its teacher's hours in force on that date, with nothing written", async () => {
       const s = await scene();
       const saved = okay(await create(s.branch, dayOff(OCT19)), 201);
@@ -850,47 +965,67 @@ describe('calendar entries after publishing', () => {
     const south = await scene();
     const southEntry = okay(await create(south.branch, dayOff(OCT26)), 201);
     const northEntry = okay(await create(north.branch, specialDay(OCT19, OCT19, north.short)), 201);
+    // A draft in each branch, which a save would mark out of date (permission review must-fix 2).
+    await copyUnpublished(north);
+    await copyUnpublished(south);
+    // The Super Admin, and the Academic Vice Principal assigned in the branch (should-fix 6).
+    const vice = await t.database.migrator
+      .selectFrom('assignments')
+      .select('account_id')
+      .where('role', '=', 'academic_vice_principal')
+      .where('branch_id', '=', t.north)
+      .executeTakeFirstOrThrow();
+    await load.classes.role(vice.account_id, north.branch, 'academic_vice_principal');
     const rows = [await storedRowsOf(north.branch), await storedRowsOf(south.branch)];
     const before = await t.auditCount();
-    for (const id of [southEntry.id, UNKNOWN]) {
-      for (const attempt of [
-        () => t.patch(`/api/setup/calendar-entries/${id}`, north.branch, dayOff(OCT26)),
-        () => post(`/api/setup/calendar-entries/${id}/archive`, north.branch),
-        () => post(`/api/setup/calendar-entries/${id}/restore`, north.branch),
-        () => post('/api/setup/calendar-entries/preview', north.branch, { action: 'archive', id }),
-        () => post('/api/setup/calendar-entries/preview', north.branch, { action: 'restore', id }),
-        () =>
-          post('/api/setup/calendar-entries/preview', north.branch, {
-            action: 'edit',
-            id,
-            record: dayOff(OCT26),
-          }),
-      ]) {
-        expect((await attempt()).status).toBe(404);
+    for (const cookie of [t.admin, t.vicePrincipal]) {
+      const post = (path: string, branch: string, body: object = {}) =>
+        t.post(path, branch, body, cookie);
+      const create = (branch: string, record: object) =>
+        post('/api/setup/calendar-entries', branch, record);
+      for (const id of [southEntry.id, UNKNOWN]) {
+        for (const attempt of [
+          () => t.patch(`/api/setup/calendar-entries/${id}`, north.branch, dayOff(OCT26), cookie),
+          () => post(`/api/setup/calendar-entries/${id}/archive`, north.branch),
+          () => post(`/api/setup/calendar-entries/${id}/restore`, north.branch),
+          () =>
+            post('/api/setup/calendar-entries/preview', north.branch, { action: 'archive', id }),
+          () =>
+            post('/api/setup/calendar-entries/preview', north.branch, { action: 'restore', id }),
+          () =>
+            post('/api/setup/calendar-entries/preview', north.branch, {
+              action: 'edit',
+              id,
+              record: dayOff(OCT26),
+            }),
+        ]) {
+          expect((await attempt()).status).toBe(404);
+        }
       }
-    }
-    for (const template of [south.short, UNKNOWN]) {
-      for (const attempt of [
-        () => create(north.branch, specialDay(OCT26, OCT26, template)),
-        () =>
-          post('/api/setup/calendar-entries/preview', north.branch, {
-            action: 'create',
-            record: specialDay(OCT26, OCT26, template),
-          }),
-        () =>
-          t.patch(
-            `/api/setup/calendar-entries/${northEntry.id}`,
-            north.branch,
-            specialDay(OCT19, OCT19, template),
-          ),
-        () =>
-          post('/api/setup/calendar-entries/preview', north.branch, {
-            action: 'edit',
-            id: northEntry.id,
-            record: specialDay(OCT19, OCT19, template),
-          }),
-      ]) {
-        expect((await attempt()).status).toBe(404);
+      for (const template of [south.short, UNKNOWN]) {
+        for (const attempt of [
+          () => create(north.branch, specialDay(OCT26, OCT26, template)),
+          () =>
+            post('/api/setup/calendar-entries/preview', north.branch, {
+              action: 'create',
+              record: specialDay(OCT26, OCT26, template),
+            }),
+          () =>
+            t.patch(
+              `/api/setup/calendar-entries/${northEntry.id}`,
+              north.branch,
+              specialDay(OCT19, OCT19, template),
+              cookie,
+            ),
+          () =>
+            post('/api/setup/calendar-entries/preview', north.branch, {
+              action: 'edit',
+              id: northEntry.id,
+              record: specialDay(OCT19, OCT19, template),
+            }),
+        ]) {
+          expect((await attempt()).status).toBe(404);
+        }
       }
     }
     expect(await storedRowsOf(north.branch)).toEqual(rows[0]);
@@ -898,18 +1033,52 @@ describe('calendar entries after publishing', () => {
     expect(await t.auditCount()).toBe(before);
   });
 
-  it('refuses a role without the calendar create right in the branch, with nothing written', async () => {
+  // Permission review must-fix 3 and should-fixes 4 and 5: every route whose
+  // behaviour changed, refused for the Principal (who may view) and a
+  // Teacher (no calendar right), each assigned in the branch first.
+  it('refuses the Principal and a Teacher assigned in the branch on every calendar write and the preview, with nothing written', async () => {
     const s = await scene();
-    const rows = await storedRowsOf(s.branch);
-    const principal = await t.database.migrator
-      .selectFrom('assignments')
-      .select('account_id')
-      .where('role', '=', 'principal')
-      .where('branch_id', '=', t.north)
-      .executeTakeFirstOrThrow();
-    await load.classes.role(principal.account_id, s.branch, 'principal');
-    refusedWith(await create(s.branch, dayOff(OCT19), t.principal), 403, 'permission_denied');
-    expect(await storedRowsOf(s.branch)).toEqual(rows);
+    const other = await scene();
+    const saved = okay(await create(s.branch, dayOff(OCT19)), 201);
+    const archived = okay(await create(s.branch, dayOff(OCT26)), 201);
+    okay(await post(`/api/setup/calendar-entries/${archived.id}/archive`, s.branch));
+    for (const role of ['principal', 'teacher'] as const) {
+      const holder = await t.database.migrator
+        .selectFrom('assignments')
+        .select('account_id')
+        .where('role', '=', role)
+        .where('branch_id', '=', t.north)
+        .executeTakeFirstOrThrow();
+      await load.classes.role(holder.account_id, s.branch, role);
+    }
+    const rows = [await storedRowsOf(s.branch), await storedRowsOf(other.branch)];
+    const before = await t.auditCount();
+    for (const cookie of [t.principal, t.teacher]) {
+      for (const attempt of [
+        () => create(s.branch, dayOff('2026-11-16'), cookie),
+        () =>
+          t.patch(
+            `/api/setup/calendar-entries/${saved.id}`,
+            s.branch,
+            dayOff(OCT19, OCT26),
+            cookie,
+          ),
+        () => post(`/api/setup/calendar-entries/${saved.id}/archive`, s.branch, {}, cookie),
+        () => post(`/api/setup/calendar-entries/${archived.id}/restore`, s.branch, {}, cookie),
+        () =>
+          post(
+            '/api/setup/calendar-entries/preview',
+            s.branch,
+            { action: 'create', record: dayOff('2026-11-16') },
+            cookie,
+          ),
+      ]) {
+        refusedWith(await attempt(), 403, 'permission_denied');
+      }
+    }
+    expect(await storedRowsOf(s.branch)).toEqual(rows[0]);
+    expect(await storedRowsOf(other.branch)).toEqual(rows[1]);
+    expect(await t.auditCount()).toBe(before);
   });
 
   describe('at the same moment', () => {
@@ -947,19 +1116,24 @@ describe('calendar entries after publishing', () => {
 
     /**
      * The two routes in a fixed order: a third transaction holds the scene's
-     * published version, at which both wait (`lockPublishChain`), the second
-     * starts once the first waits.
+     * year, at which both wait (the calendar save `for no key update`, the
+     * others `for share` in `lockPublishChain`), the second starts once the
+     * first waits.
      */
     async function inOrder(
       s: Scene,
       first: () => Promise<Response>,
       second: () => Promise<Response>,
+      held: { table: 'academic_years' | 'classes' | 'staff'; id: string } = {
+        table: 'academic_years',
+        id: s.year,
+      },
     ): Promise<[Response, Response]> {
       const gate = await holdOpen(s.branch, async (transaction) => {
         await transaction
-          .selectFrom('timetable_versions')
+          .selectFrom(held.table)
           .select('id')
-          .where('id', '=', s.version)
+          .where('id', '=', held.id)
           .forUpdate()
           .execute();
       });
@@ -1019,7 +1193,7 @@ describe('calendar entries after publishing', () => {
         if (order === 0) {
           const [dayOffSaved, moved] = await inOrder(s, saveDayOff, moveOnto);
           expect(dayOffSaved.status, JSON.stringify(dayOffSaved.body)).toBe(201);
-          expect(moved.status, JSON.stringify(moved.body)).toBe(409);
+          refusedWith(moved, 409, 'day_change_blocked');
           expect(await lessonsOn(s.branch, OCT19)).toEqual([]);
         } else {
           const [moved, dayOffSaved] = await inOrder(s, moveOnto, saveDayOff);
@@ -1051,48 +1225,70 @@ describe('calendar entries after publishing', () => {
       }
     });
 
-    // Review correction 1: a class or staff write holds its row, then writes
-    // its audit entry, whose key to the branch the calendar save's lock on the
-    // branch row must not block while the save waits for that row.
-    for (const holder of ['classes', 'staff'] as const) {
-      it(`a day off while a ${holder === 'classes' ? 'class' : 'staff'} write holds its row and then writes its audit entry: no deadlock`, async () => {
+    it('a day off and a bulk cancel of its date: the first stands, the second is refused', async () => {
+      for (const order of [0, 1]) {
         const s = await scene();
-        let audited: () => void = () => undefined;
-        const audit = new Promise<void>((resolve) => {
-          audited = resolve;
-        });
-        const held = await holdOpen(s.branch, async (transaction) => {
-          await transaction
-            .selectFrom(holder)
-            .select('id')
-            .where('id', '=', holder === 'classes' ? s.classId : s.teacherId)
-            .forUpdate()
-            .execute();
-        });
-        const waiting = await waitingForALock();
-        const saving = create(s.branch, dayOff(OCT19)).then((response) => response);
-        await expect
-          .poll(waitingForALock, { timeout: 20_000, interval: 50 })
-          .toBeGreaterThan(waiting);
-        // The held write's audit entry, in a transaction of its own that the
-        // held one stands for: it needs the key share of the branch row.
-        const writing = t.app
-          .get(Transactions)
-          .run([s.branch], async (transaction) => {
-            await transaction
-              .selectFrom('branches')
-              .select('id')
-              .where('id', '=', s.branch)
-              .forKeyShare()
-              .execute();
-            audited();
-          })
-          .catch((error: unknown) => error);
-        await Promise.race([audit, writing]);
-        expect(await writing).toBeUndefined();
-        held.release();
-        expect(await held.done).toBeUndefined();
-        expect((await saving).status).toBe(201);
+        const lesson = await lessonOf(s, OCT19, s.classId);
+        const saveDayOff = () => create(s.branch, dayOff(OCT19));
+        const bulkCancel = () =>
+          keyed('/api/timetable/bulk-cancels', s.branch, {
+            date: OCT19,
+            classIds: [s.classId],
+            lessonNumbers: [1],
+            reason: 'Excursion to the museum',
+            blocks: [],
+            lessonIds: [lesson.id],
+          });
+        if (order === 0) {
+          const [saved, cancelled] = await inOrder(s, saveDayOff, bulkCancel);
+          expect(saved.status, JSON.stringify(saved.body)).toBe(201);
+          refusedWith(cancelled, 409, 'bulk_cancel_empty');
+          expect(await lessonsOn(s.branch, OCT19)).toEqual([]);
+        } else {
+          const [cancelled, saved] = await inOrder(s, bulkCancel, saveDayOff);
+          expect(cancelled.status, JSON.stringify(cancelled.body)).toBe(200);
+          refusedWith(saved, 409, 'calendar_stored_changes');
+          expect(
+            (await lessonsOn(s.branch, OCT19)).find((one) => one.id === lesson.id)?.cancel_cause,
+          ).toBe('reason');
+        }
+      }
+    });
+
+    // Review correction 1: a class archive or a staff status change holds its
+    // row `for update`, writes its audit entry (a key to the branch row) and
+    // waits in `followTutors` for the year; the calendar save, holding the
+    // branch row and then the year, waits for the class's or person's key.
+    // The real routes, in both orders, with no deadlock.
+    for (const holder of ['classes', 'staff'] as const) {
+      it(`a day off and a ${holder === 'classes' ? 'class archive' : 'staff status change'} in either order: no deadlock`, async () => {
+        for (const order of [0, 1]) {
+          const s = await scene();
+          const id =
+            holder === 'classes'
+              ? await load.classes.schoolClass(s.branch, s.year, {
+                  grade: 8,
+                  room: await load.classes.room(s.branch),
+                })
+              : (await load.teacher(s.branch, { subjects: [{ subject: s.maths, grades: [7] }] }))
+                  .staffId;
+          const saveDayOff = () => create(s.branch, dayOff(OCT19));
+          const other = () =>
+            holder === 'classes'
+              ? post(`/api/classes/${id}/archive`, s.branch)
+              : post(`/api/people/staff/${id}/status`, s.branch, {
+                  status: 'inactive',
+                  from: '2026-11-02',
+                });
+          const [first, second] =
+            order === 0
+              ? await inOrder(s, saveDayOff, other, { table: holder, id })
+              : await inOrder(s, other, saveDayOff, { table: holder, id });
+          const [saved, changed] = order === 0 ? [first, second] : [second, first];
+          expect(saved.status, JSON.stringify(saved.body)).toBe(201);
+          expect(changed.status, JSON.stringify(changed.body)).toBe(200);
+          expect(await lessonsOn(s.branch, OCT19)).toEqual([]);
+        }
       });
     }
   });
@@ -1125,6 +1321,7 @@ describe('calendar entries after publishing', () => {
       'lesson_day_changes',
       'notifications',
       'timetable_versions',
+      'timetable_version_out_of_date_causes',
     ] as const) {
       rows[table] = await t.database.migrator
         .selectFrom(table)
@@ -1133,6 +1330,12 @@ describe('calendar entries after publishing', () => {
         .orderBy('id')
         .execute();
     }
+    // The delivery jobs of the notices (permission review must-fix 1), every one.
+    rows.jobs = (
+      await sql<{ id: string }>`select id::text from pgboss.job order by id`.execute(
+        t.database.migrator,
+      )
+    ).rows;
     rows.lesson_changes = await t.database.migrator
       .selectFrom('lesson_changes')
       .selectAll()

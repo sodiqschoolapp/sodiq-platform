@@ -280,9 +280,10 @@ Plan approved on pull request #167 with corrections 1 and 2; decisions 1 to 11, 
 | No new audit action or permission area; the entry's audit entry carries `lessonDates`, `datedLessons` and `notices`; notice kind `timetable.calendar_changed` with the entry's name and dates | Decision 8 |
 | The preview answers the blocked and stored items as lines; the save refuses them | Decision 9 |
 | A two-grade group separated by an entry stays as the expansion writes it until 5.6b-3 | Decision 11 |
-| The calendar save holds its branch row `for no key update`, then `lockPublishChain` of each year touched before the entry write; it never takes `PUBLISH_LOCK` | Decision 12 as changed by review correction 1: `for update` deadlocked with a class or staff write's audit entry |
+| The calendar save holds its branch row `for no key update`, then, before the entry write, the people of the branch and the classes of the years touched `for key share` and each year `for no key update`; it never takes `PUBLISH_LOCK` and waits on no version | Decision 12 as changed by review correction 1: `for update` deadlocked with a class or staff write's audit entry; `lockPublishChain` (the plan's first answer) made the save wait on a draft write's version, against 5.5a-3b-1 decision 8 and its tests |
 | The lesson dates are the dates after today where a grade's lesson-making part of the day (lessons, template, weekday followed, exam week) differs, never the entry's name | Decision 13 |
 | The shortened day's choice of kept lessons for a special day added after publishing goes to 5.6b-2 | Decision 14 |
+| **Build decision.** The test of facts read as if the version started on the date (plan test 8) shows a teacher's later availability entry as a blocked refusal of the lesson given back, not as "needs a teacher": a later entry is in force on the stretch's first date, so it is the start's entry (`06`, Rules, availability), and only a Saturday worked by another weekday gives "needs a teacher" | Spec review of the code, should-fix 7 |
 | **Build decision.** A preview with a blocked conflict writes in a savepoint and shows no lesson lines when the database refuses the write; with a stored record it writes nothing | Decision 9: the preview must not throw what the save refuses |
 
 ## 19 October 2026: one-day changes kept after a withdraw (task 5.6a-5b-2)

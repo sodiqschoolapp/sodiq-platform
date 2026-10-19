@@ -63,7 +63,7 @@ export function CalendarLessonsPreview({
   const list = (title: string, lines: readonly { key: string; text: string }[]) =>
     lines.length === 0 ? null : (
       <section className="space-y-1">
-        <h3 className={SUBSECTION_TITLE}>{title}</h3>
+        <h4 className={SUBSECTION_TITLE}>{title}</h4>
         <ul className="list-disc space-y-0.5 ps-5 text-sm">
           {lines.map((line) => (
             <li key={line.key}>{line.text}</li>
@@ -74,7 +74,7 @@ export function CalendarLessonsPreview({
 
   return (
     <div className="space-y-3" data-testid="calendar-lessons">
-      <h2 className={SECTION_TITLE}>{t('setup.calendar.lessons.title')}</h2>
+      <h3 className={SECTION_TITLE}>{t('setup.calendar.lessons.title')}</h3>
       {list(
         t('setup.calendar.lessons.stored', { count: lessons.stored.length }),
         lessons.stored.map((one) => ({

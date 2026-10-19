@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { type CalendarLesson, type CalendarLessons, type ErrorDetail } from '@sodiq/shared';
+import {
+  CALENDAR_CANCEL_CAUSES,
+  type CalendarLesson,
+  type CalendarLessons,
+  type ErrorDetail,
+} from '@sodiq/shared';
 import { addDays, patternIdOf } from '@sodiq/timetable-rules';
 import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
@@ -14,7 +19,7 @@ import { namesOf } from './impact.js';
 import { runsOf } from './journals.js';
 import type { PatternState } from './pattern.service.js';
 import { TimetablePattern } from './pattern.service.js';
-import { datedAuditOf, lockPublishChain } from './publish.service.js';
+import { datedAuditOf } from './publish.service.js';
 import { storedLessonRows, type StoredLesson } from './stored-lessons.js';
 import { Timetable } from './timetable.service.js';
 import {
@@ -165,17 +170,48 @@ export class TimetableCalendarLessons {
   ) {}
 
   /**
-   * The publish's locks of each year touched, in the order of their start
-   * (decision 12): taken by every calendar save before it writes its entry,
-   * so that a publish, a withdraw or a one-day change of those years waits
-   * for the save, or the save waits for them, at the versions. The save holds
-   * its branch row `for no key update`, which a key of another row to the
-   * branch does not wait for (review correction 1), and never takes
-   * `PUBLISH_LOCK`, which a publish takes before the branch row.
+   * The locks of a calendar save, taken before it writes its entry (decision
+   * 12 as changed by review correction 1). The save already holds its branch
+   * row `for no key update`, which orders the setup writes of the branch and
+   * which the key of a row to the branch (an audit entry, a lesson) does not
+   * wait for. Then, in the order `lockPublishChain` gives the people and the
+   * classes: the people of the branch and the classes of the years touched
+   * `for key share`, the keys its lessons take, so that a status change or a
+   * class archive holding its row `for update` and waiting in
+   * `followTutors` for the year is waited for first; then each year `for no
+   * key update`, in the order of its start. A publish, a withdraw, a bulk
+   * cancel, a one-day change and `followTutors` take the year `for share`,
+   * so they wait for the save or it waits for them, at the year; a draft write
+   * takes it `for share` too, and nothing of the save waits on a version
+   * (5.5a-3b-1 decision 8). It never takes `PUBLISH_LOCK`, which a publish
+   * takes before the branch row.
    */
   async lock(transaction: Transaction, branchId: string, yearIds: readonly string[]) {
+    if (yearIds.length === 0) return;
+    await transaction
+      .selectFrom('staff')
+      .select('staff.id')
+      .where('staff.id', 'in', (eb) =>
+        eb.selectFrom('staff_branches').select('staff_id').where('branch_id', '=', branchId),
+      )
+      .orderBy('staff.id')
+      .forKeyShare()
+      .execute();
+    await transaction
+      .selectFrom('classes')
+      .select('id')
+      .where('branch_id', '=', branchId)
+      .where('academic_year_id', 'in', yearIds)
+      .orderBy('id')
+      .forKeyShare()
+      .execute();
     for (const yearId of yearIds) {
-      await lockPublishChain(transaction, branchId, yearId);
+      await transaction
+        .selectFrom('academic_years')
+        .select('id')
+        .where('id', '=', yearId)
+        .forNoKeyUpdate()
+        .execute();
     }
   }
 
@@ -316,7 +352,8 @@ export class TimetableCalendarLessons {
       .selectFrom('exams')
       .select(['id', sql<string>`exam_date::text`.as('exam_date')])
       .where('branch_id', '=', branchId)
-      .where('exam_date', 'in', dates)
+      // Only the dates written (code review should-fix 3; decision 10).
+      .where('exam_date', 'in', written)
       .where('cancel_cause', 'is', null)
       .orderBy('exam_date')
       .orderBy('id')
@@ -453,10 +490,13 @@ export class TimetableCalendarLessons {
         removed: removed.map(lineOf).sort(byPlace),
         created: created.map(lineOf).sort(byPlace),
         cancelled: cancelled
-          .map((one) => ({
-            ...lineOf(one),
-            cause: one.cancelCause as 'not_in_template' | 'day_off' | 'exam_week',
-          }))
+          .flatMap((one) => {
+            const cause = CALENDAR_CANCEL_CAUSES.find((known) => known === one.cancelCause);
+            // Every generated cause is listed (`GENERATED_CAUSES`); one not
+            // listed is a fault of the code, never a line with a cause unknown.
+            if (cause === undefined) throw new Error(`Unknown cause ${String(one.cancelCause)}.`);
+            return [{ ...lineOf(one), cause }];
+          })
           .sort(byPlace),
         needsTeacher,
         notified: [...changes.teachers.keys()].filter((id) => withAccount.has(id)).sort(),

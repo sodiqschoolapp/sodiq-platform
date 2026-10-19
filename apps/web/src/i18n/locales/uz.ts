@@ -3132,7 +3132,7 @@ export const uz: Texts<'one' | 'other'> = {
         day_changed:
           'Bir kunlik oʻzgarish (bekor qilish yoki tiklash) darslaringizni oʻzgartirdi. Haftangiz oldin va keyin:',
         calendar_changed:
-          '«{{name}}» kalendar yozuvi darslaringizni oʻzgartirdi. Haftangiz oldin va keyin:',
+          '«{{name}}» taqvim yozuvi darslaringizni oʻzgartirdi. Haftangiz oldin va keyin:',
       },
     },
     // The week before and after of a notice of a timetable change (task 5.5c-3a).

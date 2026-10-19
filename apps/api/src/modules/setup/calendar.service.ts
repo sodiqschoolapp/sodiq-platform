@@ -197,10 +197,15 @@ const gradesOverlap = (
  * (answer 15, decision 8); no save takes the school day away from the go-live
  * date (decision 7).
  *
- * Lock order: every write takes the branch row `for update` first, as the
- * writes of years, day templates and the go-live date do, so the years, the
- * templates, the working weekdays and the go-live date it reads do not change
- * meanwhile. Reads take no lock.
+ * Lock order: every write takes the branch row first, `for no key update`
+ * since task 5.6b-1 (review correction 1; before, `for update`): the writes
+ * of years, day templates and the go-live date take it `for update`, so the
+ * years, the templates, the working weekdays and the go-live date it reads do
+ * not change meanwhile, while the key of a row to the branch (the audit entry
+ * of a class or staff write holding its row, which the save's lessons then
+ * need) never waits for it. Before it writes its entry it takes the locks of
+ * `TimetableCalendarLessons.lock` (the people and classes, then the years).
+ * Reads take no lock.
  *
  * The preview (decision 11) runs the same code as the save in a transaction
  * that is rolled back, the deferred checks made immediate first.
