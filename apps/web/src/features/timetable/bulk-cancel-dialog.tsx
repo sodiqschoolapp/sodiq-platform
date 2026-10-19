@@ -15,7 +15,7 @@ import { FailureAlert } from '@/components/failure-alert';
 import { TextAreaField } from '@/components/field';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { Button } from '@/components/ui/button';
-import { CHECKBOX, CHECKBOX_TARGET } from '@/components/ui/control';
+import { CHECKBOX, CHECKBOX_TARGET, SUBSECTION_TITLE } from '@/components/ui/control';
 import {
   Dialog,
   DialogClose,
@@ -220,7 +220,7 @@ export function BulkCancelDialog({
           {result !== null && (
             <div className="grid gap-3" data-bulk-result="true">
               <section className="grid gap-1" data-bulk-cancel="true">
-                <h3 className="text-sm font-semibold">{t('timetable.bulk.toCancel')}</h3>
+                <h4 className={SUBSECTION_TITLE}>{t('timetable.bulk.toCancel')}</h4>
                 {result.cancel.length === 0 ? (
                   <p className="text-sm">{t('timetable.bulk.noneToCancel')}</p>
                 ) : (
@@ -270,7 +270,7 @@ export function BulkCancelDialog({
               ))}
               {result.alreadyCancelled.length > 0 && (
                 <section className="grid gap-1" data-bulk-already="true">
-                  <h3 className="text-sm font-semibold">{t('timetable.bulk.alreadyCancelled')}</h3>
+                  <h4 className={SUBSECTION_TITLE}>{t('timetable.bulk.alreadyCancelled')}</h4>
                   <ul className="grid gap-1 text-sm">
                     {result.alreadyCancelled.map((lesson) => (
                       <li key={lesson.id}>{lessonText(lesson)}</li>
@@ -280,7 +280,7 @@ export function BulkCancelDialog({
               )}
               {result.held.length > 0 && (
                 <section className="grid gap-1" data-bulk-held="true">
-                  <h3 className="text-sm font-semibold">{t('timetable.bulk.held')}</h3>
+                  <h4 className={SUBSECTION_TITLE}>{t('timetable.bulk.held')}</h4>
                   <ul className="grid gap-1 text-sm">
                     {result.held.map((lesson) => (
                       <li key={lesson.id}>{lessonText(lesson)}</li>
