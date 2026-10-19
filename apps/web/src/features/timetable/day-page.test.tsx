@@ -468,7 +468,7 @@ describe('the day page', () => {
           blockId: uid(800),
           pairBlockId: null,
           lessons: [shared(11, '7-E-1'), shared(12, '7-E-2')],
-          chosenOnly: [],
+          chosenOnly: [uid(312)],
           chosenClasses: [{ id: OXFORD.id, name: '7 Oxford' }],
           otherClasses: [{ id: PRINCETON.id, name: '7 Princeton' }],
         },
@@ -535,7 +535,8 @@ describe('the day page', () => {
             lessonNumbers: [1, 2],
             reason: 'Excursion to the museum',
             blocks: [{ blockId: uid(800), choice: 'keep' }],
-            lessonIds: [uid(301)],
+            // The lesson to cancel and, with “keep”, the part of the chosen class alone.
+            lessonIds: [uid(301), uid(312)],
           },
         ],
       ]);

@@ -100,7 +100,7 @@ create table bulk_cancel_blocks (
     references lesson_blocks (id, branch_id) on delete set null (block_id)
 );
 
-create unique index bulk_cancel_blocks_key on bulk_cancel_blocks (bulk_cancel_id, block_id)
+create unique index bulk_cancel_blocks_key on bulk_cancel_blocks (bulk_cancel_id, block_id, branch_id)
   where block_id is not null;
 create index bulk_cancel_blocks_block_idx on bulk_cancel_blocks (block_id)
   where block_id is not null;

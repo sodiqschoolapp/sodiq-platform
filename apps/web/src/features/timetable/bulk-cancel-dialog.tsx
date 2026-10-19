@@ -83,7 +83,17 @@ export function BulkCancelDialog({
         const choice = choices[one.blockId];
         return choice === undefined ? [] : [{ blockId: one.blockId, choice }];
       }),
-      lessonIds: (result?.cancel ?? []).map((one) => one.lesson.id),
+      // Every lesson the check listed to cancel under the choices (decision 12).
+      lessonIds: [
+        ...(result?.cancel ?? []).map((one) => one.lesson.id),
+        ...(result?.shared ?? []).flatMap((one) =>
+          choices[one.blockId] === 'cancel'
+            ? one.lessons.map((lesson) => lesson.id)
+            : choices[one.blockId] === 'keep'
+              ? one.chosenOnly
+              : [],
+        ),
+      ],
     }),
     save: async (body) => {
       done.current = await saveBulkCancel(body, key.current);

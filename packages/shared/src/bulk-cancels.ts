@@ -47,9 +47,10 @@ export type BulkCancelChoice = (typeof BULK_CANCEL_CHOICES)[number];
 
 /**
  * The bulk cancel itself: the scope, the reason, one choice for each shared
- * block the check listed (decision 7), and the lessons the check listed to
- * cancel outside the shared blocks, so that a scope changed meanwhile is
- * refused, never cancelled unseen (decision 12).
+ * block the check listed (decision 7), and every lesson the check listed to
+ * cancel under those choices (`cancel`, and of each shared block all its
+ * lessons for "cancel" or `chosenOnly` for "keep"), so that a scope changed
+ * meanwhile is refused, never cancelled unseen (decision 12).
  */
 export const bulkCancelBodySchema = z.strictObject({
   ...scopeShape,

@@ -115,7 +115,12 @@ describe('the bulk cancel', () => {
     const response = await save(branch, {
       ...body,
       blocks: answer.shared.map((one) => ({ blockId: one.blockId, choice })),
-      lessonIds: answer.cancel.map((one) => one.lesson.id),
+      lessonIds: [
+        ...answer.cancel.map((one) => one.lesson.id),
+        ...answer.shared.flatMap((one) =>
+          choice === 'cancel' ? one.lessons.map((lesson) => lesson.id) : one.chosenOnly,
+        ),
+      ],
     });
     expect(response.status, JSON.stringify(response.body)).toBe(200);
     return { check: answer, saved: bulkCancelAnswerSchema.parse(response.body) };
@@ -185,9 +190,11 @@ describe('the bulk cancel', () => {
    * - on Tuesday in lessons 2 and 3, physics of 7 Oxford, a double lesson once `pairUp` pairs it;
    * - with `young`, a day of four lessons of 30 minutes (08:00, 08:35,
    *   09:10, 09:45) for grades 1 to 4, and the class 3 Cambridge with
-   *   reading on Monday in lessons 2 and 3 and drawing in lesson 4.
+   *   reading on Monday in lessons 2 and 3 and drawing in lesson 4;
+   * - with `twoGrades`, the class 8 Yale and art on Thursday in lesson 1 in a
+   *   group of 7 Oxford and 8 Yale.
    */
-  async function scene(input: { branch?: string; young?: boolean } = {}) {
+  async function scene(input: { branch?: string; young?: boolean; twoGrades?: boolean } = {}) {
     const branch = input.branch ?? (await t.newBranch());
     const year = await load.classes.year(branch);
     for (const [index, [start, end]] of QUARTERS.entries()) {
@@ -324,6 +331,22 @@ describe('the bulk cancel', () => {
       await placeAt(branch, version, drawingRow, 1, 7);
       young = { classId, reading, drawing };
     }
+    let twoGrades: { yale: string; art: string } | null = null;
+    if (input.twoGrades === true) {
+      const art = await load.classes.subject({ grades: [7, 8], journalType: 'attendance_only' });
+      const yale = await load.classes.schoolClass(branch, year, { grade: 8, name: 'Yale' });
+      const group = await load.classes.group(branch, year, art, [oxford, yale], { name: '78-A' });
+      const artRow = await load.row({
+        branch_id: branch,
+        version_id: version,
+        group_id: group,
+        subject_id: art,
+        teacher_id: (await teacherOf(branch, art, [7, 8])).staffId,
+        lessons_per_week: 1,
+      });
+      await placeAt(branch, version, artRow, 4, 1);
+      twoGrades = { yale, art };
+    }
     const confirmed = await t.post(`/api/timetable/versions/${version}/templates/confirm`, branch);
     expect(confirmed.status, JSON.stringify(confirmed.body)).toBe(200);
     await load.freeEditLock(version);
@@ -344,6 +367,7 @@ describe('the bulk cancel', () => {
       groups,
       physicsTeacher,
       young,
+      twoGrades,
     };
   }
 
@@ -476,7 +500,10 @@ describe('the bulk cancel', () => {
       expect(new Set(english.map((one) => one.block_id)).size).toBe(1);
       const princetonMaths = await oneLesson(s, NEXT_MONDAY, { classId: s.princeton }, s.maths);
 
+      // The check writes nothing (decision 12).
+      const untouched = await everything();
       const answer = await checked(s.branch, body);
+      expect(await everything()).toEqual(untouched);
       expect(answer.cancel.map((one) => one.lesson.id)).toEqual([maths.id]);
       expect(answer.shared).toHaveLength(1);
       const [shared] = answer.shared;
@@ -491,7 +518,7 @@ describe('the bulk cancel', () => {
         ...body,
         reason: '  Excursion to the museum  ',
         blocks: [{ blockId: shared?.blockId ?? '', choice: 'cancel' }],
-        lessonIds: [maths.id],
+        lessonIds: [maths.id, ...english.map((one) => one.id)],
       });
       expect(response.status, JSON.stringify(response.body)).toBe(200);
       const saved = bulkCancelAnswerSchema.parse(response.body);
@@ -655,6 +682,35 @@ describe('the bulk cancel', () => {
     });
   });
 
+  describe('a group of two grades', () => {
+    it('lists a group of a chosen grade-7 class and a grade-8 class not chosen as shared, and not when both are chosen', async () => {
+      const s = await scene({ twoGrades: true });
+      const two = s.twoGrades;
+      if (two === null) throw new Error('No group of two grades.');
+      const art = await oneLesson(s, '2026-10-22', {}, two.art);
+      const answer = await checked(s.branch, {
+        date: '2026-10-22',
+        classIds: [s.oxford],
+        lessonNumbers: [1],
+      });
+      expect(answer.cancel).toEqual([]);
+      expect(answer.shared).toHaveLength(1);
+      expect(answer.shared[0]).toMatchObject({
+        blockId: art.block_id,
+        chosenClasses: [{ id: s.oxford, name: '7 Oxford' }],
+        otherClasses: [{ id: two.yale, name: '8 Yale' }],
+        chosenOnly: [],
+      });
+      const both = await checked(s.branch, {
+        date: '2026-10-22',
+        classIds: [s.oxford, two.yale],
+        lessonNumbers: [1],
+      });
+      expect(both.shared).toEqual([]);
+      expect(both.cancel.map((one) => one.lesson.id)).toEqual([art.id]);
+    });
+  });
+
   describe('the slots', () => {
     it('reads each class’s slots from its own day by clock time, and skips a number its day lacks (decision 2)', async () => {
       const s = await scene({ young: true });
@@ -725,9 +781,12 @@ describe('the bulk cancel', () => {
       expect(await noticesOf(s.physicsTeacher.accountId)).toHaveLength(1);
     });
 
-    it('keeps both blocks of a shared double lesson with one choice, cancelling 7 Oxford’s part in each (decisions 4 and 5)', async () => {
-      const s = await scene();
-      // The English block copied to lesson 3 of the same Monday, the two made one double pair.
+    /**
+     * The English block of a scene copied by the migrator to lesson 3 of the
+     * same Monday, the two made one double pair; with `cause`, the copy's
+     * lessons cancelled by it.
+     */
+    async function englishDouble(s: Scene, cause: 'day_off' | null = null) {
       const english = (await lessonsOf(s.branch, NEXT_MONDAY)).filter(
         (one) => one.subject_id === s.english,
       );
@@ -775,11 +834,19 @@ describe('the bulk cancel', () => {
               pattern_entry_id: one.pattern_entry_id,
               teacher_id: one.teacher_id,
               room_id: one.room_id,
+              cancel_cause: cause,
             })
             .returning(['id', 'group_id'])
             .executeTakeFirstOrThrow(),
         );
       }
+      return { blockId, made, english, later };
+    }
+
+    it('keeps both blocks of a shared double lesson with one choice, cancelling 7 Oxford’s part in each (decisions 4 and 5)', async () => {
+      const s = await scene();
+      // The English block copied to lesson 3 of the same Monday, the two made one double pair.
+      const { blockId, made, english, later } = await englishDouble(s);
       const { check: answer, saved } = await checkAndSave(
         s.branch,
         { date: NEXT_MONDAY, classIds: [s.oxford], lessonNumbers: [2] },
@@ -805,6 +872,22 @@ describe('the bulk cancel', () => {
         { block_id: blockId, choice: 'keep' },
         { block_id: made.id, choice: 'keep' },
       ]);
+    });
+
+    it('brings in no half of a double whose lessons are all cancelled already, and keeps the shared block alone (spec review must-fix 1)', async () => {
+      const s = await scene();
+      const { blockId, later } = await englishDouble(s, 'day_off');
+      const { check: answer, saved } = await checkAndSave(
+        s.branch,
+        { date: NEXT_MONDAY, classIds: [s.oxford], lessonNumbers: [2] },
+        'keep',
+      );
+      expect(answer.shared).toHaveLength(1);
+      expect(answer.shared[0]).toMatchObject({ blockId, pairBlockId: null });
+      expect(saved.kept).toEqual([blockId]);
+      for (const one of later) {
+        expect(await rowOf(one.id)).toMatchObject({ cancel_cause: 'day_off', cancel_reason: null });
+      }
     });
 
     it('cancels the lessons of a past date in the slots, and holds a half outside them that has started (review correction 1)', async () => {
@@ -876,6 +959,8 @@ describe('the bulk cancel', () => {
         lessonNumbers: [3],
       });
       expect(answer.cancel.map((one) => one.lesson.id)).toEqual([copied[1]]);
+      // Listed as started: no single cancel is offered for it.
+      expect(answer.cancel[0]?.lesson.canCancel).toBe(false);
       expect(answer.held.map((one) => one.id)).toEqual([copied[0]]);
       expect(saved.cancelled).toEqual([copied[1]]);
       expect((await rowOf(copied[0] ?? ''))?.cancel_cause).toBeNull();
@@ -896,12 +981,42 @@ describe('the bulk cancel', () => {
       );
       expect(cancelled.status, JSON.stringify(cancelled.body)).toBe(200);
       const physics = await pairUp(s, NEXT_TUESDAY);
+      // 7 Princeton's maths cancelled by a day off, as a calendar change writes it.
+      const princeton = await oneLesson(s, NEXT_MONDAY, { classId: s.princeton }, s.maths);
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ cancel_cause: 'day_off' })
+        .where('id', '=', princeton.id)
+        .execute();
+      // Nothing left to cancel in lesson 1: the check refuses too.
+      refusedWith(
+        await check(s.branch, {
+          date: NEXT_MONDAY,
+          classIds: [s.oxford, s.princeton],
+          lessonNumbers: [1],
+        }),
+        409,
+        'bulk_cancel_empty',
+      );
       const answer = await checked(s.branch, {
         date: NEXT_MONDAY,
-        classIds: [s.oxford],
-        lessonNumbers: [1],
+        classIds: [s.oxford, s.princeton],
+        lessonNumbers: [1, 2],
       });
-      expect(answer.alreadyCancelled.map((one) => one.id)).toEqual([maths.id]);
+      expect(answer.alreadyCancelled.map((one) => one.id).sort()).toEqual(
+        [maths.id, princeton.id].sort(),
+      );
+      expect(answer.cancel.map((one) => one.lesson.id)).not.toContain(maths.id);
+      const both = await checkAndSave(s.branch, {
+        date: NEXT_MONDAY,
+        classIds: [s.oxford, s.princeton],
+        lessonNumbers: [1, 2],
+      });
+      expect(both.saved.cancelled).not.toContain(princeton.id);
+      expect(await rowOf(princeton.id)).toMatchObject({
+        cancel_cause: 'day_off',
+        cancel_reason: null,
+      });
       refusedWith(
         await save(s.branch, { date: NEXT_MONDAY, classIds: [s.oxford], lessonNumbers: [1] }),
         409,
@@ -1167,6 +1282,89 @@ describe('the bulk cancel', () => {
       return Promise.all([one, two]);
     }
 
+    /** A draft of the scene without 7 Princeton's maths, ready to publish. */
+    async function withoutPrincetonMaths(s: Scene) {
+      const created = await t.post('/api/timetable/versions', s.branch, {
+        academicYearId: s.year,
+        startsOn: MONDAY,
+        copyFrom: s.version,
+      });
+      expect(created.status, JSON.stringify(created.body)).toBe(201);
+      const version = (created.body as { id: string }).id;
+      // The pattern placed again, without 7 Princeton's maths and its row.
+      await t.database.migrator
+        .deleteFrom('pattern_blocks')
+        .where('version_id', '=', version)
+        .execute();
+      const rows = await t.database.migrator
+        .selectFrom('teaching_load_rows')
+        .select(['id', 'class_id', 'group_id', 'subject_id'])
+        .where('version_id', '=', version)
+        .orderBy('id')
+        .execute();
+      const rowOfUnit = (
+        subject: string,
+        classId: string | null,
+        groupId: string | null = null,
+      ) => {
+        const found = rows.find(
+          (one) =>
+            one.subject_id === subject && one.class_id === classId && one.group_id === groupId,
+        );
+        if (found === undefined) throw new Error('No such load row.');
+        return found.id;
+      };
+      await t.database.migrator
+        .deleteFrom('teaching_load_rows')
+        .where('id', '=', rowOfUnit(s.maths, s.princeton))
+        .execute();
+      await placeAt(s.branch, version, rowOfUnit(s.maths, s.oxford), 1, 1);
+      await placeAt(s.branch, version, rowOfUnit(s.english, null, s.groups[0] ?? ''), 1, 3);
+      await placeAt(s.branch, version, rowOfUnit(s.physics, s.oxford), 2, 3);
+      await placeAt(s.branch, version, rowOfUnit(s.physics, s.oxford), 2, 5);
+      const confirmed = await t.post(
+        `/api/timetable/versions/${version}/templates/confirm`,
+        s.branch,
+      );
+      expect(confirmed.status, JSON.stringify(confirmed.body)).toBe(200);
+      await load.freeEditLock(version);
+      return version;
+    }
+
+    it('runs a bulk cancel and a publish that removes its lesson one after the other, in either order', async () => {
+      for (const order of [0, 1]) {
+        const s = await scene();
+        const draft = await withoutPrincetonMaths(s);
+        const maths = await oneLesson(s, '2026-10-26', { classId: s.princeton }, s.maths);
+        const bulk = () =>
+          save(s.branch, {
+            date: '2026-10-26',
+            classIds: [s.princeton],
+            lessonNumbers: [1],
+            lessonIds: [maths.id],
+          });
+        const send = () => publish(s.branch, draft, NEXT_MONDAY);
+        const [a, b] = await inOrder(
+          s.branch,
+          order === 0 ? send : bulk,
+          order === 0 ? bulk : send,
+        );
+        const [published, bulkAnswer] = order === 0 ? [a, b] : [b, a];
+        expect(published.status, JSON.stringify(published.body)).toBe(200);
+        expect(await rowOf(maths.id)).toBeUndefined();
+        if (order === 0) {
+          // Published first: the bulk cancel, checked before the lock, finds the lesson gone under it.
+          refusedWith(bulkAnswer, 409, 'bulk_cancel_empty');
+          expect(
+            (await t.entries('lesson.bulk_cancel')).filter((one) => one.branch_id === s.branch),
+          ).toEqual([]);
+        } else {
+          expect(bulkAnswer.status, JSON.stringify(bulkAnswer.body)).toBe(200);
+          expect(bulkCancelAnswerSchema.parse(bulkAnswer.body).cancelled).toEqual([maths.id]);
+        }
+      }
+    });
+
     it('runs a bulk cancel and a cancel of one of its lessons one after the other, in either order', async () => {
       for (const order of [0, 1]) {
         const s = await scene();
@@ -1189,7 +1387,8 @@ describe('the bulk cancel', () => {
           expect((await rowOf(maths.id))?.cancel_reason).toBe('Excursion to the museum');
         } else {
           expect(oneAnswer.status, JSON.stringify(oneAnswer.body)).toBe(200);
-          refusedWith(bulkAnswer, 409, 'bulk_scope_changed');
+          // The lesson was cancelled first: nothing is left to cancel.
+          refusedWith(bulkAnswer, 409, 'bulk_cancel_empty');
           expect((await rowOf(maths.id))?.cancel_reason).toBe('The teacher is at a seminar');
         }
       }

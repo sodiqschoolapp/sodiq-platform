@@ -111,7 +111,7 @@ export class TimetableBulkCancels {
     return this.transactions.run(access.branchIds, async (transaction) => {
       await yearOfClasses(transaction, branchId, input);
       const scope = await scopeOf(transaction, branchId, input);
-      if (scope.items.length === 0 && scope.alreadyCancelled.length === 0) {
+      if (scope.items.length === 0) {
         throw new ApiException('bulk_cancel_empty', 409);
       }
       const moment = await transactionMoment(transaction);
@@ -245,29 +245,21 @@ export class TimetableBulkCancels {
         unknown.map((one) => one.blockId),
       );
     }
-    const plain = new Set(
-      scope.items
-        .filter((item) => !item.shared)
-        .flatMap((item) => item.lessons.map((one) => one.id)),
-    );
+    if (scope.items.length === 0) {
+      throw new ApiException('bulk_cancel_empty', 409);
+    }
+    // Every lesson the check listed to cancel under these choices, and no
+    // other (decision 12; spec review of the code, must-fix 2).
+    const cancelled = lessonsToCancel(scope.items, choiceOf);
+    const toCancel = new Set(cancelled.map((one) => one.id));
     const listed = new Set(input.lessonIds);
     const differ = [
-      ...[...plain].filter((id) => !listed.has(id)),
-      ...[...listed].filter((id) => !plain.has(id)),
+      ...[...toCancel].filter((id) => !listed.has(id)),
+      ...[...listed].filter((id) => !toCancel.has(id)),
     ].sort();
     if (differ.length > 0) {
       throw refusal('bulk_scope_changed', 'lessonIds', differ);
     }
-    if (scope.items.length === 0) {
-      throw new ApiException('bulk_cancel_empty', 409);
-    }
-
-    const cancelled = scope.items
-      .flatMap((item) => {
-        if (!item.shared) return item.lessons;
-        return choiceOf.get(item.blockId) === 'cancel' ? item.lessons : item.chosenOnly;
-      })
-      .sort(byStart);
     const cancelledIds = cancelled.map((one) => one.id);
     if (cancelledIds.length > 0) {
       await transaction
@@ -346,6 +338,7 @@ export class TimetableBulkCancels {
       assignmentId: access.assignmentId,
       action: 'lesson.bulk_cancel',
       record: { type: 'bulk_cancel', id: record.id },
+      oldValue: { lessonIds: cancelledIds, cancelCause: null },
       newValue: {
         date: input.date,
         classIds: [...input.classIds].sort(),
@@ -370,6 +363,23 @@ export class TimetableBulkCancels {
     });
     return { id: record.id, cancelled: cancelledIds, kept };
   }
+}
+
+/**
+ * The lessons a bulk cancel cancels: every lesson of an item not shared, and
+ * of a shared one all its lessons for "cancel" or those fed by chosen
+ * classes alone for "keep" (decision 5), by start.
+ */
+function lessonsToCancel(
+  items: readonly Item[],
+  choiceOf: ReadonlyMap<string, BulkCancelChoice>,
+): StoredDayLesson[] {
+  return items
+    .flatMap((item) => {
+      if (!item.shared) return item.lessons;
+      return choiceOf.get(item.blockId) === 'cancel' ? item.lessons : item.chosenOnly;
+    })
+    .sort(byStart);
 }
 
 /** A refusal that lists ids under one path. */
@@ -471,7 +481,6 @@ async function scopeOf(
   branchId: string,
   input: BulkCancelCheckBody,
 ): Promise<Scope> {
-  await yearOfClasses(transaction, branchId, input);
   const moment = await transactionMoment(transaction);
   const branch = await transaction
     .selectFrom('branches')
@@ -558,6 +567,9 @@ async function scopeOf(
         continue;
       }
       const partnerLessons = lessonsOfBlock(partner).filter(held);
+      // A half all cancelled already keeps its cause and brings nothing in
+      // (5.6a-1 decision 4; spec review of the code, must-fix 1).
+      if (partnerLessons.length === 0) continue;
       // A half outside the slots that has started stays held (review correction 1).
       if (partnerLessons.some((one) => one.startsAt.getTime() <= moment.getTime())) {
         heldHalves.push(...partnerLessons);
