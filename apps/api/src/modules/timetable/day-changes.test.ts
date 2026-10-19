@@ -952,31 +952,158 @@ describe('one-day changes: cancel and restore', () => {
       const [entry] = await t.entries('lesson.cancel', lesson.id);
       expect(entry).toMatchObject({ new_value: { notices: { notified: 0, marked: 1 } } });
     });
+  });
 
-    it('cancels one half of a double lesson only, and restores it as a single lesson while the other half is cancelled (decision 4)', async () => {
-      const s = await scene({ twoLessons: true });
+  // edge/timetable, Structure, "Double lessons": "Two linked lessons in
+  // consecutive lesson slots with the same teacher and room. They are moved,
+  // cancelled and substituted together." (review of the code, change 1).
+  describe('a double lesson', () => {
+    /** The two Monday lessons of the first class on `date`, made one double pair by the migrator. */
+    async function doubleOf(s: Scene, date: string) {
       const both = await t.database.migrator
         .selectFrom('lessons')
         .select(['id', 'block_id'])
         .where('class_id', '=', s.classId)
-        .where('lesson_date', '=', NEXT_MONDAY)
+        .where('lesson_date', '=', date)
         .orderBy('starts_at')
         .execute();
       expect(both).toHaveLength(2);
       const [first, second] = both;
       if (first === undefined || second === undefined) throw new Error('No double lesson.');
-      // The two blocks made one double pair by the migrator, as the checks of a pair read it.
       await t.database.migrator
         .updateTable('lesson_blocks')
         .set({ double_pair_id: randomUUID() })
         .where('id', 'in', [first.block_id, second.block_id])
         .execute();
-      changed(await cancel(s.branch, first.id));
-      expect(await rowOf(second.id)).toMatchObject({ cancel_cause: null });
-      changed(await cancel(s.branch, second.id));
-      // With its other half cancelled, a half comes back as a single lesson.
-      changed(await restore(s.branch, first.id));
-      changed(await restore(s.branch, second.id));
+      return { first: first.id, second: second.id };
+    }
+
+    const causeOf = async (id: string) => (await rowOf(id))?.cancel_cause ?? null;
+
+    it('cancels both halves when either is cancelled, with one log entry and one notice to the teacher', async () => {
+      const s = await scene({ twoLessons: true });
+      for (const [date, named] of [
+        [NEXT_MONDAY, 'first'],
+        ['2026-10-26', 'second'],
+      ] as const) {
+        const pair = await doubleOf(s, date);
+        const notices = (await noticesOf(s.teacher.accountId)).length;
+        const answer = changed(await cancel(s.branch, pair[named], 'Excursion to the museum'));
+        expect(answer.lesson).toMatchObject({ id: pair[named], cancelCause: 'reason' });
+        for (const id of [pair.first, pair.second]) {
+          expect(await rowOf(id)).toMatchObject({
+            cancel_cause: 'reason',
+            cancel_reason: 'Excursion to the museum',
+          });
+          expect(await claimsOf(id)).toEqual([]);
+          expect(await markOf(id)).not.toBeNull();
+        }
+        expect(await noticesOf(s.teacher.accountId)).toHaveLength(notices + 1);
+        const entries = await t.entries('lesson.cancel', pair[named]);
+        expect(entries).toHaveLength(1);
+        expect(entries[0]).toMatchObject({
+          new_value: { lessonIds: [pair.first, pair.second], notices: { notified: 1 } },
+        });
+        // The other half was cancelled by the same change: no entry of its own.
+        const other = named === 'first' ? pair.second : pair.first;
+        expect(await t.entries('lesson.cancel', other)).toEqual([]);
+        refusedWith(await cancel(s.branch, other), 409, 'lesson_cancelled');
+      }
+    });
+
+    it('restores both halves when either is restored, checked together', async () => {
+      const s = await scene({ twoLessons: true });
+      for (const [date, named] of [
+        [NEXT_MONDAY, 'first'],
+        ['2026-10-26', 'second'],
+      ] as const) {
+        const pair = await doubleOf(s, date);
+        changed(await cancel(s.branch, pair.first));
+        const notices = (await noticesOf(s.teacher.accountId)).length;
+        const answer = changed(await restore(s.branch, pair[named]));
+        expect(answer.lesson).toMatchObject({ id: pair[named], cancelCause: null });
+        for (const id of [pair.first, pair.second]) {
+          expect(await rowOf(id)).toMatchObject({
+            cancel_cause: null,
+            cancel_reason: null,
+            teacher_id: s.teacher.staffId,
+          });
+          expect((await claimsOf(id)).length).toBeGreaterThan(0);
+        }
+        expect(await noticesOf(s.teacher.accountId)).toHaveLength(notices + 1);
+        const [entry] = await t.entries('lesson.restore', pair[named]);
+        expect(entry).toMatchObject({ new_value: { lessonIds: [pair.first, pair.second] } });
+      }
+    });
+
+    it('refuses the restore as a whole when the other half’s room is taken, and nothing is written', async () => {
+      const s = await scene({ twoLessons: true });
+      const pair = await doubleOf(s, NEXT_MONDAY);
+      changed(await cancel(s.branch, pair.second));
+      // The other class's lesson takes the room of the first half meanwhile.
+      const other = await lessonOf(s, NEXT_MONDAY, s.otherClass);
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ room_id: s.room })
+        .where('id', '=', other.id)
+        .execute();
+      const before = await everything();
+      const blocked = blockedBy(await restore(s.branch, pair.second));
+      expect(blocked.rules).toContain('room_double');
+      expect(await everything()).toEqual(before);
+      expect(await causeOf(pair.first)).toBe('reason');
+      expect(await causeOf(pair.second)).toBe('reason');
+    });
+
+    it('refuses a change of either half once the earlier half has started (decision 3)', async () => {
+      const s = await scene();
+      const earlier = await todayLesson(s, '23:50', '23:54');
+      const later = await todayLesson(s, '23:56', '23:59');
+      const blocks = await t.database.migrator
+        .selectFrom('lessons')
+        .select('block_id')
+        .where('id', 'in', [earlier, later])
+        .execute();
+      await t.database.migrator
+        .updateTable('lesson_blocks')
+        .set({ double_pair_id: randomUUID() })
+        .where(
+          'id',
+          'in',
+          blocks.map((one) => one.block_id),
+        )
+        .execute();
+      const before = await everything();
+      refusedWith(await cancel(s.branch, later), 409, 'lesson_started');
+      expect(await everything()).toEqual(before);
+      const shown = dayAnswerSchema
+        .parse((await day(s.branch, s.classId, '2026-10-10')).body)
+        .lessons.find((one) => one.id === later);
+      expect(shown).toMatchObject({ canCancel: false, canRestore: false });
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ cancel_cause: 'reason', cancel_reason: 'Rain' })
+        .where('id', 'in', [earlier, later])
+        .execute();
+      refusedWith(await restore(s.branch, later), 409, 'lesson_started');
+    });
+
+    it('leaves a half cancelled by an exam as it is: the other half is cancelled and restored alone (decision 4)', async () => {
+      const s = await scene({ twoLessons: true });
+      const pair = await doubleOf(s, NEXT_MONDAY);
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ cancel_cause: 'exam' })
+        .where('id', '=', pair.second)
+        .execute();
+      refusedWith(await cancel(s.branch, pair.second), 409, 'lesson_cancelled');
+      changed(await cancel(s.branch, pair.first));
+      expect(await causeOf(pair.first)).toBe('reason');
+      expect(await causeOf(pair.second)).toBe('exam');
+      refusedWith(await restore(s.branch, pair.second), 409, 'lesson_not_restorable');
+      changed(await restore(s.branch, pair.first));
+      expect(await causeOf(pair.first)).toBeNull();
+      expect(await causeOf(pair.second)).toBe('exam');
     });
   });
 

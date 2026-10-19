@@ -1,6 +1,6 @@
 import {
   addDays,
-  checkCandidate,
+  checkCandidates,
   checkTeacherTime,
   type Facts,
   type Placement,
@@ -32,8 +32,11 @@ import type { Timetable } from './timetable.service.js';
  *   returned and need no tick (decision 8);
  * - `teacher_week_load` is left out: one date cannot count a week (spec
  *   review should-fix 10);
- * - a lesson of a double lesson whose other half is not held (a one-day
- *   cancel of one half, decision 4) is checked as a single lesson;
+ * - the two halves of a double lesson are restored together and checked
+ *   together (`edge/timetable`, Structure, "Double lessons": "They are moved,
+ *   cancelled and substituted together"; review of the code, change 1); a
+ *   half whose other half stays cancelled by another cause (an exam) is
+ *   checked as a single lesson;
  * - a Tutor lesson takes the class's Tutor in force at its start (`tutorAt`)
  *   (decision 9). The rows are read with the Tutor of the date
  *   (`withVersionTutors`), so that Tutor is the row's teacher and is checked
@@ -63,21 +66,49 @@ export interface StoredDayLesson {
   readonly cancelReason: string | null;
 }
 
-/** What the check found for the candidate. */
+/** What the check found for the candidates. */
 export interface StoredDayResult {
   readonly blocked: readonly RuleResult[];
   readonly warnings: readonly RuleResult[];
-  /** The teacher the lesson is checked and written with: a Tutor lesson's Tutor at its start, else its own. */
-  readonly teacherId: string | null;
+  /**
+   * The teacher each candidate is checked and written with, by lesson id: a
+   * Tutor lesson's Tutor at its start, else its own.
+   */
+  readonly teacherIds: ReadonlyMap<string, string | null>;
   /**
    * When a rule of the room blocks: the rooms of the branch in use in which
-   * the same check finds nothing blocked for the lesson, the lesson's own room
-   * left out (decision 7); else none.
+   * the same check finds nothing blocked for the lessons, their own room left
+   * out (decision 7); else none.
    */
   readonly freeRooms: readonly string[];
 }
 
 const MINUTE = 60_000;
+
+/** The class or group of a stored lesson. */
+const unitOf = (one: StoredDayLesson) => one.classId ?? one.groupId ?? '';
+
+/**
+ * The lessons of `lesson`'s double pair among `lessons` (the stored lessons
+ * of its date): those of the same pair and class or group, `lesson` among
+ * them, by start; `[lesson]` for a lesson of no pair.
+ */
+export function pairOf(
+  lessons: readonly StoredDayLesson[],
+  lesson: StoredDayLesson,
+): StoredDayLesson[] {
+  if (lesson.doublePairId === null) return [lesson];
+  const pair = lessons.filter(
+    (one) =>
+      one.id !== lesson.id &&
+      one.date === lesson.date &&
+      one.doublePairId === lesson.doublePairId &&
+      unitOf(one) === unitOf(lesson),
+  );
+  return [...pair, lesson].sort(
+    (a, b) => a.startsAt.getTime() - b.startsAt.getTime() || a.id.localeCompare(b.id),
+  );
+}
 
 /** The stored lessons of a branch on a date, as the check and the routes read them. */
 export async function storedLessonsOn(
@@ -196,20 +227,24 @@ async function examsOn(
 }
 
 /**
- * Checks `lesson` held on its date with `roomId` (its own room unless given),
- * among the branch's other stored lessons of the date (see the file's comment).
+ * Checks `lessons` (one lesson, or the halves of a double pair, of one date
+ * and version) held on their date with `roomId` (their own rooms unless
+ * given), together, among the branch's other stored lessons of the date (see
+ * the file's comment).
  */
 export async function storedDayCheck(
   transaction: Transaction,
   services: { readonly timetable: Timetable; readonly pattern: TimetablePattern },
   input: {
     readonly accountId: string;
-    readonly lesson: StoredDayLesson;
+    readonly lessons: readonly StoredDayLesson[];
     readonly roomId?: string | null;
   },
 ): Promise<StoredDayResult> {
-  const { lesson } = input;
+  const [lesson] = input.lessons;
+  if (lesson === undefined) throw new Error('No lesson to check.');
   const { date, branchId } = lesson;
+  const ids = new Set(input.lessons.map((one) => one.id));
   // Read as if the version started on the date (`.claude/rules/timetable.md`).
   const stored = await services.timetable.versionRow(transaction, lesson.versionId);
   const row = { ...stored, starts_on: date };
@@ -231,13 +266,12 @@ export async function storedDayCheck(
     Math.round((moment.getTime() - begins(date).getTime()) / MINUTE);
 
   const held = (await storedLessonsOn(transaction, branchId, date)).filter(
-    (one) => one.cancelCause === null && one.id !== lesson.id,
+    (one) => one.cancelCause === null && !ids.has(one.id),
   );
-  const unitOf = (one: StoredDayLesson) => one.classId ?? one.groupId ?? '';
   const units = new Map(data.units.map((unit) => [unit.id, unit]));
   // A half of a double is one of a pair only while its other half is held.
   const halves = new Map<string, number>();
-  for (const one of [...held, lesson]) {
+  for (const one of [...held, ...input.lessons]) {
     if (one.doublePairId === null) continue;
     const key = `${one.doublePairId}|${unitOf(one)}`;
     halves.set(key, (halves.get(key) ?? 0) + 1);
@@ -273,24 +307,32 @@ export async function storedDayCheck(
   };
 
   // A Tutor lesson takes the class's Tutor at its start (decision 9).
-  const tutorSubject = data.subjects.some((one) => one.id === lesson.subjectId && one.tutorSubject);
-  const tutorLesson = tutorSubject && lesson.classId !== null;
-  const rowTeacher = model.rowOf(lesson.loadRowId).teacherId;
-  let teacherId = lesson.teacherId;
-  if (tutorLesson && lesson.classId !== null) {
-    teacherId = tutorOn(lesson.classId, date, minutesOf(lesson.startsAt));
+  const tutorSubjects = new Set(
+    data.subjects.filter((one) => one.tutorSubject).map((one) => one.id),
+  );
+  const teacherIds = new Map<string, string | null>();
+  const followed = new Set<string>();
+  for (const one of input.lessons) {
+    let teacherId = one.teacherId;
+    if (tutorSubjects.has(one.subjectId) && one.classId !== null) {
+      teacherId = tutorOn(one.classId, date, minutesOf(one.startsAt));
+      if (teacherId !== null && teacherId !== model.rowOf(one.loadRowId).teacherId) {
+        followed.add(one.id);
+      }
+    }
+    teacherIds.set(one.id, teacherId);
   }
-  const followed = tutorLesson && teacherId !== null && teacherId !== rowTeacher;
+  const candidateTeachers = [...new Set([...teacherIds.values()].flatMap((one) => one ?? []))];
 
   // Only a teacher of the branch has claims elsewhere to read (`teacher_claims_elsewhere`
   // refuses another), as `datedCheck` reads them (permission review should-fix 6).
   const linked =
-    teacherId === null
+    candidateTeachers.length === 0
       ? []
       : await transaction
           .selectFrom('staff_branches')
           .select('staff_id')
-          .where('staff_id', '=', teacherId)
+          .where('staff_id', 'in', candidateTeachers)
           .where('branch_id', '=', branchId)
           .execute();
   const { elsewhere } = await claimsElsewhere(transaction, {
@@ -320,35 +362,49 @@ export async function storedDayCheck(
     otherDrafts: [],
   };
 
-  const check = (roomId: string | null) => {
-    const candidate = placementOf(lesson, followed ? null : teacherId, roomId);
-    const results = checkCandidate(others, facts, candidate, { availabilityFrom: date }).filter(
+  // `undefined`: each lesson in its own room.
+  const check = (roomId: string | null | undefined) => {
+    const candidates = input.lessons.map((one) =>
+      placementOf(
+        one,
+        followed.has(one.id) ? null : (teacherIds.get(one.id) ?? null),
+        roomId === undefined ? one.roomId : roomId,
+      ),
+    );
+    const results = checkCandidates(others, facts, candidates, { availabilityFrom: date }).filter(
       (one) => one.rule !== 'teacher_week_load',
     );
-    return { candidate, results };
+    return { candidates, results };
   };
-  const roomId = input.roomId === undefined ? lesson.roomId : input.roomId;
-  const { candidate, results } = check(roomId);
-  if (followed && teacherId !== null) {
+  const roomId = input.roomId;
+  const { candidates, results } = check(roomId);
+  for (const id of followed) {
+    const teacherId = teacherIds.get(id) ?? null;
+    const candidate = candidates.find((one) => one.id === id);
+    if (teacherId === null || candidate === undefined) continue;
     const timed = { ...candidate, teacherIds: [teacherId] };
-    if (checkTeacherTime(others, timed, facts.travelMinutes).length > 0) {
-      teacherId = null;
+    const rest = candidates.filter((one) => one.id !== id);
+    if (checkTeacherTime([...others, ...rest], timed, facts.travelMinutes).length > 0) {
+      teacherIds.set(id, null);
     }
   }
   const blocked = results.filter((one) => one.severity === 'blocked');
   // Rooms are offered only when a rule of the room blocks: when the teacher
   // or the class blocks, no room helps (code review should-fix 5).
+  const ownRooms = new Set(
+    input.lessons.map((one) => (roomId === undefined ? one.roomId : roomId)),
+  );
   const freeRooms = !blocked.some((one) => one.rule.startsWith('room_'))
     ? []
     : [...facts.rooms.values()]
-        .filter((room) => room.status === 'in_use' && room.id !== roomId)
+        .filter((room) => room.status === 'in_use' && !ownRooms.has(room.id))
         .map((room) => room.id)
         .sort()
         .filter((id) => !check(id).results.some((one) => one.severity === 'blocked'));
   return {
     blocked,
     warnings: results.filter((one) => one.severity === 'warning'),
-    teacherId,
+    teacherIds,
     freeRooms,
   };
 }

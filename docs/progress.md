@@ -7,6 +7,7 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 - The Academic Vice Principal (and the Super Admin) cancel one stored lesson with a reason and restore it on "Day changes" (`/timetable/day`; `GET /api/timetable/day`, `POST /api/timetable/lessons/:id/cancel` and `/restore`); the Principal views the day.
 - A restore runs every rule on the lesson's date (`storedDayCheck`, `stored-day.ts`) and is refused with the free rooms listed; each change marks the lesson and notifies its teachers (`timetable.day_changed`), and is audited (`lesson.cancel`, `lesson.restore`).
 - `keyOf` compares the cancel; a publish keeps a one-day cancel on a lesson it creates again in another block.
+- A cancel or a restore of a half of a double lesson takes both halves (`pairOf`, `stored-day.ts`); `storedDayCheck` takes the lessons to check together.
 - Left out: room change and move (5.6a-2), bulk cancel (5.6a-3), correction of a past lesson (5.6a-4), one-day changes kept after a publish (5.6a-5); a lesson with data (6.1) and a closed quarter (9.2b) by From lines.
 
 The next sessions must know:

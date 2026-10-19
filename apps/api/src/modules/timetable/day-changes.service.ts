@@ -36,7 +36,7 @@ import {
   lockPublishChain,
   refusingPublish,
 } from './publish.service.js';
-import { storedDayCheck, storedLessonsOn, type StoredDayLesson } from './stored-day.js';
+import { pairOf, storedDayCheck, storedLessonsOn, type StoredDayLesson } from './stored-day.js';
 import { Timetable } from './timetable.service.js';
 import { sendWeekChanges, snapshotWeek } from './week-changes.js';
 
@@ -94,6 +94,10 @@ const answerOfResult = (result: RuleResult): RuleResultAnswer => ({
  * the writer's order (`snapshotWeek`), and reads the lesson again after them:
  * a publish that ran meanwhile may have removed it (404) (decision 6, spec
  * review should-fix 7). A lesson that has started is refused (decision 3).
+ * The two halves of a double lesson are cancelled and restored together, and
+ * a pair has started when its earlier half has (`edge/timetable`, Structure,
+ * "Double lessons": "They are moved, cancelled and substituted together";
+ * review of the code, change 1).
  * Each change marks the lesson changed and notifies its teachers once, with
  * the week before and after (decision 10), and writes its audit entry, in one
  * transaction.
@@ -211,8 +215,10 @@ export class TimetableDayChanges {
 
   /**
    * The locks of decision 6 and the lesson read again after them, with the
-   * side before for the notices; 404 when a publish removed it meanwhile, and
-   * `lesson_started` when it has started (decision 3).
+   * halves of its double pair (`pair`, by start, the lesson among them) and
+   * the side before for the notices; 404 when a publish removed it meanwhile,
+   * and `lesson_started` when it, or the earlier half of its pair, has
+   * started (decision 3).
    */
   private async lockedLesson(transaction: Transaction, branchId: string, id: string) {
     const yearId = await this.yearOf(transaction, branchId, id);
@@ -227,15 +233,17 @@ export class TimetableDayChanges {
       throw notFound();
     }
     const week = await snapshotWeek(transaction, branchId, dated.date, dated.date);
-    const [lesson] = await storedLessonsOn(transaction, branchId, dated.date, { lessonIds: [id] });
+    const lessons = await storedLessonsOn(transaction, branchId, dated.date);
+    const lesson = lessons.find((one) => one.id === id);
     if (lesson === undefined) {
       throw notFound();
     }
+    const pair = pairOf(lessons, lesson);
     const moment = await transactionMoment(transaction);
-    if (lesson.startsAt.getTime() <= moment.getTime()) {
+    if (pair.some((one) => one.startsAt.getTime() <= moment.getTime())) {
       throw new ApiException('lesson_started', 409);
     }
-    return { lesson, week, moment };
+    return { lesson, pair, week, moment };
   }
 
   private async cancelLocked(
@@ -246,14 +254,16 @@ export class TimetableDayChanges {
     requestId: string,
   ): Promise<DayChangeAnswer> {
     const branchId = branchOf(access);
-    const { lesson, week, moment } = await this.lockedLesson(transaction, branchId, id);
+    const { lesson, pair, week, moment } = await this.lockedLesson(transaction, branchId, id);
     if (lesson.cancelCause !== null) {
       throw new ApiException('lesson_cancelled', 409);
     }
+    // Both halves of a double; a half already cancelled keeps its cause (decision 4).
+    const lessonIds = pair.filter((one) => one.cancelCause === null).map((one) => one.id);
     await transaction
       .updateTable('lessons')
       .set({ cancel_cause: 'reason', cancel_reason: reason })
-      .where('id', '=', id)
+      .where('id', 'in', lessonIds)
       .execute();
     const notices = await sendWeekChanges(transaction, this.notifications, week, {
       kind: 'timetable.day_changed',
@@ -264,8 +274,14 @@ export class TimetableDayChanges {
       assignmentId: access.assignmentId,
       action: 'lesson.cancel',
       record: { type: 'lesson', id },
-      oldValue: { ...valuesOf(lesson), cancelCause: null },
-      newValue: { ...valuesOf(lesson), cancelCause: 'reason', reason, notices: { ...notices } },
+      oldValue: { ...valuesOf(lesson), lessonIds, cancelCause: null },
+      newValue: {
+        ...valuesOf(lesson),
+        lessonIds,
+        cancelCause: 'reason',
+        reason,
+        notices: { ...notices },
+      },
       requestId,
     });
     return this.answerOf(transaction, branchId, id, moment, []);
@@ -278,14 +294,18 @@ export class TimetableDayChanges {
     requestId: string,
   ): Promise<DayChangeAnswer> {
     const branchId = branchOf(access);
-    const { lesson, week, moment } = await this.lockedLesson(transaction, branchId, id);
+    const { lesson, pair, week, moment } = await this.lockedLesson(transaction, branchId, id);
     if (lesson.cancelCause !== 'reason') {
       throw new ApiException('lesson_not_restorable', 409);
     }
+    // Both halves of a double cancelled with a reason, checked together; a
+    // half cancelled by another cause stays cancelled (decision 4).
+    const lessons = pair.filter((one) => one.cancelCause === 'reason');
+    const lessonIds = lessons.map((one) => one.id);
     const checked = await storedDayCheck(
       transaction,
       { timetable: this.timetable, pattern: this.pattern },
-      { accountId: access.accountId, lesson },
+      { accountId: access.accountId, lessons },
     );
     if (checked.blocked.length > 0) {
       const rooms =
@@ -308,11 +328,17 @@ export class TimetableDayChanges {
         })),
       ]);
     }
-    await transaction
-      .updateTable('lessons')
-      .set({ cancel_cause: null, cancel_reason: null, teacher_id: checked.teacherId })
-      .where('id', '=', id)
-      .execute();
+    for (const one of lessons) {
+      await transaction
+        .updateTable('lessons')
+        .set({
+          cancel_cause: null,
+          cancel_reason: null,
+          teacher_id: checked.teacherIds.get(one.id) ?? null,
+        })
+        .where('id', '=', one.id)
+        .execute();
+    }
     // The commit checks of 0058 now, so that a race meets the refusals here.
     await sql`set constraints all immediate`.execute(transaction);
     const notices = await sendWeekChanges(transaction, this.notifications, week, {
@@ -324,9 +350,16 @@ export class TimetableDayChanges {
       assignmentId: access.assignmentId,
       action: 'lesson.restore',
       record: { type: 'lesson', id },
-      oldValue: { ...valuesOf(lesson), cancelCause: 'reason', reason: lesson.cancelReason },
+      oldValue: {
+        ...valuesOf(lesson),
+        lessonIds,
+        cancelCause: 'reason',
+        reason: lesson.cancelReason,
+      },
       newValue: {
-        ...valuesOf({ ...lesson, teacherId: checked.teacherId }),
+        ...valuesOf({ ...lesson, teacherId: checked.teacherIds.get(id) ?? null }),
+        lessonIds,
+        teacherIds: Object.fromEntries(checked.teacherIds),
         cancelCause: null,
         warnings: checked.warnings.map((one) => one.rule),
         notices: { ...notices },
@@ -349,8 +382,11 @@ export class TimetableDayChanges {
       .where('id', '=', id)
       .where('branch_id', '=', branchId)
       .executeTakeFirstOrThrow();
-    const lessons = await storedLessonsOn(transaction, branchId, dated.date, { lessonIds: [id] });
-    const [lesson] = await dayLessonsOf(transaction, lessons, moment);
+    const lessons = await storedLessonsOn(transaction, branchId, dated.date);
+    const changed = lessons.find((one) => one.id === id);
+    if (changed === undefined) throw new Error('The changed lesson was not read.');
+    const shown = await dayLessonsOf(transaction, pairOf(lessons, changed), moment);
+    const lesson = shown.find((one) => one.id === id);
     if (lesson === undefined) throw new Error('The changed lesson was not read.');
     return dayChangeAnswerSchema.parse({ lesson, warnings: warnings.map(answerOfResult) });
   }
@@ -460,7 +496,10 @@ async function dayLessonsOf(
   const minutesOf = (one: StoredDayLesson, at: Date) =>
     Math.round((at.getTime() - begins(one.date).getTime()) / 60_000);
   return lessons.map((one) => {
-    const started = one.startsAt.getTime() <= moment.getTime();
+    // A double lesson has started when its earlier half has (decision 3).
+    const started = pairOf(lessons, one).some(
+      (half) => half.startsAt.getTime() <= moment.getTime(),
+    );
     const subject = subjectOf.get(one.subjectId);
     if (subject === undefined) throw new Error('A lesson names a subject that was not read.');
     return {
