@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 19 October 2026: task 5.6a-2 One-day changes: room change and move of one lesson
+
+- On "Day changes" the Academic Vice Principal (and the Super Admin) change a lesson's room for its date (`POST /api/timetable/lessons/:id/room`) or move it to a lesson slot of a date in its quarter (`/move`), each with a reason; a refused restore is sent again into a room it offered (`/restore` with `{ roomId, reason }`).
+- Each runs `storedDayCheck` at the new place, is refused `day_change_blocked` with the rules and the free rooms, marks and notifies (one notice per teacher; a move into another week carries both weeks, `also`), is audited (`lesson.room_change`, `lesson.move`) and is stored in `lesson_day_changes` (0085).
+- A move takes the whole block and both halves of a double; a part cancelled with a reason moves along, still cancelled; another cause keeps the block.
+- Left out: applying the stored changes after a publish (5.6a-5); bulk cancel (5.6a-3); past correction (5.6a-4); the Free now board's room move (5.7c).
+
+The next sessions must know:
+
+- `storedDayCheck` takes the lessons at their new place, and `alongside` for the cancelled parts that move with them; `slotMomentsOn` gives the times of lesson numbers on a date. `snapshotDates` locks and reads only the dates written.
+- A move defers the three claim exclusions while it writes the blocks, then `set constraints all immediate`.
+- The next task is 5.6a-3.
+
 ## 19 October 2026: task 5.6a-1 One-day changes: cancel and restore of one lesson
 
 - The Academic Vice Principal (and the Super Admin) cancel one stored lesson with a reason and restore it on "Day changes" (`/timetable/day`; `GET /api/timetable/day`, `POST /api/timetable/lessons/:id/cancel` and `/restore`); the Principal views the day.

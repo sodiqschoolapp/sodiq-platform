@@ -265,6 +265,27 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 19 October 2026: one-day changes, room change and move of one lesson (task 5.6a-2)
+
+Plan approved on pull request #161 with corrections 1 to 3; decisions 1 to 12 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a refusal the spec does not name). A move stays under the lesson's version: a date on which another published version is in force is refused `move_other_version` | Decision 1: the block belongs to its version (`lesson_repoint_check`, 0079); the next publish of either would drop or double it |
+| **Look first** (a From line read against a spec row). `followTutors` is not changed: it writes only the teacher, so a one-day change keeps its room and time and the lesson takes the new Tutor; the From 3.6c-2 line of 5.6a-2 is reworded so | Decision 2; `edge/timetable`, Structure, the Homework slot row |
+| No new notice kind and no new area: `timetable.day_changed`, `timetable` `edit` | Decision 3 |
+| A move takes the whole block and both halves of a double; a room change one part, both halves of a double. A part cancelled with a reason moves with the block and stays cancelled; a part cancelled by another cause keeps the block where it is (`lesson_cancelled`) | Decision 4, review correction 1 |
+| A move stays in the lesson's quarter (`move_other_quarter` for a date inside another quarter; a vacation or after the year is the rule check's `vacation`, `outside_year`) and targets a slot that has not started (`move_target_started`) | Decision 5; `edge/time-dates-calendar` |
+| The target is a date and a lesson number; the times come from the date's day of the unit's lowest grade, on a date without lessons from the weekday's day of the version; `move_no_slot` when neither has the slots | Decision 6, review correction 2 |
+| Every blocked result refuses a room change and a move, availability included | Decision 7 |
+| `lesson_day_changes` (0085): insert only, one row per lesson per change, the newest by `changed_at` then `id` in force, what the lesson was kept; `lesson_id` set null when a publish removes the lesson | Decision 8 |
+| A room in a move only for a block of one part (`move_room_parts`) | Decision 9 |
+| A restore into another room is the restore route with `{ roomId, reason }`, stored as a `room` record | Decision 10 |
+| A move into another week: one notice per teacher with both weeks (`also` in the data of `timetable.day_changed`) | Decision 11 |
+| The day answer carries the lesson slots of the date for the class | Decision 12 |
+| **Build decision.** The cancelled parts that move with a block are checked with it (`alongside` of `storedDayCheck`: no teacher, room or student, their students exempt), so the block stays whole for `split_apart` and they claim nothing | Found by the build: without them the held part of a split alone was `split_apart` |
+| **Build decision.** A room change does not offer the lesson's own room among the free rooms | Found by the build |
+
 ## 19 October 2026: one-day changes, cancel and restore of one lesson (task 5.6a-1)
 
 Plan approved on pull request #160 with corrections 1 and 2; decisions 1 to 12 confirmed there. Flagged on issue #42.
