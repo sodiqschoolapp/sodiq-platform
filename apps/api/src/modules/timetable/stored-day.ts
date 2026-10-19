@@ -5,6 +5,7 @@ import {
   type Facts,
   type Placement,
   type RuleResult,
+  weekdayOf,
 } from '@sodiq/timetable-rules';
 import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
@@ -226,15 +227,89 @@ async function examsOn(
   });
 }
 
+type Services = { readonly timetable: Timetable; readonly pattern: TimetablePattern };
+
 /**
- * Checks `lessons` (one lesson, or the halves of a double pair, of one date
- * and version) held on their date with `roomId` (their own rooms unless
- * given), together, among the branch's other stored lessons of the date (see
- * the file's comment).
+ * The facts of a version read as if it started on `date`
+ * (`.claude/rules/timetable.md`): its pattern state with the Tutors of the
+ * date, and the dated facts of that one date.
+ */
+async function dayStateOf(
+  transaction: Transaction,
+  services: Services,
+  accountId: string,
+  versionId: string,
+  date: string,
+) {
+  const stored = await services.timetable.versionRow(transaction, versionId);
+  const row = { ...stored, starts_on: date };
+  const rows = await services.timetable.withVersionTutors(
+    transaction,
+    await services.timetable.contextOf(transaction, row),
+    await services.timetable.rowsOf(transaction, versionId),
+  );
+  const state = await services.pattern.stateOf(transaction, row, accountId, rows);
+  return { state, dated: await datedLessonsOf(transaction, state, date, date) };
+}
+
+/**
+ * The moments of lesson slots `lessonNumber`, `lessonNumber + 1`, … (`count`
+ * of them, consecutive lesson slots) of `date` for `lesson`'s class or group
+ * under its version (task 5.6a-2, decision 6): the slots of the date's day of
+ * the unit's lowest grade; on a date without lessons (a day off, a vacation)
+ * those of the weekday's day of the version, so that the rule check names why
+ * the date is refused. `null` when neither has those slots.
+ */
+export async function slotMomentsOn(
+  transaction: Transaction,
+  services: Services,
+  input: {
+    readonly accountId: string;
+    readonly lesson: StoredDayLesson;
+    readonly date: string;
+    readonly lessonNumber: number;
+    readonly count: number;
+  },
+): Promise<{ readonly startsAt: Date; readonly endsAt: Date }[] | null> {
+  const { state, dated } = await dayStateOf(
+    transaction,
+    services,
+    input.accountId,
+    input.lesson.versionId,
+    input.date,
+  );
+  const { data } = state.pattern.model;
+  const grades = data.units.find((unit) => unit.id === unitOf(input.lesson))?.grades ?? [];
+  const grade = [...grades].sort((a, b) => a - b)[0];
+  if (grade === undefined) return null;
+  const ofDate = dated.dayOfDate(grade, input.date).engine;
+  const weekday = weekdayOf(input.date);
+  const weekly = data.days.find((one) => one.grade === grade && one.weekday === weekday)?.day;
+  const day = ofDate.lessons ? ofDate.day : weekly?.lessons === true ? weekly.day : null;
+  if (day === null) return null;
+  const moments = [];
+  for (let at = 0; at < input.count; at += 1) {
+    const slot = day.slots.find((one) => one.lessonNumber === input.lessonNumber + at);
+    if (slot === undefined) return null;
+    const begins = dated.begins(input.date).getTime();
+    moments.push({
+      startsAt: new Date(begins + slot.start * MINUTE),
+      endsAt: new Date(begins + slot.end * MINUTE),
+    });
+  }
+  return moments;
+}
+
+/**
+ * Checks `lessons` (one lesson, the halves of a double pair, or the lessons
+ * of a block, of one date and version) held on their date with `roomId`
+ * (their own rooms unless given), together, among the branch's other stored
+ * lessons of the date (see the file's comment). A one-day move passes the
+ * lessons at their new date and times (task 5.6a-2).
  */
 export async function storedDayCheck(
   transaction: Transaction,
-  services: { readonly timetable: Timetable; readonly pattern: TimetablePattern },
+  services: Services,
   input: {
     readonly accountId: string;
     readonly lessons: readonly StoredDayLesson[];
@@ -245,23 +320,16 @@ export async function storedDayCheck(
   if (lesson === undefined) throw new Error('No lesson to check.');
   const { date, branchId } = lesson;
   const ids = new Set(input.lessons.map((one) => one.id));
-  // Read as if the version started on the date (`.claude/rules/timetable.md`).
-  const stored = await services.timetable.versionRow(transaction, lesson.versionId);
-  const row = { ...stored, starts_on: date };
-  const rows = await services.timetable.withVersionTutors(
+  const { state, dated } = await dayStateOf(
     transaction,
-    await services.timetable.contextOf(transaction, row),
-    await services.timetable.rowsOf(transaction, lesson.versionId),
+    services,
+    input.accountId,
+    lesson.versionId,
+    date,
   );
-  const state = await services.pattern.stateOf(transaction, row, input.accountId, rows);
   const { model } = state.pattern;
   const { data } = model;
-  const { begins, classOn, studentsOn, tutorOn, dayOfDate, branch } = await datedLessonsOf(
-    transaction,
-    state,
-    date,
-    date,
-  );
+  const { begins, classOn, studentsOn, tutorOn, dayOfDate, branch } = dated;
   const minutesOf = (moment: Date) =>
     Math.round((moment.getTime() - begins(date).getTime()) / MINUTE);
 

@@ -57,6 +57,12 @@ export interface WeekChanges {
   readonly kept: readonly { readonly id: string; readonly changedAt: Date }[];
   /** Each affected teacher and the Monday of the week shown (decisions 5 and 7). */
   readonly teachers: ReadonlyMap<string, string>;
+  /**
+   * The Monday of an affected teacher's latest unpaired lesson, when it lies
+   * in a later week than the one shown: a one-day move into another week
+   * shows both weeks in its one notice (task 5.6a-2, decision 11).
+   */
+  readonly laterWeeks: ReadonlyMap<string, string>;
   /** The lessons before the event that nothing after it equals: shown as changed in a notice. */
   readonly beforeDiffers: ReadonlySet<string>;
   /** The lessons after the event that nothing before it equals: shown as changed in a notice. */
@@ -114,10 +120,20 @@ export function weekChanges(
     .sort(compare);
   const left = [...waiting.values()].flat();
   const teachers = new Map<string, string>();
+  const latest = new Map<string, string>();
   for (const one of [...unpaired, ...left]) {
     for (const teacherId of one.lesson.teacherIds) {
       const known = teachers.get(teacherId);
       if (known === undefined || one.lesson.date < known) teachers.set(teacherId, one.lesson.date);
+      const last = latest.get(teacherId);
+      if (last === undefined || one.lesson.date > last) latest.set(teacherId, one.lesson.date);
+    }
+  }
+  const laterWeeks = new Map<string, string>();
+  for (const [teacherId, date] of [...latest.entries()].sort(([a], [b]) => compare(a, b))) {
+    const first = teachers.get(teacherId);
+    if (first !== undefined && mondayOf(date) !== mondayOf(first)) {
+      laterWeeks.set(teacherId, mondayOf(date));
     }
   }
   return {
@@ -128,6 +144,7 @@ export function weekChanges(
         .sort(([a], [b]) => compare(a, b))
         .map(([id, date]) => [id, mondayOf(date)]),
     ),
+    laterWeeks,
     beforeDiffers: new Set(left.map((one) => one.id)),
     afterDiffers: new Set(unpaired.map((one) => one.id)),
   };
@@ -141,6 +158,12 @@ export interface WeekSnapshot {
   /** The first date the event writes. */
   readonly fromDate: string;
   readonly lastDate: string;
+  /**
+   * The dates written when they are not every date from `fromDate` to
+   * `lastDate` (a one-day move to another date, task 5.6a-2): only these are
+   * read on both sides; the rest of their weeks is `unwritten`.
+   */
+  readonly dates?: readonly string[];
   /** The lessons before the event, from `firstDate`; the days before the write are the same after it. */
   readonly before: readonly StoredLesson[];
   /**
@@ -201,6 +224,82 @@ export async function snapshotWeek(
   };
 }
 
+/**
+ * The side before an event that writes the branch's lessons of `dates` only
+ * (a one-day move from one date to another, task 5.6a-2; spec review
+ * should-fix 5): the blocks and then the lessons of those dates locked in the
+ * order of their id, as `snapshotWeek` locks them, and the other days of
+ * their weeks read once, unlocked.
+ */
+export async function snapshotDates(
+  transaction: Transaction,
+  branchId: string,
+  dates: readonly string[],
+): Promise<WeekSnapshot> {
+  const written = [...new Set(dates)].sort(compare);
+  const fromDate = written[0];
+  const lastDate = written[written.length - 1];
+  if (fromDate === undefined || lastDate === undefined) throw new Error('No date to snapshot.');
+  await transaction
+    .selectFrom('lesson_blocks')
+    .select('id')
+    .where('branch_id', '=', branchId)
+    .where('lesson_date', 'in', written)
+    .orderBy('id')
+    .forUpdate()
+    .execute();
+  await transaction
+    .selectFrom('lessons')
+    .select('id')
+    .where('branch_id', '=', branchId)
+    .where('lesson_date', 'in', written)
+    .orderBy('id')
+    .forUpdate()
+    .execute();
+  const before = await readDates(transaction, branchId, written);
+  const days = new Set<string>();
+  for (const date of written) {
+    for (let at = 0; at < 7; at += 1) days.add(addDays(mondayOf(date), at));
+  }
+  const others = [...days].filter((day) => !written.includes(day)).sort(compare);
+  return {
+    branchId,
+    firstDate: mondayOf(fromDate),
+    fromDate,
+    lastDate,
+    dates: written,
+    before,
+    unwritten: await readDates(transaction, branchId, others),
+  };
+}
+
+/** The stored lessons of the branch on `dates`, read as both sides read them, unlocked. */
+async function readDates(
+  transaction: Transaction,
+  branchId: string,
+  dates: readonly string[],
+): Promise<StoredLesson[]> {
+  const lessons: StoredLesson[] = [];
+  // One read per run of consecutive dates.
+  let at = 0;
+  while (at < dates.length) {
+    let end = at;
+    while (end + 1 < dates.length && dates[end + 1] === addDays(dates[end] ?? '', 1)) end += 1;
+    lessons.push(
+      ...(await storedLessonRows(transaction, {
+        branchId,
+        firstDate: dates[at] ?? '',
+        lastDate: dates[end] ?? '',
+        classIdsOf: noClasses,
+        cancelled: 'one_day',
+        lock: false,
+      })),
+    );
+    at = end + 1;
+  }
+  return lessons;
+}
+
 /** What `sendWeekChanges` did, for the audit entry of the event (decision 10). */
 export interface WeekNotices {
   readonly notified: number;
@@ -227,14 +326,17 @@ export async function sendWeekChanges(
     | { readonly kind: WeekChangeKind; readonly number: number }
     | { readonly kind: 'timetable.day_changed' },
 ): Promise<WeekNotices> {
-  const after = await storedLessonRows(transaction, {
-    branchId: snapshot.branchId,
-    firstDate: snapshot.fromDate,
-    lastDate: snapshot.lastDate,
-    classIdsOf: noClasses,
-    cancelled: 'one_day',
-    lock: false,
-  });
+  const after =
+    snapshot.dates === undefined
+      ? await storedLessonRows(transaction, {
+          branchId: snapshot.branchId,
+          firstDate: snapshot.fromDate,
+          lastDate: snapshot.lastDate,
+          classIdsOf: noClasses,
+          cancelled: 'one_day',
+          lock: false,
+        })
+      : await readDates(transaction, snapshot.branchId, snapshot.dates);
   const changes = weekChanges(snapshot.before, after, snapshot.unwritten);
 
   const moment = await transactionMoment(transaction);
@@ -264,6 +366,8 @@ export async function sendWeekChanges(
     after: [...snapshot.unwritten, ...after],
     beforeDiffers: changes.beforeDiffers,
     afterDiffers: changes.afterDiffers,
+    // Only a one-day change shows a second week (task 5.6a-2, decision 11).
+    ...(event.kind === 'timetable.day_changed' ? { laterWeeks: changes.laterWeeks } : {}),
     send: (accountId, week) =>
       event.kind === 'timetable.day_changed'
         ? notifications.send(transaction, {
@@ -287,6 +391,12 @@ export interface TeacherWeek {
   readonly weekStart: string;
   readonly before: WeekLesson[];
   readonly after: WeekLesson[];
+  /** A second, later week of the same event (`laterWeeks`, task 5.6a-2). */
+  readonly also?: {
+    readonly weekStart: string;
+    readonly before: WeekLesson[];
+    readonly after: WeekLesson[];
+  };
 }
 
 /**
@@ -307,6 +417,8 @@ export async function sendTeacherWeeks(
     readonly after: readonly StoredLesson[];
     readonly beforeDiffers: ReadonlySet<string>;
     readonly afterDiffers: ReadonlySet<string>;
+    /** The teachers whose notice shows a second, later week, and its Monday. */
+    readonly laterWeeks?: ReadonlyMap<string, string>;
     readonly send: (accountId: string, week: TeacherWeek) => Promise<unknown>;
   },
 ): Promise<number> {
@@ -368,10 +480,20 @@ export async function sendTeacherWeeks(
   for (const one of notified) {
     const monday = input.teachers.get(one.teacherId);
     if (monday === undefined) continue;
+    const later = input.laterWeeks?.get(one.teacherId);
     await input.send(one.accountId, {
       weekStart: monday,
       before: weekOf(input.before, input.beforeDiffers, one.teacherId, monday),
       after: weekOf(input.after, input.afterDiffers, one.teacherId, monday),
+      ...(later === undefined
+        ? {}
+        : {
+            also: {
+              weekStart: later,
+              before: weekOf(input.before, input.beforeDiffers, one.teacherId, later),
+              after: weekOf(input.after, input.afterDiffers, one.teacherId, later),
+            },
+          }),
     });
     count += 1;
   }
