@@ -103,6 +103,19 @@ export function CorrectionDialog({
             : undefined,
   });
   const kind = form.bind('kind').value;
+  // A tick is for the warnings shown: another kind, person or room takes it
+  // away, so its own warnings come back first (spec review of the code,
+  // must-fix 2; decision 13).
+  const untick = (field: 'kind' | 'teacherId' | 'roomId') => {
+    const bound = form.bind(field);
+    return {
+      ...bound,
+      onChange: (event: { target: { value: string } }) => {
+        form.bind('confirm').onChange({ target: { value: '' } });
+        bound.onChange(event);
+      },
+    };
+  };
   const teachers = useQuery(correctionTeachersQuery(branchId, lesson.id, kind === 'teacher'));
   const rooms = useQuery({
     ...roomsQuery(branchId),
@@ -159,7 +172,7 @@ export function CorrectionDialog({
           <SelectField
             label={t('timetable.day.correctKind')}
             options={kinds.map((one) => ({ value: one, label: t(`timetable.day.kind_${one}`) }))}
-            {...form.bind('kind')}
+            {...untick('kind')}
           />
           {kind === 'teacher' &&
             (teachers.isError ? (
@@ -175,7 +188,7 @@ export function CorrectionDialog({
                     .filter((one) => one.id !== lesson.teacher?.id)
                     .map((one) => ({ value: one.id, label: one.name })),
                 ]}
-                {...form.bind('teacherId')}
+                {...untick('teacherId')}
               />
             ))}
           {(kind === 'room' || kind === 'restore') &&
@@ -197,7 +210,7 @@ export function CorrectionDialog({
                   },
                   ...roomOptions,
                 ]}
-                {...form.bind('roomId')}
+                {...untick('roomId')}
               />
             ))}
           <TextAreaField label={t('timetable.day.reason')} rows={3} {...form.bind('reason')} />
@@ -208,7 +221,7 @@ export function CorrectionDialog({
               intoRoom={
                 kind === 'room' || kind === 'restore'
                   ? (room) => {
-                      form.bind('roomId').onChange({ target: { value: room.id } });
+                      untick('roomId').onChange({ target: { value: room.id } });
                     }
                   : undefined
               }

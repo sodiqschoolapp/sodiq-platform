@@ -793,6 +793,61 @@ describe('the correction of a past lesson', () => {
     ]);
   });
 
+  it('takes the tick away when another person is chosen, so their warnings are shown first (spec review of the code, must-fix 2)', async () => {
+    const OTHER = { id: uid(602), name: 'Saidova Malika' };
+    const page = await openPage({
+      lessons: [past(1, { teacher: null, state: 'unresolved' })],
+      extra: {
+        [`GET /api/timetable/lessons/${uid(301)}/correction-teachers`]: () =>
+          json({ teachers: [PERSON, OTHER] }),
+        [`POST /api/timetable/lessons/${uid(301)}/correction`]: () =>
+          json(
+            {
+              error: {
+                code: 'correction_needs_confirm',
+                message: 'ENGLISH TEXT FOR THE DEVELOPER',
+                requestId: 'test-request',
+                details: [
+                  {
+                    path: 'rules.teacher_subject',
+                    code: 'teacher_subject',
+                    message: 'x',
+                    rule: { weekday: 1, lessonIds: [] },
+                  },
+                ],
+              },
+            },
+            409,
+          ),
+      },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: en.timetable.day.correct }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.change(within(dialog).getByLabelText(en.timetable.day.correctKind), {
+      target: { value: 'teacher' },
+    });
+    const who = await within(dialog).findByLabelText(en.timetable.day.whoTaught);
+    fireEvent.change(who, { target: { value: PERSON.id } });
+    fireEvent.change(within(dialog).getByLabelText(en.timetable.day.reason), {
+      target: { value: 'Covered the lesson' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.timetable.day.correctSend }));
+    const tick = await within(dialog).findByLabelText(en.timetable.day.confirm);
+    fireEvent.click(tick);
+    expect((tick as HTMLInputElement).checked).toBe(true);
+    fireEvent.change(who, { target: { value: OTHER.id } });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.timetable.day.correctSend }));
+    await waitFor(() => {
+      expect(page.calls.filter((call) => call.route.endsWith('/correction'))).toHaveLength(2);
+    });
+    expect(
+      page.calls.filter((call) => call.route.endsWith('/correction')).map((call) => call.body),
+    ).toEqual([
+      { kind: 'teacher', teacherId: PERSON.id, reason: 'Covered the lesson' },
+      { kind: 'teacher', teacherId: OTHER.id, reason: 'Covered the lesson' },
+    ]);
+  });
+
   it('offers a restore only for a lesson cancelled with a reason', async () => {
     const page = await openPage({
       lessons: [past(1, { cancelCause: 'reason', cancelReason: 'Rain', state: 'cancelled' })],

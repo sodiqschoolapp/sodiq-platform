@@ -429,6 +429,8 @@ export const uz: Texts<'one' | 'other'> = {
       'Tuzatish dars vaqtidagi qoidani buzadi: kishi yoki xona oʻshanda band edi yoki boshqa oʻzgarish ularni hozirgina band qildi. Sabablar roʻyxatda.',
     correction_needs_confirm:
       'Tuzatishda ogohlantirishlar bor. Ularni tekshiring, belgilang va qayta saqlang.',
+    teacher_left_branch:
+      'Dars oʻqituvchisi endi bu filialda ishlamaydi, tuzatish uni tekshira olmaydi. Avval darsni kim oʻtganini koʻrsating yoki darsni bekor qiling.',
     move_target_started: 'Bu dars vaqti allaqachon boshlangan. Keyingi vaqt yoki sanani tanlang.',
     move_other_quarter:
       'Darsni faqat oʻz choragi ichida koʻchirish mumkin. Shu chorakdagi sanani tanlang.',
@@ -3193,7 +3195,6 @@ export const uz: Texts<'one' | 'other'> = {
       restoreRoomKeep: 'Oʻz xonasi',
       ticks: 'Saqlashdan oldin tekshiring:',
       confirm: 'Men bularni tekshirdim va tuzatishni saqlayman',
-      confirmNeeded: 'Ogohlantirishlarni tekshirganingizni belgilang.',
       correctSend: 'Tuzatishni saqlash',
       corrected: 'Tuzatish saqlandi.',
     },

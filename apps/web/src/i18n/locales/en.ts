@@ -419,6 +419,8 @@ export const en = {
       'The correction breaks a rule at the lesson’s time: the person or the room was somewhere else then, or another change has just taken them. The reasons are listed.',
     correction_needs_confirm:
       'The correction has warnings. Check them, tick that you have, and save again.',
+    teacher_left_branch:
+      'The lesson’s teacher no longer works in this branch, so the correction cannot check them. Record who taught the lesson first, or cancel it.',
     move_target_started: 'That lesson slot has already started. Choose a later slot or date.',
     move_other_quarter:
       'A lesson can be moved only within its own quarter. Choose a date in the same quarter.',
@@ -3164,7 +3166,6 @@ export const en = {
       restoreRoomKeep: 'Its own room',
       ticks: 'Check before saving:',
       confirm: 'I have checked these and save the correction',
-      confirmNeeded: 'Tick that you have checked the warnings.',
       correctSend: 'Save the correction',
       corrected: 'The correction was saved.',
     },

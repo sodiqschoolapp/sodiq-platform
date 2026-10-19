@@ -940,16 +940,21 @@ export class TimetableDayChanges {
         throw new ApiException('room_unchanged', 409);
       }
       const checkedTeacher = input.kind === 'teacher' ? input.teacherId : lesson.teacherId;
-      const kind =
+      // The staff row of a teacher no longer linked to the branch is hidden by
+      // its row filter (0024), and the check cannot read their facts
+      // (permission review must-fix 2): refused by name, never a fault.
+      const found =
         checkedTeacher === null
           ? undefined
-          : (
-              await transaction
-                .selectFrom('staff')
-                .select('kind')
-                .where('id', '=', checkedTeacher)
-                .executeTakeFirstOrThrow()
-            ).kind;
+          : await transaction
+              .selectFrom('staff')
+              .select('kind')
+              .where('id', '=', checkedTeacher)
+              .executeTakeFirst();
+      if (checkedTeacher !== null && found === undefined) {
+        throw new ApiException('teacher_left_branch', 409);
+      }
+      const kind = found?.kind;
       // A vacancy or nobody on a restore or a room is checked as it stands, so
       // the lesson stays unresolved; a vacancy recorded is `substitute_vacancy`.
       const relaxed = input.kind === 'teacher' || kind === 'person';

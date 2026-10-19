@@ -576,6 +576,8 @@ export const ERROR_CODES = [
   'correction_blocked',
   /** A correction meets warnings that need a tick; `details` lists each, and the correction is sent again with `confirm` (task 5.6a-4, decisions 2 and 13). */
   'correction_needs_confirm',
+  /** The lesson's teacher no longer works in the branch, so a restore or a room correction cannot check them; the person who taught it is recorded first (task 5.6a-4). */
+  'teacher_left_branch',
   /** The new place of a one-day move has started: a move targets a lesson slot that has not started (task 5.6a-2, decision 5). */
   'move_target_started',
   /** A one-day move stays inside the lesson's quarter (task 5.6a-2; edge/time-dates-calendar). */

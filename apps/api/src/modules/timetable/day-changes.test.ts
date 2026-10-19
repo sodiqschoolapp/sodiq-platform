@@ -2773,6 +2773,21 @@ describe('one-day changes: cancel and restore', () => {
       expect(await rowOf(second)).toMatchObject({ cancel_cause: null });
     });
 
+    it('records a teacher and a room on one half of a held double, the other half keeping its own (spec review of the code, must-fix 1)', async () => {
+      const s = await scene({ twoLessons: true });
+      await fromSeptember(s);
+      const [first, second] = await past(s);
+      if (first === undefined || second === undefined) throw new Error('No double was copied.');
+      const person = await personOf(s.branch, { subjects: [{ subject: s.subject, grades: [7] }] });
+      changed(await correct(s.branch, second, { kind: 'teacher', teacherId: person.staffId }));
+      changed(await correct(s.branch, first, { kind: 'room', roomId: s.spareRoom }));
+      expect(await rowOf(first)).toMatchObject({
+        teacher_id: s.teacher.staffId,
+        room_id: s.spareRoom,
+      });
+      expect(await rowOf(second)).toMatchObject({ teacher_id: person.staffId, room_id: s.room });
+    });
+
     it('takes the later half of a double once the earlier one has started, which no one-day change takes (review correction 2)', async () => {
       const s = await scene({ twoLessons: true });
       // Today, the earlier half at 23:40 has started, the later at 23:57 not.
@@ -3188,7 +3203,132 @@ describe('one-day changes: cancel and restore', () => {
       refusedWith(await send(UNKNOWN, t.vicePrincipal), 404, 'not_found');
       refusedWith(await send(lesson, t.principal), 403, 'permission_denied');
       expect(await everything()).toEqual(after);
-      expect(await t.entries('lesson.correct', lesson)).toHaveLength(1);
+      const entries = await t.entries('lesson.correct', lesson);
+      expect(entries).toHaveLength(1);
+      expect(entries[0]).toMatchObject({ assignment_id: t.viceAssignment });
+    });
+
+    it('keeps a used key of a teacher, a room and a restore into a room to its ids and its role (permission review must-fix 1)', async () => {
+      const s = northScene;
+      const other = await scene();
+      const [byTeacher] = await past(s, { date: '2026-10-08' });
+      const [byRoom] = await past(s, { date: '2026-10-07' });
+      const [byRestore] = await past(s, { date: '2026-10-06' });
+      if (byTeacher === undefined || byRoom === undefined || byRestore === undefined) {
+        throw new Error('No lesson was copied.');
+      }
+      changed(await correct(s.branch, byRestore, { kind: 'cancel' }, t.vicePrincipal));
+      const cases = [
+        {
+          id: byTeacher,
+          body: (teacherId: string) => ({ kind: 'teacher', teacherId }),
+          own: s.otherTeacher.staffId,
+          foreign: other.teacher.staffId,
+        },
+        {
+          id: byRoom,
+          body: (roomId: string) => ({ kind: 'room', roomId }),
+          own: s.spareRoom,
+          foreign: other.spareRoom,
+        },
+        {
+          id: byRestore,
+          body: (roomId: string) => ({ kind: 'restore', roomId }),
+          own: s.spareRoom,
+          foreign: other.spareRoom,
+        },
+      ];
+      for (const one of cases) {
+        const key = randomUUID();
+        const send = (value: string, cookie: string) =>
+          correct(s.branch, one.id, one.body(value), cookie, key);
+        changed(await send(one.own, t.vicePrincipal));
+        const after = await everything();
+        refusedWith(await send(one.foreign, t.vicePrincipal), 404, 'not_found');
+        refusedWith(await send(UNKNOWN, t.vicePrincipal), 404, 'not_found');
+        refusedWith(await send(one.own, t.principal), 403, 'permission_denied');
+        expect(await everything()).toEqual(after);
+      }
+    });
+
+    it('refuses a restore or a room of a past lesson whose teacher no longer works in the branch by name, and takes the person who taught it (permission review must-fix 2)', async () => {
+      const s = await scene();
+      const away = await scene();
+      const lesson = await pastOne(s);
+      changed(await correct(s.branch, lesson, { kind: 'cancel' }));
+      // The teacher works in the other branch only from now on.
+      // The other branch becomes the main one first, as the staff record allows.
+      await t.database.migrator.transaction().execute(async (transaction) => {
+        await transaction
+          .updateTable('staff_branches')
+          .set({ is_main: false })
+          .where('staff_id', '=', s.teacher.staffId)
+          .execute();
+        await transaction
+          .insertInto('staff_branches')
+          .values({ staff_id: s.teacher.staffId, branch_id: away.branch, is_main: true })
+          .execute();
+        await transaction
+          .deleteFrom('staff_branches')
+          .where('staff_id', '=', s.teacher.staffId)
+          .where('branch_id', '=', s.branch)
+          .execute();
+      });
+      const before = await everything();
+      refusedWith(await correct(s.branch, lesson, { kind: 'restore' }), 409, 'teacher_left_branch');
+      expect(await everything()).toEqual(before);
+      const [held] = await past(s, { date: '2026-10-08' });
+      if (held === undefined) throw new Error('No lesson was copied.');
+      refusedWith(
+        await correct(s.branch, held, { kind: 'room', roomId: s.spareRoom }),
+        409,
+        'teacher_left_branch',
+      );
+      changed(
+        await correct(s.branch, held, { kind: 'teacher', teacherId: s.otherTeacher.staffId }),
+      );
+    });
+
+    it('lists only the branch’s people active on the lesson’s date, by every status and its bounds (permission review should-fix 2)', async () => {
+      const s = await scene();
+      const away = await scene();
+      const lesson = await pastOne(s);
+      const profile = { subjects: [{ subject: s.subject, grades: [7] }] };
+      const outOn = await personOf(s.branch, profile);
+      await statusFrom(outOn.staffId, 'inactive', FRIDAY);
+      const backBefore = await personOf(s.branch, profile);
+      await statusFrom(backBefore.staffId, 'inactive', '2026-10-01');
+      await t.database.migrator
+        .updateTable('staff_statuses')
+        .set({ valid_until: FRIDAY })
+        .where('staff_id', '=', backBefore.staffId)
+        .where('status', '=', 'inactive')
+        .execute();
+      await t.database.migrator
+        .insertInto('staff_statuses')
+        .values({ staff_id: backBefore.staffId, status: 'active', valid_from: FRIDAY })
+        .execute();
+      for (const cookie of [t.admin]) {
+        const listed = await teachersFor(s.branch, lesson, cookie);
+        expect(listed.status, JSON.stringify(listed.body)).toBe(200);
+        const ids = (listed.body as { teachers: { id: string }[] }).teachers.map((one) => one.id);
+        expect(ids).toContain(s.teacher.staffId);
+        expect(ids).toContain(backBefore.staffId);
+        expect(ids).not.toContain(outOn.staffId);
+        expect(ids).not.toContain(away.teacher.staffId);
+      }
+    });
+
+    it('refuses a reason longer than 500 characters', async () => {
+      const s = await scene();
+      const lesson = await pastOne(s);
+      const before = await everything();
+      refusedWith(
+        await correct(s.branch, lesson, { kind: 'cancel', reason: 'x'.repeat(501) }),
+        400,
+        'validation_failed',
+      );
+      expect(await everything()).toEqual(before);
     });
 
     it('runs two corrections of one lesson one after the other: the second sees the first', async () => {

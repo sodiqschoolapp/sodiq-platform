@@ -342,21 +342,37 @@ export async function storedDayCheck(
   if (lesson === undefined) throw new Error('No lesson to check.');
   const { date, branchId } = lesson;
   const ids = new Set(input.lessons.map((one) => one.id));
-  if (input.relaxed === true && input.lessons.length !== 1) {
-    throw new Error('A relaxed check is for one lesson only.');
-  }
+  const correcting = input.keepTeacher === true || input.teacherId !== undefined;
+  const stored = await storedLessonsOn(transaction, branchId, date);
+  // The teachers no row names are read too: the person recorded, and one a
+  // correction recorded earlier on a lesson of the date (task 5.6a-4), of
+  // the branch only (`readTeacherFacts` reads no other).
+  const named = [
+    ...new Set([
+      ...(input.teacherId === undefined ? [] : [input.teacherId]),
+      ...[...stored, ...input.lessons].flatMap((one) =>
+        one.teacherId === null ? [] : [one.teacherId],
+      ),
+    ]),
+  ];
+  const linkedNamed =
+    named.length === 0
+      ? []
+      : (
+          await transaction
+            .selectFrom('staff_branches')
+            .select('staff_id')
+            .where('staff_id', 'in', named)
+            .where('branch_id', '=', branchId)
+            .execute()
+        ).map((one) => one.staff_id);
   const { state, dated } = await dayStateOf(
     transaction,
     services,
     input.accountId,
     lesson.versionId,
     date,
-    // The person recorded, or a kept teacher no row names (one recorded earlier).
-    input.teacherId !== undefined
-      ? [input.teacherId]
-      : input.keepTeacher === true
-        ? input.lessons.flatMap((one) => (one.teacherId === null ? [] : [one.teacherId]))
-        : [],
+    linkedNamed,
   );
   const { model } = state.pattern;
   const { data } = model;
@@ -364,9 +380,7 @@ export async function storedDayCheck(
   const minutesOf = (moment: Date) =>
     Math.round((moment.getTime() - begins(date).getTime()) / MINUTE);
 
-  const held = (await storedLessonsOn(transaction, branchId, date)).filter(
-    (one) => one.cancelCause === null && !ids.has(one.id),
-  );
+  const held = stored.filter((one) => one.cancelCause === null && !ids.has(one.id));
   const units = new Map(data.units.map((unit) => [unit.id, unit]));
   // A half of a double is one of a pair only while its other half is held.
   const halves = new Map<string, number>();
@@ -377,8 +391,12 @@ export async function storedDayCheck(
   }
   const placementOf = (one: StoredDayLesson, teacherId: string | null, roomId: string | null) => {
     const unitId = unitOf(one);
+    // A correction takes one half of a double alone, whose teacher and room
+    // may differ from the other's (task 5.6a-4, decision 1; spec review of
+    // the code, must-fix 1): it is no half of a pair in the check.
+    const alone = correcting && ids.has(one.id);
     const pair =
-      one.doublePairId !== null && (halves.get(`${one.doublePairId}|${unitId}`) ?? 0) >= 2
+      !alone && one.doublePairId !== null && (halves.get(`${one.doublePairId}|${unitId}`) ?? 0) >= 2
         ? one.doublePairId
         : null;
     return {
@@ -411,7 +429,7 @@ export async function storedDayCheck(
   );
   const teacherIds = new Map<string, string | null>();
   const followed = new Set<string>();
-  const kept = input.keepTeacher === true || input.teacherId !== undefined;
+  const kept = correcting;
   for (const one of input.lessons) {
     let teacherId = input.teacherId ?? one.teacherId;
     if (!kept && tutorSubjects.has(one.subjectId) && one.classId !== null) {

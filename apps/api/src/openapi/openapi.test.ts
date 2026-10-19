@@ -234,6 +234,8 @@ describe('OpenAPI document', () => {
         '/api/timetable/bulk-cancels/check',
         '/api/timetable/day',
         '/api/timetable/lessons/{id}/cancel',
+        '/api/timetable/lessons/{id}/correction',
+        '/api/timetable/lessons/{id}/correction-teachers',
         '/api/timetable/lessons/{id}/move',
         '/api/timetable/lessons/{id}/restore',
         '/api/timetable/lessons/{id}/room',

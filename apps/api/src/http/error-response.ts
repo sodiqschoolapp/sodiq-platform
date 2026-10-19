@@ -307,6 +307,7 @@ const MESSAGE: Record<ErrorCode, string> = {
   teacher_unchanged: 'The person is already the teacher of the lesson.',
   correction_blocked: 'The correction meets a blocked rule on the lesson’s date.',
   correction_needs_confirm: 'The correction meets warnings that need a tick.',
+  teacher_left_branch: 'The lesson’s teacher no longer works in the branch.',
   move_target_started: 'The new place of the move has started.',
   move_other_quarter: 'A one-day move stays inside the lesson’s quarter.',
   move_other_version: 'Another published version is in force on that date.',
