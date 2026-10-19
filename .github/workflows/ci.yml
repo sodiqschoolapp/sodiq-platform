@@ -23,21 +23,13 @@ env:
   TURBO_TELEMETRY_DISABLED: 1
 
 jobs:
-  checks:
+  # The checks run as parallel jobs since 20 October 2026: as one job the tests
+  # alone took 8 to 15 minutes and hit the 15-minute limit (#168). The job named
+  # "checks" at the end is the one branch protection and the loop read; it is
+  # green only when every part is green.
+  lint-types:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    services:
-      postgres:
-        image: postgres:18
-        env:
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -68,17 +60,80 @@ jobs:
         # application ships fails the job (decided by the owner, 11 October
         # 2026). A new dependency is a decision for the owner anyway.
         run: pnpm audit --prod --audit-level=high
+      - name: Lint
+        run: pnpm lint
+      - name: Type-check
+        run: pnpm typecheck
+
+  tests:
+    name: tests (${{ matrix.part }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      # Every part runs to the end, so one red part names all its failures.
+      fail-fast: false
+      matrix:
+        include:
+          # The API's test files in three parts of the same size (Vitest
+          # --shard); everything else (web and the packages) in a fourth.
+          - part: api 1/3
+            command: pnpm --filter @sodiq/api exec vitest run --shard=1/3
+          - part: api 2/3
+            command: pnpm --filter @sodiq/api exec vitest run --shard=2/3
+          - part: api 3/3
+            command: pnpm --filter @sodiq/api exec vitest run --shard=3/3
+          - part: web and packages
+            command: pnpm turbo run test --filter=!@sodiq/api
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
       - name: Create the database users and sodiq_dev
         run: psql -h localhost -U postgres -f db/setup/local.sql
         env:
           # The superuser of the service container; only this step uses it.
           PGPASSWORD: postgres
-      - name: Lint
-        run: pnpm lint
-      - name: Type-check
-        run: pnpm typecheck
-      - name: Unit and API tests
-        run: pnpm test
+      - name: Build the packages the tests import
+        # What `turbo run test` builds first (its ^build): the API imports the
+        # built dist of the shared packages.
+        run: pnpm turbo run build --filter=@sodiq/api^...
+      - name: Unit and API tests (${{ matrix.part }})
+        run: ${{ matrix.command }}
+
+  checks:
+    needs: [lint-types, tests]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Every part of the checks passed
+        env:
+          LINT: ${{ needs.lint-types.result }}
+          TESTS: ${{ needs.tests.result }}
+        run: |
+          echo "lint-types: $LINT"
+          echo "tests: $TESTS"
+          if [ "$LINT" != "success" ] || [ "$TESTS" != "success" ]; then
+            echo "::error::A part of the checks did not pass; its job above names the failure."
+            exit 1
+          fi
 
   e2e:
     runs-on: ubuntu-24.04
