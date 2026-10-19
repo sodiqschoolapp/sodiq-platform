@@ -26,7 +26,7 @@ import { TimetableDayChanges } from './day-changes.service.js';
 /**
  * One-day changes of the published timetable (task 5.6a-1, pull request
  * #160; the room change and the move of 5.6a-2, pull request #161): the area `timetable`, no role widened (decision 2). The Super Admin
- * and the Academic Vice Principal cancel and restore (`edit`); the Principal
+ * and the Academic Vice Principal cancel, restore, change the room and move (`edit`); the Principal
  * views the day (`view`). Every route works for the branch of the request.
  */
 @Controller('timetable')

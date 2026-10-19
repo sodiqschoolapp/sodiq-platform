@@ -1379,18 +1379,8 @@ describe('one-day changes: cancel and restore', () => {
       refusedWith(await roomChange(s.branch, lesson.id, s.room), 409, 'room_unchanged');
       const elsewhere = await load.classes.room(t.south);
       const before = await everything();
-      for (const cookie of [t.admin]) {
-        refusedWith(
-          await roomChange(s.branch, lesson.id, elsewhere, 'Painted', cookie),
-          404,
-          'not_found',
-        );
-        refusedWith(
-          await roomChange(s.branch, lesson.id, UNKNOWN, 'Painted', cookie),
-          404,
-          'not_found',
-        );
-      }
+      refusedWith(await roomChange(s.branch, lesson.id, elsewhere), 404, 'not_found');
+      refusedWith(await roomChange(s.branch, lesson.id, UNKNOWN), 404, 'not_found');
       expect(await everything()).toEqual(before);
       const started = await todayLesson(s, '23:50', '23:55');
       refusedWith(await roomChange(s.branch, started, s.spareRoom), 409, 'lesson_started');
@@ -1476,73 +1466,117 @@ describe('one-day changes: cancel and restore', () => {
       ).toEqual([]);
     });
 
-    it('keeps a used key to its account, its branch and its role (request keys)', async () => {
+    it('keeps a used key to its account, its branch and its role, for every id it names (request keys)', async () => {
       const s = northScene;
       const other = await scene();
+      const otherLesson = (await lessonOf(other, NEXT_MONDAY)).id;
+      const otherRoom = await load.classes.room(other.branch);
       const lesson = await lessonOf(s, '2027-02-15');
+      const target = { date: '2027-02-15', lessonNumber: 2 };
+
+      // A room change as the Academic Vice Principal, named in the log.
       const key = randomUUID();
-      changed(await roomChange(s.branch, lesson.id, s.spareRoom, 'Painted', t.admin, key));
+      changed(await roomChange(s.branch, lesson.id, s.spareRoom, 'Painted', t.vicePrincipal, key));
+      expect(await t.entries('lesson.room_change', lesson.id)).toMatchObject([
+        { assignment_id: t.viceAssignment },
+      ]);
+      let before = await everything();
       // The repeat answers the stored change and writes nothing more.
-      changed(await roomChange(s.branch, lesson.id, s.spareRoom, 'Painted', t.admin, key));
-      expect(await dayChangesOf(lesson.id)).toHaveLength(1);
+      changed(await roomChange(s.branch, lesson.id, s.spareRoom, 'Painted', t.vicePrincipal, key));
       refusedWith(
-        await roomChange(s.branch, lesson.id, s.spareRoom, 'Painted', t.vicePrincipal, key),
+        await roomChange(s.branch, lesson.id, s.spareRoom, 'Painted', t.admin, key),
         409,
         'request_key_reused',
       );
-      refusedWith(
-        await roomChange(
-          s.branch,
-          (await lessonOf(other, NEXT_MONDAY)).id,
-          s.spareRoom,
-          'Painted',
-          t.admin,
-          key,
-        ),
-        404,
-        'not_found',
-      );
-      refusedWith(
-        await roomChange(s.branch, UNKNOWN, s.spareRoom, 'Painted', t.admin, key),
-        404,
-        'not_found',
-      );
+      for (const [id, roomId] of [
+        [otherLesson, s.spareRoom],
+        [UNKNOWN, s.spareRoom],
+        [lesson.id, otherRoom],
+        [lesson.id, UNKNOWN],
+      ] as const) {
+        refusedWith(
+          await roomChange(s.branch, id, roomId, 'Painted', t.vicePrincipal, key),
+          404,
+          'not_found',
+        );
+      }
       refusedWith(
         await roomChange(s.branch, lesson.id, s.spareRoom, 'Painted', t.principal, key),
         403,
         'permission_denied',
       );
+      expect(await everything()).toEqual(before);
+
+      // A move as the Academic Vice Principal.
       const moveKey = randomUUID();
-      changed(
-        await move(s.branch, lesson.id, { date: '2027-02-15', lessonNumber: 2 }, t.admin, moveKey),
-      );
+      changed(await move(s.branch, lesson.id, target, t.vicePrincipal, moveKey));
+      expect(await t.entries('lesson.move', lesson.id)).toMatchObject([
+        { assignment_id: t.viceAssignment },
+      ]);
+      before = await everything();
+      changed(await move(s.branch, lesson.id, target, t.vicePrincipal, moveKey));
       refusedWith(
-        await move(
-          s.branch,
-          lesson.id,
-          { date: '2027-02-15', lessonNumber: 2 },
-          t.vicePrincipal,
-          moveKey,
-        ),
+        await move(s.branch, lesson.id, target, t.admin, moveKey),
         409,
         'request_key_reused',
       );
+      for (const id of [otherLesson, UNKNOWN]) {
+        refusedWith(await move(s.branch, id, target, t.vicePrincipal, moveKey), 404, 'not_found');
+      }
+      for (const roomId of [otherRoom, UNKNOWN]) {
+        refusedWith(
+          await move(s.branch, lesson.id, { ...target, roomId }, t.vicePrincipal, moveKey),
+          404,
+          'not_found',
+        );
+      }
       refusedWith(
-        await move(s.branch, UNKNOWN, { date: '2027-02-15', lessonNumber: 2 }, t.admin, moveKey),
+        await move(s.branch, lesson.id, target, t.principal, moveKey),
+        403,
+        'permission_denied',
+      );
+      expect(await everything()).toEqual(before);
+
+      // A restore into a room as the Academic Vice Principal.
+      const restored = await lessonOf(s, '2027-03-01');
+      changed(await cancel(s.branch, restored.id));
+      const restoreKey = randomUUID();
+      const body = { roomId: s.spareRoom, reason: 'Back' };
+      changed(await restoreInto(s.branch, restored.id, body, t.vicePrincipal, restoreKey));
+      expect(await t.entries('lesson.restore', restored.id)).toMatchObject([
+        { assignment_id: t.viceAssignment, new_value: { roomId: s.spareRoom } },
+      ]);
+      before = await everything();
+      changed(await restoreInto(s.branch, restored.id, body, t.vicePrincipal, restoreKey));
+      refusedWith(
+        await restoreInto(s.branch, restored.id, body, t.admin, restoreKey),
+        409,
+        'request_key_reused',
+      );
+      for (const roomId of [otherRoom, UNKNOWN]) {
+        refusedWith(
+          await restoreInto(
+            s.branch,
+            restored.id,
+            { roomId, reason: 'Back' },
+            t.vicePrincipal,
+            restoreKey,
+          ),
+          404,
+          'not_found',
+        );
+      }
+      refusedWith(
+        await restoreInto(s.branch, otherLesson, body, t.vicePrincipal, restoreKey),
         404,
         'not_found',
       );
       refusedWith(
-        await move(
-          s.branch,
-          lesson.id,
-          { date: '2027-02-15', lessonNumber: 2 },
-          t.principal,
-          moveKey,
-        ),
+        await restoreInto(s.branch, restored.id, body, t.principal, restoreKey),
         403,
         'permission_denied',
       );
+      expect(await everything()).toEqual(before);
     });
 
     it('maps the claims and the commit checks of 0058 to day_change_blocked, and a quarter to move_other_quarter', () => {
