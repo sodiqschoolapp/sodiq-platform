@@ -122,10 +122,9 @@ export type CalendarEntryRecord = z.infer<typeof calendarEntryRecordSchema>;
 export const calendarDayKeepsSchema = z
   .array(dayKeepBodySchema)
   .max(500)
-  .refine(
-    (list) => new Set(list.map((one) => `${one.date}|${one.classId}`)).size === list.length,
-    { message: 'Each date and class once.' },
-  );
+  .refine((list) => new Set(list.map((one) => `${one.date}|${one.classId}`)).size === list.length, {
+    message: 'Each date and class once.',
+  });
 
 export type CalendarDayKeeps = z.infer<typeof calendarDayKeepsSchema>;
 

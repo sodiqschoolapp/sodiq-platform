@@ -1073,7 +1073,9 @@ function keepRefusalOf(
   if (keep.slotPositions.length === 0) return null;
   const day = shortened.find((one) => one.date === keep.date && one.classId === keep.classId);
   if (day === undefined) return 'day_keep_not_short';
-  if (keep.slotPositions.some((one) => !day.lessons.some((lesson) => lesson.slotPosition === one))) {
+  if (
+    keep.slotPositions.some((one) => !day.lessons.some((lesson) => lesson.slotPosition === one))
+  ) {
     return 'day_keep_lessons';
   }
   if (keep.slotPositions.length > day.lessonSlots) return 'day_keep_over_slots';

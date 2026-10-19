@@ -198,7 +198,7 @@ describe('calendar entries after publishing', () => {
    * the grade-7 class in slot 1 and history of the grade-10 class in slot 3,
    * both on Mondays, each with its own teacher.
    */
-  async function scene(input: { group?: boolean } = {}) {
+  async function scene(input: { group?: boolean; three?: boolean } = {}) {
     const branch = await t.newBranch();
     const year = await load.classes.year(branch);
     for (const [index, [start, end]] of QUARTERS.entries()) {
@@ -281,6 +281,29 @@ describe('calendar entries after publishing', () => {
       });
       await placeAt(branch, version, groupRow, 1, 5);
     }
+    // Task 5.6b-2b, with `three`: art and music of the grade-7 class in
+    // slots 3 and 5 on Mondays, so the class has three lessons that weekday.
+    let art: string | null = null;
+    let music: string | null = null;
+    if (input.three === true) {
+      for (const slotPosition of [3, 5]) {
+        const subject = await load.classes.subject({ grades: [7], journalType: 'attendance_only' });
+        const teacher = (await load.teacher(branch, { subjects: [{ subject, grades: [7] }] }))
+          .staffId;
+        await hours(branch, teacher);
+        const row = await load.row({
+          branch_id: branch,
+          version_id: version,
+          class_id: classId,
+          subject_id: subject,
+          teacher_id: teacher,
+          lessons_per_week: 1,
+        });
+        await placeAt(branch, version, row, 1, slotPosition);
+        if (slotPosition === 3) art = subject;
+        else music = subject;
+      }
+    }
     await confirmTemplates(branch, version);
     await load.freeEditLock(version);
     const published = await publish(branch, version, MONDAY);
@@ -302,6 +325,8 @@ describe('calendar entries after publishing', () => {
       regular,
       short,
       groupId,
+      art,
+      music,
     };
   }
 
@@ -1686,6 +1711,373 @@ describe('calendar entries after publishing', () => {
     });
   });
 
+  // Task 5.6b-2b (pull request #171): the choice of the lessons kept on a
+  // shortened day over published dates (`edge/time-dates-calendar`, "A
+  // shortened day has 5 lesson slots and a class has 7 lessons that weekday.
+  // Lessons are matched by their order in the day. ... The Academic Vice
+  // Principal can choose which lessons are kept"), taken in the calendar save
+  // and its preview for the version in force and stored in
+  // `timetable_day_keeps`. The grade-7 class has maths, art and music in
+  // slots 1, 3 and 5 on Mondays; the special day's template has two lesson
+  // slots (positions 1 and 3).
+  describe("the shortened day's choice", () => {
+    async function keepScene() {
+      const s = await scene({ three: true });
+      const lesson = await t.createSlotType(s.branch, 'Lesson 2', 'lesson', 45);
+      const pause = await t.createSlotType(s.branch, 'Break 2', 'break', 10);
+      const two = await t.createTemplate(s.branch, 'Two', [lesson, pause, lesson]);
+      return { ...s, two, art: s.art ?? '', music: s.music ?? '' };
+    }
+
+    type KeepScene = Awaited<ReturnType<typeof keepScene>>;
+
+    /** A copy of the version with its rows placed again where they were, edit lock freed. */
+    async function copyPlaced(k: KeepScene): Promise<string> {
+      const next = await draft(k.branch, k.year, k.version);
+      await t.database.migrator
+        .deleteFrom('pattern_blocks')
+        .where('version_id', '=', next)
+        .execute();
+      const rows = await t.database.migrator
+        .selectFrom('teaching_load_rows')
+        .select(['id', 'subject_id'])
+        .where('version_id', '=', next)
+        .execute();
+      const slotOf = new Map([
+        [k.maths, 1],
+        [k.history, 3],
+        [k.art, 3],
+        [k.music, 5],
+      ]);
+      for (const row of rows) await placeAt(k.branch, next, row.id, 1, slotOf.get(row.subject_id));
+      await confirmTemplates(k.branch, next);
+      await load.freeEditLock(next);
+      return next;
+    }
+
+    const keepsOf = (branch: string) =>
+      t.database.migrator
+        .selectFrom('timetable_day_keeps')
+        .select([
+          'version_id',
+          'class_id',
+          sql<string>`kept_on::text`.as('kept_on'),
+          'slot_position',
+        ])
+        .where('branch_id', '=', branch)
+        .orderBy('version_id')
+        .orderBy('kept_on')
+        .orderBy('class_id')
+        .orderBy('slot_position')
+        .execute();
+
+    /** The grade-7 class's lessons of a date by subject: cancel cause and start. */
+    const dayOf = async (k: KeepScene, date: string) =>
+      Object.fromEntries(
+        (await lessonsOn(k.branch, date))
+          .filter((one) => one.class_id === k.classId)
+          .map((one) => [
+            one.subject_id === k.maths ? 'maths' : one.subject_id === k.art ? 'art' : 'music',
+            [one.cancel_cause, new Date(one.starts_at).toISOString()],
+          ]),
+      );
+
+    /** The start of history (the senior class's lesson 2) on a date: the second lesson slot. */
+    const secondSlot = async (k: KeepScene, date: string) =>
+      new Date((await lessonOf(k, date, k.seniorId)).starts_at).toISOString();
+    const firstSlot = (date: string) => new Date(`${date}T08:00:00+05:00`).toISOString();
+
+    const keep = (k: KeepScene, slotPositions: number[], date = OCT19, classId = k.classId) => ({
+      classId,
+      date,
+      slotPositions,
+    });
+
+    it('a special shortened day keeps the two lessons chosen: one in its own slot, the other in the free slot; the others cancelled "not in the day\'s template"', async () => {
+      const k = await keepScene();
+      const record = specialDay(OCT19, OCT19, k.two);
+      const saved = okay(await create(k.branch, { ...record, dayKeeps: [keep(k, [1, 5])] }), 201);
+
+      const second = await secondSlot(k, OCT19);
+      expect(await dayOf(k, OCT19)).toEqual({
+        maths: [null, firstSlot(OCT19)],
+        art: ['not_in_template', expect.any(String)],
+        music: [null, second],
+      });
+      expect(await keepsOf(k.branch)).toEqual([
+        { version_id: k.version, class_id: k.classId, kept_on: OCT19, slot_position: 1 },
+        { version_id: k.version, class_id: k.classId, kept_on: OCT19, slot_position: 5 },
+      ]);
+      const [entry] = await t.entries('calendar_entry.create', saved.id);
+      expect((entry?.new_value as { dayKeeps: unknown }).dayKeeps).toEqual([
+        { versionId: k.version, date: OCT19, classId: k.classId, before: [], after: [1, 5] },
+      ]);
+      // Another Monday of the version is not touched.
+      expect(await dayOf(k, OCT26)).toEqual({
+        maths: [null, expect.any(String)],
+        art: [null, expect.any(String)],
+        music: [null, expect.any(String)],
+      });
+    });
+
+    it('the preview follows the ticks sent and writes nothing; without ticks the lessons are kept by their order in the day', async () => {
+      const k = await keepScene();
+      const record = specialDay(OCT19, OCT19, k.two);
+      const rows = await storedRowsOf(k.branch);
+      const before = await t.auditCount();
+
+      const plain = await preview(k.branch, { action: 'create', record });
+      expect(plain.lessons.shortenedDays.map((one) => [one.classId, one.kept, one.chosen])).toEqual(
+        [[k.classId, [1, 3], false]],
+      );
+      expect(plain.lessons.cancelled.map((one) => one.subjectId)).toEqual([k.music]);
+
+      const ticked = await preview(k.branch, {
+        action: 'create',
+        record,
+        dayKeeps: [keep(k, [1, 5])],
+      });
+      const [day] = ticked.lessons.shortenedDays;
+      expect(day).toMatchObject({
+        date: OCT19,
+        classId: k.classId,
+        lessonSlots: 2,
+        kept: [1, 5],
+        chosen: true,
+        missingPositions: [],
+      });
+      expect(day?.lessons.map((one) => [one.slotPosition, one.subjects])).toEqual([
+        [1, [{ unitId: k.classId, subjectId: k.maths }]],
+        [3, [{ unitId: k.classId, subjectId: k.art }]],
+        [5, [{ unitId: k.classId, subjectId: k.music }]],
+      ]);
+      expect(ticked.lessons.names.subjects.map((one) => one.id)).toEqual(
+        expect.arrayContaining([k.maths, k.art, k.music]),
+      );
+      expect(ticked.lessons.cancelled.map((one) => one.subjectId)).toEqual([k.art]);
+      expect(ticked.lessons.keepRefusals).toEqual([]);
+      expect(await storedRowsOf(k.branch)).toEqual(rows);
+      expect(await t.auditCount()).toBe(before);
+    });
+
+    it('an edit of the unchanged entry with a new choice writes that date again and marks the drafts; an empty list goes back to the order of the day', async () => {
+      const k = await keepScene();
+      const record = specialDay(OCT19, OCT19, k.two);
+      const saved = okay(await create(k.branch, record), 201);
+      expect(await dayOf(k, OCT19)).toMatchObject({
+        music: ['not_in_template', expect.any(String)],
+      });
+      const draftId = await copyPlaced(k);
+      const causes = async () =>
+        (
+          await t.database.migrator
+            .selectFrom('timetable_version_out_of_date_causes')
+            .select('id')
+            .where('version_id', '=', draftId)
+            .execute()
+        ).length;
+      const causesBefore = await causes();
+
+      okay(
+        await t.patch(`/api/setup/calendar-entries/${saved.id}`, k.branch, {
+          ...record,
+          dayKeeps: [keep(k, [3, 5])],
+        }),
+      );
+      // Art keeps its own number's slot (the second); music takes the first.
+      const second = await secondSlot(k, OCT19);
+      expect(await dayOf(k, OCT19)).toEqual({
+        maths: ['not_in_template', expect.any(String)],
+        art: [null, second],
+        music: [null, firstSlot(OCT19)],
+      });
+      expect(await causes()).toBeGreaterThan(causesBefore);
+      const [edit] = await t.entries('calendar_entry.edit', saved.id);
+      expect((edit?.new_value as { dayKeeps: unknown }).dayKeeps).toEqual([
+        { versionId: k.version, date: OCT19, classId: k.classId, before: [], after: [3, 5] },
+      ]);
+
+      okay(
+        await t.patch(`/api/setup/calendar-entries/${saved.id}`, k.branch, {
+          ...record,
+          dayKeeps: [keep(k, [])],
+        }),
+      );
+      expect(await dayOf(k, OCT19)).toEqual({
+        maths: [null, firstSlot(OCT19)],
+        art: [null, second],
+        music: ['not_in_template', expect.any(String)],
+      });
+      expect(await keepsOf(k.branch)).toEqual([]);
+      // An edit with nothing changed and no choice is still answered as it is.
+      const audit = await t.auditCount();
+      okay(await t.patch(`/api/setup/calendar-entries/${saved.id}`, k.branch, record));
+      expect(await t.auditCount()).toBe(audit);
+    });
+
+    it('a stored choice whose day is no longer shortened stays, decides nothing, and is shown again when the day is shortened again', async () => {
+      const k = await keepScene();
+      const record = specialDay(OCT19, OCT19, k.two);
+      const saved = okay(await create(k.branch, { ...record, dayKeeps: [keep(k, [1, 5])] }), 201);
+      const stored = await keepsOf(k.branch);
+
+      okay(
+        await t.patch(
+          `/api/setup/calendar-entries/${saved.id}`,
+          k.branch,
+          specialDay(OCT19, OCT19, k.regular),
+        ),
+      );
+      expect(await keepsOf(k.branch)).toEqual(stored);
+      expect(Object.values(await dayOf(k, OCT19)).map(([cause]) => cause)).toEqual([
+        null,
+        null,
+        null,
+      ]);
+
+      const shown = await preview(k.branch, { action: 'edit', id: saved.id, record });
+      expect(shown.lessons.shortenedDays.map((one) => [one.kept, one.chosen])).toEqual([
+        [[1, 5], true],
+      ]);
+      okay(await t.patch(`/api/setup/calendar-entries/${saved.id}`, k.branch, record));
+      expect(await dayOf(k, OCT19)).toMatchObject({
+        art: ['not_in_template', expect.any(String)],
+        music: [null, await secondSlot(k, OCT19)],
+      });
+    });
+
+    it('refuses a choice the day cannot take, each by its own check, with nothing written; the preview lists it and leaves it out', async () => {
+      const k = await keepScene();
+      const record = specialDay(OCT19, OCT19, k.two);
+      const plain = await preview(k.branch, { action: 'create', record });
+      const rows = await storedRowsOf(k.branch);
+      const before = await t.auditCount();
+      const cases: [string, ReturnType<typeof keep>][] = [
+        // Today, also as an empty list (review correction 1).
+        ['day_keep_date_passed', keep(k, [1, 5], '2026-10-10')],
+        ['day_keep_date_passed', keep(k, [], '2026-10-10')],
+        // A date the save does not write, also as an empty list.
+        ['day_keep_not_short', keep(k, [1, 5], OCT26)],
+        ['day_keep_not_short', keep(k, [], OCT26)],
+        // Written, but the senior class's one lesson fits the day.
+        ['day_keep_not_short', keep(k, [3], OCT19, k.seniorId)],
+        // Position 2 is a break.
+        ['day_keep_lessons', keep(k, [1, 2])],
+        ['day_keep_over_slots', keep(k, [1, 3, 5])],
+      ];
+      for (const [code, one] of cases) {
+        refusedWith(await create(k.branch, { ...record, dayKeeps: [one] }), 409, code);
+        const shown = await preview(k.branch, { action: 'create', record, dayKeeps: [one] });
+        expect(shown.lessons.keepRefusals, code).toEqual([
+          { date: one.date, classId: one.classId, code },
+        ]);
+        expect(shown.lessons.cancelled, code).toEqual(plain.lessons.cancelled);
+        expect(shown.lessons.shortenedDays, code).toEqual(plain.lessons.shortenedDays);
+      }
+      expect(await storedRowsOf(k.branch)).toEqual(rows);
+      expect(await t.auditCount()).toBe(before);
+    });
+
+    it('the key of the stored changes follows the ticks: a room change of a lesson the choice drops is dropped, one it keeps is kept', async () => {
+      const k = await keepScene();
+      const art = (await lessonsOn(k.branch, OCT19)).find((one) => one.subject_id === k.art);
+      if (art === undefined) throw new Error('No art lesson.');
+      okay(
+        await keyed(`/api/timetable/lessons/${art.id}/room`, k.branch, {
+          roomId: await load.classes.room(k.branch),
+          reason: 'The room is painted',
+        }),
+      );
+      const record = specialDay(OCT19, OCT19, k.two);
+      const keepsArt = [keep(k, [1, 3])];
+      const dropsArt = [keep(k, [1, 5])];
+      const shownKeeping = await preview(k.branch, {
+        action: 'create',
+        record,
+        dayKeeps: keepsArt,
+      });
+      const shownDropping = await preview(k.branch, {
+        action: 'create',
+        record,
+        dayKeeps: dropsArt,
+      });
+      expect(shownKeeping.lessons.dayChanges.kept).toHaveLength(1);
+      expect(shownDropping.lessons.dayChanges.dropped).toHaveLength(1);
+      expect(shownDropping.lessons.dayChanges.key).not.toBe(shownKeeping.lessons.dayChanges.key);
+
+      // The ticks changed after the preview: refused, nothing written.
+      const rows = await storedRowsOf(k.branch);
+      const wrong = await create(k.branch, {
+        ...withDays(record, shownKeeping),
+        dayKeeps: dropsArt,
+      });
+      refusedWith(wrong, 409, 'calendar_blocked');
+      expect(detailsOf(wrong).map((one) => one.code)).toEqual(['day_changes_changed']);
+      expect(await storedRowsOf(k.branch)).toEqual(rows);
+
+      okay(await create(k.branch, { ...withDays(record, shownDropping), dayKeeps: dropsArt }), 201);
+      expect(await dayOf(k, OCT19)).toMatchObject({ art: ['not_in_template', expect.any(String)] });
+      expect(await endsOf(k.branch)).toHaveLength(1);
+    });
+
+    it('a save over the dates of two versions stores each choice under the version in force on its date', async () => {
+      const k = await keepScene();
+      const next = await copyPlaced(k);
+      // The second version from 9 November; the special day runs from Monday
+      // 26 October over the vacation to Monday 9 November, its weekend days
+      // following Monday's timetable.
+      const published = await publish(k.branch, next, NOVEMBER);
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      const record = specialDay(OCT26, NOVEMBER, k.two, { followsWeekday: 1 });
+      const shown = await preview(k.branch, {
+        action: 'create',
+        record,
+        dayKeeps: [keep(k, [1, 5], OCT26), keep(k, [3, 5], NOVEMBER)],
+      });
+      okay(
+        await create(k.branch, {
+          ...withDays(record, shown),
+          dayKeeps: [keep(k, [1, 5], OCT26), keep(k, [3, 5], NOVEMBER)],
+        }),
+        201,
+      );
+      expect(
+        (await keepsOf(k.branch)).map((one) => [one.version_id, one.kept_on, one.slot_position]),
+      ).toEqual(
+        [
+          [k.version, OCT26, 1],
+          [k.version, OCT26, 5],
+          [next, NOVEMBER, 3],
+          [next, NOVEMBER, 5],
+        ].sort((a, b) => String(a[0]).localeCompare(String(b[0]))),
+      );
+      expect(await dayOf(k, OCT26)).toMatchObject({ art: ['not_in_template', expect.any(String)] });
+      expect(await dayOf(k, NOVEMBER)).toMatchObject({
+        maths: ['not_in_template', expect.any(String)],
+      });
+    });
+
+    it('a draft copied from the published version after the save carries the choice', async () => {
+      const k = await keepScene();
+      okay(
+        await create(k.branch, {
+          ...specialDay(OCT19, OCT19, k.two),
+          dayKeeps: [keep(k, [1, 5])],
+        }),
+        201,
+      );
+      const copy = await draft(k.branch, k.year, k.version);
+      expect(
+        (await keepsOf(k.branch))
+          .filter((one) => one.version_id === copy)
+          .map((one) => [one.class_id, one.kept_on, one.slot_position]),
+      ).toEqual([
+        [k.classId, OCT19, 1],
+        [k.classId, OCT19, 5],
+      ]);
+    });
+  });
+
   describe('the preview', () => {
     it('lists what the save then does and writes nothing', async () => {
       const s = await scene();
@@ -1866,6 +2258,24 @@ describe('calendar entries after publishing', () => {
         201,
       );
     }
+    // Task 5.6b-2b: a shortened day's choice stored in each branch (the
+    // senior class's history, lesson 2, beyond the one slot of `short`).
+    for (const one of [north, south]) {
+      okay(
+        await create(one.branch, {
+          ...specialDay('2026-11-30', '2026-11-30', one.short),
+          dayKeeps: [{ classId: one.seniorId, date: '2026-11-30', slotPositions: [3] }],
+        }),
+        201,
+      );
+      expect(
+        await t.database.migrator
+          .selectFrom('timetable_day_keeps')
+          .select('id')
+          .where('branch_id', '=', one.branch)
+          .execute(),
+      ).toHaveLength(1);
+    }
     for (const one of [north, south]) {
       expect(await endsOf(one.branch)).toHaveLength(1);
       expect(
@@ -1943,6 +2353,56 @@ describe('calendar entries after publishing', () => {
           () =>
             post(`/api/setup/calendar-entries/${northEntry.id}/restore`, north.branch, {
               dayDecisions,
+            }),
+        ]) {
+          refusedWith(await attempt(), 404, 'not_found');
+        }
+      }
+      // Task 5.6b-2b: a choice naming another branch's class, or an unknown
+      // one, on every save and preview that takes it.
+      for (const classId of [south.seniorId, UNKNOWN]) {
+        const dayKeeps = [{ classId, date: OCT19, slotPositions: [3] }];
+        for (const attempt of [
+          () => create(north.branch, { ...specialDay(OCT26, OCT26, north.short), dayKeeps }),
+          () =>
+            t.patch(
+              `/api/setup/calendar-entries/${northEntry.id}`,
+              north.branch,
+              { ...specialDay(OCT19, OCT19, north.short), dayKeeps },
+              cookie,
+            ),
+          () =>
+            post(`/api/setup/calendar-entries/${northEntry.id}/archive`, north.branch, {
+              dayKeeps,
+            }),
+          () =>
+            post(`/api/setup/calendar-entries/${northEntry.id}/restore`, north.branch, {
+              dayKeeps,
+            }),
+          () =>
+            post('/api/setup/calendar-entries/preview', north.branch, {
+              action: 'create',
+              record: specialDay(OCT26, OCT26, north.short),
+              dayKeeps,
+            }),
+          () =>
+            post('/api/setup/calendar-entries/preview', north.branch, {
+              action: 'edit',
+              id: northEntry.id,
+              record: specialDay(OCT19, OCT19, north.short),
+              dayKeeps,
+            }),
+          () =>
+            post('/api/setup/calendar-entries/preview', north.branch, {
+              action: 'archive',
+              id: northEntry.id,
+              dayKeeps,
+            }),
+          () =>
+            post('/api/setup/calendar-entries/preview', north.branch, {
+              action: 'restore',
+              id: northEntry.id,
+              dayKeeps,
             }),
         ]) {
           refusedWith(await attempt(), 404, 'not_found');
@@ -2298,6 +2758,8 @@ describe('calendar entries after publishing', () => {
       'notifications',
       'timetable_versions',
       'timetable_version_out_of_date_causes',
+      // Task 5.6b-2b: the shortened days' choices the save now writes.
+      'timetable_day_keeps',
     ] as const) {
       rows[table] = await t.database.migrator
         .selectFrom(table)

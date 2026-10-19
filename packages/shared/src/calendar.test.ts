@@ -170,9 +170,9 @@ describe('the shortened days’ choices of a calendar save', () => {
     const twice = [keep, { ...keep, slotPositions: [1] }];
     expect(calendarSaveSchema.safeParse({ ...dayOff, dayKeeps: twice }).success).toBe(false);
     expect(calendarDaysBodySchema.safeParse({ dayKeeps: twice }).success).toBe(false);
-    expect(
-      calendarChangeSchema.safeParse({ action: 'archive', id, dayKeeps: twice }).success,
-    ).toBe(false);
+    expect(calendarChangeSchema.safeParse({ action: 'archive', id, dayKeeps: twice }).success).toBe(
+      false,
+    );
     expect(
       calendarDaysBodySchema.safeParse({ dayKeeps: [{ ...keep, slotPositions: [2, 2] }] }).success,
     ).toBe(false);
