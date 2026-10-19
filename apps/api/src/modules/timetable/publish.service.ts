@@ -143,7 +143,7 @@ function planOfRun(
   const fromBulk = bulkWritePlanOf(bulk, bulkDecisions);
   const cancels = new Map(day.cancels);
   for (const [key, reason] of fromBulk.cancels) if (!cancels.has(key)) cancels.set(key, reason);
-  return { ...day, cancels, bulkCancels: fromBulk.bulkCancels };
+  return { ...day, cancels, bulkCancels: fromBulk.bulkCancels, bulkHolds: fromBulk.holds };
 }
 
 /**

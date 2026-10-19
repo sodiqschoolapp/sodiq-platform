@@ -1783,6 +1783,92 @@ describe('the bulk cancel', () => {
       expect(later[0]?.blocks.map((one) => one.choice)).toEqual(['cancel']);
     });
 
+    // Review of the code, round 1: the mirror of the test above. A decided
+    // `keep` holds the part of the other classes the stored `cancel` had
+    // cancelled, on the lesson the pairing kept.
+    it('holds under “keep” the shared part a stored “cancel” cancelled on a block the new version keeps by its id', async () => {
+      const s = await scene();
+      const bulk = await oxfordAway(s, 'cancel');
+      const stored = await blocksOf(bulk);
+      expect(stored.map((one) => one.choice)).toEqual(['cancel']);
+      const before = await mondayOf(s, { groupId: s.groups[0] ?? '' }, s.english);
+      expect(before).toMatchObject({ cancel_cause: 'reason', cancel_reason: reason });
+      const draft = await draftOf(s, { withoutGroup: s.groups[1] ?? '' });
+      const days = (await checkOn(s, draft, NEXT_MONDAY)).impact.dayChanges;
+      expect(days.bulk.map((one) => one.category)).toEqual(['decide']);
+      const blockId = days.bulk[0]?.blocks[0]?.blockId ?? '';
+      const published = await publishWith(s, draft, {
+        dayChangesKey: days.key,
+        dayDecisions: [{ key: bulk, blockId, blockDate: NEXT_MONDAY, choice: 'keep' }],
+      });
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      // The same lesson, kept by the pairing, held; the chosen class's part cancelled.
+      const shared = await rowOf(before.id);
+      expect(shared?.block_id).toBe(stored[0]?.block_id);
+      expect(shared).toMatchObject({ cancel_cause: null, cancel_reason: null });
+      expect(await mondayOf(s, { groupId: s.groups[2] ?? '' }, s.english)).toMatchObject({
+        cancel_cause: 'reason',
+        cancel_reason: reason,
+      });
+      expect((await blocksOf(bulk)).map((one) => [one.block_id, one.choice])).toEqual([
+        [stored[0]?.block_id, 'keep'],
+      ]);
+      const [entry] = await t.entries('timetable_version.publish', draft);
+      expect(entry?.new_value).toMatchObject({
+        dayChanges: {
+          bulk: {
+            decided: [
+              { key: bulk, blockId, blockDate: NEXT_MONDAY, choice: 'keep', before: 'cancel' },
+            ],
+          },
+        },
+      });
+      // Recorded among the lessons changed.
+      const written = entry?.new_value as { datedLessons: { changed: { id: string }[] } };
+      expect(written.datedLessons.changed.find((one) => one.id === before.id)).toEqual({
+        id: before.id,
+        teacherId: { from: before.teacher_id, to: before.teacher_id },
+        roomId: { from: before.room_id, to: before.room_id },
+        cancel: { from: 'reason', to: null },
+      });
+    });
+
+    // Review of the code, round 1 (decided without the owner): a cancel of
+    // the shared part recorded after the bulk cancel is its own, and `keep`
+    // leaves it.
+    it('leaves under “keep” a shared part cancelled on its own after the bulk cancel', async () => {
+      const s = await scene();
+      const bulk = await oxfordAway(s, 'keep');
+      const shared = await mondayOf(s, { groupId: s.groups[0] ?? '' }, s.english);
+      expect(shared.cancel_cause).toBeNull();
+      t.clock.advance(1000);
+      try {
+        // Its own cancel, with the bulk cancel's reason, after the bulk cancel.
+        const cancelled = await keyed(
+          `/api/timetable/lessons/${shared.id}/cancel`,
+          s.branch,
+          { reason },
+          t.admin,
+          randomUUID(),
+        );
+        expect(cancelled.status, JSON.stringify(cancelled.body)).toBe(200);
+      } finally {
+        t.clock.set(START);
+      }
+      const draft = await draftOf(s, { withoutGroup: s.groups[1] ?? '' });
+      const days = (await checkOn(s, draft, NEXT_MONDAY)).impact.dayChanges;
+      const blockId = days.bulk[0]?.blocks[0]?.blockId ?? '';
+      const published = await publishWith(s, draft, {
+        dayChangesKey: days.key,
+        dayDecisions: [{ key: bulk, blockId, blockDate: NEXT_MONDAY, choice: 'keep' }],
+      });
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      expect(await rowOf(shared.id)).toMatchObject({
+        cancel_cause: 'reason',
+        cancel_reason: reason,
+      });
+    });
+
     // Decision 4's exception (spec review of the code, must-fix 3): a decided
     // block is written as chosen on every lesson, kept ones included.
     it('cancels again under “keep” a part of the chosen classes alone restored after the bulk cancel', async () => {

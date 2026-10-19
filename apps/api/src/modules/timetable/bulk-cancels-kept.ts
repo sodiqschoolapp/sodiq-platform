@@ -27,7 +27,9 @@ import { patternDateOf, placeKeyOf } from './dated-lessons.js';
  * - shared, with the same lessons as a stored block that has a choice: the
  *   choice carries, on the lessons the write creates (decision 5);
  * - shared otherwise: "needs a decision", `cancel` or `keep`, written on every
- *   lesson of the block, kept or created (decision 4's exception).
+ *   lesson of the block, kept or created (decision 4's exception): `keep`
+ *   holds a part of the other classes the bulk cancel's own cancel had
+ *   cancelled (`BulkHold`; review of the code, round 1).
  * A bulk cancel is never dropped or ended (decision 3): with nothing in scope
  * it is kept and cancels nothing.
  */
@@ -79,10 +81,24 @@ export type BulkChoiceEntry = {
   before?: 'keep' | 'cancel';
 };
 
+/**
+ * A part of a block decided `keep` that the write holds: a stored lesson at
+ * its place is held when its cancel is the bulk cancel's own, read as cause
+ * `reason` with the bulk cancel's reason and no `lesson.cancel` of it
+ * recorded after `since` (review of the code, round 1; decided without the
+ * owner).
+ */
+export interface BulkHold {
+  readonly reason: string;
+  readonly since: Date;
+}
+
 /** A stored bulk cancel as sorted, with what the write needs. */
 export interface SortedBulk {
   readonly answer: BulkItemAnswer;
   readonly date: string;
+  /** The moment the bulk cancel was saved. */
+  readonly changedAt: Date;
   /** The lessons of blocks not shared. */
   readonly plain: readonly DatedLesson[];
   readonly blocks: readonly SortedBulkBlock[];
@@ -247,6 +263,7 @@ export function sortBulkOf(input: {
       );
     sorted.push({
       date: record.date,
+      changedAt: record.changedAt,
       plain,
       blocks,
       answer: {
@@ -378,14 +395,20 @@ export function openBulkBlocks(items: readonly SortedBulk[]): Set<string> {
  * What the write does with the sorted bulk cancels and the choices of their
  * blocks (decisions 4 and 13): `cancels` for a decided block, on every lesson
  * of it; `bulkCancels` for the rest, on the lessons the write creates. A
- * cancel from any item wins; `keep` adds no cancel to the parts it holds.
+ * cancel from any item wins; a decided `keep` puts the parts it holds in
+ * `holds`, unless an item cancels them.
  */
 export function bulkWritePlanOf(
   items: readonly SortedBulk[],
   decisions: ReadonlyMap<string, DayChangeChoice>,
-): { cancels: Map<string, string>; bulkCancels: Map<string, string> } {
+): {
+  cancels: Map<string, string>;
+  bulkCancels: Map<string, string>;
+  holds: Map<string, BulkHold>;
+} {
   const cancels = new Map<string, string>();
   const bulkCancels = new Map<string, string>();
+  const holds = new Map<string, BulkHold>();
   const keyOf = (lesson: DatedLesson) =>
     placeKeyOf(lesson.entryId, patternDateOf(lesson), lesson.date);
   const add = (map: Map<string, string>, lessons: readonly DatedLesson[], reason: string) => {
@@ -404,10 +427,22 @@ export function bulkWritePlanOf(
       }
       const choice = decisions.get(block.decisionKey);
       if (choice === 'cancel') add(cancels, block.lessons, reason);
-      else if (choice === 'keep') add(cancels, block.chosenOnly, reason);
+      else if (choice === 'keep') {
+        add(cancels, block.chosenOnly, reason);
+        const chosenOnly = new Set(block.chosenOnly);
+        for (const lesson of block.lessons) {
+          const key = keyOf(lesson);
+          if (!chosenOnly.has(lesson) && !holds.has(key)) {
+            holds.set(key, { reason, since: item.changedAt });
+          }
+        }
+      }
     }
   }
-  return { cancels, bulkCancels };
+  for (const key of holds.keys()) {
+    if (cancels.has(key) || bulkCancels.has(key)) holds.delete(key);
+  }
+  return { cancels, bulkCancels, holds };
 }
 
 /** The key of the bulk sorting, joined with 5.6a-5a's (`dayChangesKeyOf`). */

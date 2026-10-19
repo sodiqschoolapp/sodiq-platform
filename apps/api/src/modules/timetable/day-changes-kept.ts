@@ -16,6 +16,7 @@ import {
 } from '@sodiq/shared';
 import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
+import type { BulkHold } from './bulk-cancels-kept.js';
 import { dayBeginnings, type DatedFindings } from './dated-check.js';
 import { placeKeyOf } from './dated-lessons.js';
 import type { PatternState } from './pattern.service.js';
@@ -92,6 +93,12 @@ export interface DayWritePlan {
    * creates (decision 4); a lesson it keeps keeps its stored state.
    */
   readonly bulkCancels: ReadonlyMap<string, string>;
+  /**
+   * Task 5.6a-5b-1 (review of the code, round 1): the parts of the other
+   * classes of a block decided `keep`, by `placeKeyOf`: a stored lesson there
+   * cancelled by that bulk cancel is held (`BulkHold`).
+   */
+  readonly bulkHolds: ReadonlyMap<string, BulkHold>;
 }
 
 /** The sorting of the dates of one write. */
@@ -833,7 +840,7 @@ export function writePlanOf(
       else if (choice === 'cancel') cancels.set(key, item.answer.reason);
     }
   }
-  return { cancels, keepStored, cancelStored, bulkCancels: new Map() };
+  return { cancels, keepStored, cancelStored, bulkCancels: new Map(), bulkHolds: new Map() };
 }
 
 /**
