@@ -77,6 +77,7 @@ async function openPage(
   options: {
     role?: 'academic_vice_principal' | 'principal';
     lessons?: DayLesson[];
+    longestDay?: number;
     extra?: Record<string, (body: unknown) => Response>;
   } = {},
 ) {
@@ -88,6 +89,7 @@ async function openPage(
       { lessonNumber: 1, start: 480, end: 525 },
       { lessonNumber: 2, start: 535, end: 580 },
     ],
+    longestDay: options.longestDay ?? 2,
     today: '2026-10-10',
     lessons,
   });
@@ -601,6 +603,44 @@ describe('the day page', () => {
       });
       fireEvent.click(within(dialog).getByRole('button', { name: en.timetable.bulk.send }));
       expect(await within(dialog).findByText(en.errors.bulk_scope_changed)).not.toBeNull();
+    });
+
+    it('offers the lesson numbers of the longest day of the branch, not of the page’s class (review must-fix 1)', async () => {
+      const page = await openPage({
+        longestDay: 9,
+        extra: {
+          'GET /api/classes': () => json({ classes: [OXFORD, PRINCETON] }),
+          'POST /api/timetable/bulk-cancels/check': () => json({ ...checkAnswer, shared: [] }),
+        },
+      });
+      fireEvent.click(await screen.findByRole('button', { name: en.timetable.bulk.open }));
+      const dialog = await screen.findByRole('dialog');
+      const slot = (number: number) =>
+        within(dialog).queryByRole('checkbox', {
+          name: en.timetable.bulk.slot.replace('{{number}}', String(number)),
+        });
+      // The page's class has a day of two lessons; another class of the branch has nine.
+      expect(slot(9)).not.toBeNull();
+      expect(slot(10)).toBeNull();
+      fireEvent.click(within(dialog).getByRole('checkbox', { name: en.timetable.bulk.everyClass }));
+      for (const number of [4, 5, 6, 7, 8, 9]) {
+        const box = slot(number);
+        if (box === null) throw new Error(`No lesson ${String(number)}.`);
+        fireEvent.click(box);
+      }
+      fireEvent.click(within(dialog).getByRole('button', { name: en.timetable.bulk.check }));
+      await within(dialog).findByText(en.timetable.bulk.toCancel);
+      expect(
+        page.calls
+          .filter((call) => call.route === 'POST /api/timetable/bulk-cancels/check')
+          .map((call) => call.body),
+      ).toEqual([
+        {
+          date: '2026-10-12',
+          classIds: [OXFORD.id, PRINCETON.id],
+          lessonNumbers: [4, 5, 6, 7, 8, 9],
+        },
+      ]);
     });
 
     it('offers no bulk cancel to the Principal', async () => {

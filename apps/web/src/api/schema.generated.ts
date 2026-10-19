@@ -49422,6 +49422,7 @@ export interface operations {
                             start: number;
                             end: number;
                         }[];
+                        longestDay: number;
                         /** Format: date */
                         today: string;
                         lessons: {

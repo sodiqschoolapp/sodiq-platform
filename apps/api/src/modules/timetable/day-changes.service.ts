@@ -178,6 +178,7 @@ export class TimetableDayChanges {
         date: query.date,
         classId: query.classId,
         slots: await classSlotsOn(transaction, branchId, query.classId, query.date),
+        longestDay: await longestDayOn(transaction, branchId, query.date),
         today: schoolDateOf(moment, branch.time_zone),
         lessons: await dayLessonsOf(transaction, lessons, moment),
       });
@@ -849,31 +850,73 @@ export async function classSlotsOn(
   classId: string,
   date: string,
 ): Promise<DaySlot[]> {
-  const [schoolClass, branch] = await Promise.all([
-    transaction
-      .selectFrom('classes')
-      .select('grade')
-      .where('id', '=', classId)
-      .executeTakeFirstOrThrow(),
-    transaction
-      .selectFrom('branches')
-      .select('working_weekdays')
-      .where('id', '=', branchId)
-      .executeTakeFirstOrThrow(),
-  ]);
+  const schoolClass = await transaction
+    .selectFrom('classes')
+    .select('grade')
+    .where('id', '=', classId)
+    .executeTakeFirstOrThrow();
+  const [slots] = await gradeSlotsOn(transaction, branchId, [schoolClass.grade], date);
+  return slots ?? [];
+}
+
+/**
+ * The highest lesson number of the days of the branch's active classes on a
+ * date (task 5.6a-3, plan review of the code, must-fix 1): the bulk cancel
+ * offers every lesson number up to it, so that "the whole branch from a chosen
+ * slot" (edge/time-dates-calendar) never leaves the last lessons of a longer
+ * day out. 0 on a day without lessons.
+ */
+export async function longestDayOn(
+  transaction: Transaction,
+  branchId: string,
+  date: string,
+): Promise<number> {
+  const grades = await transaction
+    .selectFrom('classes')
+    .innerJoin('academic_years', 'academic_years.id', 'classes.academic_year_id')
+    .select('classes.grade')
+    .distinct()
+    .where('classes.branch_id', '=', branchId)
+    .where('classes.archived_at', 'is', null)
+    .where('academic_years.status', '!=', 'closed')
+    .execute();
+  const days = await gradeSlotsOn(
+    transaction,
+    branchId,
+    grades.map((one) => one.grade),
+    date,
+  );
+  return Math.max(0, ...days.flat().map((slot) => slot.lessonNumber));
+}
+
+/** The lesson slots of the day of each grade on a date, in the order of the grades. */
+async function gradeSlotsOn(
+  transaction: Transaction,
+  branchId: string,
+  grades: readonly number[],
+  date: string,
+): Promise<DaySlot[][]> {
+  if (grades.length === 0) return [];
+  const branch = await transaction
+    .selectFrom('branches')
+    .select('working_weekdays')
+    .where('id', '=', branchId)
+    .executeTakeFirstOrThrow();
   const [settings, store] = await Promise.all([
     loadCalendarSettings(transaction, branch.working_weekdays),
     loadStore(transaction),
   ]);
-  const found = dayOn(schoolClass.grade, date, settings);
-  if (!found.lessons) return [];
-  const timed = dayOf(store, found.dayTemplateId, date);
-  if (timed === null) return [];
-  return timed.day.slots.flatMap((slot) =>
-    slot.lessonNumber === null
-      ? []
-      : [{ lessonNumber: slot.lessonNumber, start: slot.start, end: slot.end }],
-  );
+  return grades.map((grade) => {
+    const found = dayOn(grade, date, settings);
+    if (!found.lessons) return [];
+    const timed = dayOf(store, found.dayTemplateId, date);
+    if (timed === null) return [];
+    return timed.day.slots.flatMap((slot) =>
+      slot.lessonNumber === null
+        ? []
+        : [{ lessonNumber: slot.lessonNumber, start: slot.start, end: slot.end }],
+    );
+  });
 }
 
 /** What an audit entry keeps of a lesson. */

@@ -28,9 +28,6 @@ import { checkBulkCancel, saveBulkCancel } from './timetable-api';
 
 type Language = 'uz' | 'ru' | 'en';
 
-/** The fewest lesson numbers offered, for a page whose class has a shorter day than others. */
-const LEAST_NUMBERS = 8;
-
 /**
  * The bulk cancel of a date (task 5.6a-3, pull request #162; `06`, Changes
  * after publishing: "Bulk cancel. For an event: chosen classes, date and
@@ -45,7 +42,7 @@ export function BulkCancelDialog({
   date,
   classes,
   startClassId,
-  slotCount,
+  longestDay,
   language,
   onClose,
   onDone,
@@ -53,7 +50,8 @@ export function BulkCancelDialog({
   date: string;
   classes: readonly { id: string; grade: number; name: string }[];
   startClassId: string;
-  slotCount: number;
+  /** The highest lesson number of the branch's active classes' days on the date, from the server. */
+  longestDay: number;
   language: Language;
   onClose: () => void;
   onDone: (answer: BulkCancelAnswer) => Promise<void>;
@@ -108,7 +106,7 @@ export function BulkCancelDialog({
     check.reset();
     setChoices({});
   };
-  const offered = Array.from({ length: Math.max(slotCount, LEAST_NUMBERS) }, (_, at) => at + 1);
+  const offered = Array.from({ length: longestDay }, (_, at) => at + 1);
   const everyClass = classes.length > 0 && chosen.length === classes.length;
   const unchosen = (result?.shared ?? []).filter((one) => choices[one.blockId] === undefined);
   const ready = result !== null && unchosen.length === 0 && form.status !== 'saving';

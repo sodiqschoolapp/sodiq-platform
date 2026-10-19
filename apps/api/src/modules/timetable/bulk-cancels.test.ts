@@ -4,6 +4,7 @@ import {
   REQUEST_KEY_HEADER,
   bulkCancelAnswerSchema,
   bulkCancelCheckAnswerSchema,
+  dayAnswerSchema,
   type BulkCancelCheckAnswer,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
@@ -747,6 +748,47 @@ describe('the bulk cancel', () => {
         .where('bulk_cancel_id', '=', second.saved.id)
         .execute();
       expect(classes.map((one) => one.class_id).sort()).toEqual([young.classId, s.oxford].sort());
+    });
+
+    it('answers on the day of every class the longest day of the branch’s classes, the lesson numbers the bulk cancel offers (review must-fix 1)', async () => {
+      const s = await scene({ young: true });
+      const young = s.young;
+      if (young === null) throw new Error('No young class.');
+      const dayOf = async (classId: string) => {
+        const response = await t.get(
+          `/api/timetable/day?date=${NEXT_MONDAY}&classId=${classId}`,
+          s.branch,
+          t.admin,
+        );
+        expect(response.status, JSON.stringify(response.body)).toBe(200);
+        return dayAnswerSchema.parse(response.body);
+      };
+      const oxford = await dayOf(s.oxford);
+      const cambridge = await dayOf(young.classId);
+      const numbers = (day: typeof oxford) => day.slots.map((one) => one.lessonNumber);
+      const longest = Math.max(...numbers(oxford), ...numbers(cambridge));
+      // The two days differ, and each class's page offers the longer one.
+      expect(numbers(oxford)).not.toEqual(numbers(cambridge));
+      expect(oxford.longestDay).toBe(longest);
+      expect(cambridge.longestDay).toBe(longest);
+      // The last number of the longer day cancels that day's lesson for every class chosen.
+      const { saved } = await checkAndSave(s.branch, {
+        date: NEXT_MONDAY,
+        classIds: [s.oxford, young.classId],
+        lessonNumbers: [longest],
+      });
+      expect(saved.cancelled.length).toBeGreaterThan(0);
+    });
+
+    it('answers a longest day of 0 on a day without lessons', async () => {
+      const s = await scene();
+      const response = await t.get(
+        `/api/timetable/day?date=2026-10-11&classId=${s.oxford}`,
+        s.branch,
+        t.admin,
+      );
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      expect(dayAnswerSchema.parse(response.body)).toMatchObject({ slots: [], longestDay: 0 });
     });
 
     it('cancels the lessons of every class chosen, as for the whole branch from a chosen slot', async () => {

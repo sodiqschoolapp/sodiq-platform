@@ -360,7 +360,7 @@ export function DayPage(): React.JSX.Element {
           date={date}
           classes={active}
           startClassId={classId}
-          slotCount={day.data?.slots.length ?? 0}
+          longestDay={day.data?.longestDay ?? 0}
           language={language}
           onClose={() => {
             setBulk(false);
