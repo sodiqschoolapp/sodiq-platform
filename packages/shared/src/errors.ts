@@ -133,6 +133,10 @@ export const ERROR_CODES = [
   'year_leaves_calendar_entry',
   /** A calendar save or a working-weekday edit would leave the go-live date without lessons (task 1.4). */
   'go_live_school_day_taken',
+  /** A calendar save over published dates meets a blocked conflict on a date it changes; `details` lists each by date (task 5.6b-1). */
+  'calendar_blocked',
+  /** A date a calendar save changes holds a stored one-day change, bulk cancel or exam, which 5.6b-2 sorts; `details` lists each (task 5.6b-1). */
+  'calendar_stored_changes',
   /** The go-live date must be a school day: some grade has lessons on it (`edge/academic-year`; task 1.4). */
   'go_live_not_school_day',
   /** Travel time is set between two different branches (task 1.6). */

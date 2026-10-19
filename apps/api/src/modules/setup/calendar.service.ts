@@ -26,8 +26,15 @@ import { Audit } from '../audit/audit.service.js';
 import type { Access } from '../access/permission.guard.js';
 import { calendarSettings, loadEntries, losesGoLive, type StoredEntry } from './calendar-state.js';
 import { loadStore, type TemplateStore } from './day-template-state.js';
-import { notFound, refusingConstraints } from './setup-refusals.js';
+import { notFound } from './setup-refusals.js';
+import {
+  NO_LESSONS,
+  TimetableCalendarLessons,
+  type CalendarEvent,
+  type CalendarRewrite,
+} from '../timetable/calendar-lessons.js';
 import { markDraftsOutOfDate } from '../timetable/out-of-date.js';
+import { PUBLISH_REFUSALS, refusingPublish } from '../timetable/publish.service.js';
 
 /** A refusal of 409 that names the fields to show it beside. */
 function refused(
@@ -48,11 +55,13 @@ function invalid(path: string, message: string): ApiException {
 
 /** The refusal of the database when two requests race past the overlap check (answer 17). */
 const REFUSALS: Readonly<Record<string, ErrorCode>> = {
+  ...PUBLISH_REFUSALS,
   calendar_entries_no_overlap: 'calendar_overlap',
 };
 
 /** The same for a restore, which answers with codes of its own (`.claude/rules/web.md`: a text is true on every path). */
 const RESTORE_REFUSALS: Readonly<Record<string, ErrorCode>> = {
+  ...PUBLISH_REFUSALS,
   calendar_entries_no_overlap: 'calendar_restore_overlap',
 };
 
@@ -91,8 +100,52 @@ interface Context {
   readonly store: TemplateStore;
   readonly entries: readonly StoredEntry[];
   /** The planned and current years of the branch (answer 16). */
-  readonly years: readonly { startDate: string; endDate: string }[];
+  readonly years: readonly { id: string; startDate: string; endDate: string }[];
+  /** A preview: the rewrite of the lessons answers its refusals as lines (task 5.6b-1, decision 9). */
+  readonly preview: boolean;
+  /** What the rewrite of the lessons did, for the preview (task 5.6b-1). */
+  readonly rewrite: { result: CalendarRewrite | null };
 }
+
+/**
+ * The part of a grade's day that makes its lessons (task 5.6b-1, decision 13):
+ * none, or the template, the weekday followed and the exam week; the entry's
+ * id and name are left out, so a rename changes no lesson.
+ */
+const lessonPartOf = (day: DayResult): string =>
+  day.lessons ? JSON.stringify([day.dayTemplateId, day.followsWeekday, day.examWeek]) : 'none';
+
+/**
+ * The lesson dates of a save (task 5.6b-1, decision 13; spec review
+ * must-fix 1): the dates given after today where, for some grade, the part of
+ * the day that makes lessons differs before and after it.
+ */
+function lessonDatesOf(
+  dates: readonly string[],
+  today: string,
+  before: CalendarSettings,
+  after: CalendarSettings,
+): string[] {
+  return [...new Set(dates)]
+    .filter((date) => date > today)
+    .filter((date) =>
+      GRADES.some(
+        (grade) =>
+          lessonPartOf(dayOn(grade, date, before)) !== lessonPartOf(dayOn(grade, date, after)),
+      ),
+    )
+    .sort();
+}
+
+/** What an audit entry of a save records of its lessons (task 5.6b-1, decision 8). */
+const lessonsAuditOf = (rewrite: CalendarRewrite) =>
+  rewrite.audit === null
+    ? {}
+    : {
+        lessonDates: [...rewrite.audit.dates],
+        datedLessons: rewrite.audit.datedLessons.map((one) => ({ ...one })),
+        notices: { ...rewrite.audit.notices },
+      };
 
 /** Carries the answer of a preview out of the transaction it rolls back. */
 class PreviewDone extends Error {
@@ -157,6 +210,7 @@ export class Calendar {
   constructor(
     private readonly transactions: Transactions,
     private readonly audit: Audit,
+    private readonly lessons: TimetableCalendarLessons,
     @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
@@ -166,12 +220,17 @@ export class Calendar {
     branchId: string,
     requestId: string,
     lock: boolean,
+    preview = false,
   ): Promise<Context> {
     const query = transaction
       .selectFrom('branches')
       .select(['time_zone', 'working_weekdays', 'go_live_date'])
       .where('id', '=', branchId);
-    const branch = await (lock ? query.forUpdate() : query).executeTakeFirst();
+    // Task 5.6b-1 (review correction 1): `for no key update`, which still
+    // orders the writes of the branch's setup, and which an insert naming the
+    // branch (an audit entry of a class or staff write holding its row, which
+    // the publish's locks then wait for) does not wait for.
+    const branch = await (lock ? query.forNoKeyUpdate() : query).executeTakeFirst();
     if (branch === undefined) {
       throw notFound();
     }
@@ -180,8 +239,9 @@ export class Calendar {
       loadEntries(transaction),
       transaction
         .selectFrom('academic_years')
-        .select(['start_date', 'end_date'])
+        .select(['id', 'start_date', 'end_date'])
         .where('status', 'in', ['planned', 'current'])
+        .orderBy('start_date')
         .execute(),
     ]);
     return {
@@ -194,7 +254,13 @@ export class Calendar {
       goLiveDate: branch.go_live_date,
       store,
       entries,
-      years: years.map((year) => ({ startDate: year.start_date, endDate: year.end_date })),
+      years: years.map((year) => ({
+        id: year.id,
+        startDate: year.start_date,
+        endDate: year.end_date,
+      })),
+      preview,
+      rewrite: { result: null },
     };
   }
 
@@ -204,21 +270,80 @@ export class Calendar {
     );
   }
 
-  /** A write: the branch row taken for update first; the overlap refusal of the database mapped. */
+  /**
+   * A write: the branch row taken first; the overlap refusal of the database
+   * mapped, and those of the lessons' claims as a publish maps them (task
+   * 5.6b-1).
+   */
   private write<T>(
     access: Access,
     branchId: string,
     requestId: string,
     work: (context: Context) => Promise<T>,
     refusals: Readonly<Record<string, ErrorCode>> = REFUSALS,
+    preview = false,
   ): Promise<T> {
-    return refusingConstraints(
+    return refusingPublish(
       () =>
         this.transactions.run(access.branchIds, async (transaction) =>
-          work(await this.context(transaction, access, branchId, requestId, true)),
+          work(await this.context(transaction, access, branchId, requestId, true, preview)),
         ),
       refusals,
     );
+  }
+
+  /**
+   * The publish's locks of the years an entry's dates touch, before the entry
+   * is written (task 5.6b-1, decision 12): a publish, a withdraw or a one-day
+   * change of those years waits for the save, or the save for them.
+   */
+  private lockYears(
+    context: Context,
+    entries: readonly { firstDate: string; lastDate: string }[],
+  ): Promise<void> {
+    return this.lessons.lock(
+      context.transaction,
+      context.branchId,
+      context.years
+        .filter((year) =>
+          entries.some((one) => year.startDate <= one.lastDate && one.firstDate <= year.endDate),
+        )
+        .map((year) => year.id),
+    );
+  }
+
+  /**
+   * The dated lessons of the lesson dates of a save written again from the
+   * published versions in force (task 5.6b-1), after the entry is written:
+   * the settings before are those read under the lock, those after are read
+   * again. `entries` are the entry before and after.
+   */
+  private async rewriteLessons(
+    context: Context,
+    entries: readonly { firstDate: string; lastDate: string }[],
+    event: CalendarEvent,
+  ): Promise<CalendarRewrite> {
+    const before = calendarSettings(context.store, context.workingWeekdays, context.entries);
+    const after = calendarSettings(
+      context.store,
+      context.workingWeekdays,
+      await loadEntries(context.transaction),
+    );
+    const result = await this.lessons.rewrite(context.transaction, {
+      branchId: context.branchId,
+      accountId: context.access.accountId,
+      today: context.today,
+      dates: lessonDatesOf(
+        entries.flatMap((one) => datesFrom(one.firstDate, one.lastDate)),
+        context.today,
+        before,
+        after,
+      ),
+      event,
+      preview: context.preview,
+    });
+    context.rewrite.result = result;
+    return result;
   }
 
   private record(
@@ -364,9 +489,11 @@ export class Calendar {
           ]);
           throw new PreviewDone({
             changes: changesOn(context, [...dates].sort(), before, after, entriesAfter),
+            lessons: context.rewrite.result?.lessons ?? NO_LESSONS,
           });
         },
         change.action === 'restore' ? RESTORE_REFUSALS : REFUSALS,
+        true,
       );
     } catch (error) {
       if (error instanceof PreviewDone) {
@@ -384,6 +511,7 @@ export class Calendar {
     }
     templateIn(context, record.dayTemplateId);
     checkEntry(context, record, null);
+    await this.lockYears(context, [record]);
     const row = await context.transaction
       .insertInto('calendar_entries')
       .values({
@@ -401,7 +529,10 @@ export class Calendar {
       .returning('id')
       .executeTakeFirstOrThrow();
     await this.refuseGoLive(context);
-    await this.record(context, 'calendar_entry.create', row.id, { newValue: fieldsOf(record) });
+    const lessons = await this.rewriteLessons(context, [record], record);
+    await this.record(context, 'calendar_entry.create', row.id, {
+      newValue: { ...fieldsOf(record), ...lessonsAuditOf(lessons) },
+    });
     await this.markDrafts(context, 'calendar_entry.create', row.id, [record]);
     return this.answer(context, row.id);
   }
@@ -469,6 +600,7 @@ export class Calendar {
         false,
       );
     }
+    await this.lockYears(context, [before, record]);
     await context.transaction
       .updateTable('calendar_entries')
       .set({
@@ -484,9 +616,13 @@ export class Calendar {
       .where('id', '=', id)
       .execute();
     await this.refuseGoLive(context);
+    const lessons = await this.rewriteLessons(context, [before, record], record);
     await this.record(context, 'calendar_entry.edit', id, {
       oldValue: Object.fromEntries(changed.map((key) => [key, old[key]])),
-      newValue: Object.fromEntries(changed.map((key) => [key, next[key]])),
+      newValue: {
+        ...Object.fromEntries(changed.map((key) => [key, next[key]])),
+        ...lessonsAuditOf(lessons),
+      },
     });
     // Decision 2: a new name alone changes no date of a draft.
     if (changed.some((key) => key !== 'name')) {
@@ -507,15 +643,17 @@ export class Calendar {
       );
     }
     const now = this.clock.now();
+    await this.lockYears(context, [entry]);
     await context.transaction
       .updateTable('calendar_entries')
       .set({ archived_at: now })
       .where('id', '=', id)
       .execute();
     await this.refuseGoLive(context);
+    const lessons = await this.rewriteLessons(context, [entry], entry);
     await this.record(context, 'calendar_entry.archive', id, {
       oldValue: { archivedAt: null },
-      newValue: { archivedAt: now.toISOString() },
+      newValue: { archivedAt: now.toISOString(), ...lessonsAuditOf(lessons) },
     });
     await this.markDrafts(context, 'calendar_entry.archive', id, [entry]);
     return this.answer(context, id);
@@ -532,15 +670,17 @@ export class Calendar {
     }
     templateIn(context, entry.dayTemplateId, 'calendar_restore_template_archived');
     checkEntry(context, entry, id, RESTORE_CODES);
+    await this.lockYears(context, [entry]);
     await context.transaction
       .updateTable('calendar_entries')
       .set({ archived_at: null })
       .where('id', '=', id)
       .execute();
     await this.refuseGoLive(context);
+    const lessons = await this.rewriteLessons(context, [entry], entry);
     await this.record(context, 'calendar_entry.restore', id, {
       oldValue: { archivedAt: entry.archivedAt.toISOString() },
-      newValue: { archivedAt: null },
+      newValue: { archivedAt: null, ...lessonsAuditOf(lessons) },
     });
     await this.markDrafts(context, 'calendar_entry.restore', id, [entry]);
     return this.answer(context, id);

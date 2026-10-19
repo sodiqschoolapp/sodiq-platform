@@ -85,12 +85,33 @@ describe('the notices of a timetable change', () => {
     expect(schema.safeParse({ ...tutorWeek, before: [{ ...lesson, teacher: 'x' }] }).success).toBe(
       false,
     );
-    // Task 5.6a-1 (decision 10, Look first: a pinned list widened by a new kind).
+    // Task 5.6a-1 (decision 10, Look first: a pinned list widened by a new kind),
+    // and task 5.6b-1 (decision 8, Look first: the calendar change's kind).
     expect(WEEK_KINDS).toEqual([
       ...WEEK_CHANGE_KINDS,
       'timetable.tutor_changed',
       'timetable.day_changed',
+      'timetable.calendar_changed',
     ]);
+  });
+
+  // Task 5.6b-1, decision 8: a calendar change carries its entry's name and dates and the week, no number.
+  it('carry the entry and the week of a calendar change without a number', () => {
+    const schema = NOTIFICATION_KINDS['timetable.calendar_changed'];
+    const calendarWeek = {
+      name: 'Navruz',
+      firstDate: '2026-10-19',
+      lastDate: '2026-10-19',
+      weekStart: week.weekStart,
+      before: week.before,
+      after: week.after,
+    };
+    expect(schema.parse(calendarWeek)).toEqual(calendarWeek);
+    expect(schema.safeParse({ ...calendarWeek, number: '3' }).success).toBe(false);
+    expect(schema.safeParse({ ...calendarWeek, name: '' }).success).toBe(false);
+    expect(
+      schema.parse({ ...calendarWeek, also: { weekStart: week.weekStart, before: [], after: [] } }),
+    ).toHaveProperty('also');
   });
 
   // Task 5.6a-1, decision 10: a one-day change carries the week without a number.

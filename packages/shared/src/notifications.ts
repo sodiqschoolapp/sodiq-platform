@@ -138,6 +138,19 @@ export const NOTIFICATION_KINDS = {
      */
     also: z.strictObject(teacherWeek).optional(),
   }),
+  /**
+   * A calendar entry saved over published dates changed this teacher's
+   * lessons in the branch (task 5.6b-1, decision 8): the entry's name and
+   * dates, and the week, with a second, later week as a one-day change shows
+   * one.
+   */
+  'timetable.calendar_changed': z.strictObject({
+    name: z.string().min(1).max(200),
+    firstDate: schoolDateSchema,
+    lastDate: schoolDateSchema,
+    ...teacherWeek,
+    also: z.strictObject(teacherWeek).optional(),
+  }),
 } as const satisfies Record<string, z.ZodType>;
 
 export type NotificationKind = keyof typeof NOTIFICATION_KINDS;
@@ -150,12 +163,14 @@ export type WeekChangeKind = (typeof WEEK_CHANGE_KINDS)[number];
 /**
  * Every kind that carries a teacher's week before and after, which the web
  * shows under the text (task 5.5c-3b, spec review should-fix 5): the version
- * kinds, the Tutor change and a one-day change (task 5.6a-1).
+ * kinds, the Tutor change, a one-day change (task 5.6a-1) and a calendar
+ * change (task 5.6b-1).
  */
 export const WEEK_KINDS = [
   ...WEEK_CHANGE_KINDS,
   'timetable.tutor_changed',
   'timetable.day_changed',
+  'timetable.calendar_changed',
 ] as const;
 
 export const NOTIFICATION_KIND_NAMES = Object.keys(NOTIFICATION_KINDS) as [

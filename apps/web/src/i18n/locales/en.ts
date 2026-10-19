@@ -158,6 +158,10 @@ export const en = {
       'A calendar entry would lie outside the year. Change or archive that entry first, or keep the dates of the year.',
     go_live_school_day_taken:
       'This change would leave the go-live date without lessons. Keep the school day, or move the go-live date first.',
+    calendar_blocked:
+      'This change would give back lessons that meet a blocked conflict on a date it changes. The preview lists each; settle them first or keep the dates.',
+    calendar_stored_changes:
+      'A date this change touches holds a one-day change, a bulk cancel or an exam. Undo or move it first, then save again.',
     own_account: 'You cannot lock, unlock or reset your own account. Ask another administrator.',
     account_already_locked: 'This account is already locked. Reload the page to see who locked it.',
     account_not_locked:
@@ -1280,6 +1284,34 @@ export const en = {
       checkDateMissing: 'Enter a date.',
       gradeColumn: 'Grade',
       dayColumn: 'The day',
+      lessons: {
+        title: 'The published timetable',
+        stored_one: '{{count}} stored change stops this save',
+        stored_other: '{{count}} stored changes stop this save',
+        storedKinds: {
+          day_change: 'a one-day change',
+          bulk_cancel: 'a bulk cancel',
+          exam: 'an exam',
+        },
+        blocked_one: '{{count}} blocked conflict stops this save',
+        blocked_other: '{{count}} blocked conflicts stop this save',
+        removed_one: '{{count}} lesson is removed',
+        removed_other: '{{count}} lessons are removed',
+        created_one: '{{count}} lesson is created',
+        created_other: '{{count}} lessons are created',
+        cancelled_one: '{{count}} lesson is created cancelled',
+        cancelled_other: '{{count}} lessons are created cancelled',
+        causes: {
+          not_in_template: "not in the day's template",
+          day_off: 'a day off for one of its grades',
+          exam_week: 'exam week',
+        },
+        needsTeacher_one: '{{count}} lesson will need a teacher',
+        needsTeacher_other: '{{count}} lessons will need a teacher',
+        notified_one: '{{count}} teacher is told.',
+        notified_other: '{{count}} teachers are told.',
+        refused: 'This save is refused until the items above are settled.',
+      },
     },
     templateSettings: {
       emptyTitle: 'No template set yet',
@@ -3070,6 +3102,8 @@ export const en = {
           "A change of a class's Tutor changed your Tutor lessons. Your week before and after:",
         day_changed:
           'A one-day change (a cancel or a restore) changed your lessons. Your week before and after:',
+        calendar_changed:
+          'The calendar entry "{{name}}" changed your lessons. Your week before and after:',
       },
     },
     // The week before and after of a notice of a timetable change (task 5.5c-3a).

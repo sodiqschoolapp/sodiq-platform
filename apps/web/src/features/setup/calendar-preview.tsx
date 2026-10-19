@@ -29,6 +29,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { calendarPreviewOf } from './calendar-api';
+import { CalendarLessonsPreview, refusesSave } from './calendar-lessons-preview';
 import { schoolDateText, weekdayName } from '@/lib/dates';
 
 /** "14 October" or "14 – 16 October 2026". */
@@ -115,8 +116,10 @@ function PreviewTable({ preview }: { preview: CalendarPreview }) {
 /**
  * The preview before a calendar save (`edge/time-dates-calendar`: "the impact
  * preview is shown first"; decision 11 of pull request #47): the dates and
- * grades the save changes, before and after. `confirm` resolves when the
- * person saves and throws `SaveCancelled` when they do not.
+ * grades the save changes, before and after, and what it does to the
+ * published timetable (task 5.6b-1), with Save off while the server would
+ * refuse it. `confirm` resolves when the person saves and throws
+ * `SaveCancelled` when they do not.
  */
 export function useCalendarPreview(): {
   confirm: (change: CalendarChange) => Promise<void>;
@@ -160,6 +163,7 @@ export function useCalendarPreview(): {
             </DialogDescription>
           </DialogHeader>
           {question.preview.changes.length > 0 && <PreviewTable preview={question.preview} />}
+          <CalendarLessonsPreview lessons={question.preview.lessons} />
           <DialogFooter>
             <Button
               variant="ghost"
@@ -170,6 +174,7 @@ export function useCalendarPreview(): {
               {t('setup.calendar.cancel')}
             </Button>
             <Button
+              disabled={refusesSave(question.preview.lessons)}
               onClick={() => {
                 answer(true);
               }}
