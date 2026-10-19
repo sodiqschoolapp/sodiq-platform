@@ -687,9 +687,11 @@ export class TimetableCalendarLessons {
    * lesson the version has there: "drop the change" held, checked there with
    * the full rule set (`storedDayCheck`, a blocked result refuses the save
    * `calendar_blocked` by date); "cancel the lesson that day" cancelled with
-   * the change's reason, which takes no check. A move from today or earlier
-   * follows 5.6a-5a decision 7 (the write removes the block, or keeps it
-   * cancelled where it is).
+   * the change's reason, which takes no check. An old place on a date with no
+   * place for the lesson (a day off, an exam week) removes the block with
+   * either choice. A move from today or earlier follows 5.6a-5a decision 7
+   * (the write removes the block, or keeps it cancelled where it is), and is
+   * removed with either choice onto a date with no place for it.
    */
   private async movesBack(
     transaction: Transaction,
@@ -708,7 +710,12 @@ export class TimetableCalendarLessons {
       const choice = input.decisions.get(item.answer.key);
       const date = item.answer.from.date;
       if (choice === undefined || choice === 'keep') continue;
-      if (date <= input.today || input.written.has(date)) continue;
+      if (input.written.has(date)) continue;
+      // A move from today or earlier stays under 5.6a-5a decision 7, except
+      // onto a date that now has no place for it: removed whatever the choice
+      // (spec review of the code, must-fix 2).
+      const noPlace = item.answer.blocked.some((one) => NO_PLACE_RULES.has(one.rule));
+      if (date <= input.today && !noPlace) continue;
       const chains = new Map(item.chains.map((chain) => [chain.lessonId, chain]));
       const there = (
         await storedLessonsOn(transaction, input.branchId, item.answer.to.date)
@@ -727,7 +734,8 @@ export class TimetableCalendarLessons {
       const held = placed.filter((one) => one.cancelCause === null);
       let blocked: readonly RuleResult[] = [];
       let teacherIds: ReadonlyMap<string, string | null> = new Map();
-      if (choice === 'drop' && held.length > 0) {
+      let outcome: MoveBack['choice'] = date <= input.today ? 'remove' : choice;
+      if (outcome !== 'remove' && held.length > 0) {
         const checked = await storedDayCheck(
           transaction,
           { timetable: this.timetable, pattern: this.pattern },
@@ -737,13 +745,23 @@ export class TimetableCalendarLessons {
             alongside: placed.filter((one) => one.cancelCause !== null),
           },
         );
-        blocked = checked.blocked;
-        teacherIds = checked.teacherIds;
+        // Spec review of the code, must-fix 2: an old place on a date with no
+        // lessons there (a day off of an earlier save, an exam week) holds no
+        // lesson, not even a cancelled one ("The lessons of that date are
+        // removed"): the block is removed whatever the choice, as for a move
+        // from before the start (5.6a-5a decision 7). Otherwise "drop" is
+        // checked with every rule; "cancel" claims nothing and needs no check.
+        if (checked.blocked.some((one) => NO_PLACE_RULES.has(one.rule))) {
+          outcome = 'remove';
+        } else if (choice === 'drop') {
+          blocked = checked.blocked;
+          teacherIds = checked.teacherIds;
+        }
       }
       backs.push({
         key: item.answer.key,
         date,
-        choice,
+        choice: outcome,
         reason: item.answer.reason,
         lessons: placed.map((one) => ({
           unitId: one.classId ?? one.groupId ?? '',
@@ -770,12 +788,26 @@ const datedAnswerOf = (result: RuleResult): RuleResultAnswer => ({
   date: result.day,
 });
 
+/** The rules of a day that has no place for the lesson at all (`movesBack`). */
+const NO_PLACE_RULES: ReadonlySet<string> = new Set([
+  'outside_year',
+  'vacation',
+  'day_off',
+  'not_working_day',
+  'no_template',
+  'exam_week',
+  'not_a_slot',
+  'break_slot',
+  'two_grade_slot',
+]);
+
 /** A stored move put back at its old place by a calendar save (task 5.6b-2a, review correction 1). */
 interface MoveBack {
   readonly key: string;
   /** The date it goes back to. */
   readonly date: string;
-  readonly choice: 'drop' | 'cancel';
+  /** `remove`: its old place has no place for it, and the block is removed. */
+  readonly choice: 'drop' | 'cancel' | 'remove';
   readonly reason: string;
   readonly lessons: readonly { unitId: string; subjectId: string }[];
   /** Every part of its blocks at the old place. */
@@ -792,7 +824,8 @@ function withMovesBack(plan: DayWritePlan, backs: readonly MoveBack[]): DayWrite
   const cancelStored = new Map(plan.cancelStored);
   for (const back of backs) {
     for (const one of back.placed) {
-      keepStored.add(one.id);
+      if (back.choice === 'remove') keepStored.delete(one.id);
+      else keepStored.add(one.id);
       cancelStored.delete(one.id);
     }
   }
@@ -808,6 +841,7 @@ async function writeMovesBack(transaction: Transaction, backs: readonly MoveBack
     transaction,
   );
   for (const back of backs) {
+    if (back.choice === 'remove') continue;
     const blocks = new Map<string, StoredDayLesson>();
     for (const one of back.placed) if (!blocks.has(one.blockId)) blocks.set(one.blockId, one);
     for (const [blockId, one] of blocks) {
@@ -830,6 +864,9 @@ async function writeMovesBack(transaction: Transaction, backs: readonly MoveBack
         .execute();
     }
   }
+  // Spec review of the code, should-fix 5: the clash shows at the write, as
+  // the one-day move checks it.
+  await sql`set constraints all immediate`.execute(transaction);
 }
 
 /** One stretch's outcome of the stored changes for the audit entry (decision 10). */

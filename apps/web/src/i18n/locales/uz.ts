@@ -164,7 +164,7 @@ export const uz: Texts<'one' | 'other'> = {
     go_live_school_day_taken:
       'Bu oʻzgarish ishga tushirish sanasini darssiz qoldiradi. Oʻquv kunini qoldiring yoki avval ishga tushirish sanasini koʻchiring.',
     calendar_blocked:
-      'Bu oʻzgarish u oʻzgartiradigan sanada taqiqlangan toʻqnashuvga uchraydigan darslarni qaytaradi. Oldindan koʻrishda har biri koʻrsatilgan; avval ularni hal qiling yoki sanalarni qoldiring.',
+      'Bu oʻzgarish u oʻzgartiradigan sanada yoki koʻchirilgan dars qaytadigan sanada taqiqlangan toʻqnashuvga uchraydi; yoki uning sanalaridagi bir kunlik oʻzgarishlar oldindan koʻrishdan keyin oʻzgargan; yoki tanlov qilinmagan. Oldindan koʻrishni qayta oching, koʻrsatilganini hal qiling va qaror talab qiladigan har bir oʻzgarish uchun tanlang.',
     calendar_stored_changes:
       'Bu oʻzgarish tegadigan sanada imtihon yoki shu oʻzgarish qayta yozadigan ikki sana orasida bir kunga koʻchirilgan dars bor. Avval imtihonni bekor qiling yoki darsni joyiga qaytaring, soʻng qayta saqlang.',
     own_account:

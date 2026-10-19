@@ -997,6 +997,57 @@ describe('calendar entries after publishing', () => {
       expect((await lessonById(moving.id))?.cancel_cause).toBe('reason');
     });
 
+    // Spec review of the code, must-fix 2: an old place that is itself a day
+    // off holds no lesson, not even a cancelled one.
+    it('removes the moved lesson with either choice when its old place is a day off of an earlier save', async () => {
+      for (const choice of ['drop', 'cancel'] as const) {
+        const s = await scene();
+        const moving = await lessonOf(s, OCT26, s.classId);
+        okay(await moveTo(s, moving.id, OCT19, 2));
+        const [change] = await changesOf(moving.id);
+        const first = dayOff(OCT26, OCT26, { gradeFrom: null, gradeTo: null }, 'Teachers day');
+        okay(
+          await create(
+            s.branch,
+            withDays(first, await preview(s.branch, { action: 'create', record: first })),
+          ),
+          201,
+        );
+        expect((await lessonById(moving.id))?.date).toBe(OCT19);
+        const shown = await preview(s.branch, { action: 'create', record: dayOff(OCT19) });
+
+        okay(
+          await create(
+            s.branch,
+            withDays(dayOff(OCT19), shown, [{ key: change?.id ?? '', choice }]),
+          ),
+          201,
+        );
+
+        expect(await lessonById(moving.id)).toBeUndefined();
+        expect(await lessonsOn(s.branch, OCT19)).toEqual([]);
+        expect(await lessonsOn(s.branch, OCT26)).toEqual([]);
+        expect(await endsOf(s.branch)).toEqual([{ change_id: change?.id, version_id: s.version }]);
+      }
+    });
+
+    // Spec review of the code, should-fix 3: the old place found by its pattern
+    // entry when the day shifts the times.
+    it('a special template that shifts the times over a move out of the date writes no second lesson at the old place', async () => {
+      const s = await scene();
+      const late = await lateTemplate(s);
+      const moving = await lessonOf(s, OCT19, s.seniorId);
+      okay(await moveTo(s, moving.id, OCT26, 3));
+      const record = specialDay(OCT19, OCT19, late);
+      const shown = await preview(s.branch, { action: 'create', record });
+      expect(shown.lessons.dayChanges.kept).toHaveLength(1);
+
+      okay(await create(s.branch, withDays(record, shown)), 201);
+
+      expect((await lessonById(moving.id))?.date).toBe(OCT26);
+      expect((await lessonsOn(s.branch, OCT19)).map((one) => one.class_id)).toEqual([s.classId]);
+    });
+
     it('a day off over a move from it to a date it does not change keeps the move: the lesson stays where it went, none at the old place', async () => {
       const s = await scene();
       const moving = await lessonOf(s, OCT19, s.classId);
@@ -1083,6 +1134,15 @@ describe('calendar entries after publishing', () => {
 
       expect(await lessonsOn(s.branch, OCT19)).toEqual([]);
       expect(await endsOf(s.branch)).toEqual([{ change_id: change?.id, version_id: s.version }]);
+      // Test 13: the audit entry names the changes dropped and ended.
+      const [entry] = await t.entries('calendar_entry.create', saved.id);
+      expect((entry?.new_value as { dayChanges: unknown[] }).dayChanges).toEqual([
+        expect.objectContaining({
+          kept: [],
+          dropped: [cancelled.id, change?.id ?? ''].sort(),
+          ended: [change?.id],
+        }),
+      ]);
 
       // Decision 13 (Look first): archived, the day off gives the lessons back
       // from the version, not cancelled and in the version's room.
@@ -1220,6 +1280,11 @@ describe('calendar entries after publishing', () => {
       ).toEqual([[cancel.id, 'kept', 0]]);
       const saved = okay(await create(s.branch, withDays(dayOff(OCT19), shown)), 201);
       expect(await lessonsOn(s.branch, OCT19)).toEqual([]);
+      // Test 13: the audit entry names the bulk cancel kept.
+      const [entry] = await t.entries('calendar_entry.create', saved.id);
+      expect((entry?.new_value as { dayChanges: unknown[] }).dayChanges).toEqual([
+        expect.objectContaining({ bulk: { kept: [cancel.id], decided: [], carried: [] } }),
+      ]);
 
       const archive = { action: 'archive', id: saved.id };
       const back = await preview(s.branch, archive);

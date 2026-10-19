@@ -45805,7 +45805,8 @@
                   "dayTemplateId",
                   "followsWeekday",
                   "examWeek"
-                ]
+                ],
+                "additionalProperties": false
               }
             }
           }
@@ -49325,7 +49326,8 @@
                   "dayTemplateId",
                   "followsWeekday",
                   "examWeek"
-                ]
+                ],
+                "additionalProperties": false
               }
             }
           }
