@@ -422,6 +422,13 @@ export const uz: Texts<'one' | 'other'> = {
     day_change_blocked:
       'Oʻzgarish darsning yangi joyida qoidani buzadi. Sabablar roʻyxatda; muammo xonada boʻlsa, boʻsh xonani tanlash mumkin.',
     room_unchanged: 'Dars allaqachon shu xonada. Boshqa xonani tanlang.',
+    lesson_not_started:
+      'Bu dars hali boshlanmagan. Tuzatish oʻtgan dars uchun; hali oldindagi dars bir kunga oʻzgartiriladi.',
+    teacher_unchanged: 'Bu kishi dars uchun allaqachon koʻrsatilgan. Boshqa kishini tanlang.',
+    correction_blocked:
+      'Tuzatish dars vaqtidagi qoidani buzadi: kishi yoki xona oʻshanda band edi yoki boshqa oʻzgarish ularni hozirgina band qildi. Sabablar roʻyxatda.',
+    correction_needs_confirm:
+      'Tuzatishda ogohlantirishlar bor. Ularni tekshiring, belgilang va qayta saqlang.',
     move_target_started: 'Bu dars vaqti allaqachon boshlangan. Keyingi vaqt yoki sanani tanlang.',
     move_other_quarter:
       'Darsni faqat oʻz choragi ichida koʻchirish mumkin. Shu chorakdagi sanani tanlang.',
@@ -2719,6 +2726,7 @@ export const uz: Texts<'one' | 'other'> = {
         room_change: 'Darsning xonasi bir kunga almashtirildi',
         move: 'Dars bir kunga koʻchirildi',
         bulk_cancel: 'Tadbir uchun darslar bekor qilindi (ommaviy bekor qilish)',
+        correct: 'Oʻtgan dars tuzatildi',
       },
       teaching_load: {
         create: 'Oʻquv yuklamasi qatori qoʻshildi',
@@ -3169,6 +3177,25 @@ export const uz: Texts<'one' | 'other'> = {
       roomSend: 'Xonani almashtirish',
       moveSend: 'Darsni koʻchirish',
       restoreSend: 'Darsni tiklash',
+      held: 'Oʻtilgan',
+      unresolved: 'Hal qilinmagan: hech kim koʻrsatilmagan',
+      correct: 'Tuzatish',
+      correctTitle: '{{subject}}, {{time}} darsini tuzatish',
+      correctKind: 'Nima boʻldi',
+      kind_cancel: 'Dars oʻtmadi',
+      kind_restore: 'Dars baribir oʻtdi',
+      kind_teacher: 'Darsni boshqa kishi oʻtdi',
+      kind_room: 'Dars boshqa xonada oʻtdi',
+      whoTaught: 'Darsni kim oʻtdi',
+      teacherChoose: 'Kishini tanlang',
+      teacherNeeded: 'Darsni oʻtgan kishini tanlang.',
+      heldIn: 'Dars oʻtgan xona',
+      restoreRoomKeep: 'Oʻz xonasi',
+      ticks: 'Saqlashdan oldin tekshiring:',
+      confirm: 'Men bularni tekshirdim va tuzatishni saqlayman',
+      confirmNeeded: 'Ogohlantirishlarni tekshirganingizni belgilang.',
+      correctSend: 'Tuzatishni saqlash',
+      corrected: 'Tuzatish saqlandi.',
     },
     bulk: {
       open: 'Ommaviy bekor qilish',

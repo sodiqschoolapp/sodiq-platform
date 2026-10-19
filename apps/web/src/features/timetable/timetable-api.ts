@@ -1,5 +1,6 @@
 import {
   dayAnswerSchema,
+  correctionTeachersAnswerSchema,
   dayChangeAnswerSchema,
   dayKeepSchema,
   draftReadinessSchema,
@@ -14,6 +15,7 @@ import {
   timetableVersionSchema,
   type DayKeepBody,
   type LessonCancelBody,
+  type LessonCorrectionBody,
   type LessonMoveBody,
   type LessonRestoreBody,
   type LessonRoomBody,
@@ -506,3 +508,34 @@ export const moveDayLesson = (lessonId: string, body: LessonMoveBody, key: strin
       body,
     }),
   ).then((answer) => dayChangeAnswerSchema.parse(answer));
+
+/** The correction of a past lesson with its reason (task 5.6a-4); `key` makes a repeat harmless. */
+export const correctLesson = (lessonId: string, body: LessonCorrectionBody, key: string) =>
+  answerOf(
+    api.POST('/api/timetable/lessons/{id}/correction', {
+      params: {
+        header: { ...branchHeader(), 'Idempotency-Key': key },
+        path: { id: lessonId },
+      },
+      body,
+    }),
+  ).then((answer) => dayChangeAnswerSchema.parse(answer));
+
+/** The people who may be recorded as having taught a past lesson (task 5.6a-4, decision 4). */
+export const correctionTeachersQuery = (
+  branchId: string | null,
+  lessonId: string,
+  enabled: boolean,
+) =>
+  queryOptions({
+    queryKey: [...timetableKey(branchId), 'correction-teachers', lessonId],
+    queryFn: async () =>
+      correctionTeachersAnswerSchema.parse(
+        await answerOf(
+          api.GET('/api/timetable/lessons/{id}/correction-teachers', {
+            params: { header: branchHeader(), path: { id: lessonId } },
+          }),
+        ),
+      ),
+    enabled: branchId !== null && enabled,
+  });

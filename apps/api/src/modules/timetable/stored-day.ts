@@ -481,9 +481,7 @@ export async function storedDayCheck(
     const results = checkCandidates(others, facts, candidates, {
       availabilityFrom: date,
       ...(input.relaxed === true ? { noSubjectTeacherFree: true } : {}),
-    }).filter(
-      (one) => one.rule !== 'teacher_week_load',
-    );
+    }).filter((one) => one.rule !== 'teacher_week_load');
     return { candidates, results };
   };
   const roomId = input.roomId;

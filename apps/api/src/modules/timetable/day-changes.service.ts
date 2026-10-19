@@ -353,10 +353,11 @@ export class TimetableDayChanges {
         .select(['staff.id', 'staff.first_name', 'staff.last_name'])
         .where('staff_branches.branch_id', '=', branchId)
         .where('staff.kind', '=', 'person')
-        .where(({ not, exists, selectFrom }) =>
-          not(
-            exists(
-              selectFrom('staff_statuses')
+        .where((eb) =>
+          eb.not(
+            eb.exists(
+              eb
+                .selectFrom('staff_statuses')
                 .select('staff_statuses.staff_id')
                 .whereRef('staff_statuses.staff_id', '=', 'staff.id')
                 .where('staff_statuses.status', 'in', OUT_STATUSES)
@@ -991,7 +992,12 @@ export class TimetableDayChanges {
         teacher_id: teacherId,
         room_id: roomId,
         cancel_cause: cancelCause,
-        cancel_reason: cancelCause === 'reason' ? (input.kind === 'cancel' ? input.reason : lesson.cancelReason) : null,
+        cancel_reason:
+          cancelCause === 'reason'
+            ? input.kind === 'cancel'
+              ? input.reason
+              : lesson.cancelReason
+            : null,
       })
       .where('id', '=', id)
       .execute();

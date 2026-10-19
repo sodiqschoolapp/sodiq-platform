@@ -62,6 +62,8 @@ const lesson = (n: number, fields: Partial<DayLesson> = {}): DayLesson => ({
   changed: false,
   canCancel: true,
   canRestore: false,
+  state: 'upcoming',
+  canCorrect: false,
   ...fields,
 });
 
@@ -650,5 +652,168 @@ describe('the day page', () => {
       });
       expect(screen.queryByRole('button', { name: en.timetable.bulk.open })).toBeNull();
     });
+  });
+});
+
+// Task 5.6a-4, pull request #163: the correction of a past lesson (`06`, How
+// surprises are prevented: "A past lesson can only be corrected one at a time
+// by the Academic Vice Principal, with a reason"; edge/timetable, After
+// publishing, "The lesson time passes and nobody was assigned").
+describe('the correction of a past lesson', () => {
+  const PERSON = { id: uid(601), name: 'Rahimov Bobur' };
+  const past = (n: number, fields: Partial<DayLesson> = {}) =>
+    lesson(n, { canCancel: false, state: 'held', canCorrect: true, ...fields });
+
+  /** The cell of a row's state. */
+  const stateCell = (row: number) => rowsDrawn()[row]?.[5] ?? '';
+
+  it('shows a started lesson as held or unresolved, offers "Correct" on it, not on a lesson still to come or one cancelled for an exam', async () => {
+    await openPage({
+      lessons: [
+        past(1),
+        past(2, { start: 535, end: 580, teacher: null, state: 'unresolved' }),
+        lesson(3, { start: 590, end: 635 }),
+        past(4, { start: 645, end: 690, cancelCause: 'exam', state: 'cancelled' }),
+      ],
+    });
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(4);
+    });
+    expect(stateCell(0)).toBe(en.timetable.day.held);
+    expect(stateCell(1)).toBe(en.timetable.day.unresolved);
+    expect(stateCell(2)).toBe(en.timetable.day.asPlanned);
+    const rows = [...document.querySelectorAll('tbody tr')];
+    const buttons = (row: number) =>
+      [...(rows[row]?.querySelectorAll('button') ?? [])].map((one) => one.textContent);
+    expect(buttons(0)).toEqual([en.timetable.day.correct]);
+    expect(buttons(1)).toEqual([en.timetable.day.correct]);
+    expect(buttons(2)).not.toContain(en.timetable.day.correct);
+    expect(buttons(3)).toEqual([]);
+  });
+
+  it('offers no correction to the Principal', async () => {
+    await openPage({ role: 'principal', lessons: [past(1)] });
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(1);
+    });
+    expect(screen.queryByRole('button', { name: en.timetable.day.correct })).toBeNull();
+  });
+
+  it('records who taught an unresolved lesson with the reason', async () => {
+    const page = await openPage({
+      lessons: [past(1, { teacher: null, state: 'unresolved' })],
+      extra: {
+        [`GET /api/timetable/lessons/${uid(301)}/correction-teachers`]: () =>
+          json({ teachers: [PERSON] }),
+        [`POST /api/timetable/lessons/${uid(301)}/correction`]: () =>
+          json({ lesson: past(1, { teacher: { ...PERSON, kind: 'person' } }), warnings: [] }),
+      },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: en.timetable.day.correct }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.change(within(dialog).getByLabelText(en.timetable.day.correctKind), {
+      target: { value: 'teacher' },
+    });
+    fireEvent.change(await within(dialog).findByLabelText(en.timetable.day.whoTaught), {
+      target: { value: PERSON.id },
+    });
+    fireEvent.change(within(dialog).getByLabelText(en.timetable.day.reason), {
+      target: { value: 'The register names him' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.timetable.day.correctSend }));
+    expect(await screen.findByText(en.timetable.day.corrected)).not.toBeNull();
+    expect(
+      page.calls.filter((call) => call.route.endsWith('/correction')).map((call) => call.body),
+    ).toEqual([{ kind: 'teacher', teacherId: PERSON.id, reason: 'The register names him' }]);
+  });
+
+  it('sends nothing without a reason', async () => {
+    const page = await openPage({ lessons: [past(1)] });
+    fireEvent.click(await screen.findByRole('button', { name: en.timetable.day.correct }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: en.timetable.day.correctSend }));
+    expect(await within(dialog).findByText(en.timetable.day.reasonNeededChange)).not.toBeNull();
+    expect(page.calls.filter((call) => call.route.endsWith('/correction'))).toHaveLength(0);
+  });
+
+  it('lists the warnings of a correction with a tick and sends it again with the tick', async () => {
+    let sent = 0;
+    const page = await openPage({
+      lessons: [past(1, { teacher: null, state: 'unresolved' })],
+      extra: {
+        [`GET /api/timetable/lessons/${uid(301)}/correction-teachers`]: () =>
+          json({ teachers: [PERSON] }),
+        [`POST /api/timetable/lessons/${uid(301)}/correction`]: () => {
+          sent += 1;
+          return sent === 1
+            ? json(
+                {
+                  error: {
+                    code: 'correction_needs_confirm',
+                    message: 'ENGLISH TEXT FOR THE DEVELOPER',
+                    requestId: 'test-request',
+                    details: [
+                      {
+                        path: 'rules.teacher_subject',
+                        code: 'teacher_subject',
+                        message: 'x',
+                        rule: { weekday: 1, lessonIds: [] },
+                      },
+                    ],
+                  },
+                },
+                409,
+              )
+            : json({ lesson: past(1, { teacher: { ...PERSON, kind: 'person' } }), warnings: [] });
+        },
+      },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: en.timetable.day.correct }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.change(within(dialog).getByLabelText(en.timetable.day.correctKind), {
+      target: { value: 'teacher' },
+    });
+    fireEvent.change(await within(dialog).findByLabelText(en.timetable.day.whoTaught), {
+      target: { value: PERSON.id },
+    });
+    fireEvent.change(within(dialog).getByLabelText(en.timetable.day.reason), {
+      target: { value: 'Covered the lesson' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.timetable.day.correctSend }));
+    expect(await within(dialog).findByText(en.errors.correction_needs_confirm)).not.toBeNull();
+    expect(within(dialog).getByText(en.timetable.rule.teacher_subject)).not.toBeNull();
+    fireEvent.click(within(dialog).getByLabelText(en.timetable.day.confirm));
+    fireEvent.click(within(dialog).getByRole('button', { name: en.timetable.day.correctSend }));
+    expect(await screen.findByText(en.timetable.day.corrected)).not.toBeNull();
+    expect(
+      page.calls.filter((call) => call.route.endsWith('/correction')).map((call) => call.body),
+    ).toEqual([
+      { kind: 'teacher', teacherId: PERSON.id, reason: 'Covered the lesson' },
+      { kind: 'teacher', teacherId: PERSON.id, reason: 'Covered the lesson', confirm: true },
+    ]);
+  });
+
+  it('offers a restore only for a lesson cancelled with a reason', async () => {
+    const page = await openPage({
+      lessons: [past(1, { cancelCause: 'reason', cancelReason: 'Rain', state: 'cancelled' })],
+      extra: {
+        [`POST /api/timetable/lessons/${uid(301)}/correction`]: () =>
+          json({ lesson: past(1), warnings: [] }),
+      },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: en.timetable.day.correct }));
+    const dialog = await screen.findByRole('dialog');
+    const kinds = within(dialog).getByLabelText(en.timetable.day.correctKind);
+    expect([...kinds.querySelectorAll('option')].map((one) => one.textContent)).toEqual([
+      en.timetable.day.kind_restore,
+    ]);
+    fireEvent.change(within(dialog).getByLabelText(en.timetable.day.reason), {
+      target: { value: 'It took place' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.timetable.day.correctSend }));
+    expect(await screen.findByText(en.timetable.day.corrected)).not.toBeNull();
+    expect(
+      page.calls.filter((call) => call.route.endsWith('/correction')).map((call) => call.body),
+    ).toEqual([{ kind: 'restore', reason: 'It took place' }]);
   });
 });

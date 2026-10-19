@@ -412,6 +412,13 @@ export const en = {
     day_change_blocked:
       'The change breaks a rule at the lesson’s new place. The reasons are listed; when the room is the problem, a free room can be chosen.',
     room_unchanged: 'The lesson already has this room. Choose another room.',
+    lesson_not_started:
+      'This lesson has not started yet. A correction is for a past lesson; change a lesson still to come for the day.',
+    teacher_unchanged: 'This person is already recorded for the lesson. Choose another person.',
+    correction_blocked:
+      'The correction breaks a rule at the lesson’s time: the person or the room was somewhere else then, or another change has just taken them. The reasons are listed.',
+    correction_needs_confirm:
+      'The correction has warnings. Check them, tick that you have, and save again.',
     move_target_started: 'That lesson slot has already started. Choose a later slot or date.',
     move_other_quarter:
       'A lesson can be moved only within its own quarter. Choose a date in the same quarter.',
@@ -2697,6 +2704,7 @@ export const en = {
         room_change: 'Room of a lesson changed for one day',
         move: 'Lesson moved for one day',
         bulk_cancel: 'Lessons cancelled for an event (bulk cancel)',
+        correct: 'Past lesson corrected',
       },
       teaching_load: {
         create: 'Teaching load row added',
@@ -3140,6 +3148,25 @@ export const en = {
       roomSend: 'Change the room',
       moveSend: 'Move the lesson',
       restoreSend: 'Restore the lesson',
+      held: 'Held',
+      unresolved: 'Unresolved: nobody recorded',
+      correct: 'Correct',
+      correctTitle: 'Correct {{subject}} at {{time}}',
+      correctKind: 'What happened',
+      kind_cancel: 'It did not take place',
+      kind_restore: 'It took place after all',
+      kind_teacher: 'Someone else taught it',
+      kind_room: 'It was held in another room',
+      whoTaught: 'Who taught it',
+      teacherChoose: 'Choose a person',
+      teacherNeeded: 'Choose the person who taught it.',
+      heldIn: 'Room it was held in',
+      restoreRoomKeep: 'Its own room',
+      ticks: 'Check before saving:',
+      confirm: 'I have checked these and save the correction',
+      confirmNeeded: 'Tick that you have checked the warnings.',
+      correctSend: 'Save the correction',
+      corrected: 'The correction was saved.',
     },
     bulk: {
       open: 'Bulk cancel',

@@ -2595,10 +2595,12 @@ describe('one-day changes: cancel and restore', () => {
           .selectAll()
           .where('id', '=', one.block_id)
           .executeTakeFirstOrThrow();
-        const days = (new Date(MONDAY).getTime() - new Date(date).getTime());
+        const days = new Date(MONDAY).getTime() - new Date(date).getTime();
         const timed = input.times?.[index];
-        const startsAt = timed === undefined ? new Date(one.starts_at.getTime() - days) : at(date, timed[0]);
-        const endsAt = timed === undefined ? new Date(one.ends_at.getTime() - days) : at(date, timed[1]);
+        const startsAt =
+          timed === undefined ? new Date(one.starts_at.getTime() - days) : at(date, timed[0]);
+        const endsAt =
+          timed === undefined ? new Date(one.ends_at.getTime() - days) : at(date, timed[1]);
         const made = await t.database.migrator
           .insertInto('lesson_blocks')
           .values({
@@ -2707,7 +2709,11 @@ describe('one-day changes: cancel and restore', () => {
       const s = await scene();
       const future = await lessonOf(s, MONDAY);
       const before = await everything();
-      refusedWith(await correct(s.branch, future.id, { kind: 'cancel' }), 409, 'lesson_not_started');
+      refusedWith(
+        await correct(s.branch, future.id, { kind: 'cancel' }),
+        409,
+        'lesson_not_started',
+      );
       expect(await everything()).toEqual(before);
       expect((await shownOf(s, s.classId, MONDAY, future.id)).canCorrect).toBe(false);
       const lesson = await pastOne(s);
@@ -2825,7 +2831,9 @@ describe('one-day changes: cancel and restore', () => {
     it('asks for the tick when a restored lesson’s teacher was outside their hours, and restores with it (decision 2, review correction 1)', async () => {
       const s = await scene();
       // The lesson's teacher comes at 10:00; it began at 08:00.
-      const late = await load.teacher(s.branch, { subjects: [{ subject: s.subject, grades: [7] }] });
+      const late = await load.teacher(s.branch, {
+        subjects: [{ subject: s.subject, grades: [7] }],
+      });
       await hours(s.branch, late.staffId, '2026-09-01', 600);
       const lesson = await pastOne(s, { teacherId: late.staffId });
       changed(await correct(s.branch, lesson, { kind: 'cancel' }));
@@ -2943,7 +2951,9 @@ describe('one-day changes: cancel and restore', () => {
     it('refuses a vacancy and a person not active on the date, and takes one who left after it (decisions 2 and 4)', async () => {
       const s = await scene({ vacancy: true });
       const lesson = await pastOne(s, { classId: s.otherClass });
-      const other = await load.vacancy(s.branch, { subjects: [{ subject: s.subject, grades: [7] }] });
+      const other = await load.vacancy(s.branch, {
+        subjects: [{ subject: s.subject, grades: [7] }],
+      });
       await hours(s.branch, other);
       const gone = await personOf(s.branch, { subjects: [{ subject: s.subject, grades: [7] }] });
       await statusFrom(gone.staffId, 'left', '2026-10-01');
