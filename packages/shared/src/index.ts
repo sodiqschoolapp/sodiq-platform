@@ -1174,6 +1174,10 @@ export {
   DRAFT_EDIT_LOCK_MINUTES,
   CHANGED_MARK_DAYS,
   isMarkedChanged,
+  LESSON_STATES,
+  lessonStateOf,
+  lessonStateSchema,
+  type LessonState,
   TIMETABLE_LOCK_KINDS,
   timetableLockRecordSchema,
   timetableLockSchema,
@@ -1256,6 +1260,8 @@ export {
   lessonMoveBodySchema,
   lessonRestoreBodySchema,
   lessonRoomBodySchema,
+  lessonCorrectionBodySchema,
+  correctionTeachersAnswerSchema,
   daySlotSchema,
   type DayAnswer,
   type DayChangeAnswer,
@@ -1266,6 +1272,8 @@ export {
   type LessonMoveBody,
   type LessonRestoreBody,
   type LessonRoomBody,
+  type LessonCorrectionBody,
+  type CorrectionTeachersAnswer,
   type DaySlot,
 } from './day-changes.js';
 export {

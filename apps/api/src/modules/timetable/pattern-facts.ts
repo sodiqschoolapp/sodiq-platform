@@ -76,9 +76,12 @@ export async function readPatternFacts(
   context: VersionContext,
   rows: readonly StoredLoadRow[],
   load: LoadFacts,
+  options: { readonly extraTeacherIds?: readonly string[] } = {},
 ): Promise<PatternFacts> {
   const { branchId, statusOn } = context;
-  const teacherIds = [...new Set(rows.map((row) => row.teacher_id))].sort();
+  const teacherIds = [
+    ...new Set([...rows.map((row) => row.teacher_id), ...(options.extraTeacherIds ?? [])]),
+  ].sort();
   const groupIds = [
     ...new Set(rows.map((row) => row.group_id).filter((id): id is string => id !== null)),
   ].sort();

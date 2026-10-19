@@ -568,6 +568,14 @@ export const ERROR_CODES = [
   'day_change_blocked',
   /** The lesson already has that room (task 5.6a-2). */
   'room_unchanged',
+  /** The lesson has not started: a correction is for a past lesson; a lesson still to come takes a one-day change (task 5.6a-4, decision 5). */
+  'lesson_not_started',
+  /** The person is already the lesson's teacher (task 5.6a-4). */
+  'teacher_unchanged',
+  /** A correction meets a blocked rule on the lesson's date; `details` lists each, and the free rooms of its time when a room rule blocks (task 5.6a-4). */
+  'correction_blocked',
+  /** A correction meets warnings that need a tick; `details` lists each, and the correction is sent again with `confirm` (task 5.6a-4, decisions 2 and 13). */
+  'correction_needs_confirm',
   /** The new place of a one-day move has started: a move targets a lesson slot that has not started (task 5.6a-2, decision 5). */
   'move_target_started',
   /** A one-day move stays inside the lesson's quarter (task 5.6a-2; edge/time-dates-calendar). */

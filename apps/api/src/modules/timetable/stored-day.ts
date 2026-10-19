@@ -240,6 +240,7 @@ async function dayStateOf(
   accountId: string,
   versionId: string,
   date: string,
+  extraTeacherIds: readonly string[] = [],
 ) {
   const stored = await services.timetable.versionRow(transaction, versionId);
   const row = { ...stored, starts_on: date };
@@ -248,7 +249,7 @@ async function dayStateOf(
     await services.timetable.contextOf(transaction, row),
     await services.timetable.rowsOf(transaction, versionId),
   );
-  const state = await services.pattern.stateOf(transaction, row, accountId, rows);
+  const state = await services.pattern.stateOf(transaction, row, accountId, rows, extraTeacherIds);
   return { state, dated: await datedLessonsOf(transaction, state, date, date) };
 }
 
@@ -320,18 +321,42 @@ export async function storedDayCheck(
      * students exempt, so the block is still whole and they claim nothing.
      */
     readonly alongside?: readonly StoredDayLesson[];
+    /**
+     * The correction of a past lesson (task 5.6a-4, decision 12): the lesson
+     * keeps its stored teacher, with no Tutor follow, since a held lesson
+     * keeps the person who held it.
+     */
+    readonly keepTeacher?: boolean;
+    /** The person recorded as having taught it (task 5.6a-4); implies `keepTeacher`. */
+    readonly teacherId?: string;
+    /**
+     * The teacher placed as a substitute when no teacher of the subject is
+     * free (`noSubjectTeacherFree`): subject, grades and availability are
+     * warnings, double booking stays blocked (task 5.6a-4, decision 2). For
+     * one lesson only, the relaxation never reaching another lesson of the call.
+     */
+    readonly relaxed?: boolean;
   },
 ): Promise<StoredDayResult> {
   const [lesson] = input.lessons;
   if (lesson === undefined) throw new Error('No lesson to check.');
   const { date, branchId } = lesson;
   const ids = new Set(input.lessons.map((one) => one.id));
+  if (input.relaxed === true && input.lessons.length !== 1) {
+    throw new Error('A relaxed check is for one lesson only.');
+  }
   const { state, dated } = await dayStateOf(
     transaction,
     services,
     input.accountId,
     lesson.versionId,
     date,
+    // The person recorded, or a kept teacher no row names (one recorded earlier).
+    input.teacherId !== undefined
+      ? [input.teacherId]
+      : input.keepTeacher === true
+        ? input.lessons.flatMap((one) => (one.teacherId === null ? [] : [one.teacherId]))
+        : [],
   );
   const { model } = state.pattern;
   const { data } = model;
@@ -373,7 +398,7 @@ export async function storedDayCheck(
       subjectId: one.subjectId,
       loadRowId: one.loadRowId,
       teacherIds: teacherId === null ? [] : [teacherId],
-      substitute: false,
+      substitute: input.relaxed === true && ids.has(one.id),
       roomId,
       examRooms: [],
       fixed: false,
@@ -386,9 +411,10 @@ export async function storedDayCheck(
   );
   const teacherIds = new Map<string, string | null>();
   const followed = new Set<string>();
+  const kept = input.keepTeacher === true || input.teacherId !== undefined;
   for (const one of input.lessons) {
-    let teacherId = one.teacherId;
-    if (tutorSubjects.has(one.subjectId) && one.classId !== null) {
+    let teacherId = input.teacherId ?? one.teacherId;
+    if (!kept && tutorSubjects.has(one.subjectId) && one.classId !== null) {
       teacherId = tutorOn(one.classId, date, minutesOf(one.startsAt));
       if (teacherId !== null && teacherId !== model.rowOf(one.loadRowId).teacherId) {
         followed.add(one.id);
@@ -452,7 +478,10 @@ export async function storedDayCheck(
         exemptStudentIds: studentsOn(unitOf(one), date),
       })),
     ];
-    const results = checkCandidates(others, facts, candidates, { availabilityFrom: date }).filter(
+    const results = checkCandidates(others, facts, candidates, {
+      availabilityFrom: date,
+      ...(input.relaxed === true ? { noSubjectTeacherFree: true } : {}),
+    }).filter(
       (one) => one.rule !== 'teacher_week_load',
     );
     return { candidates, results };

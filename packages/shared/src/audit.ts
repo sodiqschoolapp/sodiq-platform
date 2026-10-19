@@ -224,6 +224,8 @@ export const AUDIT_ACTION_GROUPS = {
     'lesson.move',
     // Task 5.6a-3: a bulk cancel.
     'lesson.bulk_cancel',
+    // Task 5.6a-4: the correction of a past lesson.
+    'lesson.correct',
   ],
   exports: [
     'building.export',

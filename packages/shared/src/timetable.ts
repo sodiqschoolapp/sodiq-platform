@@ -79,6 +79,47 @@ export function isMarkedChanged(changedAt: Date | null, now: Date): boolean {
   return now.getTime() >= at && now.getTime() < at + CHANGED_MARK_DAYS * DAY_MS;
 }
 
+/**
+ * The states of a stored lesson (task 5.6a-4, pull request #163, decision 11):
+ * edge/00-definitions, Held lesson: "A lesson whose start time has passed,
+ * which is not cancelled, and which has a teacher recorded (not 'needs a
+ * teacher' or 'unresolved')"; edge/timetable, After publishing, "The lesson
+ * time passes and nobody was assigned": it stays "unresolved" and "never
+ * counts as held". A vacancy is "needs a teacher" before the start and
+ * "unresolved" after it (edge/timetable, "A class needs English from
+ * September").
+ */
+export const LESSON_STATES = [
+  'upcoming',
+  'needs_teacher',
+  'held',
+  'unresolved',
+  'cancelled',
+] as const;
+
+export const lessonStateSchema = z.enum(LESSON_STATES);
+
+export type LessonState = z.infer<typeof lessonStateSchema>;
+
+/**
+ * The state of a lesson at `now` (the injected clock's moment); it has
+ * started at its exact start moment. Every reader of "held" uses this one.
+ */
+export function lessonStateOf(
+  lesson: {
+    readonly startsAt: Date;
+    readonly cancelled: boolean;
+    /** The kind of the teacher recorded; `null` for nobody. */
+    readonly teacher: 'person' | 'vacancy' | null;
+  },
+  now: Date,
+): LessonState {
+  if (lesson.cancelled) return 'cancelled';
+  const started = lesson.startsAt.getTime() <= now.getTime();
+  if (lesson.teacher === 'person') return started ? 'held' : 'upcoming';
+  return started ? 'unresolved' : 'needs_teacher';
+}
+
 /** A version as the list shows it. */
 export const timetableVersionSchema = z.object({
   id: z.uuid(),

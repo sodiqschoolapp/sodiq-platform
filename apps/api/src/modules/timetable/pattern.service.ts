@@ -831,11 +831,16 @@ export class TimetablePattern {
     version: VersionRow,
     accountId: string,
     stored?: StoredLoadRow[],
+    // The person recorded on a past lesson, whom no row names (task 5.6a-4).
+    extraTeacherIds: readonly string[] = [],
   ): Promise<PatternState> {
     const context = await this.timetable.contextOf(transaction, version);
     const rows = stored ?? (await this.timetable.rowsOf(transaction, version.id));
-    const load = await LoadFacts.of(transaction, context, rows, { versionRows: rows });
-    const pattern = await readPatternFacts(transaction, context, rows, load);
+    const load = await LoadFacts.of(transaction, context, rows, {
+      versionRows: rows,
+      extraTeacherIds,
+    });
+    const pattern = await readPatternFacts(transaction, context, rows, load, { extraTeacherIds });
     const [blocks, locks] = await Promise.all([
       readBlocks(transaction, version.id),
       readLocks(transaction, version.id),

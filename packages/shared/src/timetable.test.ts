@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   CHANGED_MARK_DAYS,
   isMarkedChanged,
+  lessonStateOf,
   LOAD_LESSONS_MAX,
   lessonRoomRecordSchema,
   placeRecordSchema,
@@ -228,5 +229,39 @@ describe('the changed mark', () => {
   it('is not shown without a change, or before it', () => {
     expect(isMarkedChanged(null, changedAt)).toBe(false);
     expect(isMarkedChanged(changedAt, later(-1))).toBe(false);
+  });
+});
+
+// Task 5.6a-4: edge/00-definitions, Held lesson: "A lesson whose start time
+// has passed, which is not cancelled, and which has a teacher recorded (not
+// 'needs a teacher' or 'unresolved')"; edge/timetable, After publishing, "The
+// lesson time passes and nobody was assigned": "It never counts as held".
+describe('the state of a lesson', () => {
+  const startsAt = new Date('2026-10-12T04:00:00Z');
+  const before = new Date(startsAt.getTime() - 1);
+  const state = (teacher: 'person' | 'vacancy' | null, cancelled: boolean, now: Date) =>
+    lessonStateOf({ startsAt, cancelled, teacher }, now);
+
+  it('is upcoming or needs a teacher before its start', () => {
+    expect(state('person', false, before)).toBe('upcoming');
+    expect(state(null, false, before)).toBe('needs_teacher');
+    expect(state('vacancy', false, before)).toBe('needs_teacher');
+  });
+
+  it('is held from its exact start only with a person recorded', () => {
+    expect(state('person', false, startsAt)).toBe('held');
+  });
+
+  it('is unresolved, never held, from its start with no teacher or a vacancy', () => {
+    expect(state(null, false, startsAt)).toBe('unresolved');
+    expect(state('vacancy', false, startsAt)).toBe('unresolved');
+  });
+
+  it('is cancelled, never held, whoever its teacher is', () => {
+    for (const now of [before, startsAt]) {
+      expect(state('person', true, now)).toBe('cancelled');
+      expect(state(null, true, now)).toBe('cancelled');
+      expect(state('vacancy', true, now)).toBe('cancelled');
+    }
   });
 });
