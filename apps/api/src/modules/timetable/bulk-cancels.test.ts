@@ -478,6 +478,23 @@ describe('the bulk cancel', () => {
         .execute(t.database.migrator)
         .then((result) => result.rows),
       t.database.migrator.selectFrom('audit_log').select('id').orderBy('id').execute(),
+      // Task 5.6a-5b-2 (permission review must-fix 3): every other table a
+      // withdraw writes.
+      t.database.migrator.selectFrom('lesson_blocks').selectAll().orderBy('id').execute(),
+      t.database.migrator.selectFrom('lesson_day_changes').selectAll().orderBy('id').execute(),
+      t.database.migrator
+        .selectFrom('lesson_day_change_ends')
+        .selectAll()
+        .orderBy('change_id')
+        .execute(),
+      t.database.migrator.selectFrom('timetable_versions').selectAll().orderBy('id').execute(),
+      t.database.migrator
+        .selectFrom('timetable_version_out_of_date_causes')
+        .selectAll()
+        .orderBy('id')
+        .execute(),
+      t.database.migrator.selectFrom('journals').selectAll().orderBy('id').execute(),
+      t.database.migrator.selectFrom('request_keys').selectAll().orderBy('key').execute(),
     ]);
 
   beforeAll(async () => {
@@ -2208,6 +2225,27 @@ describe('the bulk cancel', () => {
         const blockId = block?.blockId ?? '';
         const named = { key: bulk, blockId, blockDate: NEXT_MONDAY };
         const key = checked.dayChanges.key;
+        // Permission review must-fix 3: rows of the other branch a withdraw
+        // writes, a bulk cancel's choice on a shared block and a one-day change.
+        await checkAndSave(
+          northScene.branch,
+          { date: '2026-10-26', classIds: [northScene.oxford], lessonNumbers: [1, 2] },
+          'keep',
+        );
+        const northMaths = await oneLesson(
+          northScene,
+          '2026-10-26',
+          { classId: northScene.princeton },
+          northScene.maths,
+        );
+        const roomed = await keyed(
+          `/api/timetable/lessons/${northMaths.id}/room`,
+          northScene.branch,
+          { roomId: await load.classes.room(northScene.branch), reason: 'The room is painted' },
+          t.admin,
+          randomUUID(),
+        );
+        expect(roomed.status, JSON.stringify(roomed.body)).toBe(200);
         const before = await everything();
         expect(withdrawRefusals(await withdrawWith(s, b, { dayChangesKey: key }))).toContainEqual(
           expect.objectContaining({
@@ -2334,6 +2372,27 @@ describe('the bulk cancel', () => {
         expect((await blocksOf(bulk)).filter((one) => one.block_id === shared.block_id)).toEqual([
           expect.objectContaining({ choice: 'cancel' }),
         ]);
+      });
+
+      it('lists a bulk cancel with nothing of the version that runs again in its slots as kept', async () => {
+        const s = await scene();
+        // B has the maths of both classes in lesson 3, where the scene's
+        // version has nothing of 7 Oxford on Mondays.
+        const b = await published(s, await draftOf(s, { maths: 5 }));
+        const bulk = (
+          await checkAndSave(
+            s.branch,
+            { date: NEXT_MONDAY, classIds: [s.oxford], lessonNumbers: [3] },
+            'keep',
+          )
+        ).saved.id;
+        const checked = await withdrawCheck(s, b);
+        expect(checked.dayChanges.bulk).toEqual([
+          expect.objectContaining({ key: bulk, category: 'kept', cancelled: 0, blocks: [] }),
+        ]);
+        const answer = await withdrawWith(s, b, { dayChangesKey: checked.dayChanges.key });
+        expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+        expect((await mondayOf(s, { classId: s.oxford }, s.maths)).cancel_cause).toBeNull();
       });
 
       it('keeps a bulk cancel with nothing under it when no version runs again (decision 4)', async () => {

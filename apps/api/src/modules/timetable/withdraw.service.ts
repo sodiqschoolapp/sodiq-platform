@@ -195,8 +195,9 @@ export class TimetableWithdraw {
               one.blockId === undefined ? [] : [one.blockId],
             ),
           );
-          await sql`select pg_advisory_xact_lock(${PUBLISH_LOCK})`.execute(transaction);
+          // Permission review should-fix 6: the path id before any lock.
           await this.timetable.findVersion(transaction, branchId, id);
+          await sql`select pg_advisory_xact_lock(${PUBLISH_LOCK})`.execute(transaction);
           const once = await this.requestKeys.runOnce(
             transaction,
             {

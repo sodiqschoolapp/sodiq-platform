@@ -74,7 +74,12 @@ export function WithdrawDialog({
       const choice = choices[dayDecisionKeyOf(block)];
       if (choice !== undefined) dayDecisions.push({ ...block, choice });
     }
-    if (dayDecisions.length === answer.dayChanges.decide.length + bulkOpen.length) {
+    // A check read again (after a refusal of an older key) is waited for:
+    // the key sent is the one of the sorting shown now.
+    if (
+      !check.isFetching &&
+      dayDecisions.length === answer.dayChanges.decide.length + bulkOpen.length
+    ) {
       body = { dayChangesKey: answer.dayChanges.key, dayDecisions };
     }
   }

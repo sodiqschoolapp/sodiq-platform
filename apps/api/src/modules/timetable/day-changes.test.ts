@@ -505,6 +505,13 @@ describe('one-day changes: cancel and restore', () => {
         .execute(),
       t.database.migrator.selectFrom('journals').selectAll().orderBy('id').execute(),
       t.database.migrator.selectFrom('request_keys').selectAll().orderBy('key').execute(),
+      // Task 5.6a-5b-2 (permission review must-fix 2): a withdraw records bulk cancels' choices.
+      t.database.migrator
+        .selectFrom('bulk_cancel_blocks')
+        .selectAll()
+        .orderBy('bulk_cancel_id')
+        .orderBy('block_id')
+        .execute(),
     ]);
 
   /**
@@ -4505,6 +4512,61 @@ describe('one-day changes: cancel and restore', () => {
         .orderBy('lessons.starts_at')
         .execute();
 
+    /**
+     * Permission review must-fix 2 and should-fix 5: a room change of the
+     * north scene's maths of 19 October and a bulk cancel's choice on its
+     * block, rows of another branch a withdraw must leave; their ids.
+     */
+    async function northStored() {
+      const lesson = await lessonOf(northScene, NEXT_MONDAY);
+      changed(
+        await roomChange(northScene.branch, lesson.id, await load.classes.room(northScene.branch)),
+      );
+      const rows = await dayChangesOf(lesson.id);
+      const bulk = await t.database.migrator
+        .insertInto('bulk_cancels')
+        .values({
+          branch_id: northScene.branch,
+          cancel_date: NEXT_MONDAY,
+          lesson_numbers: [1],
+          reason: 'Excursion to the museum',
+          changed_at: new Date(START),
+          changed_by: (
+            await t.database.migrator
+              .selectFrom('accounts')
+              .select('id')
+              .orderBy('id')
+              .executeTakeFirstOrThrow()
+          ).id,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await t.database.migrator
+        .insertInto('bulk_cancel_blocks')
+        .values({
+          branch_id: northScene.branch,
+          bulk_cancel_id: bulk.id,
+          block_id: lesson.block_id,
+          choice: 'keep',
+          lesson_date: NEXT_MONDAY,
+          starts_at: lesson.starts_at,
+          ends_at: lesson.ends_at,
+        })
+        .execute();
+      const block = await t.database.migrator
+        .selectFrom('pattern_blocks')
+        .select('id')
+        .where('version_id', '=', northScene.version)
+        .orderBy('id')
+        .executeTakeFirstOrThrow();
+      return {
+        lesson: lesson.id,
+        change: rows.at(-1)?.id ?? '',
+        bulk: bulk.id,
+        block: block.id,
+      };
+    }
+
     const statusOf = async (version: string) =>
       (
         await t.database.migrator
@@ -4608,14 +4670,21 @@ describe('one-day changes: cancel and restore', () => {
       expect(answer.status, JSON.stringify(answer.body)).toBe(200);
       // The first class's maths of 26 October is on Wednesday 28 October in lesson 2.
       expect(await lessonsOn(s, WEEK3)).toEqual([]);
-      const [now] = await lessonsOn(s, WEDNESDAY3);
-      expect(now).toMatchObject({ starts_at: at(WEDNESDAY3, '08:55'), cancel_cause: null });
-      // In force on the lesson now there: its own rows, or recorded again for it.
-      const rows = (await dayChangesOf(now?.id ?? '')).filter((one) => one.to_date === WEDNESDAY3);
-      expect(rows.length).toBeGreaterThan(0);
-      expect(await endsOf(rows.map((one) => one.id))).toEqual([]);
+      // The version that runs again has the lesson at the moved place, so the
+      // pairing keeps the stored lesson (an unchanged lesson keeps its
+      // identity) and its change stays in force, not ended, not recorded again.
+      expect(await lessonsOn(s, WEDNESDAY3)).toEqual([
+        expect.objectContaining({
+          id: moved.id,
+          starts_at: at(WEDNESDAY3, '08:55'),
+          cancel_cause: null,
+        }),
+      ]);
+      expect(await endsOf([row?.id ?? ''])).toEqual([]);
       const [entry] = await t.entries('timetable_version.withdraw', b);
-      expect(entry?.new_value).toMatchObject({ dayChanges: { kept: [row?.id], dropped: [] } });
+      expect(entry?.new_value).toMatchObject({
+        dayChanges: { kept: [row?.id], dropped: [], ended: [], recordedAgain: [] },
+      });
     });
 
     it('drops and ends a room change on a lesson the version that runs again lacks, keeps a cancel on one it has and drops one on a lesson it removes', async () => {
@@ -4691,6 +4760,7 @@ describe('one-day changes: cancel and restore', () => {
           'teacher_double',
         );
         const key = checked.dayChanges.key;
+        const north = await northStored();
         const before = await everything();
         expect(refusals(await withdrawWith(s, b, { dayChangesKey: key }))).toEqual([
           expect.objectContaining({ code: 'day_change_undecided', path: `dayChanges.${row?.id}` }),
@@ -4719,9 +4789,9 @@ describe('one-day changes: cancel and restore', () => {
             }),
           ).map((one) => one.code),
         ).toEqual(['day_decision_unknown']);
-        // Another branch's key and an unknown one: 404 before any lock.
-        const north = await lessonOf(northScene, NEXT_MONDAY);
-        for (const wrong of [north.id, UNKNOWN]) {
+        // Another branch's lesson, one-day change and bulk cancel as keys,
+        // and an unknown one: 404 before any lock.
+        for (const wrong of [north.lesson, north.change, north.bulk, UNKNOWN]) {
           refusedWith(
             await withdrawWith(s, b, {
               dayChangesKey: key,
@@ -4823,8 +4893,7 @@ describe('one-day changes: cancel and restore', () => {
         const codes = refusals(
           await withdrawWith(s, b, { dayChangesKey: checked.dayChanges.key }),
         ).map((one) => one.code);
-        expect(codes.some((one) => one === 'pattern_blocked' || one === 'date_blocked')).toBe(true);
-        expect(codes).toContain('day_change_undecided');
+        expect([...new Set(codes)].sort()).toEqual(['day_change_undecided', 'pattern_blocked']);
         expect(checked.dayChanges.decide.map((one) => one.key)).toEqual([row?.id]);
       });
 
@@ -4894,6 +4963,44 @@ describe('one-day changes: cancel and restore', () => {
         expect(await endsOf([moveRow?.id ?? '', roomRow?.id ?? ''])).toEqual([
           expect.objectContaining({ change_id: roomRow?.id, version_id: s.version }),
         ]);
+      });
+
+      it('writes a kept lesson of the next version cancelled with “cancel” when its move needs a decision (decision 13)', async () => {
+        const s = await scene();
+        // The maths of 19 October moved onto Wednesday 14 October, A published
+        // from 19 October keeping the move; then the teacher works no
+        // Wednesdays from 12 October, the withdrawn start.
+        const moved = await lessonOf(s, NEXT_MONDAY);
+        changed(await move(s.branch, moved.id, { date: '2026-10-14', lessonNumber: 2 }));
+        const [row] = await dayChangesOf(moved.id);
+        await published(s, await copyOf(s), NEXT_MONDAY);
+        await noWednesdays(s, MONDAY);
+        const checked = await checkOf(s, s.version);
+        expect(checked.runsAgain).toBeNull();
+        expect(checked.dayChanges.decide.map((one) => one.key)).toEqual([row?.id]);
+        expect(checked.dayChanges.decide[0]?.blocked.map((one) => one.rule)).toContain(
+          'teacher_unavailable',
+        );
+        const answer = await withdrawWith(s, s.version, {
+          dayChangesKey: checked.dayChanges.key,
+          dayDecisions: [{ key: row?.id, choice: 'cancel' }],
+        });
+        expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+        expect(await rowOf(moved.id)).toMatchObject({
+          lesson_date: '2026-10-14',
+          cancel_cause: 'reason',
+          cancel_reason: 'Excursion to the museum',
+        });
+        expect(await lessonsOn(s, MONDAY)).toEqual([]);
+        const [entry] = await t.entries('timetable_version.withdraw', s.version);
+        expect(entry?.new_value).toMatchObject({
+          datedLessons: {
+            changed: [
+              expect.objectContaining({ id: moved.id, cancel: { from: null, to: 'reason' } }),
+            ],
+          },
+          dayChanges: { decided: [{ key: row?.id, choice: 'cancel' }], ended: [row?.id] },
+        });
       });
 
       it('keeps a lesson of a later version moved onto the dates of a version withdrawn with one running again', async () => {
@@ -4994,17 +5101,32 @@ describe('one-day changes: cancel and restore', () => {
         'academic_vice_principal',
       );
       refusedWith(await withdrawWith(s, b, body, key, t.vicePrincipal), 409, 'request_key_reused');
-      const north = await lessonOf(northScene, NEXT_MONDAY);
-      refusedWith(
-        await withdrawWith(
-          s,
-          b,
-          { ...body, dayDecisions: [{ key: north.id, choice: 'drop' }] },
-          key,
-        ),
-        404,
-        'not_found',
-      );
+      // Permission review should-fix 4: a repeat of a used key with another
+      // branch's or an unknown key or block is 404, from a refused role 403,
+      // each before the stored answer and writing nothing.
+      const north = await northStored();
+      const after = await everything();
+      for (const decision of [
+        { key: north.lesson, choice: 'drop' },
+        { key: UNKNOWN, choice: 'drop' },
+        { key: first.id, blockId: north.block, blockDate: WEEK3, choice: 'keep' },
+        { key: first.id, blockId: UNKNOWN, blockDate: WEEK3, choice: 'keep' },
+      ]) {
+        refusedWith(
+          await withdrawWith(s, b, { ...body, dayDecisions: [decision] }, key),
+          404,
+          'not_found',
+        );
+      }
+      const principal = await t.database.migrator
+        .selectFrom('assignments')
+        .select('account_id')
+        .where('role', '=', 'principal')
+        .where('branch_id', '=', t.north)
+        .executeTakeFirstOrThrow();
+      await load.classes.role(principal.account_id, s.branch, 'principal');
+      refusedWith(await withdrawWith(s, b, body, key, t.principal), 403, 'permission_denied');
+      expect(await everything()).toEqual(after);
     });
 
     it('refuses the check as the withdraw: a draft, another branch’s and an unknown id; the Principal reads it', async () => {

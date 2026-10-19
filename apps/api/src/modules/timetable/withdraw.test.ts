@@ -355,8 +355,81 @@ describe('withdraw', () => {
         .execute(),
       t.database.migrator.selectFrom('request_keys').selectAll().orderBy('key').execute(),
       t.auditCount(),
+      // Task 5.6a-5b-2 (permission review must-fix 1): the withdraw ends and
+      // records one-day changes again and records bulk cancels' choices.
+      t.database.migrator
+        .selectFrom('lesson_day_changes')
+        .selectAll()
+        .where('branch_id', 'in', branches)
+        .orderBy('id')
+        .execute(),
+      t.database.migrator
+        .selectFrom('lesson_day_change_ends')
+        .selectAll()
+        .where('branch_id', 'in', branches)
+        .orderBy('change_id')
+        .execute(),
+      t.database.migrator
+        .selectFrom('bulk_cancel_blocks')
+        .selectAll()
+        .where('branch_id', 'in', branches)
+        .orderBy('bulk_cancel_id')
+        .orderBy('block_id')
+        .execute(),
     ]);
   };
+
+  /**
+   * Task 5.6a-5b-2 (permission review must-fix 1): a room change of B's maths
+   * of 16 November, and a bulk cancel's choice on its block, rows a withdraw
+   * of B would end or change.
+   */
+  async function storedChanges(s: { branch: string; classId: string; subject: string }) {
+    const lesson = await t.database.migrator
+      .selectFrom('lessons')
+      .select(['id', 'block_id', 'starts_at', 'ends_at'])
+      .where('class_id', '=', s.classId)
+      .where('subject_id', '=', s.subject)
+      .where('lesson_date', '=', '2026-11-16')
+      .executeTakeFirstOrThrow();
+    const room = await load.classes.room(s.branch);
+    const changed = await request(t.kit.server)
+      .post(`/api/timetable/lessons/${lesson.id}/room`)
+      .set('Cookie', t.admin)
+      .set(BRANCH_HEADER, s.branch)
+      .set(REQUEST_KEY_HEADER, randomUUID())
+      .send({ roomId: room, reason: 'The room is painted' });
+    expect(changed.status, JSON.stringify(changed.body)).toBe(200);
+    const account = await t.database.migrator
+      .selectFrom('accounts')
+      .select('id')
+      .orderBy('id')
+      .executeTakeFirstOrThrow();
+    const bulk = await t.database.migrator
+      .insertInto('bulk_cancels')
+      .values({
+        branch_id: s.branch,
+        cancel_date: '2026-11-16',
+        lesson_numbers: [1],
+        reason: 'Excursion to the museum',
+        changed_at: new Date(START),
+        changed_by: account.id,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await t.database.migrator
+      .insertInto('bulk_cancel_blocks')
+      .values({
+        branch_id: s.branch,
+        bulk_cancel_id: bulk.id,
+        block_id: lesson.block_id,
+        choice: 'keep',
+        lesson_date: '2026-11-16',
+        starts_at: lesson.starts_at,
+        ends_at: lesson.ends_at,
+      })
+      .execute();
+  }
 
   describe('a version withdrawn before its start', () => {
     it('leaves it no dated lessons and runs the version before it again over its dates (Done when)', async () => {
@@ -887,8 +960,10 @@ describe('withdraw', () => {
     it('checks the permission and the branch again on a repeat, before the stored answer', async () => {
       const s = await twoVersions();
       const theirs = await twoVersions();
+      await storedChanges(theirs);
       const key = randomUUID();
       versionOf(await withdraw(s.branch, s.b, t.admin, key));
+      await storedChanges(s);
       const after = await written([s.b, theirs.b]);
       for (const id of [theirs.b, UNKNOWN]) {
         refusedWith(await withdraw(s.branch, id, t.admin, key), 404, 'not_found');
@@ -913,6 +988,8 @@ describe('withdraw', () => {
       // journals with runs, and a draft to mark.
       await draft(s.branch, s.year);
       await draft(theirs.branch, theirs.year);
+      await storedChanges(s);
+      await storedChanges(theirs);
       const vice = await t.database.migrator
         .selectFrom('assignments')
         .select('account_id')
@@ -922,6 +999,8 @@ describe('withdraw', () => {
       const before = await written([s.b, theirs.b]);
       expect(new Set(before[3].map((one) => one.branch_id)).size).toBe(2);
       expect(new Set(before[5].map((one) => one.branch_id)).size).toBe(2);
+      expect(new Set(before[8].map((one) => one.branch_id)).size).toBe(2);
+      expect(new Set(before[10].map((one) => one.branch_id)).size).toBe(2);
       for (const cookie of [t.admin, t.vicePrincipal]) {
         for (const id of [theirs.b, UNKNOWN]) {
           refusedWith(await withdraw(s.branch, id, cookie), 404, 'not_found');

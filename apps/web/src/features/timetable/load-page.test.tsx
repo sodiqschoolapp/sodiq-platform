@@ -627,19 +627,20 @@ describe('the teaching load page: withdraw', () => {
   const later = version(2, { status: 'published', startsOn: '2026-11-09' });
   const KEY = 'a'.repeat(64);
   /** The withdraw check of `later` (task 5.6a-5b-2), with nothing stored unless given. */
+  const checkAnswer = (dayChanges: Partial<WithdrawCheck['dayChanges']> = {}) =>
+    json({
+      runsAgain: { id: earlier.id, number: 1 },
+      runsAgainUntil: '2027-05-31',
+      dayChanges: { key: KEY, kept: [], decide: [], dropped: [], bulk: [], ...dayChanges },
+      names: {
+        units: [{ id: OXFORD.id, kind: 'class', name: 'Oxford', grades: [7] }],
+        subjects: [{ id: MATHS.id, names: MATHS.names }],
+        teachers: [],
+        rooms: [],
+      },
+    } satisfies WithdrawCheck);
   const checkRoute = (dayChanges: Partial<WithdrawCheck['dayChanges']> = {}) => ({
-    [`GET /api/timetable/versions/${later.id}/withdraw-check`]: () =>
-      json({
-        runsAgain: { id: earlier.id, number: 1 },
-        runsAgainUntil: '2027-05-31',
-        dayChanges: { key: KEY, kept: [], decide: [], dropped: [], bulk: [], ...dayChanges },
-        names: {
-          units: [{ id: OXFORD.id, kind: 'class', name: 'Oxford', grades: [7] }],
-          subjects: [{ id: MATHS.id, names: MATHS.names }],
-          teachers: [],
-          rooms: [],
-        },
-      } satisfies WithdrawCheck),
+    [`GET /api/timetable/versions/${later.id}/withdraw-check`]: () => checkAnswer(dayChanges),
   });
   /** A one-day move of Oxford's maths stored for a withdrawn date. */
   const moveItem = (key: string) => ({
@@ -734,11 +735,17 @@ describe('the teaching load page: withdraw', () => {
     });
   });
 
-  it('names a refusal of the sorting as the publish names it', async () => {
-    await openPage({
+  it('names a refusal of the sorting as the publish names it, and sends the key of the check read again', async () => {
+    // The second read of the check shows a newer sorting.
+    let reads = 0;
+    const NEWER = 'b'.repeat(64);
+    const calls = await openPage({
       versions: [later, earlier],
       extra: {
-        ...checkRoute(),
+        [`GET /api/timetable/versions/${later.id}/withdraw-check`]: () => {
+          reads += 1;
+          return checkAnswer(reads === 1 ? {} : { key: NEWER });
+        },
         [`POST /api/timetable/versions/${later.id}/withdraw`]: () =>
           Response.json(
             {
@@ -768,6 +775,22 @@ describe('the teaching load page: withdraw', () => {
     expect(
       within(failure).getByText(en.timetable.publish.refusals.day_changes_changed),
     ).not.toBeNull();
+    // Opened again, the dialog waits for the check read again and sends its key.
+    fireEvent.click(screen.getByRole('button', { name: en.timetable.load.withdraw }));
+    const again = await screen.findByRole('alertdialog');
+    const sendAgain = within(again).getByRole('button', { name: en.timetable.load.withdraw });
+    await waitFor(() => {
+      expect(reads).toBe(2);
+      expect((sendAgain as HTMLButtonElement).disabled).toBe(false);
+    });
+    fireEvent.click(sendAgain);
+    await waitFor(() => {
+      expect(
+        calls
+          .filter((call) => call.route === `POST /api/timetable/versions/${later.id}/withdraw`)
+          .map((call) => (call.body as { dayChangesKey: string }).dayChangesKey),
+      ).toEqual([KEY, NEWER]);
+    });
   });
 
   it('shows a failed check with a retry and offers no withdraw', async () => {
