@@ -77,6 +77,9 @@ const MESSAGE: Record<ErrorCode, string> = {
   calendar_archive_started: 'A started entry is not archived; move its last date instead.',
   year_leaves_calendar_entry: 'A calendar entry would lie outside the year.',
   go_live_school_day_taken: 'The change would leave the go-live date without lessons.',
+  calendar_blocked: 'The change meets a blocked conflict on a date it changes; each is listed.',
+  calendar_stored_changes:
+    'A date the change touches holds a one-day change, bulk cancel or exam; each is listed.',
   travel_time_same_branch: 'Travel time is set between two different branches.',
   subject_archived: 'The subject is archived. Restore it first.',
   department_not_academic: 'A subject belongs to a department of the Academic division.',

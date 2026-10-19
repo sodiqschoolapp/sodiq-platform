@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { schoolDateSchema } from './academic-year.js';
 import { FIRST_GRADE, LAST_GRADE } from './day-templates.js';
 import { weekdaySchema } from './setup.js';
+import { NEEDS_TEACHER_REASONS, previewNamesSchema } from './timetable.js';
 
 /**
  * The academic calendar of a branch (docs/spec/03-school-setup.md, Academic
@@ -178,9 +179,69 @@ export const calendarDateSchema = z.object({
 
 export type CalendarDate = z.infer<typeof calendarDateSchema>;
 
+/** A dated lesson of the branch as the preview of a calendar save names it (task 5.6b-1): minutes of its day. */
+export const calendarLessonSchema = z.object({
+  date: schoolDateSchema,
+  start: z.int().min(0).max(1440),
+  end: z.int().min(0).max(1440),
+  unitId: z.uuid(),
+  subjectId: z.uuid(),
+  /** Empty for a lesson with no teacher (a Tutor lesson with no Tutor). */
+  teacherIds: z.array(z.uuid()),
+  roomId: z.uuid().nullable(),
+});
+
+export type CalendarLesson = z.infer<typeof calendarLessonSchema>;
+
+/** Why the rewrite of a date creates a lesson cancelled (`edge/time-dates-calendar`). */
+export const CALENDAR_CANCEL_CAUSES = ['not_in_template', 'day_off', 'exam_week'] as const;
+
+/** What a stored record on a changed date is, until task 5.6b-2 sorts it (decision 7). */
+export const CALENDAR_STORED_KINDS = ['day_change', 'bulk_cancel', 'exam'] as const;
+
+/**
+ * What a calendar save does to the dated lessons of the published versions
+ * (task 5.6b-1; `edge/time-dates-calendar`, "the impact preview is shown
+ * first"): the lessons of the changed dates removed, created and created
+ * cancelled, those that will need a teacher, the teachers who will be told,
+ * and what refuses the save: the blocked conflicts by date
+ * (`calendar_blocked`) and the stored records on those dates
+ * (`calendar_stored_changes`). It names records of the branch only.
+ */
+export const calendarLessonsSchema = z.object({
+  removed: z.array(calendarLessonSchema),
+  created: z.array(calendarLessonSchema),
+  cancelled: z.array(calendarLessonSchema.extend({ cause: z.enum(CALENDAR_CANCEL_CAUSES) })),
+  needsTeacher: z.array(
+    z.object({
+      date: schoolDateSchema,
+      unitId: z.uuid(),
+      subjectId: z.uuid(),
+      reason: z.enum(NEEDS_TEACHER_REASONS),
+    }),
+  ),
+  /** The teachers (staff ids) who get a notice: a person with an account, never a vacancy. */
+  notified: z.array(z.uuid()),
+  blocked: z.array(
+    z.object({
+      date: schoolDateSchema,
+      /** The rule (`timetable.rule.<code>`). */
+      rule: z.string().regex(/^[a-z_]+$/),
+      lessons: z.array(z.object({ unitId: z.uuid(), subjectId: z.uuid() })),
+    }),
+  ),
+  stored: z.array(
+    z.object({ kind: z.enum(CALENDAR_STORED_KINDS), id: z.uuid(), date: schoolDateSchema }),
+  ),
+  names: previewNamesSchema,
+});
+
+export type CalendarLessons = z.infer<typeof calendarLessonsSchema>;
+
 /**
  * What a save changes: runs of consecutive dates and of grades whose day is
- * the same before and the same after (decision 11), oldest date first.
+ * the same before and the same after (decision 11), oldest date first; and
+ * what it does to the dated lessons (task 5.6b-1).
  */
 export const calendarPreviewSchema = z.object({
   changes: z.array(
@@ -193,6 +254,7 @@ export const calendarPreviewSchema = z.object({
       after: calendarDaySchema,
     }),
   ),
+  lessons: calendarLessonsSchema,
 });
 
 export type CalendarPreview = z.infer<typeof calendarPreviewSchema>;

@@ -19,7 +19,8 @@ import { isGeneratedCause, storedPairOf } from './dated-lessons.js';
  * it out of both sides (5.5a-2b-1, decision 4); one with a one-day cancel is
  * kept as a lesson held, as the writer keeps it (5.5b-1, decision 8), unless
  * `cancelled` is `'none'`: the transition week counts no cancelled lesson
- * (5.5a-2b-1, decision 10; decision 4).
+ * (5.5a-2b-1, decision 10; decision 4). `'generated'` gives only the lessons
+ * the expansion created cancelled (the preview of a calendar save, task 5.6b-1).
  */
 export async function storedImpactLessons(
   transaction: Transaction,
@@ -28,7 +29,7 @@ export async function storedImpactLessons(
     readonly firstDate: string;
     readonly lastDate: string;
     readonly classIdsOf: (unitId: string) => readonly string[] | undefined;
-    readonly cancelled: 'one_day' | 'none';
+    readonly cancelled: 'one_day' | 'none' | 'generated';
   },
 ): Promise<ImpactLesson[]> {
   const rows = await storedLessonRows(transaction, { ...input, lock: false });
@@ -59,7 +60,7 @@ export async function storedLessonRows(
     readonly firstDate: string;
     readonly lastDate: string;
     readonly classIdsOf: (unitId: string) => readonly string[] | undefined;
-    readonly cancelled: 'one_day' | 'none';
+    readonly cancelled: 'one_day' | 'none' | 'generated';
     readonly lock: boolean;
   },
 ): Promise<StoredLesson[]> {
@@ -99,7 +100,11 @@ export async function storedLessonRows(
   ]);
   return rows.flatMap((row) => {
     if (
-      input.cancelled === 'none' ? row.cancel_cause !== null : isGeneratedCause(row.cancel_cause)
+      input.cancelled === 'none'
+        ? row.cancel_cause !== null
+        : input.cancelled === 'generated'
+          ? !isGeneratedCause(row.cancel_cause)
+          : isGeneratedCause(row.cancel_cause)
     ) {
       return [];
     }

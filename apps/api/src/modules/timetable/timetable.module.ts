@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { NotificationsModule } from '../notifications/notifications.module.js';
 import { BulkCancelsController } from './bulk-cancels.controller.js';
+import { TimetableCalendarLessons } from './calendar-lessons.js';
 import { TimetableBulkCancels } from './bulk-cancels.service.js';
 import { DayChangesController } from './day-changes.controller.js';
 import { TimetableDayChanges } from './day-changes.service.js';
@@ -23,6 +24,9 @@ import { TimetableUpToDate } from './up-to-date.service.js';
     TimetableWithdraw,
     TimetableDayChanges,
     TimetableBulkCancels,
+    TimetableCalendarLessons,
   ],
+  // Task 5.6b-1: a calendar save writes the lessons of the dates it changes.
+  exports: [TimetableCalendarLessons],
 })
 export class TimetableModule {}

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { TimetableModule } from '../timetable/timetable.module.js';
 import { AcademicYearsController } from './academic-years.controller.js';
 import { AcademicYears } from './academic-years.service.js';
 import { BranchesController } from './branches.controller.js';
@@ -28,6 +29,7 @@ import { Subjects } from './subjects.service.js';
  * and the setup checklist (task 1.6); subjects and their weights (task 2.1).
  */
 @Module({
+  imports: [TimetableModule],
   controllers: [
     BranchesController,
     BuildingsController,

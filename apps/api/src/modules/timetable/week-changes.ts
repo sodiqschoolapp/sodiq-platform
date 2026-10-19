@@ -274,7 +274,7 @@ export async function snapshotDates(
 }
 
 /** The stored lessons of the branch on `dates`, read as both sides read them, unlocked. */
-async function readDates(
+export async function readDates(
   transaction: Transaction,
   branchId: string,
   dates: readonly string[],
@@ -324,7 +324,13 @@ export async function sendWeekChanges(
   snapshot: WeekSnapshot,
   event:
     | { readonly kind: WeekChangeKind; readonly number: number }
-    | { readonly kind: 'timetable.day_changed' },
+    | { readonly kind: 'timetable.day_changed' }
+    | {
+        readonly kind: 'timetable.calendar_changed';
+        readonly name: string;
+        readonly firstDate: string;
+        readonly lastDate: string;
+      },
 ): Promise<WeekNotices> {
   const after =
     snapshot.dates === undefined
@@ -366,22 +372,41 @@ export async function sendWeekChanges(
     after: [...snapshot.unwritten, ...after],
     beforeDiffers: changes.beforeDiffers,
     afterDiffers: changes.afterDiffers,
-    // Only a one-day change shows a second week (task 5.6a-2, decision 11).
-    ...(event.kind === 'timetable.day_changed' ? { laterWeeks: changes.laterWeeks } : {}),
-    send: (accountId, week) =>
-      event.kind === 'timetable.day_changed'
-        ? notifications.send(transaction, {
+    // Only a one-day change shows a second week (task 5.6a-2, decision 11),
+    // and a calendar change, whose dates can span weeks (task 5.6b-1).
+    ...(event.kind === 'timetable.day_changed' || event.kind === 'timetable.calendar_changed'
+      ? { laterWeeks: changes.laterWeeks }
+      : {}),
+    send: (accountId, week) => {
+      switch (event.kind) {
+        case 'timetable.day_changed':
+          return notifications.send(transaction, {
             kind: event.kind,
             branchId: snapshot.branchId,
             accountIds: [accountId],
             data: week,
-          })
-        : notifications.send(transaction, {
+          });
+        case 'timetable.calendar_changed':
+          return notifications.send(transaction, {
+            kind: event.kind,
+            branchId: snapshot.branchId,
+            accountIds: [accountId],
+            data: {
+              name: event.name,
+              firstDate: event.firstDate,
+              lastDate: event.lastDate,
+              ...week,
+            },
+          });
+        default:
+          return notifications.send(transaction, {
             kind: event.kind,
             branchId: snapshot.branchId,
             accountIds: [accountId],
             data: { number: String(event.number), ...week },
-          }),
+          });
+      }
+    },
   });
   return { notified, marked: changes.marked.length };
 }

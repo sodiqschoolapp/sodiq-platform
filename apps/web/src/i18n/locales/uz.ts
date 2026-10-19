@@ -163,6 +163,10 @@ export const uz: Texts<'one' | 'other'> = {
       'Taqvim yozuvi yildan tashqarida qolib ketadi. Avval oʻsha yozuvni oʻzgartiring yoki arxivlang, yoki yil sanalarini qoldiring.',
     go_live_school_day_taken:
       'Bu oʻzgarish ishga tushirish sanasini darssiz qoldiradi. Oʻquv kunini qoldiring yoki avval ishga tushirish sanasini koʻchiring.',
+    calendar_blocked:
+      'Bu oʻzgarish u oʻzgartiradigan sanada taqiqlangan toʻqnashuvga uchraydigan darslarni qaytaradi. Oldindan koʻrishda har biri koʻrsatilgan; avval ularni hal qiling yoki sanalarni qoldiring.',
+    calendar_stored_changes:
+      'Bu oʻzgarish tegadigan sanada bir kunlik oʻzgarish, ommaviy bekor qilish yoki imtihon bor. Avval uni bekor qiling yoki koʻchiring, soʻng qayta saqlang.',
     own_account:
       'Oʻz hisobingizni bloklay, blokdan chiqara yoki tiklay olmaysiz. Boshqa administratorga murojaat qiling.',
     account_already_locked:
@@ -1295,6 +1299,34 @@ export const uz: Texts<'one' | 'other'> = {
       checkDateMissing: 'Sanani kiriting.',
       gradeColumn: 'Sinf',
       dayColumn: 'Kun',
+      lessons: {
+        title: 'Eʼlon qilingan dars jadvali',
+        stored_one: '{{count}} ta saqlangan oʻzgarish bu saqlashni toʻxtatadi',
+        stored_other: '{{count}} ta saqlangan oʻzgarish bu saqlashni toʻxtatadi',
+        storedKinds: {
+          day_change: 'bir kunlik oʻzgarish',
+          bulk_cancel: 'ommaviy bekor qilish',
+          exam: 'imtihon',
+        },
+        blocked_one: '{{count}} ta taqiqlangan toʻqnashuv bu saqlashni toʻxtatadi',
+        blocked_other: '{{count}} ta taqiqlangan toʻqnashuv bu saqlashni toʻxtatadi',
+        removed_one: '{{count}} ta dars olib tashlanadi',
+        removed_other: '{{count}} ta dars olib tashlanadi',
+        created_one: '{{count}} ta dars yaratiladi',
+        created_other: '{{count}} ta dars yaratiladi',
+        cancelled_one: '{{count}} ta dars bekor qilingan holda yaratiladi',
+        cancelled_other: '{{count}} ta dars bekor qilingan holda yaratiladi',
+        causes: {
+          not_in_template: 'kun shablonida yoʻq',
+          day_off: 'sinflaridan biri uchun dam olish kuni',
+          exam_week: 'imtihon haftasi',
+        },
+        needsTeacher_one: '{{count}} ta darsga oʻqituvchi kerak boʻladi',
+        needsTeacher_other: '{{count}} ta darsga oʻqituvchi kerak boʻladi',
+        notified_one: '{{count}} ta oʻqituvchiga xabar beriladi.',
+        notified_other: '{{count}} ta oʻqituvchiga xabar beriladi.',
+        refused: 'Yuqoridagilar hal qilinmaguncha bu saqlash rad etiladi.',
+      },
     },
     templateSettings: {
       emptyTitle: 'Shablon hali belgilanmagan',
@@ -3099,6 +3131,8 @@ export const uz: Texts<'one' | 'other'> = {
           'Sinf rahbari almashgani sababli sinf rahbari darslaringiz oʻzgardi. Haftangiz oldin va keyin:',
         day_changed:
           'Bir kunlik oʻzgarish (bekor qilish yoki tiklash) darslaringizni oʻzgartirdi. Haftangiz oldin va keyin:',
+        calendar_changed:
+          '«{{name}}» taqvim yozuvi darslaringizni oʻzgartirdi. Haftangiz oldin va keyin:',
       },
     },
     // The week before and after of a notice of a timetable change (task 5.5c-3a).

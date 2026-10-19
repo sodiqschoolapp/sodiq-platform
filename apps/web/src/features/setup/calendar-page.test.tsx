@@ -89,7 +89,20 @@ const PAST = entry({
   lastDate: '2026-10-02',
 });
 
+/** A save over dates with no published lesson (task 5.6b-1). */
+const NO_LESSONS: CalendarPreview['lessons'] = {
+  removed: [],
+  created: [],
+  cancelled: [],
+  needsTeacher: [],
+  notified: [],
+  blocked: [],
+  stored: [],
+  names: { units: [], subjects: [], teachers: [], rooms: [] },
+};
+
 const PREVIEW: CalendarPreview = {
+  lessons: NO_LESSONS,
   changes: [
     {
       firstDate: '2026-10-17',
@@ -271,6 +284,89 @@ describe('the calendar page', () => {
 
     expect(await within(form).findByText(en.form.notSaved)).not.toBeNull();
     expect(calls.some((call) => call.route === 'POST /api/setup/calendar-entries')).toBe(false);
+  });
+
+  // Task 5.6b-1: what the save does to the published timetable, and Save off
+  // while the server would refuse it.
+  it('lists the lessons a save removes, creates and cancels, and keeps Save off while a stored change stops it', async () => {
+    const OXFORD = uid(20);
+    const MATHS = uid(21);
+    const names = {
+      units: [{ id: OXFORD, kind: 'class' as const, name: 'Oxford', grades: [7] }],
+      subjects: [{ id: MATHS, names: { uz: 'Matematika', ru: 'Математика', en: 'Mathematics' } }],
+      teachers: [],
+      rooms: [],
+    };
+    const lesson = {
+      date: '2026-10-19',
+      start: 480,
+      end: 525,
+      unitId: OXFORD,
+      subjectId: MATHS,
+      teacherIds: [],
+      roomId: null,
+    };
+    const answers = [
+      { ...NO_LESSONS, removed: [lesson], notified: [uid(22)], names },
+      {
+        ...NO_LESSONS,
+        cancelled: [{ ...lesson, cause: 'not_in_template' as const }],
+        stored: [{ kind: 'day_change' as const, id: uid(23), date: '2026-10-19' }],
+        names,
+      },
+    ];
+    let answer = 0;
+    await openList('academic_vice_principal', {
+      'POST /api/setup/calendar-entries/preview': () =>
+        json({ ...PREVIEW, lessons: answers[answer] }),
+    });
+    fireEvent.click(screen.getByRole('button', { name: en.setup.calendar.add }));
+    const form = within(
+      await screen.findByRole('complementary', { name: en.setup.calendar.newTitle }),
+    ).getByRole('form', { name: en.setup.calendar.newTitle });
+    type(within(form).getByLabelText(en.setup.calendar.name), 'Day off');
+    type(within(form).getByLabelText(en.setup.calendar.firstDate), '2026-10-19');
+    type(within(form).getByLabelText(en.setup.calendar.lastDate), '2026-10-19');
+
+    for (const [index, expected] of [
+      [
+        en.setup.calendar.lessons.removed_one.replace('{{count}}', '1'),
+        en.setup.calendar.lessons.notified_one.replace('{{count}}', '1'),
+      ],
+      [
+        en.setup.calendar.lessons.stored_one.replace('{{count}}', '1'),
+        en.setup.calendar.lessons.cancelled_one.replace('{{count}}', '1'),
+      ],
+    ].entries()) {
+      answer = index;
+      fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+      const dialog = await screen.findByRole('dialog', { name: en.setup.calendar.previewTitle });
+      const section = within(dialog).getByTestId('calendar-lessons');
+      for (const text of expected) {
+        expect(within(section).getByText(text)).not.toBeNull();
+      }
+      const save = within(dialog).getByRole('button', { name: en.setup.calendar.save });
+      if (index === 0) {
+        expect(
+          within(section).getByText('19 October 2026 · 08:00–08:45 · 7 Oxford · Mathematics'),
+        ).not.toBeNull();
+        expect(save).not.toHaveProperty('disabled', true);
+      } else {
+        expect(
+          within(section).getByText(
+            `19 October 2026 · 08:00–08:45 · 7 Oxford · Mathematics · ${en.setup.calendar.lessons.causes.not_in_template}`,
+          ),
+        ).not.toBeNull();
+        expect(within(section).getByRole('alert').textContent).toBe(
+          en.setup.calendar.lessons.refused,
+        );
+        expect(save).toHaveProperty('disabled', true);
+      }
+      fireEvent.click(within(dialog).getByRole('button', { name: en.setup.calendar.cancel }));
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog', { name: en.setup.calendar.previewTitle })).toBeNull();
+      });
+    }
   });
 
   it('shows the refusal of the server in words', async () => {

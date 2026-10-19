@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 19 October 2026: task 5.6b-1 Calendar entries after publishing: the lessons of the changed dates
+
+- 5.6b split in five (5.6b-1 to 5.6b-5, `docs/build-plan.md`). A calendar entry's create, edit, archive and restore now writes the dated lessons of its lesson dates (after today, where a grade's lesson-making part of the day changes) from the published version in force on each date, read as if it started on each stretch's first date, checked by `datedCheck` and written by `writeDatedLessons` (`apps/api/src/modules/timetable/calendar-lessons.ts`).
+- Refusals `calendar_blocked` (blocked results by date) and `calendar_stored_changes` (a one-day change, bulk cancel or exam on a changed date, until 5.6b-2). The preview answers `lessons` (removed, created, cancelled, needs a teacher, notified, blocked, stored, names); the dialog shows them and keeps Save off while refused. Notice kind `timetable.calendar_changed`; changed marks as for a publish. Audit: `lessonDates`, `datedLessons`, `notices` on the entry's own actions. No migration.
+- Lock order (review correction 1): the calendar save holds its branch row `for no key update` (was `for update`), then, before it writes the entry, the people of the branch and the classes of the years it touches `for key share`, then each year `for no key update`; a publish, withdraw, bulk cancel, one-day change, draft write and `followTutors` meet it at the year (`TimetableCalendarLessons.lock`). A line of `.claude/rules/timetable.md` says so for the later setup parts.
+- Left out: the sorting of stored changes and exams, and the shortened day's choice (5.6b-2); the two-grade group choice (5.6b-3); template and slot length changes (5.6b-4); quarter and year dates (5.6b-5); plan items shifting (7.1b); a browser test (the browser scene has no published version under a calendar entry).
+
+The next sessions must know:
+
+- `TimetableCalendarLessons` is exported from `TimetableModule` and imported by `SetupModule`; `lock` runs before the entry write and `rewrite` after it, with the lesson dates of `lessonDatesOf` (`calendar.service.ts`).
+- A preview with a blocked conflict writes in a savepoint and falls back to no lesson lines when the database refuses; with a stored record it writes nothing.
+- The next task is 5.6b-2.
+
 ## 19 October 2026: task 5.6a-5b-2 One-day changes kept after a withdraw
 
 - A withdraw sorts the stored one-day changes and bulk cancels of the withdrawn dates as a publish does, over the version that runs again (read as if it started on the withdrawn start), or over no lessons with the withdrawn version's own facts when none runs again; a move from before the withdrawn start keeps its block under its version.
