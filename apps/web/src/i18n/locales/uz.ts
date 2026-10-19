@@ -418,7 +418,7 @@ export const uz: Texts<'one' | 'other'> = {
     lesson_not_restorable:
       'Bu yerda faqat sabab bilan bekor qilingan dars tiklanadi. Imtihon tufayli bekor qilingan dars imtihon bekor qilinganda qaytadi.',
     restore_blocked:
-      'Darsni tiklab boʻlmaydi: uning vaqtida qoida buziladi. Sabablar va boʻsh xonalar quyida keltirilgan.',
+      'Darsni oʻz vaqtida tiklab boʻlmaydi: u yerda qoida buziladi yoki boshqa oʻzgarish hozirgina uning xonasi, oʻqituvchisi yoki sinfini egalladi. Topilgan sabablar quyida keltirilgan.',
     withdraw_started:
       'Bu versiya kuchga kirgan, uni endi qaytarib olib boʻlmaydi. Oʻzgartirish uchun yangi versiyani eʼlon qiling.',
     withdraw_blocked:

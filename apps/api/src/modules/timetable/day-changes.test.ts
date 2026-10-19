@@ -154,7 +154,7 @@ describe('one-day changes: cancel and restore', () => {
    * of each class on Monday in the first slot with a teacher of its own, and
    * `tutor` a Tutor row of the first class on Tuesday.
    */
-  async function scene(input: { branch?: string; tutor?: boolean } = {}) {
+  async function scene(input: { branch?: string; tutor?: boolean; twoLessons?: boolean } = {}) {
     const branch = input.branch ?? (await t.newBranch());
     const year = await load.classes.year(branch);
     for (const [index, [start, end]] of QUARTERS.entries()) {
@@ -196,9 +196,12 @@ describe('one-day changes: cancel and restore', () => {
       class_id: classId,
       subject_id: subject,
       teacher_id: teacher.staffId,
-      lessons_per_week: 1,
+      lessons_per_week: input.twoLessons === true ? 2 : 1,
+      double_lessons: input.twoLessons === true,
     });
     await placeAt(branch, version, rowId, 1);
+    // With `twoLessons`, the first class's maths also in the second lesson of Monday.
+    if (input.twoLessons === true) await placeAt(branch, version, rowId, 1, 3);
     const otherRow = await load.row({
       branch_id: branch,
       version_id: version,
@@ -634,6 +637,50 @@ describe('one-day changes: cancel and restore', () => {
       const closed = await load.classes.room(s.branch, 'closed');
       // Nor a room of another branch.
       const elsewhere = await load.classes.room(t.south);
+      // Nor a room an exam of the branch holds at that time (spec review must-fix 2).
+      const examRoom = await load.classes.room(s.branch);
+      const examClass = await load.classes.schoolClass(s.branch, s.year, { grade: 7 });
+      const invigilator = await load.teacher(s.branch);
+      await t.database.migrator.transaction().execute(async (transaction) => {
+        const exam = await transaction
+          .insertInto('exams')
+          .values({
+            branch_id: s.branch,
+            academic_year_id: s.year,
+            exam_date: NEXT_MONDAY,
+            starts_at: at(NEXT_MONDAY, '08:00'),
+            ends_at: at(NEXT_MONDAY, '08:45'),
+            first_slot: 1,
+            last_slot: 1,
+            title: 'Quarter exam in English',
+            subject_id: s.subject,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        const room = await transaction
+          .insertInto('exam_rooms')
+          .values({ branch_id: s.branch, exam_id: exam.id, room_id: examRoom })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('exam_room_classes')
+          .values({
+            branch_id: s.branch,
+            exam_id: exam.id,
+            exam_room_id: room.id,
+            class_id: examClass,
+          })
+          .execute();
+        await transaction
+          .insertInto('exam_invigilators')
+          .values({
+            branch_id: s.branch,
+            exam_id: exam.id,
+            exam_room_id: room.id,
+            staff_id: invigilator.staffId,
+          })
+          .execute();
+      });
       const before = await everything();
       const blocked = blockedBy(await restore(s.branch, lesson.id));
       expect(blocked.rules).toContain('room_double');
@@ -642,6 +689,7 @@ describe('one-day changes: cancel and restore', () => {
       expect(blocked.rooms).not.toContain(s.room);
       expect(blocked.rooms).not.toContain(closed);
       expect(blocked.rooms).not.toContain(elsewhere);
+      expect(blocked.rooms).not.toContain(examRoom);
       expect(await everything()).toEqual(before);
       // Once the room is free again, the restore goes ahead.
       await t.database.migrator
@@ -753,6 +801,7 @@ describe('one-day changes: cancel and restore', () => {
         })
         .catch((error: unknown) => error);
       await isReady;
+      const before = await everything();
       const restored = restore(s.branch, lesson.id).then((response) => response);
       await expect
         .poll(
@@ -771,6 +820,15 @@ describe('one-day changes: cancel and restore', () => {
       expect(await held).toBeUndefined();
       refusedWith(await restored, 409, 'restore_blocked');
       expect(await rowOf(lesson.id)).toMatchObject({ cancel_cause: 'reason' });
+      // Refused after its write: no notice, mark, job or entry is left (only the held lesson changed).
+      const [lessonsBefore, ...restBefore] = before;
+      const [lessonsAfter, ...restAfter] = await everything();
+      expect(restAfter.filter((_, index) => index !== 1)).toEqual(
+        restBefore.filter((_, index) => index !== 1),
+      );
+      expect(lessonsAfter.filter((one) => one.id !== awayLesson.id)).toEqual(
+        lessonsBefore.filter((one) => one.id !== awayLesson.id),
+      );
     });
 
     it('is refused when the teacher has a lesson in another branch at that time (busy elsewhere, real clock time)', async () => {
@@ -799,7 +857,9 @@ describe('one-day changes: cancel and restore', () => {
       const late = await t.createTemplate(s.branch, 'Late', [slot, slot, slot], '09:00');
       await t.assign(s.branch, late, { level: 'weekday', weekday: 1 }, NEXT_MONDAY);
       const blocked = blockedBy(await restore(s.branch, lesson.id));
-      expect(blocked.rules.length).toBeGreaterThan(0);
+      expect(blocked.rules).toEqual(['not_a_slot']);
+      // No room helps when the time is the problem.
+      expect(blocked.rooms).toEqual([]);
       expect(await rowOf(lesson.id)).toMatchObject({ cancel_cause: 'reason' });
     });
 
@@ -846,6 +906,77 @@ describe('one-day changes: cancel and restore', () => {
         old_value: { teacherId: first.staffId },
         new_value: { teacherId: second.staffId, notices: { notified: 2 } },
       });
+    });
+  });
+
+  describe('the other lessons of the date', () => {
+    it('restores a lesson while another lesson of the date breaks a rule of its own', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, NEXT_MONDAY);
+      changed(await cancel(s.branch, lesson.id));
+      // The other class's teacher left: that lesson breaks a rule, this one does not.
+      await t.database.migrator
+        .updateTable('staff_statuses')
+        .set({ valid_until: '2026-10-15' })
+        .where('staff_id', '=', s.otherTeacher.staffId)
+        .where('valid_until', 'is', null)
+        .execute();
+      await t.database.migrator
+        .insertInto('staff_statuses')
+        .values({ staff_id: s.otherTeacher.staffId, status: 'left', valid_from: '2026-10-15' })
+        .execute();
+      changed(await restore(s.branch, lesson.id));
+    });
+
+    it('notifies no vacancy: a cancel of a vacancy’s lesson marks it and sends nothing', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, NEXT_MONDAY);
+      const vacancy = await load.vacancy(s.branch, {
+        subjects: [{ subject: s.subject, grades: [7] }],
+      });
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ teacher_id: vacancy })
+        .where('id', '=', lesson.id)
+        .execute();
+      const notices = () =>
+        t.database.migrator
+          .selectFrom('notifications')
+          .select('id')
+          .where('kind', '=', 'timetable.day_changed')
+          .execute();
+      const before = await notices();
+      changed(await cancel(s.branch, lesson.id));
+      expect(await notices()).toEqual(before);
+      expect(await markOf(lesson.id)).not.toBeNull();
+      const [entry] = await t.entries('lesson.cancel', lesson.id);
+      expect(entry).toMatchObject({ new_value: { notices: { notified: 0, marked: 1 } } });
+    });
+
+    it('cancels one half of a double lesson only, and restores it as a single lesson while the other half is cancelled (decision 4)', async () => {
+      const s = await scene({ twoLessons: true });
+      const both = await t.database.migrator
+        .selectFrom('lessons')
+        .select(['id', 'block_id'])
+        .where('class_id', '=', s.classId)
+        .where('lesson_date', '=', NEXT_MONDAY)
+        .orderBy('starts_at')
+        .execute();
+      expect(both).toHaveLength(2);
+      const [first, second] = both;
+      if (first === undefined || second === undefined) throw new Error('No double lesson.');
+      // The two blocks made one double pair by the migrator, as the checks of a pair read it.
+      await t.database.migrator
+        .updateTable('lesson_blocks')
+        .set({ double_pair_id: randomUUID() })
+        .where('id', 'in', [first.block_id, second.block_id])
+        .execute();
+      changed(await cancel(s.branch, first.id));
+      expect(await rowOf(second.id)).toMatchObject({ cancel_cause: null });
+      changed(await cancel(s.branch, second.id));
+      // With its other half cancelled, a half comes back as a single lesson.
+      changed(await restore(s.branch, first.id));
+      changed(await restore(s.branch, second.id));
     });
   });
 

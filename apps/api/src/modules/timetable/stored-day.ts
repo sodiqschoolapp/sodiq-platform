@@ -70,8 +70,9 @@ export interface StoredDayResult {
   /** The teacher the lesson is checked and written with: a Tutor lesson's Tutor at its start, else its own. */
   readonly teacherId: string | null;
   /**
-   * The rooms of the branch in use in which the same check finds nothing
-   * blocked for the lesson, the lesson's own room left out (decision 7).
+   * When a rule of the room blocks: the rooms of the branch in use in which
+   * the same check finds nothing blocked for the lesson, the lesson's own room
+   * left out (decision 7); else none.
    */
   readonly freeRooms: readonly string[];
 }
@@ -335,14 +336,15 @@ export async function storedDayCheck(
     }
   }
   const blocked = results.filter((one) => one.severity === 'blocked');
-  const freeRooms =
-    blocked.length === 0
-      ? []
-      : [...facts.rooms.values()]
-          .filter((room) => room.status === 'in_use' && room.id !== roomId)
-          .map((room) => room.id)
-          .sort()
-          .filter((id) => !check(id).results.some((one) => one.severity === 'blocked'));
+  // Rooms are offered only when a rule of the room blocks: when the teacher
+  // or the class blocks, no room helps (code review should-fix 5).
+  const freeRooms = !blocked.some((one) => one.rule.startsWith('room_'))
+    ? []
+    : [...facts.rooms.values()]
+        .filter((room) => room.status === 'in_use' && room.id !== roomId)
+        .map((room) => room.id)
+        .sort()
+        .filter((id) => !check(id).results.some((one) => one.severity === 'blocked'));
   return {
     blocked,
     warnings: results.filter((one) => one.severity === 'warning'),

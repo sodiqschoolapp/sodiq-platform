@@ -206,7 +206,7 @@ export function DayPage(): React.JSX.Element {
                 ))}
               </ul>
             )}
-            {rules.length > 0 && (
+            {rules.some((one) => one.code.startsWith('room_')) && (
               <p className="text-sm">
                 {rooms.length === 0
                   ? t('timetable.day.noFreeRoom')

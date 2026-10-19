@@ -408,7 +408,7 @@ export const en = {
     lesson_not_restorable:
       'Only a lesson cancelled with a reason can be restored here. A lesson cancelled for an exam comes back when the exam is cancelled.',
     restore_blocked:
-      'The lesson cannot be restored: a rule is broken at its time. The reasons and the free rooms are listed.',
+      'The lesson cannot be restored at its time: a rule is broken there, or another change has just taken its room, teacher or class. Any reasons found are listed.',
     withdraw_started:
       'This version has started, so it can no longer be withdrawn. Publish a new version to change it.',
     withdraw_blocked:
