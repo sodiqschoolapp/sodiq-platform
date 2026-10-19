@@ -62,7 +62,7 @@ function itemOf(
 describe('writePlanOf', () => {
   it('cancels the lessons a "needs a decision" item was on when "cancel" is chosen, with its reason', () => {
     const plan = writePlanOf([itemOf('decide')], new Set(), new Map([[KEY, 'cancel']]));
-    expect([...plan.cancels]).toEqual([['entry-1@2026-10-19', 'Concert rehearsal']]);
+    expect([...plan.cancels]).toEqual([['entry-1@2026-10-19@2026-10-19', 'Concert rehearsal']]);
   });
 
   it('writes nothing for "drop", but a part cancelled with a reason keeps its own cancel', () => {
@@ -74,7 +74,7 @@ describe('writePlanOf', () => {
       new Set(),
       new Map([[KEY, 'drop']]),
     );
-    expect([...plan.cancels]).toEqual([['entry-2@2026-10-19', 'Rain']]);
+    expect([...plan.cancels]).toEqual([['entry-2@2026-10-19@2026-10-19', 'Rain']]);
   });
 
   it('gives a part cancelled with a reason its own cancel under "cancel" too', () => {
@@ -84,8 +84,8 @@ describe('writePlanOf', () => {
       new Map([[KEY, 'cancel']]),
     );
     expect([...plan.cancels].sort()).toEqual([
-      ['entry-1@2026-10-19', 'Concert rehearsal'],
-      ['entry-2@2026-10-19', 'Rain'],
+      ['entry-1@2026-10-19@2026-10-19', 'Concert rehearsal'],
+      ['entry-2@2026-10-19@2026-10-19', 'Rain'],
     ]);
   });
 
@@ -99,11 +99,10 @@ describe('writePlanOf', () => {
     expect([...dropped.cancels]).toEqual([]);
   });
 
-  it('keeps what the sorting kept from outside the run, and names a kept move by its key at its new date', () => {
+  it('keeps what the sorting kept from outside the run, and writes nothing for a kept move', () => {
     const plan = writePlanOf([itemOf('kept')], new Set([PART]), new Map());
     expect([...plan.keepStored]).toEqual([PART]);
-    expect(plan.movedKeyOf('entry-1', '2026-10-21')).toBe(KEY);
-    expect(plan.movedKeyOf('entry-1', '2026-10-19')).toBeNull();
+
     expect([...plan.cancels]).toEqual([]);
   });
 

@@ -73,8 +73,12 @@ export function PublishStep({
   const [tickedKey, setTickedKey] = useState<string | null>(null);
   // Task 5.5a-3a: the answer to the later published versions, chosen by the person.
   const [chain, setChain] = useState<PublishChain | null>(null);
-  // Task 5.6a-5a: the choice for each "needs a decision" one-day change, by its key.
-  const [dayChoices, setDayChoices] = useState<Record<string, DayChangeChoice>>({});
+  // Task 5.6a-5a: the choice for each "needs a decision" one-day change, by
+  // its key, for the sorting of one key: a new sorting starts with none.
+  const [dayChosen, setDayChosen] = useState<{
+    key: string | null;
+    choices: Record<string, DayChangeChoice>;
+  }>({ key: null, choices: {} });
   const check = useQuery(
     publishCheckQuery(branchId, version.id, startsOn === '' ? null : startsOn, chain),
   );
@@ -260,6 +264,8 @@ export function PublishStep({
     const ticked = transitionKey === null || tickedKey === transitionKey;
     // Task 5.6a-5a: a choice counts only for an item shown now.
     const decide = answer.impact?.dayChanges.decide ?? [];
+    const daysKey = answer.impact?.dayChanges.key ?? null;
+    const dayChoices = dayChosen.key === daysKey ? dayChosen.choices : {};
     const dayDecisions = decide.flatMap((item) => {
       const choice = dayChoices[item.key];
       return choice === undefined ? [] : [{ key: item.key, choice }];
@@ -391,7 +397,7 @@ export function PublishStep({
             choices={dayChoices}
             canEdit={canEdit}
             onChoose={(itemKey, choice) => {
-              setDayChoices((all) => ({ ...all, [itemKey]: choice }));
+              setDayChosen({ key: daysKey, choices: { ...dayChoices, [itemKey]: choice } });
             }}
           />
         )}

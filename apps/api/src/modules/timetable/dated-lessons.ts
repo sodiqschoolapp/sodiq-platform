@@ -350,6 +350,23 @@ export function writtenTeacherOf(
   return needed && (teacher === null || !vacancies.has(teacher)) ? null : teacher;
 }
 
+/**
+ * The date of the pattern block a dated lesson comes from: its own date, or
+ * for a lesson a one-day move applied again put on another date, the date it
+ * was moved from (task 5.6a-5a). The needs-a-teacher list and a one-day cancel
+ * applied again name a lesson by it, so a lesson moved onto a date of its own
+ * pattern entry is never taken for the entry's lesson there (spec review of
+ * the code, must-fix 1).
+ */
+export const patternDateOf = (lesson: {
+  readonly date: string;
+  readonly placement: { readonly blockId: string | null };
+}): string => patternIdOf(lesson.placement.blockId ?? '')?.date ?? lesson.date;
+
+/** The key of a lesson of a pattern entry at a place: its pattern block's date and its date (task 5.6a-5a). */
+export const placeKeyOf = (entryId: string, patternDate: string, date: string): string =>
+  `${entryId}@${patternDate}@${date}`;
+
 /** The key of a lesson in the needs-a-teacher list. */
 export const needKeyOf = (entryId: string, date: string): string => `${entryId}@${date}`;
 
@@ -419,9 +436,17 @@ export async function writeDatedLessons(
     (one) => !keepStored.has(one.id) && !keptBlocks.has(one.block_id),
   );
   const storedBlocks = allBlocks.filter((one) => !keptBlocks.has(one.id));
+  // Recorded with the lessons changed (spec review of the code, should-fix 2).
+  const storedCancels: ChangedLesson[] = [];
   for (const [id, reason] of plan?.cancelStored ?? []) {
     const row = allStored.find((one) => one.id === id);
     if (row === undefined || row.cancel_cause !== null) continue;
+    storedCancels.push({
+      id,
+      teacherId: { from: row.teacher_id, to: row.teacher_id },
+      roomId: { from: row.room_id, to: row.room_id },
+      cancel: { from: null, to: 'reason' },
+    });
     await transaction
       .updateTable('lessons')
       .set({ cancel_cause: 'reason', cancel_reason: reason })
@@ -494,7 +519,7 @@ export async function writeDatedLessons(
   }
 
   // The reused blocks re-pointed, then their kept lessons.
-  const changed: ChangedLesson[] = [];
+  const changed: ChangedLesson[] = [...storedCancels];
   let keptCount = 0;
   for (const block of wantedBlocks) {
     if (block.reused === null) continue;
@@ -757,12 +782,14 @@ async function wantedOf(
       subjectId: placement.subjectId ?? '',
       teacherId: writtenTeacherOf(needs, vacancies, {
         entryId: lesson.entryId,
-        date: lesson.date,
+        date: dated?.date ?? lesson.date,
         teacherId: placement.teacherIds[0] ?? null,
       }),
       roomId: placement.roomId,
       cause: null,
-      oneDayCancel: plan?.cancels.get(`${lesson.entryId}@${lesson.date}`) ?? null,
+      oneDayCancel:
+        plan?.cancels.get(placeKeyOf(lesson.entryId, dated?.date ?? lesson.date, lesson.date)) ??
+        null,
     });
   }
   for (const cancelled of findings.dated.cancelled) {

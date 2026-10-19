@@ -17,6 +17,7 @@ import {
 import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
 import { dayBeginnings, type DatedFindings } from './dated-check.js';
+import { placeKeyOf } from './dated-lessons.js';
 import type { PatternState } from './pattern.service.js';
 import { examsOn } from './stored-day.js';
 
@@ -79,14 +80,12 @@ export interface SortedDayChange {
 
 /** What the write of a publish does with the sorted changes and their decisions. */
 export interface DayWritePlan {
-  /** The new version's lessons written cancelled with cause `reason`, by `entryId@date`: the reason. */
+  /** The new version's lessons written cancelled with cause `reason`, by `placeKeyOf`: the reason. */
   readonly cancels: ReadonlyMap<string, string>;
   /** Stored lessons the write leaves as they are (a move from outside the run). */
   readonly keepStored: ReadonlySet<string>;
   /** Of those, the ones written cancelled with cause `reason`: the reason. */
   readonly cancelStored: ReadonlyMap<string, string>;
-  /** The moved block a written lesson belongs to, by `entryId@date`, so its double pair stays its own. */
-  readonly movedKeyOf: (entryId: string, date: string) => string | null;
 }
 
 /** The sorting of the dates of one write. */
@@ -151,7 +150,6 @@ const byAge = (a: ChainRow, b: ChainRow) =>
 const unitOfRow = (row: { class_id: string | null; group_id: string | null }) =>
   row.class_id ?? row.group_id ?? '';
 const unitOfPlacement = (one: Placement) => one.classId ?? one.groupId ?? '';
-export const entryKeyOf = (entryId: string, date: string): string => `${entryId}@${date}`;
 
 /** The chains of the branch's room changes and moves in force that reach `firstDate` to `lastDate`. */
 async function chainsOf(
@@ -668,26 +666,15 @@ export async function sortDayChanges(
     }
   }
 
-  // The findings with every kept change applied.
-  const movedDate = new Map<string, string>();
-  for (const [from, to] of placed) {
-    if (from.date !== to.date) movedDate.set(entryKeyOf(from.entryId, from.date), to.date);
-  }
+  // The findings with every kept change applied. A lesson moved keeps the
+  // date of its pattern block in its block's id, by which the needs-a-teacher
+  // list and the cancels name it (`patternDateOf`).
   const lessons = findings.dated.lessons
     .filter((one) => !skipped.has(one))
     .map((one) => placed.get(one) ?? one);
   const applied: DatedFindings = {
     ...findings,
     dated: { ...findings.dated, lessons },
-    needsTeacher: findings.needsTeacher.flatMap((one) => {
-      const key = entryKeyOf(one.entryId, one.date);
-      const lesson = findings.dated.lessons.find(
-        (other) => other.entryId === one.entryId && other.date === one.date,
-      );
-      if (lesson !== undefined && skipped.has(lesson)) return [];
-      const date = movedDate.get(key);
-      return [date === undefined ? one : { ...one, date }];
-    }),
   };
 
   // The items, the plain cancels last.
@@ -786,7 +773,12 @@ export function dayChangesKeyOf(
   items: readonly SortedDayChange[],
 ): string {
   const shown = items
-    .map((one) => [one.answer.carriedVersionId ?? '', one.answer.key, one.category])
+    .map((one) => [
+      one.answer.carriedVersionId ?? '',
+      one.answer.key,
+      one.category,
+      JSON.stringify([one.answer.from, one.answer.to]),
+    ])
     .sort((a, b) => compare(a.join('|'), b.join('|')));
   return createHash('sha256').update(JSON.stringify({ versionId, startsOn, shown })).digest('hex');
 }
@@ -805,21 +797,10 @@ export function writePlanOf(
   const cancels = new Map<string, string>();
   const keepStored = new Set(keptStoredIds);
   const cancelStored = new Map<string, string>();
-  const movedKey = new Map<string, string>();
   for (const item of items) {
     if (item.answer.kind === 'cancel') continue;
     const choice = item.category === 'decide' ? decisions.get(item.answer.key) : undefined;
-    if (item.category === 'kept') {
-      if (item.answer.kind === 'move') {
-        for (const chain of item.chains) {
-          const lesson = item.matched.get(chain.lessonId);
-          if (lesson !== undefined) {
-            movedKey.set(entryKeyOf(lesson.entryId, chain.last.to_date), item.answer.key);
-          }
-        }
-      }
-      continue;
-    }
+    if (item.category === 'kept') continue;
     if (item.storedIds.length > 0) {
       if (choice === 'cancel') {
         for (const id of item.storedIds) {
@@ -833,17 +814,13 @@ export function writePlanOf(
       const lesson = item.matched.get(chain.lessonId);
       if (lesson === undefined) continue;
       const own = item.cancelledParts.get(chain.lessonId);
-      const key = entryKeyOf(lesson.entryId, lesson.date);
+      // The lesson at the old place, where its pattern block puts it.
+      const key = placeKeyOf(lesson.entryId, lesson.date, lesson.date);
       if (own !== undefined) cancels.set(key, own);
       else if (choice === 'cancel') cancels.set(key, item.answer.reason);
     }
   }
-  return {
-    cancels,
-    keepStored,
-    cancelStored,
-    movedKeyOf: (entryId, date) => movedKey.get(entryKeyOf(entryId, date)) ?? null,
-  };
+  return { cancels, keepStored, cancelStored };
 }
 
 /**
@@ -913,6 +890,9 @@ export async function settleDayChanges(
         .where('subject_id', '=', chain.lesson.subject_id)
         .where('lesson_date', '=', to.to_date)
         .where('starts_at', '=', to.to_starts_at)
+        // One lesson of a class or group and subject at a time; a cancelled
+        // part shares the place with nothing else (spec review, must-fix 2).
+        .orderBy('id')
         .executeTakeFirst();
       const lesson = item.matched.get(chain.lessonId);
       if (found === undefined || lesson === undefined) continue;

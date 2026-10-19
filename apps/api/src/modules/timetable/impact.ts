@@ -17,7 +17,7 @@ import {
 } from '@sodiq/timetable-rules';
 import type { Transaction } from '../../database/transactions.js';
 import { datedLessonsOf, type DatedFindings } from './dated-check.js';
-import { needKeyOf, vacanciesOf, writtenTeacherOf } from './dated-lessons.js';
+import { needKeyOf, patternDateOf, vacanciesOf, writtenTeacherOf } from './dated-lessons.js';
 import type { SortedDayChange } from './day-changes-kept.js';
 import type { PatternState } from './pattern.service.js';
 import { hasStoredLessons, storedImpactLessons, storedLessonRows } from './stored-lessons.js';
@@ -409,7 +409,7 @@ async function writtenLessonsOf(
   return lessons.map((lesson) => {
     const teacher = writtenTeacherOf(needs, vacancies, {
       entryId: lesson.entryId,
-      date: lesson.date,
+      date: patternDateOf(lesson),
       teacherId: lesson.placement.teacherIds[0] ?? null,
     });
     return { ...impactLessonOf(lesson), teacherIds: teacher === null ? [] : [teacher] };

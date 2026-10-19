@@ -1511,6 +1511,23 @@ describe('publish', () => {
         [keyOf(inB?.id), s.b],
       ]);
       expect([...(days?.decide ?? []), ...(days?.dropped ?? [])]).toEqual([]);
+      // Review correction 1: a choice for the change of the version left is unknown.
+      const unknown = await publishChain(
+        s.branch,
+        s.fix,
+        '2026-10-19',
+        'carry',
+        answer.chain?.key,
+        randomUUID(),
+        {
+          dayChangesKey: days?.key ?? '',
+          dayDecisions: [{ key: keyOf(inD?.id) ?? '', choice: 'drop' }],
+        },
+      );
+      expect(blockedBy(unknown)).toContainEqual({
+        code: 'day_decision_unknown',
+        path: `dayChanges.${keyOf(inD?.id) ?? ''}`,
+      });
       versionOf(
         await publishChain(
           s.branch,
@@ -1533,6 +1550,133 @@ describe('publish', () => {
       expect(
         await t.database.migrator.selectFrom('lesson_day_change_ends').selectAll().execute(),
       ).toEqual([]);
+    });
+
+    // Task 5.6a-5a (spec review of the code, must-fix 4): a move in a carried
+    // version's run that the carried teacher cannot take needs a decision,
+    // which is written and ended with the carry.
+    it('asks for a decision on a move of a carried version that its new teacher cannot take, and settles it with the carry', async () => {
+      const s = await chainScene();
+      const lessonOn = async (date: string) =>
+        (await lessonsOf(s.branch)).find((one) => one.date === date && one.class_id === s.classId);
+      const inB = await lessonOn('2026-11-16');
+      const moved = await request(t.kit.server)
+        .post(`/api/timetable/lessons/${inB?.id ?? ''}/move`)
+        .set('Cookie', t.admin)
+        .set(BRANCH_HEADER, s.branch)
+        .set(REQUEST_KEY_HEADER, randomUUID())
+        .send({ date: '2026-11-18', lessonNumber: 1, reason: 'Concert rehearsal' });
+      expect(moved.status, JSON.stringify(moved.body)).toBe(200);
+      const at18 = await lessonOn('2026-11-18');
+      // An exam of another class that the second teacher invigilates at that time.
+      const examClass = await load.classes.schoolClass(s.branch, s.year, { grade: 7 });
+      const examRoom = await load.classes.room(s.branch);
+      await t.database.migrator.transaction().execute(async (transaction) => {
+        const exam = await transaction
+          .insertInto('exams')
+          .values({
+            branch_id: s.branch,
+            academic_year_id: s.year,
+            exam_date: '2026-11-18',
+            starts_at: at18?.starts_at ?? new Date(0),
+            ends_at: at18?.ends_at ?? new Date(0),
+            first_slot: 1,
+            last_slot: 1,
+            title: 'Quarter exam in English',
+            subject_id: s.subject,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        const room = await transaction
+          .insertInto('exam_rooms')
+          .values({ branch_id: s.branch, exam_id: exam.id, room_id: examRoom })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('exam_room_classes')
+          .values({
+            branch_id: s.branch,
+            exam_id: exam.id,
+            exam_room_id: room.id,
+            class_id: examClass,
+          })
+          .execute();
+        await transaction
+          .insertInto('exam_invigilators')
+          .values({
+            branch_id: s.branch,
+            exam_id: exam.id,
+            exam_room_id: room.id,
+            staff_id: s.second,
+          })
+          .execute();
+      });
+      const [change] = await t.database.migrator
+        .selectFrom('lesson_day_changes')
+        .select('id')
+        .where('lesson_id', '=', inB?.id ?? '')
+        .execute();
+      const answer = checkOf(await checkChain(s.branch, s.fix, '2026-10-19', 'carry'));
+      const days = answer.impact?.dayChanges;
+      expect(days?.decide.map((one) => [one.key, one.carriedVersionId])).toEqual([
+        [change?.id, s.b],
+      ]);
+      expect(days?.decide[0]?.blocked.map((one) => one.rule)).toContain('teacher_double');
+      // Without a choice the publish waits.
+      expect(
+        blockedBy(
+          await publishChain(
+            s.branch,
+            s.fix,
+            '2026-10-19',
+            'carry',
+            answer.chain?.key,
+            randomUUID(),
+            {
+              dayChangesKey: days?.key ?? '',
+            },
+          ),
+        ),
+      ).toContainEqual({ code: 'day_change_undecided', path: `dayChanges.${change?.id ?? ''}` });
+      versionOf(
+        await publishChain(
+          s.branch,
+          s.fix,
+          '2026-10-19',
+          'carry',
+          answer.chain?.key,
+          randomUUID(),
+          {
+            dayChangesKey: days?.key ?? '',
+            dayDecisions: [{ key: change?.id, choice: 'cancel' }],
+          },
+        ),
+      );
+      // The lesson is back on Monday 16 November with the carried teacher, cancelled that day.
+      expect(await lessonOn('2026-11-18')).toBeUndefined();
+      const back = (await lessonsOf(s.branch)).filter(
+        (one) => one.date === '2026-11-16' && one.class_id === s.classId,
+      );
+      expect(back).toHaveLength(1);
+      const row = await t.database.migrator
+        .selectFrom('lessons')
+        .select(['teacher_id', 'cancel_cause', 'cancel_reason'])
+        .where('id', '=', back[0]?.id ?? '')
+        .executeTakeFirstOrThrow();
+      expect(row).toEqual({
+        teacher_id: s.second,
+        cancel_cause: 'reason',
+        cancel_reason: 'Concert rehearsal',
+      });
+      const ends = await t.database.migrator
+        .selectFrom('lesson_day_change_ends')
+        .select('change_id')
+        .execute();
+      expect(ends.map((one) => one.change_id)).toEqual([change?.id]);
+      const [carry] = await t.entries('timetable_version.carry', s.b);
+      expect(carry?.new_value).toMatchObject({
+        dayChanges: { decided: [{ key: change?.id, choice: 'cancel' }], ended: [change?.id] },
+      });
     });
 
     it('refuses without an answer, and a refused publish changes nothing', async () => {

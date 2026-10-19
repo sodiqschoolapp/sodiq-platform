@@ -1326,6 +1326,7 @@ export function datedAuditOf(write: DatedWrite) {
       id: one.id,
       teacherId: { ...one.teacherId },
       roomId: { ...one.roomId },
+      ...(one.cancel === undefined ? {} : { cancel: { ...one.cancel } }),
     })),
   };
 }
