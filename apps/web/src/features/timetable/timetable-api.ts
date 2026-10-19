@@ -369,7 +369,12 @@ export const publishVersion = (
   /** Task 5.6a-5a: the key of the one-day changes shown and a choice for each "needs a decision" item. */
   days: {
     dayChangesKey: string;
-    dayDecisions: { key: string; choice: DayChangeChoice }[];
+    dayDecisions: {
+      key: string;
+      blockId?: string;
+      blockDate?: string;
+      choice: DayChangeChoice;
+    }[];
   } | null = null,
 ) =>
   answerOf(

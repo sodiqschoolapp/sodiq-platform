@@ -1,5 +1,8 @@
 import {
   classDisplayName,
+  dayDecisionKeyOf,
+  type BulkBlockAnswer,
+  type BulkItemAnswer,
   type DayChangeChoice,
   type DayChangeItemAnswer,
   type PublishImpactAnswer,
@@ -24,6 +27,11 @@ import { ruleText } from './rule-text';
  * class or group, subject, date, what it does and its reason; for "needs a
  * decision" the rule that blocks it and the two choices (decision 2). The
  * server sorts; this shows its answer and keeps the choices.
+ *
+ * Task 5.6a-5b-1 (pull request #165): each bulk cancel once, with how many of
+ * the new version's lessons lie under it; a block shared with classes not
+ * chosen that needs a decision offers the bulk cancel's own two choices,
+ * kept by `dayDecisionKeyOf`.
  */
 export function PublishDayChanges({
   impact,
@@ -39,10 +47,13 @@ export function PublishDayChanges({
   const { t, i18n } = useTranslation();
   const language = i18n.language;
   const { names, dayChanges } = impact;
+  const bulkKept = dayChanges.bulk.filter((one) => one.category === 'kept');
+  const bulkDecide = dayChanges.bulk.filter((one) => one.category === 'decide');
   if (
     dayChanges.kept.length === 0 &&
     dayChanges.decide.length === 0 &&
-    dayChanges.dropped.length === 0
+    dayChanges.dropped.length === 0 &&
+    dayChanges.bulk.length === 0
   ) {
     return null;
   }
@@ -90,14 +101,61 @@ export function PublishDayChanges({
       .join('. ');
   };
 
+  const classesText = (ids: readonly string[]): string => ids.map(unitName).join(', ');
+  const bulkText = (item: BulkItemAnswer): string => {
+    const number = versionNumber(item.carriedVersionId);
+    return [
+      t('timetable.publish.dayChanges.bulk', {
+        classes: classesText(item.classIds),
+        date: schoolDateText(item.date, language),
+      }),
+      t('timetable.publish.dayChanges.bulkLessons', { count: item.cancelled }),
+      t('timetable.publish.dayChanges.reason', { reason: item.reason }),
+      number === null ? null : t('timetable.publish.dayChanges.inVersion', { number }),
+    ]
+      .filter(Boolean)
+      .join('. ');
+  };
+  const blockText = (block: BulkBlockAnswer): string =>
+    t('timetable.publish.dayChanges.bulkBlock', {
+      lessons: block.lessons
+        .map((one) => `${unitName(one.unitId)}, ${subjectName(one.subjectId)}`)
+        .join('; '),
+      time: rangeText(t, block.start, block.end),
+      classes: classesText(block.otherClassIds),
+    });
+  const bulkLine = (item: BulkItemAnswer): React.JSX.Element => (
+    <li
+      key={`bulk-${item.key}-${item.carriedVersionId ?? ''}`}
+      data-key={item.key}
+      data-kind="bulk"
+    >
+      {bulkText(item)}
+      {item.blocks.some((one) => one.choice !== null) && (
+        <ul className="grid gap-1 ps-4">
+          {item.blocks.map((block) =>
+            block.choice === null ? null : (
+              <li key={`${block.blockId}@${block.blockDate}`}>
+                {blockText(block)}: {t(`timetable.publish.dayChanges.bulkKept_${block.choice}`)}
+              </li>
+            ),
+          )}
+        </ul>
+      )}
+    </li>
+  );
+
   const list = (
     category: 'kept' | 'dropped',
     items: readonly DayChangeItemAnswer[],
+    bulk: readonly BulkItemAnswer[] = [],
   ): React.JSX.Element | null =>
-    items.length === 0 ? null : (
+    items.length + bulk.length === 0 ? null : (
       <div className="grid gap-1">
         <h4 className={SUBSECTION_TITLE}>
-          {t(`timetable.publish.dayChanges.${category}Title`, { count: items.length })}
+          {t(`timetable.publish.dayChanges.${category}Title`, {
+            count: items.length + bulk.length,
+          })}
         </h4>
         <ul className="grid gap-1 text-sm" data-day-changes={category}>
           {items.map((item) => (
@@ -105,6 +163,7 @@ export function PublishDayChanges({
               {itemText(item)}
             </li>
           ))}
+          {bulk.map(bulkLine)}
         </ul>
       </div>
     );
@@ -114,10 +173,12 @@ export function PublishDayChanges({
       <h3 id="publish-day-changes" className={SECTION_TITLE}>
         {t('timetable.publish.dayChanges.title')}
       </h3>
-      {dayChanges.decide.length > 0 && (
+      {dayChanges.decide.length + bulkDecide.length > 0 && (
         <div className="grid gap-2">
           <h4 className={SUBSECTION_TITLE}>
-            {t('timetable.publish.dayChanges.decideTitle', { count: dayChanges.decide.length })}
+            {t('timetable.publish.dayChanges.decideTitle', {
+              count: dayChanges.decide.length + bulkDecide.length,
+            })}
           </h4>
           <ul className="grid gap-3 text-sm" data-day-changes="decide">
             {dayChanges.decide.map((item) => (
@@ -148,10 +209,48 @@ export function PublishDayChanges({
                 </fieldset>
               </li>
             ))}
+            {bulkDecide.map((item) => (
+              <li
+                key={`bulk-${item.key}-${item.carriedVersionId ?? ''}`}
+                data-key={item.key}
+                data-kind="bulk"
+                className="grid gap-2"
+              >
+                <p>{bulkText(item)}</p>
+                {item.blocks.map((block) => {
+                  const decisionKey = dayDecisionKeyOf({
+                    key: item.key,
+                    blockId: block.blockId,
+                    blockDate: block.blockDate,
+                  });
+                  return block.choice !== null ? null : (
+                    <fieldset key={decisionKey} className="grid gap-1 ps-4">
+                      <legend>{blockText(block)}</legend>
+                      {(['cancel', 'keep'] as const).map((choice) => (
+                        <label key={choice} className={CHECKBOX_TARGET}>
+                          <input
+                            type="radio"
+                            name={`bulk-block-${decisionKey}`}
+                            className={CHECKBOX}
+                            value={choice}
+                            disabled={!canEdit}
+                            checked={choices[decisionKey] === choice}
+                            onChange={() => {
+                              onChoose(decisionKey, choice);
+                            }}
+                          />
+                          <span>{t(`timetable.publish.dayChanges.bulkChoice_${choice}`)}</span>
+                        </label>
+                      ))}
+                    </fieldset>
+                  );
+                })}
+              </li>
+            ))}
           </ul>
         </div>
       )}
-      {list('kept', dayChanges.kept)}
+      {list('kept', dayChanges.kept, bulkKept)}
       {list('dropped', dayChanges.dropped)}
     </section>
   );

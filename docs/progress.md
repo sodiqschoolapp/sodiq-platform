@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 19 October 2026: task 5.6a-5b-1 One-day changes kept after a publish: bulk cancels
+
+- A publish (and each later version it carries a change into) applies the stored bulk cancels of its dates again (`bulk-cancels-kept.ts`): the new version's lessons of the chosen classes in the stored spans are cancelled with the reason when the write creates them; a lesson it keeps keeps its state (a restore stands).
+- A block of the new version shared with classes not chosen and with no stored choice is "needs a decision" in step 8, with the bulk cancel's own choices `cancel` or `keep`, sent as `dayDecisions` with `blockId` and `blockDate` (`day_choice_not_offered` for a choice of the other kind); the choice is recorded on the block written (`bulk_cancel_blocks`). A bulk cancel is listed once, never dropped or ended.
+- Audit `dayChanges.bulk` on `timetable_version.publish` and `.carry`. Migration 0088: a choice decided again on a block the pairing reuses replaces the stored one.
+- Left out: the withdraw (5.6a-5b-2); the exemption of a kept block's students in the journal (8.5); a browser test (no bulk cancel under two versions in the browser scene).
+
+The next sessions must know:
+
+- The bulk sorting runs on 5.6a-5a's findings with the kept changes applied (`DaySorting.findings`, `movedAt`): a lesson moved into a span after the bulk cancel is left as the move has it.
+- `DayWritePlan.bulkCancels` is written only on lessons the write creates; `cancels` on kept and created ones.
+- A publish over a stored bulk cancel needs the preview's `dayChangesKey`, as one over a one-day change.
+- The next task is 5.6a-5b-2.
+
 ## 19 October 2026: task 5.6a-5a One-day changes kept after a publish: cancels, room changes and moves
 
 - A publish (and each later version it carries a change into) applies the stored one-day changes of its dates again: one-lesson cancels of cause `reason`, room changes and moves (`lesson_day_changes`, 0085, read as chains by lesson); step 8 lists them as kept, needs a decision and dropped (`impact.dayChanges`), and the publish waits for a choice for each "needs a decision" item: "Drop the change" or "Cancel the lesson that day" (`dayDecisions`, `dayChangesKey`; refusals `day_change_undecided`, `day_decision_unknown`, `day_changes_changed`).

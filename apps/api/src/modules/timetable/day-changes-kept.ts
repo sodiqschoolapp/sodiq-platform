@@ -16,6 +16,7 @@ import {
 } from '@sodiq/shared';
 import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
+import type { BulkHold } from './bulk-cancels-kept.js';
 import { dayBeginnings, type DatedFindings } from './dated-check.js';
 import { placeKeyOf } from './dated-lessons.js';
 import type { PatternState } from './pattern.service.js';
@@ -86,6 +87,18 @@ export interface DayWritePlan {
   readonly keepStored: ReadonlySet<string>;
   /** Of those, the ones written cancelled with cause `reason`: the reason. */
   readonly cancelStored: ReadonlyMap<string, string>;
+  /**
+   * Task 5.6a-5b-1: the new version's lessons a bulk cancel applied again
+   * cancels, by `placeKeyOf`: the reason, written only on a lesson the write
+   * creates (decision 4); a lesson it keeps keeps its stored state.
+   */
+  readonly bulkCancels: ReadonlyMap<string, string>;
+  /**
+   * Task 5.6a-5b-1 (review of the code, round 1): the parts of the other
+   * classes of a block decided `keep`, by `placeKeyOf`: a stored lesson there
+   * cancelled by that bulk cancel is held (`BulkHold`).
+   */
+  readonly bulkHolds: ReadonlyMap<string, BulkHold>;
 }
 
 /** The sorting of the dates of one write. */
@@ -95,6 +108,8 @@ export interface DaySorting {
   readonly findings: DatedFindings;
   /** The stored lessons a kept move from outside the run keeps, for the preview's "after" side. */
   readonly keptStoredIds: ReadonlySet<string>;
+  /** Task 5.6a-5b-1: the lessons of `findings` a kept move placed, with the moment of the move. */
+  readonly movedAt: ReadonlyMap<DatedLesson, Date>;
 }
 
 interface ChainRow {
@@ -503,6 +518,7 @@ export async function sortDayChanges(
 
   // The rule check of every change kept, the oldest first (decision 6).
   const placed = new Map<DatedLesson, DatedLesson>();
+  const movedAt = new Map<DatedLesson, Date>();
   const skipped = new Set<DatedLesson>();
   const keptStoredIds = new Set<string>();
   const keptStored: Placement[] = [];
@@ -648,8 +664,7 @@ export async function sortDayChanges(
       const lesson = draft.matched.get(chain.lessonId);
       const at = lesson === undefined ? undefined : moved.get(lesson);
       if (lesson === undefined || at === undefined) continue;
-      placed.set(
-        lesson,
+      const put: DatedLesson =
         chain.lesson.cancel_cause === null
           ? at
           : {
@@ -661,8 +676,9 @@ export async function sortDayChanges(
                 studentIds: lesson.placement.studentIds,
                 exemptStudentIds: lesson.placement.exemptStudentIds,
               },
-            },
-      );
+            };
+      placed.set(lesson, put);
+      if (draft.kind === 'move') movedAt.set(put, chain.last.changed_at);
     }
   }
 
@@ -763,7 +779,7 @@ export async function sortDayChanges(
       chains: [],
     });
   }
-  return { items, findings: applied, keptStoredIds };
+  return { items, findings: applied, keptStoredIds, movedAt };
 }
 
 /** The key of a sorting as the preview shows it (decision 9, review should-fix 7). */
@@ -771,6 +787,8 @@ export function dayChangesKeyOf(
   versionId: string,
   startsOn: string,
   items: readonly SortedDayChange[],
+  /** Task 5.6a-5b-1: the key of the bulk cancels sorted (`bulkKeyPartOf`), none when there are none. */
+  bulk: string | null = null,
 ): string {
   const shown = items
     .map((one) => [
@@ -780,7 +798,9 @@ export function dayChangesKeyOf(
       JSON.stringify([one.answer.from, one.answer.to]),
     ])
     .sort((a, b) => compare(a.join('|'), b.join('|')));
-  return createHash('sha256').update(JSON.stringify({ versionId, startsOn, shown })).digest('hex');
+  return createHash('sha256')
+    .update(JSON.stringify({ versionId, startsOn, shown, ...(bulk === null ? {} : { bulk }) }))
+    .digest('hex');
 }
 
 /**
@@ -820,7 +840,7 @@ export function writePlanOf(
       else if (choice === 'cancel') cancels.set(key, item.answer.reason);
     }
   }
-  return { cancels, keepStored, cancelStored };
+  return { cancels, keepStored, cancelStored, bulkCancels: new Map(), bulkHolds: new Map() };
 }
 
 /**

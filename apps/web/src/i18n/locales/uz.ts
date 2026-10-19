@@ -3568,6 +3568,14 @@ export const uz: Texts<'one' | 'other'> = {
         inVersion: '{{number}}-versiyada',
         choice_drop: 'Oʻzgarishni bekor qilish',
         choice_cancel: 'Darsni oʻsha kuni bekor qilish',
+        bulk: 'Ommaviy bekor qilish: {{classes}}, {{date}}',
+        bulkLessons_one: '{{count}} ta dars',
+        bulkLessons_other: '{{count}} ta dars',
+        bulkBlock: '{{lessons}}, {{time}}. {{classes}} bilan birga',
+        bulkChoice_cancel: 'Butun blokni bekor qilish',
+        bulkChoice_keep: 'Qoldirish va tanlangan sinflarni ozod qilish',
+        bulkKept_keep: 'qoladi, tanlangan sinflar ozod',
+        bulkKept_cancel: 'butunlay bekor qilinadi',
         decisionNeeded: 'Qaror kerak boʻlgan har bir bir kunlik oʻzgarish uchun tanlang.',
       },
       chain: {
@@ -3616,11 +3624,13 @@ export const uz: Texts<'one' | 'other'> = {
         transition_unacknowledged:
           'Oʻtish haftasi darslari yuklamaga mos emas yoki tekshirilgandan keyin oʻzgardi. Ularni qayta tekshiring va belgilang.',
         day_change_undecided:
-          'Bir kunlik oʻzgarish uchun qaror kerak. U bilan nima boʻlishini tanlang.',
+          'Bir kunlik oʻzgarish yoki ommaviy bekor qilish bloki uchun qaror kerak. U bilan nima boʻlishini tanlang.',
         day_decision_unknown:
-          'Endi qaror talab qilmaydigan bir kunlik oʻzgarish uchun tanlov yuborildi. Qayta tekshiring.',
+          'Endi qaror talab qilmaydigan bir kunlik oʻzgarish yoki ommaviy bekor qilish bloki uchun tanlov yuborildi. Qayta tekshiring.',
         day_changes_changed:
           'Tekshirganingizdan keyin bu sanalarning bir kunlik oʻzgarishlari oʻzgardi. Ularni qayta tekshiring.',
+        day_choice_not_offered:
+          'Bu band uchun mavjud boʻlmagan tanlov yuborildi. Qayta tekshiring va koʻrsatilganlardan birini tanlang.',
         version_start_too_early:
           'Boshlanish sanasi eng erta ertaga. Bugungi oʻzgarish — bir kunlik oʻzgarish.',
         version_start_outside_year: 'Boshlanish sanasi oʻquv yilidan tashqarida.',

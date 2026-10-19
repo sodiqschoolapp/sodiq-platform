@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { patternIdOf } from '@sodiq/timetable-rules';
 import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
+import type { BulkHold } from './bulk-cancels-kept.js';
 import type { DatedFindings } from './dated-check.js';
 import type { DayWritePlan } from './day-changes-kept.js';
 import type { PatternState } from './pattern.service.js';
@@ -106,6 +107,10 @@ interface Wanted {
   readonly cause: string | null;
   /** A one-day cancel applied again (task 5.6a-5a), its reason; `null` for none. */
   readonly oneDayCancel: string | null;
+  /** Task 5.6a-5b-1: a bulk cancel applied again, written only when the lesson is created (decision 4). */
+  readonly bulkCancel: string | null;
+  /** Task 5.6a-5b-1: a part of a block decided `keep` (`BulkHold`); `null` for none. */
+  readonly bulkHold: BulkHold | null;
 }
 
 /** A stored lesson as the writer and the preview read it (task 5.5b-2). */
@@ -472,6 +477,17 @@ export async function writeDatedLessons(
     block.reused = paired.reused[index] ?? null;
   });
   const taken = new Set(paired.reused.filter((one): one is string => one !== null));
+  const held = await bulkHeldOf(
+    transaction,
+    branchId,
+    wantedBlocks.flatMap((block) =>
+      block.lessons.flatMap((lesson) => {
+        const found = pairOf.get(lesson) ?? paired.recreated.get(lesson);
+        const row = found === undefined ? undefined : rowOf.get(found.id);
+        return row === undefined ? [] : [{ lesson, row }];
+      }),
+    ),
+  );
 
   // The removed lessons first, so the unique keys of a block
   // (`lessons_block_class_key`, `lessons_block_group_key`) never meet a
@@ -550,7 +566,9 @@ export async function writeDatedLessons(
       const staffed = found.teacher_id !== lesson.teacherId || found.room_id !== lesson.roomId;
       // Task 5.6a-5a: a one-day cancel applied again on a lesson held.
       const oneDay = found.cancel_cause === null ? lesson.oneDayCancel : null;
-      if (!moved && !staffed && oneDay === null) continue;
+      // Task 5.6a-5b-1: a part of a block decided `keep` is held.
+      const hold = held.has(found.id);
+      if (!moved && !staffed && oneDay === null && !hold) continue;
       await transaction
         .updateTable('lessons')
         .set({
@@ -559,15 +577,17 @@ export async function writeDatedLessons(
           teacher_id: lesson.teacherId,
           room_id: lesson.roomId,
           ...(oneDay === null ? {} : { cancel_cause: 'reason', cancel_reason: oneDay }),
+          ...(hold ? { cancel_cause: null, cancel_reason: null } : {}),
         })
         .where('id', '=', found.id)
         .execute();
-      if (staffed || oneDay !== null) {
+      if (staffed || oneDay !== null || hold) {
         changed.push({
           id: found.id,
           teacherId: { from: found.teacher_id, to: lesson.teacherId },
           roomId: { from: found.room_id, to: lesson.roomId },
           ...(oneDay === null ? {} : { cancel: { from: null, to: 'reason' } }),
+          ...(hold ? { cancel: { from: 'reason', to: null } } : {}),
         });
       }
     }
@@ -653,11 +673,15 @@ export async function writeDatedLessons(
         const again = paired.recreated.get(lesson);
         // Task 5.6a-5a: or one applied again (`DayWritePlan.cancels`).
         const oneDay =
-          lesson.cause !== null
+          lesson.cause !== null || (again !== undefined && held.has(again.id))
             ? null
             : again?.cancelCause === 'reason'
               ? (rowOf.get(again.id)?.cancel_reason ?? null)
-              : lesson.oneDayCancel;
+              : // Task 5.6a-5b-1 (decision 4): a bulk cancel applied again
+                // reaches a lesson the write creates, never one it creates
+                // again from a stored lesson, which keeps its state (a restore
+                // stands; spec review of the code, should-fix 2).
+                (lesson.oneDayCancel ?? (again === undefined ? lesson.bulkCancel : null));
         return {
           branch_id: branchId,
           block_id: blockId,
@@ -717,6 +741,57 @@ export async function writeDatedLessons(
     })),
     changed,
   };
+}
+
+/**
+ * Task 5.6a-5b-1 (review of the code, round 1): the stored lessons a decided
+ * `keep` holds, by id: the lesson at a held place (`BulkHold`), kept or
+ * created again from it, whose cancel is the bulk cancel's own. The stored
+ * rows do not tell a bulk cancel's cancel from a one-day cancel, so it is read
+ * as cause `reason` with the bulk cancel's reason and no `lesson.cancel` of the
+ * lesson recorded after the bulk cancel (decided without the owner).
+ */
+async function bulkHeldOf(
+  transaction: Transaction,
+  branchId: string,
+  candidates: readonly { lesson: Wanted; row: StoredRow }[],
+): Promise<Set<string>> {
+  const matching = candidates.flatMap(({ lesson, row }) => {
+    const hold = lesson.bulkHold;
+    return hold !== null &&
+      lesson.cause === null &&
+      lesson.oneDayCancel === null &&
+      lesson.bulkCancel === null &&
+      row.cancel_cause === 'reason' &&
+      row.cancel_reason === hold.reason
+      ? [{ id: row.id, since: hold.since }]
+      : [];
+  });
+  if (matching.length === 0) return new Set();
+  const earliest = new Date(Math.min(...matching.map((one) => one.since.getTime())));
+  const cancels = await transaction
+    .selectFrom('audit_log')
+    .select(['occurred_at', sql<string[]>`new_value -> 'lessonIds'`.as('lesson_ids')])
+    .where('branch_id', '=', branchId)
+    .where('action', '=', 'lesson.cancel')
+    .where('occurred_at', '>', earliest)
+    .where(
+      sql<boolean>`new_value -> 'lessonIds' ?| ${sql.val(matching.map((one) => one.id))}::text[]`,
+    )
+    .execute();
+  return new Set(
+    matching
+      .filter(
+        (one) =>
+          !cancels.some(
+            (entry) =>
+              entry.occurred_at.getTime() > one.since.getTime() &&
+              Array.isArray(entry.lesson_ids) &&
+              entry.lesson_ids.includes(one.id),
+          ),
+      )
+      .map((one) => one.id),
+  );
 }
 
 /**
@@ -790,6 +865,13 @@ async function wantedOf(
       oneDayCancel:
         plan?.cancels.get(placeKeyOf(lesson.entryId, dated?.date ?? lesson.date, lesson.date)) ??
         null,
+      bulkCancel:
+        plan?.bulkCancels.get(
+          placeKeyOf(lesson.entryId, dated?.date ?? lesson.date, lesson.date),
+        ) ?? null,
+      bulkHold:
+        plan?.bulkHolds.get(placeKeyOf(lesson.entryId, dated?.date ?? lesson.date, lesson.date)) ??
+        null,
     });
   }
   for (const cancelled of findings.dated.cancelled) {
@@ -814,6 +896,8 @@ async function wantedOf(
         roomId: entry.roomId,
         cause: cancelled.reason,
         oneDayCancel: null,
+        bulkCancel: null,
+        bulkHold: null,
       });
     }
   }

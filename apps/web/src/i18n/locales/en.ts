@@ -3540,6 +3540,14 @@ export const en = {
         inVersion: 'In version {{number}}',
         choice_drop: 'Drop the change',
         choice_cancel: 'Cancel the lesson that day',
+        bulk: 'Bulk cancel of {{classes}} on {{date}}',
+        bulkLessons_one: '{{count}} lesson under it',
+        bulkLessons_other: '{{count}} lessons under it',
+        bulkBlock: '{{lessons}}, {{time}}. Shared with {{classes}}',
+        bulkChoice_cancel: 'Cancel the whole block',
+        bulkChoice_keep: 'Keep it and exempt the chosen classes',
+        bulkKept_keep: 'kept, the chosen classes exempt',
+        bulkKept_cancel: 'cancelled whole',
         decisionNeeded: 'Choose what happens to each one-day change that needs a decision.',
       },
       chain: {
@@ -3587,11 +3595,14 @@ export const en = {
           'The later published versions changed since you checked them. Check them again and choose.',
         transition_unacknowledged:
           'The lessons of the transition week differ from the load, or changed since you checked them. Check them again and tick the box.',
-        day_change_undecided: 'A one-day change needs a decision. Choose what happens to it.',
+        day_change_undecided:
+          'A one-day change or a block of a bulk cancel needs a decision. Choose what happens to it.',
         day_decision_unknown:
-          'A choice was sent for a one-day change that no longer needs a decision. Check again.',
+          'A choice was sent for a one-day change or a block of a bulk cancel that no longer needs a decision. Check again.',
         day_changes_changed:
           'The one-day changes of these dates changed since you checked them. Check them again.',
+        day_choice_not_offered:
+          'A choice was sent that this item does not offer. Check again and choose one of the choices shown.',
         version_start_too_early:
           'The start date is tomorrow at the earliest. A change for today is a one-day change.',
         version_start_outside_year: 'The start date is outside the academic year.',

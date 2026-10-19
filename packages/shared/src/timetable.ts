@@ -1044,6 +1044,9 @@ export const PUBLISH_REFUSALS = [
   'day_change_undecided',
   'day_decision_unknown',
   'day_changes_changed',
+  // Task 5.6a-5b-1 (decision 2): a choice of the other kind of item (`drop`
+  // for a bulk cancel's block, `keep` for a one-day change).
+  'day_choice_not_offered',
 ] as const;
 
 export const publishRefusalCodeSchema = z.enum(PUBLISH_REFUSALS);
@@ -1070,6 +1073,9 @@ export const publishRefusalSchema = z.object({
   versionNumber: z.int().min(1).optional(),
   /** `day_change_undecided` and `day_decision_unknown`: the item's key (task 5.6a-5a). */
   key: z.uuid().optional(),
+  /** Task 5.6a-5b-1: a bulk cancel's block, by its pattern block and that block's date. */
+  blockId: z.uuid().optional(),
+  blockDate: schoolDateSchema.optional(),
 });
 
 /**
@@ -1162,8 +1168,13 @@ export type TransitionRowAnswer = z.infer<typeof transitionRowSchema>;
 /** The kinds of stored one-day change a publish applies again (task 5.6a-5a). */
 export const DAY_CHANGE_KINDS = ['cancel', 'room', 'move'] as const;
 
-/** How a "needs a decision" item is settled (task 5.6a-5a, decision 2). */
-export const DAY_CHANGE_CHOICES = ['drop', 'cancel'] as const;
+/**
+ * How a "needs a decision" item is settled (task 5.6a-5a, decision 2): a
+ * one-day change with `drop` or `cancel`; a block of a bulk cancel with
+ * `cancel` (the whole block) or `keep` (exempt the chosen classes; task
+ * 5.6a-5b-1, decision 2).
+ */
+export const DAY_CHANGE_CHOICES = ['drop', 'cancel', 'keep'] as const;
 
 export const dayChangeChoiceSchema = z.enum(DAY_CHANGE_CHOICES);
 
@@ -1198,6 +1209,48 @@ export const dayChangeItemSchema = z.object({
 });
 
 export type DayChangeItemAnswer = z.infer<typeof dayChangeItemSchema>;
+
+/**
+ * A block of the new version in a bulk cancel's spans shared with classes
+ * not chosen (task 5.6a-5b-1): its pattern block and that block's date (the
+ * earlier block of a double), the other half's pattern block, its minutes,
+ * its lessons, the classes chosen and not, and the choice carried from the
+ * stored block (`null`: it needs a decision).
+ */
+export const bulkBlockSchema = z.object({
+  blockId: z.uuid(),
+  blockDate: schoolDateSchema,
+  pairBlockId: z.uuid().nullable(),
+  start: z.int().min(0).max(1440),
+  end: z.int().min(0).max(1440),
+  lessons: z.array(z.object({ unitId: z.uuid(), subjectId: z.uuid() })),
+  chosenClassIds: z.array(z.uuid()),
+  otherClassIds: z.array(z.uuid()),
+  choice: z.enum(['keep', 'cancel']).nullable(),
+});
+
+export type BulkBlockAnswer = z.infer<typeof bulkBlockSchema>;
+
+/**
+ * A stored bulk cancel as a publish applies it again (task 5.6a-5b-1): its
+ * id, kept or needs a decision (never dropped, decision 3), its date, reason
+ * and chosen classes, the carried version whose run it lies in, how many of
+ * the new version's lessons lie under it (cancelled, or left as they are on
+ * a lesson the write keeps, decision 4; a block that needs a decision not
+ * counted), and its shared blocks.
+ */
+export const bulkItemSchema = z.object({
+  key: z.uuid(),
+  category: z.enum(['kept', 'decide']),
+  date: schoolDateSchema,
+  reason: z.string(),
+  classIds: z.array(z.uuid()),
+  carriedVersionId: z.uuid().nullable(),
+  cancelled: z.int().min(0),
+  blocks: z.array(bulkBlockSchema),
+});
+
+export type BulkItemAnswer = z.infer<typeof bulkItemSchema>;
 
 /**
  * The impact preview of a publish (task 5.5a-2b-1; `06`, How surprises are
@@ -1263,6 +1316,8 @@ export const publishImpactSchema = z.object({
     kept: z.array(dayChangeItemSchema),
     decide: z.array(dayChangeItemSchema),
     dropped: z.array(dayChangeItemSchema),
+    /** Task 5.6a-5b-1: the bulk cancels of the dates, once each. */
+    bulk: z.array(bulkItemSchema),
   }),
   /** The names of what the preview names (decision 12). */
   names: z.object({
@@ -1338,6 +1393,13 @@ export const publishCheckQuerySchema = z.object({
 
 export type PublishCheckQuery = z.infer<typeof publishCheckQuerySchema>;
 
+/** The one key of a decision: its item, and for a bulk cancel's block that block (task 5.6a-5b-1). */
+export const dayDecisionKeyOf = (one: {
+  readonly key: string;
+  readonly blockId?: string | undefined;
+  readonly blockDate?: string | undefined;
+}): string => `${one.key}|${one.blockId ?? ''}|${one.blockDate ?? ''}`;
+
 /** A publish (decision 7): the start date, the draft's or a changed one. */
 export const publishBodySchema = z.strictObject({
   startsOn: schoolDateSchema,
@@ -1351,10 +1413,23 @@ export const publishBodySchema = z.strictObject({
   laterKey: transitionKeySchema.optional(),
   /** Task 5.6a-5a: the key of the one-day changes shown, and a choice for each "needs a decision" item. */
   dayChangesKey: transitionKeySchema.optional(),
+  // Task 5.6a-5b-1: a bulk cancel's block is named by `blockId` and
+  // `blockDate` besides its key; one choice per key and block.
   dayDecisions: z
-    .array(z.strictObject({ key: z.uuid(), choice: dayChangeChoiceSchema }))
+    .array(
+      z
+        .strictObject({
+          key: z.uuid(),
+          blockId: z.uuid().optional(),
+          blockDate: schoolDateSchema.optional(),
+          choice: dayChangeChoiceSchema,
+        })
+        .refine((one) => (one.blockId === undefined) === (one.blockDate === undefined), {
+          message: 'block_incomplete',
+        }),
+    )
     .max(2000)
-    .refine((list) => new Set(list.map((one) => one.key)).size === list.length, {
+    .refine((list) => new Set(list.map(dayDecisionKeyOf)).size === list.length, {
       message: 'keys_not_unique',
     })
     .optional(),

@@ -265,6 +265,26 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 19 October 2026: one-day changes kept after a publish, bulk cancels (task 5.6a-5b-1)
+
+Plan approved on pull request #165 with no corrections; decisions 1 to 13 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a task split). 5.6a-5b is split into 5.6a-5b-1 (bulk cancels after a publish and a carry) and 5.6a-5b-2 (the withdraw, with a check route, a body with the decisions and the dialog) | Decision 1; the withdraw has no preview today |
+| **Look first** (a reading of the spec: the choices). A "needs a decision" bulk block is settled with `cancel` (the whole block) or `keep` (the chosen classes' parts cancelled, the block held for the others); a choice of the other kind is `day_choice_not_offered` | Decision 2; the 7 Oxford row offers exactly these two |
+| **Look first** (a reading of the spec: never dropped). A bulk cancel is never ended by a publish; with nothing in its spans it is listed kept with no lesson under it, and a later publish that brings lessons back cancels them | Decision 3; it records an event on a date |
+| **Look first** (a reading of the spec: a cancel kept as it is). A bulk cancel applied again cancels only the lessons the write creates; a kept lesson keeps its state, so a restore stands; a decided block's lessons are written as chosen | Decision 4; "An unchanged lesson keeps its identity" |
+| **Look first** (a From line read narrower). A stored choice carries only to a block of the new version with the same lessons; a row whose block is gone carries nothing, and a chosen-only lesson in its place is simply cancelled | Decision 5; 0086 keeps only the date and times of a removed block |
+| The stored spans are used, never recomputed; a double half brings the other in; a decision is named by bulk cancel, pattern block and that block's date | Decisions 6 to 8 |
+| A move recorded after a bulk cancel into its spans is a deliberate later change and is left as it is; one recorded before is cancelled | Decision 9 (5.6a-5a decision 6, the older first) |
+| No new notice kind or area; a carried version's bulk cancels inside the carry's savepoint; the "after" side shows a bulk-cancelled lesson held | Decisions 10 to 12 |
+| Several items on one lesson: a cancel from any item wins, `keep` holds only what nothing else cancels | Decision 13 |
+| **Build decision.** A choice decided again on a block the pairing reuses replaces the stored one on its row (0088 grants an update of `choice` only); the audit entry keeps the choice before | Spec review of the code, must-fix 1: the block keeps its id when one of its lessons pairs |
+| **Build decision.** A lesson the write creates again from a stored one (`recreated`) is never cancelled by a bulk cancel applied again: only a lesson with no stored counterpart is | Spec review of the code, should-fix 2: decision 4, a restore stands |
+| **Build decision, Look first** (a reading of a journal-affecting rule). A `keep` decided by a publish on a block the pairing reuses holds every part of the other classes (on the lesson kept, or created again from a stored one) whose cancel is the bulk cancel's own, recorded among the lessons changed. The stored rows do not tell a bulk cancel's cancel from a one-day cancel, so "its own" is read as cause `reason` with the bulk cancel's reason and no `lesson.cancel` audit entry naming the lesson after the bulk cancel was saved; any other cancel stays | Review of the code, round 1, finding 1: decision 4, "a decided block is written as chosen on every lesson" |
+| **Build decision, Look first** (a test changed). The same-moment test of 5.6a-3 where a bulk cancel commits before a publish now expects the publish refused `day_changes_changed`, then a publish with the check's key | A requirement added by this task: a publish over a stored bulk cancel needs the key of the sorting that shows it |
+
 ## 19 October 2026: one-day changes kept after a publish (task 5.6a-5a)
 
 Plan approved on pull request #164 with corrections 1 and 2; decisions 1 to 12 confirmed there. Flagged on issue #42.

@@ -1037,7 +1037,7 @@ describe('pinSlots', () => {
               impact: {
                 beforeVersion: { id: uid(950), number: 1 },
                 carried: [],
-                dayChanges: { key: 'd'.repeat(64), kept: [], decide: [], dropped: [] },
+                dayChanges: { key: 'd'.repeat(64), kept: [], decide: [], dropped: [], bulk: [] },
                 counts: { created: 0, moved: 0, removed: 0, changed: 12, unchanged: 40 },
                 changes: [
                   {
@@ -1171,6 +1171,7 @@ describe('pinSlots', () => {
                   kept: [item(uid(621), 'room')],
                   decide: [item(uid(622), 'move', ['teacher_double'])],
                   dropped: [item(uid(623), 'cancel')],
+                  bulk: [],
                 },
                 counts: { created: 0, moved: 0, removed: 0, changed: 0, unchanged: 40 },
                 changes: [],
@@ -1236,6 +1237,134 @@ describe('pinSlots', () => {
       });
     });
 
+    // Task 5.6a-5b-1, pull request #165: the bulk cancels applied again, each
+    // once; a shared block that needs a decision offers the bulk cancel's own
+    // two choices (edge/timetable, After publishing, the 7 Oxford row).
+    it('lists each bulk cancel once, offers “cancel the whole block” and “keep” for a shared block, and sends the choice with its block', async () => {
+      const daysKey = 'f'.repeat(64);
+      const princeton = uid(631);
+      const group = uid(632);
+      const bulkKept = uid(633);
+      const bulkDecide = uid(634);
+      const block = uid(635);
+      const keptBlock = uid(636);
+      const blockOf = (blockId: string, choice: 'keep' | 'cancel' | null) => ({
+        blockId,
+        blockDate: '2026-10-19',
+        pairBlockId: null,
+        start: 535,
+        end: 580,
+        lessons: [{ unitId: group, subjectId: ROW.subject.id }],
+        chosenClassIds: [ROW.unit.id],
+        otherClassIds: [princeton],
+        choice,
+      });
+      const calls = await openPage({
+        path: `/timetable/builder?version=${VERSION.id}&step=publish`,
+        extra: {
+          [checkRoute]: () =>
+            json({
+              ...CHECK,
+              impact: {
+                beforeVersion: { id: uid(950), number: 1 },
+                carried: [],
+                dayChanges: {
+                  key: daysKey,
+                  kept: [],
+                  decide: [],
+                  dropped: [],
+                  bulk: [
+                    {
+                      key: bulkKept,
+                      category: 'kept',
+                      date: '2026-10-20',
+                      reason: 'School concert',
+                      classIds: [ROW.unit.id],
+                      carriedVersionId: null,
+                      cancelled: 2,
+                      blocks: [{ ...blockOf(keptBlock, 'keep'), blockDate: '2026-10-20' }],
+                    },
+                    {
+                      key: bulkDecide,
+                      category: 'decide',
+                      date: '2026-10-19',
+                      reason: 'Excursion to the museum',
+                      classIds: [ROW.unit.id],
+                      carriedVersionId: null,
+                      cancelled: 1,
+                      blocks: [blockOf(block, null)],
+                    },
+                  ],
+                },
+                counts: { created: 0, moved: 0, removed: 0, changed: 0, unchanged: 40 },
+                changes: [],
+                teachers: [],
+                classIds: [],
+                roomIds: [],
+                vacancies: [],
+                transition: null,
+                names: {
+                  units: [
+                    { id: ROW.unit.id, kind: 'class', name: 'Oxford', grades: [7] },
+                    { id: princeton, kind: 'class', name: 'Princeton', grades: [7] },
+                    { id: group, kind: 'group', name: '7-M-1', grades: [7] },
+                  ],
+                  subjects: [{ id: ROW.subject.id, names: ROW.subject.names }],
+                  teachers: [],
+                  rooms: [],
+                },
+              },
+            }),
+          [publishRoute]: () => json({ ...VERSION, status: 'published' }),
+        },
+      });
+      const decide = await waitFor(() => {
+        const found = document.querySelector('[data-day-changes="decide"]');
+        if (found === null) throw new Error('No one-day changes yet.');
+        return found;
+      });
+      const line = decide.querySelector('li[data-kind="bulk"]');
+      expect(line?.querySelector('p')?.textContent).toBe(
+        'Bulk cancel of 7 Oxford on 19 October 2026. 1 lesson under it. Reason: Excursion to the museum',
+      );
+      expect(line?.querySelector('legend')?.textContent).toBe(
+        '7-M-1, Mathematics, 08:55–09:40. Shared with 7 Princeton',
+      );
+      expect(
+        [...document.querySelectorAll('[data-day-changes="kept"] > li')].map(
+          (one) => one.textContent,
+        ),
+      ).toEqual([
+        'Bulk cancel of 7 Oxford on 20 October 2026. 2 lessons under it. Reason: School concert7-M-1, Mathematics, 08:55–09:40. Shared with 7 Princeton: kept, the chosen classes exempt',
+      ]);
+      const action = screen.getByRole('button', { name: en.timetable.publish.action });
+      expect(action).toHaveProperty('disabled', true);
+      // The bulk cancel's own two choices, never "drop".
+      expect(
+        within(line as HTMLElement)
+          .getAllByRole('radio')
+          .map((one) => one.getAttribute('value')),
+      ).toEqual(['cancel', 'keep']);
+      fireEvent.click(
+        within(line as HTMLElement).getByRole('radio', {
+          name: en.timetable.publish.dayChanges.bulkChoice_keep,
+        }),
+      );
+      expect(action).toHaveProperty('disabled', false);
+      fireEvent.click(action);
+      const dialog = await screen.findByRole('alertdialog');
+      fireEvent.click(within(dialog).getByRole('button', { name: en.timetable.publish.action }));
+      await waitFor(() => {
+        expect(calls.find((call) => call.route === publishRoute)?.body).toEqual({
+          startsOn: '2026-10-19',
+          dayChangesKey: daysKey,
+          dayDecisions: [
+            { key: bulkDecide, blockId: block, blockDate: '2026-10-19', choice: 'keep' },
+          ],
+        });
+      });
+    });
+
     it('needs no tick for a transition week that matches the load', async () => {
       await openPage({
         path: `/timetable/builder?version=${VERSION.id}&step=publish`,
@@ -1246,7 +1375,7 @@ describe('pinSlots', () => {
               impact: {
                 beforeVersion: { id: uid(950), number: 1 },
                 carried: [],
-                dayChanges: { key: 'd'.repeat(64), kept: [], decide: [], dropped: [] },
+                dayChanges: { key: 'd'.repeat(64), kept: [], decide: [], dropped: [], bulk: [] },
                 counts: { created: 0, moved: 0, removed: 0, changed: 0, unchanged: 40 },
                 changes: [],
                 teachers: [],
