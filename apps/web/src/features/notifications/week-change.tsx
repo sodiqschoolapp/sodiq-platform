@@ -24,8 +24,9 @@ const weekdayOf = (date: string): Weekday =>
  * edge/timetable, After publishing: "One notice per person per event, with
  * the week before and after"), under the notice's text. A line that the
  * server found changed (nothing on the other side equals it) says so in words; a lesson with a one-day cancel says
- * "cancelled" (review correction 3). Nothing for another kind, or for data
- * this version of the app cannot read.
+ * "cancelled" (review correction 3). A one-day move into another week shows
+ * that second week too (`also`, task 5.6a-2, decision 11). Nothing for
+ * another kind, or for data this version of the app cannot read.
  */
 export function WeekChange({ item }: { item: Notification }) {
   const { t, i18n } = useTranslation();
@@ -35,6 +36,10 @@ export function WeekChange({ item }: { item: Notification }) {
   const week = NOTIFICATION_KINDS[item.kind].safeParse(item.data);
   if (!week.success) return null;
   const { before, after, weekStart } = week.data;
+  const also =
+    item.kind === 'timetable.day_changed'
+      ? NOTIFICATION_KINDS['timetable.day_changed'].safeParse(item.data).data?.also
+      : undefined;
   const language = i18n.language;
   const side = (label: string, lessons: readonly WeekLesson[], testId: string) => (
     <div className="grid gap-0.5">
@@ -69,6 +74,15 @@ export function WeekChange({ item }: { item: Notification }) {
       </p>
       {side(t('notifications.week.before'), before, 'week-before')}
       {side(t('notifications.week.after'), after, 'week-after')}
+      {also !== undefined && (
+        <>
+          <p className="text-xs text-muted-foreground">
+            {t('notifications.week.title', { date: schoolDateText(also.weekStart, language) })}
+          </p>
+          {side(t('notifications.week.before'), also.before, 'also-before')}
+          {side(t('notifications.week.after'), also.after, 'also-after')}
+        </>
+      )}
     </div>
   );
 }

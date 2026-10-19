@@ -14,6 +14,9 @@ import {
   timetableVersionSchema,
   type DayKeepBody,
   type LessonCancelBody,
+  type LessonMoveBody,
+  type LessonRestoreBody,
+  type LessonRoomBody,
   type LessonRoomRecord,
   type LoadRowEdit,
   type LoadRowRecord,
@@ -443,14 +446,41 @@ export const cancelLesson = (lessonId: string, body: LessonCancelBody, key: stri
     }),
   ).then((answer) => dayChangeAnswerSchema.parse(answer));
 
-/** The restore of a one-day cancel (task 5.6a-1); `key` makes a repeat harmless. */
-export const restoreLesson = (lessonId: string, key: string) =>
+/**
+ * The restore of a one-day cancel (task 5.6a-1), into another room with a
+ * reason when given (task 5.6a-2); `key` makes a repeat harmless.
+ */
+export const restoreLesson = (lessonId: string, key: string, body: LessonRestoreBody = {}) =>
   answerOf(
     api.POST('/api/timetable/lessons/{id}/restore', {
       params: {
         header: { ...branchHeader(), 'Idempotency-Key': key },
         path: { id: lessonId },
       },
-      body: {},
+      body,
+    }),
+  ).then((answer) => dayChangeAnswerSchema.parse(answer));
+
+/** A one-day room change with a reason (task 5.6a-2); `key` makes a repeat harmless. */
+export const changeDayRoom = (lessonId: string, body: LessonRoomBody, key: string) =>
+  answerOf(
+    api.POST('/api/timetable/lessons/{id}/room', {
+      params: {
+        header: { ...branchHeader(), 'Idempotency-Key': key },
+        path: { id: lessonId },
+      },
+      body,
+    }),
+  ).then((answer) => dayChangeAnswerSchema.parse(answer));
+
+/** A one-day move to a lesson slot of a date, with a reason (task 5.6a-2). */
+export const moveDayLesson = (lessonId: string, body: LessonMoveBody, key: string) =>
+  answerOf(
+    api.POST('/api/timetable/lessons/{id}/move', {
+      params: {
+        header: { ...branchHeader(), 'Idempotency-Key': key },
+        path: { id: lessonId },
+      },
+      body,
     }),
   ).then((answer) => dayChangeAnswerSchema.parse(answer));

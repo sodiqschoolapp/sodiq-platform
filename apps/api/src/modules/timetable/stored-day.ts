@@ -314,6 +314,12 @@ export async function storedDayCheck(
     readonly accountId: string;
     readonly lessons: readonly StoredDayLesson[];
     readonly roomId?: string | null;
+    /**
+     * The parts of the moved blocks cancelled with a reason, which move with
+     * them (task 5.6a-2): placed with no teacher, room or student, their
+     * students exempt, so the block is still whole and they claim nothing.
+     */
+    readonly alongside?: readonly StoredDayLesson[];
   },
 ): Promise<StoredDayResult> {
   const [lesson] = input.lessons;
@@ -432,13 +438,20 @@ export async function storedDayCheck(
 
   // `undefined`: each lesson in its own room.
   const check = (roomId: string | null | undefined) => {
-    const candidates = input.lessons.map((one) =>
-      placementOf(
-        one,
-        followed.has(one.id) ? null : (teacherIds.get(one.id) ?? null),
-        roomId === undefined ? one.roomId : roomId,
+    const candidates = [
+      ...input.lessons.map((one) =>
+        placementOf(
+          one,
+          followed.has(one.id) ? null : (teacherIds.get(one.id) ?? null),
+          roomId === undefined ? one.roomId : roomId,
+        ),
       ),
-    );
+      ...(input.alongside ?? []).map((one) => ({
+        ...placementOf(one, null, null),
+        studentIds: [],
+        exemptStudentIds: studentsOn(unitOf(one), date),
+      })),
+    ];
     const results = checkCandidates(others, facts, candidates, { availabilityFrom: date }).filter(
       (one) => one.rule !== 'teacher_week_load',
     );

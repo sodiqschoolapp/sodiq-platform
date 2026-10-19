@@ -1,11 +1,19 @@
 import {
   classDisplayName,
   lessonCancelBodySchema,
+  lessonMoveBodySchema,
+  lessonRestoreBodySchema,
+  lessonRoomBodySchema,
   PERMISSIONS,
   permits,
   timeText,
+  type DayChangeAnswer,
   type DayLesson,
+  type ErrorDetail,
   type LessonCancelBody,
+  type LessonMoveBody,
+  type LessonRestoreBody,
+  type LessonRoomBody,
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
@@ -37,10 +45,13 @@ import {
 } from '@/components/ui/table';
 import { useView } from '@/features/access/use-view';
 import { classesQuery } from '@/features/classes/classes-api';
+import { roomsQuery } from '@/features/setup/setup-api';
 import { ruleText } from './rule-text';
 import {
   cancelLesson,
+  changeDayRoom,
   dayQuery,
+  moveDayLesson,
   restoreLesson,
   timetableKey,
   versionsQuery,
@@ -78,6 +89,12 @@ export function DayPage(): React.JSX.Element {
       : (active[0]?.id ?? null);
   const day = useQuery(dayQuery(branchId, date, classId));
   const [cancelling, setCancelling] = useState<DayLesson | null>(null);
+  // A room change, a move, or a restore into a free room (task 5.6a-2).
+  const [changing, setChanging] = useState<
+    | { kind: 'room' | 'move'; lesson: DayLesson }
+    | { kind: 'restore'; lesson: DayLesson; room: { id: string; name: string } }
+    | null
+  >(null);
   const [message, setMessage] = useState<string | null>(null);
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: timetableKey(branchId) });
@@ -162,8 +179,7 @@ export function DayPage(): React.JSX.Element {
     restore.error instanceof ApiFailure && restore.error.code === 'restore_blocked'
       ? (restore.error.details ?? [])
       : [];
-  const rules = blocked.filter((one) => one.path !== 'rooms');
-  const rooms = blocked.flatMap((one) => (one.room === undefined ? [] : [one.room.name]));
+  const restoring = restore.variables ?? null;
 
   return (
     <>
@@ -197,22 +213,18 @@ export function DayPage(): React.JSX.Element {
         {restore.error !== null && (
           <div className="grid gap-2" data-restore-failure="true">
             <FailureAlert error={restore.error} />
-            {rules.length > 0 && (
-              <ul className="grid gap-1 text-sm">
-                {rules.map((detail, index) => (
-                  <li key={`${detail.path}-${String(index)}`}>
-                    {t('timetable.day.blocked', { rule: ruleText(t, detail.code) })}
-                  </li>
-                ))}
-              </ul>
-            )}
-            {rules.some((one) => one.code.startsWith('room_')) && (
-              <p className="text-sm">
-                {rooms.length === 0
-                  ? t('timetable.day.noFreeRoom')
-                  : t('timetable.day.freeRooms', { rooms: rooms.join(', ') })}
-              </p>
-            )}
+            <BlockedRules
+              details={blocked}
+              intoRoom={
+                edits && restoring !== null
+                  ? (room) => {
+                      setMessage(null);
+                      setChanging({ kind: 'restore', lesson: restoring, room });
+                    }
+                  : undefined
+              }
+              intoText={(name) => t('timetable.day.restoreInto', { room: name })}
+            />
           </div>
         )}
         <div className={PANEL}>
@@ -264,6 +276,32 @@ export function DayPage(): React.JSX.Element {
                             {t('timetable.day.cancel')}
                           </Button>
                         )}
+                        {lesson.canCancel && (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => {
+                              setMessage(null);
+                              restore.reset();
+                              setChanging({ kind: 'room', lesson });
+                            }}
+                          >
+                            {t('timetable.day.changeRoom')}
+                          </Button>
+                        )}
+                        {lesson.canCancel && (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => {
+                              setMessage(null);
+                              restore.reset();
+                              setChanging({ kind: 'move', lesson });
+                            }}
+                          >
+                            {t('timetable.day.move')}
+                          </Button>
+                        )}
                         {lesson.canRestore && (
                           <Button
                             variant="secondary"
@@ -300,7 +338,321 @@ export function DayPage(): React.JSX.Element {
           }}
         />
       )}
+      {changing !== null && (
+        <ChangeDialog
+          key={`${changing.kind}-${changing.lesson.id}`}
+          change={changing}
+          branchId={branchId}
+          classId={classId}
+          subject={changing.lesson.subject.names[language]}
+          onClose={() => {
+            setChanging(null);
+          }}
+          onChanged={async (warnings) => {
+            setChanging(null);
+            restore.reset();
+            setMessage(
+              [
+                t(
+                  changing.kind === 'room'
+                    ? 'timetable.day.roomChanged'
+                    : changing.kind === 'move'
+                      ? 'timetable.day.moved'
+                      : 'timetable.day.restored',
+                ),
+                ...warnings.map((rule) =>
+                  t('timetable.day.changedWarning', { rule: ruleText(t, rule) }),
+                ),
+              ].join(' '),
+            );
+            await refresh();
+          }}
+        />
+      )}
     </>
+  );
+}
+
+/**
+ * The blocked rules of a refused one-day change, and the rooms free at its
+ * time when a rule of the room blocks; `intoRoom` sends the change again into
+ * one of them (task 5.6a-2; edge/timetable, After publishing: "The restore can
+ * be refused, with another room offered").
+ */
+function BlockedRules({
+  details,
+  intoRoom,
+  intoText,
+}: {
+  details: readonly ErrorDetail[];
+  intoRoom?: ((room: { id: string; name: string }) => void) | undefined;
+  intoText: (name: string) => string;
+}) {
+  const { t } = useTranslation();
+  const rules = details.filter((one) => one.path !== 'rooms');
+  const rooms = details.flatMap((one) => (one.room === undefined ? [] : [one.room]));
+  return (
+    <>
+      {rules.length > 0 && (
+        <ul className="grid gap-1 text-sm">
+          {rules.map((detail, index) => (
+            <li key={`${detail.path}-${String(index)}`}>
+              {t('timetable.day.blocked', { rule: ruleText(t, detail.code) })}
+            </li>
+          ))}
+        </ul>
+      )}
+      {rules.some((one) => one.code.startsWith('room_')) && (
+        <p className="text-sm">
+          {rooms.length === 0
+            ? t('timetable.day.noFreeRoom')
+            : t('timetable.day.freeRooms', { rooms: rooms.map((one) => one.name).join(', ') })}
+        </p>
+      )}
+      {intoRoom !== undefined && rooms.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {rooms.map((room) => (
+            <Button
+              key={room.id}
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                intoRoom(room);
+              }}
+            >
+              {intoText(room.name)}
+            </Button>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+type Change =
+  | { kind: 'room' | 'move'; lesson: DayLesson }
+  | { kind: 'restore'; lesson: DayLesson; room: { id: string; name: string } };
+
+type ChangeField = 'roomId' | 'date' | 'lessonNumber' | 'reason';
+
+/** Sends a change of the dialog, its body read again with its own schema. */
+function sendChange(change: Change, body: unknown, key: string): Promise<DayChangeAnswer> {
+  if (change.kind === 'room') {
+    return changeDayRoom(change.lesson.id, lessonRoomBodySchema.parse(body), key);
+  }
+  if (change.kind === 'move') {
+    return moveDayLesson(change.lesson.id, lessonMoveBodySchema.parse(body), key);
+  }
+  return restoreLesson(change.lesson.id, key, lessonRestoreBodySchema.parse(body));
+}
+
+/**
+ * A one-day room change, a move, or the restore into a free room, each with
+ * its reason (task 5.6a-2): a dialog that sends once (`.claude/rules/web.md`),
+ * checked with the shared schema, its key made when it opens. The lesson
+ * slots of the chosen date come from the server; a refusal lists its rules,
+ * and a free room it offers fills the room field.
+ */
+function ChangeDialog({
+  change,
+  branchId,
+  classId,
+  subject,
+  onClose,
+  onChanged,
+}: {
+  change: Change;
+  branchId: string | null;
+  classId: string;
+  subject: string;
+  onClose: () => void;
+  onChanged: (warnings: string[]) => Promise<void>;
+}) {
+  const { t } = useTranslation();
+  const { lesson } = change;
+  const done = useRef<string[] | null>(null);
+  const key = useRef(crypto.randomUUID());
+  const rooms = useQuery(roomsQuery(branchId));
+  const form = useRecordForm<ChangeField, LessonRoomBody | LessonMoveBody | LessonRestoreBody>({
+    schema:
+      change.kind === 'room'
+        ? lessonRoomBodySchema
+        : change.kind === 'move'
+          ? lessonMoveBodySchema
+          : lessonRestoreBodySchema,
+    initial: {
+      roomId: change.kind === 'restore' ? change.room.id : '',
+      date: lesson.date,
+      lessonNumber: '',
+      reason: '',
+    },
+    read: (typed) =>
+      change.kind === 'move'
+        ? {
+            date: typed.date,
+            lessonNumber: typed.lessonNumber === '' ? undefined : Number(typed.lessonNumber),
+            ...(typed.roomId === '' ? {} : { roomId: typed.roomId }),
+            reason: typed.reason,
+          }
+        : { roomId: typed.roomId, reason: typed.reason },
+    save: async (body) => {
+      const answer = await sendChange(change, body, key.current);
+      done.current = answer.warnings.map((one) => one.rule);
+    },
+    message: (field) =>
+      field === 'reason'
+        ? t('timetable.day.reasonNeededChange')
+        : field === 'roomId'
+          ? t('timetable.day.roomNeeded')
+          : field === 'lessonNumber'
+            ? t('timetable.day.slotNeeded')
+            : undefined,
+  });
+  const date = form.bind('date').value;
+  const slots = useQuery({
+    ...dayQuery(branchId, date, classId),
+    enabled: change.kind === 'move' && date !== '',
+  });
+  const element = useRef<HTMLFormElement>(null);
+  const title = t(
+    change.kind === 'room'
+      ? 'timetable.day.roomTitle'
+      : change.kind === 'move'
+        ? 'timetable.day.moveTitle'
+        : 'timetable.day.restoreTitle',
+    { subject, time: timeText(lesson.start) },
+  );
+  const failure = form.failure;
+  const details =
+    failure instanceof ApiFailure &&
+    (failure.code === 'day_change_blocked' || failure.code === 'restore_blocked')
+      ? (failure.details ?? [])
+      : [];
+
+  const send = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+    event.preventDefault();
+    const checked = await form.submit();
+    if (!checked) {
+      element.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+      return;
+    }
+    if (done.current !== null) {
+      await onChanged(done.current);
+    }
+  };
+
+  const roomOptions = (rooms.data?.rooms ?? [])
+    .filter((one) => one.status === 'in_use')
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((one) => ({ value: one.id, label: one.name }));
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        <form
+          ref={element}
+          aria-label={title}
+          className="grid gap-4"
+          onSubmit={(event) => {
+            void send(event);
+          }}
+        >
+          {change.kind === 'restore' && (
+            <p className="text-sm">{t('timetable.day.restoreRoom', { room: change.room.name })}</p>
+          )}
+          {change.kind === 'move' && (
+            <>
+              <DateField label={t('timetable.day.moveDate')} {...form.bind('date')} />
+              {slots.isError ? (
+                <ErrorState error={slots.error} onRetry={() => void slots.refetch()} />
+              ) : slots.data === undefined ? (
+                <LoadingOutline />
+              ) : slots.data.slots.length === 0 ? (
+                <p className="text-sm">{t('timetable.day.noSlots')}</p>
+              ) : (
+                <SelectField
+                  label={t('timetable.day.slot')}
+                  options={[
+                    { value: '', label: t('timetable.day.slotChoose') },
+                    ...slots.data.slots.map((slot) => ({
+                      value: String(slot.lessonNumber),
+                      label: t('timetable.day.slotLabel', {
+                        number: slot.lessonNumber,
+                        start: timeText(slot.start),
+                        end: timeText(slot.end),
+                      }),
+                    })),
+                  ]}
+                  {...form.bind('lessonNumber')}
+                />
+              )}
+            </>
+          )}
+          {change.kind !== 'restore' &&
+            (rooms.isError ? (
+              <ErrorState error={rooms.error} onRetry={() => void rooms.refetch()} />
+            ) : rooms.data === undefined ? (
+              <LoadingOutline />
+            ) : (
+              <SelectField
+                label={t(
+                  change.kind === 'move' ? 'timetable.day.moveRoom' : 'timetable.day.newRoom',
+                )}
+                options={[
+                  {
+                    value: '',
+                    label: t(
+                      change.kind === 'move'
+                        ? 'timetable.day.keepRoom'
+                        : 'timetable.day.roomChoose',
+                    ),
+                  },
+                  ...roomOptions,
+                ]}
+                {...form.bind('roomId')}
+              />
+            ))}
+          <TextAreaField label={t('timetable.day.reason')} rows={3} {...form.bind('reason')} />
+          <FailureAlert error={failure} />
+          {details.length > 0 && (
+            <BlockedRules
+              details={details}
+              intoRoom={
+                change.kind === 'restore'
+                  ? undefined
+                  : (room) => {
+                      form.bind('roomId').onChange({ target: { value: room.id } });
+                    }
+              }
+              intoText={(name) => t('timetable.day.useRoom', { room: name })}
+            />
+          )}
+          <DialogFooter>
+            <DialogClose render={<Button variant="ghost" />}>{t('timetable.day.back')}</DialogClose>
+            <Button type="submit" disabled={form.status === 'saving'}>
+              {t(
+                change.kind === 'room'
+                  ? 'timetable.day.roomSend'
+                  : change.kind === 'move'
+                    ? 'timetable.day.moveSend'
+                    : 'timetable.day.restoreSend',
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 

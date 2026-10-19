@@ -409,6 +409,19 @@ export const en = {
       'Only a lesson cancelled with a reason can be restored here. A lesson cancelled for an exam comes back when the exam is cancelled.',
     restore_blocked:
       'The lesson cannot be restored at its time: a rule is broken there, or another change has just taken its room, teacher or class. Any reasons found are listed.',
+    day_change_blocked:
+      'The change breaks a rule at the lesson’s new place. The reasons are listed; when the room is the problem, a free room can be chosen.',
+    room_unchanged: 'The lesson already has this room. Choose another room.',
+    move_target_started: 'That lesson slot has already started. Choose a later slot or date.',
+    move_other_quarter:
+      'A lesson can be moved only within its own quarter. Choose a date in the same quarter.',
+    move_other_version:
+      'Another timetable version is in force on that date. Choose a date the lesson’s version covers.',
+    move_no_slot:
+      'That date has no such lesson slot (a double lesson needs the next slot too). Choose another slot.',
+    move_unchanged: 'The lesson is already at that place. Choose another slot, date or room.',
+    move_room_parts:
+      'This lesson is part of a split or of parallel groups, so each part keeps its own room. Move it without a room, then change each part’s room.',
     withdraw_started:
       'This version has started, so it can no longer be withdrawn. Publish a new version to change it.',
     withdraw_blocked:
@@ -2670,6 +2683,8 @@ export const en = {
       lesson: {
         cancel: 'Lesson cancelled for one day',
         restore: 'Cancelled lesson restored',
+        room_change: 'Room of a lesson changed for one day',
+        move: 'Lesson moved for one day',
       },
       teaching_load: {
         create: 'Teaching load row added',
@@ -3086,6 +3101,33 @@ export const en = {
       blocked: 'Broken at its time: {{rule}}',
       freeRooms: 'Rooms free at that time: {{rooms}}',
       noFreeRoom: 'No room is free at that time.',
+      changeRoom: 'Change room',
+      move: 'Move',
+      restoreInto: 'Restore into {{room}}',
+      useRoom: 'Use {{room}}',
+      roomChanged: 'The room was changed for this day.',
+      moved: 'The lesson was moved for this day.',
+      changedWarning: 'With a warning: {{rule}}',
+      reasonNeededChange: 'Write the reason for the change.',
+      roomNeeded: 'Choose a room.',
+      slotNeeded: 'Choose a lesson slot.',
+      roomTitle: 'Change the room of {{subject}} at {{time}}',
+      moveTitle: 'Move {{subject}} at {{time}}',
+      restoreTitle: 'Restore {{subject}} at {{time}} in another room',
+      restoreRoom: 'The lesson comes back in {{room}}.',
+      moveDate: 'New date',
+      noSlots: 'No lessons on this date.',
+      slot: 'Lesson slot',
+      slotChoose: 'Choose a lesson slot',
+      slotLabel: 'Lesson {{number}}, {{start}}–{{end}}',
+      moveRoom: 'Room',
+      newRoom: 'New room',
+      keepRoom: 'Keep its room',
+      roomChoose: 'Choose a room',
+      back: 'Back',
+      roomSend: 'Change the room',
+      moveSend: 'Move the lesson',
+      restoreSend: 'Restore the lesson',
     },
     rule: {
       teacher_double: 'A teacher cannot be in two lessons at the same time.',

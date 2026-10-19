@@ -213,9 +213,7 @@ export class TimetableDayChanges {
       id,
       key,
       'timetable.lesson_restore',
-      input.roomId === undefined
-        ? {}
-        : { roomId: input.roomId, reason: input.reason ?? '' },
+      input.roomId === undefined ? {} : { roomId: input.roomId, reason: input.reason ?? '' },
       (t) => this.restoreLocked(t, access, id, input, requestId),
       { rooms: input.roomId === undefined ? [] : [input.roomId] },
     );
@@ -508,7 +506,12 @@ export class TimetableDayChanges {
       { timetable: this.timetable, pattern: this.pattern },
       { accountId: access.accountId, lessons, roomId: input.roomId },
     );
-    await refuseBlocked(transaction, branchId, 'day_change_blocked', checked);
+    // The lesson's own room is no other room to offer.
+    const own = new Set(lessons.map((one) => one.roomId));
+    await refuseBlocked(transaction, branchId, 'day_change_blocked', {
+      ...checked,
+      freeRooms: checked.freeRooms.filter((one) => !own.has(one)),
+    });
     for (const one of lessons) {
       await transaction
         .updateTable('lessons')
@@ -610,19 +613,6 @@ export class TimetableDayChanges {
     if (quarter !== undefined && quarter.id !== block.quarter_id) {
       throw new ApiException('move_other_quarter', 409);
     }
-    // The version in force on the date must be the lesson's (decision 1).
-    const inForce = await transaction
-      .selectFrom('timetable_versions')
-      .select('id')
-      .where('branch_id', '=', branchId)
-      .where('academic_year_id', '=', block.academic_year_id)
-      .where('status', '=', 'published')
-      .where('starts_on', '<=', input.date)
-      .orderBy('starts_on', 'desc')
-      .executeTakeFirst();
-    if (inForce?.id !== lesson.versionId) {
-      throw new ApiException('move_other_version', 409);
-    }
 
     const services = { timetable: this.timetable, pattern: this.pattern };
     const first = pair[0] ?? lesson;
@@ -651,6 +641,19 @@ export class TimetableDayChanges {
     if ((moments[0]?.startsAt.getTime() ?? 0) <= moment.getTime()) {
       throw new ApiException('move_target_started', 409);
     }
+    // The version in force on the date must be the lesson's (decision 1).
+    const inForce = await transaction
+      .selectFrom('timetable_versions')
+      .select('id')
+      .where('branch_id', '=', branchId)
+      .where('academic_year_id', '=', block.academic_year_id)
+      .where('status', '=', 'published')
+      .where('starts_on', '<=', input.date)
+      .orderBy('starts_on', 'desc')
+      .executeTakeFirst();
+    if (inForce?.id !== lesson.versionId) {
+      throw new ApiException('move_other_version', 409);
+    }
     if (
       parts.every((one) => {
         const to = placed(one);
@@ -667,6 +670,7 @@ export class TimetableDayChanges {
     const checked = await storedDayCheck(transaction, services, {
       accountId: access.accountId,
       lessons: held.map(placed),
+      alongside: parts.filter((one) => one.cancelCause !== null).map(placed),
       ...(input.roomId === undefined ? {} : { roomId: input.roomId }),
     });
     await refuseBlocked(
