@@ -588,6 +588,15 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     branch: 'request',
     roles: ['super_admin', 'academic_vice_principal'],
   },
+  // Task 5.6a-3: the check and the save of a bulk cancel, under timetable edit.
+  'POST /api/timetable/bulk-cancels/check': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'POST /api/timetable/bulk-cancels': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
   // Task 5.5a-3b-1: the causes of a draft's mark, read by every reader of the
   // timetable, and bringing it up to date, under timetable edit.
   'GET /api/timetable/versions/:id/out-of-date': {

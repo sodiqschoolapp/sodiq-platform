@@ -265,6 +265,27 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 19 October 2026: one-day changes, bulk cancel (task 5.6a-3)
+
+Plan approved on pull request #162 with corrections 1 and 2; decisions 1 to 15 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a journal reading: who is exempt). "Keep it and exempt the students of the chosen classes" is stored as the block's `keep` row and each chosen class's spans (0086); 8.5 makes the cells exempt from them | Decision 1; `edge/exemptions`: "A slot exemption is stored as a time range on that date" |
+| **Look first** (a spec contradiction). A bulk cancel cancels today's started lessons and past dates; a half of a double outside the chosen slots that has started is held, not brought in. Proposed `/spec-change` for `06`, How surprises are prevented: "A past lesson can only be corrected one at a time by the Academic Vice Principal, with a reason; the one exception is a bulk cancel of today from a chosen slot or of a past date (calendar edge cases, 'The school closes at 11:00 today')." | Decision 8 with review correction 1; `edge/time-dates-calendar` is the more specific file |
+| Slots are lesson numbers, read for each class from its own day of the date, by clock time; a number a day lacks is skipped for that class | Decision 2 |
+| "Every class of the branch" is a choice of the screen; the API takes the list | Decision 3 |
+| A double cut by the slots is cancelled whole, its other half brought in with the same choice (keyed by the earlier block) | Decision 4 |
+| A kept block loses only its parts fed by chosen classes alone, and keeps its class claims | Decisions 5 and 6 |
+| Every shared block needs a choice; the save carries the check's lesson ids and is refused when the scope changed | Decisions 7 and 12 |
+| A lesson already cancelled keeps its cause; cancelled with cause `reason`, so each restores alone; no undo of the whole | Decisions 9 and 10 |
+| `timetable.day_changed`, one per teacher; audit `lesson.bulk_cancel`, record `bulk_cancel` | Decisions 11 and 13 |
+| Only active classes of the date's year (`class_not_active`), a date in a year (`bulk_cancel_out_of_year`) | Decision 14 |
+| **Build decision.** The save carries every lesson the check listed to cancel under the choices (shared blocks included) and is refused `bulk_scope_changed` when they differ | Spec review of the code, must-fix 2: a part restored or a half started between the check and the save would have been cancelled or held unseen |
+| **Build decision.** The other half of a double whose lessons are all cancelled already brings nothing in | Spec review of the code, must-fix 1 (5.6a-1 decision 4) |
+| **Build decision.** The check refuses `bulk_cancel_empty` as the save does when nothing is left to cancel | Spec review of the code, should-fix 1 |
+| **Build decision.** The blocks and lessons the save names are checked against the branch before any lock (404) | Permission review, must-fix 1 (`.claude/rules/api.md`) |
+
 ## 19 October 2026: one-day changes, room change and move of one lesson (task 5.6a-2)
 
 Plan approved on pull request #161 with corrections 1 to 3; decisions 1 to 12 confirmed there. Flagged on issue #42.

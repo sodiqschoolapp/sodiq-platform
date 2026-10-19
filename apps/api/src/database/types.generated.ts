@@ -146,6 +146,42 @@ export interface Buildings {
   name: string;
 }
 
+export interface BulkCancelBlocks {
+  block_id: string | null;
+  branch_id: string;
+  bulk_cancel_id: string;
+  choice: string;
+  ends_at: Timestamp;
+  lesson_date: string;
+  starts_at: Timestamp;
+}
+
+export interface BulkCancelClasses {
+  branch_id: string;
+  bulk_cancel_id: string;
+  class_id: string;
+}
+
+export interface BulkCancels {
+  branch_id: string;
+  cancel_date: string;
+  changed_at: Timestamp;
+  changed_by: string;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  lesson_numbers: number[];
+  reason: string;
+}
+
+export interface BulkCancelSpans {
+  branch_id: string;
+  bulk_cancel_id: string;
+  class_id: string;
+  ends_at: Timestamp;
+  lesson_number: number;
+  starts_at: Timestamp;
+}
+
 export interface CalendarEntries {
   archived_at: Timestamp | null;
   branch_id: string;
@@ -1027,6 +1063,10 @@ export interface DB {
   branch_settings: BranchSettings;
   branches: Branches;
   buildings: Buildings;
+  bulk_cancel_blocks: BulkCancelBlocks;
+  bulk_cancel_classes: BulkCancelClasses;
+  bulk_cancel_spans: BulkCancelSpans;
+  bulk_cancels: BulkCancels;
   calendar_entries: CalendarEntries;
   class_memberships: ClassMemberships;
   class_tutors: ClassTutors;

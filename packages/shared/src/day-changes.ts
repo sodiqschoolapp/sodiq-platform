@@ -130,6 +130,12 @@ export const dayAnswerSchema = z.object({
   classId: z.uuid(),
   /** The lesson slots of the class's day on the date; none on a day without lessons. */
   slots: z.array(daySlotSchema),
+  /**
+   * The highest lesson number of the days of the branch's active classes on
+   * the date, the lesson numbers the bulk cancel offers (task 5.6a-3); 0 on a
+   * day without lessons.
+   */
+  longestDay: z.int().min(0),
   /** Today in the branch at the moment of the request, so the page never reads the device's clock. */
   today: schoolDateSchema,
   lessons: z.array(dayLessonSchema),

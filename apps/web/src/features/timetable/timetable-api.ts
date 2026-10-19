@@ -31,6 +31,10 @@ import {
   type TimetableVersionCreate,
   type TimetableVersionEdit,
   type UpToDateSide,
+  bulkCancelAnswerSchema,
+  bulkCancelCheckAnswerSchema,
+  type BulkCancelBody,
+  type BulkCancelCheckBody,
 } from '@sodiq/shared';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { api, branchHeader } from '@/api/client';
@@ -460,6 +464,24 @@ export const restoreLesson = (lessonId: string, key: string, body: LessonRestore
       body,
     }),
   ).then((answer) => dayChangeAnswerSchema.parse(answer));
+
+/** What a bulk cancel would do (task 5.6a-3); writes nothing. */
+export const checkBulkCancel = (body: BulkCancelCheckBody) =>
+  answerOf(
+    api.POST('/api/timetable/bulk-cancels/check', {
+      params: { header: branchHeader() },
+      body,
+    }),
+  ).then((answer) => bulkCancelCheckAnswerSchema.parse(answer));
+
+/** The bulk cancel with its reason and choices (task 5.6a-3); `key` makes a repeat harmless. */
+export const saveBulkCancel = (body: BulkCancelBody, key: string) =>
+  answerOf(
+    api.POST('/api/timetable/bulk-cancels', {
+      params: { header: { ...branchHeader(), 'Idempotency-Key': key } },
+      body,
+    }),
+  ).then((answer) => bulkCancelAnswerSchema.parse(answer));
 
 /** A one-day room change with a reason (task 5.6a-2); `key` makes a repeat harmless. */
 export const changeDayRoom = (lessonId: string, body: LessonRoomBody, key: string) =>
