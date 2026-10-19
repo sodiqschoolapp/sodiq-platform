@@ -1031,6 +1031,107 @@ describe('calendar entries after publishing', () => {
       }
     });
 
+    // Code review round 1, must-fix 1 (`.claude/rules/api.md`, each branch of
+    // a function that chooses where rows go): a move from today or earlier
+    // cannot be put back by a calendar save, and a day off holds no lesson,
+    // so the block is removed whatever the choice (5.6a-5a decision 7; the
+    // build's decision 7). The past is written through the migrator, as "the
+    // past is closed" does: the record of the real move dated from Monday 5
+    // October, before today (10 October).
+    it('removes a move from today or earlier onto a new day off with either choice: nothing on the day off or on its old date, the change ended', async () => {
+      const PAST = '2026-10-05';
+      for (const choice of ['drop', 'cancel'] as const) {
+        const s = await scene();
+        const moving = await lessonOf(s, OCT26, s.classId);
+        okay(await moveTo(s, moving.id, OCT19, 2));
+        const [change] = await changesOf(moving.id);
+        if (change === undefined) throw new Error('The move was not recorded.');
+        await t.database.migrator
+          .updateTable('lesson_day_changes')
+          .set({
+            from_date: PAST,
+            from_starts_at: sql<Date>`from_starts_at - interval '21 days'`,
+            from_ends_at: sql<Date>`from_ends_at - interval '21 days'`,
+          })
+          .where('id', '=', change.id)
+          .execute();
+        // The day's template in force on 5 October too, with the same slots,
+        // so that its old place has room for the lesson and only the date
+        // decides the removal.
+        await t.database.migrator.transaction().execute(async (past) => {
+          const current = await past
+            .selectFrom('day_template_versions')
+            .select(['id', 'start_minutes'])
+            .where('day_template_id', '=', s.regular)
+            .executeTakeFirstOrThrow();
+          const earlier = await past
+            .insertInto('day_template_versions')
+            .values({
+              branch_id: s.branch,
+              day_template_id: s.regular,
+              start_minutes: current.start_minutes,
+              valid_from: '2026-09-01',
+              valid_until: '2026-10-07',
+            })
+            .returning('id')
+            .executeTakeFirstOrThrow();
+          const slots = await past
+            .selectFrom('day_template_slots')
+            .select(['position', 'slot_type_id'])
+            .where('version_id', '=', current.id)
+            .execute();
+          await past
+            .insertInto('day_template_slots')
+            .values(slots.map((one) => ({ ...one, version_id: earlier.id, branch_id: s.branch })))
+            .execute();
+          const lengths = await past
+            .selectFrom('slot_type_lengths')
+            .select(['slot_type_id', 'length_minutes'])
+            .where('slot_type_id', 'in', [...new Set(slots.map((one) => one.slot_type_id))])
+            .execute();
+          await past
+            .insertInto('slot_type_lengths')
+            .values(
+              lengths.map((one) => ({
+                ...one,
+                branch_id: s.branch,
+                valid_from: '2026-09-01',
+                valid_until: '2026-10-07',
+              })),
+            )
+            .execute();
+          await past
+            .insertInto('day_template_assignments')
+            .values({
+              branch_id: s.branch,
+              level: 'default',
+              day_template_id: s.regular,
+              valid_from: '2026-09-01',
+              valid_until: '2026-10-07',
+            })
+            .execute();
+        });
+        const on26 = await lessonsOn(s.branch, OCT26);
+        const shown = await preview(s.branch, { action: 'create', record: dayOff(OCT19) });
+        expect(
+          shown.lessons.dayChanges.decide.map((one) => [one.key, one.from.date, one.to.date]),
+        ).toEqual([[change.id, PAST, OCT19]]);
+
+        const saved = okay(
+          await create(s.branch, withDays(dayOff(OCT19), shown, [{ key: change.id, choice }])),
+          201,
+        );
+
+        expect(await lessonById(moving.id)).toBeUndefined();
+        expect(await lessonsOn(s.branch, OCT19)).toEqual([]);
+        expect(await lessonsOn(s.branch, PAST)).toEqual([]);
+        expect(await lessonsOn(s.branch, OCT26)).toEqual(on26);
+        expect(await endsOf(s.branch)).toEqual([{ change_id: change.id, version_id: s.version }]);
+        const [entry] = await t.entries('calendar_entry.create', saved.id);
+        expect((entry?.new_value as { movedBack: string[] }).movedBack).toEqual([change.id]);
+      }
+    });
+
     // Spec review of the code, should-fix 3: the old place found by its pattern
     // entry when the day shifts the times.
     it('a special template that shifts the times over a move out of the date writes no second lesson at the old place', async () => {
@@ -1103,6 +1204,82 @@ describe('calendar entries after publishing', () => {
           ),
         ).toHaveLength(2);
       }
+    });
+
+    // Code review round 1, must-fix 2: the same left-out copy on a publish,
+    // whose new version's pattern entries are not the moved lesson's, so the
+    // old place is found by class, subject and minutes. Another lesson of the
+    // class and subject at another time of that date keeps its cancelled copy.
+    it('a publish over an exam week with "no regular lessons" writes no cancelled copy at the old place of a move out of it to a date before its start', async () => {
+      const s = await scene();
+      const moving = await lessonOf(s, OCT26, s.classId);
+      okay(await moveTo(s, moving.id, OCT19, 2));
+      const [change] = await changesOf(moving.id);
+      if (change === undefined) throw new Error('The move was not recorded.');
+      const record = specialDay(OCT26, OCT26, s.regular, { examWeek: 'no_regular_lessons' });
+      okay(
+        await create(
+          s.branch,
+          withDays(record, await preview(s.branch, { action: 'create', record })),
+        ),
+        201,
+      );
+      // A second version: maths twice on Mondays, in slots 1 and 5; history in slot 3.
+      const next = await draft(s.branch, s.year, s.version);
+      await t.database.migrator
+        .deleteFrom('pattern_blocks')
+        .where('version_id', '=', next)
+        .execute();
+      await t.database.migrator
+        .updateTable('teaching_load_rows')
+        .set({ lessons_per_week: 2 })
+        .where('version_id', '=', next)
+        .where('subject_id', '=', s.maths)
+        .execute();
+      const rows = await t.database.migrator
+        .selectFrom('teaching_load_rows')
+        .select(['id', 'subject_id'])
+        .where('version_id', '=', next)
+        .execute();
+      for (const row of rows) {
+        if (row.subject_id === s.maths) {
+          await placeAt(s.branch, next, row.id, 1, 1);
+          await placeAt(s.branch, next, row.id, 1, 5);
+        } else {
+          await placeAt(s.branch, next, row.id, 1, 3);
+        }
+      }
+      await confirmTemplates(s.branch, next);
+      await load.freeEditLock(next);
+      const checked = await t.get(
+        `/api/timetable/versions/${next}/publish-check?startsOn=${OCT26}`,
+        s.branch,
+      );
+      expect(checked.status, JSON.stringify(checked.body)).toBe(200);
+      const days = (
+        checked.body as { impact: { dayChanges: { key: string; kept: { key: string }[] } } }
+      ).impact.dayChanges;
+      expect(days.kept.map((one) => one.key)).toEqual([change.id]);
+
+      const published = await request(t.kit.server)
+        .post(`/api/timetable/versions/${next}/publish`)
+        .set('Cookie', t.admin)
+        .set(BRANCH_HEADER, s.branch)
+        .set(REQUEST_KEY_HEADER, randomUUID())
+        .send({ startsOn: OCT26, dayChangesKey: days.key });
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+
+      // The moved lesson stays where it went; 26 October holds the slot-5
+      // maths and the history, cancelled "exam week", and no copy at 08:00.
+      expect((await lessonById(moving.id))?.date).toBe(OCT19);
+      const on26 = await lessonsOn(s.branch, OCT26);
+      expect(
+        on26.map((one) => [one.class_id, one.subject_id, one.version_id, one.cancel_cause]),
+      ).toEqual([
+        [s.seniorId, s.history, next, 'exam_week'],
+        [s.classId, s.maths, next, 'exam_week'],
+      ]);
+      expect(on26.map((one) => one.starts_at.getTime())).not.toContain(moving.starts_at.getTime());
     });
 
     it('a day off over a room change and a one-lesson cancel of its date drops and ends them; taken back, the lessons come back from the version and the changes stay ended', async () => {

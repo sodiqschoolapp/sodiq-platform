@@ -13,6 +13,7 @@ The next sessions must know:
 
 - A stretch is a run of consecutive dates written: a weekend between two school days parts two stretches, so a move from a Friday to the next Monday of one day off is the refused case of decision 3.
 - The tests that make two changes in one test advance `t.clock` a second between them: the changes of one moment and person are one item.
+- A test of a past date written through the migrator (code round 1: a move from before today) also writes a day template version, its slots, its assignment and the slot lengths for that date: the kit's start from 11 October, and without them the date is `no_template`, which decides the outcome on its own.
 - The next task is 5.6b-2b.
 
 ## 19 October 2026: task 5.6b-1 Calendar entries after publishing: the lessons of the changed dates
