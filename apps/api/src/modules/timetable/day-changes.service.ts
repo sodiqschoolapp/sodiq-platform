@@ -180,8 +180,9 @@ export class TimetableDayChanges {
     return refusingPublish(
       () =>
         this.transactions.run(access.branchIds, async (transaction) => {
-          await sql`select pg_advisory_xact_lock(${PUBLISH_LOCK})`.execute(transaction);
+          // The lesson of the branch first, so an unknown or foreign id never waits on a publish.
           await this.yearOf(transaction, branchId, id);
+          await sql`select pg_advisory_xact_lock(${PUBLISH_LOCK})`.execute(transaction);
           const once = await this.requestKeys.runOnce(
             transaction,
             { key, scope, accountId: access.accountId, input: { lessonId: id, ...input } },
@@ -346,6 +347,7 @@ export class TimetableDayChanges {
       .selectFrom('lessons')
       .select(sql<string>`lesson_date::text`.as('date'))
       .where('id', '=', id)
+      .where('branch_id', '=', branchId)
       .executeTakeFirstOrThrow();
     const lessons = await storedLessonsOn(transaction, branchId, dated.date, { lessonIds: [id] });
     const [lesson] = await dayLessonsOf(transaction, lessons, moment);

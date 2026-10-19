@@ -535,29 +535,35 @@ describe('one-day changes: cancel and restore', () => {
 
     it('keeps a used key to its account, its branch and its role (request keys)', async () => {
       const s = northScene;
-      const lesson = await lessonOf(s, '2026-12-07');
-      const key = randomUUID();
-      changed(await cancel(s.branch, lesson.id, 'Rain', t.vicePrincipal, key));
-      // A repeat answers the stored answer and changes nothing more.
-      changed(await cancel(s.branch, lesson.id, 'Rain', t.vicePrincipal, key));
-      expect(await t.entries('lesson.cancel', lesson.id)).toHaveLength(1);
-      refusedWith(
-        await cancel(s.branch, lesson.id, 'Rain', t.admin, key),
-        409,
-        'request_key_reused',
-      );
       const other = await scene();
       const foreign = await lessonOf(other, NEXT_MONDAY);
-      refusedWith(
-        await cancel(s.branch, foreign.id, 'Rain', t.vicePrincipal, key),
-        404,
-        'not_found',
-      );
-      refusedWith(
-        await cancel(s.branch, lesson.id, 'Rain', t.principal, key),
-        403,
-        'permission_denied',
-      );
+      const foreignCancelled = await lessonOf(other, '2026-10-26');
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ cancel_cause: 'reason', cancel_reason: 'Rain' })
+        .where('id', '=', foreignCancelled.id)
+        .execute();
+      for (const action of ['cancel', 'restore'] as const) {
+        const lesson = await lessonOf(s, action === 'cancel' ? '2026-12-07' : '2027-01-25');
+        if (action === 'restore') changed(await cancel(s.branch, lesson.id));
+        const send = (id: string, cookie: string, key: string) =>
+          action === 'cancel'
+            ? cancel(s.branch, id, 'Rain', cookie, key)
+            : restore(s.branch, id, cookie, key);
+        const key = randomUUID();
+        changed(await send(lesson.id, t.vicePrincipal, key));
+        // A repeat answers the stored answer and changes nothing more.
+        const after = await everything();
+        changed(await send(lesson.id, t.vicePrincipal, key));
+        expect(await everything()).toEqual(after);
+        refusedWith(await send(lesson.id, t.admin, key), 409, 'request_key_reused');
+        const target = action === 'cancel' ? foreign.id : foreignCancelled.id;
+        refusedWith(await send(target, t.vicePrincipal, key), 404, 'not_found');
+        refusedWith(await send(UNKNOWN, t.vicePrincipal, key), 404, 'not_found');
+        refusedWith(await send(lesson.id, t.principal, key), 403, 'permission_denied');
+        expect(await everything()).toEqual(after);
+        expect(await t.entries(`lesson.${action}`, lesson.id)).toHaveLength(1);
+      }
     });
   });
 
@@ -626,6 +632,8 @@ describe('one-day changes: cancel and restore', () => {
         .execute();
       // A closed room is never offered.
       const closed = await load.classes.room(s.branch, 'closed');
+      // Nor a room of another branch.
+      const elsewhere = await load.classes.room(t.south);
       const before = await everything();
       const blocked = blockedBy(await restore(s.branch, lesson.id));
       expect(blocked.rules).toContain('room_double');
@@ -633,6 +641,7 @@ describe('one-day changes: cancel and restore', () => {
       expect(blocked.rooms).toContain(s.spareRoom);
       expect(blocked.rooms).not.toContain(s.room);
       expect(blocked.rooms).not.toContain(closed);
+      expect(blocked.rooms).not.toContain(elsewhere);
       expect(await everything()).toEqual(before);
       // Once the room is free again, the restore goes ahead.
       await t.database.migrator

@@ -281,10 +281,21 @@ export async function storedDayCheck(
   }
   const followed = tutorLesson && teacherId !== null && teacherId !== rowTeacher;
 
+  // Only a teacher of the branch has claims elsewhere to read (`teacher_claims_elsewhere`
+  // refuses another), as `datedCheck` reads them (permission review should-fix 6).
+  const linked =
+    teacherId === null
+      ? []
+      : await transaction
+          .selectFrom('staff_branches')
+          .select('staff_id')
+          .where('staff_id', '=', teacherId)
+          .where('branch_id', '=', branchId)
+          .execute();
   const { elsewhere } = await claimsElsewhere(transaction, {
     branchId,
     timeZone: branch.time_zone,
-    teacherIds: teacherId === null ? [] : [teacherId],
+    teacherIds: linked.map((one) => one.staff_id),
     from: begins(date),
     until: begins(addDays(date, 1)),
   });
