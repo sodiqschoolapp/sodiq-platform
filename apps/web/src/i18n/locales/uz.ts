@@ -1301,6 +1301,8 @@ export const uz: Texts<'one' | 'other'> = {
       dayColumn: 'Kun',
       lessons: {
         title: 'Eʼlon qilingan dars jadvali',
+        keepRefused: '{{day}}: {{reason}}',
+        refreshing: 'Oldindan koʻrish yangilanmoqda…',
         stored_one: '{{count}} ta saqlangan oʻzgarish bu saqlashni toʻxtatadi',
         stored_other: '{{count}} ta saqlangan oʻzgarish bu saqlashni toʻxtatadi',
         storedKinds: {

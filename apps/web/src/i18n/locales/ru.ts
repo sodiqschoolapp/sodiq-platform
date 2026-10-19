@@ -1355,6 +1355,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       dayColumn: 'День',
       lessons: {
         title: 'Опубликованное расписание',
+        keepRefused: '{{day}}: {{reason}}',
+        refreshing: 'Предпросмотр обновляется…',
         stored_one: '{{count}} сохранённое изменение останавливает это сохранение',
         stored_few: '{{count}} сохранённых изменения останавливают это сохранение',
         stored_many: '{{count}} сохранённых изменений останавливают это сохранение',

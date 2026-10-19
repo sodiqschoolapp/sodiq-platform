@@ -12080,6 +12080,13 @@ export interface operations {
                         /** @enum {string} */
                         choice: "drop" | "cancel" | "keep";
                     }[];
+                    dayKeeps?: {
+                        /** Format: uuid */
+                        classId: string;
+                        /** Format: date */
+                        date: string;
+                        slotPositions: number[];
+                    }[];
                 };
             };
         };
@@ -12233,6 +12240,13 @@ export interface operations {
                         /** @enum {string|null} */
                         examWeek: "regular_lessons" | "no_regular_lessons" | null;
                     };
+                    dayKeeps?: {
+                        /** Format: uuid */
+                        classId: string;
+                        /** Format: date */
+                        date: string;
+                        slotPositions: number[];
+                    }[];
                 } | {
                     /** @enum {string} */
                     action: "edit";
@@ -12254,16 +12268,37 @@ export interface operations {
                         /** @enum {string|null} */
                         examWeek: "regular_lessons" | "no_regular_lessons" | null;
                     };
+                    dayKeeps?: {
+                        /** Format: uuid */
+                        classId: string;
+                        /** Format: date */
+                        date: string;
+                        slotPositions: number[];
+                    }[];
                 } | {
                     /** @enum {string} */
                     action: "archive";
                     /** Format: uuid */
                     id: string;
+                    dayKeeps?: {
+                        /** Format: uuid */
+                        classId: string;
+                        /** Format: date */
+                        date: string;
+                        slotPositions: number[];
+                    }[];
                 } | {
                     /** @enum {string} */
                     action: "restore";
                     /** Format: uuid */
                     id: string;
+                    dayKeeps?: {
+                        /** Format: uuid */
+                        classId: string;
+                        /** Format: date */
+                        date: string;
+                        slotPositions: number[];
+                    }[];
                 };
             };
         };
@@ -12555,6 +12590,34 @@ export interface operations {
                                     }[];
                                 }[];
                             };
+                            shortenedDays: {
+                                /** Format: date */
+                                date: string;
+                                /** Format: uuid */
+                                classId: string;
+                                lessonSlots: number;
+                                lessons: {
+                                    slotPosition: number;
+                                    entryIds: string[];
+                                    subjects: {
+                                        /** Format: uuid */
+                                        unitId: string;
+                                        /** Format: uuid */
+                                        subjectId: string;
+                                    }[];
+                                }[];
+                                kept: number[];
+                                chosen: boolean;
+                                missingPositions: number[];
+                            }[];
+                            keepRefusals: {
+                                /** Format: date */
+                                date: string;
+                                /** Format: uuid */
+                                classId: string;
+                                /** @enum {string} */
+                                code: "day_keep_date_passed" | "day_keep_not_short" | "day_keep_lessons" | "day_keep_over_slots";
+                            }[];
                             names: {
                                 units: {
                                     /** Format: uuid */
@@ -12718,6 +12781,13 @@ export interface operations {
                         /** @enum {string} */
                         choice: "drop" | "cancel" | "keep";
                     }[];
+                    dayKeeps?: {
+                        /** Format: uuid */
+                        classId: string;
+                        /** Format: date */
+                        date: string;
+                        slotPositions: number[];
+                    }[];
                 };
             };
         };
@@ -12866,6 +12936,13 @@ export interface operations {
                         /** @enum {string} */
                         choice: "drop" | "cancel" | "keep";
                     }[];
+                    dayKeeps?: {
+                        /** Format: uuid */
+                        classId: string;
+                        /** Format: date */
+                        date: string;
+                        slotPositions: number[];
+                    }[];
                 };
             };
         };
@@ -13013,6 +13090,13 @@ export interface operations {
                         blockDate?: string;
                         /** @enum {string} */
                         choice: "drop" | "cancel" | "keep";
+                    }[];
+                    dayKeeps?: {
+                        /** Format: uuid */
+                        classId: string;
+                        /** Format: date */
+                        date: string;
+                        slotPositions: number[];
                     }[];
                 };
             };

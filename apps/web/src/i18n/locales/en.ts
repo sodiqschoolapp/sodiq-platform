@@ -1286,6 +1286,8 @@ export const en = {
       dayColumn: 'The day',
       lessons: {
         title: 'The published timetable',
+        keepRefused: '{{day}}: {{reason}}',
+        refreshing: 'Updating the preview…',
         stored_one: '{{count}} stored change stops this save',
         stored_other: '{{count}} stored changes stop this save',
         storedKinds: {

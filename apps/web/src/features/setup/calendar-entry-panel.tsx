@@ -2,7 +2,7 @@ import {
   nextDay,
   type CalendarEntry,
   type CalendarEntryRecord,
-  type DayDecisionsBody,
+  type CalendarDaysBody,
 } from '@sodiq/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -51,7 +51,7 @@ export function CalendarEntryPanel({
   const panel = usePanelEditing();
 
   const edit = useMutation({
-    mutationFn: ({ record, days }: { record: CalendarEntryRecord; days: DayDecisionsBody }) =>
+    mutationFn: ({ record, days }: { record: CalendarEntryRecord; days: CalendarDaysBody }) =>
       answerOf(
         api.PATCH('/api/setup/calendar-entries/{id}', { ...path, body: { ...record, ...days } }),
       ),
