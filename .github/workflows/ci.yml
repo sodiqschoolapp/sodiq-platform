@@ -135,9 +135,19 @@ jobs:
             exit 1
           fi
 
-  e2e:
+  # The browser tests run in three parts at the same time since 20 October 2026:
+  # as one job they took 8 to 9 minutes against a 10-minute limit. Each part has
+  # its own PostgreSQL, its own servers and its own database `sodiq_e2e`; the
+  # spec files are divided between the parts. The job named "e2e" at the end is
+  # the one branch protection, the deploy and the loop read.
+  e2e-parts:
+    name: e2e (${{ matrix.shard }}/3)
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     services:
       postgres:
         image: postgres:18
@@ -172,15 +182,32 @@ jobs:
         # Shorter than the job's limit: a run that hangs fails here, and the next
         # step still keeps its traces.
         timeout-minutes: 10
-        run: pnpm test:e2e
+        # `pnpm test:e2e` with this part's share of the spec files.
+        run: pnpm test:e2e --shard=${{ matrix.shard }}/3
       - name: Keep the Playwright traces of a failure
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: playwright-traces
+          name: playwright-traces-${{ matrix.shard }}
           path: apps/web/test-results
           retention-days: 7
           if-no-files-found: ignore
+
+  e2e:
+    needs: [e2e-parts]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Every part of the browser tests passed
+        env:
+          PARTS: ${{ needs.e2e-parts.result }}
+        run: |
+          echo "e2e-parts: $PARTS"
+          if [ "$PARTS" != "success" ]; then
+            echo "::error::A part of the browser tests did not pass; its job above names the failure."
+            exit 1
+          fi
 
   # Task 0.10: a merge to main reaches the test environment without manual
   # steps (docs/deploy.md). Only after both jobs above passed on main; e2e must

@@ -72,12 +72,12 @@ To stop it on Windows, press Ctrl+C twice. After the first press the servers are
 
 ## Continuous integration
 
-`.github/workflows/ci.yml` runs on every pull request and on every push to `main`. It has two jobs, each with its own PostgreSQL 18:
+`.github/workflows/ci.yml` runs on every pull request and on every push to `main`. Two checks are required, and each is a last job that is green only when all its parts are green; the parts run at the same time:
 
-- `checks`: `pnpm install --frozen-lockfile`, `pnpm lint`, `pnpm typecheck`, `pnpm test`.
-- `e2e`: `pnpm db:migrate`, then `pnpm test:e2e` in Chromium, on the database `sodiq_e2e` that the tests build themselves. When it fails or runs longer than 10 minutes, the Playwright traces are kept for 7 days as the artifact `playwright-traces` of the run.
+- `checks`: `lint-types` (`pnpm install --frozen-lockfile`, `pnpm lint`, `pnpm typecheck`) and `tests` in four parts, each with its own PostgreSQL 18 (the API tests in three shards, web and the packages in the fourth; together `pnpm test`).
+- `e2e`: three parts `e2e (1/3)` to `e2e (3/3)`, each with its own PostgreSQL 18: `pnpm db:migrate`, then `pnpm test:e2e --shard=<part>/3` in Chromium, on the database `sodiq_e2e` that the tests build themselves. When a part fails or runs longer than 10 minutes, its Playwright traces are kept for 7 days as the artifact `playwright-traces-<part>` of the run.
 
-Both jobs create the database users with `db/setup/local.sql` and use the values of `.env.example`, so a failure is reproduced locally with the same commands. The actions are pinned to a commit; to update one, replace the commit and the version in the comment beside it.
+The jobs with a database create the database users with `db/setup/local.sql` and use the values of `.env.example`, so a failure is reproduced locally with the same commands. The actions are pinned to a commit; to update one, replace the commit and the version in the comment beside it.
 
 To do once, by the owner, after the workflow's first run on `main`: protect `main` in GitHub (Settings, Branches) and require the status checks `checks` and `e2e`. From then on a pull request can be merged only when both are green.
 
