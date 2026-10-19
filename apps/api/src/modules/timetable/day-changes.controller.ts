@@ -1,17 +1,21 @@
 import { Controller, Get, HttpCode, Post } from '@nestjs/common';
 import {
+  correctionTeachersAnswerSchema,
   dayAnswerSchema,
   dayChangeAnswerSchema,
   dayQuerySchema,
   lessonCancelBodySchema,
+  lessonCorrectionBodySchema,
   lessonMoveBodySchema,
   lessonParamsSchema,
   lessonRestoreBodySchema,
   lessonRoomBodySchema,
+  type CorrectionTeachersAnswer,
   type DayAnswer,
   type DayChangeAnswer,
   type DayQuery,
   type LessonCancelBody,
+  type LessonCorrectionBody,
   type LessonMoveBody,
   type LessonParams,
   type LessonRestoreBody,
@@ -25,8 +29,9 @@ import { TimetableDayChanges } from './day-changes.service.js';
 
 /**
  * One-day changes of the published timetable (task 5.6a-1, pull request
- * #160; the room change and the move of 5.6a-2, pull request #161): the area `timetable`, no role widened (decision 2). The Super Admin
- * and the Academic Vice Principal cancel, restore, change the room and move (`edit`); the Principal
+ * #160; the room change and the move of 5.6a-2, pull request #161; the
+ * correction of a past lesson of 5.6a-4, pull request #163): the area `timetable`, no role widened (decision 2). The Super Admin
+ * and the Academic Vice Principal cancel, restore, change the room, move and correct (`edit`); the Principal
  * views the day (`view`). Every route works for the branch of the request.
  */
 @Controller('timetable')
@@ -104,5 +109,34 @@ export class DayChangesController {
     @RequestId() requestId: string,
   ): Promise<DayChangeAnswer> {
     return this.dayChanges.move(access, params.id, input, key, requestId);
+  }
+
+  /**
+   * The correction of a past lesson, one at a time, with a reason (task
+   * 5.6a-4), safe to repeat with its key.
+   */
+  @Post('lessons/:id/correction')
+  @HttpCode(200)
+  @Requires('timetable', 'edit')
+  @Returns(dayChangeAnswerSchema)
+  correct(
+    @CurrentAccess() access: Access,
+    @ValidParams(lessonParamsSchema) params: LessonParams,
+    @RequestKey() key: string,
+    @ValidBody(lessonCorrectionBodySchema) input: LessonCorrectionBody,
+    @RequestId() requestId: string,
+  ): Promise<DayChangeAnswer> {
+    return this.dayChanges.correct(access, params.id, input, key, requestId);
+  }
+
+  /** The people who may be recorded as having taught a past lesson (task 5.6a-4, decision 4). */
+  @Get('lessons/:id/correction-teachers')
+  @Requires('timetable', 'edit')
+  @Returns(correctionTeachersAnswerSchema)
+  correctionTeachers(
+    @CurrentAccess() access: Access,
+    @ValidParams(lessonParamsSchema) params: LessonParams,
+  ): Promise<CorrectionTeachersAnswer> {
+    return this.dayChanges.correctionTeachers(access, params.id);
   }
 }

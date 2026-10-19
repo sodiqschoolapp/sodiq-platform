@@ -485,6 +485,11 @@ type FactsRow = Omit<StoredLoadRow, 'room_type' | 'double_lessons'>;
 export interface FactsOptions {
   readonly versionRows?: readonly StoredLoadRow[];
   readonly unplaced?: boolean;
+  /**
+   * Teachers no row names whose facts are read too: the person recorded as
+   * having taught a past lesson (task 5.6a-4).
+   */
+  readonly extraTeacherIds?: readonly string[];
 }
 
 /** Every fact the rows of a version need, read in a few statements. */
@@ -549,11 +554,10 @@ export class LoadFacts {
         transaction,
         rows.map((row) => row.subject_id),
       ),
-      await readTeacherFacts(
-        transaction,
-        context,
-        rows.map((row) => row.teacher_id),
-      ),
+      await readTeacherFacts(transaction, context, [
+        ...rows.map((row) => row.teacher_id),
+        ...(options.extraTeacherIds ?? []),
+      ]),
       await readRoomFacts(
         transaction,
         context,

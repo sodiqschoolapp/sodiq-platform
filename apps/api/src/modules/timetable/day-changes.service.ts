@@ -5,6 +5,7 @@ import {
   dayChangeAnswerSchema,
   dayLessonSchema,
   isMarkedChanged,
+  lessonStateOf,
   listName,
   schoolDateOf,
   weekdaySchema,
@@ -14,14 +15,22 @@ import {
   type DayQuery,
   type ErrorCode,
   type ErrorDetail,
+  type CorrectionTeachersAnswer,
   type LessonCancelBody,
+  type LessonCorrectionBody,
   type LessonMoveBody,
   type LessonRestoreBody,
   type LessonRoomBody,
   type DaySlot,
   type RuleResultAnswer,
 } from '@sodiq/shared';
-import { dayOn, weekdayOf, type RuleResult } from '@sodiq/timetable-rules';
+import {
+  RELAXED_WHEN_NO_TEACHER_FREE,
+  dayOn,
+  weekdayOf,
+  type RuleCode,
+  type RuleResult,
+} from '@sodiq/timetable-rules';
 import { sql } from 'kysely';
 import { RequestKeys } from '../../database/request-keys.js';
 import { Transactions, transactionMoment, type Transaction } from '../../database/transactions.js';
@@ -34,7 +43,7 @@ import { Notifications } from '../notifications/notifications.service.js';
 import { loadCalendarSettings } from '../setup/calendar-state.js';
 import { dayOf, loadStore } from '../setup/day-template-state.js';
 import { notFound } from '../setup/setup-refusals.js';
-import { dayBeginnings } from './dated-check.js';
+import { OUT_STATUSES, dayBeginnings } from './dated-check.js';
 import { TimetablePattern } from './pattern.service.js';
 import {
   PUBLISH_LOCK,
@@ -86,12 +95,37 @@ export const MOVE_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   lesson_block_quarter_fixed: 'move_other_quarter',
 };
 
+/**
+ * The same for the correction of a past lesson (task 5.6a-4): a claim taken
+ * meanwhile is the refusal its check would have given.
+ */
+export const CORRECTION_REFUSALS: Readonly<Record<string, ErrorCode>> = {
+  ...PUBLISH_REFUSALS,
+  time_claims_teacher_excl: 'correction_blocked',
+  time_claims_room_excl: 'correction_blocked',
+  time_claims_class_excl: 'correction_blocked',
+  room_shared_full: 'correction_blocked',
+  room_shared_capacity: 'correction_blocked',
+  lesson_block_student_twice: 'correction_blocked',
+};
+
+/**
+ * The warnings a correction sends back for a tick (task 5.6a-4, decisions 2
+ * and 13): the rules a substitute's one-day change relaxes, and the language
+ * of a substitute (edge/timetable, After publishing, "No teacher of the
+ * subject is free": "become warnings that need a tick").
+ */
+const TICKED: readonly RuleCode[] = [...RELAXED_WHEN_NO_TEACHER_FREE, 'substitute_language'];
+
 /** A blocked result of the stored-day check as a detail of `restore_blocked` or `day_change_blocked`. */
-function blockedDetail(result: RuleResult): ErrorDetail {
+function blockedDetail(
+  result: RuleResult,
+  message = 'A blocked rule of the changed lesson on its date.',
+): ErrorDetail {
   return {
     path: `rules.${result.rule}`,
     code: result.rule,
-    message: 'A blocked rule of the changed lesson on its date.',
+    message,
     rule: { weekday: weekdaySchema.parse(weekdayOf(result.day)), lessonIds: [...result.lessonIds] },
     day: result.day,
   };
@@ -263,6 +297,92 @@ export class TimetableDayChanges {
     );
   }
 
+  /**
+   * The correction of a past lesson, one at a time, with a reason (task
+   * 5.6a-4, pull request #163), safe to repeat with its key.
+   */
+  correct(
+    access: Access,
+    id: string,
+    input: LessonCorrectionBody,
+    key: string,
+    requestId: string,
+  ): Promise<DayChangeAnswer> {
+    const fields: Record<string, string> = { kind: input.kind, reason: input.reason };
+    if (input.kind === 'teacher') fields.teacherId = input.teacherId;
+    if ((input.kind === 'room' || input.kind === 'restore') && input.roomId !== undefined) {
+      fields.roomId = input.roomId;
+    }
+    if (input.kind !== 'cancel' && input.confirm === true) fields.confirm = 'true';
+    const roomId = input.kind === 'room' || input.kind === 'restore' ? input.roomId : undefined;
+    return this.keyed(
+      access,
+      id,
+      key,
+      'timetable.lesson_correct',
+      fields,
+      (t) => this.correctLocked(t, access, id, input, requestId),
+      {
+        rooms: roomId === undefined ? [] : [roomId],
+        teachers: input.kind === 'teacher' ? [input.teacherId] : [],
+        refusals: CORRECTION_REFUSALS,
+      },
+    );
+  }
+
+  /**
+   * The people who may be recorded as having taught a past lesson (task
+   * 5.6a-4, decision 4): the branch's staff, never a vacancy, not inactive,
+   * left or closed on the lesson's date; a person who left since is one.
+   */
+  correctionTeachers(access: Access, id: string): Promise<CorrectionTeachersAnswer> {
+    const branchId = branchOf(access);
+    return this.transactions.run(access.branchIds, async (transaction) => {
+      const lesson = await transaction
+        .selectFrom('lessons')
+        .select(sql<string>`lesson_date::text`.as('date'))
+        .where('id', '=', id)
+        .where('branch_id', '=', branchId)
+        .executeTakeFirst();
+      if (lesson === undefined) {
+        throw notFound();
+      }
+      const people = await transaction
+        .selectFrom('staff')
+        .innerJoin('staff_branches', 'staff_branches.staff_id', 'staff.id')
+        .select(['staff.id', 'staff.first_name', 'staff.last_name'])
+        .where('staff_branches.branch_id', '=', branchId)
+        .where('staff.kind', '=', 'person')
+        .where((eb) =>
+          eb.not(
+            eb.exists(
+              eb
+                .selectFrom('staff_statuses')
+                .select('staff_statuses.staff_id')
+                .whereRef('staff_statuses.staff_id', '=', 'staff.id')
+                .where('staff_statuses.status', 'in', OUT_STATUSES)
+                .where('staff_statuses.valid_from', '<=', lesson.date)
+                .where((eb) =>
+                  eb.or([
+                    eb('staff_statuses.valid_until', 'is', null),
+                    eb('staff_statuses.valid_until', '>', lesson.date),
+                  ]),
+                ),
+            ),
+          ),
+        )
+        .execute();
+      return {
+        teachers: people
+          .map((one) => ({
+            id: one.id,
+            name: listName({ firstName: one.first_name ?? '', lastName: one.last_name ?? '' }),
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id)),
+      };
+    });
+  }
+
   /** The lesson's branch before the request key (`.claude/rules/api.md`), then the work once. */
   private keyed(
     access: Access,
@@ -273,6 +393,7 @@ export class TimetableDayChanges {
     work: (transaction: Transaction) => Promise<DayChangeAnswer>,
     options: {
       readonly rooms?: readonly string[];
+      readonly teachers?: readonly string[];
       readonly refusals?: Readonly<Record<string, ErrorCode>>;
     } = {},
   ): Promise<DayChangeAnswer> {
@@ -291,6 +412,17 @@ export class TimetableDayChanges {
               .where('branch_id', '=', branchId)
               .executeTakeFirst();
             if (room === undefined) {
+              throw notFound();
+            }
+          }
+          for (const teacherId of options.teachers ?? []) {
+            const teacher = await transaction
+              .selectFrom('staff_branches')
+              .select('staff_id')
+              .where('staff_id', '=', teacherId)
+              .where('branch_id', '=', branchId)
+              .executeTakeFirst();
+            if (teacher === undefined) {
               throw notFound();
             }
           }
@@ -326,13 +458,16 @@ export class TimetableDayChanges {
    * halves of its double pair (`pair`, by start, the lesson among them) and
    * the side before for the notices; 404 when a publish removed it meanwhile,
    * and `lesson_started` when it, or the earlier half of its pair, has
-   * started (decision 3).
+   * started (decision 3). A correction (`past`, task 5.6a-4) takes the other
+   * side of the same boundary: `lesson_not_started` unless it, or the
+   * earlier half of its pair, has started (review correction 2).
    */
   private async lockedLesson(
     transaction: Transaction,
     branchId: string,
     id: string,
     toDate?: string,
+    past = false,
   ) {
     const yearId = await this.yearOf(transaction, branchId, id);
     await lockPublishChain(transaction, branchId, yearId);
@@ -357,8 +492,12 @@ export class TimetableDayChanges {
     }
     const pair = pairOf(lessons, lesson);
     const moment = await transactionMoment(transaction);
-    if (pair.some((one) => one.startsAt.getTime() <= moment.getTime())) {
+    const started = pair.some((one) => one.startsAt.getTime() <= moment.getTime());
+    if (started && !past) {
       throw new ApiException('lesson_started', 409);
+    }
+    if (!started && past) {
+      throw new ApiException('lesson_not_started', 409);
     }
     return { lesson, pair, week, moment, lessons };
   }
@@ -743,6 +882,160 @@ export class TimetableDayChanges {
     return this.answerOf(transaction, branchId, id, moment, checked.warnings);
   }
 
+  /**
+   * The correction of a past lesson (task 5.6a-4): the one lesson named,
+   * never its double's other half (decision 1), in a year not closed
+   * (decision 9). A cancel takes no check; a restore, a teacher recorded and
+   * a room run the stored-day check on the lesson's date with its stored
+   * teacher kept (decision 12) or the person recorded, relaxed for a person
+   * (decision 2 with review correction 1), and send the relaxed warnings back
+   * for a tick (decision 13).
+   */
+  private async correctLocked(
+    transaction: Transaction,
+    access: Access,
+    id: string,
+    input: LessonCorrectionBody,
+    requestId: string,
+  ): Promise<DayChangeAnswer> {
+    const branchId = branchOf(access);
+    const { lesson, week, moment } = await this.lockedLesson(
+      transaction,
+      branchId,
+      id,
+      undefined,
+      true,
+    );
+    const year = await transaction
+      .selectFrom('lesson_blocks')
+      .innerJoin('academic_years', 'academic_years.id', 'lesson_blocks.academic_year_id')
+      .select('academic_years.status')
+      .where('lesson_blocks.id', '=', lesson.blockId)
+      .executeTakeFirstOrThrow();
+    if (year.status === 'closed') {
+      throw new ApiException('timetable_year_closed', 409);
+    }
+
+    let teacherId = lesson.teacherId;
+    let roomId = lesson.roomId;
+    let cancelCause = lesson.cancelCause;
+    let warnings: readonly RuleResult[] = [];
+    if (input.kind === 'cancel') {
+      if (lesson.cancelCause !== null) {
+        throw new ApiException('lesson_cancelled', 409);
+      }
+      cancelCause = 'reason';
+    } else {
+      if (input.kind === 'restore' && lesson.cancelCause !== 'reason') {
+        throw new ApiException('lesson_not_restorable', 409);
+      }
+      if (input.kind !== 'restore' && lesson.cancelCause !== null) {
+        throw new ApiException('lesson_cancelled', 409);
+      }
+      if (input.kind === 'teacher' && input.teacherId === lesson.teacherId) {
+        throw new ApiException('teacher_unchanged', 409);
+      }
+      const newRoom = input.kind === 'teacher' ? undefined : input.roomId;
+      if (newRoom !== undefined && newRoom === lesson.roomId) {
+        throw new ApiException('room_unchanged', 409);
+      }
+      const checkedTeacher = input.kind === 'teacher' ? input.teacherId : lesson.teacherId;
+      // The staff row of a teacher no longer linked to the branch is hidden by
+      // its row filter (0024), and the check cannot read their facts
+      // (permission review must-fix 2): refused by name, never a fault.
+      const found =
+        checkedTeacher === null
+          ? undefined
+          : await transaction
+              .selectFrom('staff')
+              .select('kind')
+              .where('id', '=', checkedTeacher)
+              .executeTakeFirst();
+      if (checkedTeacher !== null && found === undefined) {
+        throw new ApiException('teacher_left_branch', 409);
+      }
+      const kind = found?.kind;
+      // A vacancy or nobody on a restore or a room is checked as it stands, so
+      // the lesson stays unresolved; a vacancy recorded is `substitute_vacancy`.
+      const relaxed = input.kind === 'teacher' || kind === 'person';
+      const checked = await storedDayCheck(
+        transaction,
+        { timetable: this.timetable, pattern: this.pattern },
+        {
+          accountId: access.accountId,
+          lessons: [lesson],
+          keepTeacher: true,
+          relaxed,
+          ...(input.kind === 'teacher' ? { teacherId: input.teacherId } : {}),
+          ...(newRoom === undefined ? {} : { roomId: newRoom }),
+        },
+      );
+      // Its own room is no other room to offer.
+      const own = new Set([lesson.roomId]);
+      await refuseBlocked(transaction, branchId, 'correction_blocked', {
+        ...checked,
+        freeRooms: checked.freeRooms.filter((one) => !own.has(one)),
+      });
+      const ticked = checked.warnings.filter((one) => TICKED.includes(one.rule));
+      if (ticked.length > 0 && input.confirm !== true) {
+        throw new ApiException(
+          'correction_needs_confirm',
+          409,
+          undefined,
+          ticked.map((one) => blockedDetail(one, 'A warning of the correction that needs a tick.')),
+        );
+      }
+      warnings = checked.warnings;
+      teacherId = checked.teacherIds.get(id) ?? null;
+      roomId = newRoom ?? lesson.roomId;
+      if (input.kind === 'restore') cancelCause = null;
+    }
+
+    await transaction
+      .updateTable('lessons')
+      .set({
+        teacher_id: teacherId,
+        room_id: roomId,
+        cancel_cause: cancelCause,
+        cancel_reason:
+          cancelCause === 'reason'
+            ? input.kind === 'cancel'
+              ? input.reason
+              : lesson.cancelReason
+            : null,
+      })
+      .where('id', '=', id)
+      .execute();
+    // The commit checks of 0058 now, so that a race meets the refusals here.
+    await sql`set constraints all immediate`.execute(transaction);
+    const notices = await sendWeekChanges(transaction, this.notifications, week, {
+      kind: 'timetable.day_changed',
+    });
+    await this.audit.record(transaction, {
+      branchId,
+      actorId: access.accountId,
+      assignmentId: access.assignmentId,
+      action: 'lesson.correct',
+      record: { type: 'lesson', id },
+      oldValue: {
+        ...valuesOf(lesson),
+        cancelCause: lesson.cancelCause,
+        cancelReason: lesson.cancelReason,
+      },
+      newValue: {
+        ...valuesOf({ ...lesson, teacherId, roomId }),
+        kind: input.kind,
+        cancelCause,
+        reason: input.reason,
+        ...(input.kind !== 'cancel' && input.confirm === true ? { confirmed: true } : {}),
+        warnings: warnings.map((one) => one.rule),
+        notices: { ...notices },
+      },
+      requestId,
+    });
+    return this.answerOf(transaction, branchId, id, moment, warnings);
+  }
+
   private async answerOf(
     transaction: Transaction,
     branchId: string,
@@ -773,7 +1066,7 @@ export class TimetableDayChanges {
 async function refuseBlocked(
   transaction: Transaction,
   branchId: string,
-  code: 'restore_blocked' | 'day_change_blocked',
+  code: 'restore_blocked' | 'day_change_blocked' | 'correction_blocked',
   checked: StoredDayResult,
 ): Promise<void> {
   if (checked.blocked.length === 0) return;
@@ -788,7 +1081,7 @@ async function refuseBlocked(
           .orderBy('name')
           .execute();
   throw new ApiException(code, 409, undefined, [
-    ...checked.blocked.map(blockedDetail),
+    ...checked.blocked.map((one) => blockedDetail(one)),
     ...rooms.map((room) => ({
       path: 'rooms',
       code: 'room_free',
@@ -948,7 +1241,7 @@ export async function dayLessonsOf(
   const subjectIds = ids((one) => one.subjectId);
   const teacherIds = ids((one) => one.teacherId);
   const roomIds = ids((one) => one.roomId);
-  const [classes, groups, subjects, teachers, rooms, marks, branch] = await Promise.all([
+  const [classes, groups, subjects, teachers, rooms, marks, branch, closed] = await Promise.all([
     classIds.length === 0
       ? Promise.resolve([])
       : transaction
@@ -992,7 +1285,20 @@ export async function dayLessonsOf(
       .select('time_zone')
       .where('id', '=', lessons[0]?.branchId ?? '')
       .executeTakeFirstOrThrow(),
+    // The blocks of a closed year: their lessons are not corrected (task 5.6a-4, decision 9).
+    transaction
+      .selectFrom('lesson_blocks')
+      .innerJoin('academic_years', 'academic_years.id', 'lesson_blocks.academic_year_id')
+      .select('lesson_blocks.id')
+      .where(
+        'lesson_blocks.id',
+        'in',
+        lessons.map((one) => one.blockId),
+      )
+      .where('academic_years.status', '=', 'closed')
+      .execute(),
   ]);
+  const closedBlocks = new Set(closed.map((one) => one.id));
   const classOf = new Map(classes.map((one) => [one.id, classDisplayName(one.grade, one.name)]));
   const groupOf = new Map(groups.map((one) => [one.id, one.name]));
   const subjectOf = new Map(
@@ -1011,6 +1317,19 @@ export async function dayLessonsOf(
       },
     ]),
   );
+  // A teacher the branch filter hides (they work in another branch now) is
+  // still the person recorded: only the kind is read, never the name, so the
+  // lesson reads held (edge/00-definitions, Held lesson; review of #163).
+  for (const id of teacherIds.filter((one) => !teacherOf.has(one))) {
+    const kind = (
+      await sql<{ kind: string | null }>`select staff_record_kind(${id}::uuid) as kind`.execute(
+        transaction,
+      )
+    ).rows[0]?.kind;
+    // A vacancy has one branch (0025), so a hidden record is a person; a
+    // record with no row any more is a deleted vacancy, as in load-facts.
+    teacherOf.set(id, { id, kind: kind === 'person' ? 'person' : 'vacancy', name: '' });
+  }
   const roomOf = new Map(rooms.map((one) => [one.id, one.name]));
   const markOf = new Map(marks.map((one) => [one.lesson_id, one.changed_at]));
   const dates = lessons.map((one) => one.date).sort();
@@ -1029,6 +1348,7 @@ export async function dayLessonsOf(
     );
     const subject = subjectOf.get(one.subjectId);
     if (subject === undefined) throw new Error('A lesson names a subject that was not read.');
+    const teacher = one.teacherId === null ? null : (teacherOf.get(one.teacherId) ?? null);
     return {
       id: one.id,
       date: one.date,
@@ -1039,13 +1359,22 @@ export async function dayLessonsOf(
           ? { kind: 'class', id: one.classId, name: classOf.get(one.classId) ?? '' }
           : { kind: 'group', id: one.groupId ?? '', name: groupOf.get(one.groupId ?? '') ?? '' },
       subject: { id: one.subjectId, names: subject },
-      teacher: one.teacherId === null ? null : (teacherOf.get(one.teacherId) ?? null),
+      teacher,
       room: one.roomId === null ? null : { id: one.roomId, name: roomOf.get(one.roomId) ?? '' },
       cancelCause: dayLessonSchema.shape.cancelCause.parse(one.cancelCause),
       cancelReason: one.cancelReason,
       changed: isMarkedChanged(markOf.get(one.id) ?? null, moment),
       canCancel: one.cancelCause === null && !started,
       canRestore: one.cancelCause === 'reason' && !started,
+      state: lessonStateOf(
+        {
+          startsAt: one.startsAt,
+          cancelled: one.cancelCause !== null,
+          teacher: teacher?.kind ?? null,
+        },
+        moment,
+      ),
+      canCorrect: started && !closedBlocks.has(one.blockId),
     };
   });
 }

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { schoolDateSchema } from './academic-year.js';
-import { ruleResultSchema } from './timetable.js';
+import { lessonStateSchema, ruleResultSchema } from './timetable.js';
 
 /**
  * One-day changes of a published timetable (task 5.6a-1, pull request #160;
@@ -111,6 +111,14 @@ export const dayLessonSchema = z.object({
   canCancel: z.boolean(),
   /** A one-day cancel (`reason`) starting after the moment of the request (decisions 3 and 5). */
   canRestore: z.boolean(),
+  /** Held, unresolved, cancelled and so on, at the moment of the request (`lessonStateOf`, task 5.6a-4). */
+  state: lessonStateSchema,
+  /**
+   * Started, or the earlier half of its double started, in a year not closed:
+   * the lesson is corrected, not changed for the day (task 5.6a-4, decision 5
+   * with review correction 2).
+   */
+  canCorrect: z.boolean(),
 });
 
 export type DayLesson = z.infer<typeof dayLessonSchema>;
@@ -150,3 +158,47 @@ export const dayChangeAnswerSchema = z.object({
 });
 
 export type DayChangeAnswer = z.infer<typeof dayChangeAnswerSchema>;
+
+/**
+ * The correction of a past lesson, one lesson at a time, with a reason (task
+ * 5.6a-4, pull request #163; `06`, How surprises are prevented: "A past
+ * lesson can only be corrected one at a time by the Academic Vice Principal,
+ * with a reason"; edge/timetable, After publishing, "The lesson time passes
+ * and nobody was assigned": "until it is cancelled with a reason or the
+ * person who taught it is recorded"). `confirm` is the tick of the warnings
+ * a correction answered with `correction_needs_confirm` (decisions 2 and 13).
+ */
+export const lessonCorrectionBodySchema = z.discriminatedUnion('kind', [
+  z.strictObject({ kind: z.literal('cancel'), reason }),
+  z.strictObject({
+    kind: z.literal('restore'),
+    roomId: z.uuid().optional(),
+    reason,
+    confirm: z.boolean().optional(),
+  }),
+  z.strictObject({
+    kind: z.literal('teacher'),
+    teacherId: z.uuid(),
+    reason,
+    confirm: z.boolean().optional(),
+  }),
+  z.strictObject({
+    kind: z.literal('room'),
+    roomId: z.uuid(),
+    reason,
+    confirm: z.boolean().optional(),
+  }),
+]);
+
+export type LessonCorrectionBody = z.infer<typeof lessonCorrectionBodySchema>;
+
+/**
+ * The people who may be recorded as having taught a past lesson: the
+ * branch's staff active on the lesson's date, people who left since
+ * included, never a vacancy (task 5.6a-4, decision 4).
+ */
+export const correctionTeachersAnswerSchema = z.object({
+  teachers: z.array(z.object({ id: z.uuid(), name: z.string() })),
+});
+
+export type CorrectionTeachersAnswer = z.infer<typeof correctionTeachersAnswerSchema>;

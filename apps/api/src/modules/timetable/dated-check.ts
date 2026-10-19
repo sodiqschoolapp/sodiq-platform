@@ -85,7 +85,7 @@ interface MemberRow {
   readonly valid_until: string;
 }
 
-const OUT_STATUSES = ['inactive', 'left', 'closed'];
+export const OUT_STATUSES = ['inactive', 'left', 'closed'];
 
 /**
  * The check of every date of a publish (task 5.5a-2a, pull request #140):
