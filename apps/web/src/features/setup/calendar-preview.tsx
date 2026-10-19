@@ -34,7 +34,7 @@ import {
 import { dayDecisionsBodyOf, PublishDayChanges } from '@/features/timetable/publish-day-changes';
 import { calendarPreviewOf } from './calendar-api';
 import { CalendarLessonsPreview, refusesSave } from './calendar-lessons-preview';
-import { CalendarShortened, dayKeepsOf, ticksRefused } from './calendar-shortened';
+import { CalendarShortened, dayKeepsOf } from './calendar-shortened';
 import { schoolDateText, weekdayName } from '@/lib/dates';
 
 /** "14 October" or "14 – 16 October 2026". */
@@ -240,8 +240,7 @@ export function useCalendarPreview(): {
                 days === null ||
                 refreshing ||
                 refreshError !== null ||
-                question.preview.lessons.keepRefusals.length > 0 ||
-                ticksRefused(question.preview.lessons, ticks)
+                question.preview.lessons.keepRefusals.length > 0
               }
               onClick={() => {
                 if (days !== null) answer(days);

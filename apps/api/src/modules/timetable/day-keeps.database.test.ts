@@ -216,6 +216,19 @@ describe('the lessons kept on a shortened day in the database', () => {
     ).toBe('pattern_version_draft');
   });
 
+  // Spec review of the code, must-fix 2: the published branch of 0089 still
+  // meets the closed-year check.
+  it("refuses a published version's choice after today added or removed in a closed year", async () => {
+    const { branch, year, version, classId } = await draft();
+    const kept = await keep(branch, version, classId);
+    await kit.setVersion(version, 'published');
+    await kit.classes.setYear(year, 'closed');
+    expect((await refusal(keep(branch, version, classId, 3))).constraint).toBe(
+      'pattern_year_closed',
+    );
+    expect((await refusal(unkeep(branch, kept.id))).constraint).toBe('pattern_year_closed');
+  });
+
   it('refuses a choice added or removed in a closed year', async () => {
     const { branch, year, version, classId } = await draft();
     const kept = await keep(branch, version, classId);

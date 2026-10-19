@@ -1946,6 +1946,60 @@ describe('calendar entries after publishing', () => {
       });
     });
 
+    // Spec review of the code, must-fix 4 (review correction 1): an empty
+    // list removes a choice whose day is no longer shortened.
+    it('an empty list removes a stored choice whose day the entry no longer shortens', async () => {
+      const k = await keepScene();
+      const record = specialDay(OCT19, OCT19, k.two);
+      const saved = okay(await create(k.branch, { ...record, dayKeeps: [keep(k, [1, 5])] }), 201);
+      const regular = specialDay(OCT19, OCT19, k.regular);
+      okay(await t.patch(`/api/setup/calendar-entries/${saved.id}`, k.branch, regular));
+      expect(await keepsOf(k.branch)).toHaveLength(2);
+
+      okay(
+        await t.patch(`/api/setup/calendar-entries/${saved.id}`, k.branch, {
+          ...regular,
+          dayKeeps: [keep(k, [])],
+        }),
+      );
+      expect(await keepsOf(k.branch)).toEqual([]);
+      expect(Object.values(await dayOf(k, OCT19)).map(([cause]) => cause)).toEqual([
+        null,
+        null,
+        null,
+      ]);
+    });
+
+    // Spec review of the code, should-fix 3: on an edit of a started entry,
+    // whose own dates give the rewrite nothing, a choice for today is refused
+    // for its date, not as a date not written.
+    it('refuses a choice for today on an edit of a started entry, with nothing written', async () => {
+      const k = await keepScene();
+      const entry = await t.database.migrator
+        .insertInto('calendar_entries')
+        .values({
+          branch_id: k.branch,
+          kind: 'day_off',
+          name: 'Navruz',
+          first_date: '2026-10-09',
+          last_date: MONDAY,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      const rows = await storedRowsOf(k.branch);
+      const before = await t.auditCount();
+      refusedWith(
+        await t.patch(`/api/setup/calendar-entries/${entry.id}`, k.branch, {
+          ...dayOff('2026-10-09', MONDAY),
+          dayKeeps: [keep(k, [1], '2026-10-10')],
+        }),
+        409,
+        'day_keep_date_passed',
+      );
+      expect(await storedRowsOf(k.branch)).toEqual(rows);
+      expect(await t.auditCount()).toBe(before);
+    });
+
     it('refuses a choice the day cannot take, each by its own check, with nothing written; the preview lists it and leaves it out', async () => {
       const k = await keepScene();
       const record = specialDay(OCT19, OCT19, k.two);
@@ -2055,6 +2109,39 @@ describe('calendar entries after publishing', () => {
       expect(await dayOf(k, NOVEMBER)).toMatchObject({
         maths: ['not_in_template', expect.any(String)],
       });
+    });
+
+    // Spec review of the code, must-fix 1 (decision 5): a later version
+    // published over the date follows its own choice, not the stored one of
+    // the version it replaces there.
+    it("a later publish over the date follows its own version's choice", async () => {
+      const k = await keepScene();
+      okay(
+        await create(k.branch, {
+          ...specialDay(OCT19, OCT19, k.two),
+          dayKeeps: [keep(k, [1, 5])],
+        }),
+        201,
+      );
+      const next = await copyPlaced(k);
+      // The draft's own choice: none (the copy carried it; the draft drops it).
+      await t.database.migrator
+        .deleteFrom('timetable_day_keeps')
+        .where('version_id', '=', next)
+        .execute();
+      const published = await publish(k.branch, next, OCT19);
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+
+      expect(await dayOf(k, OCT19)).toEqual({
+        maths: [null, firstSlot(OCT19)],
+        art: [null, await secondSlot(k, OCT19)],
+        music: ['not_in_template', expect.any(String)],
+      });
+      // The earlier version's choice stays its own.
+      expect((await keepsOf(k.branch)).map((one) => [one.version_id, one.slot_position])).toEqual([
+        [k.version, 1],
+        [k.version, 5],
+      ]);
     });
 
     it('a draft copied from the published version after the save carries the choice', async () => {
@@ -2476,6 +2563,27 @@ describe('calendar entries after publishing', () => {
             '/api/setup/calendar-entries/preview',
             s.branch,
             { action: 'create', record: dayOff('2026-11-16') },
+            cookie,
+          ),
+        // Task 5.6b-2b (permission review should-fix 2): a body with a choice.
+        () =>
+          post(
+            '/api/setup/calendar-entries/preview',
+            s.branch,
+            {
+              action: 'create',
+              record: specialDay(OCT19, OCT19, s.short),
+              dayKeeps: [{ classId: s.seniorId, date: OCT19, slotPositions: [3] }],
+            },
+            cookie,
+          ),
+        () =>
+          create(
+            s.branch,
+            {
+              ...specialDay('2026-11-16', '2026-11-16', s.short),
+              dayKeeps: [{ classId: s.seniorId, date: '2026-11-16', slotPositions: [3] }],
+            },
             cookie,
           ),
       ]) {

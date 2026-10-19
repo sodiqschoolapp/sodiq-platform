@@ -23,17 +23,6 @@ export function dayKeepsOf(
     .sort((a, b) => keepKeyOf(a).localeCompare(keepKeyOf(b)));
 }
 
-/** Whether the ticks cannot be saved: a day with more ticked than its lesson slots. */
-export function ticksRefused(
-  lessons: CalendarLessons,
-  ticks: Readonly<Record<string, readonly number[]>>,
-): boolean {
-  return lessons.shortenedDays.some((day) => {
-    const ticked = ticks[keepKeyOf(day)];
-    return ticked !== undefined && ticked.length > day.lessonSlots;
-  });
-}
-
 /**
  * The shortened days of a calendar save over published dates (task 5.6b-2b,
  * pull request #171; `edge/time-dates-calendar`, "A shortened day ... listed
@@ -41,7 +30,7 @@ export function ticksRefused(
  * lessons are kept"): each class's lessons of the day with those kept ticked;
  * a change of the ticks is sent with the preview again and then with the
  * save. "Back to the default" sends an empty list, which removes a stored
- * choice. The server decides what fits; a tick it cannot take is listed.
+ * choice, listed as removed. The server decides what fits; a tick it cannot take is listed.
  */
 export function CalendarShortened({
   lessons,
@@ -57,7 +46,12 @@ export function CalendarShortened({
 }): React.JSX.Element | null {
   const { t, i18n } = useTranslation();
   const language = i18n.language;
-  if (lessons.shortenedDays.length === 0 && lessons.keepRefusals.length === 0) return null;
+  if (
+    lessons.shortenedDays.length === 0 &&
+    lessons.keepRefusals.length === 0 &&
+    dayKeepsOf(ticks).length === 0
+  )
+    return null;
   const { names } = lessons;
 
   const unitName = (id: string): string => {
@@ -162,6 +156,17 @@ export function CalendarShortened({
       </h3>
       {lessons.shortenedDays.length > 0 && (
         <ul className="grid gap-4">{lessons.shortenedDays.map(dayItem)}</ul>
+      )}
+      {dayKeepsOf(ticks).some((one) => one.slotPositions.length === 0) && (
+        <ul className="grid gap-1 text-sm" data-keeps-removed="true">
+          {dayKeepsOf(ticks)
+            .filter((one) => one.slotPositions.length === 0)
+            .map((one) => (
+              <li key={keepKeyOf(one)}>
+                {t('setup.calendar.lessons.keepRemoved', { day: dayName(one) })}
+              </li>
+            ))}
+        </ul>
       )}
       {lessons.keepRefusals.length > 0 && (
         <ul className="grid gap-1 text-sm" data-keep-refusals="true">

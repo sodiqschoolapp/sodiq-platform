@@ -649,6 +649,7 @@ describe('the calendar page', () => {
       id: HOLIDAY.id,
       dayKeeps: [{ date: '2026-10-19', classId: OXFORD, slotPositions: [1, 5] }],
     });
+    expect(dialog.querySelector('[data-keeps-removed]')).toBeNull();
     fireEvent.click(save);
     await waitFor(() => {
       expect(
@@ -659,6 +660,60 @@ describe('the calendar page', () => {
         dayChangesKey: 'e'.repeat(64),
         dayDecisions: [],
         dayKeeps: [{ date: '2026-10-19', classId: OXFORD, slotPositions: [1, 5] }],
+      });
+    });
+  });
+
+  it('lists a stored choice that "Back to the default" removes and sends an empty list', async () => {
+    const OXFORD = uid(45);
+    const lessons = {
+      ...NO_LESSONS,
+      names: {
+        units: [{ id: OXFORD, kind: 'class' as const, name: 'Oxford', grades: [7] }],
+        subjects: [],
+        teachers: [],
+        rooms: [],
+      },
+    };
+    const day = (chosen: boolean) => ({
+      date: '2026-10-19',
+      classId: OXFORD,
+      lessonSlots: 1,
+      lessons: [1, 3].map((slotPosition) => ({ slotPosition, entryIds: [], subjects: [] })),
+      kept: chosen ? [3] : [1],
+      chosen,
+      missingPositions: [],
+    });
+    const { calls } = await openList('academic_vice_principal', {
+      'POST /api/setup/calendar-entries/preview': (body) => {
+        const reset = (body as { dayKeeps?: unknown[] }).dayKeeps !== undefined;
+        return json({ ...PREVIEW, lessons: { ...lessons, shortenedDays: [day(!reset)] } });
+      },
+      [`POST /api/setup/calendar-entries/${HOLIDAY.id}/archive`]: () =>
+        json({ ...HOLIDAY, archivedAt: '2026-10-10T10:00:00.000Z' }),
+    });
+    const panel = await openEntry('Teachers day');
+    fireEvent.click(within(panel).getByRole('button', { name: en.setup.calendar.archive }));
+    const dialog = await screen.findByRole('dialog', { name: en.setup.calendar.previewTitle });
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: en.timetable.publish.shortened.reset }),
+    );
+    await waitFor(() => {
+      expect(dialog.querySelector('[data-chosen]')).toBeNull();
+    });
+    expect(dialog.querySelector('[data-keeps-removed]')?.textContent).toContain('Oxford');
+    const save = within(dialog).getByRole('button', { name: en.setup.calendar.save });
+    await waitFor(() => {
+      expect(save).toHaveProperty('disabled', false);
+    });
+    fireEvent.click(save);
+    await waitFor(() => {
+      expect(
+        calls.find(
+          (call) => call.route === `POST /api/setup/calendar-entries/${HOLIDAY.id}/archive`,
+        )?.body,
+      ).toMatchObject({
+        dayKeeps: [{ date: '2026-10-19', classId: OXFORD, slotPositions: [] }],
       });
     });
   });

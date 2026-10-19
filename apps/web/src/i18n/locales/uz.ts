@@ -1303,6 +1303,8 @@ export const uz: Texts<'one' | 'other'> = {
         title: 'Eʼlon qilingan dars jadvali',
         keepRefused: '{{day}}: {{reason}}',
         refreshing: 'Oldindan koʻrish yangilanmoqda…',
+        keepRemoved:
+          'Tanlov olib tashlanadi; darslar kundagi tartibi boʻyicha qoldiriladi: {{day}}',
         stored_one: '{{count}} ta saqlangan oʻzgarish bu saqlashni toʻxtatadi',
         stored_other: '{{count}} ta saqlangan oʻzgarish bu saqlashni toʻxtatadi',
         storedKinds: {
