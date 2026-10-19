@@ -888,6 +888,7 @@ export async function settleDayChanges(
         await transaction
           .selectFrom('lessons')
           .select('id')
+          .where('branch_id', '=', input.branchId)
           .where(
             'id',
             'in',
@@ -934,6 +935,7 @@ export async function settleDayChanges(
     const loads = await transaction
       .selectFrom('lessons')
       .select(['id', 'load_row_id'])
+      .where('branch_id', '=', input.branchId)
       .where(
         'id',
         'in',

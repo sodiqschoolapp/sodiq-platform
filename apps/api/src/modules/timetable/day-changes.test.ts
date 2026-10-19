@@ -485,6 +485,25 @@ describe('one-day changes: cancel and restore', () => {
         .execute(t.database.migrator)
         .then((result) => result.rows),
       t.database.migrator.selectFrom('audit_log').select('id').orderBy('id').execute(),
+      // Task 5.6a-5a (permission review, must-fix 2): every other table a publish writes.
+      t.database.migrator.selectFrom('timetable_versions').selectAll().orderBy('id').execute(),
+      t.database.migrator.selectFrom('teaching_load_rows').selectAll().orderBy('id').execute(),
+      t.database.migrator.selectFrom('pattern_entries').selectAll().orderBy('id').execute(),
+      t.database.migrator
+        .selectFrom('timetable_version_out_of_date_causes')
+        .selectAll()
+        .orderBy('id')
+        .execute(),
+      t.database.migrator
+        .selectFrom('timetable_day_keeps')
+        .selectAll()
+        .orderBy('version_id')
+        .orderBy('class_id')
+        .orderBy('kept_on')
+        .orderBy('slot_position')
+        .execute(),
+      t.database.migrator.selectFrom('journals').selectAll().orderBy('id').execute(),
+      t.database.migrator.selectFrom('request_keys').selectAll().orderBy('key').execute(),
     ]);
 
   /**
@@ -3531,6 +3550,16 @@ describe('one-day changes: cancel and restore', () => {
       return version;
     }
 
+    /** The kit's Academic Vice Principal, given the role in a scene's branch too. */
+    const viceIn = async (branch: string) => {
+      const vice = await t.database.migrator
+        .selectFrom('assignments')
+        .select('account_id')
+        .where('id', '=', t.viceAssignment)
+        .executeTakeFirstOrThrow();
+      return load.classes.role(vice.account_id, branch, 'academic_vice_principal');
+    };
+
     const checkOn = async (s: Scene, version: string, startsOn: string, chain?: string) => {
       const checked = await t.get(
         `/api/timetable/versions/${version}/publish-check?startsOn=${startsOn}${
@@ -3545,6 +3574,7 @@ describe('one-day changes: cancel and restore', () => {
           dayChanges: Days;
           changes: unknown[];
           transition: { key: string | null } | null;
+          names: { rooms: { id: string }[] };
         };
       };
     };
@@ -3643,10 +3673,15 @@ describe('one-day changes: cancel and restore', () => {
     it('asks for a decision on a move whose new place the new version gives the teacher, and refuses until it is settled', async () => {
       const s = await scene();
       const north = await scene();
+      await viceIn(s.branch);
       const moved = await lessonOf(s, NEXT_MONDAY);
       changed(await move(s.branch, moved.id, { date: '2026-10-21', lessonNumber: 2 }));
       const [moveRow] = await dayChangesOf(moved.id);
       const other = await lessonOf(s, NEXT_MONDAY, s.otherClass);
+      // A one-day change of the other branch too, which the publish must leave.
+      const northLesson = await lessonOf(north, NEXT_MONDAY);
+      changed(await roomChange(north.branch, northLesson.id, north.spareRoom));
+      const [northRow] = await dayChangesOf(northLesson.id);
       // The other class's maths goes to the first class's teacher, on
       // Wednesday in the second lesson: where the move put the first class.
       const draft = await draftOf(
@@ -3688,26 +3723,39 @@ describe('one-day changes: cancel and restore', () => {
           }),
         ).map((one) => one.code),
       ).toEqual(['day_changes_changed']);
-      // Another branch's lesson and an unknown key: 404, before any lock.
-      const northLesson = await lessonOf(north, NEXT_MONDAY);
-      for (const key of [northLesson.id, UNKNOWN]) {
-        refusedWith(
-          await publishWith(s, draft, NEXT_MONDAY, {
-            dayChangesKey: days.key,
-            dayDecisions: [
-              { key: moveRow?.id, choice: 'drop' },
-              { key, choice: 'cancel' },
-            ],
-          }),
-          404,
-          'not_found',
-        );
+      // Another branch's lesson and change, and an unknown key: 404, before
+      // any lock, as the Academic Vice Principal and the Super Admin.
+      for (const cookie of [t.vicePrincipal, t.admin]) {
+        for (const key of [northLesson.id, northRow?.id ?? '', UNKNOWN]) {
+          refusedWith(
+            await publishWith(
+              s,
+              draft,
+              NEXT_MONDAY,
+              {
+                dayChangesKey: days.key,
+                dayDecisions: [
+                  { key: moveRow?.id, choice: 'drop' },
+                  { key, choice: 'cancel' },
+                ],
+              },
+              randomUUID(),
+              cookie,
+            ),
+            404,
+            'not_found',
+          );
+        }
       }
       expect(await everything()).toEqual(before);
-      const published = await publishWith(s, draft, NEXT_MONDAY, {
-        dayChangesKey: days.key,
-        dayDecisions: [{ key: moveRow?.id, choice: 'drop' }],
-      });
+      const published = await publishWith(
+        s,
+        draft,
+        NEXT_MONDAY,
+        { dayChangesKey: days.key, dayDecisions: [{ key: moveRow?.id, choice: 'drop' }] },
+        randomUUID(),
+        t.vicePrincipal,
+      );
       expect(published.status, JSON.stringify(published.body)).toBe(200);
       // Dropped: the first class's maths is back on Monday at 08:00, held, and
       // nothing is left on Wednesday at 08:55; the change is ended.
@@ -3914,7 +3962,10 @@ describe('one-day changes: cancel and restore', () => {
             ? s.spareRoom
             : null,
         );
-        const days = (await checkOn(s, draft, NEXT_MONDAY)).impact.dayChanges;
+        const answer = await checkOn(s, draft, NEXT_MONDAY);
+        const days = answer.impact.dayChanges;
+        // The room the change names is named by the preview (permission review, should-fix 6).
+        expect(answer.impact.names.rooms.map((one) => one.id)).toContain(s.spareRoom);
         if (roomFor === 'same') {
           expect(days.dropped.map((one) => one.key)).toEqual([roomRow?.id]);
           continue;
@@ -3968,17 +4019,19 @@ describe('one-day changes: cancel and restore', () => {
       const published = await publishWith(s, draft, NEXT_MONDAY, { dayChangesKey: days.key }, key);
       expect(published.status, JSON.stringify(published.body)).toBe(200);
       const northLesson = await lessonOf(north, NEXT_MONDAY);
-      refusedWith(
-        await publishWith(
-          s,
-          draft,
-          NEXT_MONDAY,
-          { dayChangesKey: days.key, dayDecisions: [{ key: northLesson.id, choice: 'drop' }] },
-          key,
-        ),
-        404,
-        'not_found',
-      );
+      for (const unknownKey of [northLesson.id, UNKNOWN]) {
+        refusedWith(
+          await publishWith(
+            s,
+            draft,
+            NEXT_MONDAY,
+            { dayChangesKey: days.key, dayDecisions: [{ key: unknownKey, choice: 'drop' }] },
+            key,
+          ),
+          404,
+          'not_found',
+        );
+      }
       refusedWith(
         await publishWith(s, draft, NEXT_MONDAY, { dayChangesKey: days.key }, key, t.principal),
         403,

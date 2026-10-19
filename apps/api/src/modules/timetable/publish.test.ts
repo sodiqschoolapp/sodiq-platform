@@ -389,6 +389,19 @@ describe('publish', () => {
         .where('branch_id', 'in', branches)
         .orderBy('lesson_id')
         .execute(),
+      // Task 5.6a-5a: the one-day changes a publish records again and ends.
+      t.database.migrator
+        .selectFrom('lesson_day_changes')
+        .selectAll()
+        .where('branch_id', 'in', branches)
+        .orderBy('id')
+        .execute(),
+      t.database.migrator
+        .selectFrom('lesson_day_change_ends')
+        .selectAll()
+        .where('branch_id', 'in', branches)
+        .orderBy('change_id')
+        .execute(),
     ]);
   };
 
@@ -1835,7 +1848,22 @@ describe('publish', () => {
       // Rows a publish would change, in both branches (permission review, must-fix 2).
       await withMoreToChange(s);
       await withMoreToChange(theirs);
+      // Task 5.6a-5a (permission review, must-fix 1): a one-day room change in
+      // each branch, which a publish would end or keep.
+      for (const one of [s, theirs]) {
+        const lesson = (await lessonsOf(one.branch)).find(
+          (row) => row.date === '2026-10-26' && row.class_id === one.classId,
+        );
+        const roomed = await request(t.kit.server)
+          .post(`/api/timetable/lessons/${lesson?.id ?? ''}/room`)
+          .set('Cookie', t.admin)
+          .set(BRANCH_HEADER, one.branch)
+          .set(REQUEST_KEY_HEADER, randomUUID())
+          .send({ roomId: await load.classes.room(one.branch), reason: 'The room is painted' });
+        expect(roomed.status, JSON.stringify(roomed.body)).toBe(200);
+      }
       const before = await written([s.version, theirs.version]);
+      expect(new Set(before[13].map((one) => one.branch_id)).size).toBe(2);
       expect(before[8].length).toBeGreaterThan(0);
       expect(new Set(before[8].map((one) => one.branch_id)).size).toBe(2);
       // Task 5.5c-1: journals of both branches, which the Tutor rows added would change.
