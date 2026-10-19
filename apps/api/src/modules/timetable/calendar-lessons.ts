@@ -1,25 +1,53 @@
+import { createHash } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import {
   CALENDAR_CANCEL_CAUSES,
   type CalendarLesson,
   type CalendarLessons,
+  type DayChangeChoice,
+  type DayDecisionsBody,
   type ErrorDetail,
+  type RuleResultAnswer,
+  weekdaySchema,
 } from '@sodiq/shared';
-import { addDays, patternIdOf } from '@sodiq/timetable-rules';
+import { addDays, patternIdOf, weekdayOf, type RuleResult } from '@sodiq/timetable-rules';
 import { sql } from 'kysely';
-import type { Transaction } from '../../database/transactions.js';
+import { transactionMoment, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import { Notifications } from '../notifications/notifications.service.js';
-import { bulkRecordsOf } from './bulk-cancels-kept.js';
+import {
+  bulkKeyPartOf,
+  bulkRecordsOf,
+  recordBulkBlocks,
+  sortBulkOf,
+  type SortedBulk,
+} from './bulk-cancels-kept.js';
 import { runningUntil } from './chain.js';
 import { datedCheck, type DatedFindings } from './dated-check.js';
 import { writeDatedLessons, type DatedWrite } from './dated-lessons.js';
-import { sortDayChanges } from './day-changes-kept.js';
-import { namesOf } from './impact.js';
+import {
+  dayChangesKeyOf,
+  settleDayChanges,
+  sortDayChanges,
+  type DaySorting,
+  type DayWritePlan,
+  type SortedDayChange,
+} from './day-changes-kept.js';
+import { dayChangeIdsOf, namesOf } from './impact.js';
 import { runsOf } from './journals.js';
 import type { PatternState } from './pattern.service.js';
 import { TimetablePattern } from './pattern.service.js';
-import { datedAuditOf } from './publish.service.js';
+import {
+  bulkAuditOf,
+  datedAuditOf,
+  dayAuditOf,
+  dayDecisionsOf,
+  dayRefusalsOf,
+  detailOf,
+  planOfRun,
+  type DayAudit,
+} from './publish.service.js';
+import { storedDayCheck, storedLessonsOn, type StoredDayLesson } from './stored-day.js';
 import { storedLessonRows, type StoredLesson } from './stored-lessons.js';
 import { Timetable } from './timetable.service.js';
 import {
@@ -51,8 +79,13 @@ import {
  * only (decision 5) and written by `writeDatedLessons`; lessons of other
  * dates keep their identity.
  *
- * A stored one-day change, bulk cancel or exam on a date written refuses the
- * save until task 5.6b-2 sorts it as a publish does (decision 7).
+ * Task 5.6b-2a: the stored one-day changes and bulk cancels of each stretch
+ * are sorted as a publish sorts them (`sortDayChanges`, `sortBulkOf`), kept,
+ * needs a decision or dropped, with one key over the stretches; the save
+ * takes the key and a choice for each "needs a decision" item, and writes
+ * over the findings with the kept changes applied. A stored exam on a date
+ * written, or a move between two stretches, still refuses the save (5.6b-1
+ * decision 7; 5.6b-2a decision 3) until 5.6b-2c.
  */
 
 /** One stretch of consecutive lesson dates of one published version. */
@@ -62,6 +95,10 @@ interface Stretch {
   readonly lastDate: string;
   readonly state: PatternState;
   readonly findings: DatedFindings;
+  /** Task 5.6b-2a: its stored one-day changes and bulk cancels sorted, and their key. */
+  readonly sorting: DaySorting;
+  readonly bulk: readonly SortedBulk[];
+  readonly key: string;
 }
 
 /** What the rewrite found and did; `audit` is `null` when no date lies in a published run. */
@@ -71,6 +108,9 @@ export interface CalendarRewrite {
     readonly dates: readonly string[];
     readonly datedLessons: ReturnType<typeof datedAuditOf>[];
     readonly notices: WeekNotices;
+    /** Task 5.6b-2a: the outcome of the stored changes per stretch, and the moves put back. */
+    readonly dayChanges: readonly StretchDays[];
+    readonly movedBack: readonly string[];
   } | null;
 }
 
@@ -91,6 +131,7 @@ export const NO_LESSONS: CalendarLessons = {
   notified: [],
   blocked: [],
   stored: [],
+  dayChanges: { key: calendarDaysKeyOf([]), kept: [], decide: [], dropped: [], bulk: [] },
   names: EMPTY_NAMES,
 };
 
@@ -229,6 +270,8 @@ export class TimetableCalendarLessons {
       readonly dates: readonly string[];
       readonly event: CalendarEvent;
       readonly preview: boolean;
+      /** Task 5.6b-2a: the key of the sorting shown and the choices, of the save. */
+      readonly days: DayDecisionsBody;
     },
   ): Promise<CalendarRewrite> {
     const { branchId, today } = input;
@@ -283,22 +326,6 @@ export class TimetableCalendarLessons {
     const written = [...byVersion.values()].flat().sort();
     if (written.length === 0) return { lessons: NO_LESSONS, audit: null };
 
-    // The side before, the written dates locked as the writer locks them.
-    const snapshot = await snapshotDates(transaction, branchId, written);
-    const generated = (from: string, to: string) =>
-      storedLessonRows(transaction, {
-        branchId,
-        firstDate: from,
-        lastDate: to,
-        classIdsOf: () => undefined,
-        cancelled: 'generated',
-        lock: false,
-      });
-    const writtenStretches = stretchesOf(written);
-    const cancelledBefore = (
-      await Promise.all(writtenStretches.map((one) => generated(one.first, one.last)))
-    ).flat();
-
     // Each stretch of each version, read as if it started on its first date.
     const stretches: Stretch[] = [];
     for (const [versionId, own] of byVersion) {
@@ -319,34 +346,56 @@ export class TimetableCalendarLessons {
         const findings = await datedCheck(transaction, state, part.first, [], {
           outOnStart: false,
         });
-        stretches.push({ versionId, firstDate: part.first, lastDate: part.last, state, findings });
+        // Task 5.6b-2a: the stored one-day changes and bulk cancels of the
+        // stretch, sorted as a publish sorts them (decision 2), the bulk
+        // cancels on the findings with the kept changes applied.
+        const sorting = await sortDayChanges(transaction, {
+          state,
+          findings,
+          firstDate: part.first,
+          lastDate: part.last,
+          carriedVersionId: null,
+        });
+        const bulk = sortBulkOf({
+          lessons: sorting.findings.dated.lessons,
+          movedAt: sorting.movedAt,
+          begins: sorting.findings.begins,
+          records: await bulkRecordsOf(transaction, branchId, part.first, part.last),
+          carriedVersionId: null,
+        });
+        stretches.push({
+          versionId,
+          firstDate: part.first,
+          lastDate: part.last,
+          state,
+          findings,
+          sorting,
+          bulk,
+          key: dayChangesKeyOf(
+            versionId,
+            part.first,
+            sorting.items,
+            bulk.length === 0 ? null : bulkKeyPartOf(bulk),
+          ),
+        });
       }
     }
+    const key = calendarDaysKeyOf(stretches);
+    const items = stretches.flatMap((one) => one.sorting.items);
+    const bulkAll = stretches.flatMap((one) => one.bulk);
 
-    // Decision 7: what 5.6b-2 sorts refuses the save meanwhile.
+    // What refuses the save as stored records (decision 7 of 5.6b-1): a move
+    // between two stretches (5.6b-2a decision 3) and an exam (until 5.6b-2c).
     const stored: CalendarLessons['stored'] = [];
-    for (const one of stretches) {
-      const sorting = await sortDayChanges(transaction, {
-        state: one.state,
-        findings: one.findings,
-        firstDate: one.firstDate,
-        lastDate: one.lastDate,
-        carriedVersionId: null,
-      });
-      for (const item of sorting.items) {
-        // The changed date it touches: where the lesson is now, else where it was.
-        const { from, to } = item.answer;
-        const date = one.firstDate <= to.date && to.date <= one.lastDate ? to.date : from.date;
-        stored.push({ kind: 'day_change', id: item.answer.key, date });
-      }
-      for (const record of await bulkRecordsOf(
-        transaction,
-        branchId,
-        one.firstDate,
-        one.lastDate,
-      )) {
-        stored.push({ kind: 'bulk_cancel', id: record.id, date: record.date });
-      }
+    const stretchOf = (date: string) =>
+      stretches.findIndex((one) => one.firstDate <= date && date <= one.lastDate);
+    for (const item of items) {
+      if (item.answer.kind !== 'move') continue;
+      const from = stretchOf(item.answer.from.date);
+      const to = stretchOf(item.answer.to.date);
+      if (from < 0 || to < 0 || from === to) continue;
+      if (stored.some((one) => one.id === item.answer.key)) continue;
+      stored.push({ kind: 'day_change', id: item.answer.key, date: item.answer.to.date });
     }
     const exams = await transaction
       .selectFrom('exams')
@@ -359,8 +408,6 @@ export class TimetableCalendarLessons {
       .orderBy('id')
       .execute();
     for (const exam of exams) stored.push({ kind: 'exam', id: exam.id, date: exam.exam_date });
-
-    const blocked = stretches.flatMap((one) => one.findings.blocked);
     if (!input.preview && stored.length > 0) {
       throw new ApiException(
         'calendar_stored_changes',
@@ -374,9 +421,55 @@ export class TimetableCalendarLessons {
         })),
       );
     }
-    if (!input.preview && blocked.length > 0) {
-      throw new ApiException('calendar_blocked', 409, undefined, blocked.map(blockedDetail));
+
+    // Task 5.6b-2a: the sorting as shown and a choice for each "needs a
+    // decision" item, refused with the blocked dates in one answer
+    // (decision 9). The preview takes no decisions (decision 7).
+    const writtenSet = new Set(written);
+    const { decisions, bulkDecisions } = dayDecisionsOf(
+      input.preview ? undefined : input.days.dayDecisions,
+    );
+    const backs = input.preview
+      ? []
+      : await this.movesBack(transaction, {
+          accountId: input.accountId,
+          branchId,
+          today,
+          written: writtenSet,
+          items,
+          decisions,
+        });
+    const blocked = [
+      ...stretches.flatMap((one) => one.findings.blocked),
+      ...backs.flatMap((one) => one.blocked.map(datedAnswerOf)),
+    ];
+    if (!input.preview) {
+      const details = [
+        ...blocked.map(blockedDetail),
+        ...dayRefusalsOf({ key, items, bulk: bulkAll }, input.days).map(detailOf),
+      ];
+      if (details.length > 0) {
+        throw new ApiException('calendar_blocked', 409, undefined, details);
+      }
     }
+
+    // The side before, the written dates and the dates a move goes back to
+    // locked as the writer locks them.
+    const touched = [...new Set([...written, ...backs.map((one) => one.date)])].sort();
+    const snapshot = await snapshotDates(transaction, branchId, touched);
+    const generated = (from: string, to: string) =>
+      storedLessonRows(transaction, {
+        branchId,
+        firstDate: from,
+        lastDate: to,
+        classIdsOf: () => undefined,
+        cancelled: 'generated',
+        lock: false,
+      });
+    const writtenStretches = stretchesOf(written);
+    const cancelledBefore = (
+      await Promise.all(writtenStretches.map((one) => generated(one.first, one.last)))
+    ).flat();
 
     // The entries of the lessons named, by pattern entry: their class or group and subject.
     const entryUnits = new Map<string, { unitId: string; subjectId: string }>();
@@ -392,14 +485,25 @@ export class TimetableCalendarLessons {
         }
       }
     }
-    const blockedLines = blocked.map((one) => ({
-      date: one.date ?? '',
-      rule: one.rule,
-      lessons: one.lessonIds.flatMap((id) => {
-        const found = entryUnits.get(patternIdOf(id)?.id ?? id);
-        return found === undefined ? [] : [found];
-      }),
-    }));
+    const blockedLines = [
+      ...stretches.flatMap((one) =>
+        one.findings.blocked.map((result) => ({
+          date: result.date ?? '',
+          rule: result.rule,
+          lessons: result.lessonIds.flatMap((id) => {
+            const found = entryUnits.get(patternIdOf(id)?.id ?? id);
+            return found === undefined ? [] : [found];
+          }),
+        })),
+      ),
+      ...backs.flatMap((one) =>
+        one.blocked.map((result) => ({
+          date: one.date,
+          rule: result.rule,
+          lessons: [...one.lessons],
+        })),
+      ),
+    ];
     const needsTeacher = stretches.flatMap((one) =>
       one.findings.needsTeacher.flatMap((need) => {
         const found = entryUnits.get(need.entryId);
@@ -407,22 +511,58 @@ export class TimetableCalendarLessons {
       }),
     );
 
-    // The write. A preview with a stored record writes nothing (it would be
-    // lost); one with a blocked conflict tries in a savepoint, as the
-    // database may refuse it.
+    // The write, over the findings with the kept changes applied, as a
+    // withdraw writes. A preview with a stored record writes nothing (it
+    // would be lost); one with a blocked conflict tries in a savepoint, as
+    // the database may refuse it.
     const writes: DatedWrite[] = [];
+    const days: StretchDays[] = [];
     const doWrite = async () => {
+      const moment = await transactionMoment(transaction);
       for (const one of stretches) {
+        const plan = withMovesBack(
+          planOfRun(one.sorting, one.bulk, decisions, bulkDecisions),
+          backs,
+        );
         writes.push(
           await writeDatedLessons(
             transaction,
             one.state,
-            one.findings,
+            one.sorting.findings,
             one.firstDate,
             one.lastDate,
-            null,
+            plan,
           ),
         );
+      }
+      await writeMovesBack(transaction, backs);
+      if (input.preview) return;
+      for (const one of stretches) {
+        // The changes not applied ended in the name of the stretch's version
+        // (decision 5), those kept on a lesson created again recorded again;
+        // the bulk cancels' choices on the blocks written.
+        const settled = await settleDayChanges(transaction, {
+          branchId,
+          versionId: one.versionId,
+          moment,
+          accountId: input.accountId,
+          items: one.sorting.items,
+          decisions,
+        });
+        const recorded = await recordBulkBlocks(transaction, {
+          branchId,
+          versionId: one.versionId,
+          begins: one.sorting.findings.begins,
+          items: one.bulk,
+          decisions: bulkDecisions,
+        });
+        if (one.sorting.items.length > 0 || one.bulk.length > 0) {
+          days.push({
+            versionId: one.versionId,
+            firstDate: one.firstDate,
+            ...dayAuditOf(one.sorting.items, decisions, settled, bulkAuditOf(one.bulk, recorded)),
+          });
+        }
       }
     };
     let wrote = true;
@@ -443,50 +583,71 @@ export class TimetableCalendarLessons {
       }
     }
 
+    const dayChanges: CalendarLessons['dayChanges'] = {
+      key,
+      kept: uniqueItems(items.filter((one) => one.category === 'kept')),
+      decide: uniqueItems(items.filter((one) => one.category === 'decide')),
+      dropped: uniqueItems(items.filter((one) => one.category === 'dropped')),
+      bulk: bulkAll.map((one) => one.answer),
+    };
+    const named = dayChangeIdsOf(items, bulkAll);
     let lessons: CalendarLessons = {
       ...NO_LESSONS,
       needsTeacher,
       blocked: blockedLines,
       stored,
+      dayChanges,
     };
     let notices: WeekNotices = { notified: 0, marked: 0 };
+    let shown: StoredLesson[] = [];
+    let removed: StoredLesson[] = [];
+    let created: StoredLesson[] = [];
+    let cancelled: StoredLesson[] = [];
+    let teacherIds: string[] = [];
     if (wrote) {
-      const after = await readDates(transaction, branchId, written);
+      const after = await readDates(transaction, branchId, touched);
       const changes = weekChanges(snapshot.before, after, snapshot.unwritten);
       const cancelledAfter = (
         await Promise.all(writtenStretches.map((one) => generated(one.first, one.last)))
       ).flat();
-      const removed = snapshot.before.filter((one) => changes.beforeDiffers.has(one.id));
-      const created = after.filter((one) => changes.afterDiffers.has(one.id));
-      const cancelled = unpaired(cancelledBefore, cancelledAfter);
-      const shown = [...removed, ...created, ...cancelled];
-      const { names, staff } = await namesOf(
-        transaction,
-        {
-          unitIds: [
-            ...shown.map((one) => one.lesson.unitId),
-            ...needsTeacher.map((one) => one.unitId),
-            ...blockedLines.flatMap((one) => one.lessons.map((lesson) => lesson.unitId)),
-          ],
-          subjectIds: [
-            ...shown.map((one) => one.lesson.subjectId),
-            ...needsTeacher.map((one) => one.subjectId),
-            ...blockedLines.flatMap((one) => one.lessons.map((lesson) => lesson.subjectId)),
-          ],
-          teacherIds: [
-            ...shown.flatMap((one) => one.lesson.teacherIds),
-            ...changes.teachers.keys(),
-          ],
-          roomIds: shown.flatMap((one) => (one.lesson.roomId === null ? [] : [one.lesson.roomId])),
-        },
-        new Map(),
-      );
+      removed = snapshot.before.filter((one) => changes.beforeDiffers.has(one.id));
+      created = after.filter((one) => changes.afterDiffers.has(one.id));
+      cancelled = unpaired(cancelledBefore, cancelledAfter);
+      shown = [...removed, ...created, ...cancelled];
+      teacherIds = [...changes.teachers.keys()];
+    }
+    const { names, staff } = await namesOf(
+      transaction,
+      {
+        unitIds: [
+          ...shown.map((one) => one.lesson.unitId),
+          ...needsTeacher.map((one) => one.unitId),
+          ...blockedLines.flatMap((one) => one.lessons.map((lesson) => lesson.unitId)),
+          ...named.unitIds,
+        ],
+        subjectIds: [
+          ...shown.map((one) => one.lesson.subjectId),
+          ...needsTeacher.map((one) => one.subjectId),
+          ...blockedLines.flatMap((one) => one.lessons.map((lesson) => lesson.subjectId)),
+          ...named.subjectIds,
+        ],
+        teacherIds: [...shown.flatMap((one) => one.lesson.teacherIds), ...teacherIds],
+        roomIds: [
+          ...shown.flatMap((one) => (one.lesson.roomId === null ? [] : [one.lesson.roomId])),
+          ...named.roomIds,
+        ],
+      },
+      new Map(),
+    );
+    lessons = { ...lessons, names };
+    if (wrote) {
       const withAccount = new Set(
         staff
           .filter((one) => one.kind !== 'vacancy' && one.account_id !== null)
           .map((one) => one.id),
       );
       lessons = {
+        ...lessons,
         removed: removed.map(lineOf).sort(byPlace),
         created: created.map(lineOf).sort(byPlace),
         cancelled: cancelled
@@ -498,11 +659,7 @@ export class TimetableCalendarLessons {
             return [{ ...lineOf(one), cause }];
           })
           .sort(byPlace),
-        needsTeacher,
-        notified: [...changes.teachers.keys()].filter((id) => withAccount.has(id)).sort(),
-        blocked: blockedLines,
-        stored,
-        names,
+        notified: teacherIds.filter((id) => withAccount.has(id)).sort(),
       };
       notices = await sendWeekChanges(transaction, this.notifications, snapshot, {
         kind: 'timetable.calendar_changed',
@@ -513,7 +670,192 @@ export class TimetableCalendarLessons {
     }
     return {
       lessons,
-      audit: { dates: written, datedLessons: writes.map(datedAuditOf), notices },
+      audit: {
+        dates: written,
+        datedLessons: writes.map(datedAuditOf),
+        notices,
+        dayChanges: days,
+        movedBack: backs.map((one) => one.key).sort(),
+      },
     };
   }
+
+  /**
+   * Task 5.6b-2a (review correction 1): the "needs a decision" moves onto a
+   * written date from a date after today the save does not write. Their
+   * choice puts the stored block back at its old place on that date, the
+   * lesson the version has there: "drop the change" held, checked there with
+   * the full rule set (`storedDayCheck`, a blocked result refuses the save
+   * `calendar_blocked` by date); "cancel the lesson that day" cancelled with
+   * the change's reason, which takes no check. A move from today or earlier
+   * follows 5.6a-5a decision 7 (the write removes the block, or keeps it
+   * cancelled where it is).
+   */
+  private async movesBack(
+    transaction: Transaction,
+    input: {
+      readonly accountId: string;
+      readonly branchId: string;
+      readonly today: string;
+      readonly written: ReadonlySet<string>;
+      readonly items: readonly SortedDayChange[];
+      readonly decisions: ReadonlyMap<string, DayChangeChoice>;
+    },
+  ): Promise<MoveBack[]> {
+    const backs: MoveBack[] = [];
+    for (const item of input.items) {
+      if (item.category !== 'decide' || item.storedIds.length === 0) continue;
+      const choice = input.decisions.get(item.answer.key);
+      const date = item.answer.from.date;
+      if (choice === undefined || choice === 'keep') continue;
+      if (date <= input.today || input.written.has(date)) continue;
+      const chains = new Map(item.chains.map((chain) => [chain.lessonId, chain]));
+      const there = (
+        await storedLessonsOn(transaction, input.branchId, item.answer.to.date)
+      ).filter((one) => chains.has(one.id));
+      const placed = there.map((one): StoredDayLesson => {
+        const chain = chains.get(one.id);
+        if (chain === undefined) throw new Error('A part of the move has no chain.');
+        return {
+          ...one,
+          date,
+          startsAt: chain.first.from_starts_at,
+          endsAt: chain.first.from_ends_at,
+          roomId: chain.first.from_room_id,
+        };
+      });
+      const held = placed.filter((one) => one.cancelCause === null);
+      let blocked: readonly RuleResult[] = [];
+      let teacherIds: ReadonlyMap<string, string | null> = new Map();
+      if (choice === 'drop' && held.length > 0) {
+        const checked = await storedDayCheck(
+          transaction,
+          { timetable: this.timetable, pattern: this.pattern },
+          {
+            accountId: input.accountId,
+            lessons: held,
+            alongside: placed.filter((one) => one.cancelCause !== null),
+          },
+        );
+        blocked = checked.blocked;
+        teacherIds = checked.teacherIds;
+      }
+      backs.push({
+        key: item.answer.key,
+        date,
+        choice,
+        reason: item.answer.reason,
+        lessons: placed.map((one) => ({
+          unitId: one.classId ?? one.groupId ?? '',
+          subjectId: one.subjectId,
+        })),
+        placed,
+        blocked,
+        teacherIds,
+      });
+    }
+    return backs;
+  }
+}
+
+/** A result of a date as a dated check names it (task 5.6b-2a: a move put back). */
+const datedAnswerOf = (result: RuleResult): RuleResultAnswer => ({
+  rule: result.rule,
+  severity: result.severity,
+  weekday: weekdaySchema.parse(weekdayOf(result.day)),
+  lessonIds: [...result.lessonIds],
+  ...(result.detail === undefined || Object.keys(result.detail).length === 0
+    ? {}
+    : { detail: { ...result.detail } }),
+  date: result.day,
+});
+
+/** A stored move put back at its old place by a calendar save (task 5.6b-2a, review correction 1). */
+interface MoveBack {
+  readonly key: string;
+  /** The date it goes back to. */
+  readonly date: string;
+  readonly choice: 'drop' | 'cancel';
+  readonly reason: string;
+  readonly lessons: readonly { unitId: string; subjectId: string }[];
+  /** Every part of its blocks at the old place. */
+  readonly placed: readonly StoredDayLesson[];
+  readonly blocked: readonly RuleResult[];
+  /** The teacher each held part is written with (a Tutor lesson's Tutor at its start). */
+  readonly teacherIds: ReadonlyMap<string, string | null>;
+}
+
+/** The write plan with the stored blocks of the moves put back left where they are until `writeMovesBack`. */
+function withMovesBack(plan: DayWritePlan, backs: readonly MoveBack[]): DayWritePlan {
+  if (backs.length === 0) return plan;
+  const keepStored = new Set(plan.keepStored);
+  const cancelStored = new Map(plan.cancelStored);
+  for (const back of backs) {
+    for (const one of back.placed) {
+      keepStored.add(one.id);
+      cancelStored.delete(one.id);
+    }
+  }
+  return { ...plan, keepStored, cancelStored };
+}
+
+/** Puts each stored block back at its old place (see `movesBack`). */
+async function writeMovesBack(transaction: Transaction, backs: readonly MoveBack[]): Promise<void> {
+  if (backs.length === 0) return;
+  // A block put back may meet the other half of its double on the way: the
+  // exclusions are checked on the end state, as a one-day move does.
+  await sql`set constraints time_claims_teacher_excl, time_claims_room_excl, time_claims_class_excl deferred`.execute(
+    transaction,
+  );
+  for (const back of backs) {
+    const blocks = new Map<string, StoredDayLesson>();
+    for (const one of back.placed) if (!blocks.has(one.blockId)) blocks.set(one.blockId, one);
+    for (const [blockId, one] of blocks) {
+      await transaction
+        .updateTable('lesson_blocks')
+        .set({ lesson_date: one.date, starts_at: one.startsAt, ends_at: one.endsAt })
+        .where('id', '=', blockId)
+        .execute();
+    }
+    for (const one of back.placed) {
+      if (one.cancelCause !== null) continue;
+      await transaction
+        .updateTable('lessons')
+        .set(
+          back.choice === 'drop'
+            ? { teacher_id: back.teacherIds.get(one.id) ?? one.teacherId, room_id: one.roomId }
+            : { room_id: one.roomId, cancel_cause: 'reason', cancel_reason: back.reason },
+        )
+        .where('id', '=', one.id)
+        .execute();
+    }
+  }
+}
+
+/** One stretch's outcome of the stored changes for the audit entry (decision 10). */
+type StretchDays = DayAudit & { versionId: string; firstDate: string };
+
+/** Each item once, by key: a move between two stretches is listed by both. */
+function uniqueItems(items: readonly SortedDayChange[]) {
+  const seen = new Set<string>();
+  return items.flatMap((one) => {
+    if (seen.has(one.answer.key)) return [];
+    seen.add(one.answer.key);
+    return [one.answer];
+  });
+}
+
+/** The key of a save's sorting: the keys of its stretches in date order (decision 6). */
+function calendarDaysKeyOf(
+  stretches: readonly { versionId: string; firstDate: string; key: string }[],
+): string {
+  return createHash('sha256')
+    .update(
+      JSON.stringify(
+        [...stretches]
+          .sort((a, b) => a.firstDate.localeCompare(b.firstDate))
+          .map((one) => [one.versionId, one.firstDate, one.key]),
+      ),
+    )
+    .digest('hex');
 }

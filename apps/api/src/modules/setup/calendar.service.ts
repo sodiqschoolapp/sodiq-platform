@@ -10,7 +10,9 @@ import {
   type CalendarEntryList,
   type CalendarEntryRecord,
   type CalendarPreview,
+  type CalendarSave,
   type Clock,
+  type DayDecisionsBody,
   type ErrorCode,
   type ErrorDetail,
   type Weekday,
@@ -34,7 +36,11 @@ import {
   type CalendarRewrite,
 } from '../timetable/calendar-lessons.js';
 import { markDraftsOutOfDate } from '../timetable/out-of-date.js';
-import { PUBLISH_REFUSALS, refusingPublish } from '../timetable/publish.service.js';
+import {
+  PUBLISH_REFUSALS,
+  refuseUnknownKeys,
+  refusingPublish,
+} from '../timetable/publish.service.js';
 
 /** A refusal of 409 that names the fields to show it beside. */
 function refused(
@@ -105,6 +111,8 @@ interface Context {
   readonly preview: boolean;
   /** What the rewrite of the lessons did, for the preview (task 5.6b-1). */
   readonly rewrite: { result: CalendarRewrite | null };
+  /** Task 5.6b-2a: the key of the sorting shown and the choices sent with the save. */
+  readonly days: DayDecisionsBody;
 }
 
 /**
@@ -145,6 +153,13 @@ const lessonsAuditOf = (rewrite: CalendarRewrite) =>
         lessonDates: [...rewrite.audit.dates],
         datedLessons: rewrite.audit.datedLessons.map((one) => ({ ...one })),
         notices: { ...rewrite.audit.notices },
+        // Task 5.6b-2a (decision 10): the stored changes per stretch, when any.
+        ...(rewrite.audit.dayChanges.length === 0
+          ? {}
+          : { dayChanges: rewrite.audit.dayChanges.map((one) => structuredClone(one)) }),
+        ...(rewrite.audit.movedBack.length === 0
+          ? {}
+          : { movedBack: [...rewrite.audit.movedBack] }),
       };
 
 /** Carries the answer of a preview out of the transaction it rolls back. */
@@ -226,6 +241,7 @@ export class Calendar {
     requestId: string,
     lock: boolean,
     preview = false,
+    days: DayDecisionsBody = {},
   ): Promise<Context> {
     const query = transaction
       .selectFrom('branches')
@@ -266,6 +282,7 @@ export class Calendar {
       })),
       preview,
       rewrite: { result: null },
+      days,
     };
   }
 
@@ -287,12 +304,25 @@ export class Calendar {
     work: (context: Context) => Promise<T>,
     refusals: Readonly<Record<string, ErrorCode>> = REFUSALS,
     preview = false,
+    days: DayDecisionsBody = {},
   ): Promise<T> {
     return refusingPublish(
       () =>
-        this.transactions.run(access.branchIds, async (transaction) =>
-          work(await this.context(transaction, access, branchId, requestId, true, preview)),
-        ),
+        this.transactions.run(access.branchIds, async (transaction) => {
+          // Task 5.6b-2a (decision 11): every key and block of a decision is
+          // the branch's, checked before any lock.
+          await refuseUnknownKeys(
+            transaction,
+            branchId,
+            (days.dayDecisions ?? []).map((one) => one.key),
+            (days.dayDecisions ?? []).flatMap((one) =>
+              one.blockId === undefined ? [] : [one.blockId],
+            ),
+          );
+          return work(
+            await this.context(transaction, access, branchId, requestId, true, preview, days),
+          );
+        }),
       refusals,
     );
   }
@@ -346,6 +376,7 @@ export class Calendar {
       ),
       event,
       preview: context.preview,
+      days: context.days,
     });
     context.rewrite.result = result;
     return result;
@@ -421,33 +452,73 @@ export class Calendar {
   create(
     access: Access,
     branchId: string,
-    record: CalendarEntryRecord,
+    save: CalendarSave,
     requestId: string,
   ): Promise<CalendarEntry> {
-    return this.write(access, branchId, requestId, (context) => this.createIn(context, record));
+    const { record, days } = splitSave(save);
+    return this.write(
+      access,
+      branchId,
+      requestId,
+      (context) => this.createIn(context, record),
+      REFUSALS,
+      false,
+      days,
+    );
   }
 
   edit(
     access: Access,
     branchId: string,
     id: string,
-    record: CalendarEntryRecord,
+    save: CalendarSave,
     requestId: string,
   ): Promise<CalendarEntry> {
-    return this.write(access, branchId, requestId, (context) => this.editIn(context, id, record));
+    const { record, days } = splitSave(save);
+    return this.write(
+      access,
+      branchId,
+      requestId,
+      (context) => this.editIn(context, id, record),
+      REFUSALS,
+      false,
+      days,
+    );
   }
 
-  archive(access: Access, branchId: string, id: string, requestId: string): Promise<CalendarEntry> {
-    return this.write(access, branchId, requestId, (context) => this.archiveIn(context, id));
+  archive(
+    access: Access,
+    branchId: string,
+    id: string,
+    days: DayDecisionsBody,
+    requestId: string,
+  ): Promise<CalendarEntry> {
+    return this.write(
+      access,
+      branchId,
+      requestId,
+      (context) => this.archiveIn(context, id),
+      REFUSALS,
+      false,
+      days,
+    );
   }
 
-  restore(access: Access, branchId: string, id: string, requestId: string): Promise<CalendarEntry> {
+  restore(
+    access: Access,
+    branchId: string,
+    id: string,
+    days: DayDecisionsBody,
+    requestId: string,
+  ): Promise<CalendarEntry> {
     return this.write(
       access,
       branchId,
       requestId,
       (context) => this.restoreIn(context, id),
       RESTORE_REFUSALS,
+      false,
+      days,
     );
   }
 
@@ -714,6 +785,18 @@ export class Calendar {
     }
     return toEntry(context.store, entry);
   }
+}
+
+/** A create or an edit: the entry, and the key and choices of the sorting (task 5.6b-2a). */
+function splitSave(save: CalendarSave): { record: CalendarEntryRecord; days: DayDecisionsBody } {
+  const { dayChangesKey, dayDecisions, ...record } = save;
+  return {
+    record,
+    days: {
+      ...(dayChangesKey === undefined ? {} : { dayChangesKey }),
+      ...(dayDecisions === undefined ? {} : { dayDecisions }),
+    },
+  };
 }
 
 /** An entry of the branch; another branch's id or an unknown one is 404. */

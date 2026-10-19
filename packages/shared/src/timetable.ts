@@ -1465,16 +1465,21 @@ export type PublishBody = z.infer<typeof publishBodySchema>;
  * changes the withdraw check showed (`WithdrawCheck.dayChanges.key`), and a
  * choice for each "needs a decision" item, as a publish sends them. `{}`, or
  * no body as before this task, is a withdraw over dates with nothing stored
- * (decision 9).
+ * (decision 9). Task 5.6b-2a: the archive and the restore of a calendar
+ * entry take the same body (plan, decision 8).
  */
-export const withdrawBodySchema = z
+export const dayDecisionsBodySchema = z
   .strictObject({
     dayChangesKey: transitionKeySchema.optional(),
     dayDecisions: dayDecisionsSchema.optional(),
   })
   .default({});
 
-export type WithdrawBody = z.infer<typeof withdrawBodySchema>;
+export type DayDecisionsBody = z.infer<typeof dayDecisionsBodySchema>;
+
+export const withdrawBodySchema = dayDecisionsBodySchema;
+
+export type WithdrawBody = DayDecisionsBody;
 
 /**
  * What a withdraw would do with the stored one-day changes and bulk cancels
