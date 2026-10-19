@@ -4,7 +4,8 @@ import {
   calendarDateSchema,
   calendarDayQuerySchema,
   calendarEntryListSchema,
-  calendarEntryRecordSchema,
+  calendarSaveSchema,
+  dayDecisionsBodySchema,
   calendarEntrySchema,
   calendarPreviewSchema,
   setupIdParamsSchema,
@@ -13,7 +14,8 @@ import {
   type CalendarDayQuery,
   type CalendarEntry,
   type CalendarEntryList,
-  type CalendarEntryRecord,
+  type CalendarSave,
+  type DayDecisionsBody,
   type CalendarPreview,
   type SetupIdParams,
 } from '@sodiq/shared';
@@ -45,10 +47,10 @@ export class CalendarController {
   @Returns(calendarEntrySchema, 201)
   create(
     @CurrentAccess() access: Access,
-    @ValidBody(calendarEntryRecordSchema) record: CalendarEntryRecord,
+    @ValidBody(calendarSaveSchema) save: CalendarSave,
     @RequestId() requestId: string,
   ): Promise<CalendarEntry> {
-    return this.calendar.create(access, branchOf(access), record, requestId);
+    return this.calendar.create(access, branchOf(access), save, requestId);
   }
 
   /** The dates and grades a save changes, written nowhere (decisions 11 and 13: under `edit`). */
@@ -70,10 +72,10 @@ export class CalendarController {
   edit(
     @CurrentAccess() access: Access,
     @ValidParams(setupIdParamsSchema) params: SetupIdParams,
-    @ValidBody(calendarEntryRecordSchema) record: CalendarEntryRecord,
+    @ValidBody(calendarSaveSchema) save: CalendarSave,
     @RequestId() requestId: string,
   ): Promise<CalendarEntry> {
-    return this.calendar.edit(access, branchOf(access), params.id, record, requestId);
+    return this.calendar.edit(access, branchOf(access), params.id, save, requestId);
   }
 
   @Post('calendar-entries/:id/archive')
@@ -83,9 +85,10 @@ export class CalendarController {
   archive(
     @CurrentAccess() access: Access,
     @ValidParams(setupIdParamsSchema) params: SetupIdParams,
+    @ValidBody(dayDecisionsBodySchema) days: DayDecisionsBody,
     @RequestId() requestId: string,
   ): Promise<CalendarEntry> {
-    return this.calendar.archive(access, branchOf(access), params.id, requestId);
+    return this.calendar.archive(access, branchOf(access), params.id, days, requestId);
   }
 
   @Post('calendar-entries/:id/restore')
@@ -95,9 +98,10 @@ export class CalendarController {
   restore(
     @CurrentAccess() access: Access,
     @ValidParams(setupIdParamsSchema) params: SetupIdParams,
+    @ValidBody(dayDecisionsBodySchema) days: DayDecisionsBody,
     @RequestId() requestId: string,
   ): Promise<CalendarEntry> {
-    return this.calendar.restore(access, branchOf(access), params.id, requestId);
+    return this.calendar.restore(access, branchOf(access), params.id, days, requestId);
   }
 
   /** What every grade has on one date ("Check a date", decision 15). */

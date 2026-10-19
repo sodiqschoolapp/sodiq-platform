@@ -2,7 +2,13 @@ import { z } from 'zod';
 import { schoolDateSchema } from './academic-year.js';
 import { FIRST_GRADE, LAST_GRADE } from './day-templates.js';
 import { weekdaySchema } from './setup.js';
-import { NEEDS_TEACHER_REASONS, previewNamesSchema } from './timetable.js';
+import {
+  dayChangesAnswerSchema,
+  dayDecisionsSchema,
+  NEEDS_TEACHER_REASONS,
+  previewNamesSchema,
+  transitionKeySchema,
+} from './timetable.js';
 
 /**
  * The academic calendar of a branch (docs/spec/03-school-setup.md, Academic
@@ -42,19 +48,23 @@ const gradeSchema = z.int().min(FIRST_GRADE).max(LAST_GRADE);
  * and the years, and the followed weekday against the working weekdays; the
  * database keeps the same shape (`calendar_entries_kind_check`).
  */
-export const calendarEntryRecordSchema = z
-  .object({
-    kind: calendarEntryKindSchema,
-    name: nameSchema,
-    firstDate: schoolDateSchema,
-    lastDate: schoolDateSchema,
-    gradeFrom: gradeSchema.nullable(),
-    gradeTo: gradeSchema.nullable(),
-    dayTemplateId: z.uuid().nullable(),
-    followsWeekday: weekdaySchema.nullable(),
-    examWeek: examWeekSchema.nullable(),
-  })
-  .superRefine((record, context) => {
+const calendarEntryFields = z.object({
+  kind: calendarEntryKindSchema,
+  name: nameSchema,
+  firstDate: schoolDateSchema,
+  lastDate: schoolDateSchema,
+  gradeFrom: gradeSchema.nullable(),
+  gradeTo: gradeSchema.nullable(),
+  dayTemplateId: z.uuid().nullable(),
+  followsWeekday: weekdaySchema.nullable(),
+  examWeek: examWeekSchema.nullable(),
+});
+
+function refineEntry(
+  record: z.infer<typeof calendarEntryFields>,
+  context: z.core.$RefinementCtx,
+): void {
+  {
     if (record.lastDate < record.firstDate) {
       context.addIssue({
         code: 'custom',
@@ -94,9 +104,30 @@ export const calendarEntryRecordSchema = z
         }
       }
     }
-  });
+  }
+}
+
+export const calendarEntryRecordSchema = calendarEntryFields.superRefine(refineEntry);
 
 export type CalendarEntryRecord = z.infer<typeof calendarEntryRecordSchema>;
+
+/**
+ * A create or an edit (task 5.6b-2a): the entry, with the key of the sorting
+ * of the stored one-day changes and bulk cancels the preview showed
+ * (`CalendarLessons.dayChanges.key`) and a choice for each "needs a
+ * decision" item, as a publish sends them; without them, a save over dates
+ * with nothing stored, as before. Strict, so that a misspelt field is refused
+ * rather than dropped (permission review should-fix 5).
+ */
+export const calendarSaveSchema = z
+  .strictObject({
+    ...calendarEntryFields.shape,
+    dayChangesKey: transitionKeySchema.optional(),
+    dayDecisions: dayDecisionsSchema.optional(),
+  })
+  .superRefine(refineEntry);
+
+export type CalendarSave = z.infer<typeof calendarSaveSchema>;
 
 /**
  * A save that can change what a date has, as the preview takes it (`03`;
@@ -196,7 +227,12 @@ export type CalendarLesson = z.infer<typeof calendarLessonSchema>;
 /** Why the rewrite of a date creates a lesson cancelled (`edge/time-dates-calendar`). */
 export const CALENDAR_CANCEL_CAUSES = ['not_in_template', 'day_off', 'exam_week'] as const;
 
-/** What a stored record on a changed date is, until task 5.6b-2 sorts it (decision 7). */
+/**
+ * What a stored record on a changed date is that refuses the save (decision
+ * 7): an exam until 5.6b-2c, and since 5.6b-2a a move between two stretches
+ * of the save (`day_change`, 5.6b-2a decision 3); `bulk_cancel` is no
+ * longer given.
+ */
 export const CALENDAR_STORED_KINDS = ['day_change', 'bulk_cancel', 'exam'] as const;
 
 /**
@@ -233,6 +269,11 @@ export const calendarLessonsSchema = z.object({
   stored: z.array(
     z.object({ kind: z.enum(CALENDAR_STORED_KINDS), id: z.uuid(), date: schoolDateSchema }),
   ),
+  /**
+   * Task 5.6b-2a: the stored one-day changes and bulk cancels of the changed
+   * dates, sorted as a publish sorts them, with the key the save sends back.
+   */
+  dayChanges: dayChangesAnswerSchema,
   names: previewNamesSchema,
 });
 

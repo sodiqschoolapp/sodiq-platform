@@ -15,6 +15,7 @@ import {
   MONDAY,
   UNKNOWN,
   type DayTemplatesKit,
+  START,
 } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
@@ -755,60 +756,887 @@ describe('calendar entries after publishing', () => {
     (response.body as { error: { details: { path: string; code: string; day?: string }[] } }).error
       .details;
 
-  describe('stored records on a changed date (until 5.6b-2)', () => {
-    it('refuse the save, each listed, with nothing written: a move onto the date, a room change, a bulk cancel and an exam', async () => {
+  /** A one-day move of a lesson's block to lesson slot `lessonNumber` of `date`. */
+  const moveTo = (
+    s: Scene,
+    lessonId: string,
+    date: string,
+    lessonNumber: number,
+    roomId?: string,
+  ) =>
+    keyed(`/api/timetable/lessons/${lessonId}/move`, s.branch, {
+      date,
+      lessonNumber,
+      reason: 'Excursion to the museum',
+      ...(roomId === undefined ? {} : { roomId }),
+    });
+
+  /** The ends of stored one-day changes of a branch (0087). */
+  const endsOf = (branch: string) =>
+    t.database.migrator
+      .selectFrom('lesson_day_change_ends')
+      .select(['change_id', 'version_id'])
+      .where('branch_id', '=', branch)
+      .orderBy('change_id')
+      .execute();
+
+  /** The stored one-day changes of a lesson, oldest first. */
+  const changesOf = (lessonId: string) =>
+    t.database.migrator
+      .selectFrom('lesson_day_changes')
+      .select('id')
+      .where('lesson_id', '=', lessonId)
+      .orderBy('changed_at')
+      .orderBy('id')
+      .execute();
+
+  /** A lesson by its id, with its date and start. */
+  const lessonById = (id: string) =>
+    t.database.migrator
+      .selectFrom('lessons')
+      .select([
+        'id',
+        sql<string>`lesson_date::text`.as('date'),
+        'starts_at',
+        'room_id',
+        'teacher_id',
+        'cancel_cause',
+        'cancel_reason',
+      ])
+      .where('id', '=', id)
+      .executeTakeFirst();
+
+  /** A save of `record` with the key of the preview shown and `decisions`. */
+  const withDays = (
+    record: object,
+    shown: CalendarPreview,
+    decisions: { key: string; blockId?: string; blockDate?: string; choice: string }[] = [],
+  ) => ({
+    ...record,
+    dayChangesKey: shown.lessons.dayChanges.key,
+    ...(decisions.length === 0 ? {} : { dayDecisions: decisions }),
+  });
+
+  /** The bulk cancel's check, then its save with what it listed and `choice` for every shared block. */
+  const bulkCancel = async (
+    s: Scene,
+    body: { date: string; classIds: string[]; lessonNumbers: number[] },
+    choice: 'keep' | 'cancel' = 'cancel',
+  ) => {
+    const checked = await post('/api/timetable/bulk-cancels/check', s.branch, body);
+    expect(checked.status, JSON.stringify(checked.body)).toBe(200);
+    const answer = checked.body as {
+      cancel: { lesson: { id: string } }[];
+      shared: { blockId: string; lessons: { id: string }[]; chosenOnly: string[] }[];
+    };
+    return okay(
+      await keyed('/api/timetable/bulk-cancels', s.branch, {
+        ...body,
+        reason: 'Excursion to the museum',
+        blocks: answer.shared.map((one) => ({ blockId: one.blockId, choice })),
+        lessonIds: [
+          ...answer.cancel.map((one) => one.lesson.id),
+          ...answer.shared.flatMap((one) =>
+            choice === 'cancel' ? one.lessons.map((lesson) => lesson.id) : one.chosenOnly,
+          ),
+        ],
+      }),
+    );
+  };
+
+  /** A day template of the scene's branch starting with a break: its lessons ten minutes later. */
+  const lateTemplate = async (s: Scene) => {
+    const lesson = await t.createSlotType(s.branch, 'Late lesson', 'lesson', 45);
+    const pause = await t.createSlotType(s.branch, 'Late break', 'break', 10);
+    return t.createTemplate(s.branch, 'Late', [pause, lesson, pause, lesson, pause, lesson]);
+  };
+
+  // Task 5.6b-2a: the stored one-day changes and bulk cancels of the changed
+  // dates, sorted as a publish sorts them (decision 2; edge/timetable,
+  // Versions and drafts: "One-day changes ... are stored on their own and
+  // applied again after a publish. The preview sorts them into kept, needs a
+  // decision and dropped").
+  describe('stored one-day changes on a changed date', () => {
+    it('a day off over a move onto it from a date it does not change: needs a decision; "drop the change" puts the lesson back at its old place, "cancel the lesson that day" puts it back cancelled', async () => {
+      for (const choice of ['drop', 'cancel'] as const) {
+        const s = await scene();
+        const other = await scene();
+        // 26 October's maths moved onto 19 October, lesson 2.
+        const moving = await lessonOf(s, OCT26, s.classId);
+        okay(await moveTo(s, moving.id, OCT19, 2));
+        const [change] = await changesOf(moving.id);
+        if (change === undefined) throw new Error('The move was not recorded.');
+        const rows = [await storedRowsOf(s.branch), await storedRowsOf(other.branch)];
+        const before = await t.auditCount();
+
+        // Test 9: the preview lists the sorting and its key and writes nothing.
+        const shown = await preview(s.branch, { action: 'create', record: dayOff(OCT19) });
+        expect(shown.lessons.stored).toEqual([]);
+        expect(shown.lessons.dayChanges.kept).toEqual([]);
+        expect(shown.lessons.dayChanges.dropped).toEqual([]);
+        expect(
+          shown.lessons.dayChanges.decide.map((one) => [
+            one.key,
+            one.kind,
+            one.from.date,
+            one.to.date,
+            one.blocked.map((result) => result.rule),
+          ]),
+        ).toEqual([[change.id, 'move', OCT26, OCT19, ['day_off']]]);
+        expect(shown.lessons.names.units.map((one) => one.id)).toContain(s.classId);
+
+        // Test 7: without the key or a choice, an older key, a choice for no
+        // item shown, "keep" on a one-day change: refused, nothing written.
+        const refusals: [object, string[]][] = [
+          [dayOff(OCT19), ['day_changes_changed', 'day_change_undecided']],
+          [
+            {
+              ...withDays(dayOff(OCT19), shown, [{ key: change.id, choice }]),
+              dayChangesKey: 'a'.repeat(64),
+            },
+            ['day_changes_changed'],
+          ],
+          [withDays(dayOff(OCT19), shown), ['day_change_undecided']],
+          [
+            withDays(dayOff(OCT19), shown, [
+              { key: change.id, choice },
+              { key: (await lessonOf(s, OCT26, s.seniorId)).id, choice: 'drop' },
+            ]),
+            ['day_decision_unknown'],
+          ],
+          [
+            withDays(dayOff(OCT19), shown, [{ key: change.id, choice: 'keep' }]),
+            ['day_choice_not_offered'],
+          ],
+        ];
+        for (const [body, codes] of refusals) {
+          const refused = await create(s.branch, body);
+          refusedWith(refused, 409, 'calendar_blocked');
+          expect(detailsOf(refused).map((one) => one.code)).toEqual(codes);
+        }
+        expect(await storedRowsOf(s.branch)).toEqual(rows[0]);
+        expect(await storedRowsOf(other.branch)).toEqual(rows[1]);
+        expect(await t.auditCount()).toBe(before);
+
+        const saved = okay(
+          await create(s.branch, withDays(dayOff(OCT19), shown, [{ key: change.id, choice }])),
+          201,
+        );
+
+        // Review correction 1: the lesson is back at its old place on 26
+        // October, held or cancelled with the change's reason; none on the day off.
+        expect(await lessonsOn(s.branch, OCT19)).toEqual([]);
+        const back = await lessonById(moving.id);
+        expect([back?.date, back?.starts_at.toISOString(), back?.room_id]).toEqual([
+          OCT26,
+          moving.starts_at.toISOString(),
+          s.room,
+        ]);
+        expect([back?.cancel_cause ?? null, back?.cancel_reason ?? null]).toEqual(
+          choice === 'drop' ? [null, null] : ['reason', 'Excursion to the museum'],
+        );
+        expect(back?.teacher_id).toBe(choice === 'drop' ? s.teacherId : moving.teacher_id);
+        // Decision 5: the change is ended in the name of the version in force.
+        expect(await endsOf(s.branch)).toEqual([{ change_id: change.id, version_id: s.version }]);
+        // Test 13: the audit entry names the outcome by key.
+        const [entry] = await t.entries('calendar_entry.create', saved.id);
+        const days = entry?.new_value as {
+          dayChanges: {
+            versionId: string;
+            firstDate: string;
+            decided: unknown[];
+            ended: string[];
+          }[];
+          movedBack: string[];
+        };
+        expect(days.dayChanges).toEqual([
+          expect.objectContaining({
+            versionId: s.version,
+            firstDate: OCT19,
+            decided: [{ key: change.id, choice }],
+            ended: [change.id],
+          }),
+        ]);
+        expect(days.movedBack).toEqual([change.id]);
+        expect(await storedRowsOf(other.branch)).toEqual(rows[1]);
+      }
+    });
+
+    it('refuses "drop the change" when the old place is taken on its date, listed by that date, with nothing written', async () => {
       const s = await scene();
-      // A move of 26 October's maths onto 19 October, slot 2.
       const moving = await lessonOf(s, OCT26, s.classId);
-      okay(
-        await keyed(`/api/timetable/lessons/${moving.id}/move`, s.branch, {
-          date: OCT19,
-          lessonNumber: 2,
-          reason: 'Excursion to the museum',
-        }),
-      );
+      okay(await moveTo(s, moving.id, OCT19, 2));
+      const [change] = await changesOf(moving.id);
+      if (change === undefined) throw new Error('The move was not recorded.');
+      // 26 October's history moved into the maths room at 08:00, the old place.
+      const history = await lessonOf(s, OCT26, s.seniorId);
+      okay(await moveTo(s, history.id, OCT26, 1, s.room));
+      const shown = await preview(s.branch, { action: 'create', record: dayOff(OCT19) });
       const rows = await storedRowsOf(s.branch);
       const before = await t.auditCount();
 
-      const refused = await create(s.branch, dayOff(OCT19));
+      const refused = await create(
+        s.branch,
+        withDays(dayOff(OCT19), shown, [{ key: change.id, choice: 'drop' }]),
+      );
 
-      refusedWith(refused, 409, 'calendar_stored_changes');
-      expect(detailsOf(refused).map((one) => [one.code, one.day])).toEqual([
-        ['calendar_stored_changes', OCT19],
+      refusedWith(refused, 409, 'calendar_blocked');
+      expect(detailsOf(refused).map((one) => [one.code, one.day, one.path])).toEqual([
+        ['date_blocked', OCT26, `dates.${OCT26}.room_double`],
       ]);
-      const shown = await preview(s.branch, { action: 'create', record: dayOff(OCT19) });
-      expect(shown.lessons.stored.map((one) => one.kind)).toEqual(['day_change']);
-      expect(shown.lessons.removed).toEqual([]);
       expect(await storedRowsOf(s.branch)).toEqual(rows);
       expect(await t.auditCount()).toBe(before);
-
-      // A room change on a lesson of 2 November's week: Monday 2 November is a
-      // vacation, so 16 November.
-      const s2 = await scene();
-      const roomed = await lessonOf(s2, '2026-11-16', s2.seniorId);
+      // "Cancel the lesson that day" takes no check: it is saved.
       okay(
-        await keyed(`/api/timetable/lessons/${roomed.id}/room`, s2.branch, {
-          roomId: s2.room,
+        await create(
+          s.branch,
+          withDays(dayOff(OCT19), shown, [{ key: change.id, choice: 'cancel' }]),
+        ),
+        201,
+      );
+      expect((await lessonById(moving.id))?.cancel_cause).toBe('reason');
+    });
+
+    // Spec review of the code, must-fix 2: an old place that is itself a day
+    // off holds no lesson, not even a cancelled one.
+    it('removes the moved lesson with either choice when its old place is a day off of an earlier save', async () => {
+      for (const choice of ['drop', 'cancel'] as const) {
+        const s = await scene();
+        const moving = await lessonOf(s, OCT26, s.classId);
+        okay(await moveTo(s, moving.id, OCT19, 2));
+        const [change] = await changesOf(moving.id);
+        const first = dayOff(OCT26, OCT26, { gradeFrom: null, gradeTo: null }, 'Teachers day');
+        okay(
+          await create(
+            s.branch,
+            withDays(first, await preview(s.branch, { action: 'create', record: first })),
+          ),
+          201,
+        );
+        expect((await lessonById(moving.id))?.date).toBe(OCT19);
+        const shown = await preview(s.branch, { action: 'create', record: dayOff(OCT19) });
+
+        okay(
+          await create(
+            s.branch,
+            withDays(dayOff(OCT19), shown, [{ key: change?.id ?? '', choice }]),
+          ),
+          201,
+        );
+
+        expect(await lessonById(moving.id)).toBeUndefined();
+        expect(await lessonsOn(s.branch, OCT19)).toEqual([]);
+        expect(await lessonsOn(s.branch, OCT26)).toEqual([]);
+        expect(await endsOf(s.branch)).toEqual([{ change_id: change?.id, version_id: s.version }]);
+      }
+    });
+
+    // Code review round 1, must-fix 1 (`.claude/rules/api.md`, each branch of
+    // a function that chooses where rows go): a move from today or earlier
+    // cannot be put back by a calendar save, and a day off holds no lesson,
+    // so the block is removed whatever the choice (5.6a-5a decision 7; the
+    // build's decision 7). The past is written through the migrator, as "the
+    // past is closed" does: the record of the real move dated from Monday 5
+    // October, before today (10 October).
+    it('removes a move from today or earlier onto a new day off with either choice: nothing on the day off or on its old date, the change ended', async () => {
+      const PAST = '2026-10-05';
+      for (const choice of ['drop', 'cancel'] as const) {
+        const s = await scene();
+        const moving = await lessonOf(s, OCT26, s.classId);
+        okay(await moveTo(s, moving.id, OCT19, 2));
+        const [change] = await changesOf(moving.id);
+        if (change === undefined) throw new Error('The move was not recorded.');
+        await t.database.migrator
+          .updateTable('lesson_day_changes')
+          .set({
+            from_date: PAST,
+            from_starts_at: sql<Date>`from_starts_at - interval '21 days'`,
+            from_ends_at: sql<Date>`from_ends_at - interval '21 days'`,
+          })
+          .where('id', '=', change.id)
+          .execute();
+        // The day's template in force on 5 October too, with the same slots,
+        // so that its old place has room for the lesson and only the date
+        // decides the removal.
+        await t.database.migrator.transaction().execute(async (past) => {
+          const current = await past
+            .selectFrom('day_template_versions')
+            .select(['id', 'start_minutes'])
+            .where('day_template_id', '=', s.regular)
+            .executeTakeFirstOrThrow();
+          const earlier = await past
+            .insertInto('day_template_versions')
+            .values({
+              branch_id: s.branch,
+              day_template_id: s.regular,
+              start_minutes: current.start_minutes,
+              valid_from: '2026-09-01',
+              valid_until: '2026-10-07',
+            })
+            .returning('id')
+            .executeTakeFirstOrThrow();
+          const slots = await past
+            .selectFrom('day_template_slots')
+            .select(['position', 'slot_type_id'])
+            .where('version_id', '=', current.id)
+            .execute();
+          await past
+            .insertInto('day_template_slots')
+            .values(slots.map((one) => ({ ...one, version_id: earlier.id, branch_id: s.branch })))
+            .execute();
+          const lengths = await past
+            .selectFrom('slot_type_lengths')
+            .select(['slot_type_id', 'length_minutes'])
+            .where('slot_type_id', 'in', [...new Set(slots.map((one) => one.slot_type_id))])
+            .execute();
+          await past
+            .insertInto('slot_type_lengths')
+            .values(
+              lengths.map((one) => ({
+                ...one,
+                branch_id: s.branch,
+                valid_from: '2026-09-01',
+                valid_until: '2026-10-07',
+              })),
+            )
+            .execute();
+          await past
+            .insertInto('day_template_assignments')
+            .values({
+              branch_id: s.branch,
+              level: 'default',
+              day_template_id: s.regular,
+              valid_from: '2026-09-01',
+              valid_until: '2026-10-07',
+            })
+            .execute();
+        });
+        const on26 = await lessonsOn(s.branch, OCT26);
+        const shown = await preview(s.branch, { action: 'create', record: dayOff(OCT19) });
+        expect(
+          shown.lessons.dayChanges.decide.map((one) => [one.key, one.from.date, one.to.date]),
+        ).toEqual([[change.id, PAST, OCT19]]);
+
+        const saved = okay(
+          await create(s.branch, withDays(dayOff(OCT19), shown, [{ key: change.id, choice }])),
+          201,
+        );
+
+        expect(await lessonById(moving.id)).toBeUndefined();
+        expect(await lessonsOn(s.branch, OCT19)).toEqual([]);
+        expect(await lessonsOn(s.branch, PAST)).toEqual([]);
+        expect(await lessonsOn(s.branch, OCT26)).toEqual(on26);
+        expect(await endsOf(s.branch)).toEqual([{ change_id: change.id, version_id: s.version }]);
+        const [entry] = await t.entries('calendar_entry.create', saved.id);
+        expect((entry?.new_value as { movedBack: string[] }).movedBack).toEqual([change.id]);
+      }
+    });
+
+    // Spec review of the code, should-fix 3: the old place found by its pattern
+    // entry when the day shifts the times.
+    it('a special template that shifts the times over a move out of the date writes no second lesson at the old place', async () => {
+      const s = await scene();
+      const late = await lateTemplate(s);
+      const moving = await lessonOf(s, OCT19, s.seniorId);
+      okay(await moveTo(s, moving.id, OCT26, 3));
+      const record = specialDay(OCT19, OCT19, late);
+      const shown = await preview(s.branch, { action: 'create', record });
+      expect(shown.lessons.dayChanges.kept).toHaveLength(1);
+
+      okay(await create(s.branch, withDays(record, shown)), 201);
+
+      expect((await lessonById(moving.id))?.date).toBe(OCT26);
+      expect((await lessonsOn(s.branch, OCT19)).map((one) => one.class_id)).toEqual([s.classId]);
+    });
+
+    it('a day off over a move from it to a date it does not change keeps the move: the lesson stays where it went, none at the old place', async () => {
+      const s = await scene();
+      const moving = await lessonOf(s, OCT19, s.classId);
+      okay(await moveTo(s, moving.id, OCT26, 2));
+      const [change] = await changesOf(moving.id);
+      const shown = await preview(s.branch, { action: 'create', record: dayOff(OCT19) });
+      expect(shown.lessons.dayChanges.kept.map((one) => one.key)).toEqual([change?.id]);
+
+      // Saved by the Academic Vice Principal assigned in the branch
+      // (permission review should-fix 3).
+      const vice = await t.database.migrator
+        .selectFrom('assignments')
+        .select('account_id')
+        .where('role', '=', 'academic_vice_principal')
+        .where('branch_id', '=', t.north)
+        .executeTakeFirstOrThrow();
+      await load.classes.role(vice.account_id, s.branch, 'academic_vice_principal');
+      okay(await create(s.branch, withDays(dayOff(OCT19), shown), t.vicePrincipal), 201);
+
+      expect(await lessonsOn(s.branch, OCT19)).toEqual([]);
+      expect((await lessonById(moving.id))?.date).toBe(OCT26);
+      expect(await endsOf(s.branch)).toEqual([]);
+    });
+
+    it('an exam week with "no regular lessons" or a shortened day over a move out of the date leaves no cancelled copy at the old place', async () => {
+      for (const kind of ['exam_week', 'shortened'] as const) {
+        const s = await scene();
+        // Maths of 19 October moved to 26 October; the shortened day keeps
+        // one lesson slot, so the moved history is beyond it.
+        const unit = kind === 'exam_week' ? s.classId : s.seniorId;
+        const moving = await lessonOf(s, OCT19, unit);
+        okay(await moveTo(s, moving.id, OCT26, 3));
+        const record =
+          kind === 'exam_week'
+            ? specialDay(OCT19, OCT19, s.regular, { examWeek: 'no_regular_lessons' })
+            : specialDay(OCT19, OCT19, s.short);
+        const shown = await preview(s.branch, { action: 'create', record });
+        expect(shown.lessons.dayChanges.kept).toHaveLength(1);
+
+        okay(await create(s.branch, withDays(record, shown)), 201);
+
+        // The moved lesson is on 26 October only; 19 October has no lesson of it.
+        expect((await lessonById(moving.id))?.date).toBe(OCT26);
+        expect((await lessonsOn(s.branch, OCT19)).filter((one) => one.class_id === unit)).toEqual(
+          [],
+        );
+        expect(
+          (await lessonsOf(s.branch)).filter(
+            (one) =>
+              one.class_id === unit &&
+              one.subject_id === moving.subject_id &&
+              (one.date === OCT19 || one.date === OCT26),
+          ),
+        ).toHaveLength(2);
+      }
+    });
+
+    // Code review round 1, must-fix 2: the same left-out copy on a publish,
+    // whose new version's pattern entries are not the moved lesson's, so the
+    // old place is found by class, subject and minutes. Another lesson of the
+    // class and subject at another time of that date keeps its cancelled copy.
+    it('a publish over an exam week with "no regular lessons" writes no cancelled copy at the old place of a move out of it to a date before its start', async () => {
+      const s = await scene();
+      const moving = await lessonOf(s, OCT26, s.classId);
+      okay(await moveTo(s, moving.id, OCT19, 2));
+      const [change] = await changesOf(moving.id);
+      if (change === undefined) throw new Error('The move was not recorded.');
+      const record = specialDay(OCT26, OCT26, s.regular, { examWeek: 'no_regular_lessons' });
+      okay(
+        await create(
+          s.branch,
+          withDays(record, await preview(s.branch, { action: 'create', record })),
+        ),
+        201,
+      );
+      // A second version: maths twice on Mondays, in slots 1 and 5; history in slot 3.
+      const next = await draft(s.branch, s.year, s.version);
+      await t.database.migrator
+        .deleteFrom('pattern_blocks')
+        .where('version_id', '=', next)
+        .execute();
+      await t.database.migrator
+        .updateTable('teaching_load_rows')
+        .set({ lessons_per_week: 2 })
+        .where('version_id', '=', next)
+        .where('subject_id', '=', s.maths)
+        .execute();
+      const rows = await t.database.migrator
+        .selectFrom('teaching_load_rows')
+        .select(['id', 'subject_id'])
+        .where('version_id', '=', next)
+        .execute();
+      for (const row of rows) {
+        if (row.subject_id === s.maths) {
+          await placeAt(s.branch, next, row.id, 1, 1);
+          await placeAt(s.branch, next, row.id, 1, 5);
+        } else {
+          await placeAt(s.branch, next, row.id, 1, 3);
+        }
+      }
+      await confirmTemplates(s.branch, next);
+      await load.freeEditLock(next);
+      const checked = await t.get(
+        `/api/timetable/versions/${next}/publish-check?startsOn=${OCT26}`,
+        s.branch,
+      );
+      expect(checked.status, JSON.stringify(checked.body)).toBe(200);
+      const days = (
+        checked.body as { impact: { dayChanges: { key: string; kept: { key: string }[] } } }
+      ).impact.dayChanges;
+      expect(days.kept.map((one) => one.key)).toEqual([change.id]);
+
+      const published = await request(t.kit.server)
+        .post(`/api/timetable/versions/${next}/publish`)
+        .set('Cookie', t.admin)
+        .set(BRANCH_HEADER, s.branch)
+        .set(REQUEST_KEY_HEADER, randomUUID())
+        .send({ startsOn: OCT26, dayChangesKey: days.key });
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+
+      // The moved lesson stays where it went; 26 October holds the slot-5
+      // maths and the history, cancelled "exam week", and no copy at 08:00.
+      expect((await lessonById(moving.id))?.date).toBe(OCT19);
+      const on26 = await lessonsOn(s.branch, OCT26);
+      expect(
+        on26.map((one) => [one.class_id, one.subject_id, one.version_id, one.cancel_cause]),
+      ).toEqual([
+        [s.seniorId, s.history, next, 'exam_week'],
+        [s.classId, s.maths, next, 'exam_week'],
+      ]);
+      expect(on26.map((one) => one.starts_at.getTime())).not.toContain(moving.starts_at.getTime());
+    });
+
+    it('a day off over a room change and a one-lesson cancel of its date drops and ends them; taken back, the lessons come back from the version and the changes stay ended', async () => {
+      const s = await scene();
+      const roomed = await lessonOf(s, OCT19, s.seniorId);
+      const spare = await load.classes.room(s.branch);
+      okay(
+        await keyed(`/api/timetable/lessons/${roomed.id}/room`, s.branch, {
+          roomId: spare,
           reason: 'The room is painted',
         }),
       );
-      refusedWith(await create(s2.branch, dayOff('2026-11-16')), 409, 'calendar_stored_changes');
-
-      // A bulk cancel of 23 November.
-      const s3 = await scene();
+      const cancelled = await lessonOf(s, OCT19, s.classId);
       okay(
-        await keyed('/api/timetable/bulk-cancels', s3.branch, {
-          date: '2026-11-23',
-          classIds: [s3.classId],
-          lessonNumbers: [1],
-          reason: 'Excursion to the museum',
-          blocks: [],
-          lessonIds: [(await lessonOf(s3, '2026-11-23', s3.classId)).id],
+        await keyed(`/api/timetable/lessons/${cancelled.id}/cancel`, s.branch, {
+          reason: 'The teacher is at a seminar',
         }),
       );
-      const bulk = await create(s3.branch, dayOff('2026-11-23'));
-      refusedWith(bulk, 409, 'calendar_stored_changes');
-      expect(detailsOf(bulk).map((one) => one.path.split('.')[1])).toEqual(['bulk_cancel']);
+      const [change] = await changesOf(roomed.id);
+      const shown = await preview(s.branch, { action: 'create', record: dayOff(OCT19) });
+      expect(shown.lessons.dayChanges.dropped.map((one) => [one.kind, one.key]).sort()).toEqual(
+        [
+          ['room', change?.id],
+          ['cancel', cancelled.id],
+        ].sort(),
+      );
+
+      const saved = okay(await create(s.branch, withDays(dayOff(OCT19), shown)), 201);
+
+      expect(await lessonsOn(s.branch, OCT19)).toEqual([]);
+      expect(await endsOf(s.branch)).toEqual([{ change_id: change?.id, version_id: s.version }]);
+      // Test 13: the audit entry names the changes dropped and ended.
+      const [entry] = await t.entries('calendar_entry.create', saved.id);
+      expect((entry?.new_value as { dayChanges: unknown[] }).dayChanges).toEqual([
+        expect.objectContaining({
+          kept: [],
+          dropped: [cancelled.id, change?.id ?? ''].sort(),
+          ended: [change?.id],
+        }),
+      ]);
+
+      // Decision 13 (Look first): archived, the day off gives the lessons back
+      // from the version, not cancelled and in the version's room.
+      const archive = { action: 'archive', id: saved.id };
+      const back = await preview(s.branch, archive);
+      expect(back.lessons.dayChanges.kept).toEqual([]);
+      okay(await post(`/api/setup/calendar-entries/${saved.id}/archive`, s.branch, {}));
+      const after = await lessonsOn(s.branch, OCT19);
+      expect(after.map((one) => [one.class_id, one.cancel_cause])).toEqual([
+        [s.classId, null],
+        [s.seniorId, null],
+      ]);
+      expect(await endsOf(s.branch)).toEqual([{ change_id: change?.id, version_id: s.version }]);
+    });
+
+    it('a special day edited to a shortened template keeps a room change on the lesson it keeps and drops the one beyond its slots', async () => {
+      const s = await scene();
+      // Both teachers work on Saturdays too, so the lessons have their teachers.
+      for (const staffId of [s.teacherId, s.seniorTeacher]) {
+        const entry = await t.database.migrator
+          .selectFrom('staff_availability')
+          .select(['id', 'valid_from', 'valid_until'])
+          .where('staff_id', '=', staffId)
+          .where('branch_id', '=', s.branch)
+          .executeTakeFirstOrThrow();
+        await t.database.migrator
+          .insertInto('staff_availability_ranges')
+          .values({
+            entry_id: entry.id,
+            branch_id: s.branch,
+            staff_id: staffId,
+            weekday: 6,
+            start_minutes: 0,
+            end_minutes: 1440,
+            valid_from: entry.valid_from,
+            valid_until: entry.valid_until,
+          })
+          .execute();
+      }
+      const record = specialDay(OCT24, OCT24, s.regular, { followsWeekday: 1 });
+      const saved = okay(await create(s.branch, record), 201);
+      const spare = await load.classes.room(s.branch);
+      const another = await load.classes.room(s.branch);
+      const maths = await lessonOf(s, OCT24, s.classId);
+      const history = await lessonOf(s, OCT24, s.seniorId);
+      // Two requests, a second apart: the changes of one request are one item.
+      try {
+        for (const [lesson, roomId] of [
+          [maths, spare],
+          [history, another],
+        ] as const) {
+          okay(
+            await keyed(`/api/timetable/lessons/${lesson.id}/room`, s.branch, {
+              roomId,
+              reason: 'The room is painted',
+            }),
+          );
+          t.clock.advance(1000);
+        }
+      } finally {
+        t.clock.set(START);
+      }
+      const [mathsChange] = await changesOf(maths.id);
+      const [historyChange] = await changesOf(history.id);
+      const edited = { ...record, dayTemplateId: s.short };
+      const shown = await preview(s.branch, { action: 'edit', id: saved.id, record: edited });
+      expect(shown.lessons.dayChanges.kept.map((one) => one.key)).toEqual([mathsChange?.id]);
+      expect(shown.lessons.dayChanges.dropped.map((one) => one.key)).toEqual([historyChange?.id]);
+
+      okay(
+        await t.patch(`/api/setup/calendar-entries/${saved.id}`, s.branch, withDays(edited, shown)),
+      );
+
+      // The lesson kept keeps its identity and its room change, which stays in force.
+      const kept = await lessonById(maths.id);
+      expect([kept?.date, kept?.room_id]).toEqual([OCT24, spare]);
+      expect(await endsOf(s.branch)).toEqual([
+        { change_id: historyChange?.id, version_id: s.version },
+      ]);
+      expect(
+        (await lessonsOn(s.branch, OCT24)).map((one) => [one.class_id, one.cancel_cause]),
+      ).toEqual([
+        [s.classId, null],
+        [s.seniorId, 'not_in_template'],
+      ]);
+    });
+
+    it('a special template that shifts the times drops a one-lesson cancel and a room change of the date; the lessons at the new times are held', async () => {
+      const s = await scene();
+      const late = await lateTemplate(s);
+      const cancelled = await lessonOf(s, OCT19, s.classId);
+      okay(
+        await keyed(`/api/timetable/lessons/${cancelled.id}/cancel`, s.branch, {
+          reason: 'The teacher is at a seminar',
+        }),
+      );
+      const roomed = await lessonOf(s, OCT19, s.seniorId);
+      okay(
+        await keyed(`/api/timetable/lessons/${roomed.id}/room`, s.branch, {
+          roomId: await load.classes.room(s.branch),
+          reason: 'The room is painted',
+        }),
+      );
+      const [change] = await changesOf(roomed.id);
+      const record = specialDay(OCT19, OCT19, late);
+      const shown = await preview(s.branch, { action: 'create', record });
+      expect(shown.lessons.dayChanges.dropped.map((one) => one.key).sort()).toEqual(
+        [cancelled.id, change?.id].sort(),
+      );
+
+      okay(await create(s.branch, withDays(record, shown)), 201);
+
+      const after = await lessonsOn(s.branch, OCT19);
+      expect(
+        after.map((one) => [one.class_id, one.cancel_cause, one.starts_at.toISOString()]),
+      ).toEqual([
+        [s.classId, null, '2026-10-19T03:10:00.000Z'],
+        [s.seniorId, null, '2026-10-19T04:05:00.000Z'],
+      ]);
+      expect(await endsOf(s.branch)).toEqual([{ change_id: change?.id, version_id: s.version }]);
+    });
+  });
+
+  describe('stored bulk cancels on a changed date', () => {
+    it('a day off over a bulk cancel keeps it with no lesson under it; taken back, the lessons under it come back cancelled with its reason', async () => {
+      const s = await scene();
+      const cancel = await bulkCancel(s, {
+        date: OCT19,
+        classIds: [s.classId],
+        lessonNumbers: [1],
+      });
+      const shown = await preview(s.branch, { action: 'create', record: dayOff(OCT19) });
+      expect(
+        shown.lessons.dayChanges.bulk.map((one) => [one.key, one.category, one.cancelled]),
+      ).toEqual([[cancel.id, 'kept', 0]]);
+      const saved = okay(await create(s.branch, withDays(dayOff(OCT19), shown)), 201);
+      expect(await lessonsOn(s.branch, OCT19)).toEqual([]);
+      // Test 13: the audit entry names the bulk cancel kept.
+      const [entry] = await t.entries('calendar_entry.create', saved.id);
+      expect((entry?.new_value as { dayChanges: unknown[] }).dayChanges).toEqual([
+        expect.objectContaining({ bulk: { kept: [cancel.id], decided: [], carried: [] } }),
+      ]);
+
+      const archive = { action: 'archive', id: saved.id };
+      const back = await preview(s.branch, archive);
+      okay(
+        await post(`/api/setup/calendar-entries/${saved.id}/archive`, s.branch, withDays({}, back)),
+      );
+      const after = await lessonsOn(s.branch, OCT19);
+      expect(after.map((one) => [one.class_id, one.cancel_cause])).toEqual([
+        [s.classId, 'reason'],
+        [s.seniorId, null],
+      ]);
+      const restore = await preview(s.branch, { action: 'restore', id: saved.id });
+      // Archive and restore without the key, over a bulk cancel: refused.
+      refusedWith(
+        await post(`/api/setup/calendar-entries/${saved.id}/restore`, s.branch),
+        409,
+        'calendar_blocked',
+      );
+      okay(
+        await post(
+          `/api/setup/calendar-entries/${saved.id}/restore`,
+          s.branch,
+          withDays({}, restore),
+        ),
+      );
+      expect(await lessonsOn(s.branch, OCT19)).toEqual([]);
+    });
+
+    it("a block shared with a class not chosen that a day off taken back creates again needs a decision with the bulk cancel's two choices, each written as chosen", async () => {
+      for (const choice of ['cancel', 'keep'] as const) {
+        const s = await scene({ group: true });
+        // The group of grades 9 and 10 in lesson 3: the bulk cancel of the
+        // grade-10 class keeps it for the grade-9 class.
+        const cancel = await bulkCancel(
+          s,
+          { date: OCT19, classIds: [s.seniorId], lessonNumbers: [3] },
+          'keep',
+        );
+        const off = await create(
+          s.branch,
+          withDays(
+            dayOff(OCT19),
+            await preview(s.branch, { action: 'create', record: dayOff(OCT19) }),
+          ),
+        );
+        const saved = okay(off, 201);
+        const archive = { action: 'archive', id: saved.id };
+        const back = await preview(s.branch, archive);
+        const [item] = back.lessons.dayChanges.bulk;
+        const [block] = item?.blocks ?? [];
+        expect([item?.key, item?.category, block?.choice ?? null]).toEqual([
+          cancel.id,
+          'decide',
+          null,
+        ]);
+        if (block === undefined) throw new Error('No shared block listed.');
+        refusedWith(
+          await post(
+            `/api/setup/calendar-entries/${saved.id}/archive`,
+            s.branch,
+            withDays({}, back),
+          ),
+          409,
+          'calendar_blocked',
+        );
+
+        okay(
+          await post(
+            `/api/setup/calendar-entries/${saved.id}/archive`,
+            s.branch,
+            withDays({}, back, [
+              { key: cancel.id, blockId: block.blockId, blockDate: block.blockDate, choice },
+            ]),
+          ),
+        );
+
+        const group = (await lessonsOn(s.branch, OCT19)).find((one) => one.group_id === s.groupId);
+        expect(group?.cancel_cause ?? null).toBe(choice === 'cancel' ? 'reason' : null);
+        const recorded = await t.database.migrator
+          .selectFrom('bulk_cancel_blocks')
+          .select(['block_id', 'choice'])
+          .where('bulk_cancel_id', '=', cancel.id)
+          .where('block_id', 'is not', null)
+          .execute();
+        expect(recorded).toEqual([{ block_id: group?.block_id, choice }]);
+      }
+    });
+  });
+
+  describe('a save over the dates of two versions', () => {
+    it("sorts each stretch with its own version under one key, writes each choice in its own stretch and ends each change in its version's name; an older key is refused", async () => {
+      const s = await scene();
+      // Version 2 from 9 November: maths in slot 3, history in slot 1.
+      const next = await nextVersion(s, NOVEMBER, 3);
+      // 12 October's maths onto 19 October; 23 November's onto 16 November.
+      const first = await lessonOf(s, '2026-10-12', s.classId);
+      okay(await moveTo(s, first.id, OCT19, 2));
+      const second = await lessonOf(s, '2026-11-23', s.classId);
+      okay(await moveTo(s, second.id, '2026-11-16', 1));
+      const [firstChange] = await changesOf(first.id);
+      const [secondChange] = await changesOf(second.id);
+      if (firstChange === undefined || secondChange === undefined) throw new Error('No move.');
+      const record = dayOff(OCT19, '2026-11-16');
+      const shown = await preview(s.branch, { action: 'create', record });
+      expect(shown.lessons.dayChanges.decide.map((one) => one.key).sort()).toEqual(
+        [firstChange.id, secondChange.id].sort(),
+      );
+      const decisions = [
+        { key: firstChange.id, choice: 'drop' },
+        { key: secondChange.id, choice: 'cancel' },
+      ];
+
+      // An older key: a cancel of 26 October recorded after the preview.
+      const later = await lessonOf(s, OCT26, s.seniorId);
+      okay(
+        await keyed(`/api/timetable/lessons/${later.id}/cancel`, s.branch, {
+          reason: 'The teacher is at a seminar',
+        }),
+      );
+      const refused = await create(s.branch, withDays(record, shown, decisions));
+      refusedWith(refused, 409, 'calendar_blocked');
+      expect(detailsOf(refused).map((one) => one.code)).toEqual(['day_changes_changed']);
+
+      const again = await preview(s.branch, { action: 'create', record });
+      const saved = okay(await create(s.branch, withDays(record, again, decisions)), 201);
+
+      const firstBack = await lessonById(first.id);
+      const secondBack = await lessonById(second.id);
+      expect([firstBack?.date, firstBack?.cancel_cause ?? null]).toEqual(['2026-10-12', null]);
+      expect([secondBack?.date, secondBack?.cancel_cause ?? null]).toEqual([
+        '2026-11-23',
+        'reason',
+      ]);
+      expect(await endsOf(s.branch)).toEqual(
+        [
+          { change_id: firstChange.id, version_id: s.version },
+          { change_id: secondChange.id, version_id: next },
+        ].sort((a, b) => a.change_id.localeCompare(b.change_id)),
+      );
+      const [entry] = await t.entries('calendar_entry.create', saved.id);
+      expect(
+        (entry?.new_value as { dayChanges: { versionId: string }[] }).dayChanges.map(
+          (one) => one.versionId,
+        ),
+        // A stretch is a run of consecutive dates written: 19 to 23 October
+        // (the first move), 26 to 30 October (the cancel, dropped) and 16
+        // November, each with an outcome; the weekends are not written.
+      ).toEqual([s.version, s.version, next]);
+    });
+  });
+
+  describe('stored records that still refuse a save', () => {
+    it('a move between two stretches of one save (decision 3, until 5.6b-2c) and an exam (until 5.6b-2c), each listed, with nothing written', async () => {
+      const s = await scene();
+      // A day off of Tuesday 20 to Sunday 25 October, edited to 19 to 26
+      // October: the dates written are 19 and 26 October, two stretches.
+      const saved = okay(await create(s.branch, dayOff('2026-10-20', '2026-10-25')), 201);
+      const moving = await lessonOf(s, OCT19, s.classId);
+      okay(await moveTo(s, moving.id, OCT26, 2));
+      const [change] = await changesOf(moving.id);
+      const rows = await storedRowsOf(s.branch);
+      const before = await t.auditCount();
+
+      const refused = await t.patch(
+        `/api/setup/calendar-entries/${saved.id}`,
+        s.branch,
+        dayOff(OCT19, OCT26),
+      );
+
+      refusedWith(refused, 409, 'calendar_stored_changes');
+      expect(detailsOf(refused).map((one) => [one.path, one.day])).toEqual([
+        [`stored.day_change.${change?.id ?? ''}`, OCT26],
+      ]);
+      expect(await storedRowsOf(s.branch)).toEqual(rows);
+      expect(await t.auditCount()).toBe(before);
 
       // An exam on 30 November (exams have no route before 5.6c).
       const s4 = await scene();
@@ -862,11 +1690,29 @@ describe('calendar entries after publishing', () => {
     it('lists what the save then does and writes nothing', async () => {
       const s = await scene();
       const other = await scene();
+      // Task 5.6b-2a (permission review should-fix 1): the other branch holds a
+      // room change and a bulk cancel on the same date, which the Super
+      // Admin's preview and save of this branch neither list nor touch.
+      const roomed = await lessonOf(other, OCT19, other.seniorId);
+      okay(
+        await keyed(`/api/timetable/lessons/${roomed.id}/room`, other.branch, {
+          roomId: await load.classes.room(other.branch),
+          reason: 'The room is painted',
+        }),
+      );
+      await bulkCancel(other, { date: OCT19, classIds: [other.classId], lessonNumbers: [1] });
       const rows = [await storedRowsOf(s.branch), await storedRowsOf(other.branch)];
       const before = await t.auditCount();
 
       const shown = await preview(s.branch, { action: 'create', record: dayOff(OCT19) });
 
+      expect(shown.lessons.dayChanges).toEqual({
+        key: shown.lessons.dayChanges.key,
+        kept: [],
+        decide: [],
+        dropped: [],
+        bulk: [],
+      });
       expect(await storedRowsOf(s.branch)).toEqual(rows[0]);
       expect(await storedRowsOf(other.branch)).toEqual(rows[1]);
       expect(await t.auditCount()).toBe(before);
@@ -961,8 +1807,8 @@ describe('calendar entries after publishing', () => {
   // .claude/rules/api.md: an id of another branch or an unknown one is 404,
   // with every row the save now writes unchanged in both branches.
   it("answers 404 for another branch's or an unknown entry or template, with the lessons of both branches unchanged", async () => {
-    const north = await scene();
-    const south = await scene();
+    const north = await scene({ group: true });
+    const south = await scene({ group: true });
     const southEntry = okay(await create(south.branch, dayOff(OCT26)), 201);
     const northEntry = okay(await create(north.branch, specialDay(OCT19, OCT19, north.short)), 201);
     // A draft in each branch, which a save would mark out of date (permission review must-fix 2).
@@ -976,6 +1822,66 @@ describe('calendar entries after publishing', () => {
       .where('branch_id', '=', t.north)
       .executeTakeFirstOrThrow();
     await load.classes.role(vice.account_id, north.branch, 'academic_vice_principal');
+    // Task 5.6b-2a (permission review must-fix 1): in each branch, rows of
+    // every table the save writes: a room change on 16 November, which a save
+    // of that date would end; a bulk cancel of that date keeping the group's
+    // block (`bulk_cancel_blocks`); and a room change of 23 November ended
+    // by a day off (`lesson_day_change_ends`). And a pattern block of the south.
+    const changeOf: Record<string, string> = {};
+    const bulkOf: Record<string, string> = {};
+    for (const one of [north, south]) {
+      const lesson = await lessonOf(one, '2026-11-16', one.seniorId);
+      okay(
+        await keyed(`/api/timetable/lessons/${lesson.id}/room`, one.branch, {
+          roomId: await load.classes.room(one.branch),
+          reason: 'The room is painted',
+        }),
+      );
+      changeOf[one.branch] = (await changesOf(lesson.id))[0]?.id ?? '';
+      bulkOf[one.branch] = (
+        await bulkCancel(
+          one,
+          { date: '2026-11-16', classIds: [one.seniorId], lessonNumbers: [3] },
+          'keep',
+        )
+      ).id;
+      const ended = await lessonOf(one, '2026-11-23', one.seniorId);
+      t.clock.advance(1000);
+      try {
+        okay(
+          await keyed(`/api/timetable/lessons/${ended.id}/room`, one.branch, {
+            roomId: await load.classes.room(one.branch),
+            reason: 'The room is painted',
+          }),
+        );
+      } finally {
+        t.clock.set(START);
+      }
+      const record = dayOff('2026-11-23');
+      okay(
+        await create(
+          one.branch,
+          withDays(record, await preview(one.branch, { action: 'create', record })),
+        ),
+        201,
+      );
+    }
+    for (const one of [north, south]) {
+      expect(await endsOf(one.branch)).toHaveLength(1);
+      expect(
+        await t.database.migrator
+          .selectFrom('bulk_cancel_blocks')
+          .select('block_id')
+          .where('branch_id', '=', one.branch)
+          .execute(),
+      ).toHaveLength(1);
+    }
+    const southLesson = await lessonOf(south, '2026-11-16', south.classId);
+    const southBlock = await t.database.migrator
+      .selectFrom('pattern_blocks')
+      .select('id')
+      .where('branch_id', '=', south.branch)
+      .executeTakeFirstOrThrow();
     const rows = [await storedRowsOf(north.branch), await storedRowsOf(south.branch)];
     const before = await t.auditCount();
     for (const cookie of [t.admin, t.vicePrincipal]) {
@@ -999,7 +1905,47 @@ describe('calendar entries after publishing', () => {
               record: dayOff(OCT26),
             }),
         ]) {
-          expect((await attempt()).status).toBe(404);
+          refusedWith(await attempt(), 404, 'not_found');
+        }
+      }
+      // Task 5.6b-2a (decision 11): a key or a block of a decision of
+      // another branch, or unknown, on every save that takes them.
+      const decisionsOf = [
+        // A key names a one-day change, a lesson (a one-lesson cancel) or a
+        // bulk cancel (permission review should-fix 2).
+        [{ key: changeOf[south.branch] ?? '', choice: 'drop' }],
+        [{ key: southLesson.id, choice: 'drop' }],
+        [{ key: bulkOf[south.branch] ?? '', choice: 'drop' }],
+        [{ key: UNKNOWN, choice: 'drop' }],
+        ...[southBlock.id, UNKNOWN].map((blockId) => [
+          {
+            key: changeOf[north.branch] ?? '',
+            blockId,
+            blockDate: '2026-11-16',
+            choice: 'cancel',
+          },
+        ]),
+      ];
+      for (const dayDecisions of decisionsOf) {
+        for (const attempt of [
+          () => create(north.branch, { ...dayOff('2026-11-16'), dayDecisions }),
+          () =>
+            t.patch(
+              `/api/setup/calendar-entries/${northEntry.id}`,
+              north.branch,
+              { ...specialDay(OCT19, '2026-11-16', north.short), dayDecisions },
+              cookie,
+            ),
+          () =>
+            post(`/api/setup/calendar-entries/${northEntry.id}/archive`, north.branch, {
+              dayDecisions,
+            }),
+          () =>
+            post(`/api/setup/calendar-entries/${northEntry.id}/restore`, north.branch, {
+              dayDecisions,
+            }),
+        ]) {
+          refusedWith(await attempt(), 404, 'not_found');
         }
       }
       for (const template of [south.short, UNKNOWN]) {
@@ -1024,7 +1970,7 @@ describe('calendar entries after publishing', () => {
               record: specialDay(OCT19, OCT19, template),
             }),
         ]) {
-          expect((await attempt()).status).toBe(404);
+          refusedWith(await attempt(), 404, 'not_found');
         }
       }
     }
@@ -1179,7 +2125,9 @@ describe('calendar entries after publishing', () => {
       }
     });
 
-    it('a day off and a move onto its date: the first stands, the second is refused', async () => {
+    // Task 5.6b-2a (decision 4, Look first): with the move first, the day off
+    // sent without the sorting's key is refused, then saved with it.
+    it('a day off and a move onto its date: the first stands; the second is refused, the day off then saved with the sorting it was not shown', async () => {
       for (const order of [0, 1]) {
         const s = await scene();
         const moving = await lessonOf(s, OCT26, s.classId);
@@ -1198,8 +2146,23 @@ describe('calendar entries after publishing', () => {
         } else {
           const [moved, dayOffSaved] = await inOrder(s, moveOnto, saveDayOff);
           expect(moved.status, JSON.stringify(moved.body)).toBe(200);
-          refusedWith(dayOffSaved, 409, 'calendar_stored_changes');
+          refusedWith(dayOffSaved, 409, 'calendar_blocked');
+          expect(detailsOf(dayOffSaved).map((one) => one.code)).toEqual([
+            'day_changes_changed',
+            'day_change_undecided',
+          ]);
           expect((await lessonsOn(s.branch, OCT19)).map((one) => one.id)).toContain(moving.id);
+          const shown = await preview(s.branch, { action: 'create', record: dayOff(OCT19) });
+          const [item] = shown.lessons.dayChanges.decide;
+          okay(
+            await create(
+              s.branch,
+              withDays(dayOff(OCT19), shown, [{ key: item?.key ?? '', choice: 'drop' }]),
+            ),
+            201,
+          );
+          expect(await lessonsOn(s.branch, OCT19)).toEqual([]);
+          expect((await lessonById(moving.id))?.date).toBe(OCT26);
         }
       }
     });
@@ -1225,7 +2188,9 @@ describe('calendar entries after publishing', () => {
       }
     });
 
-    it('a day off and a bulk cancel of its date: the first stands, the second is refused', async () => {
+    // Task 5.6b-2a (decision 4, Look first): with the bulk cancel first, the
+    // day off sent without the sorting's key is refused, then saved with it.
+    it('a day off and a bulk cancel of its date: the first stands; the second is refused, the day off then saved with the sorting it was not shown', async () => {
       for (const order of [0, 1]) {
         const s = await scene();
         const lesson = await lessonOf(s, OCT19, s.classId);
@@ -1247,10 +2212,14 @@ describe('calendar entries after publishing', () => {
         } else {
           const [cancelled, saved] = await inOrder(s, bulkCancel, saveDayOff);
           expect(cancelled.status, JSON.stringify(cancelled.body)).toBe(200);
-          refusedWith(saved, 409, 'calendar_stored_changes');
+          refusedWith(saved, 409, 'calendar_blocked');
+          expect(detailsOf(saved).map((one) => one.code)).toEqual(['day_changes_changed']);
           expect(
             (await lessonsOn(s.branch, OCT19)).find((one) => one.id === lesson.id)?.cancel_cause,
           ).toBe('reason');
+          const shown = await preview(s.branch, { action: 'create', record: dayOff(OCT19) });
+          okay(await create(s.branch, withDays(dayOff(OCT19), shown)), 201);
+          expect(await lessonsOn(s.branch, OCT19)).toEqual([]);
         }
       }
     });
@@ -1303,7 +2272,14 @@ describe('calendar entries after publishing', () => {
       .where('version_id', '=', next)
       .execute();
     for (const row of rows) {
-      await placeAt(s.branch, next, row.id, 1, row.subject_id === s.maths ? 1 : 3);
+      // The group of a group scene keeps its own slot 5.
+      await placeAt(
+        s.branch,
+        next,
+        row.id,
+        1,
+        row.subject_id === s.maths ? 1 : row.subject_id === s.history ? 3 : 5,
+      );
     }
     await confirmTemplates(s.branch, next);
     await load.freeEditLock(next);
@@ -1330,6 +2306,23 @@ describe('calendar entries after publishing', () => {
         .orderBy('id')
         .execute();
     }
+    // Task 5.6b-2a: the ends of stored changes and the bulk cancels' choices
+    // the save now writes (`.claude/rules/api.md`: a route that writes more
+    // tables widens the rows of its 404 tests).
+    rows.lesson_day_change_ends = await t.database.migrator
+      .selectFrom('lesson_day_change_ends')
+      .selectAll()
+      .where('branch_id', '=', branch)
+      .orderBy('change_id')
+      .execute();
+    rows.bulk_cancel_blocks = await t.database.migrator
+      .selectFrom('bulk_cancel_blocks')
+      .selectAll()
+      .where('branch_id', '=', branch)
+      .orderBy('bulk_cancel_id')
+      .orderBy('lesson_date')
+      .orderBy('starts_at')
+      .execute();
     // The delivery jobs of the notices of the branch (permission review must-fix 1).
     rows.jobs = (
       await sql<{ id: string }>`

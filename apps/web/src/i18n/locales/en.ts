@@ -159,9 +159,9 @@ export const en = {
     go_live_school_day_taken:
       'This change would leave the go-live date without lessons. Keep the school day, or move the go-live date first.',
     calendar_blocked:
-      'This change would give back lessons that meet a blocked conflict on a date it changes. The preview lists each; settle them first or keep the dates.',
+      'This change meets a blocked conflict on a date it changes or on the date a moved lesson goes back to, or the stored one-day changes of its dates changed since the preview, or a choice is missing. Open the preview again, settle what it lists and choose for each change that needs a decision.',
     calendar_stored_changes:
-      'A date this change touches holds a one-day change, a bulk cancel or an exam. Undo or move it first, then save again.',
+      'A date this change touches holds an exam, or a lesson moved for one day between two dates this change rewrites. Cancel the exam or move the lesson back first, then save again.',
     own_account: 'You cannot lock, unlock or reset your own account. Ask another administrator.',
     account_already_locked: 'This account is already locked. Reload the page to see who locked it.',
     account_not_locked:
@@ -1289,7 +1289,7 @@ export const en = {
         stored_one: '{{count}} stored change stops this save',
         stored_other: '{{count}} stored changes stop this save',
         storedKinds: {
-          day_change: 'a one-day change',
+          day_change: 'a lesson moved between two changed dates',
           bulk_cancel: 'a bulk cancel',
           exam: 'an exam',
         },

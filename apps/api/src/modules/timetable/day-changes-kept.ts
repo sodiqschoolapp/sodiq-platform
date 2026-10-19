@@ -18,7 +18,7 @@ import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
 import type { BulkHold } from './bulk-cancels-kept.js';
 import { dayBeginnings, type DatedFindings } from './dated-check.js';
-import { placeKeyOf } from './dated-lessons.js';
+import { patternDateOf, placeKeyOf } from './dated-lessons.js';
 import type { PatternState } from './pattern.service.js';
 import { examsOn } from './stored-day.js';
 
@@ -147,6 +147,8 @@ interface StoredNow {
   readonly cancel_cause: string | null;
   readonly cancel_reason: string | null;
   readonly double_pair_id: string | null;
+  /** Task 5.6b-2a: its pattern entry, by which a move out of the run finds its old place. */
+  readonly pattern_entry_id: string | null;
 }
 
 /** The rows of one lesson's changes in force, oldest first. */
@@ -268,6 +270,7 @@ async function storedNowOf(transaction: Transaction, ids: readonly string[]): Pr
       'lessons.cancel_cause',
       'lessons.cancel_reason',
       'lesson_blocks.double_pair_id',
+      'lessons.pattern_entry_id',
     ])
     .where('lessons.id', 'in', ids)
     .orderBy('lessons.id')
@@ -303,6 +306,7 @@ async function cancelsOf(
       'lessons.cancel_cause',
       'lessons.cancel_reason',
       'lesson_blocks.double_pair_id',
+      'lessons.pattern_entry_id',
     ])
     .where('lessons.branch_id', '=', branchId)
     .where('lessons.lesson_date', '>=', firstDate)
@@ -485,6 +489,20 @@ export async function sortDayChanges(
       if (found !== undefined) matched.set(chain.lessonId, found);
     }
     if (!inRun(to)) {
+      // Task 5.6b-2a (spec review of the plan, must-fix 1): the old place
+      // by the lesson's pattern entry and date too, so that a day that
+      // shifts its times (a special template written by a calendar save)
+      // writes no second lesson of it there.
+      for (const chain of group) {
+        if (matched.has(chain.lessonId)) continue;
+        const found = findings.dated.lessons.find(
+          (one) =>
+            one.entryId === chain.lesson.pattern_entry_id &&
+            one.date === from &&
+            patternDateOf(one) === from,
+        );
+        if (found !== undefined) matched.set(chain.lessonId, found);
+      }
       drafts.push({
         chains: group,
         kind,
@@ -522,9 +540,39 @@ export async function sortDayChanges(
   const skipped = new Set<DatedLesson>();
   const keptStoredIds = new Set<string>();
   const keptStored: Placement[] = [];
+  // Task 5.6b-2a (spec review of the plan, must-fix 1): a block the day
+  // creates cancelled at the old place of a move out of the run (an exam
+  // week, a slot beyond a shortened day) is left out too, so the lesson is
+  // never in two places: matched by a pattern entry of the move, or by the
+  // class or group, subject and minutes of its pattern block.
+  const skippedCancelled = new Set<string>();
+  const patternBlocks = new Map(state.blocks.map((one) => [one.id, one]));
   for (const draft of drafts) {
-    if (draft.mode === 'to_outside') {
-      for (const one of draft.matched.values()) skipped.add(one);
+    if (draft.mode !== 'to_outside') continue;
+    for (const one of draft.matched.values()) skipped.add(one);
+    for (const cancelled of findings.dated.cancelled) {
+      const pattern = patternBlocks.get(cancelled.blockId);
+      const hit = draft.chains.some((chain) => {
+        if (chain.first.from_date !== cancelled.date) return false;
+        if (chain.lesson.pattern_entry_id !== null) {
+          if (pattern?.lessons.some((entry) => entry.id === chain.lesson.pattern_entry_id)) {
+            return true;
+          }
+        }
+        if (pattern === undefined) return false;
+        return (
+          pattern.start === minutesOf(chain.first.from_date, chain.first.from_starts_at) &&
+          pattern.end === minutesOf(chain.first.from_date, chain.first.from_ends_at) &&
+          pattern.lessons.some((entry) => {
+            const row = model.rowOf(entry.loadRowId);
+            return (
+              (row.classId ?? row.groupId ?? '') === unitOfRow(chain.first) &&
+              row.subjectId === chain.first.subject_id
+            );
+          })
+        );
+      });
+      if (hit) skippedCancelled.add(`${cancelled.blockId}@${cancelled.date}`);
     }
   }
   const examCache = new Map<string, Placement[]>();
@@ -690,7 +738,13 @@ export async function sortDayChanges(
     .map((one) => placed.get(one) ?? one);
   const applied: DatedFindings = {
     ...findings,
-    dated: { ...findings.dated, lessons },
+    dated: {
+      ...findings.dated,
+      lessons,
+      cancelled: findings.dated.cancelled.filter(
+        (one) => !skippedCancelled.has(`${one.blockId}@${one.date}`),
+      ),
+    },
   };
 
   // The items, the plain cancels last.

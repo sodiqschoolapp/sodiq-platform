@@ -12069,6 +12069,17 @@ export interface operations {
                     followsWeekday: (1 | 2 | 3 | 4 | 5 | 6 | 7) | null;
                     /** @enum {string|null} */
                     examWeek: "regular_lessons" | "no_regular_lessons" | null;
+                    dayChangesKey?: string;
+                    dayDecisions?: {
+                        /** Format: uuid */
+                        key: string;
+                        /** Format: uuid */
+                        blockId?: string;
+                        /** Format: date */
+                        blockDate?: string;
+                        /** @enum {string} */
+                        choice: "drop" | "cancel" | "keep";
+                    }[];
                 };
             };
         };
@@ -12385,6 +12396,165 @@ export interface operations {
                                 /** Format: date */
                                 date: string;
                             }[];
+                            dayChanges: {
+                                key: string;
+                                kept: {
+                                    /** Format: uuid */
+                                    key: string;
+                                    /** @enum {string} */
+                                    kind: "cancel" | "room" | "move";
+                                    /** Format: uuid */
+                                    unitId: string;
+                                    /** Format: uuid */
+                                    subjectId: string;
+                                    from: {
+                                        /** Format: date */
+                                        date: string;
+                                        start: number;
+                                        end: number;
+                                        /** Format: uuid */
+                                        roomId: string | null;
+                                    };
+                                    to: {
+                                        /** Format: date */
+                                        date: string;
+                                        start: number;
+                                        end: number;
+                                        /** Format: uuid */
+                                        roomId: string | null;
+                                    };
+                                    reason: string;
+                                    /** Format: uuid */
+                                    carriedVersionId: string | null;
+                                    blocked: {
+                                        rule: string;
+                                        /** @enum {string} */
+                                        severity: "blocked" | "warning";
+                                        weekday: (1 | 2 | 3 | 4 | 5 | 6 | 7) | null;
+                                        lessonIds: string[];
+                                        detail?: {
+                                            [key: string]: number | string;
+                                        };
+                                        /** Format: date */
+                                        date?: string;
+                                    }[];
+                                }[];
+                                decide: {
+                                    /** Format: uuid */
+                                    key: string;
+                                    /** @enum {string} */
+                                    kind: "cancel" | "room" | "move";
+                                    /** Format: uuid */
+                                    unitId: string;
+                                    /** Format: uuid */
+                                    subjectId: string;
+                                    from: {
+                                        /** Format: date */
+                                        date: string;
+                                        start: number;
+                                        end: number;
+                                        /** Format: uuid */
+                                        roomId: string | null;
+                                    };
+                                    to: {
+                                        /** Format: date */
+                                        date: string;
+                                        start: number;
+                                        end: number;
+                                        /** Format: uuid */
+                                        roomId: string | null;
+                                    };
+                                    reason: string;
+                                    /** Format: uuid */
+                                    carriedVersionId: string | null;
+                                    blocked: {
+                                        rule: string;
+                                        /** @enum {string} */
+                                        severity: "blocked" | "warning";
+                                        weekday: (1 | 2 | 3 | 4 | 5 | 6 | 7) | null;
+                                        lessonIds: string[];
+                                        detail?: {
+                                            [key: string]: number | string;
+                                        };
+                                        /** Format: date */
+                                        date?: string;
+                                    }[];
+                                }[];
+                                dropped: {
+                                    /** Format: uuid */
+                                    key: string;
+                                    /** @enum {string} */
+                                    kind: "cancel" | "room" | "move";
+                                    /** Format: uuid */
+                                    unitId: string;
+                                    /** Format: uuid */
+                                    subjectId: string;
+                                    from: {
+                                        /** Format: date */
+                                        date: string;
+                                        start: number;
+                                        end: number;
+                                        /** Format: uuid */
+                                        roomId: string | null;
+                                    };
+                                    to: {
+                                        /** Format: date */
+                                        date: string;
+                                        start: number;
+                                        end: number;
+                                        /** Format: uuid */
+                                        roomId: string | null;
+                                    };
+                                    reason: string;
+                                    /** Format: uuid */
+                                    carriedVersionId: string | null;
+                                    blocked: {
+                                        rule: string;
+                                        /** @enum {string} */
+                                        severity: "blocked" | "warning";
+                                        weekday: (1 | 2 | 3 | 4 | 5 | 6 | 7) | null;
+                                        lessonIds: string[];
+                                        detail?: {
+                                            [key: string]: number | string;
+                                        };
+                                        /** Format: date */
+                                        date?: string;
+                                    }[];
+                                }[];
+                                bulk: {
+                                    /** Format: uuid */
+                                    key: string;
+                                    /** @enum {string} */
+                                    category: "kept" | "decide";
+                                    /** Format: date */
+                                    date: string;
+                                    reason: string;
+                                    classIds: string[];
+                                    /** Format: uuid */
+                                    carriedVersionId: string | null;
+                                    cancelled: number;
+                                    blocks: {
+                                        /** Format: uuid */
+                                        blockId: string;
+                                        /** Format: date */
+                                        blockDate: string;
+                                        /** Format: uuid */
+                                        pairBlockId: string | null;
+                                        start: number;
+                                        end: number;
+                                        lessons: {
+                                            /** Format: uuid */
+                                            unitId: string;
+                                            /** Format: uuid */
+                                            subjectId: string;
+                                        }[];
+                                        chosenClassIds: string[];
+                                        otherClassIds: string[];
+                                        /** @enum {string|null} */
+                                        choice: "keep" | "cancel" | null;
+                                    }[];
+                                }[];
+                            };
                             names: {
                                 units: {
                                     /** Format: uuid */
@@ -12537,6 +12707,17 @@ export interface operations {
                     followsWeekday: (1 | 2 | 3 | 4 | 5 | 6 | 7) | null;
                     /** @enum {string|null} */
                     examWeek: "regular_lessons" | "no_regular_lessons" | null;
+                    dayChangesKey?: string;
+                    dayDecisions?: {
+                        /** Format: uuid */
+                        key: string;
+                        /** Format: uuid */
+                        blockId?: string;
+                        /** Format: date */
+                        blockDate?: string;
+                        /** @enum {string} */
+                        choice: "drop" | "cancel" | "keep";
+                    }[];
                 };
             };
         };
@@ -12671,7 +12852,23 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    dayChangesKey?: string;
+                    dayDecisions?: {
+                        /** Format: uuid */
+                        key: string;
+                        /** Format: uuid */
+                        blockId?: string;
+                        /** Format: date */
+                        blockDate?: string;
+                        /** @enum {string} */
+                        choice: "drop" | "cancel" | "keep";
+                    }[];
+                };
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -12803,7 +13000,23 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    dayChangesKey?: string;
+                    dayDecisions?: {
+                        /** Format: uuid */
+                        key: string;
+                        /** Format: uuid */
+                        blockId?: string;
+                        /** Format: date */
+                        blockDate?: string;
+                        /** @enum {string} */
+                        choice: "drop" | "cancel" | "keep";
+                    }[];
+                };
+            };
+        };
         responses: {
             200: {
                 headers: {

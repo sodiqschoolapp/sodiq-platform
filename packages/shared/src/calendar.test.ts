@@ -3,7 +3,9 @@ import {
   CALENDAR_ENTRY_NAME_MAX_LENGTH,
   calendarChangeSchema,
   calendarEntryRecordSchema,
+  calendarSaveSchema,
 } from './calendar.js';
+import { dayDecisionsBodySchema } from './timetable.js';
 
 const dayOff = {
   kind: 'day_off',
@@ -97,5 +99,43 @@ describe('calendarChangeSchema', () => {
       expect(calendarChangeSchema.safeParse(change).success, change.action).toBe(true);
     }
     expect(calendarChangeSchema.safeParse({ action: 'delete', id }).success).toBe(false);
+  });
+});
+
+// Task 5.6b-2a: a create or an edit carries the key of the sorting shown and
+// the choices; an archive or a restore takes them alone, or no body.
+describe('calendarSaveSchema', () => {
+  const key = 'a'.repeat(64);
+  const change = '0199a3c4-0000-7000-8000-000000000003';
+
+  it('takes the entry with or without the key and the choices, and keeps them', () => {
+    expect(calendarSaveSchema.parse(dayOff)).toEqual(dayOff);
+    const saved = calendarSaveSchema.parse({
+      ...dayOff,
+      dayChangesKey: key,
+      dayDecisions: [{ key: change, choice: 'drop' }],
+    });
+    expect(saved.dayChangesKey).toBe(key);
+    expect(saved.dayDecisions).toEqual([{ key: change, choice: 'drop' }]);
+  });
+
+  it('refuses a key of another shape, a choice not known, and the entry’s own refusals', () => {
+    expect(calendarSaveSchema.safeParse({ ...dayOff, dayChangesKey: 'short' }).success).toBe(false);
+    expect(calendarSaveSchema.safeParse({ ...dayOff, dayDecision: [] }).success).toBe(false);
+    expect(
+      calendarSaveSchema.safeParse({ ...dayOff, dayDecisions: [{ key: change, choice: 'later' }] })
+        .success,
+    ).toBe(false);
+    expect(
+      calendarSaveSchema.safeParse({ ...dayOff, lastDate: '2027-03-20', dayChangesKey: key })
+        .success,
+    ).toBe(false);
+  });
+
+  it('an archive or a restore: no body, {}, or the key and choices; nothing else', () => {
+    expect(dayDecisionsBodySchema.parse(undefined)).toEqual({});
+    expect(dayDecisionsBodySchema.parse({})).toEqual({});
+    expect(dayDecisionsBodySchema.safeParse({ dayChangesKey: key }).success).toBe(true);
+    expect(dayDecisionsBodySchema.safeParse({ name: 'Navruz' }).success).toBe(false);
   });
 });

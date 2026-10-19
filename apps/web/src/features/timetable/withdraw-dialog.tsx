@@ -1,4 +1,4 @@
-import { dayDecisionKeyOf, type DayChangeChoice, type WithdrawBody } from '@sodiq/shared';
+import { type DayChangeChoice, type WithdrawBody } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -13,7 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { PublishDayChanges } from './publish-day-changes';
+import { dayDecisionsBodyOf, PublishDayChanges } from './publish-day-changes';
 import { withdrawCheckQuery } from './timetable-api';
 
 /**
@@ -58,31 +58,12 @@ export function WithdrawDialog({
   // A choice counts only for the sorting shown now.
   const choices =
     answer !== undefined && chosen.key === answer.dayChanges.key ? chosen.choices : {};
-  let body: WithdrawBody | null = null;
-  if (answer !== undefined) {
-    const dayDecisions: NonNullable<WithdrawBody['dayDecisions']> = [];
-    for (const item of answer.dayChanges.decide) {
-      const choice = choices[item.key];
-      if (choice !== undefined) dayDecisions.push({ key: item.key, choice });
-    }
-    const bulkOpen = answer.dayChanges.bulk.flatMap((item) =>
-      item.blocks
-        .filter((block) => block.choice === null)
-        .map((block) => ({ key: item.key, blockId: block.blockId, blockDate: block.blockDate })),
-    );
-    for (const block of bulkOpen) {
-      const choice = choices[dayDecisionKeyOf(block)];
-      if (choice !== undefined) dayDecisions.push({ ...block, choice });
-    }
-    // A check read again (after a refusal of an older key) is waited for:
-    // the key sent is the one of the sorting shown now.
-    if (
-      !check.isFetching &&
-      dayDecisions.length === answer.dayChanges.decide.length + bulkOpen.length
-    ) {
-      body = { dayChangesKey: answer.dayChanges.key, dayDecisions };
-    }
-  }
+  // A check read again (after a refusal of an older key) is waited for:
+  // the key sent is the one of the sorting shown now.
+  const body: WithdrawBody | null =
+    answer === undefined || check.isFetching
+      ? null
+      : dayDecisionsBodyOf(answer.dayChanges, choices);
 
   return (
     <AlertDialog
