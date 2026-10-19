@@ -10,7 +10,7 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 
 The next sessions must know:
 
-- A special day's "follows weekday" changes a working weekday's lessons only where `dayOn` honours it: a Tuesday "by Monday's timetable" gave no lessons in a test, so the two-version test spans the vacation with weekend days following Monday instead.
+- A special day's "follows weekday" applies only on a weekday that is not a working one (`dayOn`, `packages/timetable-rules/src/calendar.ts`): a working Tuesday follows itself, so the two-version test spans the vacation with its weekend days following Monday.
 - `storedRowsOf` of `calendar-lessons.test.ts` now holds `timetable_day_keeps`; the scene takes `three` for a class with three Monday lessons.
 - The next task is 5.6b-2c.
 
