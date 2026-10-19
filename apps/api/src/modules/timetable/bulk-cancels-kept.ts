@@ -70,6 +70,15 @@ export interface SortedBulkBlock {
   readonly carried: 'keep' | 'cancel' | null;
 }
 
+/** A choice recorded on a block by a write, and the stored one it replaced (0088). */
+export type BulkChoiceEntry = {
+  key: string;
+  blockId: string;
+  blockDate: string;
+  choice: 'keep' | 'cancel';
+  before?: 'keep' | 'cancel';
+};
+
 /** A stored bulk cancel as sorted, with what the write needs. */
 export interface SortedBulk {
   readonly answer: BulkItemAnswer;
@@ -420,7 +429,7 @@ export function bulkKeyPartOf(items: readonly SortedBulk[]): string {
 /**
  * After the write: each shared block that took a choice in this write (a
  * decision, or a stored choice carried) gets a `bulk_cancel_blocks` row for
- * its dated block, unless one is there; a row whose block the write removed
+ * its dated block; a row already there takes the choice made now (0088); a row whose block the write removed
  * was set null by 0086 (review note 1: the partial key is read before the
  * insert). Returns the rows written for the audit entry.
  */
@@ -434,11 +443,10 @@ export async function recordBulkBlocks(
     readonly decisions: ReadonlyMap<string, DayChangeChoice>;
   },
 ): Promise<{
-  decided: { key: string; blockId: string; blockDate: string; choice: 'keep' | 'cancel' }[];
-  carried: { key: string; blockId: string; blockDate: string; choice: 'keep' | 'cancel' }[];
+  decided: BulkChoiceEntry[];
+  carried: BulkChoiceEntry[];
 }> {
-  const decided: { key: string; blockId: string; blockDate: string; choice: 'keep' | 'cancel' }[] =
-    [];
+  const decided: BulkChoiceEntry[] = [];
   const carried: typeof decided = [];
   const rows: {
     branch_id: string;
@@ -453,7 +461,7 @@ export async function recordBulkBlocks(
     for (const block of item.blocks) {
       const chosen = block.carried ?? input.decisions.get(block.decisionKey);
       if (chosen !== 'keep' && chosen !== 'cancel') continue;
-      const entry = {
+      const entry: BulkChoiceEntry = {
         key: item.answer.key,
         blockId: block.patternBlockId,
         blockDate: block.blockDate,
@@ -476,13 +484,27 @@ export async function recordBulkBlocks(
         if (found === undefined) continue;
         const there = await transaction
           .selectFrom('bulk_cancel_blocks')
-          .select('block_id')
+          .select('choice')
           .where('branch_id', '=', input.branchId)
           .where('bulk_cancel_id', '=', item.answer.key)
           .where('block_id', '=', found.id)
           .executeTakeFirst();
+        if (there !== undefined) {
+          // A block the write reused keeps its row; a choice made now replaces
+          // the stored one (0088; spec review of the code, must-fix 1).
+          if (there.choice !== chosen) {
+            entry.before = there.choice === 'keep' ? 'keep' : 'cancel';
+            await transaction
+              .updateTable('bulk_cancel_blocks')
+              .set({ choice: chosen })
+              .where('branch_id', '=', input.branchId)
+              .where('bulk_cancel_id', '=', item.answer.key)
+              .where('block_id', '=', found.id)
+              .execute();
+          }
+          continue;
+        }
         if (
-          there !== undefined ||
           rows.some((one) => one.block_id === found.id && one.bulk_cancel_id === item.answer.key)
         ) {
           continue;

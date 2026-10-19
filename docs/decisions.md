@@ -280,6 +280,8 @@ Plan approved on pull request #165 with no corrections; decisions 1 to 13 confir
 | A move recorded after a bulk cancel into its spans is a deliberate later change and is left as it is; one recorded before is cancelled | Decision 9 (5.6a-5a decision 6, the older first) |
 | No new notice kind or area; a carried version's bulk cancels inside the carry's savepoint; the "after" side shows a bulk-cancelled lesson held | Decisions 10 to 12 |
 | Several items on one lesson: a cancel from any item wins, `keep` holds only what nothing else cancels | Decision 13 |
+| **Build decision.** A choice decided again on a block the pairing reuses replaces the stored one on its row (0088 grants an update of `choice` only); the audit entry keeps the choice before | Spec review of the code, must-fix 1: the block keeps its id when one of its lessons pairs |
+| **Build decision.** A lesson the write creates again from a stored one (`recreated`) is never cancelled by a bulk cancel applied again: only a lesson with no stored counterpart is | Spec review of the code, should-fix 2: decision 4, a restore stands |
 | **Build decision, Look first** (a test changed). The same-moment test of 5.6a-3 where a bulk cancel commits before a publish now expects the publish refused `day_changes_changed`, then a publish with the check's key | A requirement added by this task: a publish over a stored bulk cancel needs the key of the sorting that shows it |
 
 ## 19 October 2026: one-day changes kept after a publish (task 5.6a-5a)

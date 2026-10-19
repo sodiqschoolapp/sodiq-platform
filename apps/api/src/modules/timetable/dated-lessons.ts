@@ -659,7 +659,11 @@ export async function writeDatedLessons(
             ? null
             : again?.cancelCause === 'reason'
               ? (rowOf.get(again.id)?.cancel_reason ?? null)
-              : (lesson.oneDayCancel ?? lesson.bulkCancel);
+              : // Task 5.6a-5b-1 (decision 4): a bulk cancel applied again
+                // reaches a lesson the write creates, never one it creates
+                // again from a stored lesson, which keeps its state (a restore
+                // stands; spec review of the code, should-fix 2).
+                (lesson.oneDayCancel ?? (again === undefined ? lesson.bulkCancel : null));
         return {
           branch_id: branchId,
           block_id: blockId,

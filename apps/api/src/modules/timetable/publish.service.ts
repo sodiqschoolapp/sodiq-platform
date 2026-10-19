@@ -59,6 +59,7 @@ import {
   openBulkBlocks,
   recordBulkBlocks,
   sortBulkOf,
+  type BulkChoiceEntry,
   type SortedBulk,
 } from './bulk-cancels-kept.js';
 import { datedCheck, datedLessonsOf, type DatedFindings } from './dated-check.js';
@@ -208,12 +209,7 @@ type DayAudit = {
   bulk?: BulkAudit;
 };
 
-type BulkChoiceAudit = {
-  key: string;
-  blockId: string;
-  blockDate: string;
-  choice: 'keep' | 'cancel';
-};
+type BulkChoiceAudit = BulkChoiceEntry;
 type BulkAudit = { kept: string[]; decided: BulkChoiceAudit[]; carried: BulkChoiceAudit[] };
 
 /** The one-day changes of a carried version for its audit entry, none when it wrote nothing. */

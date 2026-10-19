@@ -3624,9 +3624,9 @@ export const uz: Texts<'one' | 'other'> = {
         transition_unacknowledged:
           'Oʻtish haftasi darslari yuklamaga mos emas yoki tekshirilgandan keyin oʻzgardi. Ularni qayta tekshiring va belgilang.',
         day_change_undecided:
-          'Bir kunlik oʻzgarish uchun qaror kerak. U bilan nima boʻlishini tanlang.',
+          'Bir kunlik oʻzgarish yoki ommaviy bekor qilish bloki uchun qaror kerak. U bilan nima boʻlishini tanlang.',
         day_decision_unknown:
-          'Endi qaror talab qilmaydigan bir kunlik oʻzgarish uchun tanlov yuborildi. Qayta tekshiring.',
+          'Endi qaror talab qilmaydigan bir kunlik oʻzgarish yoki ommaviy bekor qilish bloki uchun tanlov yuborildi. Qayta tekshiring.',
         day_changes_changed:
           'Tekshirganingizdan keyin bu sanalarning bir kunlik oʻzgarishlari oʻzgardi. Ularni qayta tekshiring.',
         day_choice_not_offered:

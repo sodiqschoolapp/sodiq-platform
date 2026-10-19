@@ -3595,9 +3595,10 @@ export const en = {
           'The later published versions changed since you checked them. Check them again and choose.',
         transition_unacknowledged:
           'The lessons of the transition week differ from the load, or changed since you checked them. Check them again and tick the box.',
-        day_change_undecided: 'A one-day change needs a decision. Choose what happens to it.',
+        day_change_undecided:
+          'A one-day change or a block of a bulk cancel needs a decision. Choose what happens to it.',
         day_decision_unknown:
-          'A choice was sent for a one-day change that no longer needs a decision. Check again.',
+          'A choice was sent for a one-day change or a block of a bulk cancel that no longer needs a decision. Check again.',
         day_changes_changed:
           'The one-day changes of these dates changed since you checked them. Check them again.',
         day_choice_not_offered:

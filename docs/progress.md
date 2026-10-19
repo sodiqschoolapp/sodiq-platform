@@ -6,7 +6,7 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 
 - A publish (and each later version it carries a change into) applies the stored bulk cancels of its dates again (`bulk-cancels-kept.ts`): the new version's lessons of the chosen classes in the stored spans are cancelled with the reason when the write creates them; a lesson it keeps keeps its state (a restore stands).
 - A block of the new version shared with classes not chosen and with no stored choice is "needs a decision" in step 8, with the bulk cancel's own choices `cancel` or `keep`, sent as `dayDecisions` with `blockId` and `blockDate` (`day_choice_not_offered` for a choice of the other kind); the choice is recorded on the block written (`bulk_cancel_blocks`). A bulk cancel is listed once, never dropped or ended.
-- Audit `dayChanges.bulk` on `timetable_version.publish` and `.carry`. No migration.
+- Audit `dayChanges.bulk` on `timetable_version.publish` and `.carry`. Migration 0088: a choice decided again on a block the pairing reuses replaces the stored one.
 - Left out: the withdraw (5.6a-5b-2); the exemption of a kept block's students in the journal (8.5); a browser test (no bulk cancel under two versions in the browser scene).
 
 The next sessions must know:

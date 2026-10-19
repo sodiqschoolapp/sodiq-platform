@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   CHANGED_MARK_DAYS,
+  publishBodySchema,
   isMarkedChanged,
   lessonStateOf,
   LOAD_LESSONS_MAX,
@@ -262,6 +263,46 @@ describe('the state of a lesson', () => {
       expect(state('person', true, now)).toBe('cancelled');
       expect(state(null, true, now)).toBe('cancelled');
       expect(state('vacancy', true, now)).toBe('cancelled');
+    }
+  });
+});
+
+// Task 5.6a-5b-1, pull request #165: a bulk cancel's block is decided by its
+// key, block and block date together; one choice per triple.
+describe('publishBodySchema: the decisions of bulk cancels’ blocks', () => {
+  const KEY = '01b15000-0000-7000-8000-000000000001';
+  const BLOCK_A = '01b15000-0000-7000-8000-000000000002';
+  const BLOCK_B = '01b15000-0000-7000-8000-000000000003';
+  const one = (blockId: string, choice: 'keep' | 'cancel' = 'keep') => ({
+    key: KEY,
+    blockId,
+    blockDate: '2026-10-19',
+    choice,
+  });
+
+  it('takes one key with two blocks, and refuses the same key, block and date twice', () => {
+    expect(
+      publishBodySchema.safeParse({
+        startsOn: '2026-10-19',
+        dayDecisions: [one(BLOCK_A), one(BLOCK_B, 'cancel')],
+      }).success,
+    ).toBe(true);
+    expect(
+      publishBodySchema.safeParse({
+        startsOn: '2026-10-19',
+        dayDecisions: [one(BLOCK_A), one(BLOCK_A, 'cancel')],
+      }).success,
+    ).toBe(false);
+  });
+
+  it('refuses a block without its date, and a date without its block', () => {
+    for (const decision of [
+      { key: KEY, blockId: BLOCK_A, choice: 'keep' },
+      { key: KEY, blockDate: '2026-10-19', choice: 'keep' },
+    ]) {
+      expect(
+        publishBodySchema.safeParse({ startsOn: '2026-10-19', dayDecisions: [decision] }).success,
+      ).toBe(false);
     }
   });
 });

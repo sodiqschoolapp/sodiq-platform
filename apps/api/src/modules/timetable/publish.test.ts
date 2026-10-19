@@ -2160,9 +2160,28 @@ describe('publish', () => {
           });
         expect(saved.status, JSON.stringify(saved.body)).toBe(200);
         bulkOf.set(one.branch, (saved.body as { id: string }).id);
+        // A choice on a block in each branch, a row the publish would change
+        // (permission review, should-fix 2): the scene has no shared block, so
+        // the migrator writes it on the lesson's block.
+        const later = (await lessonsOf(one.branch)).find(
+          (row) => row.date > (next?.date ?? '') && row.class_id === one.classId,
+        );
+        await t.database.migrator
+          .insertInto('bulk_cancel_blocks')
+          .values({
+            branch_id: one.branch,
+            bulk_cancel_id: (saved.body as { id: string }).id,
+            block_id: later?.block_id ?? '',
+            choice: 'keep',
+            lesson_date: later?.date ?? '',
+            starts_at: later?.starts_at ?? new Date(0),
+            ends_at: later?.ends_at ?? new Date(0),
+          })
+          .execute();
       }
       const before = await written([s.version, theirs.version]);
       expect(new Set(before[15].map((one) => one.branch_id)).size).toBe(2);
+      expect(new Set(before[18].map((one) => one.branch_id)).size).toBe(2);
       expect(new Set(before[13].map((one) => one.branch_id)).size).toBe(2);
       expect(before[8].length).toBeGreaterThan(0);
       expect(new Set(before[8].map((one) => one.branch_id)).size).toBe(2);
