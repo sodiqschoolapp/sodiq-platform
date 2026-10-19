@@ -1038,6 +1038,12 @@ export const PUBLISH_REFUSALS = [
   'chain_carry_not_offered',
   'chain_start_taken',
   'chain_changed',
+  // Task 5.6a-5a: a stored one-day change that "needs a decision" with no
+  // choice sent; a choice for a key that is not such an item now; a sorting
+  // other than the one shown (`dayChangesKey`).
+  'day_change_undecided',
+  'day_decision_unknown',
+  'day_changes_changed',
 ] as const;
 
 export const publishRefusalCodeSchema = z.enum(PUBLISH_REFUSALS);
@@ -1062,6 +1068,8 @@ export const publishRefusalSchema = z.object({
   result: ruleResultSchema.optional(),
   /** `version_later_published`: the number of the published version. */
   versionNumber: z.int().min(1).optional(),
+  /** `day_change_undecided` and `day_decision_unknown`: the item's key (task 5.6a-5a). */
+  key: z.uuid().optional(),
 });
 
 /**
@@ -1151,6 +1159,46 @@ export const transitionRowSchema = z.object({
 
 export type TransitionRowAnswer = z.infer<typeof transitionRowSchema>;
 
+/** The kinds of stored one-day change a publish applies again (task 5.6a-5a). */
+export const DAY_CHANGE_KINDS = ['cancel', 'room', 'move'] as const;
+
+/** How a "needs a decision" item is settled (task 5.6a-5a, decision 2). */
+export const DAY_CHANGE_CHOICES = ['drop', 'cancel'] as const;
+
+export const dayChangeChoiceSchema = z.enum(DAY_CHANGE_CHOICES);
+
+export type DayChangeChoice = z.infer<typeof dayChangeChoiceSchema>;
+
+/** Where a lesson of a one-day change is: its date, minutes of the day and room. */
+export const dayChangePlaceSchema = z.object({
+  date: schoolDateSchema,
+  start: z.int().min(0).max(1440),
+  end: z.int().min(0).max(1440),
+  roomId: z.uuid().nullable(),
+});
+
+/**
+ * A stored one-day change as the impact preview sorts it (task 5.6a-5a): its
+ * key (decision 9), kind, class or group and subject, where the lesson was
+ * and where the change puts it, its reason, the carried version whose run it
+ * lies in (`null` for the published one's), and, for "needs a decision",
+ * the blocked results of the rule engine at its new place (none when the new
+ * version's block differs).
+ */
+export const dayChangeItemSchema = z.object({
+  key: z.uuid(),
+  kind: z.enum(DAY_CHANGE_KINDS),
+  unitId: z.uuid(),
+  subjectId: z.uuid(),
+  from: dayChangePlaceSchema,
+  to: dayChangePlaceSchema,
+  reason: z.string(),
+  carriedVersionId: z.uuid().nullable(),
+  blocked: z.array(ruleResultSchema),
+});
+
+export type DayChangeItemAnswer = z.infer<typeof dayChangeItemSchema>;
+
 /**
  * The impact preview of a publish (task 5.5a-2b-1; `06`, How surprises are
  * prevented, Impact preview): the lessons created, moved, removed and changed
@@ -1204,6 +1252,18 @@ export const publishImpactSchema = z.object({
       changes: z.array(impactChangeSchema),
     }),
   ),
+  /**
+   * Task 5.6a-5a: the stored one-day changes of the dates written, sorted
+   * into kept, needs a decision and dropped (`edge/timetable`, Versions and
+   * drafts, "A substitution and a one-day move are already recorded for a
+   * date after the new version starts"); `key` goes back with the publish.
+   */
+  dayChanges: z.object({
+    key: transitionKeySchema,
+    kept: z.array(dayChangeItemSchema),
+    decide: z.array(dayChangeItemSchema),
+    dropped: z.array(dayChangeItemSchema),
+  }),
   /** The names of what the preview names (decision 12). */
   names: z.object({
     units: z.array(
@@ -1289,6 +1349,15 @@ export const publishBodySchema = z.strictObject({
   /** Task 5.5a-3a: the answer to the later published versions, with the key of those shown. */
   chain: publishChainSchema.optional(),
   laterKey: transitionKeySchema.optional(),
+  /** Task 5.6a-5a: the key of the one-day changes shown, and a choice for each "needs a decision" item. */
+  dayChangesKey: transitionKeySchema.optional(),
+  dayDecisions: z
+    .array(z.strictObject({ key: z.uuid(), choice: dayChangeChoiceSchema }))
+    .max(2000)
+    .refine((list) => new Set(list.map((one) => one.key)).size === list.length, {
+      message: 'keys_not_unique',
+    })
+    .optional(),
 });
 
 export type PublishBody = z.infer<typeof publishBodySchema>;

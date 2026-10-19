@@ -25,6 +25,7 @@ import {
   type MoveRecord,
   type PinRecord,
   type PlaceRecord,
+  type DayChangeChoice,
   type PublishChain,
   type PreferenceWeights,
   type RearrangeRecord,
@@ -365,6 +366,11 @@ export const publishVersion = (
   transitionKey: string | null = null,
   /** Task 5.5a-3a: the answer and the key of the later versions shown. */
   chain: { chain: PublishChain; laterKey: string } | null = null,
+  /** Task 5.6a-5a: the key of the one-day changes shown and a choice for each "needs a decision" item. */
+  days: {
+    dayChangesKey: string;
+    dayDecisions: { key: string; choice: DayChangeChoice }[];
+  } | null = null,
 ) =>
   answerOf(
     api.POST('/api/timetable/versions/{id}/publish', {
@@ -376,6 +382,7 @@ export const publishVersion = (
         startsOn,
         ...(transitionKey === null ? {} : { transitionKey }),
         ...(chain === null ? {} : chain),
+        ...(days === null ? {} : days),
       },
     }),
   ).then((answer) => timetableVersionSchema.parse(answer));

@@ -3,6 +3,7 @@ import { patternIdOf } from '@sodiq/timetable-rules';
 import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
 import type { DatedFindings } from './dated-check.js';
+import type { DayWritePlan } from './day-changes-kept.js';
 import type { PatternState } from './pattern.service.js';
 
 /**
@@ -65,14 +66,17 @@ export interface RemovedLesson {
 }
 
 /**
- * A kept lesson whose teacher or room changed, before and after. Its cancel
- * never changes: a pair has the same generated cause or none, and a one-day
- * cancel stays (decision 8).
+ * A kept lesson whose teacher, room or cancel changed, before and after. A
+ * pair has the same generated cause or none, and a one-day cancel stays
+ * (decision 8); a cancel is written only by a one-day change applied again
+ * (task 5.6a-5a: "cancel the lesson that day", a cancelled part of a moved
+ * block whose move is not applied).
  */
 export interface ChangedLesson {
   readonly id: string;
   readonly teacherId: { readonly from: string | null; readonly to: string | null };
   readonly roomId: { readonly from: string | null; readonly to: string | null };
+  readonly cancel?: { readonly from: string | null; readonly to: string | null };
 }
 
 /** The causes the expansion writes; a stored lesson with one of them was cancelled by it. */
@@ -100,6 +104,8 @@ interface Wanted {
   readonly roomId: string | null;
   /** The expansion's cancel, `null` for a lesson held. */
   readonly cause: string | null;
+  /** A one-day cancel applied again (task 5.6a-5a), its reason; `null` for none. */
+  readonly oneDayCancel: string | null;
 }
 
 /** A stored lesson as the writer and the preview read it (task 5.5b-2). */
@@ -127,9 +133,11 @@ interface StoredBlock {
   readonly double_pair_id: string | null;
 }
 
-/** A dated block the version wants: one pattern block on one date. */
+/** A dated block the version wants: one pattern block on one date, or moved there (task 5.6a-5a). */
 interface WantedBlock {
   readonly patternBlockId: string;
+  /** The date of the pattern block it comes from: the date it was moved from, for a block moved. */
+  readonly patternDate: string;
   readonly date: string;
   readonly start: number;
   readonly end: number;
@@ -342,6 +350,23 @@ export function writtenTeacherOf(
   return needed && (teacher === null || !vacancies.has(teacher)) ? null : teacher;
 }
 
+/**
+ * The date of the pattern block a dated lesson comes from: its own date, or
+ * for a lesson a one-day move applied again put on another date, the date it
+ * was moved from (task 5.6a-5a). The needs-a-teacher list and a one-day cancel
+ * applied again name a lesson by it, so a lesson moved onto a date of its own
+ * pattern entry is never taken for the entry's lesson there (spec review of
+ * the code, must-fix 1).
+ */
+export const patternDateOf = (lesson: {
+  readonly date: string;
+  readonly placement: { readonly blockId: string | null };
+}): string => patternIdOf(lesson.placement.blockId ?? '')?.date ?? lesson.date;
+
+/** The key of a lesson of a pattern entry at a place: its pattern block's date and its date (task 5.6a-5a). */
+export const placeKeyOf = (entryId: string, patternDate: string, date: string): string =>
+  `${entryId}@${patternDate}@${date}`;
+
 /** The key of a lesson in the needs-a-teacher list. */
 export const needKeyOf = (entryId: string, date: string): string => `${entryId}@${date}`;
 
@@ -355,6 +380,7 @@ export async function writeDatedLessons(
   findings: DatedFindings,
   firstDate: string,
   lastDate: string,
+  plan: DayWritePlan | null = null,
 ): Promise<DatedWrite> {
   const { model } = state.pattern;
   const branchId = model.data.branchId;
@@ -364,7 +390,7 @@ export async function writeDatedLessons(
   await sql`set constraints all deferred`.execute(transaction);
 
   // The stored blocks and lessons of the run, locked in the order of their id.
-  const storedBlocks = await transaction
+  const allBlocks = await transaction
     .selectFrom('lesson_blocks')
     .select(['id', 'version_id', 'pattern_block_id', 'double_pair_id'])
     .where('branch_id', '=', branchId)
@@ -373,8 +399,8 @@ export async function writeDatedLessons(
     .orderBy('id')
     .forUpdate()
     .execute();
-  const stored: StoredRow[] =
-    storedBlocks.length === 0
+  const allStored: StoredRow[] =
+    allBlocks.length === 0
       ? []
       : await transaction
           .selectFrom('lessons')
@@ -400,9 +426,36 @@ export async function writeDatedLessons(
           .orderBy('id')
           .forUpdate()
           .execute();
+  // Task 5.6a-5a (decision 7): a kept move from a date before the run stays
+  // where it is, under its version; the write neither pairs nor removes it.
+  const keepStored = plan?.keepStored ?? new Set<string>();
+  const keptBlocks = new Set(
+    allStored.filter((one) => keepStored.has(one.id)).map((one) => one.block_id),
+  );
+  const stored = allStored.filter(
+    (one) => !keepStored.has(one.id) && !keptBlocks.has(one.block_id),
+  );
+  const storedBlocks = allBlocks.filter((one) => !keptBlocks.has(one.id));
+  // Recorded with the lessons changed (spec review of the code, should-fix 2).
+  const storedCancels: ChangedLesson[] = [];
+  for (const [id, reason] of plan?.cancelStored ?? []) {
+    const row = allStored.find((one) => one.id === id);
+    if (row === undefined || row.cancel_cause !== null) continue;
+    storedCancels.push({
+      id,
+      teacherId: { from: row.teacher_id, to: row.teacher_id },
+      roomId: { from: row.room_id, to: row.room_id },
+      cancel: { from: null, to: 'reason' },
+    });
+    await transaction
+      .updateTable('lessons')
+      .set({ cancel_cause: 'reason', cancel_reason: reason })
+      .where('id', '=', id)
+      .execute();
+  }
   const blockById = new Map<string, StoredBlock>(storedBlocks.map((one) => [one.id, one]));
 
-  const wantedBlocks = await wantedOf(transaction, state, findings);
+  const wantedBlocks = await wantedOf(transaction, state, findings, plan);
 
   // The pairs and the blocks reused (must-fix 1 and 2).
   const rowOf = new Map(stored.map((row) => [row.id, row]));
@@ -446,7 +499,8 @@ export async function writeDatedLessons(
   const byPair = new Map<string, WantedBlock[]>();
   for (const block of wantedBlocks) {
     const pattern = pairPattern.get(block.patternBlockId) ?? null;
-    if (pattern !== null) push(byPair, `${pattern}|${block.date}`, block);
+    // Task 5.6a-5a: a block moved keeps the pair of the date it came from.
+    if (pattern !== null) push(byPair, `${pattern}|${block.patternDate}|${block.date}`, block);
   }
   const datedPair = new Map<WantedBlock, string | null>();
   for (const blocks of byPair.values()) {
@@ -465,7 +519,7 @@ export async function writeDatedLessons(
   }
 
   // The reused blocks re-pointed, then their kept lessons.
-  const changed: ChangedLesson[] = [];
+  const changed: ChangedLesson[] = [...storedCancels];
   let keptCount = 0;
   for (const block of wantedBlocks) {
     if (block.reused === null) continue;
@@ -494,7 +548,9 @@ export async function writeDatedLessons(
       const moved =
         found.load_row_id !== lesson.loadRowId || found.pattern_entry_id !== lesson.entryId;
       const staffed = found.teacher_id !== lesson.teacherId || found.room_id !== lesson.roomId;
-      if (!moved && !staffed) continue;
+      // Task 5.6a-5a: a one-day cancel applied again on a lesson held.
+      const oneDay = found.cancel_cause === null ? lesson.oneDayCancel : null;
+      if (!moved && !staffed && oneDay === null) continue;
       await transaction
         .updateTable('lessons')
         .set({
@@ -502,14 +558,16 @@ export async function writeDatedLessons(
           pattern_entry_id: lesson.entryId,
           teacher_id: lesson.teacherId,
           room_id: lesson.roomId,
+          ...(oneDay === null ? {} : { cancel_cause: 'reason', cancel_reason: oneDay }),
         })
         .where('id', '=', found.id)
         .execute();
-      if (staffed) {
+      if (staffed || oneDay !== null) {
         changed.push({
           id: found.id,
           teacherId: { from: found.teacher_id, to: lesson.teacherId },
           roomId: { from: found.room_id, to: lesson.roomId },
+          ...(oneDay === null ? {} : { cancel: { from: null, to: 'reason' } }),
         });
       }
     }
@@ -558,15 +616,26 @@ export async function writeDatedLessons(
           double_pair_id: datedPair.get(block) ?? null,
         })),
       )
-      .returning(['id', 'pattern_block_id', sql<string>`lesson_date::text`.as('lesson_date')])
+      .returning([
+        'id',
+        'pattern_block_id',
+        sql<string>`lesson_date::text`.as('lesson_date'),
+        'starts_at',
+      ])
       .execute();
-    // Review of #152, finding 3: matched by the pattern block and the date,
-    // unique per wanted block; `returning` gives the rows in no set order.
+    // Review of #152, finding 3: matched by the pattern block, the date and
+    // the start (task 5.6a-5a: a block moved onto a date of its own pattern
+    // block), unique per wanted block; `returning` gives the rows in no set order.
     const idOf = new Map(
-      ids.map((one) => [`${one.pattern_block_id ?? ''}@${one.lesson_date}`, one.id]),
+      ids.map((one) => [
+        `${one.pattern_block_id ?? ''}@${one.lesson_date}@${String(one.starts_at.getTime())}`,
+        one.id,
+      ]),
     );
     for (const block of part) {
-      const id = idOf.get(`${block.patternBlockId}@${block.date}`);
+      const id = idOf.get(
+        `${block.patternBlockId}@${block.date}@${String(moment(block.date, block.start).getTime())}`,
+      );
       if (id === undefined) throw new Error('A block was not inserted.');
       blockIds.set(block, id);
     }
@@ -582,10 +651,13 @@ export async function writeDatedLessons(
         // changes a one-day cancel and the impact preview, which shows such a
         // lesson as held on both sides, names the teachers it notifies.
         const again = paired.recreated.get(lesson);
+        // Task 5.6a-5a: or one applied again (`DayWritePlan.cancels`).
         const oneDay =
-          lesson.cause === null && again?.cancelCause === 'reason'
-            ? (rowOf.get(again.id)?.cancel_reason ?? null)
-            : null;
+          lesson.cause !== null
+            ? null
+            : again?.cancelCause === 'reason'
+              ? (rowOf.get(again.id)?.cancel_reason ?? null)
+              : lesson.oneDayCancel;
         return {
           branch_id: branchId,
           block_id: blockId,
@@ -657,6 +729,7 @@ async function wantedOf(
   transaction: Transaction,
   state: PatternState,
   findings: DatedFindings,
+  plan: DayWritePlan | null,
 ): Promise<WantedBlock[]> {
   const { model } = state.pattern;
   const vacancies = await vacanciesOf(
@@ -666,11 +739,17 @@ async function wantedOf(
   const needs = new Set(findings.needsTeacher.map((one) => needKeyOf(one.entryId, one.date)));
   const patternBlocks = new Map(state.blocks.map((one) => [one.id, one]));
   const blocks = new Map<string, WantedBlock>();
-  const blockOf = (patternBlockId: string, date: string, start: number, end: number) => {
-    const key = `${patternBlockId}@${date}`;
+  const blockOf = (
+    patternBlockId: string,
+    patternDate: string,
+    date: string,
+    start: number,
+    end: number,
+  ) => {
+    const key = `${patternBlockId}@${patternDate}@${date}`;
     let found = blocks.get(key);
     if (found === undefined) {
-      found = { patternBlockId, date, start, end, lessons: [], reused: null };
+      found = { patternBlockId, patternDate, date, start, end, lessons: [], reused: null };
       blocks.set(key, found);
     }
     return found;
@@ -678,9 +757,19 @@ async function wantedOf(
 
   for (const lesson of findings.dated.lessons) {
     const { placement } = lesson;
-    const patternBlockId = patternIdOf(placement.blockId ?? '')?.id ?? '';
+    const dated = patternIdOf(placement.blockId ?? '');
+    const patternBlockId = dated?.id ?? '';
     const loadRowId = placement.loadRowId ?? '';
-    blockOf(patternBlockId, lesson.date, placement.start, placement.end).lessons.push({
+    // Task 5.6a-5a: a block moved by a one-day change applied again is on
+    // the date it was moved to, and stays apart from its pattern block's
+    // own lessons there.
+    blockOf(
+      patternBlockId,
+      dated?.date ?? lesson.date,
+      lesson.date,
+      placement.start,
+      placement.end,
+    ).lessons.push({
       patternBlockId,
       entryId: lesson.entryId,
       loadRowId,
@@ -693,17 +782,20 @@ async function wantedOf(
       subjectId: placement.subjectId ?? '',
       teacherId: writtenTeacherOf(needs, vacancies, {
         entryId: lesson.entryId,
-        date: lesson.date,
+        date: dated?.date ?? lesson.date,
         teacherId: placement.teacherIds[0] ?? null,
       }),
       roomId: placement.roomId,
       cause: null,
+      oneDayCancel:
+        plan?.cancels.get(placeKeyOf(lesson.entryId, dated?.date ?? lesson.date, lesson.date)) ??
+        null,
     });
   }
   for (const cancelled of findings.dated.cancelled) {
     const pattern = patternBlocks.get(cancelled.blockId);
     if (pattern === undefined) throw new Error(`No pattern block ${cancelled.blockId}.`);
-    const block = blockOf(pattern.id, cancelled.date, pattern.start, pattern.end);
+    const block = blockOf(pattern.id, cancelled.date, cancelled.date, pattern.start, pattern.end);
     for (const entry of pattern.lessons) {
       const row = model.rowOf(entry.loadRowId);
       block.lessons.push({
@@ -721,6 +813,7 @@ async function wantedOf(
         teacherId: findings.cancelledTeacher(pattern.id, entry.id, cancelled.date),
         roomId: entry.roomId,
         cause: cancelled.reason,
+        oneDayCancel: null,
       });
     }
   }

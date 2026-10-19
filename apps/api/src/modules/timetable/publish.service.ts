@@ -3,6 +3,7 @@ import {
   PUBLISH_STEPS,
   timetableVersionSchema,
   type CancelledLesson,
+  type DayChangeChoice,
   type DayKeep,
   type DayKeepBody,
   type ErrorCode,
@@ -29,7 +30,7 @@ import {
 } from '@sodiq/timetable-rules';
 import { sql } from 'kysely';
 import { RequestKeys } from '../../database/request-keys.js';
-import { Transactions, type Transaction } from '../../database/transactions.js';
+import { Transactions, transactionMoment, type Transaction } from '../../database/transactions.js';
 import type { JsonValue } from '../../database/types.generated.js';
 import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
@@ -52,6 +53,14 @@ import {
 } from './chain.js';
 import { datedCheck, datedLessonsOf, type DatedFindings } from './dated-check.js';
 import { writeDatedLessons, type DatedWrite } from './dated-lessons.js';
+import {
+  dayChangesKeyOf,
+  settleDayChanges,
+  sortDayChanges,
+  writePlanOf,
+  type DaySorting,
+  type SortedDayChange,
+} from './day-changes-kept.js';
 import { impactOf, type Impact } from './impact.js';
 import { syncJournals } from './journals.js';
 import { markPublished, outOfDateColumn } from './out-of-date.js';
@@ -93,6 +102,84 @@ interface Findings {
   readonly carried: readonly CarryResult[];
   /** Task 5.5b-1: the version over its run and its dated check, what its lessons are written from; `null` when the start is refused. */
   readonly written: { readonly state: PatternState; readonly findings: DatedFindings } | null;
+  /**
+   * Task 5.6a-5a: the stored one-day changes sorted, by run (`null` for the
+   * published version's, else the carried version's id), and the key of
+   * the sorting; `null` when the start is refused.
+   */
+  readonly days: {
+    readonly key: string;
+    readonly items: readonly SortedDayChange[];
+    readonly sortings: ReadonlyMap<string | null, DaySorting>;
+  } | null;
+}
+
+/**
+ * Task 5.6a-5a (review must-fix 1): every key of a decision names a stored
+ * one-day change or a lesson of the branch; another branch's or an unknown
+ * key is 404, before any lock or write.
+ */
+async function refuseUnknownKeys(
+  transaction: Transaction,
+  branchId: string,
+  keys: readonly string[],
+): Promise<void> {
+  if (keys.length === 0) return;
+  const [changes, lessons] = await Promise.all([
+    transaction
+      .selectFrom('lesson_day_changes')
+      .select('id')
+      .where('branch_id', '=', branchId)
+      .where('id', 'in', keys)
+      .execute(),
+    transaction
+      .selectFrom('lessons')
+      .select('id')
+      .where('branch_id', '=', branchId)
+      .where('id', 'in', keys)
+      .execute(),
+  ]);
+  const known = new Set([...changes, ...lessons].map((one) => one.id));
+  if (keys.some((key) => !known.has(key))) {
+    throw new ApiException('not_found', 404);
+  }
+}
+
+/** What the audit entry of a publish or a carry keeps of the one-day changes of its run. */
+type DayAudit = {
+  kept: string[];
+  decided: { key: string; choice: DayChangeChoice | null }[];
+  dropped: string[];
+  ended: string[];
+  recordedAgain: string[];
+};
+
+/** The one-day changes of a carried version for its audit entry, none when it wrote nothing. */
+function dayOfCarry(days: DayAudit | undefined): { dayChanges?: DayAudit } {
+  return days === undefined ? {} : { dayChanges: days };
+}
+
+/** The outcome of every stored one-day change of a run for the audit entry, by key (review should-fix 3). */
+function dayAuditOf(
+  items: readonly SortedDayChange[],
+  decisions: ReadonlyMap<string, DayChangeChoice>,
+  settled: { readonly ended: readonly string[]; readonly recordedAgain: readonly string[] },
+): DayAudit {
+  const keysOf = (category: string) =>
+    items
+      .filter((one) => one.category === category)
+      .map((one) => one.answer.key)
+      .sort();
+  return {
+    kept: keysOf('kept'),
+    decided: items
+      .filter((one) => one.category === 'decide')
+      .map((one) => ({ key: one.answer.key, choice: decisions.get(one.answer.key) ?? null }))
+      .sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0)),
+    dropped: keysOf('dropped'),
+    ended: [...settled.ended],
+    recordedAgain: [...settled.recordedAgain],
+  };
 }
 
 /** A refusal as a detail of `publish_blocked` (decision 12). */
@@ -110,13 +197,17 @@ function detailOf(refusal: PublishRefusal): ErrorDetail {
             ? `pattern.${refusal.result.rule}`
             : refusal.code === 'transition_unacknowledged'
               ? 'transition'
-              : refusal.code.startsWith('chain_') || refusal.code === 'version_later_published'
-                ? 'chain'
-                : refusal.code === 'date_blocked' && refusal.result?.date !== undefined
-                  ? `dates.${refusal.result.date}.${refusal.result.rule}`
-                  : refusal.code.startsWith('version_start')
-                    ? 'startsOn'
-                    : '';
+              : refusal.code.startsWith('day_')
+                ? refusal.key === undefined
+                  ? 'dayChanges'
+                  : `dayChanges.${refusal.key}`
+                : refusal.code.startsWith('chain_') || refusal.code === 'version_later_published'
+                  ? 'chain'
+                  : refusal.code === 'date_blocked' && refusal.result?.date !== undefined
+                    ? `dates.${refusal.result.date}.${refusal.result.rule}`
+                    : refusal.code.startsWith('version_start')
+                      ? 'startsOn'
+                      : '';
   return {
     path,
     code: refusal.code,
@@ -297,6 +388,13 @@ export class TimetablePublish {
     const branchId = branchOf(access);
     return refusingPublish(() =>
       this.transactions.run(access.branchIds, async (transaction) => {
+        // Task 5.6a-5a (review must-fix 1): every key of a decision is a
+        // change or a lesson of the branch, checked before any lock.
+        await refuseUnknownKeys(
+          transaction,
+          branchId,
+          (input.dayDecisions ?? []).map((one) => one.key),
+        );
         await sql`select pg_advisory_xact_lock(${PUBLISH_LOCK})`.execute(transaction);
         await this.timetable.findVersion(transaction, branchId, id);
         const once = await this.requestKeys.runOnce(
@@ -311,6 +409,10 @@ export class TimetablePublish {
               transitionKey: input.transitionKey ?? null,
               chain: input.chain ?? null,
               laterKey: input.laterKey ?? null,
+              dayChangesKey: input.dayChangesKey ?? null,
+              dayDecisions: [...(input.dayDecisions ?? [])]
+                .sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0))
+                .map((one) => ({ key: one.key, choice: one.choice })),
             },
           },
           async () =>
@@ -386,6 +488,25 @@ export class TimetablePublish {
     if (transitionKey !== null && input.transitionKey !== transitionKey) {
       findings.refusals.push({ code: 'transition_unacknowledged' });
     }
+    // Task 5.6a-5a: the one-day changes as shown, and a choice for each
+    // "needs a decision" item (edge/timetable, Versions and drafts: "Publish
+    // waits until every 'needs a decision' item is settled").
+    const decisions = new Map((input.dayDecisions ?? []).map((one) => [one.key, one.choice]));
+    if (findings.days !== null) {
+      const { key, items } = findings.days;
+      if ((items.length > 0 || input.dayChangesKey !== undefined) && input.dayChangesKey !== key) {
+        findings.refusals.push({ code: 'day_changes_changed' });
+      }
+      const open = new Set(
+        items.filter((one) => one.category === 'decide').map((one) => one.answer.key),
+      );
+      for (const one of [...open].sort()) {
+        if (!decisions.has(one)) findings.refusals.push({ code: 'day_change_undecided', key: one });
+      }
+      for (const one of [...decisions.keys()].sort()) {
+        if (!open.has(one)) findings.refusals.push({ code: 'day_decision_unknown', key: one });
+      }
+    }
     if (findings.refusals.length > 0) {
       throw new ApiException('publish_blocked', 409, undefined, findings.refusals.map(detailOf));
     }
@@ -442,24 +563,52 @@ export class TimetablePublish {
     // Task 5.5c-3a: the lessons before the publish, its replace and carries,
     // read before the first write, to the year's end (decisions 5 and 6).
     const week = await snapshotWeek(transaction, branchId, startsOn, version.end_date);
+    const ownSorting = findings.days?.sortings.get(null) ?? null;
     const lessons = await writeDatedLessons(
       transaction,
       findings.written.state,
       findings.written.findings,
       startsOn,
       findings.written.state.pattern.model.data.versionEnd,
+      ownSorting === null
+        ? null
+        : writePlanOf(ownSorting.items, ownSorting.keptStoredIds, decisions),
     );
+    const moment = await transactionMoment(transaction);
+    const settled =
+      ownSorting === null
+        ? null
+        : await settleDayChanges(transaction, {
+            branchId,
+            versionId: id,
+            moment,
+            accountId: access.accountId,
+            items: ownSorting.items,
+            decisions,
+          });
     const carried: CarryResult[] = [];
     const carryLeft: CarryResult[] = [];
     const carriedLessons = new Map<string, DatedWrite>();
+    const carriedDays = new Map<string, DayAudit>();
     for (const result of input.chain === 'carry' ? findings.carried : []) {
       if (result.into.applied.length === 0) continue;
-      const write = result.left ? null : await this.carryWrite(transaction, result);
+      const sorting = findings.days?.sortings.get(result.version.id) ?? null;
+      const write = result.left
+        ? null
+        : await this.carryWrite(transaction, result, {
+            sorting,
+            decisions,
+            branchId,
+            versionId: id,
+            moment,
+            accountId: access.accountId,
+          });
       if (write === null) {
         carryLeft.push(result);
       } else {
         carried.push(result);
-        if (write !== true) carriedLessons.set(result.version.id, write);
+        if (write.lessons !== true) carriedLessons.set(result.version.id, write.lessons);
+        if (write.days !== null) carriedDays.set(result.version.id, write.days);
       }
     }
     // Task 5.5c-3a: one notice per affected teacher, and the changed lessons marked.
@@ -494,6 +643,10 @@ export class TimetablePublish {
         // Task 5.5a-2b-1, decision 11: the counts of the preview and the rows acknowledged.
         impact: findings.impact?.answer.counts ?? null,
         datedLessons: datedAuditOf(lessons),
+        // Task 5.6a-5a: the outcome of every stored one-day change, by key.
+        ...(ownSorting === null || settled === null
+          ? {}
+          : { dayChanges: dayAuditOf(ownSorting.items, decisions, settled) }),
         journals: { ...journals },
         notices: { ...notices },
         ...(transitionKey === null || findings.impact === null
@@ -542,6 +695,7 @@ export class TimetablePublish {
           rows: result.into.rows.map((one) => ({ ...one })),
           entries: result.into.entries.map((one) => ({ ...one })),
           ...datedOfCarry(carriedLessons.get(result.version.id)),
+          ...dayOfCarry(carriedDays.get(result.version.id)),
         },
         requestId,
       });
@@ -555,12 +709,23 @@ export class TimetablePublish {
    * foresee leaves that version as it is (decision 8), its dated lessons
    * included (task 5.5b-1, spec review must-fix 4): they are written inside
    * the savepoint, from what the carry's check built. `null` when left; what
-   * the lessons' write did, or `true` with no lesson to write.
+   * the lessons' write did, or `true` with no lesson to write. Task 5.6a-5a
+   * (review should-fix 6): the stored one-day changes of its run are applied
+   * and settled inside the savepoint too, with what that did for the audit.
    */
   private async carryWrite(
     transaction: Transaction,
     result: CarryResult,
-  ): Promise<DatedWrite | true | null> {
+    days: {
+      readonly sorting: DaySorting | null;
+      readonly decisions: ReadonlyMap<string, DayChangeChoice>;
+      readonly branchId: string;
+      readonly versionId: string;
+      readonly moment: Date;
+      readonly accountId: string;
+    },
+  ): Promise<{ lessons: DatedWrite | true; days: DayAudit | null } | null> {
+    const { sorting } = days;
     await sql`savepoint carry_write`.execute(transaction);
     try {
       for (const row of result.into.rows) {
@@ -588,12 +753,32 @@ export class TimetablePublish {
               result.written.findings,
               result.version.starts_on,
               result.written.lastDate,
+              sorting === null
+                ? null
+                : writePlanOf(sorting.items, sorting.keptStoredIds, days.decisions),
             );
+      const settled =
+        sorting === null
+          ? null
+          : await settleDayChanges(transaction, {
+              branchId: days.branchId,
+              versionId: days.versionId,
+              moment: days.moment,
+              accountId: days.accountId,
+              items: sorting.items,
+              decisions: days.decisions,
+            });
       // Every constraint is immediate since the publish's own `set constraints
       // all immediate`, and again at the end of the lessons' write, so a
       // refusal comes here, inside the savepoint.
       await sql`release savepoint carry_write`.execute(transaction);
-      return written;
+      return {
+        lessons: written,
+        days:
+          sorting === null || settled === null
+            ? null
+            : dayAuditOf(sorting.items, days.decisions, settled),
+      };
     } catch (error) {
       if (!isCheckRefusal(error)) throw error;
       await sql`rollback to savepoint carry_write`.execute(transaction);
@@ -634,6 +819,7 @@ export class TimetablePublish {
         later: [],
         carried: [],
         written: null,
+        days: null,
       };
     }
     const version: VersionRow = { ...stored, starts_on: startsOn };
@@ -791,6 +977,41 @@ export class TimetablePublish {
         })),
       };
     }
+    // Task 5.6a-5a: the stored one-day changes of every run written, sorted;
+    // a carried version left as it is writes nothing, so its changes stay as
+    // they are and are not sorted (review correction 1).
+    const sortings = new Map<string | null, DaySorting>();
+    sortings.set(
+      null,
+      await sortDayChanges(transaction, {
+        state,
+        findings: dated,
+        firstDate: startsOn,
+        lastDate: state.pattern.model.data.versionEnd,
+        carriedVersionId: null,
+      }),
+    );
+    const carriedSorted: CarryResult[] = [];
+    for (const one of carried) {
+      if (one.left || one.written === null) {
+        carriedSorted.push(one);
+        continue;
+      }
+      const sorting = await sortDayChanges(transaction, {
+        state: one.written.state,
+        findings: one.written.findings,
+        firstDate: one.version.starts_on,
+        lastDate: one.written.lastDate,
+        carriedVersionId: one.version.id,
+      });
+      sortings.set(one.version.id, sorting);
+      carriedSorted.push({ ...one, written: { ...one.written, findings: sorting.findings } });
+    }
+    const items = [...sortings.values()].flatMap((one) => one.items);
+    const daysKey = dayChangesKeyOf(version.id, startsOn, items);
+    const ownSorting = sortings.get(null);
+    if (ownSorting === undefined) throw new Error('The run is always sorted.');
+
     // Task 5.5a-2b-1: the impact preview and the transition week.
     const impact = await impactOf(
       transaction,
@@ -799,9 +1020,14 @@ export class TimetablePublish {
         stateOf: (other) => this.pattern.stateOf(transaction, other, accountId),
       },
       state,
-      dated,
+      ownSorting.findings,
       startsOn,
-      carried.flatMap((one) =>
+      {
+        key: daysKey,
+        items,
+        keptStored: new Map([...sortings].map(([id, one]) => [id, one.keptStoredIds])),
+      },
+      carriedSorted.flatMap((one) =>
         one.left || one.before === null || one.written === null
           ? []
           : [
@@ -844,8 +1070,9 @@ export class TimetablePublish {
       unusedKeeps: dated.dated.unusedKeeps.map((one) => ({ ...one })),
       chain: chainAnswer,
       later,
-      carried,
-      written: { state, findings: dated },
+      carried: carriedSorted,
+      written: { state, findings: ownSorting.findings },
+      days: { key: daysKey, items, sortings },
     };
   }
 
@@ -1099,6 +1326,7 @@ export function datedAuditOf(write: DatedWrite) {
       id: one.id,
       teacherId: { ...one.teacherId },
       roomId: { ...one.roomId },
+      ...(one.cancel === undefined ? {} : { cancel: { ...one.cancel } }),
     })),
   };
 }

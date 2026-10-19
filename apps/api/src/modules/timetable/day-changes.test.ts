@@ -12,6 +12,7 @@ import { Transactions, type Transaction } from '../../database/transactions.js';
 import {
   dayTemplatesKit,
   MONDAY,
+  START,
   UNKNOWN,
   type DayTemplatesKit,
 } from '../../testing/day-templates-kit.js';
@@ -475,11 +476,35 @@ describe('one-day changes: cancel and restore', () => {
       t.database.migrator.selectFrom('time_claims').selectAll().orderBy('id').execute(),
       t.database.migrator.selectFrom('lesson_changes').selectAll().orderBy('lesson_id').execute(),
       t.database.migrator.selectFrom('lesson_day_changes').selectAll().orderBy('id').execute(),
+      t.database.migrator
+        .selectFrom('lesson_day_change_ends')
+        .selectAll()
+        .orderBy('change_id')
+        .execute(),
       t.database.migrator.selectFrom('notifications').select('id').orderBy('id').execute(),
       sql<{ id: string }>`select id from pgboss.job order by id`
         .execute(t.database.migrator)
         .then((result) => result.rows),
       t.database.migrator.selectFrom('audit_log').select('id').orderBy('id').execute(),
+      // Task 5.6a-5a (permission review, must-fix 2): every other table a publish writes.
+      t.database.migrator.selectFrom('timetable_versions').selectAll().orderBy('id').execute(),
+      t.database.migrator.selectFrom('teaching_load_rows').selectAll().orderBy('id').execute(),
+      t.database.migrator.selectFrom('pattern_entries').selectAll().orderBy('id').execute(),
+      t.database.migrator
+        .selectFrom('timetable_version_out_of_date_causes')
+        .selectAll()
+        .orderBy('id')
+        .execute(),
+      t.database.migrator
+        .selectFrom('timetable_day_keeps')
+        .selectAll()
+        .orderBy('version_id')
+        .orderBy('class_id')
+        .orderBy('kept_on')
+        .orderBy('slot_position')
+        .execute(),
+      t.database.migrator.selectFrom('journals').selectAll().orderBy('id').execute(),
+      t.database.migrator.selectFrom('request_keys').selectAll().orderBy('key').execute(),
     ]);
 
   /**
@@ -2504,7 +2529,33 @@ describe('one-day changes: cancel and restore', () => {
           order === 0 ? send : take,
           order === 0 ? take : send,
         );
-        const [published, cancelled] = order === 0 ? [one, two] : [two, one];
+        const [sent, cancelled] = order === 0 ? [one, two] : [two, one];
+        // Task 5.6a-5a (review should-fix 7): a cancel recorded after the
+        // preview was read refuses the publish sent without its key; the
+        // publish sent again with the key of the preview that lists it goes
+        // through.
+        let published = sent;
+        if (order === 1) {
+          expect(
+            (sent.body as { error: { details: { code: string }[] } }).error.details.map(
+              (one) => one.code,
+            ),
+          ).toEqual(['day_changes_changed']);
+          const checked = await t.get(
+            `/api/timetable/versions/${draft}/publish-check?startsOn=${NEXT_MONDAY}`,
+            s.branch,
+          );
+          const days = (
+            checked.body as { impact: { dayChanges: { key: string; dropped: { key: string }[] } } }
+          ).impact.dayChanges;
+          expect(days.dropped.map((item) => item.key)).toEqual([lesson.id]);
+          published = await request(t.kit.server)
+            .post(`/api/timetable/versions/${draft}/publish`)
+            .set('Cookie', t.admin)
+            .set(BRANCH_HEADER, s.branch)
+            .set(REQUEST_KEY_HEADER, randomUUID())
+            .send({ startsOn: NEXT_MONDAY, dayChangesKey: days.key });
+        }
         expect(published.status, JSON.stringify(published.body)).toBe(200);
         expect(await rowOf(lesson.id)).toBeUndefined();
         if (order === 0) {
@@ -3414,6 +3465,868 @@ describe('one-day changes: cancel and restore', () => {
           expect(await rowOf(lesson)).toMatchObject({ cancel_reason: 'Nobody came' });
         }
       }
+    });
+  });
+  // Task 5.6a-5a, pull request #164: the stored one-day changes applied again
+  // after a publish (edge/timetable, Versions and drafts: "A substitution and a
+  // one-day move are already recorded for a date after the new version
+  // starts. One-day changes, absences, room closures and exams are stored on
+  // their own and applied again after a publish. The preview sorts them into
+  // kept, needs a decision and dropped. Publish waits until every 'needs a
+  // decision' item is settled."). The substitution half of the row is 5.7b's.
+  describe('one-day changes kept after a publish (task 5.6a-5a)', () => {
+    interface DayItem {
+      key: string;
+      kind: string;
+      from: { date: string; start: number };
+      to: { date: string; start: number; roomId: string | null };
+      blocked: { rule: string }[];
+    }
+    interface Days {
+      key: string;
+      kept: DayItem[];
+      decide: DayItem[];
+      dropped: DayItem[];
+    }
+
+    /**
+     * A draft copied from the scene's version, its rows placed by `place`
+     * (weekday and slot position, `null`: not placed; Monday's first lesson
+     * when not given: a copy takes no pattern), a row's teacher changed by
+     * `teacherOf`.
+     */
+    async function draftOf(
+      s: Scene,
+      place?: (row: { class_id: string | null }) => [number, number] | null,
+      teacherOf?: (row: { class_id: string | null }) => string | null,
+      roomOf?: (row: { class_id: string | null }) => string | null,
+    ) {
+      const created = await t.post('/api/timetable/versions', s.branch, {
+        academicYearId: s.year,
+        startsOn: MONDAY,
+        copyFrom: s.version,
+      });
+      expect(created.status, JSON.stringify(created.body)).toBe(201);
+      const version = (created.body as { id: string }).id;
+      {
+        await t.database.migrator
+          .deleteFrom('pattern_blocks')
+          .where('version_id', '=', version)
+          .execute();
+        const rows = await t.database.migrator
+          .selectFrom('teaching_load_rows')
+          .select(['id', 'class_id'])
+          .where('version_id', '=', version)
+          .orderBy('id')
+          .execute();
+        for (const row of rows) {
+          const roomId = roomOf?.(row) ?? null;
+          if (roomId !== null) {
+            await t.database.migrator
+              .updateTable('teaching_load_rows')
+              .set({ room_id: roomId })
+              .where('id', '=', row.id)
+              .execute();
+          }
+          const teacher = teacherOf?.(row) ?? null;
+          if (teacher !== null) {
+            await t.database.migrator
+              .updateTable('teaching_load_rows')
+              .set({ teacher_id: teacher })
+              .where('id', '=', row.id)
+              .execute();
+          }
+        }
+        for (const row of rows) {
+          const at = place === undefined ? [1, 1] : place(row);
+          if (at !== null) await placeAt(s.branch, version, row.id, at[0] ?? 1, at[1] ?? 1);
+        }
+      }
+      const confirmed = await t.post(
+        `/api/timetable/versions/${version}/templates/confirm`,
+        s.branch,
+      );
+      expect(confirmed.status, JSON.stringify(confirmed.body)).toBe(200);
+      await load.freeEditLock(version);
+      return version;
+    }
+
+    /** The kit's Academic Vice Principal, given the role in a scene's branch too. */
+    const viceIn = async (branch: string) => {
+      const vice = await t.database.migrator
+        .selectFrom('assignments')
+        .select('account_id')
+        .where('id', '=', t.viceAssignment)
+        .executeTakeFirstOrThrow();
+      return load.classes.role(vice.account_id, branch, 'academic_vice_principal');
+    };
+
+    const checkOn = async (s: Scene, version: string, startsOn: string, chain?: string) => {
+      const checked = await t.get(
+        `/api/timetable/versions/${version}/publish-check?startsOn=${startsOn}${
+          chain === undefined ? '' : `&chain=${chain}`
+        }`,
+        s.branch,
+      );
+      expect(checked.status, JSON.stringify(checked.body)).toBe(200);
+      return checked.body as {
+        refusals: { code: string }[];
+        impact: {
+          dayChanges: Days;
+          changes: unknown[];
+          transition: { key: string | null } | null;
+          names: { rooms: { id: string }[] };
+        };
+      };
+    };
+
+    const publishWith = (
+      s: Scene,
+      version: string,
+      startsOn: string,
+      extra: object,
+      key: string = randomUUID(),
+      cookie = t.admin,
+    ) =>
+      request(t.kit.server)
+        .post(`/api/timetable/versions/${version}/publish`)
+        .set('Cookie', cookie)
+        .set(BRANCH_HEADER, s.branch)
+        .set(REQUEST_KEY_HEADER, key)
+        .send({ startsOn, ...extra });
+
+    const refusals = (response: Response) => {
+      refusedWith(response, 409, 'publish_blocked');
+      return (response.body as { error: { details: { code: string; path: string }[] } }).error
+        .details;
+    };
+
+    const endsOf = (ids: readonly string[]) =>
+      ids.length === 0
+        ? Promise.resolve([])
+        : t.database.migrator
+            .selectFrom('lesson_day_change_ends')
+            .selectAll()
+            .where('change_id', 'in', ids)
+            .execute();
+
+    /** The lessons of a class and subject on a date, by start. */
+    const lessonsOn = (s: Scene, date: string, classId = s.classId) =>
+      t.database.migrator
+        .selectFrom('lessons')
+        .selectAll()
+        .where('class_id', '=', classId)
+        .where('subject_id', '=', s.subject)
+        .where('lesson_date', '=', date)
+        .orderBy('starts_at')
+        .execute();
+
+    it('keeps a move and a room change recorded for a date after the start, the preview showing no change', async () => {
+      const s = await scene();
+      const moved = await lessonOf(s, NEXT_MONDAY);
+      changed(await move(s.branch, moved.id, { date: '2026-10-21', lessonNumber: 2 }));
+      const roomed = await lessonOf(s, NEXT_MONDAY, s.otherClass);
+      changed(await roomChange(s.branch, roomed.id, s.spareRoom));
+      const [moveRow] = await dayChangesOf(moved.id);
+      const [roomRow] = await dayChangesOf(roomed.id);
+      const draft = await draftOf(s);
+      const answer = await checkOn(s, draft, NEXT_MONDAY);
+      const days = answer.impact.dayChanges;
+      expect(days.kept.map((one) => [one.key, one.kind]).sort()).toEqual(
+        [
+          [moveRow?.id, 'move'],
+          [roomRow?.id, 'room'],
+        ].sort(),
+      );
+      expect(days.kept.find((one) => one.kind === 'move')).toMatchObject({
+        from: { date: NEXT_MONDAY, start: 480 },
+        to: { date: '2026-10-21', start: 535 },
+      });
+      expect(days.decide).toEqual([]);
+      expect(days.dropped).toEqual([]);
+      // Both lessons read the same before and after: no change is shown.
+      expect(answer.impact.changes).toEqual([]);
+      const published = await publishWith(s, draft, NEXT_MONDAY, { dayChangesKey: days.key });
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      expect(await rowOf(moved.id)).toMatchObject({
+        lesson_date: '2026-10-21',
+        starts_at: at('2026-10-21', '08:55'),
+      });
+      expect((await rowOf(roomed.id))?.room_id).toBe(s.spareRoom);
+      expect(await lessonsOn(s, NEXT_MONDAY)).toEqual([]);
+      expect(await endsOf([moveRow?.id ?? '', roomRow?.id ?? ''])).toEqual([]);
+      const [entry] = await t.entries('timetable_version.publish', draft);
+      expect(entry?.new_value).toMatchObject({
+        dayChanges: {
+          kept: [moveRow?.id, roomRow?.id].sort(),
+          decided: [],
+          dropped: [],
+          ended: [],
+          recordedAgain: [],
+        },
+      });
+      // A later publish over the same dates still finds both.
+      const again = await draftOf(s);
+      const later = (await checkOn(s, again, NEXT_MONDAY, 'replace')).impact.dayChanges;
+      expect(later.kept.map((one) => one.key).sort()).toEqual([moveRow?.id, roomRow?.id].sort());
+    });
+
+    it('asks for a decision on a move whose new place the new version gives the teacher, and refuses until it is settled', async () => {
+      const s = await scene();
+      const north = await scene();
+      await viceIn(s.branch);
+      const moved = await lessonOf(s, NEXT_MONDAY);
+      changed(await move(s.branch, moved.id, { date: '2026-10-21', lessonNumber: 2 }));
+      const [moveRow] = await dayChangesOf(moved.id);
+      const other = await lessonOf(s, NEXT_MONDAY, s.otherClass);
+      // A one-day change of the other branch too, which the publish must leave.
+      const northLesson = await lessonOf(north, NEXT_MONDAY);
+      changed(await roomChange(north.branch, northLesson.id, north.spareRoom));
+      const [northRow] = await dayChangesOf(northLesson.id);
+      // The other class's maths goes to the first class's teacher, on
+      // Wednesday in the second lesson: where the move put the first class.
+      const draft = await draftOf(
+        s,
+        (row) => (row.class_id === s.otherClass ? [3, 3] : [1, 1]),
+        (row) => (row.class_id === s.otherClass ? s.teacher.staffId : null),
+      );
+      const days = (await checkOn(s, draft, NEXT_MONDAY)).impact.dayChanges;
+      expect(days.kept).toEqual([]);
+      expect(days.decide.map((one) => one.key)).toEqual([moveRow?.id]);
+      expect(days.decide[0]?.blocked.map((one) => one.rule)).toContain('teacher_double');
+      const before = await everything();
+      // No choice.
+      expect(
+        refusals(await publishWith(s, draft, NEXT_MONDAY, { dayChangesKey: days.key })),
+      ).toContainEqual(
+        expect.objectContaining({
+          code: 'day_change_undecided',
+          path: `dayChanges.${moveRow?.id ?? ''}`,
+        }),
+      );
+      // A choice for a lesson of the branch that is no such item.
+      const unknown = refusals(
+        await publishWith(s, draft, NEXT_MONDAY, {
+          dayChangesKey: days.key,
+          dayDecisions: [
+            { key: moveRow?.id, choice: 'drop' },
+            { key: other.id, choice: 'drop' },
+          ],
+        }),
+      );
+      expect(unknown.map((one) => one.code)).toEqual(['day_decision_unknown']);
+      // A sorting other than the one shown.
+      expect(
+        refusals(
+          await publishWith(s, draft, NEXT_MONDAY, {
+            dayChangesKey: 'c'.repeat(64),
+            dayDecisions: [{ key: moveRow?.id, choice: 'drop' }],
+          }),
+        ).map((one) => one.code),
+      ).toEqual(['day_changes_changed']);
+      // Another branch's lesson and change, and an unknown key: 404, before
+      // any lock, as the Academic Vice Principal and the Super Admin.
+      for (const cookie of [t.vicePrincipal, t.admin]) {
+        for (const key of [northLesson.id, northRow?.id ?? '', UNKNOWN]) {
+          refusedWith(
+            await publishWith(
+              s,
+              draft,
+              NEXT_MONDAY,
+              {
+                dayChangesKey: days.key,
+                dayDecisions: [
+                  { key: moveRow?.id, choice: 'drop' },
+                  { key, choice: 'cancel' },
+                ],
+              },
+              randomUUID(),
+              cookie,
+            ),
+            404,
+            'not_found',
+          );
+        }
+      }
+      expect(await everything()).toEqual(before);
+      const published = await publishWith(
+        s,
+        draft,
+        NEXT_MONDAY,
+        { dayChangesKey: days.key, dayDecisions: [{ key: moveRow?.id, choice: 'drop' }] },
+        randomUUID(),
+        t.vicePrincipal,
+      );
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      // Dropped: the first class's maths is back on Monday at 08:00, held, and
+      // nothing is left on Wednesday at 08:55; the change is ended.
+      const back = await lessonsOn(s, NEXT_MONDAY);
+      expect(back.map((one) => [one.starts_at, one.cancel_cause])).toEqual([
+        [at(NEXT_MONDAY, '08:00'), null],
+      ]);
+      expect(await lessonsOn(s, '2026-10-21')).toEqual([]);
+      expect((await endsOf([moveRow?.id ?? ''])).map((one) => one.version_id)).toEqual([draft]);
+      const [entry] = await t.entries('timetable_version.publish', draft);
+      expect(entry?.new_value).toMatchObject({
+        dayChanges: {
+          kept: [],
+          decided: [{ key: moveRow?.id, choice: 'drop' }],
+          ended: [moveRow?.id],
+        },
+      });
+      // The teacher whose Wednesday lesson went back to Monday is told.
+      const draftNumber = (
+        await t.database.migrator
+          .selectFrom('timetable_versions')
+          .select('number')
+          .where('id', '=', draft)
+          .executeTakeFirstOrThrow()
+      ).number;
+      const notices = await t.database.migrator
+        .selectFrom('notifications')
+        .select('data')
+        .where('kind', '=', 'timetable.published')
+        .where('account_id', '=', s.teacher.accountId)
+        .execute();
+      expect(
+        notices.filter((one) => (one.data as { number?: string }).number === String(draftNumber)),
+      ).toHaveLength(1);
+    });
+
+    it('cancels the lesson that day when chosen, and a later publish asks nothing of the change', async () => {
+      const s = await scene();
+      const moved = await lessonOf(s, NEXT_MONDAY);
+      changed(
+        await move(
+          s.branch,
+          moved.id,
+          { date: '2026-10-21', lessonNumber: 2 },
+          t.admin,
+          randomUUID(),
+          'Concert rehearsal',
+        ),
+      );
+      const [moveRow] = await dayChangesOf(moved.id);
+      const draft = await draftOf(
+        s,
+        (row) => (row.class_id === s.otherClass ? [3, 3] : [1, 1]),
+        (row) => (row.class_id === s.otherClass ? s.teacher.staffId : null),
+      );
+      const days = (await checkOn(s, draft, NEXT_MONDAY)).impact.dayChanges;
+      const published = await publishWith(s, draft, NEXT_MONDAY, {
+        dayChangesKey: days.key,
+        dayDecisions: [{ key: moveRow?.id, choice: 'cancel' }],
+      });
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      const back = await lessonsOn(s, NEXT_MONDAY);
+      expect(back.map((one) => [one.starts_at, one.cancel_cause, one.cancel_reason])).toEqual([
+        [at(NEXT_MONDAY, '08:00'), 'reason', 'Concert rehearsal'],
+      ]);
+      expect(await lessonsOn(s, '2026-10-21')).toEqual([]);
+      expect(await endsOf([moveRow?.id ?? ''])).toHaveLength(1);
+      // The next publish lists the cancel, kept, and nothing of the move.
+      const again = await draftOf(s);
+      const later = (await checkOn(s, again, NEXT_MONDAY, 'replace')).impact.dayChanges;
+      expect(later.decide).toEqual([]);
+      expect(later.kept.map((one) => [one.kind, one.key])).toEqual([['cancel', back[0]?.id]]);
+    });
+
+    it('drops a change whose lesson the new version no longer has, and never applies it again', async () => {
+      const s = await scene();
+      const moved = await lessonOf(s, NEXT_MONDAY);
+      changed(await move(s.branch, moved.id, { date: '2026-10-21', lessonNumber: 2 }));
+      const [moveRow] = await dayChangesOf(moved.id);
+      // The first class's maths goes to Tuesday.
+      const draft = await draftOf(s, (row) => (row.class_id === s.classId ? [2, 1] : [1, 1]));
+      const days = (await checkOn(s, draft, NEXT_MONDAY)).impact.dayChanges;
+      expect(days.dropped.map((one) => one.key)).toEqual([moveRow?.id]);
+      expect(days.kept).toEqual([]);
+      const published = await publishWith(s, draft, NEXT_MONDAY, { dayChangesKey: days.key });
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      expect(await rowOf(moved.id)).toBeUndefined();
+      expect(await lessonsOn(s, '2026-10-21')).toEqual([]);
+      expect(await endsOf([moveRow?.id ?? ''])).toHaveLength(1);
+      // A version that has the Monday lesson again does not move it.
+      const again = await draftOf(s, () => [1, 1]);
+      const later = (await checkOn(s, again, NEXT_MONDAY, 'replace')).impact.dayChanges;
+      expect([...later.kept, ...later.decide, ...later.dropped]).toEqual([]);
+    });
+
+    it('keeps a move to a date before the start where it is, and does not write the lesson twice', async () => {
+      const s = await scene();
+      const moved = await lessonOf(s, NEXT_MONDAY);
+      changed(await move(s.branch, moved.id, { date: '2026-10-16', lessonNumber: 2 }));
+      const [moveRow] = await dayChangesOf(moved.id);
+      const draft = await draftOf(s);
+      const days = (await checkOn(s, draft, NEXT_MONDAY)).impact.dayChanges;
+      expect(days.kept.map((one) => one.key)).toEqual([moveRow?.id]);
+      const published = await publishWith(s, draft, NEXT_MONDAY, { dayChangesKey: days.key });
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      expect(await lessonsOn(s, NEXT_MONDAY)).toEqual([]);
+      expect(await rowOf(moved.id)).toMatchObject({ lesson_date: '2026-10-16' });
+      // The Monday after is written as the new version has it.
+      expect(await lessonsOn(s, '2026-10-26')).toHaveLength(1);
+    });
+
+    it('keeps a move from a date before the start under its version, or settles it when the new version takes its place', async () => {
+      for (const choice of ['kept', 'drop', 'cancel'] as const) {
+        const s = await scene();
+        const moved = await lessonOf(s, MONDAY);
+        changed(await move(s.branch, moved.id, { date: '2026-10-14', lessonNumber: 2 }));
+        const [moveRow] = await dayChangesOf(moved.id);
+        const draft =
+          choice === 'kept'
+            ? await draftOf(s)
+            : await draftOf(
+                s,
+                (row) => (row.class_id === s.otherClass ? [3, 3] : [1, 1]),
+                (row) => (row.class_id === s.otherClass ? s.teacher.staffId : null),
+              );
+        const checked = await checkOn(s, draft, '2026-10-13');
+        const days = checked.impact.dayChanges;
+        // The start is a Tuesday: the week differs, and a "cancel" goes with
+        // the key the check showed (review of the plan, must-fix 3).
+        if (choice === 'cancel') expect(checked.impact.transition?.key).toMatch(/^[0-9a-f]{64}$/);
+        const decisions = choice === 'kept' ? [] : [{ key: moveRow?.id ?? '', choice }];
+        expect((choice === 'kept' ? days.kept : days.decide).map((one) => one.key)).toEqual([
+          moveRow?.id,
+        ]);
+        const published = await publishWith(s, draft, '2026-10-13', {
+          dayChangesKey: days.key,
+          dayDecisions: decisions,
+          ...(checked.impact.transition?.key == null
+            ? {}
+            : { transitionKey: checked.impact.transition.key }),
+        });
+        expect(published.status, JSON.stringify(published.body)).toBe(200);
+        const row = await rowOf(moved.id);
+        if (choice === 'drop') {
+          expect(row).toBeUndefined();
+          continue;
+        }
+        expect(row).toMatchObject({
+          lesson_date: '2026-10-14',
+          starts_at: at('2026-10-14', '08:55'),
+          cancel_cause: choice === 'cancel' ? 'reason' : null,
+        });
+        // Kept under the version it was moved in.
+        const block = await t.database.migrator
+          .selectFrom('lesson_blocks')
+          .select('version_id')
+          .where('id', '=', row?.block_id ?? '')
+          .executeTakeFirstOrThrow();
+        expect(block.version_id).toBe(s.version);
+      }
+    });
+
+    it('moves a block with a part cancelled along, the part still cancelled', async () => {
+      const s = await scene({ split: true });
+      const parts = await t.database.migrator
+        .selectFrom('lessons')
+        .selectAll()
+        .where('subject_id', '=', s.english ?? '')
+        .where('lesson_date', '=', '2026-10-21')
+        .orderBy('id')
+        .execute();
+      const [first, second] = parts;
+      changed(await cancel(s.branch, first?.id ?? ''));
+      changed(await move(s.branch, second?.id ?? '', { date: '2026-10-22', lessonNumber: 2 }));
+      // The split's first row places the block of both groups, as the scene does.
+      let split = false;
+      const draft = await draftOf(s, (row) => {
+        if (row.class_id !== null) return [1, 1];
+        if (split) return null;
+        split = true;
+        return [3, 1];
+      });
+      const days = (await checkOn(s, draft, NEXT_MONDAY)).impact.dayChanges;
+      expect(days.kept.map((one) => one.kind)).toEqual(['move']);
+      const published = await publishWith(s, draft, NEXT_MONDAY, { dayChangesKey: days.key });
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      expect(await rowOf(first?.id ?? '')).toMatchObject({
+        lesson_date: '2026-10-22',
+        cancel_cause: 'reason',
+      });
+      expect(await rowOf(second?.id ?? '')).toMatchObject({
+        lesson_date: '2026-10-22',
+        cancel_cause: null,
+      });
+    });
+
+    it('asks for a decision on a room change whose room the new version gives another lesson, and drops one into the room it already gives', async () => {
+      for (const roomFor of ['first', 'same'] as const) {
+        const s = await scene();
+        const roomed = await lessonOf(s, NEXT_MONDAY, s.otherClass);
+        changed(await roomChange(s.branch, roomed.id, s.spareRoom));
+        const [roomRow] = await dayChangesOf(roomed.id);
+        // `first`: the first class's maths in the spare room at the same time;
+        // `same`: the other class's maths in the spare room itself.
+        const draft = await draftOf(s, undefined, undefined, (row) =>
+          (roomFor === 'first' ? row.class_id === s.classId : row.class_id === s.otherClass)
+            ? s.spareRoom
+            : null,
+        );
+        const answer = await checkOn(s, draft, NEXT_MONDAY);
+        const days = answer.impact.dayChanges;
+        // The room the change names is named by the preview (permission review, should-fix 6).
+        expect(answer.impact.names.rooms.map((one) => one.id)).toContain(s.spareRoom);
+        if (roomFor === 'same') {
+          expect(days.dropped.map((one) => one.key)).toEqual([roomRow?.id]);
+          continue;
+        }
+        expect(days.decide.map((one) => one.key)).toEqual([roomRow?.id]);
+        expect(days.decide[0]?.blocked.map((one) => one.rule)).toContain('room_double');
+        const published = await publishWith(s, draft, NEXT_MONDAY, {
+          dayChangesKey: days.key,
+          dayDecisions: [{ key: roomRow?.id, choice: 'drop' }],
+        });
+        expect(published.status, JSON.stringify(published.body)).toBe(200);
+        expect((await rowOf(roomed.id))?.room_id).toBe(s.otherRoom);
+        expect(await endsOf([roomRow?.id ?? ''])).toHaveLength(1);
+      }
+    });
+
+    it('keeps a move onto a date a later availability entry leaves out, availability being a warning there', async () => {
+      const s = await scene();
+      const moved = await lessonOf(s, NEXT_MONDAY);
+      changed(await move(s.branch, moved.id, { date: '2026-10-21', lessonNumber: 2 }));
+      const [moveRow] = await dayChangesOf(moved.id);
+      // From 20 October the teacher comes at 10:00 only: the entry before ends.
+      // Its ranges follow (`staff_availability_ranges_entry_fkey`, on update cascade).
+      await t.database.migrator
+        .updateTable('staff_availability')
+        .set({ valid_until: '2026-10-20' })
+        .where('staff_id', '=', s.teacher.staffId)
+        .execute();
+      await hours(s.branch, s.teacher.staffId, '2026-10-20', 600);
+      const draft = await draftOf(s);
+      const days = (await checkOn(s, draft, NEXT_MONDAY)).impact.dayChanges;
+      expect(days.kept.map((one) => one.key)).toEqual([moveRow?.id]);
+      expect(days.decide).toEqual([]);
+    });
+
+    it('cancels only the lesson a decision names, never a lesson moved onto the same weekday a week later (spec review of the code, must-fix 1)', async () => {
+      const s = await scene();
+      // The first class's maths of 19 October moved to 26 October, third lesson.
+      const moved = await lessonOf(s, NEXT_MONDAY);
+      changed(await move(s.branch, moved.id, { date: '2026-10-26', lessonNumber: 3 }));
+      // Its own maths of 26 October, first lesson, to the spare room.
+      const own = (await lessonsOn(s, '2026-10-26'))[0];
+      expect(own?.starts_at).toEqual(at('2026-10-26', '08:00'));
+      changed(await roomChange(s.branch, own?.id ?? '', s.spareRoom));
+      const [roomRow] = await dayChangesOf(own?.id ?? '');
+      // The new version puts the other class in the spare room at that time.
+      const draft = await draftOf(s, undefined, undefined, (row) =>
+        row.class_id === s.otherClass ? s.spareRoom : null,
+      );
+      const days = (await checkOn(s, draft, NEXT_MONDAY)).impact.dayChanges;
+      expect(days.decide.map((one) => one.key)).toEqual([roomRow?.id]);
+      expect(days.kept.map((one) => one.kind)).toEqual(['move']);
+      const published = await publishWith(s, draft, NEXT_MONDAY, {
+        dayChangesKey: days.key,
+        dayDecisions: [{ key: roomRow?.id, choice: 'cancel' }],
+      });
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      const after = await lessonsOn(s, '2026-10-26');
+      expect(after.map((one) => [one.id, one.starts_at, one.cancel_cause])).toEqual([
+        [own?.id, at('2026-10-26', '08:00'), 'reason'],
+        [moved.id, at('2026-10-26', '09:50'), null],
+      ]);
+    });
+
+    it('reads a room change and then a move of one lesson as one move, from its first place to its last', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, NEXT_MONDAY);
+      changed(await roomChange(s.branch, lesson.id, s.spareRoom));
+      changed(await move(s.branch, lesson.id, { date: '2026-10-21', lessonNumber: 2 }));
+      const rows = await dayChangesOf(lesson.id);
+      expect(rows).toHaveLength(2);
+      const draft = await draftOf(s);
+      const days = (await checkOn(s, draft, NEXT_MONDAY)).impact.dayChanges;
+      expect(days.kept).toHaveLength(1);
+      expect(days.kept[0]).toMatchObject({
+        key: rows[0]?.id,
+        kind: 'move',
+        from: { date: NEXT_MONDAY, start: 480 },
+        to: { date: '2026-10-21', start: 535, roomId: s.spareRoom },
+      });
+      const published = await publishWith(s, draft, NEXT_MONDAY, { dayChangesKey: days.key });
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      expect(await rowOf(lesson.id)).toMatchObject({
+        lesson_date: '2026-10-21',
+        room_id: s.spareRoom,
+      });
+    });
+
+    it('moves both halves of a double together and keeps them so', async () => {
+      const s = await scene({ twoLessons: true });
+      const first = await lessonOf2(s, NEXT_MONDAY, 0);
+      const second = await lessonOf2(s, NEXT_MONDAY, 1);
+      // The two lessons made a double, as the other double tests make them.
+      const blocks = await t.database.migrator
+        .selectFrom('lessons')
+        .select('block_id')
+        .where('id', 'in', [first, second])
+        .execute();
+      await t.database.migrator
+        .updateTable('lesson_blocks')
+        .set({ double_pair_id: randomUUID() })
+        .where(
+          'id',
+          'in',
+          blocks.map((one) => one.block_id),
+        )
+        .execute();
+      changed(await move(s.branch, first, { date: '2026-10-21', lessonNumber: 1 }));
+      expect((await rowOf(second))?.lesson_date).toBe('2026-10-21');
+      // The copy places the first class's maths in the first and second lessons of Monday.
+      let placed = 0;
+      const draft = await draftOf(s, (row) => {
+        if (row.class_id !== s.classId) return [1, 1];
+        placed += 1;
+        return [1, 1];
+      });
+      // A second lesson of the row in the third slot of Monday, as the scene places it.
+      const rows = await t.database.migrator
+        .selectFrom('teaching_load_rows')
+        .select('id')
+        .where('version_id', '=', draft)
+        .where('class_id', '=', s.classId)
+        .execute();
+      expect(placed).toBe(1);
+      await placeAt(s.branch, draft, rows[0]?.id ?? '', 1, 3);
+      await load.freeEditLock(draft);
+      const days = (await checkOn(s, draft, NEXT_MONDAY)).impact.dayChanges;
+      expect(days.kept.map((one) => one.kind)).toEqual(['move']);
+      const published = await publishWith(s, draft, NEXT_MONDAY, { dayChangesKey: days.key });
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      expect(await rowOf(first)).toMatchObject({
+        lesson_date: '2026-10-21',
+        starts_at: at('2026-10-21', '08:00'),
+      });
+      expect(await rowOf(second)).toMatchObject({
+        lesson_date: '2026-10-21',
+        starts_at: at('2026-10-21', '08:55'),
+      });
+      expect(await lessonsOn(s, NEXT_MONDAY)).toEqual([]);
+    });
+
+    /** The draft's load row of the first class, placed no more as a double. */
+    const singleRowOf = async (draft: string, s: Scene) => {
+      const row = await t.database.migrator
+        .updateTable('teaching_load_rows')
+        .set({ double_lessons: false })
+        .where('version_id', '=', draft)
+        .where('class_id', '=', s.classId)
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      return row.id;
+    };
+
+    it('keeps the older of two moves that clash only with each other, and asks for a decision on the newer (decision 6, review of the code)', async () => {
+      const s = await scene({ twoLessons: true });
+      // The first class's second maths of Monday (08:55, its teacher) and the
+      // other class's maths (08:00, the other teacher) both to Wednesday's
+      // second lesson, rooms and teachers apart: both pass under the old version.
+      const older = await lessonOf2(s, NEXT_MONDAY, 1);
+      changed(await move(s.branch, older, { date: '2026-10-21', lessonNumber: 2 }));
+      // The items are the changes of one request: one person’s rows of one
+      // moment. The second move is a second later, a request of its own.
+      const newer = await lessonOf(s, NEXT_MONDAY, s.otherClass);
+      t.clock.advance(1000);
+      try {
+        changed(await move(s.branch, newer.id, { date: '2026-10-21', lessonNumber: 2 }));
+      } finally {
+        t.clock.set(START);
+      }
+      const [olderRow] = await dayChangesOf(older);
+      const [newerRow] = await dayChangesOf(newer.id);
+      // The draft gives the other class's maths the first class's teacher at
+      // Monday 08:00, and the first class's maths Monday 08:55 and 09:50: the
+      // pattern has no clash, the Wednesday only one between the two moves.
+      const draft = await draftOf(
+        s,
+        (row) => (row.class_id === s.otherClass ? [1, 1] : [1, 3]),
+        (row) => (row.class_id === s.otherClass ? s.teacher.staffId : null),
+      );
+      await placeAt(s.branch, draft, await singleRowOf(draft, s), 1, 5);
+      await load.freeEditLock(draft);
+      const answer = await checkOn(s, draft, NEXT_MONDAY);
+      expect(answer.refusals).toEqual([]);
+      const days = answer.impact.dayChanges;
+      expect(days.kept.map((one) => one.key)).toEqual([olderRow?.id]);
+      expect(days.decide.map((one) => one.key)).toEqual([newerRow?.id]);
+      expect(days.decide[0]?.blocked.map((one) => one.rule)).toContain('teacher_double');
+      expect(days.dropped).toEqual([]);
+      const published = await publishWith(s, draft, NEXT_MONDAY, {
+        dayChangesKey: days.key,
+        dayDecisions: [{ key: newerRow?.id, choice: 'drop' }],
+      });
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      expect(await rowOf(older)).toMatchObject({
+        lesson_date: '2026-10-21',
+        starts_at: at('2026-10-21', '08:55'),
+        teacher_id: s.teacher.staffId,
+      });
+      expect(
+        (await lessonsOn(s, NEXT_MONDAY, s.otherClass)).map((one) => [
+          one.starts_at,
+          one.teacher_id,
+          one.cancel_cause,
+        ]),
+      ).toEqual([[at(NEXT_MONDAY, '08:00'), s.teacher.staffId, null]]);
+      expect(await lessonsOn(s, '2026-10-21', s.otherClass)).toEqual([]);
+      expect(await endsOf([newerRow?.id ?? ''])).toHaveLength(1);
+      expect(await endsOf([olderRow?.id ?? ''])).toEqual([]);
+      // The teacher holds one lesson at a time on both dates.
+      const taught = await t.database.migrator
+        .selectFrom('lessons')
+        .select('starts_at')
+        .where('teacher_id', '=', s.teacher.staffId)
+        .where('lesson_date', 'in', [NEXT_MONDAY, '2026-10-21'])
+        .where('cancel_cause', 'is', null)
+        .execute();
+      const starts = taught.map((one) => one.starts_at.toISOString());
+      expect(new Set(starts).size).toBe(starts.length);
+    });
+
+    it('asks for a decision on a double moved whose old place the new version keeps only one half of (review of the code)', async () => {
+      for (const choice of ['drop', 'cancel'] as const) {
+        const s = await scene({ twoLessons: true });
+        const first = await lessonOf2(s, NEXT_MONDAY, 0);
+        const second = await lessonOf2(s, NEXT_MONDAY, 1);
+        const blocks = await t.database.migrator
+          .selectFrom('lessons')
+          .select('block_id')
+          .where('id', 'in', [first, second])
+          .execute();
+        await t.database.migrator
+          .updateTable('lesson_blocks')
+          .set({ double_pair_id: randomUUID() })
+          .where(
+            'id',
+            'in',
+            blocks.map((one) => one.block_id),
+          )
+          .execute();
+        changed(
+          await move(
+            s.branch,
+            first,
+            { date: '2026-10-21', lessonNumber: 1 },
+            t.admin,
+            randomUUID(),
+            'Concert rehearsal',
+          ),
+        );
+        const rows = [...(await dayChangesOf(first)), ...(await dayChangesOf(second))];
+        expect(rows).toHaveLength(2);
+        // The draft keeps the first half on Monday 08:00 and puts the second
+        // on Tuesday: the old place holds one of the two lessons moved.
+        const draft = await draftOf(s);
+        await placeAt(s.branch, draft, await singleRowOf(draft, s), 2, 1);
+        await load.freeEditLock(draft);
+        const days = (await checkOn(s, draft, NEXT_MONDAY)).impact.dayChanges;
+        expect(days.kept).toEqual([]);
+        expect(days.dropped).toEqual([]);
+        expect(days.decide.map((one) => one.kind)).toEqual(['move']);
+        const key = days.decide[0]?.key ?? '';
+        expect(rows.map((one) => one.id)).toContain(key);
+        expect(
+          refusals(await publishWith(s, draft, NEXT_MONDAY, { dayChangesKey: days.key })),
+        ).toContainEqual(
+          expect.objectContaining({ code: 'day_change_undecided', path: `dayChanges.${key}` }),
+        );
+        const published = await publishWith(s, draft, NEXT_MONDAY, {
+          dayChangesKey: days.key,
+          dayDecisions: [{ key, choice }],
+        });
+        expect(published.status, JSON.stringify(published.body)).toBe(200);
+        // Nothing is left on Wednesday; Monday holds the new version's lesson,
+        // cancelled with the change's reason when chosen; both rows are ended.
+        expect(await lessonsOn(s, '2026-10-21')).toEqual([]);
+        expect(
+          (await lessonsOn(s, NEXT_MONDAY)).map((one) => [
+            one.starts_at,
+            one.cancel_cause,
+            one.cancel_reason,
+          ]),
+        ).toEqual([
+          choice === 'drop'
+            ? [at(NEXT_MONDAY, '08:00'), null, null]
+            : [at(NEXT_MONDAY, '08:00'), 'reason', 'Concert rehearsal'],
+        ]);
+        expect(await lessonsOn(s, '2026-10-20')).toHaveLength(1);
+        expect(await endsOf(rows.map((one) => one.id))).toHaveLength(2);
+      }
+    });
+
+    it('leaves a lesson of a bulk cancel out of the sorting, to 5.6a-5b', async () => {
+      const s = await scene();
+      const body = { date: NEXT_MONDAY, classIds: [s.classId], lessonNumbers: [1] };
+      const listed = await t.post('/api/timetable/bulk-cancels/check', s.branch, body);
+      expect(listed.status, JSON.stringify(listed.body)).toBe(200);
+      const saved = await keyed(
+        '/api/timetable/bulk-cancels',
+        s.branch,
+        {
+          ...body,
+          reason: 'Excursion to the museum',
+          blocks: [],
+          lessonIds: (listed.body as { cancel: { lesson: { id: string } }[] }).cancel.map(
+            (one) => one.lesson.id,
+          ),
+        },
+        t.admin,
+        randomUUID(),
+      );
+      expect(saved.status, JSON.stringify(saved.body)).toBe(200);
+      // A one-day cancel of the other class, no bulk cancel's, is listed.
+      const other = await lessonOf(s, NEXT_MONDAY, s.otherClass);
+      changed(await cancel(s.branch, other.id));
+      const draft = await draftOf(s);
+      const days = (await checkOn(s, draft, NEXT_MONDAY)).impact.dayChanges;
+      expect([...days.kept, ...days.decide, ...days.dropped].map((one) => one.key)).toEqual([
+        other.id,
+      ]);
+    });
+
+    it('needs no key and no decision when no one-day change is stored', async () => {
+      const s = await scene();
+      const draft = await draftOf(s);
+      const days = (await checkOn(s, draft, NEXT_MONDAY)).impact.dayChanges;
+      expect([...days.kept, ...days.decide, ...days.dropped]).toEqual([]);
+      const published = await publishWith(s, draft, NEXT_MONDAY, {});
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+    });
+
+    it("answers a repeat of a used request key with another branch's key 404 and from a role the route refuses 403", async () => {
+      const s = await scene();
+      const north = await scene();
+      const draft = await draftOf(s);
+      const days = (await checkOn(s, draft, NEXT_MONDAY)).impact.dayChanges;
+      const key = randomUUID();
+      const published = await publishWith(s, draft, NEXT_MONDAY, { dayChangesKey: days.key }, key);
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      const northLesson = await lessonOf(north, NEXT_MONDAY);
+      for (const unknownKey of [northLesson.id, UNKNOWN]) {
+        refusedWith(
+          await publishWith(
+            s,
+            draft,
+            NEXT_MONDAY,
+            { dayChangesKey: days.key, dayDecisions: [{ key: unknownKey, choice: 'drop' }] },
+            key,
+          ),
+          404,
+          'not_found',
+        );
+      }
+      refusedWith(
+        await publishWith(s, draft, NEXT_MONDAY, { dayChangesKey: days.key }, key, t.principal),
+        403,
+        'permission_denied',
+      );
     });
   });
 });

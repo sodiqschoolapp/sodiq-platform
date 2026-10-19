@@ -201505,7 +201505,10 @@
                               "transition_unacknowledged",
                               "chain_carry_not_offered",
                               "chain_start_taken",
-                              "chain_changed"
+                              "chain_changed",
+                              "day_change_undecided",
+                              "day_decision_unknown",
+                              "day_changes_changed"
                             ]
                           },
                           "step": {
@@ -201655,6 +201658,11 @@
                             "type": "integer",
                             "minimum": 1,
                             "maximum": 9007199254740991
+                          },
+                          "key": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                           }
                         },
                         "required": [
@@ -202550,6 +202558,667 @@
                             "additionalProperties": false
                           }
                         },
+                        "dayChanges": {
+                          "type": "object",
+                          "properties": {
+                            "key": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{64}$"
+                            },
+                            "kept": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "cancel",
+                                      "room",
+                                      "move"
+                                    ]
+                                  },
+                                  "unitId": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "subjectId": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "from": {
+                                    "type": "object",
+                                    "properties": {
+                                      "date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                                      },
+                                      "start": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 1440
+                                      },
+                                      "end": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 1440
+                                      },
+                                      "roomId": {
+                                        "nullable": true,
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                      }
+                                    },
+                                    "required": [
+                                      "date",
+                                      "start",
+                                      "end",
+                                      "roomId"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "to": {
+                                    "type": "object",
+                                    "properties": {
+                                      "date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                                      },
+                                      "start": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 1440
+                                      },
+                                      "end": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 1440
+                                      },
+                                      "roomId": {
+                                        "nullable": true,
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                      }
+                                    },
+                                    "required": [
+                                      "date",
+                                      "start",
+                                      "end",
+                                      "roomId"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "reason": {
+                                    "type": "string"
+                                  },
+                                  "carriedVersionId": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "blocked": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "rule": {
+                                          "type": "string",
+                                          "pattern": "^[a-z_]+$"
+                                        },
+                                        "severity": {
+                                          "type": "string",
+                                          "enum": [
+                                            "blocked",
+                                            "warning"
+                                          ]
+                                        },
+                                        "weekday": {
+                                          "nullable": true,
+                                          "anyOf": [
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                1
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                2
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                3
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                4
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                5
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                6
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                7
+                                              ]
+                                            }
+                                          ]
+                                        },
+                                        "lessonIds": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "detail": {
+                                          "type": "object",
+                                          "additionalProperties": {
+                                            "anyOf": [
+                                              {
+                                                "type": "number"
+                                              },
+                                              {
+                                                "type": "string"
+                                              }
+                                            ]
+                                          }
+                                        },
+                                        "date": {
+                                          "type": "string",
+                                          "format": "date",
+                                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                                        }
+                                      },
+                                      "required": [
+                                        "rule",
+                                        "severity",
+                                        "weekday",
+                                        "lessonIds"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "key",
+                                  "kind",
+                                  "unitId",
+                                  "subjectId",
+                                  "from",
+                                  "to",
+                                  "reason",
+                                  "carriedVersionId",
+                                  "blocked"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "decide": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "cancel",
+                                      "room",
+                                      "move"
+                                    ]
+                                  },
+                                  "unitId": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "subjectId": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "from": {
+                                    "type": "object",
+                                    "properties": {
+                                      "date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                                      },
+                                      "start": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 1440
+                                      },
+                                      "end": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 1440
+                                      },
+                                      "roomId": {
+                                        "nullable": true,
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                      }
+                                    },
+                                    "required": [
+                                      "date",
+                                      "start",
+                                      "end",
+                                      "roomId"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "to": {
+                                    "type": "object",
+                                    "properties": {
+                                      "date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                                      },
+                                      "start": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 1440
+                                      },
+                                      "end": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 1440
+                                      },
+                                      "roomId": {
+                                        "nullable": true,
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                      }
+                                    },
+                                    "required": [
+                                      "date",
+                                      "start",
+                                      "end",
+                                      "roomId"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "reason": {
+                                    "type": "string"
+                                  },
+                                  "carriedVersionId": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "blocked": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "rule": {
+                                          "type": "string",
+                                          "pattern": "^[a-z_]+$"
+                                        },
+                                        "severity": {
+                                          "type": "string",
+                                          "enum": [
+                                            "blocked",
+                                            "warning"
+                                          ]
+                                        },
+                                        "weekday": {
+                                          "nullable": true,
+                                          "anyOf": [
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                1
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                2
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                3
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                4
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                5
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                6
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                7
+                                              ]
+                                            }
+                                          ]
+                                        },
+                                        "lessonIds": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "detail": {
+                                          "type": "object",
+                                          "additionalProperties": {
+                                            "anyOf": [
+                                              {
+                                                "type": "number"
+                                              },
+                                              {
+                                                "type": "string"
+                                              }
+                                            ]
+                                          }
+                                        },
+                                        "date": {
+                                          "type": "string",
+                                          "format": "date",
+                                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                                        }
+                                      },
+                                      "required": [
+                                        "rule",
+                                        "severity",
+                                        "weekday",
+                                        "lessonIds"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "key",
+                                  "kind",
+                                  "unitId",
+                                  "subjectId",
+                                  "from",
+                                  "to",
+                                  "reason",
+                                  "carriedVersionId",
+                                  "blocked"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "dropped": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "cancel",
+                                      "room",
+                                      "move"
+                                    ]
+                                  },
+                                  "unitId": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "subjectId": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "from": {
+                                    "type": "object",
+                                    "properties": {
+                                      "date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                                      },
+                                      "start": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 1440
+                                      },
+                                      "end": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 1440
+                                      },
+                                      "roomId": {
+                                        "nullable": true,
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                      }
+                                    },
+                                    "required": [
+                                      "date",
+                                      "start",
+                                      "end",
+                                      "roomId"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "to": {
+                                    "type": "object",
+                                    "properties": {
+                                      "date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                                      },
+                                      "start": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 1440
+                                      },
+                                      "end": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 1440
+                                      },
+                                      "roomId": {
+                                        "nullable": true,
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                      }
+                                    },
+                                    "required": [
+                                      "date",
+                                      "start",
+                                      "end",
+                                      "roomId"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "reason": {
+                                    "type": "string"
+                                  },
+                                  "carriedVersionId": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "blocked": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "rule": {
+                                          "type": "string",
+                                          "pattern": "^[a-z_]+$"
+                                        },
+                                        "severity": {
+                                          "type": "string",
+                                          "enum": [
+                                            "blocked",
+                                            "warning"
+                                          ]
+                                        },
+                                        "weekday": {
+                                          "nullable": true,
+                                          "anyOf": [
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                1
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                2
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                3
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                4
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                5
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                6
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                7
+                                              ]
+                                            }
+                                          ]
+                                        },
+                                        "lessonIds": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "detail": {
+                                          "type": "object",
+                                          "additionalProperties": {
+                                            "anyOf": [
+                                              {
+                                                "type": "number"
+                                              },
+                                              {
+                                                "type": "string"
+                                              }
+                                            ]
+                                          }
+                                        },
+                                        "date": {
+                                          "type": "string",
+                                          "format": "date",
+                                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                                        }
+                                      },
+                                      "required": [
+                                        "rule",
+                                        "severity",
+                                        "weekday",
+                                        "lessonIds"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "key",
+                                  "kind",
+                                  "unitId",
+                                  "subjectId",
+                                  "from",
+                                  "to",
+                                  "reason",
+                                  "carriedVersionId",
+                                  "blocked"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "key",
+                            "kept",
+                            "decide",
+                            "dropped"
+                          ],
+                          "additionalProperties": false
+                        },
                         "names": {
                           "type": "object",
                           "properties": {
@@ -202691,6 +203360,7 @@
                         "vacancies",
                         "transition",
                         "carried",
+                        "dayChanges",
                         "names"
                       ],
                       "additionalProperties": false
@@ -203001,7 +203671,10 @@
                                         "transition_unacknowledged",
                                         "chain_carry_not_offered",
                                         "chain_start_taken",
-                                        "chain_changed"
+                                        "chain_changed",
+                                        "day_change_undecided",
+                                        "day_decision_unknown",
+                                        "day_changes_changed"
                                       ]
                                     },
                                     "step": {
@@ -203151,6 +203824,11 @@
                                       "type": "integer",
                                       "minimum": 1,
                                       "maximum": 9007199254740991
+                                    },
+                                    "key": {
+                                      "type": "string",
+                                      "format": "uuid",
+                                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                                     }
                                   },
                                   "required": [
@@ -204653,6 +205331,36 @@
                   "laterKey": {
                     "type": "string",
                     "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "dayChangesKey": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "dayDecisions": {
+                    "maxItems": 2000,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "key": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "choice": {
+                          "type": "string",
+                          "enum": [
+                            "drop",
+                            "cancel"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "choice"
+                      ],
+                      "additionalProperties": false
+                    }
                   }
                 },
                 "required": [

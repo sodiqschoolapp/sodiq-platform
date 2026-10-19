@@ -1037,6 +1037,7 @@ describe('pinSlots', () => {
               impact: {
                 beforeVersion: { id: uid(950), number: 1 },
                 carried: [],
+                dayChanges: { key: 'd'.repeat(64), kept: [], decide: [], dropped: [] },
                 counts: { created: 0, moved: 0, removed: 0, changed: 12, unchanged: 40 },
                 changes: [
                   {
@@ -1125,6 +1126,112 @@ describe('pinSlots', () => {
         expect(calls.find((call) => call.route === publishRoute)?.body).toEqual({
           startsOn: '2026-10-19',
           transitionKey: key,
+          dayChangesKey: 'd'.repeat(64),
+          dayDecisions: [],
+        });
+      });
+    });
+
+    // Task 5.6a-5a, pull request #164: the stored one-day changes sorted, and
+    // a choice for each that needs a decision.
+    it('lists the one-day changes kept, needing a decision and dropped, keeps Publish off until each has a choice, and sends the choices with the key', async () => {
+      const room = uid(611);
+      const daysKey = 'e'.repeat(64);
+      const item = (key: string, kind: 'cancel' | 'room' | 'move', blocked: string[] = []) => ({
+        key,
+        kind,
+        unitId: ROW.unit.id,
+        subjectId: ROW.subject.id,
+        from: { date: '2026-10-19', start: 480, end: 525, roomId: null },
+        to:
+          kind === 'move'
+            ? { date: '2026-10-21', start: 535, end: 580, roomId: null }
+            : { date: '2026-10-19', start: 480, end: 525, roomId: room },
+        reason: 'Excursion to the museum',
+        carriedVersionId: null,
+        blocked: blocked.map((rule) => ({
+          rule,
+          severity: 'blocked',
+          weekday: 3,
+          lessonIds: [],
+          date: '2026-10-21',
+        })),
+      });
+      const calls = await openPage({
+        path: `/timetable/builder?version=${VERSION.id}&step=publish`,
+        extra: {
+          [checkRoute]: () =>
+            json({
+              ...CHECK,
+              impact: {
+                beforeVersion: { id: uid(950), number: 1 },
+                carried: [],
+                dayChanges: {
+                  key: daysKey,
+                  kept: [item(uid(621), 'room')],
+                  decide: [item(uid(622), 'move', ['teacher_double'])],
+                  dropped: [item(uid(623), 'cancel')],
+                },
+                counts: { created: 0, moved: 0, removed: 0, changed: 0, unchanged: 40 },
+                changes: [],
+                teachers: [],
+                classIds: [],
+                roomIds: [],
+                vacancies: [],
+                transition: null,
+                names: {
+                  units: [{ id: ROW.unit.id, kind: 'class', name: 'Oxford', grades: [7] }],
+                  subjects: [{ id: ROW.subject.id, names: ROW.subject.names }],
+                  teachers: [],
+                  rooms: [{ id: room, name: 'Room 12' }],
+                },
+              },
+            }),
+          [publishRoute]: () => json({ ...VERSION, status: 'published' }),
+        },
+      });
+      const decide = await waitFor(() => {
+        const found = document.querySelector('[data-day-changes="decide"]');
+        if (found === null) throw new Error('No one-day changes yet.');
+        return found;
+      });
+      expect(decide.querySelector('legend')?.textContent).toBe(
+        '7 Oxford, Mathematics. 19 October 2026 08:00–08:45. moved to 21 October 2026 08:55–09:40. Reason: Excursion to the museum',
+      );
+      expect(decide.querySelector('[data-blocked]')?.textContent).toBe(
+        en.timetable.rule.teacher_double,
+      );
+      expect(
+        [...document.querySelectorAll('[data-day-changes="kept"] li')].map(
+          (one) => one.textContent,
+        ),
+      ).toEqual([
+        '7 Oxford, Mathematics. 19 October 2026 08:00–08:45. room Room 12. Reason: Excursion to the museum',
+      ]);
+      expect(
+        [...document.querySelectorAll('[data-day-changes="dropped"] li')].map((one) =>
+          one.getAttribute('data-kind'),
+        ),
+      ).toEqual(['cancel']);
+      const action = screen.getByRole('button', { name: en.timetable.publish.action });
+      expect(action).toHaveProperty('disabled', true);
+      expect(document.querySelector('[data-decision-needed]')?.textContent).toBe(
+        en.timetable.publish.dayChanges.decisionNeeded,
+      );
+      fireEvent.click(
+        within(decide as HTMLElement).getByRole('radio', {
+          name: en.timetable.publish.dayChanges.choice_cancel,
+        }),
+      );
+      expect(action).toHaveProperty('disabled', false);
+      fireEvent.click(action);
+      const dialog = await screen.findByRole('alertdialog');
+      fireEvent.click(within(dialog).getByRole('button', { name: en.timetable.publish.action }));
+      await waitFor(() => {
+        expect(calls.find((call) => call.route === publishRoute)?.body).toEqual({
+          startsOn: '2026-10-19',
+          dayChangesKey: daysKey,
+          dayDecisions: [{ key: uid(622), choice: 'cancel' }],
         });
       });
     });
@@ -1139,6 +1246,7 @@ describe('pinSlots', () => {
               impact: {
                 beforeVersion: { id: uid(950), number: 1 },
                 carried: [],
+                dayChanges: { key: 'd'.repeat(64), kept: [], decide: [], dropped: [] },
                 counts: { created: 0, moved: 0, removed: 0, changed: 0, unchanged: 40 },
                 changes: [],
                 teachers: [],

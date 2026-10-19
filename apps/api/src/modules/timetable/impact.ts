@@ -17,15 +17,28 @@ import {
 } from '@sodiq/timetable-rules';
 import type { Transaction } from '../../database/transactions.js';
 import { datedLessonsOf, type DatedFindings } from './dated-check.js';
-import { needKeyOf, vacanciesOf, writtenTeacherOf } from './dated-lessons.js';
+import { needKeyOf, patternDateOf, vacanciesOf, writtenTeacherOf } from './dated-lessons.js';
+import type { SortedDayChange } from './day-changes-kept.js';
 import type { PatternState } from './pattern.service.js';
-import { hasStoredLessons, storedImpactLessons } from './stored-lessons.js';
+import { hasStoredLessons, storedImpactLessons, storedLessonRows } from './stored-lessons.js';
 import type { VersionRow } from './timetable.service.js';
 
 /** How the preview reads another version: its row and its pattern state. */
 export interface VersionReader {
   readonly versionRow: (id: string) => Promise<VersionRow>;
   readonly stateOf: (version: VersionRow) => Promise<PatternState>;
+}
+
+/**
+ * The stored one-day changes of the dates written, sorted (task 5.6a-5a): the
+ * key of the sorting, every item (the carried versions' too), and the stored
+ * lessons a kept move from outside a run keeps, by the carried version (`null`
+ * for the published one's run), shown on the "after" side.
+ */
+export interface ImpactDays {
+  readonly key: string;
+  readonly items: readonly SortedDayChange[];
+  readonly keptStored: ReadonlyMap<string | null, ReadonlySet<string>>;
 }
 
 /** The impact preview and the key of its transition week, as the publish compares it. */
@@ -70,6 +83,7 @@ export async function impactOf(
   draft: PatternState,
   draftFindings: DatedFindings,
   startsOn: string,
+  days: ImpactDays,
   carried: readonly CarriedImpact[] = [],
 ): Promise<Impact> {
   const { data } = draft.pattern.model;
@@ -137,7 +151,24 @@ export async function impactOf(
   for (const stretch of stretchesOf(published, startsOn, lastDate)) {
     before.push(...(await lessonsOf(stretch.id, stretch.from, stretch.to, 'one_day')));
   }
-  const after = await writtenLessonsOf(transaction, draftFindings);
+  // Task 5.6a-5a: a kept move from outside the run keeps its stored lessons.
+  const keptStoredOf = async (version: string | null, from: string, to: string) => {
+    const ids = days.keptStored.get(version);
+    if (ids === undefined || ids.size === 0) return [];
+    const rows = await storedLessonRows(transaction, {
+      branchId: draft.version.branch_id,
+      firstDate: from,
+      lastDate: to,
+      classIdsOf: (unitId) => classesOfUnit.get(unitId),
+      cancelled: 'one_day',
+      lock: false,
+    });
+    return rows.filter((row) => ids.has(row.id)).map((row) => row.lesson);
+  };
+  const after = [
+    ...(await writtenLessonsOf(transaction, draftFindings)),
+    ...(await keptStoredOf(null, startsOn, lastDate)),
+  ];
   const own = publishImpact({ before, after });
   // Spec review must-fix 1: each carried version over its own run.
   const carriedImpacts: { one: CarriedImpact; impact: ReturnType<typeof publishImpact> }[] = [];
@@ -148,7 +179,10 @@ export async function impactOf(
         before: (await isStored(one.versionId))
           ? await storedLessons(one.firstDate, one.lastDate, 'one_day')
           : one.before.lessons.map(impactLessonOf),
-        after: await writtenLessonsOf(transaction, one.after),
+        after: [
+          ...(await writtenLessonsOf(transaction, one.after)),
+          ...(await keptStoredOf(one.versionId, one.firstDate, one.lastDate)),
+        ],
       }),
     });
   }
@@ -207,16 +241,23 @@ export async function impactOf(
   // The names of what the preview names (decision 12): records of the branch only.
   // A class reached only through a group lesson is in `classIds` alone (review of #142).
   const unitIds = new Set<string>([
+    ...days.items.map((one) => one.answer.unitId),
     ...impact.classIds,
     ...allChanges.flatMap((one) => [one.unitId, ...one.classIds]),
     ...(week?.rows ?? []).map((one) => one.unitId),
   ]);
   const subjectIds = new Set<string>([
+    ...days.items.map((one) => one.answer.subjectId),
     ...allChanges.map((one) => one.subjectId),
     ...(week?.rows ?? []).map((one) => one.subjectId),
   ]);
   const teacherIds = new Set<string>([...impact.teacherIds, ...vacancies.keys()]);
-  const roomIds = new Set<string>(impact.roomIds);
+  const roomIds = new Set<string>([
+    ...impact.roomIds,
+    ...days.items
+      .flatMap((one) => [one.answer.from.roomId, one.answer.to.roomId])
+      .flatMap((id) => (id === null ? [] : [id])),
+  ]);
   const units = new Map(
     [...states.values(), draft].flatMap((state) =>
       state.pattern.model.data.units.map((unit) => [unit.id, unit] as const),
@@ -310,6 +351,12 @@ export async function impactOf(
                   ? null
                   : transitionKeyOf(draft.version.id, startsOn, differing),
             },
+      dayChanges: {
+        key: days.key,
+        kept: days.items.filter((one) => one.category === 'kept').map((one) => one.answer),
+        decide: days.items.filter((one) => one.category === 'decide').map((one) => one.answer),
+        dropped: days.items.filter((one) => one.category === 'dropped').map((one) => one.answer),
+      },
       names: {
         units: unitNames,
         subjects: subjects.map((one) => ({
@@ -362,7 +409,7 @@ async function writtenLessonsOf(
   return lessons.map((lesson) => {
     const teacher = writtenTeacherOf(needs, vacancies, {
       entryId: lesson.entryId,
-      date: lesson.date,
+      date: patternDateOf(lesson),
       teacherId: lesson.placement.teacherIds[0] ?? null,
     });
     return { ...impactLessonOf(lesson), teacherIds: teacher === null ? [] : [teacher] };

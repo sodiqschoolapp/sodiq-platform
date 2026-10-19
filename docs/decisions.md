@@ -265,6 +265,28 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 19 October 2026: one-day changes kept after a publish (task 5.6a-5a)
+
+Plan approved on pull request #164 with corrections 1 and 2; decisions 1 to 12 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a task split). 5.6a-5 is split into 5.6a-5a (one-lesson cancels, room changes and moves after a publish and a carry) and 5.6a-5b (bulk cancels after a publish, and the withdraw) | Decision 1 |
+| **Look first** (a reading of the spec: the choices). A "needs a decision" item is settled with "drop the change" or "cancel the lesson that day"; either way the change is ended | Decision 2; both pass the rules, so the publish needs no second check |
+| **Look first** (a spec row met in part). Substitutions (5.7b), absences and room closures (5.7a) and exams (5.6c) join the sorting by From lines; this task tests the row with a one-day move | Decision 3 |
+| **Look first** (an earlier design changed). A change is in force while it has no end row (`lesson_day_change_ends`, 0087); a chain of a lesson's rows goes from its oldest "from" to its newest "to"; rows with no lesson are not read | Decision 4 |
+| A change kept on a lesson created again is recorded again for the new lesson and the old rows ended | Decision 5 |
+| The older of two kept changes that clash stays kept; the engine's dated check on the date, availability of a later entry a warning; a room change into the room the new version gives is dropped | Decision 6 |
+| A move to a date before the start stays where it is and the old place is not written; one from before the start keeps its block under its version, "drop" removes it, "cancel" keeps it cancelled | Decision 7 with review correction 2 |
+| A carried version is sorted the same way, its writes inside the carry's savepoint; a version left writes nothing and its changes are not listed (`day_decision_unknown` for a choice of one) | Decision 8 with review correction 1 |
+| The item key is the oldest row of the chain, or the lesson for a cancel; another branch's or an unknown key is 404 before any lock; `dayChangesKey` refuses a sorting other than the one shown | Decision 9 |
+| No new notice kind or area; the audit of the publish and the carry names every outcome by key | Decision 10 |
+| A one-lesson cancel stays on the lesson; a lesson of a bulk cancel is left to 5.6a-5b | Decision 11 |
+| The preview's "after" side and the transition key leave every "needs a decision" item at the new version's place. One case shows otherwise: "cancel" of a move from before the start keeps the stored block cancelled at its new date, which the "after" side does not show (a cancelled lesson counts in neither the preview nor the transition week) | Decision 12; spec review of the code, should-fix 3 |
+| **Build decision.** A dated lesson is named by its entry, its pattern block's date and its date (`placeKeyOf`, `patternDateOf`), so a cancel or a needs-a-teacher mark never reaches a lesson moved onto a date of its own entry | Spec review of the code, must-fix 1 |
+| **Build decision.** The key of the sorting holds each item's places too, so a change recorded again on the same chain with another place refuses the publish | Spec review of the code, should-fix 4 |
+| **Build decision, Look first** (tests changed). Three publish tests and one same-moment test of 5.6a-1 that publish over a one-day cancel now send the preview's `dayChangesKey`; the same-moment test, cancel first, now expects `day_changes_changed` for the publish sent without it, then a publish with the key | A requirement added by this task (review should-fix 7 of the plan) |
+
 ## 19 October 2026: one-day changes, correction of a past lesson (task 5.6a-4)
 
 Plan approved on pull request #163 with corrections 1 to 3; decisions 1 to 14 confirmed there. Flagged on issue #42.

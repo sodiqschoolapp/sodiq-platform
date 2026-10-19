@@ -4,6 +4,8 @@ import { Transactions } from '../../database/transactions.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
 import { at, LessonsKit, type LessonSource } from '../../testing/lessons-kit.js';
+import type { DatedLesson } from '@sodiq/timetable-rules';
+import { settleDayChanges, type Chain, type SortedDayChange } from './day-changes-kept.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
 
 /** Thursday 15 October 2026, 10:00 in Tashkent. */
@@ -255,5 +257,201 @@ describe('the record of a one-day change in the database', () => {
       .where('kind', '=', 'lesson')
       .executeTakeFirstOrThrow();
     expect(claim.starts).toEqual(at(DATE, '11:00'));
+  });
+
+  // Task 5.6a-5a, pull request #164: the end of a change a publish did not
+  // apply again (db/migrations/0087; decision 4).
+  describe('the end of a change', () => {
+    const end = (
+      place: Fresh,
+      changeId: string,
+      branch = place.branch,
+      versionId = place.source.versionId,
+    ) =>
+      app().run([branch], (transaction) =>
+        transaction
+          .insertInto('lesson_day_change_ends')
+          .values({
+            change_id: changeId,
+            branch_id: branch,
+            version_id: versionId,
+            ended_at: new Date(NOW),
+            ended_by: account,
+          })
+          .execute(),
+      );
+
+    it('is written by the application, seen in its branch only, and never changed or deleted', async () => {
+      const place = await fresh();
+      const other = await fresh();
+      const { id } = await record(place);
+      expect(await outcome(end(place, id))).toBe('written');
+      const seen = (branch: string) =>
+        app().run([branch], (transaction) =>
+          transaction
+            .selectFrom('lesson_day_change_ends')
+            .select('change_id')
+            .where('change_id', '=', id)
+            .execute(),
+        );
+      expect(await seen(place.branch)).toEqual([{ change_id: id }]);
+      expect(await seen(other.branch)).toEqual([]);
+      expect(
+        await outcome(
+          app().run([place.branch], (transaction) =>
+            transaction
+              .updateTable('lesson_day_change_ends')
+              .set({ ended_at: new Date('2026-10-16T10:00:00+05:00') })
+              .where('change_id', '=', id)
+              .execute(),
+          ),
+        ),
+      ).toBe('42501');
+      expect(
+        await outcome(
+          app().run([place.branch], (transaction) =>
+            transaction.deleteFrom('lesson_day_change_ends').where('change_id', '=', id).execute(),
+          ),
+        ),
+      ).toBe('42501');
+      // A change ends once.
+      expect(await outcome(end(place, id))).toBe('lesson_day_change_ends_pkey');
+    });
+
+    it('refuses a change or a version of another branch', async () => {
+      const place = await fresh();
+      const other = await fresh();
+      const { id } = await record(place);
+      const { id: otherId } = await record(other);
+      // Another branch's change named in this branch's row.
+      expect(await outcome(end(place, otherId))).toBe('lesson_day_change_ends_change_fkey');
+      // Another branch's version.
+      expect(await outcome(end(place, id, place.branch, other.source.versionId))).toBe(
+        'lesson_day_change_ends_version_fkey',
+      );
+      // A row of another branch through this branch's filter.
+      expect(
+        await outcome(
+          app().run([place.branch], (transaction) =>
+            transaction
+              .insertInto('lesson_day_change_ends')
+              .values({
+                change_id: otherId,
+                branch_id: other.branch,
+                version_id: other.source.versionId,
+                ended_at: new Date(NOW),
+                ended_by: account,
+              })
+              .execute(),
+          ),
+        ),
+      ).toBe('42501');
+    });
+
+    // Decision 5 (spec review of the code, must-fix 2): a change kept on a
+    // lesson the write created again (another block, another id) is recorded
+    // again for the new lesson, and its old rows are ended.
+    it('records a kept change again for the lesson a publish created again, and ends the old rows', async () => {
+      const place = await fresh();
+      const other = await lessonOn(
+        place.branch,
+        place.year,
+        place.quarters[0] ?? '',
+        place.source,
+        place.classId,
+        place.room,
+        '11:00',
+      );
+      const { id: changeId } = await record(place);
+      const [row] = await database.migrator
+        .selectFrom('lesson_day_changes')
+        .selectAll()
+        .where('id', '=', changeId)
+        .execute();
+      if (row === undefined) throw new Error('No record.');
+      // The write removed the lesson (its record keeps no lesson) and created
+      // it again in another block at the same place.
+      // The moment of the transaction lets a delete of a future date pass (0079).
+      await database.migrator.transaction().execute(async (transaction) => {
+        await sql`select set_config('app.now', ${NOW}, true)`.execute(transaction);
+        await transaction.deleteFrom('lessons').where('id', '=', place.lesson.id).execute();
+        await transaction
+          .deleteFrom('lesson_blocks')
+          .where('id', '=', place.lesson.block_id)
+          .execute();
+      });
+      const again = await lessonOn(
+        place.branch,
+        place.year,
+        place.quarters[0] ?? '',
+        place.source,
+        place.classId,
+        place.room,
+        '09:00',
+      );
+      const chain = {
+        lessonId: place.lesson.id,
+        rows: [row],
+        first: row,
+        last: row,
+        kind: 'room',
+        lesson: { class_id: place.classId, group_id: null, subject_id: subject },
+      } as unknown as Chain;
+      const item: SortedDayChange = {
+        answer: {
+          key: changeId,
+          kind: 'room',
+          unitId: place.classId,
+          subjectId: subject,
+          from: { date: DATE, start: 540, end: 585, roomId: place.room },
+          to: { date: DATE, start: 540, end: 585, roomId: place.room },
+          reason: 'The room is painted',
+          carriedVersionId: null,
+          blocked: [],
+        },
+        category: 'kept',
+        changeIds: [changeId],
+        matched: new Map([
+          [place.lesson.id, { placement: { roomId: null } } as unknown as DatedLesson],
+        ]),
+        cancelledParts: new Map(),
+        storedIds: [],
+        chains: [chain],
+      };
+      const settled = await app().run([place.branch], (transaction) =>
+        settleDayChanges(transaction, {
+          branchId: place.branch,
+          versionId: place.source.versionId,
+          moment: new Date(NOW),
+          accountId: account,
+          items: [item],
+          decisions: new Map(),
+        }),
+      );
+      expect(settled).toEqual({ ended: [], recordedAgain: [changeId] });
+      const rows = await database.migrator
+        .selectFrom('lesson_day_changes')
+        .selectAll()
+        .where('branch_id', '=', place.branch)
+        .orderBy('id')
+        .execute();
+      expect(rows.map((one) => one.lesson_id)).toEqual([null, again.id]);
+      expect(rows[1]).toMatchObject({
+        kind: 'room',
+        from_room_id: null,
+        to_room_id: row.to_room_id,
+        reason: row.reason,
+        changed_at: row.changed_at,
+        changed_by: row.changed_by,
+      });
+      const ends = await database.migrator
+        .selectFrom('lesson_day_change_ends')
+        .select('change_id')
+        .where('branch_id', '=', place.branch)
+        .execute();
+      expect(ends).toEqual([{ change_id: changeId }]);
+      // The other lesson of the class that day is not taken for it.
+      expect(rows.some((one) => one.lesson_id === other.id)).toBe(false);
+    });
   });
 });

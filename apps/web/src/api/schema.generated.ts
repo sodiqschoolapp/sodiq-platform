@@ -41107,7 +41107,7 @@ export interface operations {
                         quarterStarts: string[];
                         refusals: {
                             /** @enum {string} */
-                            code: "version_start_too_early" | "version_start_outside_year" | "version_later_published" | "draft_out_of_date" | "draft_not_ready" | "load_problem" | "pattern_blocked" | "date_blocked" | "load_mismatch" | "year_quarters" | "subject_daily_weights" | "subject_quarter_weights" | "transition_unacknowledged" | "chain_carry_not_offered" | "chain_start_taken" | "chain_changed";
+                            code: "version_start_too_early" | "version_start_outside_year" | "version_later_published" | "draft_out_of_date" | "draft_not_ready" | "load_problem" | "pattern_blocked" | "date_blocked" | "load_mismatch" | "year_quarters" | "subject_daily_weights" | "subject_quarter_weights" | "transition_unacknowledged" | "chain_carry_not_offered" | "chain_start_taken" | "chain_changed" | "day_change_undecided" | "day_decision_unknown" | "day_changes_changed";
                             /** @enum {string} */
                             step?: "templates" | "load" | "teachers" | "rooms";
                             /** Format: uuid */
@@ -41130,6 +41130,8 @@ export interface operations {
                                 date?: string;
                             };
                             versionNumber?: number;
+                            /** Format: uuid */
+                            key?: string;
                         }[];
                         warnings: {
                             rule: string;
@@ -41273,6 +41275,132 @@ export interface operations {
                                     lastDate: string;
                                 }[];
                             }[];
+                            dayChanges: {
+                                key: string;
+                                kept: {
+                                    /** Format: uuid */
+                                    key: string;
+                                    /** @enum {string} */
+                                    kind: "cancel" | "room" | "move";
+                                    /** Format: uuid */
+                                    unitId: string;
+                                    /** Format: uuid */
+                                    subjectId: string;
+                                    from: {
+                                        /** Format: date */
+                                        date: string;
+                                        start: number;
+                                        end: number;
+                                        /** Format: uuid */
+                                        roomId: string | null;
+                                    };
+                                    to: {
+                                        /** Format: date */
+                                        date: string;
+                                        start: number;
+                                        end: number;
+                                        /** Format: uuid */
+                                        roomId: string | null;
+                                    };
+                                    reason: string;
+                                    /** Format: uuid */
+                                    carriedVersionId: string | null;
+                                    blocked: {
+                                        rule: string;
+                                        /** @enum {string} */
+                                        severity: "blocked" | "warning";
+                                        weekday: (1 | 2 | 3 | 4 | 5 | 6 | 7) | null;
+                                        lessonIds: string[];
+                                        detail?: {
+                                            [key: string]: number | string;
+                                        };
+                                        /** Format: date */
+                                        date?: string;
+                                    }[];
+                                }[];
+                                decide: {
+                                    /** Format: uuid */
+                                    key: string;
+                                    /** @enum {string} */
+                                    kind: "cancel" | "room" | "move";
+                                    /** Format: uuid */
+                                    unitId: string;
+                                    /** Format: uuid */
+                                    subjectId: string;
+                                    from: {
+                                        /** Format: date */
+                                        date: string;
+                                        start: number;
+                                        end: number;
+                                        /** Format: uuid */
+                                        roomId: string | null;
+                                    };
+                                    to: {
+                                        /** Format: date */
+                                        date: string;
+                                        start: number;
+                                        end: number;
+                                        /** Format: uuid */
+                                        roomId: string | null;
+                                    };
+                                    reason: string;
+                                    /** Format: uuid */
+                                    carriedVersionId: string | null;
+                                    blocked: {
+                                        rule: string;
+                                        /** @enum {string} */
+                                        severity: "blocked" | "warning";
+                                        weekday: (1 | 2 | 3 | 4 | 5 | 6 | 7) | null;
+                                        lessonIds: string[];
+                                        detail?: {
+                                            [key: string]: number | string;
+                                        };
+                                        /** Format: date */
+                                        date?: string;
+                                    }[];
+                                }[];
+                                dropped: {
+                                    /** Format: uuid */
+                                    key: string;
+                                    /** @enum {string} */
+                                    kind: "cancel" | "room" | "move";
+                                    /** Format: uuid */
+                                    unitId: string;
+                                    /** Format: uuid */
+                                    subjectId: string;
+                                    from: {
+                                        /** Format: date */
+                                        date: string;
+                                        start: number;
+                                        end: number;
+                                        /** Format: uuid */
+                                        roomId: string | null;
+                                    };
+                                    to: {
+                                        /** Format: date */
+                                        date: string;
+                                        start: number;
+                                        end: number;
+                                        /** Format: uuid */
+                                        roomId: string | null;
+                                    };
+                                    reason: string;
+                                    /** Format: uuid */
+                                    carriedVersionId: string | null;
+                                    blocked: {
+                                        rule: string;
+                                        /** @enum {string} */
+                                        severity: "blocked" | "warning";
+                                        weekday: (1 | 2 | 3 | 4 | 5 | 6 | 7) | null;
+                                        lessonIds: string[];
+                                        detail?: {
+                                            [key: string]: number | string;
+                                        };
+                                        /** Format: date */
+                                        date?: string;
+                                    }[];
+                                }[];
+                            };
                             names: {
                                 units: {
                                     /** Format: uuid */
@@ -41361,7 +41489,7 @@ export interface operations {
                                 left: boolean;
                                 refusals: {
                                     /** @enum {string} */
-                                    code: "version_start_too_early" | "version_start_outside_year" | "version_later_published" | "draft_out_of_date" | "draft_not_ready" | "load_problem" | "pattern_blocked" | "date_blocked" | "load_mismatch" | "year_quarters" | "subject_daily_weights" | "subject_quarter_weights" | "transition_unacknowledged" | "chain_carry_not_offered" | "chain_start_taken" | "chain_changed";
+                                    code: "version_start_too_early" | "version_start_outside_year" | "version_later_published" | "draft_out_of_date" | "draft_not_ready" | "load_problem" | "pattern_blocked" | "date_blocked" | "load_mismatch" | "year_quarters" | "subject_daily_weights" | "subject_quarter_weights" | "transition_unacknowledged" | "chain_carry_not_offered" | "chain_start_taken" | "chain_changed" | "day_change_undecided" | "day_decision_unknown" | "day_changes_changed";
                                     /** @enum {string} */
                                     step?: "templates" | "load" | "teachers" | "rooms";
                                     /** Format: uuid */
@@ -41384,6 +41512,8 @@ export interface operations {
                                         date?: string;
                                     };
                                     versionNumber?: number;
+                                    /** Format: uuid */
+                                    key?: string;
                                 }[];
                             }[];
                         } | null;
@@ -41631,6 +41761,13 @@ export interface operations {
                     /** @enum {string} */
                     chain?: "run_until" | "replace" | "carry";
                     laterKey?: string;
+                    dayChangesKey?: string;
+                    dayDecisions?: {
+                        /** Format: uuid */
+                        key: string;
+                        /** @enum {string} */
+                        choice: "drop" | "cancel";
+                    }[];
                 };
             };
         };

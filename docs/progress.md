@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 19 October 2026: task 5.6a-5a One-day changes kept after a publish: cancels, room changes and moves
+
+- A publish (and each later version it carries a change into) applies the stored one-day changes of its dates again: one-lesson cancels of cause `reason`, room changes and moves (`lesson_day_changes`, 0085, read as chains by lesson); step 8 lists them as kept, needs a decision and dropped (`impact.dayChanges`), and the publish waits for a choice for each "needs a decision" item: "Drop the change" or "Cancel the lesson that day" (`dayDecisions`, `dayChangesKey`; refusals `day_change_undecided`, `day_decision_unknown`, `day_changes_changed`).
+- A kept change is checked by the engine on its date among the new version's lessons, the claims elsewhere and the branch's exams, oldest first; availability of a later entry is a warning. A move to a date before the start stays and the old place is not written; one from before the start keeps its block under its version.
+- A change not applied is ended (`lesson_day_change_ends`, 0087); one kept on a lesson created again is recorded again. Audit `dayChanges` on `timetable_version.publish` and `.carry`.
+- Left out: bulk cancels after a publish and the withdraw (5.6a-5b); substitutions (5.7b), absences and room closures (5.7a), exams (5.6c) by From lines; a browser test (no stored change under two versions in the browser scene).
+
+The next sessions must know:
+
+- `sortDayChanges` (`day-changes-kept.ts`) gives the items and the findings with the kept changes applied; the preview and the write read those findings. `writePlanOf` and `settleDayChanges` do the decisions and the ends.
+- A dated lesson moved keeps its pattern block's date in its block id: name a lesson by `placeKeyOf` / `patternDateOf` (`dated-lessons.ts`), never by entry and date.
+- A kept move from before a start leaves a block of the earlier version on a date of the new one; the withdraw does not know it yet (5.6a-5b).
+- The next task is 5.6a-5b.
+
 ## 19 October 2026: task 5.6a-4 One-day changes: correction of a past lesson
 
 - On "Day changes" a started lesson shows "Held" or "Unresolved" and, for the Academic Vice Principal (and the Super Admin), "Correct": cancel it, restore it, record who taught it, or its room, one lesson at a time with a reason (`POST /api/timetable/lessons/:id/correction`); the people offered are the branch's staff active on the lesson's date (`GET …/correction-teachers`).

@@ -100,7 +100,7 @@ describe('publish', () => {
     startsOn: string,
     cookie = t.admin,
     key: string = randomUUID(),
-    extra: { transitionKey?: string } = {},
+    extra: { transitionKey?: string; dayChangesKey?: string; dayDecisions?: object[] } = {},
   ) =>
     request(t.kit.server)
       .post(`/api/timetable/versions/${version}/publish`)
@@ -388,6 +388,19 @@ describe('publish', () => {
         .selectAll()
         .where('branch_id', 'in', branches)
         .orderBy('lesson_id')
+        .execute(),
+      // Task 5.6a-5a: the one-day changes a publish records again and ends.
+      t.database.migrator
+        .selectFrom('lesson_day_changes')
+        .selectAll()
+        .where('branch_id', 'in', branches)
+        .orderBy('id')
+        .execute(),
+      t.database.migrator
+        .selectFrom('lesson_day_change_ends')
+        .selectAll()
+        .where('branch_id', 'in', branches)
+        .orderBy('change_id')
         .execute(),
     ]);
   };
@@ -1011,13 +1024,14 @@ describe('publish', () => {
       chain: string,
       laterKey: string | undefined,
       key: string = randomUUID(),
+      extra: { dayChangesKey?: string; dayDecisions?: object[] } = {},
     ) =>
       request(t.kit.server)
         .post(`/api/timetable/versions/${version}/publish`)
         .set('Cookie', t.admin)
         .set(BRANCH_HEADER, branch)
         .set(REQUEST_KEY_HEADER, key)
-        .send({ startsOn, chain, ...(laterKey === undefined ? {} : { laterKey }) });
+        .send({ startsOn, chain, ...(laterKey === undefined ? {} : { laterKey }), ...extra });
 
     const rowsOf = (version: string) =>
       t.database.migrator
@@ -1344,7 +1358,17 @@ describe('publish', () => {
         .map((one) => one.id);
       expect(shown.sort()).toEqual([s.teacherId, s.second].sort());
       const version = versionOf(
-        await publishChain(s.branch, s.fix, '2026-10-19', 'carry', answer.chain?.key),
+        await publishChain(
+          s.branch,
+          s.fix,
+          '2026-10-19',
+          'carry',
+          answer.chain?.key,
+          randomUUID(),
+          {
+            dayChangesKey: answer.impact?.dayChanges.key ?? '',
+          },
+        ),
       );
       const notices = await noticesOf(s.branch, 'timetable.published', version.number);
       expect(notices.map((one) => one.account_id).sort()).toEqual((await accountsOf(shown)).sort());
@@ -1432,6 +1456,226 @@ describe('publish', () => {
         chain: 'carry',
         carried: [{ id: s.b }, { id: s.c }],
         carryLeft: [{ id: d }],
+      });
+    });
+
+    // Task 5.6a-5a (review should-fix 6, correction 1): a carried version's
+    // one-day changes are sorted and written with its carry; a version left
+    // as it is keeps its own, and they are neither listed nor ended.
+    it('keeps the one-day room change of a carried version, and leaves those of a version left alone', async () => {
+      let d = '';
+      const s = await chainScene(async (scene) => {
+        d = await placedCopy(scene.branch, scene.year, scene.c);
+        const room3 = await load.classes.room(scene.branch);
+        const otherClass = await load.classes.schoolClass(scene.branch, scene.year, {
+          grade: 7,
+          room: room3,
+        });
+        const otherRow = await load.row({
+          branch_id: scene.branch,
+          version_id: d,
+          class_id: otherClass,
+          subject_id: scene.subject,
+          teacher_id: scene.second,
+          lessons_per_week: 1,
+        });
+        await placeAt(scene.branch, d, otherRow, 1);
+        versionOf(await publish(scene.branch, d, '2027-03-30'));
+      });
+      const spare = await load.classes.room(s.branch);
+      const lessonOn = async (date: string) =>
+        (await lessonsOf(s.branch)).find((one) => one.date === date && one.class_id === s.classId);
+      const changeRoom = (id: string) =>
+        request(t.kit.server)
+          .post(`/api/timetable/lessons/${id}/room`)
+          .set('Cookie', t.admin)
+          .set(BRANCH_HEADER, s.branch)
+          .set(REQUEST_KEY_HEADER, randomUUID())
+          .send({ roomId: spare, reason: 'The room is painted' });
+      const inB = await lessonOn('2026-11-16');
+      const inD = await lessonOn('2027-04-05');
+      for (const one of [inB, inD]) {
+        const roomed = await changeRoom(one?.id ?? '');
+        expect(roomed.status, JSON.stringify(roomed.body)).toBe(200);
+      }
+      const changes = await t.database.migrator
+        .selectFrom('lesson_day_changes')
+        .select(['id', 'lesson_id'])
+        .where('branch_id', '=', s.branch)
+        .execute();
+      const keyOf = (lesson: string | undefined) =>
+        changes.find((one) => one.lesson_id === lesson)?.id;
+      const answer = checkOf(await checkChain(s.branch, s.fix, '2026-10-19', 'carry'));
+      const days = answer.impact?.dayChanges;
+      expect(days?.kept.map((one) => [one.key, one.carriedVersionId])).toEqual([
+        [keyOf(inB?.id), s.b],
+      ]);
+      expect([...(days?.decide ?? []), ...(days?.dropped ?? [])]).toEqual([]);
+      // Review correction 1: a choice for the change of the version left is unknown.
+      const unknown = await publishChain(
+        s.branch,
+        s.fix,
+        '2026-10-19',
+        'carry',
+        answer.chain?.key,
+        randomUUID(),
+        {
+          dayChangesKey: days?.key ?? '',
+          dayDecisions: [{ key: keyOf(inD?.id) ?? '', choice: 'drop' }],
+        },
+      );
+      expect(blockedBy(unknown)).toContainEqual({
+        code: 'day_decision_unknown',
+        path: `dayChanges.${keyOf(inD?.id) ?? ''}`,
+      });
+      versionOf(
+        await publishChain(
+          s.branch,
+          s.fix,
+          '2026-10-19',
+          'carry',
+          answer.chain?.key,
+          randomUUID(),
+          { dayChangesKey: days?.key ?? '' },
+        ),
+      );
+      // B carries the second teacher and room2, but the one-day room stays.
+      expect(await lessonOn('2026-11-16')).toMatchObject({ teacher_id: s.second, room_id: spare });
+      expect(await lessonOn('2026-11-23')).toMatchObject({ room_id: s.room2 });
+      expect((await lessonOn('2027-04-05'))?.room_id).toBe(spare);
+      const [carry] = await t.entries('timetable_version.carry', s.b);
+      expect(carry?.new_value).toMatchObject({
+        dayChanges: { kept: [keyOf(inB?.id)], ended: [] },
+      });
+      expect(
+        await t.database.migrator.selectFrom('lesson_day_change_ends').selectAll().execute(),
+      ).toEqual([]);
+    });
+
+    // Task 5.6a-5a (spec review of the code, must-fix 4): a move in a carried
+    // version's run that the carried teacher cannot take needs a decision,
+    // which is written and ended with the carry.
+    it('asks for a decision on a move of a carried version that its new teacher cannot take, and settles it with the carry', async () => {
+      const s = await chainScene();
+      const lessonOn = async (date: string) =>
+        (await lessonsOf(s.branch)).find((one) => one.date === date && one.class_id === s.classId);
+      const inB = await lessonOn('2026-11-16');
+      const moved = await request(t.kit.server)
+        .post(`/api/timetable/lessons/${inB?.id ?? ''}/move`)
+        .set('Cookie', t.admin)
+        .set(BRANCH_HEADER, s.branch)
+        .set(REQUEST_KEY_HEADER, randomUUID())
+        .send({ date: '2026-11-18', lessonNumber: 1, reason: 'Concert rehearsal' });
+      expect(moved.status, JSON.stringify(moved.body)).toBe(200);
+      const at18 = await lessonOn('2026-11-18');
+      // An exam of another class that the second teacher invigilates at that time.
+      const examClass = await load.classes.schoolClass(s.branch, s.year, { grade: 7 });
+      const examRoom = await load.classes.room(s.branch);
+      await t.database.migrator.transaction().execute(async (transaction) => {
+        const exam = await transaction
+          .insertInto('exams')
+          .values({
+            branch_id: s.branch,
+            academic_year_id: s.year,
+            exam_date: '2026-11-18',
+            starts_at: at18?.starts_at ?? new Date(0),
+            ends_at: at18?.ends_at ?? new Date(0),
+            first_slot: 1,
+            last_slot: 1,
+            title: 'Quarter exam in English',
+            subject_id: s.subject,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        const room = await transaction
+          .insertInto('exam_rooms')
+          .values({ branch_id: s.branch, exam_id: exam.id, room_id: examRoom })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('exam_room_classes')
+          .values({
+            branch_id: s.branch,
+            exam_id: exam.id,
+            exam_room_id: room.id,
+            class_id: examClass,
+          })
+          .execute();
+        await transaction
+          .insertInto('exam_invigilators')
+          .values({
+            branch_id: s.branch,
+            exam_id: exam.id,
+            exam_room_id: room.id,
+            staff_id: s.second,
+          })
+          .execute();
+      });
+      const [change] = await t.database.migrator
+        .selectFrom('lesson_day_changes')
+        .select('id')
+        .where('lesson_id', '=', inB?.id ?? '')
+        .execute();
+      const answer = checkOf(await checkChain(s.branch, s.fix, '2026-10-19', 'carry'));
+      const days = answer.impact?.dayChanges;
+      expect(days?.decide.map((one) => [one.key, one.carriedVersionId])).toEqual([
+        [change?.id, s.b],
+      ]);
+      expect(days?.decide[0]?.blocked.map((one) => one.rule)).toContain('teacher_double');
+      // Without a choice the publish waits.
+      expect(
+        blockedBy(
+          await publishChain(
+            s.branch,
+            s.fix,
+            '2026-10-19',
+            'carry',
+            answer.chain?.key,
+            randomUUID(),
+            {
+              dayChangesKey: days?.key ?? '',
+            },
+          ),
+        ),
+      ).toContainEqual({ code: 'day_change_undecided', path: `dayChanges.${change?.id ?? ''}` });
+      versionOf(
+        await publishChain(
+          s.branch,
+          s.fix,
+          '2026-10-19',
+          'carry',
+          answer.chain?.key,
+          randomUUID(),
+          {
+            dayChangesKey: days?.key ?? '',
+            dayDecisions: [{ key: change?.id, choice: 'cancel' }],
+          },
+        ),
+      );
+      // The lesson is back on Monday 16 November with the carried teacher, cancelled that day.
+      expect(await lessonOn('2026-11-18')).toBeUndefined();
+      const back = (await lessonsOf(s.branch)).filter(
+        (one) => one.date === '2026-11-16' && one.class_id === s.classId,
+      );
+      expect(back).toHaveLength(1);
+      const row = await t.database.migrator
+        .selectFrom('lessons')
+        .select(['teacher_id', 'cancel_cause', 'cancel_reason'])
+        .where('id', '=', back[0]?.id ?? '')
+        .executeTakeFirstOrThrow();
+      expect(row).toEqual({
+        teacher_id: s.second,
+        cancel_cause: 'reason',
+        cancel_reason: 'Concert rehearsal',
+      });
+      const ends = await t.database.migrator
+        .selectFrom('lesson_day_change_ends')
+        .select('change_id')
+        .execute();
+      expect(ends.map((one) => one.change_id)).toEqual([change?.id]);
+      const [carry] = await t.entries('timetable_version.carry', s.b);
+      expect(carry?.new_value).toMatchObject({
+        dayChanges: { decided: [{ key: change?.id, choice: 'cancel' }], ended: [change?.id] },
       });
     });
 
@@ -1748,7 +1992,22 @@ describe('publish', () => {
       // Rows a publish would change, in both branches (permission review, must-fix 2).
       await withMoreToChange(s);
       await withMoreToChange(theirs);
+      // Task 5.6a-5a (permission review, must-fix 1): a one-day room change in
+      // each branch, which a publish would end or keep.
+      for (const one of [s, theirs]) {
+        const lesson = (await lessonsOf(one.branch)).find(
+          (row) => row.date === '2026-10-26' && row.class_id === one.classId,
+        );
+        const roomed = await request(t.kit.server)
+          .post(`/api/timetable/lessons/${lesson?.id ?? ''}/room`)
+          .set('Cookie', t.admin)
+          .set(BRANCH_HEADER, one.branch)
+          .set(REQUEST_KEY_HEADER, randomUUID())
+          .send({ roomId: await load.classes.room(one.branch), reason: 'The room is painted' });
+        expect(roomed.status, JSON.stringify(roomed.body)).toBe(200);
+      }
       const before = await written([s.version, theirs.version]);
+      expect(new Set(before[13].map((one) => one.branch_id)).size).toBe(2);
       expect(before[8].length).toBeGreaterThan(0);
       expect(new Set(before[8].map((one) => one.branch_id)).size).toBe(2);
       // Task 5.5c-1: journals of both branches, which the Tutor rows added would change.
@@ -4436,7 +4695,13 @@ describe('publish', () => {
         .set({ cancel_cause: 'reason', cancel_reason: 'Excursion to the museum' })
         .where('id', 'in', cancelled)
         .execute();
-      versionOf(await publish(s.branch, split, '2026-10-26'));
+      // Task 5.6a-5a: the one-day cancels shown go back with the publish.
+      const days = checkOf(await check(s.branch, split, '2026-10-26')).impact?.dayChanges;
+      versionOf(
+        await publish(s.branch, split, '2026-10-26', t.admin, randomUUID(), {
+          dayChangesKey: days?.key ?? '',
+        }),
+      );
       const causes = await t.database.migrator
         .selectFrom('lessons')
         .select([
@@ -5597,7 +5862,11 @@ describe('publish', () => {
         .filter((one) => one.notified)
         .map((one) => one.id);
       expect(shown.sort()).toEqual([s.teacherId, s.artTeacher, third].sort());
-      const version = versionOf(await publish(s.branch, fix, '2026-10-19'));
+      const version = versionOf(
+        await publish(s.branch, fix, '2026-10-19', t.admin, randomUUID(), {
+          dayChangesKey: answer.impact?.dayChanges.key ?? '',
+        }),
+      );
       const notices = await noticesOf(s.branch, 'timetable.published', version.number);
       expect(notices.map((one) => one.account_id).sort()).toEqual((await accountsOf(shown)).sort());
       // The Art teacher's week before shows Tuesday's lesson, cancelled (review correction 3).

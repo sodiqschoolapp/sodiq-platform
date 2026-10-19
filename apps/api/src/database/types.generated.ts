@@ -461,6 +461,15 @@ export interface LessonChanges {
   lesson_id: string;
 }
 
+export interface LessonDayChangeEnds {
+  branch_id: string;
+  change_id: string;
+  created_at: Generated<Timestamp>;
+  ended_at: Timestamp;
+  ended_by: string;
+  version_id: string;
+}
+
 export interface LessonDayChanges {
   branch_id: string;
   changed_at: Timestamp;
@@ -1091,6 +1100,7 @@ export interface DB {
   lesson_block_class_outs: LessonBlockClassOuts;
   lesson_blocks: LessonBlocks;
   lesson_changes: LessonChanges;
+  lesson_day_change_ends: LessonDayChangeEnds;
   lesson_day_changes: LessonDayChanges;
   lessons: Lessons;
   notifications: Notifications;

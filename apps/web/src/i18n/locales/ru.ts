@@ -3728,6 +3728,30 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         tick: 'Я проверил(а) уроки переходной недели',
         tickNeeded: 'Отметьте переходную неделю, чтобы опубликовать.',
       },
+      dayChanges: {
+        title: 'Изменения на один день',
+        keptTitle_one: 'Сохраняются: {{count}}',
+        keptTitle_few: 'Сохраняются: {{count}}',
+        keptTitle_many: 'Сохраняются: {{count}}',
+        keptTitle_other: 'Сохраняются: {{count}}',
+        decideTitle_one: 'Нужно решение: {{count}}',
+        decideTitle_few: 'Нужно решение: {{count}}',
+        decideTitle_many: 'Нужно решение: {{count}}',
+        decideTitle_other: 'Нужно решение: {{count}}',
+        droppedTitle_one: 'Отпадают: {{count}}',
+        droppedTitle_few: 'Отпадают: {{count}}',
+        droppedTitle_many: 'Отпадают: {{count}}',
+        droppedTitle_other: 'Отпадают: {{count}}',
+        cancel: 'урок отменён',
+        room: 'кабинет {{room}}',
+        move: 'перенесён на {{date}} {{time}}',
+        reason: 'Причина: {{reason}}',
+        inVersion: 'В версии {{number}}',
+        choice_drop: 'Отказаться от изменения',
+        choice_cancel: 'Отменить урок в этот день',
+        decisionNeeded:
+          'Выберите, что будет с каждым изменением на один день, которому нужно решение.',
+      },
       chain: {
         title: 'Более поздние опубликованные версии',
         intro:
@@ -3773,6 +3797,11 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
           'Более поздние опубликованные версии изменились после проверки. Проверьте их снова и выберите.',
         transition_unacknowledged:
           'Уроки переходной недели не совпадают с нагрузкой или изменились после проверки. Проверьте их ещё раз и поставьте отметку.',
+        day_change_undecided: 'Изменению на один день нужно решение. Выберите, что с ним будет.',
+        day_decision_unknown:
+          'Выбор отправлен для изменения на один день, которому решение больше не нужно. Проверьте ещё раз.',
+        day_changes_changed:
+          'Изменения на один день в эти даты изменились после проверки. Проверьте их ещё раз.',
         version_start_too_early:
           'Дата начала — не раньше завтрашнего дня. Изменение на сегодня — изменение на один день.',
         version_start_outside_year: 'Дата начала вне учебного года.',
