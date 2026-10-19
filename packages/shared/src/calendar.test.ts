@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   CALENDAR_ENTRY_NAME_MAX_LENGTH,
   calendarChangeSchema,
+  calendarDaysBodySchema,
   calendarEntryRecordSchema,
   calendarSaveSchema,
 } from './calendar.js';
@@ -137,5 +138,50 @@ describe('calendarSaveSchema', () => {
     expect(dayDecisionsBodySchema.parse({})).toEqual({});
     expect(dayDecisionsBodySchema.safeParse({ dayChangesKey: key }).success).toBe(true);
     expect(dayDecisionsBodySchema.safeParse({ name: 'Navruz' }).success).toBe(false);
+  });
+});
+
+// Task 5.6b-2b (pull request #171): the shortened days' choices ride on a
+// save, an archive or restore, and the preview; a date and class once each.
+describe('the shortened days’ choices of a calendar save', () => {
+  const classId = '0199a3c4-0000-7000-8000-000000000004';
+  const other = '0199a3c4-0000-7000-8000-000000000005';
+  const id = '0199a3c4-0000-7000-8000-000000000006';
+  const keep = { classId, date: '2027-03-22', slotPositions: [2, 6] };
+
+  it('takes them on a create or edit, an archive or restore, and each preview', () => {
+    expect(calendarSaveSchema.parse({ ...dayOff, dayKeeps: [keep] }).dayKeeps).toEqual([keep]);
+    expect(calendarDaysBodySchema.parse({ dayKeeps: [keep] })).toEqual({ dayKeeps: [keep] });
+    expect(calendarDaysBodySchema.parse(undefined)).toEqual({});
+    for (const change of [
+      { action: 'create', record: dayOff },
+      { action: 'edit', id, record: dayOff },
+      { action: 'archive', id },
+      { action: 'restore', id },
+    ]) {
+      expect(calendarChangeSchema.parse({ ...change, dayKeeps: [keep] }), change.action).toEqual({
+        ...change,
+        dayKeeps: [keep],
+      });
+    }
+  });
+
+  it('refuses a date and class twice, a slot twice, and a field not known', () => {
+    const twice = [keep, { ...keep, slotPositions: [1] }];
+    expect(calendarSaveSchema.safeParse({ ...dayOff, dayKeeps: twice }).success).toBe(false);
+    expect(calendarDaysBodySchema.safeParse({ dayKeeps: twice }).success).toBe(false);
+    expect(
+      calendarChangeSchema.safeParse({ action: 'archive', id, dayKeeps: twice }).success,
+    ).toBe(false);
+    expect(
+      calendarDaysBodySchema.safeParse({ dayKeeps: [{ ...keep, slotPositions: [2, 2] }] }).success,
+    ).toBe(false);
+    expect(calendarDaysBodySchema.safeParse({ dayKeep: [keep] }).success).toBe(false);
+    // Another class on the same date, or the same class on another date, is no repeat.
+    expect(
+      calendarDaysBodySchema.safeParse({
+        dayKeeps: [keep, { ...keep, classId: other }, { ...keep, date: '2027-03-23' }],
+      }).success,
+    ).toBe(true);
   });
 });

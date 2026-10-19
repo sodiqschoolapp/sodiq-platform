@@ -12,7 +12,7 @@ import {
   type CalendarPreview,
   type CalendarSave,
   type Clock,
-  type DayDecisionsBody,
+  type CalendarDaysBody,
   type ErrorCode,
   type ErrorDetail,
   type Weekday,
@@ -111,8 +111,11 @@ interface Context {
   readonly preview: boolean;
   /** What the rewrite of the lessons did, for the preview (task 5.6b-1). */
   readonly rewrite: { result: CalendarRewrite | null };
-  /** Task 5.6b-2a: the key of the sorting shown and the choices sent with the save. */
-  readonly days: DayDecisionsBody;
+  /**
+   * Task 5.6b-2a: the key of the sorting shown and the choices sent with the
+   * save; task 5.6b-2b: the shortened days' choices, of the save and the preview.
+   */
+  readonly days: CalendarDaysBody;
 }
 
 /**
@@ -160,7 +163,23 @@ const lessonsAuditOf = (rewrite: CalendarRewrite) =>
         ...(rewrite.audit.movedBack.length === 0
           ? {}
           : { movedBack: [...rewrite.audit.movedBack] }),
+        // Task 5.6b-2b (decision 6, review correction 2): each choice sent.
+        ...(rewrite.audit.dayKeeps.length === 0
+          ? {}
+          : {
+              dayKeeps: rewrite.audit.dayKeeps.map((one) => ({
+                ...one,
+                before: [...one.before],
+                after: [...one.after],
+              })),
+            }),
       };
+
+/** The dates whose stored choice a save changed (task 5.6b-2b, decision 7). */
+const keepDatesChanged = (rewrite: CalendarRewrite): string[] =>
+  (rewrite.audit?.dayKeeps ?? [])
+    .filter((one) => one.before.join(',') !== one.after.join(','))
+    .map((one) => one.date);
 
 /** Carries the answer of a preview out of the transaction it rolls back. */
 class PreviewDone extends Error {
@@ -241,7 +260,7 @@ export class Calendar {
     requestId: string,
     lock: boolean,
     preview = false,
-    days: DayDecisionsBody = {},
+    days: CalendarDaysBody = {},
   ): Promise<Context> {
     const query = transaction
       .selectFrom('branches')
@@ -304,7 +323,7 @@ export class Calendar {
     work: (context: Context) => Promise<T>,
     refusals: Readonly<Record<string, ErrorCode>> = REFUSALS,
     preview = false,
-    days: DayDecisionsBody = {},
+    days: CalendarDaysBody = {},
   ): Promise<T> {
     return refusingPublish(
       () =>
@@ -319,6 +338,20 @@ export class Calendar {
               one.blockId === undefined ? [] : [one.blockId],
             ),
           );
+          // Task 5.6b-2b: every class of a choice is the branch's, checked
+          // before any lock or write (`.claude/rules/api.md`).
+          const classIds = [...new Set((days.dayKeeps ?? []).map((one) => one.classId))];
+          if (classIds.length > 0) {
+            const known = await transaction
+              .selectFrom('classes')
+              .select('id')
+              .where('id', 'in', classIds)
+              .where('branch_id', '=', branchId)
+              .execute();
+            if (known.length !== classIds.length) {
+              throw notFound();
+            }
+          }
           return work(
             await this.context(transaction, access, branchId, requestId, true, preview, days),
           );
@@ -368,12 +401,24 @@ export class Calendar {
       branchId: context.branchId,
       accountId: context.access.accountId,
       today: context.today,
-      dates: lessonDatesOf(
-        entries.flatMap((one) => datesFrom(one.firstDate, one.lastDate)),
-        context.today,
-        before,
-        after,
-      ),
+      dates: [
+        ...lessonDatesOf(
+          entries.flatMap((one) => datesFrom(one.firstDate, one.lastDate)),
+          context.today,
+          before,
+          after,
+        ),
+        // Task 5.6b-2b (decision 3): a date of the entry after today that a
+        // choice names is written again, so the choice can be made or changed
+        // on a day the save does not otherwise change.
+        ...(context.days.dayKeeps ?? [])
+          .map((one) => one.date)
+          .filter(
+            (date) =>
+              date > context.today &&
+              entries.some((one) => one.firstDate <= date && date <= one.lastDate),
+          ),
+      ],
       event,
       preview: context.preview,
       days: context.days,
@@ -490,7 +535,7 @@ export class Calendar {
     access: Access,
     branchId: string,
     id: string,
-    days: DayDecisionsBody,
+    days: CalendarDaysBody,
     requestId: string,
   ): Promise<CalendarEntry> {
     return this.write(
@@ -508,7 +553,7 @@ export class Calendar {
     access: Access,
     branchId: string,
     id: string,
-    days: DayDecisionsBody,
+    days: CalendarDaysBody,
     requestId: string,
   ): Promise<CalendarEntry> {
     return this.write(
@@ -570,6 +615,8 @@ export class Calendar {
         },
         change.action === 'restore' ? RESTORE_REFUSALS : REFUSALS,
         true,
+        // Task 5.6b-2b (decision 8): the ticks, whose outcome the preview shows.
+        change.dayKeeps === undefined ? {} : { dayKeeps: change.dayKeeps },
       );
     } catch (error) {
       if (error instanceof PreviewDone) {
@@ -636,7 +683,9 @@ export class Calendar {
     const changed = (Object.keys(next) as (keyof typeof next)[]).filter(
       (key) => old[key] !== next[key],
     );
-    if (changed.length === 0) {
+    // Task 5.6b-2b (decision 3): an unchanged entry with a choice still
+    // writes the choice's dates.
+    if (changed.length === 0 && (context.days.dayKeeps ?? []).length === 0) {
       return this.answer(context, id);
     }
     if (before.lastDate < context.today) {
@@ -700,9 +749,20 @@ export class Calendar {
         ...lessonsAuditOf(lessons),
       },
     });
-    // Decision 2: a new name alone changes no date of a draft.
+    // Decision 2: a new name alone changes no date of a draft; task 5.6b-2b
+    // (decision 7): a choice changed marks them over its dates.
     if (changed.some((key) => key !== 'name')) {
       await this.markDrafts(context, 'calendar_entry.edit', id, [before, record]);
+    } else {
+      const keepDates = keepDatesChanged(lessons);
+      if (keepDates.length > 0) {
+        await this.markDrafts(
+          context,
+          'calendar_entry.edit',
+          id,
+          keepDates.map((date) => ({ firstDate: date, lastDate: date })),
+        );
+      }
     }
     return this.answer(context, id);
   }
@@ -788,13 +848,14 @@ export class Calendar {
 }
 
 /** A create or an edit: the entry, and the key and choices of the sorting (task 5.6b-2a). */
-function splitSave(save: CalendarSave): { record: CalendarEntryRecord; days: DayDecisionsBody } {
-  const { dayChangesKey, dayDecisions, ...record } = save;
+function splitSave(save: CalendarSave): { record: CalendarEntryRecord; days: CalendarDaysBody } {
+  const { dayChangesKey, dayDecisions, dayKeeps, ...record } = save;
   return {
     record,
     days: {
       ...(dayChangesKey === undefined ? {} : { dayChangesKey }),
       ...(dayDecisions === undefined ? {} : { dayDecisions }),
+      ...(dayKeeps === undefined ? {} : { dayKeeps }),
     },
   };
 }
