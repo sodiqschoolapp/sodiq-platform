@@ -126,11 +126,11 @@ export function CalendarPage() {
 
   const create = useMutation({
     mutationFn: async (record: CalendarEntryRecord) => {
-      await preview.confirm({ action: 'create', record });
+      const days = await preview.confirm({ action: 'create', record });
       return answerOf(
         api.POST('/api/setup/calendar-entries', {
           params: { header: branchHeader() },
-          body: record,
+          body: { ...record, ...days },
         }),
       );
     },

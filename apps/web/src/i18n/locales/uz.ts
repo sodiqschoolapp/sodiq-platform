@@ -166,7 +166,7 @@ export const uz: Texts<'one' | 'other'> = {
     calendar_blocked:
       'Bu oʻzgarish u oʻzgartiradigan sanada taqiqlangan toʻqnashuvga uchraydigan darslarni qaytaradi. Oldindan koʻrishda har biri koʻrsatilgan; avval ularni hal qiling yoki sanalarni qoldiring.',
     calendar_stored_changes:
-      'Bu oʻzgarish tegadigan sanada bir kunlik oʻzgarish, ommaviy bekor qilish yoki imtihon bor. Avval uni bekor qiling yoki koʻchiring, soʻng qayta saqlang.',
+      'Bu oʻzgarish tegadigan sanada imtihon yoki shu oʻzgarish qayta yozadigan ikki sana orasida bir kunga koʻchirilgan dars bor. Avval imtihonni bekor qiling yoki darsni joyiga qaytaring, soʻng qayta saqlang.',
     own_account:
       'Oʻz hisobingizni bloklay, blokdan chiqara yoki tiklay olmaysiz. Boshqa administratorga murojaat qiling.',
     account_already_locked:
@@ -1304,7 +1304,7 @@ export const uz: Texts<'one' | 'other'> = {
         stored_one: '{{count}} ta saqlangan oʻzgarish bu saqlashni toʻxtatadi',
         stored_other: '{{count}} ta saqlangan oʻzgarish bu saqlashni toʻxtatadi',
         storedKinds: {
-          day_change: 'bir kunlik oʻzgarish',
+          day_change: 'oʻzgargan ikki sana orasida koʻchirilgan dars',
           bulk_cancel: 'ommaviy bekor qilish',
           exam: 'imtihon',
         },

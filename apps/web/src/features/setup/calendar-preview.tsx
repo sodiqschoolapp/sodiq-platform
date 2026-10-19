@@ -4,6 +4,8 @@ import {
   type CalendarChange,
   type CalendarDay,
   type CalendarPreview,
+  type DayChangeChoice,
+  type DayDecisionsBody,
   type Weekday,
 } from '@sodiq/shared';
 import { weekdayOf } from '@sodiq/timetable-rules';
@@ -28,6 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { dayDecisionsBodyOf, PublishDayChanges } from '@/features/timetable/publish-day-changes';
 import { calendarPreviewOf } from './calendar-api';
 import { CalendarLessonsPreview, refusesSave } from './calendar-lessons-preview';
 import { schoolDateText, weekdayName } from '@/lib/dates';
@@ -80,7 +83,8 @@ export function dayText(t: TFunction, language: string, date: string, day: Calen
 
 interface Question {
   preview: CalendarPreview;
-  answer: (save: boolean) => void;
+  /** The key of the sorting shown and the choices made, or `null` when the person does not save. */
+  answer: (days: DayDecisionsBody | null) => void;
 }
 
 /** The changes of a save, before and after, by dates and grades. */
@@ -118,30 +122,38 @@ function PreviewTable({ preview }: { preview: CalendarPreview }) {
  * preview is shown first"; decision 11 of pull request #47): the dates and
  * grades the save changes, before and after, and what it does to the
  * published timetable (task 5.6b-1), with Save off while the server would
- * refuse it. `confirm` resolves when the person saves and throws
- * `SaveCancelled` when they do not.
+ * refuse it. Task 5.6b-2a: the stored one-day changes and bulk cancels of the
+ * changed dates, sorted (kept, needs a decision, dropped), with Save off
+ * until each "needs a decision" item has a choice. `confirm` resolves with
+ * the key of the sorting shown and the choices, which the save sends, when
+ * the person saves, and throws `SaveCancelled` when they do not.
  */
 export function useCalendarPreview(): {
-  confirm: (change: CalendarChange) => Promise<void>;
+  confirm: (change: CalendarChange) => Promise<DayDecisionsBody>;
   dialog: ReactNode;
 } {
   const { t } = useTranslation();
   const [question, setQuestion] = useState<Question | null>(null);
+  const [choices, setChoices] = useState<Record<string, DayChangeChoice>>({});
 
-  const confirm = async (change: CalendarChange): Promise<void> => {
+  const confirm = async (change: CalendarChange): Promise<DayDecisionsBody> => {
     const preview = await calendarPreviewOf(change);
-    const save = await new Promise<boolean>((resolve) => {
+    const days = await new Promise<DayDecisionsBody | null>((resolve) => {
+      setChoices({});
       setQuestion({ preview, answer: resolve });
     });
-    if (!save) {
+    if (days === null) {
       throw new SaveCancelled();
     }
+    return days;
   };
 
-  const answer = (save: boolean) => {
-    question?.answer(save);
+  const answer = (days: DayDecisionsBody | null) => {
+    question?.answer(days);
     setQuestion(null);
   };
+  const days =
+    question === null ? null : dayDecisionsBodyOf(question.preview.lessons.dayChanges, choices);
 
   const dialog =
     question === null ? null : (
@@ -149,7 +161,7 @@ export function useCalendarPreview(): {
         open
         onOpenChange={(open) => {
           if (!open) {
-            answer(false);
+            answer(null);
           }
         }}
       >
@@ -164,19 +176,27 @@ export function useCalendarPreview(): {
           </DialogHeader>
           {question.preview.changes.length > 0 && <PreviewTable preview={question.preview} />}
           <CalendarLessonsPreview lessons={question.preview.lessons} />
+          <PublishDayChanges
+            impact={question.preview.lessons}
+            choices={choices}
+            canEdit
+            onChoose={(key, choice) => {
+              setChoices({ ...choices, [key]: choice });
+            }}
+          />
           <DialogFooter>
             <Button
               variant="ghost"
               onClick={() => {
-                answer(false);
+                answer(null);
               }}
             >
               {t('setup.calendar.cancel')}
             </Button>
             <Button
-              disabled={refusesSave(question.preview.lessons)}
+              disabled={refusesSave(question.preview.lessons) || days === null}
               onClick={() => {
-                answer(true);
+                if (days !== null) answer(days);
               }}
             >
               {t('setup.calendar.save')}

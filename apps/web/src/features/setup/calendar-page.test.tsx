@@ -98,6 +98,7 @@ const NO_LESSONS: CalendarPreview['lessons'] = {
   notified: [],
   blocked: [],
   stored: [],
+  dayChanges: { key: 'e'.repeat(64), kept: [], decide: [], dropped: [], bulk: [] },
   names: { units: [], subjects: [], teachers: [], rooms: [] },
 };
 
@@ -257,8 +258,13 @@ describe('the calendar page', () => {
 
     fireEvent.click(within(dialog).getByRole('button', { name: en.setup.calendar.save }));
     await waitFor(() => {
+      // Task 5.6b-2a: with the key of the sorting shown, nothing to decide.
       expect(calls.find((call) => call.route === 'POST /api/setup/calendar-entries')?.body).toEqual(
-        record,
+        {
+          ...record,
+          dayChangesKey: 'e'.repeat(64),
+          dayDecisions: [],
+        },
       );
     });
     // The panel shows the saved record (task 2.7c-2a).
@@ -481,6 +487,79 @@ describe('the calendar page', () => {
           (call) => call.route === `POST /api/setup/calendar-entries/${HOLIDAY.id}/archive`,
         ),
       ).toBe(true);
+    });
+  });
+
+  // Task 5.6b-2a: the stored one-day changes of the changed dates, sorted;
+  // Save waits for a choice for each "needs a decision" item, and the save
+  // sends the key of the sorting shown with the choices.
+  it('shows the stored changes the archive sorts and sends the key and the choice made', async () => {
+    const MOVE = uid(31);
+    const OXFORD = uid(32);
+    const MATHS = uid(33);
+    const sorted: CalendarPreview = {
+      ...PREVIEW,
+      lessons: {
+        ...NO_LESSONS,
+        dayChanges: {
+          key: 'd'.repeat(64),
+          kept: [],
+          decide: [
+            {
+              key: MOVE,
+              kind: 'move',
+              unitId: OXFORD,
+              subjectId: MATHS,
+              from: { date: '2026-10-26', start: 480, end: 525, roomId: null },
+              to: { date: '2026-10-19', start: 535, end: 580, roomId: null },
+              reason: 'Excursion to the museum',
+              carriedVersionId: null,
+              blocked: [
+                {
+                  rule: 'day_off',
+                  severity: 'blocked',
+                  weekday: 1,
+                  lessonIds: [],
+                  date: '2026-10-19',
+                },
+              ],
+            },
+          ],
+          dropped: [],
+          bulk: [],
+        },
+        names: {
+          units: [{ id: OXFORD, kind: 'class', name: 'Oxford', grades: [7] }],
+          subjects: [
+            { id: MATHS, names: { uz: 'Matematika', ru: 'Математика', en: 'Mathematics' } },
+          ],
+          teachers: [],
+          rooms: [],
+        },
+      },
+    };
+    const { calls } = await openList('academic_vice_principal', {
+      'POST /api/setup/calendar-entries/preview': () => json(sorted),
+      [`POST /api/setup/calendar-entries/${HOLIDAY.id}/archive`]: () =>
+        json({ ...HOLIDAY, archivedAt: '2026-10-10T10:00:00.000Z' }),
+    });
+    const panel = await openEntry('Teachers day');
+    fireEvent.click(within(panel).getByRole('button', { name: en.setup.calendar.archive }));
+    const dialog = await screen.findByRole('dialog', { name: en.setup.calendar.previewTitle });
+    const save = within(dialog).getByRole('button', { name: en.setup.calendar.save });
+    expect(save).toHaveProperty('disabled', true);
+
+    fireEvent.click(
+      within(dialog).getByRole('radio', { name: en.timetable.publish.dayChanges.choice_drop }),
+    );
+    expect(save).toHaveProperty('disabled', false);
+    fireEvent.click(save);
+    await waitFor(() => {
+      expect(
+        calls.find(
+          (call) => call.route === `POST /api/setup/calendar-entries/${HOLIDAY.id}/archive`,
+        )?.body,
+      ).toEqual({ dayChangesKey: 'd'.repeat(64), dayDecisions: [{ key: MOVE, choice: 'drop' }] });
     });
   });
 

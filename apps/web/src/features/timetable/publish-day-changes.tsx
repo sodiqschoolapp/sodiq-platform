@@ -5,6 +5,8 @@ import {
   type BulkItemAnswer,
   type DayChangeChoice,
   type DayChangeItemAnswer,
+  type DayChangesAnswer,
+  type DayDecisionsBody,
   type PublishImpactAnswer,
 } from '@sodiq/shared';
 import { useTranslation } from 'react-i18next';
@@ -18,6 +20,35 @@ import { nameOf } from '@/features/setup/setup-api';
 import { rangeText } from '@/features/setup/templates-api';
 import { schoolDateText } from '@/lib/dates';
 import { ruleText } from './rule-text';
+
+/**
+ * The body that settles a sorting with the choices made (task 5.6a-5b-2; a
+ * calendar save too, task 5.6b-2a): the key shown and a choice for each
+ * "needs a decision" item and each bulk cancel's open block; `null` while
+ * one has no choice.
+ */
+export function dayDecisionsBodyOf(
+  dayChanges: DayChangesAnswer,
+  choices: Readonly<Record<string, DayChangeChoice>>,
+): DayDecisionsBody | null {
+  const dayDecisions: NonNullable<DayDecisionsBody['dayDecisions']> = [];
+  for (const item of dayChanges.decide) {
+    const choice = choices[item.key];
+    if (choice !== undefined) dayDecisions.push({ key: item.key, choice });
+  }
+  const bulkOpen = dayChanges.bulk.flatMap((item) =>
+    item.blocks
+      .filter((block) => block.choice === null)
+      .map((block) => ({ key: item.key, blockId: block.blockId, blockDate: block.blockDate })),
+  );
+  for (const block of bulkOpen) {
+    const choice = choices[dayDecisionKeyOf(block)];
+    if (choice !== undefined) dayDecisions.push({ ...block, choice });
+  }
+  return dayDecisions.length === dayChanges.decide.length + bulkOpen.length
+    ? { dayChangesKey: dayChanges.key, dayDecisions }
+    : null;
+}
 
 /**
  * The stored one-day changes of the dates a publish writes, in step 8 (task

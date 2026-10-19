@@ -1,4 +1,9 @@
-import { nextDay, type CalendarEntry, type CalendarEntryRecord } from '@sodiq/shared';
+import {
+  nextDay,
+  type CalendarEntry,
+  type CalendarEntryRecord,
+  type DayDecisionsBody,
+} from '@sodiq/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
@@ -46,17 +51,22 @@ export function CalendarEntryPanel({
   const panel = usePanelEditing();
 
   const edit = useMutation({
-    mutationFn: (record: CalendarEntryRecord) =>
-      answerOf(api.PATCH('/api/setup/calendar-entries/{id}', { ...path, body: record })),
+    mutationFn: ({ record, days }: { record: CalendarEntryRecord; days: DayDecisionsBody }) =>
+      answerOf(
+        api.PATCH('/api/setup/calendar-entries/{id}', { ...path, body: { ...record, ...days } }),
+      ),
     onSuccess: refresh,
   });
   const archive = useMutation({
     mutationFn: async (restore: boolean) => {
-      await preview.confirm({ action: restore ? 'restore' : 'archive', id: entry.id });
+      const days = await preview.confirm({
+        action: restore ? 'restore' : 'archive',
+        id: entry.id,
+      });
       return answerOf(
         restore
-          ? api.POST('/api/setup/calendar-entries/{id}/restore', path)
-          : api.POST('/api/setup/calendar-entries/{id}/archive', path),
+          ? api.POST('/api/setup/calendar-entries/{id}/restore', { ...path, body: days })
+          : api.POST('/api/setup/calendar-entries/{id}/archive', { ...path, body: days }),
       );
     },
     onSuccess: refresh,
@@ -72,10 +82,8 @@ export function CalendarEntryPanel({
       record.dayTemplateId === entry.dayTemplateId &&
       record.followsWeekday === entry.followsWeekday &&
       record.examWeek === entry.examWeek;
-    if (!nameOnly) {
-      await preview.confirm({ action: 'edit', id: entry.id, record });
-    }
-    await edit.mutateAsync(record);
+    const days = nameOnly ? {} : await preview.confirm({ action: 'edit', id: entry.id, record });
+    await edit.mutateAsync({ record, days });
     panel.stop({ saved: true, key: 'record' });
   };
 
