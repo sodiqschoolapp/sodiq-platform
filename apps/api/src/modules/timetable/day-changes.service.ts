@@ -843,7 +843,7 @@ async function recordChanges(
  * day template of the class's grade on the date; none on a day without
  * lessons.
  */
-async function classSlotsOn(
+export async function classSlotsOn(
   transaction: Transaction,
   branchId: string,
   classId: string,
@@ -891,7 +891,7 @@ function valuesOf(lesson: StoredDayLesson) {
 }
 
 /** The lessons as the day page shows them, with their names and the "changed" mark. */
-async function dayLessonsOf(
+export async function dayLessonsOf(
   transaction: Transaction,
   lessons: readonly StoredDayLesson[],
   moment: Date,

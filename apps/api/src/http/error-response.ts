@@ -309,6 +309,12 @@ const MESSAGE: Record<ErrorCode, string> = {
   move_no_slot: 'The date has no such lesson slot.',
   move_unchanged: 'The lesson already has that place.',
   move_room_parts: 'A room is given only for a lesson of one part.',
+  bulk_cancel_empty: 'No lesson of the chosen classes in the chosen slots is left to cancel.',
+  bulk_cancel_out_of_year: 'The date is in no academic year of the branch.',
+  class_not_active: 'A class is archived or of another academic year than the date.',
+  bulk_choice_missing: 'A block shared with classes not chosen has no choice.',
+  bulk_choice_unknown: 'A choice names a block that is not shared in this bulk cancel.',
+  bulk_scope_changed: 'The lessons to cancel changed since the check.',
   withdraw_blocked:
     'The version that would run again meets a blocked conflict; the details list each.',
   load_unit_year: 'The class or group is of another academic year.',

@@ -222,6 +222,8 @@ export const AUDIT_ACTION_GROUPS = {
     // Task 5.6a-2: a one-day room change and a one-day move.
     'lesson.room_change',
     'lesson.move',
+    // Task 5.6a-3: a bulk cancel.
+    'lesson.bulk_cancel',
   ],
   exports: [
     'building.export',

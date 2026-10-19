@@ -580,6 +580,18 @@ export const ERROR_CODES = [
   'move_unchanged',
   /** A room for a one-day move is taken only for a lesson of one part (task 5.6a-2, decision 9). */
   'move_room_parts',
+  /** No lesson of the chosen classes in the chosen slots of the date is left to cancel (task 5.6a-3). */
+  'bulk_cancel_empty',
+  /** The date of a bulk cancel is in no academic year of the branch (task 5.6a-3). */
+  'bulk_cancel_out_of_year',
+  /** A class of a bulk cancel is archived or of another academic year than the date (task 5.6a-3, decision 14). */
+  'class_not_active',
+  /** A block shared with classes not chosen has no choice; `details` lists each (task 5.6a-3, decision 7). */
+  'bulk_choice_missing',
+  /** A choice names a block that is not shared in the bulk cancel; `details` lists each (task 5.6a-3). */
+  'bulk_choice_unknown',
+  /** The lessons a bulk cancel would cancel changed since its check; `details` lists the differences (task 5.6a-3, decision 12). */
+  'bulk_scope_changed',
   /** The class or group of a load row is of another academic year than the version (task 3.4a). */
   'load_unit_year',
   /** The class or group of a load row is archived (task 3.4a). */
