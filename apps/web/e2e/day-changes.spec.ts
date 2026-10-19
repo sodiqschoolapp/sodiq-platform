@@ -21,8 +21,9 @@ function mondaysAhead(count: number): string[] {
 // publishing: "A cancelled lesson is restored … Every rule is checked again."
 // Task 5.6a-1, pull request #160. The publishable grid scene: the Academic
 // Vice Principal publishes from step 8, opens Day changes, cancels 7 Oxford's
-// Monday lesson with a reason and restores it. All names are invented.
-test('an Academic Vice Principal cancels a lesson for one day and restores it', async ({
+// Monday lesson with a reason and restores it, then moves it to another lesson
+// slot of the day (task 5.6a-2, pull request #161). All names are invented.
+test('an Academic Vice Principal cancels a lesson for one day, restores it and moves it', async ({
   page,
 }) => {
   const account = accountOf('dayChanges');
@@ -84,4 +85,41 @@ test('an Academic Vice Principal cancels a lesson for one day and restores it', 
   await page.getByRole('button', { name: day.restore, exact: true }).first().click();
   await expect(page.getByText(day.restored, { exact: true })).toBeVisible();
   await expect(page.locator('tbody tr').first()).toContainText(day.asPlanned);
+
+  // Task 5.6a-2: the lesson moved for the day to a later free lesson slot of
+  // the same date, with a reason; a slot the class or teacher already holds
+  // is refused, and the next one down is tried.
+  const before = await page.locator('tbody tr').first().locator('td').first().innerText();
+  await page.getByRole('button', { name: day.move, exact: true }).first().click();
+  const moving = page.getByRole('dialog');
+  const slot = moving.getByLabel(day.slot, { exact: true });
+  await expect(slot).toBeVisible();
+  await moving.getByLabel(day.reason, { exact: true }).fill('Concert in the hall');
+  const count = await slot.locator('option').count();
+  for (let index = count - 1; index >= 1; index -= 1) {
+    await slot.selectOption({ index });
+    await moving.getByRole('button', { name: day.moveSend, exact: true }).click();
+    const outcome = await Promise.race([
+      page
+        .getByText(day.moved, { exact: true })
+        .waitFor()
+        .then(() => 'moved'),
+      moving
+        .getByRole('alert')
+        .first()
+        .waitFor()
+        .then(() => 'refused'),
+    ]);
+    if (outcome === 'moved') break;
+  }
+  await expect(page.getByText(day.moved, { exact: true })).toBeVisible();
+  await expect(page.locator('tbody tr', { hasText: day.changed }).first()).toBeVisible();
+  expect(
+    await page
+      .locator('tbody tr', { hasText: day.changed })
+      .first()
+      .locator('td')
+      .first()
+      .innerText(),
+  ).not.toBe(before);
 });
