@@ -117,6 +117,7 @@ export interface StoredRow {
   readonly teacher_id: string | null;
   readonly room_id: string | null;
   readonly cancel_cause: string | null;
+  readonly cancel_reason: string | null;
 }
 
 interface StoredBlock {
@@ -184,7 +185,16 @@ export interface PairWanted {
 export function pairDated<W extends PairWanted>(
   stored: readonly PairStored[],
   blocks: readonly { readonly lessons: readonly W[] }[],
-): { pairs: Map<W, PairStored>; reused: (string | null)[] } {
+): {
+  pairs: Map<W, PairStored>;
+  reused: (string | null)[];
+  /**
+   * The pairs dropped because the stored lesson is in another block than the
+   * one its block reuses: that lesson is removed and created again, and keeps
+   * its one-day cancel (task 5.6a-1, build decision).
+   */
+  recreated: Map<W, PairStored>;
+} {
   const keyOf = (
     held: string,
     unit: string,
@@ -250,6 +260,7 @@ export function pairDated<W extends PairWanted>(
 
   // Each stored block goes to one wanted block at most (must-fix 2).
   const taken = new Set<string>();
+  const recreated = new Map<W, PairStored>();
   const reused = blocks.map((block) => {
     const counts = new Map<string, number>();
     for (const lesson of block.lessons) {
@@ -262,11 +273,14 @@ export function pairDated<W extends PairWanted>(
     if (chosen !== null) taken.add(chosen);
     for (const lesson of block.lessons) {
       const found = pairs.get(lesson);
-      if (found !== undefined && found.blockId !== chosen) pairs.delete(lesson);
+      if (found !== undefined && found.blockId !== chosen) {
+        pairs.delete(lesson);
+        recreated.set(lesson, found);
+      }
     }
     return chosen;
   });
-  return { pairs, reused };
+  return { pairs, reused, recreated };
 }
 
 /**
@@ -274,7 +288,7 @@ export function pairDated<W extends PairWanted>(
  * `begins` of its date; the preview reads it the same way (task 5.5b-2).
  */
 export function storedPairOf(
-  row: Omit<StoredRow, 'load_row_id' | 'pattern_entry_id'>,
+  row: Omit<StoredRow, 'load_row_id' | 'pattern_entry_id' | 'cancel_reason'>,
   begins: (date: string) => Date,
 ): PairStored {
   const minutesOf = (moment: Date) =>
@@ -378,6 +392,7 @@ export async function writeDatedLessons(
             'teacher_id',
             'room_id',
             'cancel_cause',
+            'cancel_reason',
           ])
           .where('branch_id', '=', branchId)
           .where('lesson_date', '>=', firstDate)
@@ -562,6 +577,15 @@ export async function writeDatedLessons(
       .map((lesson) => {
         const blockId = block.reused ?? blockIds.get(block);
         if (blockId === undefined) throw new Error('A lesson has no block.');
+        // Task 5.6a-1 (build decision): a lesson with a one-day cancel that
+        // is created again in another block keeps it, so a publish never
+        // changes a one-day cancel and the impact preview, which shows such a
+        // lesson as held on both sides, names the teachers it notifies.
+        const again = paired.recreated.get(lesson);
+        const oneDay =
+          lesson.cause === null && again?.cancelCause === 'reason'
+            ? (rowOf.get(again.id)?.cancel_reason ?? null)
+            : null;
         return {
           branch_id: branchId,
           block_id: blockId,
@@ -575,7 +599,8 @@ export async function writeDatedLessons(
           pattern_entry_id: lesson.entryId,
           teacher_id: lesson.teacherId,
           room_id: lesson.roomId,
-          cancel_cause: lesson.cause,
+          cancel_cause: oneDay === null ? lesson.cause : 'reason',
+          cancel_reason: oneDay,
         };
       }),
   );

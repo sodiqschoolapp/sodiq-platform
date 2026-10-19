@@ -556,6 +556,14 @@ export const ERROR_CODES = [
   'withdraw_started',
   /** A withdraw is refused: the version that would run again meets a blocked conflict; `details` lists each (task 5.5c-2a). */
   'withdraw_blocked',
+  /** The lesson has started: a one-day change is for a lesson that has not started; a past lesson is corrected (task 5.6a-1, decision 3). */
+  'lesson_started',
+  /** The lesson is already cancelled (task 5.6a-1). */
+  'lesson_cancelled',
+  /** Only a lesson cancelled with a reason is restored by a one-day restore; an exam's cancel is restored by cancelling the exam (task 5.6a-1, decision 5). */
+  'lesson_not_restorable',
+  /** A restore meets a blocked rule on its date; `details` lists each, and the free rooms of its time (task 5.6a-1, edge/timetable, After publishing). */
+  'restore_blocked',
   /** The class or group of a load row is of another academic year than the version (task 3.4a). */
   'load_unit_year',
   /** The class or group of a load row is archived (task 3.4a). */
@@ -729,6 +737,8 @@ export const errorDetailSchema = z.object({
   rule: z
     .object({ weekday: z.int().min(1).max(7).nullable(), lessonIds: z.array(z.string()) })
     .optional(),
+  /** A room free at the time of a refused restore, on a `restore_blocked` (task 5.6a-1, decision 7). */
+  room: z.object({ id: z.uuid(), name: z.string() }).optional(),
   /** The number of items a list of details leaves out, on its detail `more` (`year_cut_holds`, task 3.6b-2). */
   more: z.int().min(1).optional(),
 });

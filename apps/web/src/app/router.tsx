@@ -33,6 +33,8 @@ import { loadSearch } from '@/features/timetable/load-search';
 import { BuilderPage } from '@/features/timetable/builder-page';
 import { builderSearch } from '@/features/timetable/builder-search';
 import { TimetablePage } from '@/features/timetable/timetable-page';
+import { DayPage } from '@/features/timetable/day-page';
+import { daySearch } from '@/features/timetable/day-search';
 import { HeadTeachersPage } from '@/features/people/head-teachers-page';
 import { NeverUsedPage } from '@/features/people/never-used-page';
 import { PeoplePage } from '@/features/people/people-page';
@@ -298,6 +300,14 @@ const builderRoute = createRoute({
   component: guarded('timetable', BuilderPage),
 });
 
+/** Day changes: the one-day cancel and restore of a class's lessons (task 5.6a-1). */
+const dayRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/timetable/day',
+  validateSearch: daySearch,
+  component: guarded('timetable', DayPage),
+});
+
 /** People (task 2.2a): the entry of the menu item and the staff list. */
 const peopleRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -476,6 +486,7 @@ const routeTree = rootRoute.addChildren([
     groupPlacementRoute,
     timetableRoute,
     builderRoute,
+    dayRoute,
     loadRoute,
     peopleRoute,
     staffRoute,

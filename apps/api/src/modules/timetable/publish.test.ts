@@ -4424,7 +4424,45 @@ describe('publish', () => {
       await placeSlot(s.branch, split, rowOfGroup(groups[1]), 3, 1);
       await confirmTemplates(s.branch, split);
       await load.freeEditLock(split);
+      // Task 5.6a-1 (build decision): a one-day cancel of both groups on the
+      // first Wednesday from 26 October stays on the lesson kept and on the
+      // one created again in another block.
+      const cancelledOn = wednesdays.find((day) => day >= '2026-10-26') ?? '';
+      const cancelled = two
+        .filter((lesson) => lesson.date === cancelledOn)
+        .map((lesson) => lesson.id);
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ cancel_cause: 'reason', cancel_reason: 'Excursion to the museum' })
+        .where('id', 'in', cancelled)
+        .execute();
       versionOf(await publish(s.branch, split, '2026-10-26'));
+      const causes = await t.database.migrator
+        .selectFrom('lessons')
+        .select([
+          'group_id',
+          'cancel_cause',
+          'cancel_reason',
+          sql<string>`lesson_date::text`.as('date'),
+        ])
+        .where('branch_id', '=', s.branch)
+        .where('subject_id', '=', english)
+        .where('lesson_date', '>=', '2026-10-26')
+        .execute();
+      for (const row of causes) {
+        expect(row, row.date).toMatchObject(
+          row.date === cancelledOn
+            ? { cancel_cause: 'reason', cancel_reason: 'Excursion to the museum' }
+            : { cancel_cause: null, cancel_reason: null },
+        );
+      }
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ cancel_cause: null, cancel_reason: null })
+        .where('branch_id', '=', s.branch)
+        .where('lesson_date', '=', cancelledOn)
+        .where('subject_id', '=', english)
+        .execute();
       const three = await englishOf();
       expect(three.filter((lesson) => lesson.date < '2026-10-26')).toEqual(
         two.filter((lesson) => lesson.date < '2026-10-26'),

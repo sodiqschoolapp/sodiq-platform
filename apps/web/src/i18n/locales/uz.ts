@@ -412,6 +412,13 @@ export const uz: Texts<'one' | 'other'> = {
       'Qoralamani hali eʼlon qilib boʻlmaydi. 8-qadam barcha sabablarni koʻrsatadi; ularni hal qilib, qayta eʼlon qiling.',
     version_not_published:
       'Faqat eʼlon qilingan versiyani qaytarib olish mumkin. Roʻyxatni yangilang.',
+    lesson_started:
+      'Bu dars allaqachon boshlangan. Bir kunlik oʻzgarish dars boshlanishidan oldin qilinadi; oʻtgan dars tuzatiladi.',
+    lesson_cancelled: 'Bu dars allaqachon bekor qilingan.',
+    lesson_not_restorable:
+      'Bu yerda faqat sabab bilan bekor qilingan dars tiklanadi. Imtihon tufayli bekor qilingan dars imtihon bekor qilinganda qaytadi.',
+    restore_blocked:
+      'Darsni oʻz vaqtida tiklab boʻlmaydi: u yerda qoida buziladi yoki boshqa oʻzgarish hozirgina uning xonasi, oʻqituvchisi yoki sinfini egalladi. Topilgan sabablar quyida keltirilgan.',
     withdraw_started:
       'Bu versiya kuchga kirgan, uni endi qaytarib olib boʻlmaydi. Oʻzgartirish uchun yangi versiyani eʼlon qiling.',
     withdraw_blocked:
@@ -2682,6 +2689,10 @@ export const uz: Texts<'one' | 'other'> = {
         open: 'Nashrda jurnal ochildi',
         runs: 'Nashr jurnal kunlarini oʻzgartirdi',
       },
+      lesson: {
+        cancel: 'Dars bir kunga bekor qilindi',
+        restore: 'Bekor qilingan dars tiklandi',
+      },
       teaching_load: {
         create: 'Oʻquv yuklamasi qatori qoʻshildi',
         edit: 'Oʻquv yuklamasi qatori oʻzgartirildi',
@@ -3049,6 +3060,8 @@ export const uz: Texts<'one' | 'other'> = {
           'Dars jadvalining {{number}}-versiyasi qaytarib olindi va darslaringiz oʻzgardi. Haftangiz oldin va keyin:',
         tutor_changed:
           'Sinf rahbari almashgani sababli sinf rahbari darslaringiz oʻzgardi. Haftangiz oldin va keyin:',
+        day_changed:
+          'Bir kunlik oʻzgarish (bekor qilish yoki tiklash) darslaringizni oʻzgartirdi. Haftangiz oldin va keyin:',
       },
     },
     // The week before and after of a notice of a timetable change (task 5.5c-3a).
@@ -3066,6 +3079,43 @@ export const uz: Texts<'one' | 'other'> = {
     title: 'Dars jadvali',
     loadLink: 'Oʻquv yuklamasi',
     builderLink: 'Qoralama yigʻuvchi',
+    dayLink: 'Bir kunlik oʻzgarishlar',
+    day: {
+      title: 'Bir kunlik oʻzgarishlar',
+      date: 'Sana',
+      class: 'Sinf',
+      empty: 'Bu sinfda bu sanada dars yoʻq.',
+      noClasses: 'Bu filialda hali sinflar yoʻq.',
+      time: 'Vaqt',
+      unit: 'Sinf yoki guruh',
+      subject: 'Fan',
+      teacher: 'Oʻqituvchi',
+      room: 'Xona',
+      state: 'Holat',
+      actions: 'Amallar',
+      asPlanned: 'Jadval boʻyicha',
+      needsTeacher: 'oʻqituvchi kerak',
+      needsRoom: 'xona kerak',
+      changed: 'oʻzgargan',
+      cancelledReason: 'Bekor qilingan: {{reason}}',
+      cause_not_in_template: 'Bekor qilingan: kun shablonida yoʻq',
+      cause_exam: 'Imtihon tufayli bekor qilingan',
+      cause_exam_week: 'Bekor qilingan: imtihonlar haftasi',
+      cause_day_off: 'Bekor qilingan: dam olish kuni',
+      cancel: 'Darsni bekor qilish',
+      restore: 'Tiklash',
+      cancelTitle: '{{time}} dagi {{subject}} darsini bekor qilish',
+      reason: 'Sabab',
+      reasonNeeded: 'Bekor qilish sababini yozing.',
+      cancelSend: 'Darsni bekor qilish',
+      keep: 'Darsni qoldirish',
+      cancelled: 'Dars bekor qilindi.',
+      restored: 'Dars tiklandi.',
+      warning: 'Ogohlantirish bilan tiklandi: {{rule}}',
+      blocked: 'Uning vaqtida buziladi: {{rule}}',
+      freeRooms: 'Shu vaqtda boʻsh xonalar: {{rooms}}',
+      noFreeRoom: 'Shu vaqtda boʻsh xona yoʻq.',
+    },
     rule: {
       teacher_double: 'Oʻqituvchi bir vaqtda ikkita darsda boʻla olmaydi.',
       room_double:

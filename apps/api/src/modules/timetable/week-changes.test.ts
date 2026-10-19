@@ -21,13 +21,14 @@ function lesson(
     teacherId?: string | null;
     roomId?: string | null;
     changedAt?: Date | null;
+    cancelCause?: string | null;
   } = {},
 ): StoredLesson {
   const start = more.start ?? 480;
   const teacherId = more.teacherId === undefined ? 't1' : more.teacherId;
   return {
     id,
-    cancelCause: null,
+    cancelCause: more.cancelCause ?? null,
     changedAt: more.changedAt ?? null,
     lesson: {
       date,
@@ -69,6 +70,29 @@ describe('weekChanges', () => {
     );
     expect(changes.marked).toEqual(['a']);
     expect([...changes.teachers]).toEqual([['t1', '2026-10-19']]);
+  });
+
+  // Task 5.6a-1 (decision 11; From 5.5c-3a, code review 1): a one-day cancel
+  // or a restore changes the teacher's week.
+  it('marks a lesson cancelled on one side only, either way, and names its teacher', () => {
+    const cancel = weekChanges(
+      [lesson('a', '2026-10-19')],
+      [lesson('a', '2026-10-19', { cancelCause: 'reason' })],
+    );
+    expect(cancel.marked).toEqual(['a']);
+    expect([...cancel.teachers]).toEqual([['t1', '2026-10-19']]);
+    const restore = weekChanges(
+      [lesson('a', '2026-10-19', { cancelCause: 'reason' })],
+      [lesson('a', '2026-10-19')],
+    );
+    expect(restore.marked).toEqual(['a']);
+    expect([...restore.beforeDiffers]).toEqual(['a']);
+    const same = weekChanges(
+      [lesson('a', '2026-10-19', { cancelCause: 'reason' })],
+      [lesson('a', '2026-10-19', { cancelCause: 'reason' })],
+    );
+    expect(same.marked).toEqual([]);
+    expect([...same.teachers]).toEqual([]);
   });
 
   it('names the old and the new teacher of a lesson given to another', () => {

@@ -1,4 +1,6 @@
 import {
+  dayAnswerSchema,
+  dayChangeAnswerSchema,
   dayKeepSchema,
   draftReadinessSchema,
   gridSchema,
@@ -11,6 +13,7 @@ import {
   timetableVersionListSchema,
   timetableVersionSchema,
   type DayKeepBody,
+  type LessonCancelBody,
   type LessonRoomRecord,
   type LoadRowEdit,
   type LoadRowRecord,
@@ -409,3 +412,45 @@ export const bringUpToDate = (
       body: { key, picks: [...picks] },
     }),
   ).then((answer) => timetableVersionSchema.parse(answer));
+
+/** The stored lessons of a class on a date (task 5.6a-1). */
+export const dayQuery = (branchId: string | null, date: string | null, classId: string | null) =>
+  queryOptions({
+    queryKey: [...timetableKey(branchId), 'day', date, classId],
+    queryFn: async () =>
+      dayAnswerSchema.parse(
+        await answerOf(
+          api.GET('/api/timetable/day', {
+            params: {
+              header: branchHeader(),
+              query: { date: date ?? '', classId: classId ?? '' },
+            },
+          }),
+        ),
+      ),
+    enabled: branchId !== null && date !== null && classId !== null,
+  });
+
+/** A one-day cancel of a lesson with its reason (task 5.6a-1); `key` makes a repeat harmless. */
+export const cancelLesson = (lessonId: string, body: LessonCancelBody, key: string) =>
+  answerOf(
+    api.POST('/api/timetable/lessons/{id}/cancel', {
+      params: {
+        header: { ...branchHeader(), 'Idempotency-Key': key },
+        path: { id: lessonId },
+      },
+      body,
+    }),
+  ).then((answer) => dayChangeAnswerSchema.parse(answer));
+
+/** The restore of a one-day cancel (task 5.6a-1); `key` makes a repeat harmless. */
+export const restoreLesson = (lessonId: string, key: string) =>
+  answerOf(
+    api.POST('/api/timetable/lessons/{id}/restore', {
+      params: {
+        header: { ...branchHeader(), 'Idempotency-Key': key },
+        path: { id: lessonId },
+      },
+      body: {},
+    }),
+  ).then((answer) => dayChangeAnswerSchema.parse(answer));

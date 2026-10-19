@@ -297,6 +297,10 @@ const MESSAGE: Record<ErrorCode, string> = {
   publish_blocked: 'The draft cannot be published; the details list why.',
   version_not_published: 'The version is not published.',
   withdraw_started: 'The version has started; it can no longer be withdrawn.',
+  lesson_started: 'The lesson has started; a one-day change is for a lesson that has not.',
+  lesson_cancelled: 'The lesson is already cancelled.',
+  lesson_not_restorable: 'Only a lesson cancelled with a reason is restored by a one-day restore.',
+  restore_blocked: 'The restore meets a blocked rule on its date.',
   withdraw_blocked:
     'The version that would run again meets a blocked conflict; the details list each.',
   load_unit_year: 'The class or group is of another academic year.',

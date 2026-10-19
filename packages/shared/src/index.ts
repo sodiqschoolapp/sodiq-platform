@@ -1244,3 +1244,21 @@ export {
   type PublishChain,
   type PublishChainAnswer,
 } from './timetable.js';
+export {
+  DAY_CHANGE_REASON_MAX,
+  LESSON_CANCEL_CAUSES,
+  dayAnswerSchema,
+  dayChangeAnswerSchema,
+  dayLessonSchema,
+  dayQuerySchema,
+  lessonCancelBodySchema,
+  lessonParamsSchema,
+  lessonRestoreBodySchema,
+  type DayAnswer,
+  type DayChangeAnswer,
+  type DayLesson,
+  type DayQuery,
+  type LessonCancelBody,
+  type LessonParams,
+  type LessonRestoreBody,
+} from './day-changes.js';

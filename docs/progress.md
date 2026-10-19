@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 19 October 2026: task 5.6a-1 One-day changes: cancel and restore of one lesson
+
+- The Academic Vice Principal (and the Super Admin) cancel one stored lesson with a reason and restore it on "Day changes" (`/timetable/day`; `GET /api/timetable/day`, `POST /api/timetable/lessons/:id/cancel` and `/restore`); the Principal views the day.
+- A restore runs every rule on the lesson's date (`storedDayCheck`, `stored-day.ts`) and is refused with the free rooms listed; each change marks the lesson and notifies its teachers (`timetable.day_changed`), and is audited (`lesson.cancel`, `lesson.restore`).
+- `keyOf` compares the cancel; a publish keeps a one-day cancel on a lesson it creates again in another block.
+- A cancel or a restore of a half of a double lesson takes both halves (`pairOf`, `stored-day.ts`); `storedDayCheck` takes the lessons to check together.
+- Left out: room change and move (5.6a-2), bulk cancel (5.6a-3), correction of a past lesson (5.6a-4), one-day changes kept after a publish (5.6a-5); a lesson with data (6.1) and a closed quarter (9.2b) by From lines.
+
+The next sessions must know:
+
+- `storedDayCheck` reads the facts of the lesson's version as if it started on the date, places the branch's held lessons of the date, the teacher's claims elsewhere and the branch's exams (from `time_claims`) and gives only the results that name the candidate; 5.6a-2 to 5.6a-4 call it.
+- A one-day change takes the publish advisory lock, `lockPublishChain`, then `snapshotWeek` of the date, and reads the lesson again after them.
+- The next task is 5.6a-2.
+
 ## 18 October 2026: task 5.5c-3b Publish: the notice and the changed mark of a Tutor change
 
 - A change of a class's Tutor that moves its dated Tutor lessons (a give, an end, a role end and its taking back, a status change with `left` and its taking back) marks the lessons whose teacher changed (`lesson_changes`) and sends one notice, kind `timetable.tutor_changed`, to the old and the new teacher of each, per branch per request, with the week before and after (`sendTutorChanges`, `apps/api/src/modules/timetable/tutor-changes.ts`).

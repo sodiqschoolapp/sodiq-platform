@@ -85,7 +85,20 @@ describe('the notices of a timetable change', () => {
     expect(schema.safeParse({ ...tutorWeek, before: [{ ...lesson, teacher: 'x' }] }).success).toBe(
       false,
     );
-    expect(WEEK_KINDS).toEqual([...WEEK_CHANGE_KINDS, 'timetable.tutor_changed']);
+    // Task 5.6a-1 (decision 10, Look first: a pinned list widened by a new kind).
+    expect(WEEK_KINDS).toEqual([
+      ...WEEK_CHANGE_KINDS,
+      'timetable.tutor_changed',
+      'timetable.day_changed',
+    ]);
+  });
+
+  // Task 5.6a-1, decision 10: a one-day change carries the week without a number.
+  it('carry the week of a one-day change without a number, and refuse one with a number', () => {
+    const schema = NOTIFICATION_KINDS['timetable.day_changed'];
+    const dayWeek = { weekStart: week.weekStart, before: week.before, after: week.after };
+    expect(schema.parse(dayWeek)).toEqual(dayWeek);
+    expect(schema.safeParse(week).success).toBe(false);
   });
 
   it('refuse a teacher in a lesson, a time not on the clock and more lessons than the most', () => {
