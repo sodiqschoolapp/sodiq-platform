@@ -4261,7 +4261,7 @@ describe('one-day changes: cancel and restore', () => {
       }
     });
 
-    it('leaves a lesson of a bulk cancel out of the sorting, to 5.6a-5b', async () => {
+    it('leaves a lesson of a bulk cancel out of the sorting, listed once under its bulk cancel (task 5.6a-5b-1)', async () => {
       const s = await scene();
       const body = { date: NEXT_MONDAY, classIds: [s.classId], lessonNumbers: [1] };
       const listed = await t.post('/api/timetable/bulk-cancels/check', s.branch, body);
@@ -4289,6 +4289,12 @@ describe('one-day changes: cancel and restore', () => {
       expect([...days.kept, ...days.decide, ...days.dropped].map((one) => one.key)).toEqual([
         other.id,
       ]);
+      expect(
+        (days as Days & { bulk: { key: string; category: string }[] }).bulk.map((one) => [
+          one.key,
+          one.category,
+        ]),
+      ).toEqual([[(saved.body as { id: string }).id, 'kept']]);
     });
 
     it('needs no key and no decision when no one-day change is stored', async () => {

@@ -41107,7 +41107,7 @@ export interface operations {
                         quarterStarts: string[];
                         refusals: {
                             /** @enum {string} */
-                            code: "version_start_too_early" | "version_start_outside_year" | "version_later_published" | "draft_out_of_date" | "draft_not_ready" | "load_problem" | "pattern_blocked" | "date_blocked" | "load_mismatch" | "year_quarters" | "subject_daily_weights" | "subject_quarter_weights" | "transition_unacknowledged" | "chain_carry_not_offered" | "chain_start_taken" | "chain_changed" | "day_change_undecided" | "day_decision_unknown" | "day_changes_changed";
+                            code: "version_start_too_early" | "version_start_outside_year" | "version_later_published" | "draft_out_of_date" | "draft_not_ready" | "load_problem" | "pattern_blocked" | "date_blocked" | "load_mismatch" | "year_quarters" | "subject_daily_weights" | "subject_quarter_weights" | "transition_unacknowledged" | "chain_carry_not_offered" | "chain_start_taken" | "chain_changed" | "day_change_undecided" | "day_decision_unknown" | "day_changes_changed" | "day_choice_not_offered";
                             /** @enum {string} */
                             step?: "templates" | "load" | "teachers" | "rooms";
                             /** Format: uuid */
@@ -41132,6 +41132,10 @@ export interface operations {
                             versionNumber?: number;
                             /** Format: uuid */
                             key?: string;
+                            /** Format: uuid */
+                            blockId?: string;
+                            /** Format: date */
+                            blockDate?: string;
                         }[];
                         warnings: {
                             rule: string;
@@ -41400,6 +41404,39 @@ export interface operations {
                                         date?: string;
                                     }[];
                                 }[];
+                                bulk: {
+                                    /** Format: uuid */
+                                    key: string;
+                                    /** @enum {string} */
+                                    category: "kept" | "decide";
+                                    /** Format: date */
+                                    date: string;
+                                    reason: string;
+                                    classIds: string[];
+                                    /** Format: uuid */
+                                    carriedVersionId: string | null;
+                                    cancelled: number;
+                                    blocks: {
+                                        /** Format: uuid */
+                                        blockId: string;
+                                        /** Format: date */
+                                        blockDate: string;
+                                        /** Format: uuid */
+                                        pairBlockId: string | null;
+                                        start: number;
+                                        end: number;
+                                        lessons: {
+                                            /** Format: uuid */
+                                            unitId: string;
+                                            /** Format: uuid */
+                                            subjectId: string;
+                                        }[];
+                                        chosenClassIds: string[];
+                                        otherClassIds: string[];
+                                        /** @enum {string|null} */
+                                        choice: "keep" | "cancel" | null;
+                                    }[];
+                                }[];
                             };
                             names: {
                                 units: {
@@ -41489,7 +41526,7 @@ export interface operations {
                                 left: boolean;
                                 refusals: {
                                     /** @enum {string} */
-                                    code: "version_start_too_early" | "version_start_outside_year" | "version_later_published" | "draft_out_of_date" | "draft_not_ready" | "load_problem" | "pattern_blocked" | "date_blocked" | "load_mismatch" | "year_quarters" | "subject_daily_weights" | "subject_quarter_weights" | "transition_unacknowledged" | "chain_carry_not_offered" | "chain_start_taken" | "chain_changed" | "day_change_undecided" | "day_decision_unknown" | "day_changes_changed";
+                                    code: "version_start_too_early" | "version_start_outside_year" | "version_later_published" | "draft_out_of_date" | "draft_not_ready" | "load_problem" | "pattern_blocked" | "date_blocked" | "load_mismatch" | "year_quarters" | "subject_daily_weights" | "subject_quarter_weights" | "transition_unacknowledged" | "chain_carry_not_offered" | "chain_start_taken" | "chain_changed" | "day_change_undecided" | "day_decision_unknown" | "day_changes_changed" | "day_choice_not_offered";
                                     /** @enum {string} */
                                     step?: "templates" | "load" | "teachers" | "rooms";
                                     /** Format: uuid */
@@ -41514,6 +41551,10 @@ export interface operations {
                                     versionNumber?: number;
                                     /** Format: uuid */
                                     key?: string;
+                                    /** Format: uuid */
+                                    blockId?: string;
+                                    /** Format: date */
+                                    blockDate?: string;
                                 }[];
                             }[];
                         } | null;
@@ -41765,8 +41806,12 @@ export interface operations {
                     dayDecisions?: {
                         /** Format: uuid */
                         key: string;
+                        /** Format: uuid */
+                        blockId?: string;
+                        /** Format: date */
+                        blockDate?: string;
                         /** @enum {string} */
-                        choice: "drop" | "cancel";
+                        choice: "drop" | "cancel" | "keep";
                     }[];
                 };
             };

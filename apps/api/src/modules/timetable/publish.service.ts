@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
   PUBLISH_STEPS,
+  dayDecisionKeyOf,
   timetableVersionSchema,
   type CancelledLesson,
   type DayChangeChoice,
@@ -51,6 +52,15 @@ import {
   type CarryResult,
   type LaterVersion,
 } from './chain.js';
+import {
+  bulkKeyPartOf,
+  bulkRecordsOf,
+  bulkWritePlanOf,
+  openBulkBlocks,
+  recordBulkBlocks,
+  sortBulkOf,
+  type SortedBulk,
+} from './bulk-cancels-kept.js';
 import { datedCheck, datedLessonsOf, type DatedFindings } from './dated-check.js';
 import { writeDatedLessons, type DatedWrite } from './dated-lessons.js';
 import {
@@ -58,6 +68,7 @@ import {
   settleDayChanges,
   sortDayChanges,
   writePlanOf,
+  type DayWritePlan,
   type DaySorting,
   type SortedDayChange,
 } from './day-changes-kept.js';
@@ -111,7 +122,27 @@ interface Findings {
     readonly key: string;
     readonly items: readonly SortedDayChange[];
     readonly sortings: ReadonlyMap<string | null, DaySorting>;
+    /** Task 5.6a-5b-1: the bulk cancels of each run, sorted. */
+    readonly bulk: ReadonlyMap<string | null, readonly SortedBulk[]>;
   } | null;
+}
+
+/**
+ * Task 5.6a-5b-1: the write plan of a run, the one-day changes' and the
+ * bulk cancels' together; a place cancelled by either is cancelled
+ * (decision 13).
+ */
+function planOfRun(
+  sorting: DaySorting,
+  bulk: readonly SortedBulk[],
+  decisions: ReadonlyMap<string, DayChangeChoice>,
+  bulkDecisions: ReadonlyMap<string, DayChangeChoice>,
+): DayWritePlan {
+  const day = writePlanOf(sorting.items, sorting.keptStoredIds, decisions);
+  const fromBulk = bulkWritePlanOf(bulk, bulkDecisions);
+  const cancels = new Map(day.cancels);
+  for (const [key, reason] of fromBulk.cancels) if (!cancels.has(key)) cancels.set(key, reason);
+  return { ...day, cancels, bulkCancels: fromBulk.bulkCancels };
 }
 
 /**
@@ -123,9 +154,20 @@ async function refuseUnknownKeys(
   transaction: Transaction,
   branchId: string,
   keys: readonly string[],
+  blockIds: readonly string[] = [],
 ): Promise<void> {
+  // Task 5.6a-5b-1: a bulk cancel's block is a pattern block of the branch.
+  if (blockIds.length > 0) {
+    const blocks = await transaction
+      .selectFrom('pattern_blocks')
+      .select('id')
+      .where('branch_id', '=', branchId)
+      .where('id', 'in', [...new Set(blockIds)])
+      .execute();
+    if (blocks.length !== new Set(blockIds).size) throw new ApiException('not_found', 404);
+  }
   if (keys.length === 0) return;
-  const [changes, lessons] = await Promise.all([
+  const [changes, lessons, bulks] = await Promise.all([
     transaction
       .selectFrom('lesson_day_changes')
       .select('id')
@@ -138,8 +180,15 @@ async function refuseUnknownKeys(
       .where('branch_id', '=', branchId)
       .where('id', 'in', keys)
       .execute(),
+    // Task 5.6a-5b-1: or a bulk cancel of the branch.
+    transaction
+      .selectFrom('bulk_cancels')
+      .select('id')
+      .where('branch_id', '=', branchId)
+      .where('id', 'in', keys)
+      .execute(),
   ]);
-  const known = new Set([...changes, ...lessons].map((one) => one.id));
+  const known = new Set([...changes, ...lessons, ...bulks].map((one) => one.id));
   if (keys.some((key) => !known.has(key))) {
     throw new ApiException('not_found', 404);
   }
@@ -152,7 +201,17 @@ type DayAudit = {
   dropped: string[];
   ended: string[];
   recordedAgain: string[];
+  /** Task 5.6a-5b-1: the bulk cancels of the run by key, and the choices of their blocks. */
+  bulk?: BulkAudit;
 };
+
+type BulkChoiceAudit = {
+  key: string;
+  blockId: string;
+  blockDate: string;
+  choice: 'keep' | 'cancel';
+};
+type BulkAudit = { kept: string[]; decided: BulkChoiceAudit[]; carried: BulkChoiceAudit[] };
 
 /** The one-day changes of a carried version for its audit entry, none when it wrote nothing. */
 function dayOfCarry(days: DayAudit | undefined): { dayChanges?: DayAudit } {
@@ -164,6 +223,7 @@ function dayAuditOf(
   items: readonly SortedDayChange[],
   decisions: ReadonlyMap<string, DayChangeChoice>,
   settled: { readonly ended: readonly string[]; readonly recordedAgain: readonly string[] },
+  bulk: BulkAudit | null = null,
 ): DayAudit {
   const keysOf = (category: string) =>
     items
@@ -179,6 +239,20 @@ function dayAuditOf(
     dropped: keysOf('dropped'),
     ended: [...settled.ended],
     recordedAgain: [...settled.recordedAgain],
+    ...(bulk === null ? {} : { bulk }),
+  };
+}
+
+/** The bulk cancels of a run for the audit entry (task 5.6a-5b-1). */
+function bulkAuditOf(
+  items: readonly SortedBulk[],
+  recorded: { readonly decided: BulkChoiceAudit[]; readonly carried: BulkChoiceAudit[] },
+): BulkAudit | null {
+  if (items.length === 0) return null;
+  return {
+    kept: items.map((one) => one.answer.key).sort(),
+    decided: recorded.decided,
+    carried: recorded.carried,
   };
 }
 
@@ -200,7 +274,9 @@ function detailOf(refusal: PublishRefusal): ErrorDetail {
               : refusal.code.startsWith('day_')
                 ? refusal.key === undefined
                   ? 'dayChanges'
-                  : `dayChanges.${refusal.key}`
+                  : refusal.blockId === undefined
+                    ? `dayChanges.${refusal.key}`
+                    : `dayChanges.${refusal.key}.blocks.${refusal.blockId}.${refusal.blockDate ?? ''}`
                 : refusal.code.startsWith('chain_') || refusal.code === 'version_later_published'
                   ? 'chain'
                   : refusal.code === 'date_blocked' && refusal.result?.date !== undefined
@@ -394,6 +470,9 @@ export class TimetablePublish {
           transaction,
           branchId,
           (input.dayDecisions ?? []).map((one) => one.key),
+          (input.dayDecisions ?? []).flatMap((one) =>
+            one.blockId === undefined ? [] : [one.blockId],
+          ),
         );
         await sql`select pg_advisory_xact_lock(${PUBLISH_LOCK})`.execute(transaction);
         await this.timetable.findVersion(transaction, branchId, id);
@@ -411,8 +490,15 @@ export class TimetablePublish {
               laterKey: input.laterKey ?? null,
               dayChangesKey: input.dayChangesKey ?? null,
               dayDecisions: [...(input.dayDecisions ?? [])]
-                .sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0))
-                .map((one) => ({ key: one.key, choice: one.choice })),
+                .map((one) => ({ at: dayDecisionKeyOf(one), one }))
+                .sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0))
+                .map(({ one }) => ({
+                  key: one.key,
+                  ...(one.blockId === undefined
+                    ? {}
+                    : { blockId: one.blockId, blockDate: one.blockDate ?? null }),
+                  choice: one.choice,
+                })),
             },
           },
           async () =>
@@ -491,10 +577,21 @@ export class TimetablePublish {
     // Task 5.6a-5a: the one-day changes as shown, and a choice for each
     // "needs a decision" item (edge/timetable, Versions and drafts: "Publish
     // waits until every 'needs a decision' item is settled").
-    const decisions = new Map((input.dayDecisions ?? []).map((one) => [one.key, one.choice]));
+    const decisions = new Map(
+      (input.dayDecisions ?? [])
+        .filter((one) => one.blockId === undefined)
+        .map((one) => [one.key, one.choice]),
+    );
+    // Task 5.6a-5b-1: the choices of bulk cancels' blocks, by `dayDecisionKeyOf`.
+    const bulkSent = (input.dayDecisions ?? []).filter((one) => one.blockId !== undefined);
+    const bulkDecisions = new Map(bulkSent.map((one) => [dayDecisionKeyOf(one), one.choice]));
     if (findings.days !== null) {
       const { key, items } = findings.days;
-      if ((items.length > 0 || input.dayChangesKey !== undefined) && input.dayChangesKey !== key) {
+      const bulkItems = [...findings.days.bulk.values()].flat();
+      if (
+        (items.length > 0 || bulkItems.length > 0 || input.dayChangesKey !== undefined) &&
+        input.dayChangesKey !== key
+      ) {
         findings.refusals.push({ code: 'day_changes_changed' });
       }
       const open = new Set(
@@ -505,6 +602,32 @@ export class TimetablePublish {
       }
       for (const one of [...decisions.keys()].sort()) {
         if (!open.has(one)) findings.refusals.push({ code: 'day_decision_unknown', key: one });
+        else if (decisions.get(one) === 'keep') {
+          findings.refusals.push({ code: 'day_choice_not_offered', key: one });
+        }
+      }
+      const openBulk = openBulkBlocks(bulkItems);
+      for (const item of bulkItems) {
+        for (const block of item.blocks) {
+          if (block.carried === null && !bulkDecisions.has(block.decisionKey)) {
+            findings.refusals.push({
+              code: 'day_change_undecided',
+              key: item.answer.key,
+              blockId: block.patternBlockId,
+              blockDate: block.blockDate,
+            });
+          }
+        }
+      }
+      for (const one of [...bulkSent].sort((a, b) =>
+        dayDecisionKeyOf(a) < dayDecisionKeyOf(b) ? -1 : 1,
+      )) {
+        const at = { key: one.key, blockId: one.blockId, blockDate: one.blockDate };
+        if (!openBulk.has(dayDecisionKeyOf(one))) {
+          findings.refusals.push({ code: 'day_decision_unknown', ...at });
+        } else if (one.choice === 'drop') {
+          findings.refusals.push({ code: 'day_choice_not_offered', ...at });
+        }
       }
     }
     if (findings.refusals.length > 0) {
@@ -564,15 +687,14 @@ export class TimetablePublish {
     // read before the first write, to the year's end (decisions 5 and 6).
     const week = await snapshotWeek(transaction, branchId, startsOn, version.end_date);
     const ownSorting = findings.days?.sortings.get(null) ?? null;
+    const ownBulk = findings.days?.bulk.get(null) ?? [];
     const lessons = await writeDatedLessons(
       transaction,
       findings.written.state,
       findings.written.findings,
       startsOn,
       findings.written.state.pattern.model.data.versionEnd,
-      ownSorting === null
-        ? null
-        : writePlanOf(ownSorting.items, ownSorting.keptStoredIds, decisions),
+      ownSorting === null ? null : planOfRun(ownSorting, ownBulk, decisions, bulkDecisions),
     );
     const moment = await transactionMoment(transaction);
     const settled =
@@ -586,6 +708,14 @@ export class TimetablePublish {
             items: ownSorting.items,
             decisions,
           });
+    // Task 5.6a-5b-1: the choices of the bulk cancels' blocks recorded on the blocks written.
+    const bulkRecorded = await recordBulkBlocks(transaction, {
+      branchId,
+      versionId: id,
+      begins: findings.written.findings.begins,
+      items: ownBulk,
+      decisions: bulkDecisions,
+    });
     const carried: CarryResult[] = [];
     const carryLeft: CarryResult[] = [];
     const carriedLessons = new Map<string, DatedWrite>();
@@ -597,7 +727,9 @@ export class TimetablePublish {
         ? null
         : await this.carryWrite(transaction, result, {
             sorting,
+            bulk: findings.days?.bulk.get(result.version.id) ?? [],
             decisions,
+            bulkDecisions,
             branchId,
             versionId: id,
             moment,
@@ -646,7 +778,14 @@ export class TimetablePublish {
         // Task 5.6a-5a: the outcome of every stored one-day change, by key.
         ...(ownSorting === null || settled === null
           ? {}
-          : { dayChanges: dayAuditOf(ownSorting.items, decisions, settled) }),
+          : {
+              dayChanges: dayAuditOf(
+                ownSorting.items,
+                decisions,
+                settled,
+                bulkAuditOf(ownBulk, bulkRecorded),
+              ),
+            }),
         journals: { ...journals },
         notices: { ...notices },
         ...(transitionKey === null || findings.impact === null
@@ -718,7 +857,9 @@ export class TimetablePublish {
     result: CarryResult,
     days: {
       readonly sorting: DaySorting | null;
+      readonly bulk: readonly SortedBulk[];
       readonly decisions: ReadonlyMap<string, DayChangeChoice>;
+      readonly bulkDecisions: ReadonlyMap<string, DayChangeChoice>;
       readonly branchId: string;
       readonly versionId: string;
       readonly moment: Date;
@@ -755,7 +896,7 @@ export class TimetablePublish {
               result.written.lastDate,
               sorting === null
                 ? null
-                : writePlanOf(sorting.items, sorting.keptStoredIds, days.decisions),
+                : planOfRun(sorting, days.bulk, days.decisions, days.bulkDecisions),
             );
       const settled =
         sorting === null
@@ -768,6 +909,17 @@ export class TimetablePublish {
               items: sorting.items,
               decisions: days.decisions,
             });
+      // Task 5.6a-5b-1: inside the savepoint too (decision 11).
+      const bulkRecorded =
+        result.written === null
+          ? null
+          : await recordBulkBlocks(transaction, {
+              branchId: days.branchId,
+              versionId: result.version.id,
+              begins: result.written.findings.begins,
+              items: days.bulk,
+              decisions: days.bulkDecisions,
+            });
       // Every constraint is immediate since the publish's own `set constraints
       // all immediate`, and again at the end of the lessons' write, so a
       // refusal comes here, inside the savepoint.
@@ -777,7 +929,12 @@ export class TimetablePublish {
         days:
           sorting === null || settled === null
             ? null
-            : dayAuditOf(sorting.items, days.decisions, settled),
+            : dayAuditOf(
+                sorting.items,
+                days.decisions,
+                settled,
+                bulkRecorded === null ? null : bulkAuditOf(days.bulk, bulkRecorded),
+              ),
       };
     } catch (error) {
       if (!isCheckRefusal(error)) throw error;
@@ -1008,7 +1165,38 @@ export class TimetablePublish {
       carriedSorted.push({ ...one, written: { ...one.written, findings: sorting.findings } });
     }
     const items = [...sortings.values()].flatMap((one) => one.items);
-    const daysKey = dayChangesKeyOf(version.id, startsOn, items);
+    // Task 5.6a-5b-1: the bulk cancels of each run sorted, on its findings with
+    // the kept one-day changes applied (decision 9).
+    const bulk = new Map<string | null, SortedBulk[]>();
+    for (const [carriedVersionId, sorting] of sortings) {
+      const firstDate =
+        carriedVersionId === null
+          ? startsOn
+          : (carried.find((one) => one.version.id === carriedVersionId)?.version.starts_on ??
+            startsOn);
+      const lastDate =
+        carriedVersionId === null
+          ? state.pattern.model.data.versionEnd
+          : (carried.find((one) => one.version.id === carriedVersionId)?.written?.lastDate ??
+            firstDate);
+      bulk.set(
+        carriedVersionId,
+        sortBulkOf({
+          lessons: sorting.findings.dated.lessons,
+          movedAt: sorting.movedAt,
+          begins: sorting.findings.begins,
+          records: await bulkRecordsOf(transaction, version.branch_id, firstDate, lastDate),
+          carriedVersionId,
+        }),
+      );
+    }
+    const bulkItems = [...bulk.values()].flat();
+    const daysKey = dayChangesKeyOf(
+      version.id,
+      startsOn,
+      items,
+      bulkItems.length === 0 ? null : bulkKeyPartOf(bulkItems),
+    );
     const ownSorting = sortings.get(null);
     if (ownSorting === undefined) throw new Error('The run is always sorted.');
 
@@ -1025,6 +1213,7 @@ export class TimetablePublish {
       {
         key: daysKey,
         items,
+        bulk: bulkItems,
         keptStored: new Map([...sortings].map(([id, one]) => [id, one.keptStoredIds])),
       },
       carriedSorted.flatMap((one) =>
@@ -1072,7 +1261,7 @@ export class TimetablePublish {
       later,
       carried: carriedSorted,
       written: { state, findings: ownSorting.findings },
-      days: { key: daysKey, items, sortings },
+      days: { key: daysKey, items, sortings, bulk },
     };
   }
 

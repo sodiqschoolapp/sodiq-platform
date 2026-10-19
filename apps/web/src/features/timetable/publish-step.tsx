@@ -1,6 +1,7 @@
 import {
   classDisplayName,
   type CarryChangeAnswer,
+  dayDecisionKeyOf,
   type DayChangeChoice,
   type LoadRow,
   type PublishChain,
@@ -97,7 +98,12 @@ export function PublishStep({
       answered: { chain: PublishChain; laterKey: string } | null;
       days: {
         dayChangesKey: string;
-        dayDecisions: { key: string; choice: DayChangeChoice }[];
+        dayDecisions: {
+          key: string;
+          blockId?: string;
+          blockDate?: string;
+          choice: DayChangeChoice;
+        }[];
       } | null;
     }) => {
       key.current ??= crypto.randomUUID();
@@ -224,6 +230,7 @@ export function PublishStep({
       case 'day_change_undecided':
       case 'day_decision_unknown':
       case 'day_changes_changed':
+      case 'day_choice_not_offered':
       case 'transition_unacknowledged':
       case 'version_start_too_early':
       case 'version_start_outside_year':
@@ -266,11 +273,26 @@ export function PublishStep({
     const decide = answer.impact?.dayChanges.decide ?? [];
     const daysKey = answer.impact?.dayChanges.key ?? null;
     const dayChoices = dayChosen.key === daysKey ? dayChosen.choices : {};
-    const dayDecisions = decide.flatMap((item) => {
+    const dayDecisions: {
+      key: string;
+      blockId?: string;
+      blockDate?: string;
+      choice: DayChangeChoice;
+    }[] = decide.flatMap((item) => {
       const choice = dayChoices[item.key];
       return choice === undefined ? [] : [{ key: item.key, choice }];
     });
-    const decided = dayDecisions.length === decide.length;
+    // Task 5.6a-5b-1: a choice for each block of a bulk cancel that needs one.
+    const bulkOpen = (answer.impact?.dayChanges.bulk ?? []).flatMap((item) =>
+      item.blocks
+        .filter((block) => block.choice === null)
+        .map((block) => ({ key: item.key, blockId: block.blockId, blockDate: block.blockDate })),
+    );
+    for (const block of bulkOpen) {
+      const choice = dayChoices[dayDecisionKeyOf(block)];
+      if (choice !== undefined) dayDecisions.push({ ...block, choice });
+    }
+    const decided = dayDecisions.length === decide.length + bulkOpen.length;
     const days =
       answer.impact === null ? null : { dayChangesKey: answer.impact.dayChanges.key, dayDecisions };
     const blocked = answer.refusals.some(

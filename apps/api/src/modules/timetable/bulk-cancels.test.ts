@@ -1282,6 +1282,490 @@ describe('the bulk cancel', () => {
     });
   });
 
+  // Task 5.6a-5b-1, pull request #165: the bulk cancels applied again after a
+  // publish (edge/timetable, Versions and drafts: "One-day changes, absences,
+  // room closures and exams are stored on their own and applied again after a
+  // publish. The preview sorts them into kept, needs a decision and dropped.
+  // Publish waits until every 'needs a decision' item is settled."; After
+  // publishing, the 7 Oxford row).
+  describe('applied again after a publish (task 5.6a-5b-1)', () => {
+    interface BulkBlock {
+      blockId: string;
+      blockDate: string;
+      chosenClassIds: string[];
+      otherClassIds: string[];
+      choice: 'keep' | 'cancel' | null;
+    }
+    interface BulkItem {
+      key: string;
+      category: string;
+      cancelled: number;
+      blocks: BulkBlock[];
+    }
+    interface Checked {
+      chain: { key: string } | null;
+      impact: { dayChanges: { key: string; bulk: BulkItem[] } };
+    }
+
+    /**
+     * A draft copied from the scene's version, the pattern placed again: maths
+     * of both classes and the English block at `maths` and `english` on
+     * Monday (slot positions), physics on Tuesday as in the scene.
+     */
+    async function draftOf(
+      s: Scene,
+      positions: { maths?: number; english?: number; from?: string } = {},
+    ) {
+      const created = await t.post('/api/timetable/versions', s.branch, {
+        academicYearId: s.year,
+        startsOn: MONDAY,
+        copyFrom: positions.from ?? s.version,
+      });
+      expect(created.status, JSON.stringify(created.body)).toBe(201);
+      const version = (created.body as { id: string }).id;
+      await t.database.migrator
+        .deleteFrom('pattern_blocks')
+        .where('version_id', '=', version)
+        .execute();
+      const rows = await t.database.migrator
+        .selectFrom('teaching_load_rows')
+        .select(['id', 'class_id', 'group_id', 'subject_id'])
+        .where('version_id', '=', version)
+        .orderBy('id')
+        .execute();
+      const rowOfUnit = (
+        subject: string,
+        classId: string | null,
+        groupId: string | null = null,
+      ) => {
+        const found = rows.find(
+          (one) =>
+            one.subject_id === subject && one.class_id === classId && one.group_id === groupId,
+        );
+        if (found === undefined) throw new Error('No such load row.');
+        return found.id;
+      };
+      for (const classId of [s.oxford, s.princeton]) {
+        await placeAt(s.branch, version, rowOfUnit(s.maths, classId), 1, positions.maths ?? 1);
+      }
+      await placeAt(
+        s.branch,
+        version,
+        rowOfUnit(s.english, null, s.groups[0] ?? ''),
+        1,
+        positions.english ?? 3,
+      );
+      await placeAt(s.branch, version, rowOfUnit(s.physics, s.oxford), 2, 3);
+      await placeAt(s.branch, version, rowOfUnit(s.physics, s.oxford), 2, 5);
+      const confirmed = await t.post(
+        `/api/timetable/versions/${version}/templates/confirm`,
+        s.branch,
+      );
+      expect(confirmed.status, JSON.stringify(confirmed.body)).toBe(200);
+      await load.freeEditLock(version);
+      return version;
+    }
+
+    const checkOn = async (s: Scene, version: string, startsOn: string, chain?: string) => {
+      const answer = await t.get(
+        `/api/timetable/versions/${version}/publish-check?startsOn=${startsOn}${
+          chain === undefined ? '' : `&chain=${chain}`
+        }`,
+        s.branch,
+      );
+      expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+      return answer.body as Checked;
+    };
+
+    const publishWith = (
+      s: Scene,
+      version: string,
+      extra: object,
+      key: string = randomUUID(),
+      cookie = t.admin,
+    ) =>
+      request(t.kit.server)
+        .post(`/api/timetable/versions/${version}/publish`)
+        .set('Cookie', cookie)
+        .set(BRANCH_HEADER, s.branch)
+        .set(REQUEST_KEY_HEADER, key)
+        .send({ startsOn: NEXT_MONDAY, ...extra });
+
+    const refusals = (response: Response) => {
+      refusedWith(response, 409, 'publish_blocked');
+      return (response.body as { error: { details: { code: string; path: string }[] } }).error
+        .details;
+    };
+
+    const blocksOf = (bulkCancelId: string) =>
+      t.database.migrator
+        .selectFrom('bulk_cancel_blocks')
+        .selectAll()
+        .where('bulk_cancel_id', '=', bulkCancelId)
+        .orderBy('block_id')
+        .execute();
+
+    /** The lesson of a class or group and subject on the Monday after next. */
+    const mondayOf = (s: Scene, unit: { classId?: string; groupId?: string }, subject: string) =>
+      oneLesson(s, NEXT_MONDAY, unit, subject);
+
+    /** A bulk cancel of 7 Oxford on the Monday after next, in lessons 1 and 2, with `choice` for the English block. */
+    const oxfordAway = async (s: Scene, choice: 'keep' | 'cancel', lessonNumbers = [1, 2]) =>
+      (
+        await checkAndSave(
+          s.branch,
+          { date: NEXT_MONDAY, classIds: [s.oxford], lessonNumbers },
+          choice,
+        )
+      ).saved.id;
+
+    const reason = 'Excursion to the museum';
+
+    it('asks for a decision on a shared block of the new version, refuses until it is settled, and keeps it with “keep” (the 7 Oxford row)', async () => {
+      const s = await scene();
+      const bulk = await oxfordAway(s, 'keep');
+      // A bulk cancel of the other branch, whose id the publish must refuse.
+      const north = await checkAndSave(northScene.branch, {
+        date: NEXT_MONDAY,
+        classIds: [northScene.oxford],
+        lessonNumbers: [1],
+      });
+      // The new version: the English block in lesson 1, maths in lesson 2.
+      const draft = await draftOf(s, { maths: 3, english: 1 });
+      const days = (await checkOn(s, draft, NEXT_MONDAY)).impact.dayChanges;
+      expect(days.bulk).toHaveLength(1);
+      const [item] = days.bulk;
+      expect(item).toMatchObject({ key: bulk, category: 'decide', cancelled: 1 });
+      expect(item?.blocks).toHaveLength(1);
+      const block = item?.blocks[0];
+      expect(block).toMatchObject({
+        blockDate: NEXT_MONDAY,
+        chosenClassIds: [s.oxford],
+        otherClassIds: [s.princeton],
+        choice: null,
+      });
+      const blockId = block?.blockId ?? '';
+      expect(
+        await t.database.migrator
+          .selectFrom('pattern_blocks')
+          .select('version_id')
+          .where('id', '=', blockId)
+          .executeTakeFirst(),
+      ).toEqual({ version_id: draft });
+      const named = { key: bulk, blockId, blockDate: NEXT_MONDAY };
+      const before = await everything();
+      // No choice.
+      expect(refusals(await publishWith(s, draft, { dayChangesKey: days.key }))).toContainEqual(
+        expect.objectContaining({
+          code: 'day_change_undecided',
+          path: `dayChanges.${bulk}.blocks.${blockId}.${NEXT_MONDAY}`,
+        }),
+      );
+      // "Drop" is not a bulk cancel's choice (decision 2).
+      expect(
+        refusals(
+          await publishWith(s, draft, {
+            dayChangesKey: days.key,
+            dayDecisions: [{ ...named, choice: 'drop' }],
+          }),
+        ).map((one) => one.code),
+      ).toEqual(['day_choice_not_offered']);
+      // The bulk cancel sent without its block, and a block that is no such item.
+      const mathsBlock = await t.database.migrator
+        .selectFrom('pattern_blocks')
+        .select('id')
+        .where('version_id', '=', draft)
+        .where('id', '!=', blockId)
+        .orderBy('id')
+        .executeTakeFirstOrThrow();
+      for (const extra of [
+        { key: bulk, choice: 'keep' },
+        { key: bulk, blockId: mathsBlock.id, blockDate: NEXT_MONDAY, choice: 'keep' },
+      ]) {
+        expect(
+          refusals(
+            await publishWith(s, draft, {
+              dayChangesKey: days.key,
+              dayDecisions: [{ ...named, choice: 'keep' }, extra],
+            }),
+          ).map((one) => one.code),
+        ).toEqual(['day_decision_unknown']);
+      }
+      // A block named twice with one key and date is an input error.
+      refusedWith(
+        await publishWith(s, draft, {
+          dayChangesKey: days.key,
+          dayDecisions: [
+            { ...named, choice: 'keep' },
+            { ...named, choice: 'cancel' },
+          ],
+        }),
+        400,
+        'validation_failed',
+      );
+      const northBlock = await t.database.migrator
+        .selectFrom('pattern_blocks')
+        .select('id')
+        .where('version_id', '=', northScene.version)
+        .orderBy('id')
+        .executeTakeFirstOrThrow();
+      // Another branch's bulk cancel or pattern block, and unknown ones: 404 before any lock.
+      for (const wrong of [
+        { ...named, key: north.saved.id },
+        { ...named, key: UNKNOWN },
+        { ...named, blockId: northBlock.id },
+        { ...named, blockId: UNKNOWN },
+      ]) {
+        refusedWith(
+          await publishWith(s, draft, {
+            dayChangesKey: days.key,
+            dayDecisions: [{ ...wrong, choice: 'keep' }],
+          }),
+          404,
+          'not_found',
+        );
+      }
+      expect(await everything()).toEqual(before);
+
+      const published = await publishWith(s, draft, {
+        dayChangesKey: days.key,
+        dayDecisions: [{ ...named, choice: 'keep' }],
+      });
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      // 7 Oxford's own English group and its maths are cancelled; the shared group is held.
+      const shared = await mondayOf(s, { groupId: s.groups[0] ?? '' }, s.english);
+      const own = await mondayOf(s, { groupId: s.groups[2] ?? '' }, s.english);
+      const princetonOnly = await mondayOf(s, { groupId: s.groups[1] ?? '' }, s.english);
+      expect(shared.starts_at).toEqual(at(NEXT_MONDAY, '08:00'));
+      expect([shared.cancel_cause, princetonOnly.cancel_cause]).toEqual([null, null]);
+      expect(own).toMatchObject({ cancel_cause: 'reason', cancel_reason: reason });
+      const oxfordMaths = await mondayOf(s, { classId: s.oxford }, s.maths);
+      expect(oxfordMaths).toMatchObject({
+        starts_at: at(NEXT_MONDAY, '08:55'),
+        cancel_cause: 'reason',
+        cancel_reason: reason,
+      });
+      expect((await mondayOf(s, { classId: s.princeton }, s.maths)).cancel_cause).toBeNull();
+      // The choice is recorded on the block the students now have (8.5 reads it).
+      expect((await blocksOf(bulk)).filter((one) => one.block_id === shared.block_id)).toEqual([
+        expect.objectContaining({ choice: 'keep', lesson_date: NEXT_MONDAY }),
+      ]);
+      const [entry] = await t.entries('timetable_version.publish', draft);
+      expect(entry?.new_value).toMatchObject({
+        dayChanges: {
+          bulk: {
+            kept: [bulk],
+            decided: [{ key: bulk, blockId, blockDate: NEXT_MONDAY, choice: 'keep' }],
+            carried: [],
+          },
+        },
+      });
+      // A later publish over the same dates carries the choice and asks nothing.
+      const again = await draftOf(s, { maths: 3, english: 1, from: draft });
+      const later = (await checkOn(s, again, NEXT_MONDAY, 'replace')).impact.dayChanges.bulk;
+      expect(later).toEqual([
+        expect.objectContaining({ key: bulk, category: 'kept', cancelled: 2 }),
+      ]);
+      expect(later[0]?.blocks.map((one) => one.choice)).toEqual(['keep']);
+    });
+
+    it('cancels the whole shared block of the new version with “cancel”', async () => {
+      const s = await scene();
+      const bulk = await oxfordAway(s, 'keep');
+      const draft = await draftOf(s, { maths: 3, english: 1 });
+      const days = (await checkOn(s, draft, NEXT_MONDAY)).impact.dayChanges;
+      const blockId = days.bulk[0]?.blocks[0]?.blockId ?? '';
+      const published = await publishWith(s, draft, {
+        dayChangesKey: days.key,
+        dayDecisions: [{ key: bulk, blockId, blockDate: NEXT_MONDAY, choice: 'cancel' }],
+      });
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      for (const group of s.groups) {
+        expect(await mondayOf(s, { groupId: group }, s.english)).toMatchObject({
+          cancel_cause: 'reason',
+          cancel_reason: reason,
+        });
+      }
+      const shared = await mondayOf(s, { groupId: s.groups[0] ?? '' }, s.english);
+      expect((await blocksOf(bulk)).filter((one) => one.block_id === shared.block_id)).toEqual([
+        expect.objectContaining({ choice: 'cancel' }),
+      ]);
+    });
+
+    it('carries a stored choice to a block the new version keeps, asks nothing, adds no row, and leaves a lesson restored since as it is (decisions 4 and 5)', async () => {
+      const s = await scene();
+      const bulk = await oxfordAway(s, 'keep');
+      const maths = await mondayOf(s, { classId: s.oxford }, s.maths);
+      const restored = await keyed(
+        `/api/timetable/lessons/${maths.id}/restore`,
+        s.branch,
+        {},
+        t.admin,
+        randomUUID(),
+      );
+      expect(restored.status, JSON.stringify(restored.body)).toBe(200);
+      const own = await mondayOf(s, { groupId: s.groups[2] ?? '' }, s.english);
+      const rows = await blocksOf(bulk);
+      const draft = await draftOf(s);
+      const days = (await checkOn(s, draft, NEXT_MONDAY)).impact.dayChanges;
+      expect(days.bulk).toEqual([expect.objectContaining({ key: bulk, category: 'kept' })]);
+      expect(days.bulk[0]?.blocks.map((one) => one.choice)).toEqual(['keep']);
+      const published = await publishWith(s, draft, { dayChangesKey: days.key });
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      // The restored maths keeps its identity and stays held; 7-E-3 stays cancelled.
+      expect(await rowOf(maths.id)).toMatchObject({ cancel_cause: null });
+      expect(await rowOf(own.id)).toMatchObject({ cancel_cause: 'reason', cancel_reason: reason });
+      expect(await blocksOf(bulk)).toEqual(rows);
+      const [entry] = await t.entries('timetable_version.publish', draft);
+      expect(entry?.new_value).toMatchObject({
+        dayChanges: { bulk: { kept: [bulk], decided: [] } },
+      });
+    });
+
+    it('lists a bulk cancel with nothing left in its slots as kept, and cancels what a later publish brings back (decision 3)', async () => {
+      const s = await scene();
+      const bulk = await oxfordAway(s, 'keep', [1]);
+      // The new version moves maths to lesson 3: nothing of 7 Oxford is in lesson 1.
+      const draft = await draftOf(s, { maths: 5 });
+      const days = (await checkOn(s, draft, NEXT_MONDAY)).impact.dayChanges;
+      expect(days.bulk).toEqual([
+        expect.objectContaining({ key: bulk, category: 'kept', cancelled: 0, blocks: [] }),
+      ]);
+      const published = await publishWith(s, draft, { dayChangesKey: days.key });
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      expect((await mondayOf(s, { classId: s.oxford }, s.maths)).cancel_cause).toBeNull();
+      // A later version puts maths back in lesson 1: it is cancelled again.
+      const back = await draftOf(s, { from: draft });
+      const answer = await checkOn(s, back, NEXT_MONDAY, 'replace');
+      expect(answer.impact.dayChanges.bulk).toEqual([
+        expect.objectContaining({ key: bulk, category: 'kept', cancelled: 1 }),
+      ]);
+      const replaced = await publishWith(s, back, {
+        dayChangesKey: answer.impact.dayChanges.key,
+        chain: 'replace',
+        laterKey: answer.chain?.key,
+      });
+      expect(replaced.status, JSON.stringify(replaced.body)).toBe(200);
+      expect(await mondayOf(s, { classId: s.oxford }, s.maths)).toMatchObject({
+        starts_at: at(NEXT_MONDAY, '08:00'),
+        cancel_cause: 'reason',
+        cancel_reason: reason,
+      });
+      expect((await mondayOf(s, { classId: s.princeton }, s.maths)).cancel_cause).toBeNull();
+    });
+
+    it('settles a move and a shared block raised on one lesson together, a cancel from either winning (decision 13)', async () => {
+      const s = await scene();
+      const maths = await mondayOf(s, { classId: s.oxford }, s.maths);
+      // 7 Oxford's maths moved to lesson 3, then 7 Oxford away in lessons 1 to 3.
+      const moved = await keyed(
+        `/api/timetable/lessons/${maths.id}/move`,
+        s.branch,
+        { date: NEXT_MONDAY, lessonNumber: 3, reason: 'Concert rehearsal' },
+        t.admin,
+        randomUUID(),
+      );
+      expect(moved.status, JSON.stringify(moved.body)).toBe(200);
+      const [change] = await t.database.migrator
+        .selectFrom('lesson_day_changes')
+        .select('id')
+        .where('lesson_id', '=', maths.id)
+        .execute();
+      const bulk = await oxfordAway(s, 'keep', [1, 2, 3]);
+      // The new version puts the English block in lesson 3, where the move put 7 Oxford's maths.
+      const draft = await draftOf(s, { maths: 1, english: 5 });
+      const days = (await checkOn(s, draft, NEXT_MONDAY)).impact
+        .dayChanges as Checked['impact']['dayChanges'] & {
+        decide: { key: string }[];
+      };
+      expect(days.decide.map((one) => one.key)).toEqual([change?.id]);
+      expect(days.bulk.map((one) => one.category)).toEqual(['decide']);
+      const blockId = days.bulk[0]?.blocks[0]?.blockId ?? '';
+      const published = await publishWith(s, draft, {
+        dayChangesKey: days.key,
+        dayDecisions: [
+          { key: change?.id, choice: 'drop' },
+          { key: bulk, blockId, blockDate: NEXT_MONDAY, choice: 'keep' },
+        ],
+      });
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      // "Drop" puts the maths back in lesson 1, where the bulk cancel cancels it.
+      expect(await mondayOf(s, { classId: s.oxford }, s.maths)).toMatchObject({
+        starts_at: at(NEXT_MONDAY, '08:00'),
+        cancel_cause: 'reason',
+        cancel_reason: reason,
+      });
+      // "Keep" holds the shared groups and cancels 7 Oxford's own.
+      expect(
+        (await mondayOf(s, { groupId: s.groups[0] ?? '' }, s.english)).cancel_cause,
+      ).toBeNull();
+      expect(await mondayOf(s, { groupId: s.groups[2] ?? '' }, s.english)).toMatchObject({
+        starts_at: at(NEXT_MONDAY, '09:50'),
+        cancel_cause: 'reason',
+        cancel_reason: reason,
+      });
+      expect(
+        await t.database.migrator
+          .selectFrom('lesson_day_change_ends')
+          .select('change_id')
+          .where('change_id', '=', change?.id ?? '')
+          .execute(),
+      ).toHaveLength(1);
+    });
+
+    it('refuses a publish when a bulk cancel was saved after the check', async () => {
+      const s = await scene();
+      const draft = await draftOf(s);
+      const days = (await checkOn(s, draft, NEXT_MONDAY)).impact.dayChanges;
+      expect(days.bulk).toEqual([]);
+      await checkAndSave(s.branch, {
+        date: NEXT_MONDAY,
+        classIds: [s.princeton],
+        lessonNumbers: [1],
+      });
+      expect(
+        refusals(await publishWith(s, draft, { dayChangesKey: days.key })).map((one) => one.code),
+      ).toEqual(['day_changes_changed']);
+      // Without a key too: a bulk cancel is now there.
+      expect(refusals(await publishWith(s, draft, {})).map((one) => one.code)).toEqual([
+        'day_changes_changed',
+      ]);
+    });
+
+    it("answers a repeat of a used request key with another branch's block 404 and from a role the route refuses 403", async () => {
+      const s = await scene();
+      const bulk = await oxfordAway(s, 'keep');
+      const draft = await draftOf(s, { maths: 3, english: 1 });
+      const days = (await checkOn(s, draft, NEXT_MONDAY)).impact.dayChanges;
+      const named = {
+        key: bulk,
+        blockId: days.bulk[0]?.blocks[0]?.blockId,
+        blockDate: NEXT_MONDAY,
+      };
+      const key = randomUUID();
+      const body = { dayChangesKey: days.key, dayDecisions: [{ ...named, choice: 'keep' }] };
+      const published = await publishWith(s, draft, body, key);
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      const northBlock = await t.database.migrator
+        .selectFrom('pattern_blocks')
+        .select('id')
+        .where('version_id', '=', northScene.version)
+        .orderBy('id')
+        .executeTakeFirstOrThrow();
+      refusedWith(
+        await publishWith(
+          s,
+          draft,
+          { ...body, dayDecisions: [{ ...named, blockId: northBlock.id, choice: 'keep' }] },
+          key,
+        ),
+        404,
+        'not_found',
+      );
+      refusedWith(await publishWith(s, draft, body, key, t.principal), 403, 'permission_denied');
+    });
+  });
+
   describe('at the same moment', () => {
     async function waiting(): Promise<number> {
       const found = await sql<{ n: number }>`
@@ -1392,7 +1876,35 @@ describe('the bulk cancel', () => {
           order === 0 ? bulk : send,
         );
         const [published, bulkAnswer] = order === 0 ? [a, b] : [b, a];
-        expect(published.status, JSON.stringify(published.body)).toBe(200);
+        if (order === 1) {
+          // Task 5.6a-5b-1 (Look first, a requirement added): the bulk cancel
+          // committed first is one the publish was not shown, so the publish
+          // is refused until it is sent with the key of the sorting that has it.
+          refusedWith(published, 409, 'publish_blocked');
+          expect(
+            (published.body as { error: { details: { code: string }[] } }).error.details.map(
+              (one) => one.code,
+            ),
+          ).toEqual(['day_changes_changed']);
+          const shown = await t.get(
+            `/api/timetable/versions/${draft}/publish-check?startsOn=${NEXT_MONDAY}`,
+            s.branch,
+          );
+          expect(shown.status, JSON.stringify(shown.body)).toBe(200);
+          const again = await request(t.kit.server)
+            .post(`/api/timetable/versions/${draft}/publish`)
+            .set('Cookie', t.admin)
+            .set(BRANCH_HEADER, s.branch)
+            .set(REQUEST_KEY_HEADER, randomUUID())
+            .send({
+              startsOn: NEXT_MONDAY,
+              dayChangesKey: (shown.body as { impact: { dayChanges: { key: string } } }).impact
+                .dayChanges.key,
+            });
+          expect(again.status, JSON.stringify(again.body)).toBe(200);
+        } else {
+          expect(published.status, JSON.stringify(published.body)).toBe(200);
+        }
         expect(await rowOf(maths.id)).toBeUndefined();
         if (order === 0) {
           // Published first: the bulk cancel, checked before the lock, finds the lesson gone under it.

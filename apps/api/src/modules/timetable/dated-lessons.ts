@@ -106,6 +106,8 @@ interface Wanted {
   readonly cause: string | null;
   /** A one-day cancel applied again (task 5.6a-5a), its reason; `null` for none. */
   readonly oneDayCancel: string | null;
+  /** Task 5.6a-5b-1: a bulk cancel applied again, written only when the lesson is created (decision 4). */
+  readonly bulkCancel: string | null;
 }
 
 /** A stored lesson as the writer and the preview read it (task 5.5b-2). */
@@ -657,7 +659,7 @@ export async function writeDatedLessons(
             ? null
             : again?.cancelCause === 'reason'
               ? (rowOf.get(again.id)?.cancel_reason ?? null)
-              : lesson.oneDayCancel;
+              : (lesson.oneDayCancel ?? lesson.bulkCancel);
         return {
           branch_id: branchId,
           block_id: blockId,
@@ -790,6 +792,10 @@ async function wantedOf(
       oneDayCancel:
         plan?.cancels.get(placeKeyOf(lesson.entryId, dated?.date ?? lesson.date, lesson.date)) ??
         null,
+      bulkCancel:
+        plan?.bulkCancels.get(
+          placeKeyOf(lesson.entryId, dated?.date ?? lesson.date, lesson.date),
+        ) ?? null,
     });
   }
   for (const cancelled of findings.dated.cancelled) {
@@ -814,6 +820,7 @@ async function wantedOf(
         roomId: entry.roomId,
         cause: cancelled.reason,
         oneDayCancel: null,
+        bulkCancel: null,
       });
     }
   }

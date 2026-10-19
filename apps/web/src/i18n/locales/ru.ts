@@ -3749,6 +3749,16 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         inVersion: 'В версии {{number}}',
         choice_drop: 'Отказаться от изменения',
         choice_cancel: 'Отменить урок в этот день',
+        bulk: 'Массовая отмена: {{classes}}, {{date}}',
+        bulkLessons_one: 'под ней {{count}} урок',
+        bulkLessons_few: 'под ней {{count}} урока',
+        bulkLessons_many: 'под ней {{count}} уроков',
+        bulkLessons_other: 'под ней {{count}} урока',
+        bulkBlock: '{{lessons}}, {{time}}. Вместе с {{classes}}',
+        bulkChoice_cancel: 'Отменить весь блок',
+        bulkChoice_keep: 'Оставить и освободить выбранные классы',
+        bulkKept_keep: 'остаётся, выбранные классы освобождены',
+        bulkKept_cancel: 'отменяется целиком',
         decisionNeeded:
           'Выберите, что будет с каждым изменением на один день, которому нужно решение.',
       },
@@ -3802,6 +3812,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
           'Выбор отправлен для изменения на один день, которому решение больше не нужно. Проверьте ещё раз.',
         day_changes_changed:
           'Изменения на один день в эти даты изменились после проверки. Проверьте их ещё раз.',
+        day_choice_not_offered:
+          'Отправлен выбор, которого нет у этого пункта. Проверьте ещё раз и выберите один из показанных вариантов.',
         version_start_too_early:
           'Дата начала — не раньше завтрашнего дня. Изменение на сегодня — изменение на один день.',
         version_start_outside_year: 'Дата начала вне учебного года.',

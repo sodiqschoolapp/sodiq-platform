@@ -18,6 +18,7 @@ import {
 import type { Transaction } from '../../database/transactions.js';
 import { datedLessonsOf, type DatedFindings } from './dated-check.js';
 import { needKeyOf, patternDateOf, vacanciesOf, writtenTeacherOf } from './dated-lessons.js';
+import type { SortedBulk } from './bulk-cancels-kept.js';
 import type { SortedDayChange } from './day-changes-kept.js';
 import type { PatternState } from './pattern.service.js';
 import { hasStoredLessons, storedImpactLessons, storedLessonRows } from './stored-lessons.js';
@@ -38,6 +39,8 @@ export interface VersionReader {
 export interface ImpactDays {
   readonly key: string;
   readonly items: readonly SortedDayChange[];
+  /** Task 5.6a-5b-1: the bulk cancels of the runs, sorted. */
+  readonly bulk: readonly SortedBulk[];
   readonly keptStored: ReadonlyMap<string | null, ReadonlySet<string>>;
 }
 
@@ -242,12 +245,23 @@ export async function impactOf(
   // A class reached only through a group lesson is in `classIds` alone (review of #142).
   const unitIds = new Set<string>([
     ...days.items.map((one) => one.answer.unitId),
+    ...days.bulk.flatMap((one) => [
+      ...one.answer.classIds,
+      ...one.answer.blocks.flatMap((block) => [
+        ...block.lessons.map((lesson) => lesson.unitId),
+        ...block.chosenClassIds,
+        ...block.otherClassIds,
+      ]),
+    ]),
     ...impact.classIds,
     ...allChanges.flatMap((one) => [one.unitId, ...one.classIds]),
     ...(week?.rows ?? []).map((one) => one.unitId),
   ]);
   const subjectIds = new Set<string>([
     ...days.items.map((one) => one.answer.subjectId),
+    ...days.bulk.flatMap((one) =>
+      one.answer.blocks.flatMap((block) => block.lessons.map((lesson) => lesson.subjectId)),
+    ),
     ...allChanges.map((one) => one.subjectId),
     ...(week?.rows ?? []).map((one) => one.subjectId),
   ]);
@@ -356,6 +370,7 @@ export async function impactOf(
         kept: days.items.filter((one) => one.category === 'kept').map((one) => one.answer),
         decide: days.items.filter((one) => one.category === 'decide').map((one) => one.answer),
         dropped: days.items.filter((one) => one.category === 'dropped').map((one) => one.answer),
+        bulk: days.bulk.map((one) => one.answer),
       },
       names: {
         units: unitNames,

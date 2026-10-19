@@ -402,6 +402,36 @@ describe('publish', () => {
         .where('branch_id', 'in', branches)
         .orderBy('change_id')
         .execute(),
+      // Task 5.6a-5b-1: the bulk cancels a publish applies again and records on its blocks.
+      t.database.migrator
+        .selectFrom('bulk_cancels')
+        .selectAll()
+        .where('branch_id', 'in', branches)
+        .orderBy('id')
+        .execute(),
+      t.database.migrator
+        .selectFrom('bulk_cancel_classes')
+        .selectAll()
+        .where('branch_id', 'in', branches)
+        .orderBy('bulk_cancel_id')
+        .orderBy('class_id')
+        .execute(),
+      t.database.migrator
+        .selectFrom('bulk_cancel_spans')
+        .selectAll()
+        .where('branch_id', 'in', branches)
+        .orderBy('bulk_cancel_id')
+        .orderBy('class_id')
+        .orderBy('lesson_number')
+        .execute(),
+      t.database.migrator
+        .selectFrom('bulk_cancel_blocks')
+        .selectAll()
+        .where('branch_id', 'in', branches)
+        .orderBy('bulk_cancel_id')
+        .orderBy('block_id')
+        .orderBy('starts_at')
+        .execute(),
     ]);
   };
 
@@ -1552,6 +1582,94 @@ describe('publish', () => {
       ).toEqual([]);
     });
 
+    // Task 5.6a-5b-1 (decision 11): a bulk cancel in a carried version's run
+    // is applied again inside the carry, and one of a version left as it is
+    // is not listed and leaves its rows as they are.
+    it('keeps the bulk cancel of a carried version, and leaves that of a version left alone', async () => {
+      let d = '';
+      const s = await chainScene(async (scene) => {
+        d = await placedCopy(scene.branch, scene.year, scene.c);
+        const room3 = await load.classes.room(scene.branch);
+        const otherClass = await load.classes.schoolClass(scene.branch, scene.year, {
+          grade: 7,
+          room: room3,
+        });
+        const otherRow = await load.row({
+          branch_id: scene.branch,
+          version_id: d,
+          class_id: otherClass,
+          subject_id: scene.subject,
+          teacher_id: scene.second,
+          lessons_per_week: 1,
+        });
+        await placeAt(scene.branch, d, otherRow, 1);
+        versionOf(await publish(scene.branch, d, '2027-03-30'));
+      });
+      const lessonOn = async (date: string) =>
+        (await lessonsOf(s.branch)).find((one) => one.date === date && one.class_id === s.classId);
+      const bulkOn = async (date: string) => {
+        const body = { date, classIds: [s.classId], lessonNumbers: [1, 2, 3, 4, 5, 6, 7, 8] };
+        const listed = await post('/api/timetable/bulk-cancels/check', s.branch, body);
+        expect(listed.status, JSON.stringify(listed.body)).toBe(200);
+        const saved = await request(t.kit.server)
+          .post('/api/timetable/bulk-cancels')
+          .set('Cookie', t.admin)
+          .set(BRANCH_HEADER, s.branch)
+          .set(REQUEST_KEY_HEADER, randomUUID())
+          .send({
+            ...body,
+            reason: 'Excursion to the museum',
+            blocks: [],
+            lessonIds: (listed.body as { cancel: { lesson: { id: string } }[] }).cancel.map(
+              (one) => one.lesson.id,
+            ),
+          });
+        expect(saved.status, JSON.stringify(saved.body)).toBe(200);
+        return (saved.body as { id: string }).id;
+      };
+      const inB = await bulkOn('2026-11-16');
+      const inD = await bulkOn('2027-04-05');
+      const before = await t.database.migrator
+        .selectFrom('bulk_cancel_blocks')
+        .selectAll()
+        .where('branch_id', '=', s.branch)
+        .execute();
+      const answer = checkOf(await checkChain(s.branch, s.fix, '2026-10-19', 'carry'));
+      const days = answer.impact?.dayChanges;
+      expect(days?.bulk.map((one) => [one.key, one.carriedVersionId, one.category])).toEqual([
+        [inB, s.b, 'kept'],
+      ]);
+      versionOf(
+        await publishChain(
+          s.branch,
+          s.fix,
+          '2026-10-19',
+          'carry',
+          answer.chain?.key,
+          randomUUID(),
+          { dayChangesKey: days?.key ?? '' },
+        ),
+      );
+      // B carries the second teacher; the lesson of the bulk cancel stays cancelled.
+      expect(await lessonOn('2026-11-16')).toMatchObject({
+        teacher_id: s.second,
+        cancel_cause: 'reason',
+      });
+      expect(await lessonOn('2027-04-05')).toMatchObject({ cancel_cause: 'reason' });
+      const [carry] = await t.entries('timetable_version.carry', s.b);
+      expect(carry?.new_value).toMatchObject({
+        dayChanges: { bulk: { kept: [inB], decided: [], carried: [] } },
+      });
+      expect(
+        await t.database.migrator
+          .selectFrom('bulk_cancel_blocks')
+          .selectAll()
+          .where('branch_id', '=', s.branch)
+          .execute(),
+      ).toEqual(before);
+      expect(inD).not.toBe(inB);
+    });
+
     // Task 5.6a-5a (spec review of the code, must-fix 4): a move in a carried
     // version's run that the carried teacher cannot take needs a decision,
     // which is written and ended with the carry.
@@ -2005,8 +2123,44 @@ describe('publish', () => {
           .set(REQUEST_KEY_HEADER, randomUUID())
           .send({ roomId: await load.classes.room(one.branch), reason: 'The room is painted' });
         expect(roomed.status, JSON.stringify(roomed.body)).toBe(200);
+        // Task 5.6a-5b-1: a bulk cancel of the class on the next day it has a
+        // lesson, which a publish would apply again.
+        const next = (await lessonsOf(one.branch)).find(
+          (row) => row.date > '2026-10-26' && row.class_id === one.classId,
+        );
+        const body = {
+          date: next?.date ?? '',
+          classIds: [one.classId],
+          lessonNumbers: [1, 2, 3, 4, 5, 6, 7, 8],
+        };
+        const listed = await request(t.kit.server)
+          .post('/api/timetable/bulk-cancels/check')
+          .set('Cookie', t.admin)
+          .set(BRANCH_HEADER, one.branch)
+          .send(body);
+        expect(listed.status, JSON.stringify(listed.body)).toBe(200);
+        const scope = listed.body as {
+          cancel: { lesson: { id: string } }[];
+          shared: { blockId: string; lessons: { id: string }[] }[];
+        };
+        const saved = await request(t.kit.server)
+          .post('/api/timetable/bulk-cancels')
+          .set('Cookie', t.admin)
+          .set(BRANCH_HEADER, one.branch)
+          .set(REQUEST_KEY_HEADER, randomUUID())
+          .send({
+            ...body,
+            reason: 'Excursion to the museum',
+            blocks: scope.shared.map((block) => ({ blockId: block.blockId, choice: 'cancel' })),
+            lessonIds: [
+              ...scope.cancel.map((item) => item.lesson.id),
+              ...scope.shared.flatMap((block) => block.lessons.map((lesson) => lesson.id)),
+            ],
+          });
+        expect(saved.status, JSON.stringify(saved.body)).toBe(200);
       }
       const before = await written([s.version, theirs.version]);
+      expect(new Set(before[15].map((one) => one.branch_id)).size).toBe(2);
       expect(new Set(before[13].map((one) => one.branch_id)).size).toBe(2);
       expect(before[8].length).toBeGreaterThan(0);
       expect(new Set(before[8].map((one) => one.branch_id)).size).toBe(2);
