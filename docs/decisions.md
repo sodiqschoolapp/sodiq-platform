@@ -281,6 +281,10 @@ Plan approved on pull request #162 with corrections 1 and 2; decisions 1 to 15 c
 | A lesson already cancelled keeps its cause; cancelled with cause `reason`, so each restores alone; no undo of the whole | Decisions 9 and 10 |
 | `timetable.day_changed`, one per teacher; audit `lesson.bulk_cancel`, record `bulk_cancel` | Decisions 11 and 13 |
 | Only active classes of the date's year (`class_not_active`), a date in a year (`bulk_cancel_out_of_year`) | Decision 14 |
+| **Build decision.** The save carries every lesson the check listed to cancel under the choices (shared blocks included) and is refused `bulk_scope_changed` when they differ | Spec review of the code, must-fix 2: a part restored or a half started between the check and the save would have been cancelled or held unseen |
+| **Build decision.** The other half of a double whose lessons are all cancelled already brings nothing in | Spec review of the code, must-fix 1 (5.6a-1 decision 4) |
+| **Build decision.** The check refuses `bulk_cancel_empty` as the save does when nothing is left to cancel | Spec review of the code, should-fix 1 |
+| **Build decision.** The blocks and lessons the save names are checked against the branch before any lock (404) | Permission review, must-fix 1 (`.claude/rules/api.md`) |
 
 ## 19 October 2026: one-day changes, room change and move of one lesson (task 5.6a-2)
 
