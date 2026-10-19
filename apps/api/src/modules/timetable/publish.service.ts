@@ -157,6 +157,9 @@ async function refuseUnknownKeys(
   blockIds: readonly string[] = [],
 ): Promise<void> {
   // Task 5.6a-5b-1: a bulk cancel's block is a pattern block of the branch.
+  // The 404 says only "an id of this branch": a key and a block of the branch
+  // that name no item together are `day_decision_unknown` (permission review,
+  // should-fix 3).
   if (blockIds.length > 0) {
     const blocks = await transaction
       .selectFrom('pattern_blocks')

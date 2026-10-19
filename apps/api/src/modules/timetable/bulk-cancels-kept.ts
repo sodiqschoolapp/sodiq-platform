@@ -318,6 +318,7 @@ export async function bulkRecordsOf(
         'lessons.ends_at',
       ])
       .where('bulk_cancel_blocks.branch_id', '=', branchId)
+      .where('lessons.branch_id', '=', branchId)
       .where('bulk_cancel_blocks.bulk_cancel_id', 'in', ids)
       .orderBy('lessons.id')
       .execute(),

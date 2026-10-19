@@ -2112,6 +2112,7 @@ describe('publish', () => {
       await withMoreToChange(theirs);
       // Task 5.6a-5a (permission review, must-fix 1): a one-day room change in
       // each branch, which a publish would end or keep.
+      const bulkOf = new Map<string, string>();
       for (const one of [s, theirs]) {
         const lesson = (await lessonsOf(one.branch)).find(
           (row) => row.date === '2026-10-26' && row.class_id === one.classId,
@@ -2158,6 +2159,7 @@ describe('publish', () => {
             ],
           });
         expect(saved.status, JSON.stringify(saved.body)).toBe(200);
+        bulkOf.set(one.branch, (saved.body as { id: string }).id);
       }
       const before = await written([s.version, theirs.version]);
       expect(new Set(before[15].map((one) => one.branch_id)).size).toBe(2);
@@ -2170,6 +2172,42 @@ describe('publish', () => {
         for (const id of [theirs.version, UNKNOWN]) {
           refusedWith(await publish(s.branch, id, '2026-10-19', cookie), 404, 'not_found');
           refusedWith(await check(s.branch, id, '2026-10-19', cookie), 404, 'not_found');
+        }
+      }
+      // Task 5.6a-5b-1 (permission review, must-fix 2): a bulk cancel's key and
+      // block in the body, another branch's and unknown ones, against every
+      // table a publish writes in both branches.
+      const blockOf = async (version: string) =>
+        (
+          await t.database.migrator
+            .selectFrom('pattern_blocks')
+            .select('id')
+            .where('version_id', '=', version)
+            .orderBy('id')
+            .executeTakeFirstOrThrow()
+        ).id;
+      const ownBulk = bulkOf.get(s.branch) ?? '';
+      const ownBlock = await blockOf(s.version);
+      for (const cookie of [t.admin, t.vicePrincipal]) {
+        for (const wrong of [
+          { key: bulkOf.get(theirs.branch) ?? '', blockId: ownBlock },
+          { key: UNKNOWN, blockId: ownBlock },
+          { key: ownBulk, blockId: await blockOf(theirs.version) },
+          { key: ownBulk, blockId: UNKNOWN },
+        ]) {
+          refusedWith(
+            await request(t.kit.server)
+              .post(`/api/timetable/versions/${s.version}/publish`)
+              .set('Cookie', cookie)
+              .set(BRANCH_HEADER, s.branch)
+              .set(REQUEST_KEY_HEADER, randomUUID())
+              .send({
+                startsOn: '2026-10-19',
+                dayDecisions: [{ ...wrong, blockDate: '2026-10-26', choice: 'keep' }],
+              }),
+            404,
+            'not_found',
+          );
         }
       }
       expect(await written([s.version, theirs.version])).toEqual(before);

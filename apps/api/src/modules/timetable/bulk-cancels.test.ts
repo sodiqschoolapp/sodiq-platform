@@ -1713,6 +1713,28 @@ describe('the bulk cancel', () => {
       ).toHaveLength(1);
     });
 
+    // Permission review, should-fix 4: the preview's bulk cancels read by the
+    // Principal of the branch (timetable view), refused to another branch's.
+    it('shows the bulk cancels of the preview to the Principal of the branch and refuses them to the Principal of another branch', async () => {
+      const s = await scene();
+      const bulk = await oxfordAway(s, 'keep');
+      const draft = await draftOf(s, { maths: 3, english: 1 });
+      const path = `/api/timetable/versions/${draft}/publish-check?startsOn=${NEXT_MONDAY}`;
+      refusedWith(await t.get(path, s.branch, t.principal), 403, 'permission_denied');
+      const principal = await t.database.migrator
+        .selectFrom('assignments')
+        .select('account_id')
+        .where('role', '=', 'principal')
+        .where('branch_id', '=', t.north)
+        .executeTakeFirstOrThrow();
+      await load.classes.role(principal.account_id, s.branch, 'principal');
+      const read = await t.get(path, s.branch, t.principal);
+      expect(read.status, JSON.stringify(read.body)).toBe(200);
+      expect((read.body as Checked).impact.dayChanges.bulk).toEqual([
+        expect.objectContaining({ key: bulk, category: 'decide', reason }),
+      ]);
+    });
+
     it('refuses a publish when a bulk cancel was saved after the check', async () => {
       const s = await scene();
       const draft = await draftOf(s);
@@ -1752,17 +1774,40 @@ describe('the bulk cancel', () => {
         .where('version_id', '=', northScene.version)
         .orderBy('id')
         .executeTakeFirstOrThrow();
-      refusedWith(
-        await publishWith(
-          s,
-          draft,
-          { ...body, dayDecisions: [{ ...named, blockId: northBlock.id, choice: 'keep' }] },
-          key,
-        ),
-        404,
-        'not_found',
-      );
+      const north = await checkAndSave(northScene.branch, {
+        date: NEXT_TUESDAY,
+        classIds: [northScene.oxford],
+        lessonNumbers: [2, 3],
+      });
+      const after = await everything();
+      // Every id of the body, another branch's and an unknown one (permission review, must-fix 3).
+      for (const wrong of [
+        { ...named, blockId: northBlock.id },
+        { ...named, blockId: UNKNOWN },
+        { ...named, key: north.saved.id },
+        { ...named, key: UNKNOWN },
+      ]) {
+        refusedWith(
+          await publishWith(
+            s,
+            draft,
+            { ...body, dayDecisions: [{ ...wrong, choice: 'keep' }] },
+            key,
+          ),
+          404,
+          'not_found',
+        );
+      }
+      // The Principal of the branch: refused for the role, not the branch (permission review, must-fix 1).
+      const principal = await t.database.migrator
+        .selectFrom('assignments')
+        .select('account_id')
+        .where('role', '=', 'principal')
+        .where('branch_id', '=', t.north)
+        .executeTakeFirstOrThrow();
+      await load.classes.role(principal.account_id, s.branch, 'principal');
       refusedWith(await publishWith(s, draft, body, key, t.principal), 403, 'permission_denied');
+      expect(await everything()).toEqual(after);
     });
   });
 
