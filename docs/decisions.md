@@ -285,6 +285,9 @@ Plan approved on pull request #161 with corrections 1 to 3; decisions 1 to 12 co
 | The day answer carries the lesson slots of the date for the class | Decision 12 |
 | **Build decision.** The cancelled parts that move with a block are checked with it (`alongside` of `storedDayCheck`: no teacher, room or student, their students exempt), so the block stays whole for `split_apart` and they claim nothing | Found by the build: without them the held part of a split alone was `split_apart` |
 | **Build decision.** A room change does not offer the lesson's own room among the free rooms | Found by the build |
+| **Build decision.** A restore into the lesson's own room is refused `room_unchanged`, as a room change is, so no record of a change that changed nothing is stored | Spec review of the code, should-fix 3 |
+| **Build decision.** A free room offered by a refusal fills the room field of the dialog; the person sends again with the reason they typed. A refused restore's room opens the restore dialog for the reason | The plan said "sends the same change again"; a change needs its reason (`06`) and the person sees the room before it is sent (spec review of the code, should-fix 4) |
+| **Build decision.** The move dialog opens on the lesson's date | A one-day move is most often within the lesson's own day or week; the plan said today (spec review of the code, should-fix 5) |
 
 ## 19 October 2026: one-day changes, cancel and restore of one lesson (task 5.6a-1)
 

@@ -3742,7 +3742,8 @@ try {
     vice: ['Kamola', 'Rashidova'],
     staffId: 'S-269340',
     phone: '+998935557340',
-    rooms: [],
+    // Task 5.6a-2: a room for the one-day room change.
+    rooms: ['Room 21'],
     publishable: true,
   });
   seeded.dayChanges = { login: dayVice.login, password: dayVice.firstPassword };

@@ -369,6 +369,38 @@ describe('the notifications of the top bar', () => {
       expect(within(dialog).getByText(en.notifications.week.none)).toBeDefined();
     });
 
+    // Task 5.6a-2, decision 11: a one-day move into another week shows both weeks.
+    it('shows the second week of a one-day move into another week', async () => {
+      const MOVED: Notification = {
+        ...ROOM,
+        kind: 'timetable.day_changed',
+        data: {
+          weekStart: '2026-10-19',
+          before: [{ ...lesson, changed: true }],
+          after: [],
+          also: {
+            weekStart: '2026-10-26',
+            before: [],
+            after: [{ ...lesson, date: '2026-10-27', changed: true }],
+          },
+        },
+      };
+      open({ [LIST]: () => json({ unreadCount: 1, items: [MOVED] }) });
+      const dialog = await openDialog('en', 1);
+      expect(within(dialog).getByText('Week of 19 October 2026')).toBeDefined();
+      expect(within(dialog).getByText('Week of 26 October 2026')).toBeDefined();
+      expect(lines(dialog, 'week-before')).toEqual([
+        ['Monday, 19 October · 08:00–08:45 · 7 Oxford · Mathematics · Room 101 · changed'],
+      ]);
+      expect(
+        within(dialog)
+          .getAllByTestId('also-after')
+          .map((list) => [...list.querySelectorAll('li')].map((one) => one.textContent)),
+      ).toEqual([
+        ['Tuesday, 27 October · 08:00–08:45 · 7 Oxford · Mathematics · Room 101 · changed'],
+      ]);
+    });
+
     it('shows no week for data it cannot read', async () => {
       open({
         [LIST]: () =>

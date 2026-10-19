@@ -419,8 +419,12 @@ export class TimetableDayChanges {
     // half cancelled by another cause stays cancelled (decision 4).
     const lessons = pair.filter((one) => one.cancelCause === 'reason');
     const lessonIds = lessons.map((one) => one.id);
-    // Into another room with a reason when given (decision 10).
+    // Into another room with a reason when given (decision 10); its own room
+    // is no room change (spec review of the code, should-fix 3).
     const roomId = input.roomId;
+    if (roomId !== undefined && lessons.every((one) => one.roomId === roomId)) {
+      throw new ApiException('room_unchanged', 409);
+    }
     const checked = await storedDayCheck(
       transaction,
       { timetable: this.timetable, pattern: this.pattern },
