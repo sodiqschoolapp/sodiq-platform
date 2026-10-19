@@ -173,9 +173,12 @@ export class TimetableBulkCancels {
     return refusingPublish(
       () =>
         this.transactions.run(access.branchIds, async (transaction) => {
-          // The classes of the branch first, so an unknown or foreign id
-          // never waits on a publish.
+          // Every id of the body against the branch first (the classes, the
+          // blocks and the lessons), so an unknown or foreign id is 404 and
+          // never waits on a publish; the reads inside the work repeat the
+          // classes' check only for the year.
           await yearOfClasses(transaction, branchId, input);
+          await ofBranch(transaction, branchId, input);
           await sql`select pg_advisory_xact_lock(${PUBLISH_LOCK})`.execute(transaction);
           const once = await this.requestKeys.runOnce(
             transaction,
@@ -289,13 +292,11 @@ export class TimetableBulkCancels {
     await transaction
       .insertInto('bulk_cancel_classes')
       .values(
-        [...input.classIds]
-          .sort()
-          .map((classId) => ({
-            branch_id: branchId,
-            bulk_cancel_id: record.id,
-            class_id: classId,
-          })),
+        [...input.classIds].sort().map((classId) => ({
+          branch_id: branchId,
+          bulk_cancel_id: record.id,
+          class_id: classId,
+        })),
       )
       .execute();
     if (scope.spans.length > 0) {
@@ -383,6 +384,37 @@ function refusal(
     message: 'An item the check and the save see differently.',
   }));
   return new ApiException(code, 409, undefined, details);
+}
+
+/**
+ * The blocks and lessons a save names, each of the branch: 404 otherwise
+ * (`.claude/rules/api.md`: an id in the body is checked against the branch
+ * before it is used; permission review must-fix 1).
+ */
+async function ofBranch(
+  transaction: Transaction,
+  branchId: string,
+  input: BulkCancelBody,
+): Promise<void> {
+  const blockIds = input.blocks.map((one) => one.blockId);
+  if (blockIds.length > 0) {
+    const found = await transaction
+      .selectFrom('lesson_blocks')
+      .select('id')
+      .where('id', 'in', blockIds)
+      .where('branch_id', '=', branchId)
+      .execute();
+    if (found.length !== blockIds.length) throw notFound();
+  }
+  if (input.lessonIds.length > 0) {
+    const found = await transaction
+      .selectFrom('lessons')
+      .select('id')
+      .where('id', 'in', input.lessonIds)
+      .where('branch_id', '=', branchId)
+      .execute();
+    if (found.length !== input.lessonIds.length) throw notFound();
+  }
 }
 
 /**

@@ -391,7 +391,11 @@ describe('the bulk cancel', () => {
     await t.database.migrator
       .updateTable('lesson_blocks')
       .set({ double_pair_id: randomUUID() })
-      .where('id', 'in', halves.map((one) => one.block_id))
+      .where(
+        'id',
+        'in',
+        halves.map((one) => one.block_id),
+      )
       .execute();
     return halves;
   };
@@ -601,6 +605,8 @@ describe('the bulk cancel', () => {
       const body = { date: '2026-10-26', classIds: [s.oxford], lessonNumbers: [2] };
       const answer = await checked(s.branch, body);
       const blockId = answer.shared[0]?.blockId ?? '';
+      // A block of the branch outside the slots: not shared in this bulk cancel.
+      const maths = await oneLesson(s, '2026-10-26', { classId: s.oxford }, s.maths);
       const before = await everything();
       const missing = await save(s.branch, { ...body, lessonIds: [] });
       refusedWith(missing, 409, 'bulk_choice_missing');
@@ -609,11 +615,11 @@ describe('the bulk cancel', () => {
         ...body,
         blocks: [
           { blockId, choice: 'cancel' },
-          { blockId: UNKNOWN, choice: 'keep' },
+          { blockId: maths.block_id, choice: 'keep' },
         ],
       });
       refusedWith(unknown, 409, 'bulk_choice_unknown');
-      expect(listed(unknown)).toEqual([UNKNOWN]);
+      expect(listed(unknown)).toEqual([maths.block_id]);
       expect(await everything()).toEqual(before);
     });
 
@@ -1018,6 +1024,54 @@ describe('the bulk cancel', () => {
       expect(await everything()).toEqual(before);
     });
 
+    it('answers 404 for a block or a lesson of another branch and an unknown one in the save, with nothing written in either branch', async () => {
+      const s = northScene;
+      const other = await scene();
+      const body = { date: '2026-11-16', classIds: [s.oxford], lessonNumbers: [1, 2] };
+      const answer = await checked(s.branch, body);
+      const shared = answer.shared[0]?.blockId ?? '';
+      const lessonIds = answer.cancel.map((one) => one.lesson.id);
+      // A real block and lesson of the other branch that the save would cancel if it took them.
+      const foreign = await oneLesson(other, '2026-11-16', { classId: other.oxford }, other.maths);
+      const before = await everything();
+      for (const cookie of [t.vicePrincipal, t.admin]) {
+        for (const blockId of [foreign.block_id, UNKNOWN]) {
+          refusedWith(
+            await save(
+              s.branch,
+              {
+                ...body,
+                blocks: [
+                  { blockId: shared, choice: 'cancel' },
+                  { blockId, choice: 'cancel' },
+                ],
+                lessonIds,
+              },
+              cookie,
+            ),
+            404,
+            'not_found',
+          );
+        }
+        for (const lessonId of [foreign.id, UNKNOWN]) {
+          refusedWith(
+            await save(
+              s.branch,
+              {
+                ...body,
+                blocks: [{ blockId: shared, choice: 'cancel' }],
+                lessonIds: [...lessonIds, lessonId],
+              },
+              cookie,
+            ),
+            404,
+            'not_found',
+          );
+        }
+      }
+      expect(await everything()).toEqual(before);
+    });
+
     it('answers a repeated key with the stored answer once, refuses it from another account, and checks the branch and the role again on a repeat', async () => {
       const s = northScene;
       const body = { date: '2026-11-09', classIds: [s.princeton], lessonNumbers: [1] };
@@ -1035,6 +1089,34 @@ describe('the bulk cancel', () => {
         404,
         'not_found',
       );
+      refusedWith(
+        await save(s.branch, { ...full, classIds: [UNKNOWN] }, t.vicePrincipal, key),
+        404,
+        'not_found',
+      );
+      const foreignLesson = await oneLesson(
+        foreign,
+        '2026-11-09',
+        { classId: foreign.oxford },
+        foreign.maths,
+      );
+      for (const [blocks, lessonIds] of [
+        [[{ blockId: foreignLesson.block_id, choice: 'cancel' as const }], full.lessonIds],
+        [[], [...full.lessonIds, foreignLesson.id]],
+        [[{ blockId: UNKNOWN, choice: 'cancel' as const }], full.lessonIds],
+        [[], [...full.lessonIds, UNKNOWN]],
+      ] as const) {
+        refusedWith(
+          await save(
+            s.branch,
+            { ...full, blocks: [...blocks], lessonIds: [...lessonIds] },
+            t.vicePrincipal,
+            key,
+          ),
+          404,
+          'not_found',
+        );
+      }
       refusedWith(await save(s.branch, full, t.principal, key), 403, 'permission_denied');
       const entries = (await t.entries('lesson.bulk_cancel')).filter(
         (one) => (one.new_value as { date?: string }).date === '2026-11-09',

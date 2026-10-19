@@ -14,9 +14,9 @@ const full = { ...scope, reason: 'Excursion to the museum', blocks: [], lessonId
 describe('the input of a bulk cancel', () => {
   it('takes classes, a date and lesson numbers sorted and distinct from 1 to 20', () => {
     expect(bulkCancelCheckBodySchema.safeParse(scope).success).toBe(true);
-    expect(
-      bulkCancelCheckBodySchema.safeParse({ ...scope, lessonNumbers: [1, 20] }).success,
-    ).toBe(true);
+    expect(bulkCancelCheckBodySchema.safeParse({ ...scope, lessonNumbers: [1, 20] }).success).toBe(
+      true,
+    );
     for (const lessonNumbers of [[], [2, 1], [1, 1], [0], [21]]) {
       expect(bulkCancelCheckBodySchema.safeParse({ ...scope, lessonNumbers }).success).toBe(false);
     }
