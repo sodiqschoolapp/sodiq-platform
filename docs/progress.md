@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 19 October 2026: task 5.6b-2a Calendar changes: stored one-day changes and bulk cancels sorted
+
+- 5.6b-2 split in three (5.6b-2a to 5.6b-2c, `docs/build-plan.md`). A calendar save (create, edit, archive, restore) over published dates sorts the stored one-day changes and bulk cancels of each stretch of its lesson dates as a publish does (`sortDayChanges`, `sortBulkOf`), under one key (`calendarDaysKeyOf`), writes over the findings with the kept changes applied, ends what is not applied in the stretch version's name (`settleDayChanges`) and records the bulk cancels' choices (`recordBulkBlocks`).
+- Bodies: create and edit take `calendarSaveSchema` (the record, `dayChangesKey`, `dayDecisions`); archive and restore take `dayDecisionsBodySchema` (`withdrawBodySchema` is now its alias). The day refusals are details of `calendar_blocked`. The preview answers `lessons.dayChanges`; the calendar dialog shows the sorting (`PublishDayChanges`, `dayDecisionsBodyOf`). No migration.
+- Review correction 1: a "needs a decision" move onto a written date from a date after today the save does not write goes back to its old place (`movesBack`): "drop" held, checked there with `storedDayCheck`, "cancel" cancelled with the change's reason. A move out of the run leaves no cancelled copy at its old place (`sortDayChanges`, also for a publish).
+- Left out: the shortened day's choice (5.6b-2b); exams and a move between two stretches, still `calendar_stored_changes` (5.6b-2c); substitutions, absences, closures (5.7a, 5.7b); a browser test (no published version under a calendar entry in the browser scene).
+
+The next sessions must know:
+
+- A stretch is a run of consecutive dates written: a weekend between two school days parts two stretches, so a move from a Friday to the next Monday of one day off is the refused case of decision 3.
+- The tests that make two changes in one test advance `t.clock` a second between them: the changes of one moment and person are one item.
+- The next task is 5.6b-2b.
+
 ## 19 October 2026: task 5.6b-1 Calendar entries after publishing: the lessons of the changed dates
 
 - 5.6b split in five (5.6b-1 to 5.6b-5, `docs/build-plan.md`). A calendar entry's create, edit, archive and restore now writes the dated lessons of its lesson dates (after today, where a grade's lesson-making part of the day changes) from the published version in force on each date, read as if it started on each stretch's first date, checked by `datedCheck` and written by `writeDatedLessons` (`apps/api/src/modules/timetable/calendar-lessons.ts`).

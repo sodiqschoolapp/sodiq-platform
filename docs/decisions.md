@@ -265,6 +265,23 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 19 October 2026: calendar changes, stored one-day changes and bulk cancels (task 5.6b-2a)
+
+Plan approved on pull request #168 with corrections 1 and 2; decisions 1 to 13 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a task split). 5.6b-2 is split into 5.6b-2a (stored one-day changes and bulk cancels), 5.6b-2b (the shortened day's choice, a trigger widened) and 5.6b-2c (exams, and a move between two stretches) | Decision 1 |
+| **Look first** (a reading of the spec). A calendar save sorts and applies the stored one-day changes and bulk cancels of its lesson dates as a publish does, the version in force in the new version's place on each stretch: the same categories, choices and refusal codes | Decision 2; `edge/timetable`, Versions and drafts |
+| **Look first** (a refusal kept until 5.6b-2c). A stored move whose two places lie in two stretches of one save is refused `calendar_stored_changes` | Decision 3: each stretch would settle it on its own |
+| **Look first** (tests changed). The 5.6b-1 test of stored records now covers exams and the move of decision 3; the same-moment tests of a move and of a bulk cancel before a day off expect `day_changes_changed`, then a save with the key | Decision 4; a requirement added by this task |
+| **Look first** (a reading of the spec). A cancel or room change recorded for times a special template shifts is dropped and ended; the lesson at the new time is held | Decision 12 with review correction 2 |
+| **Look first** (a reading of the spec). A day off taken back restores lessons, not the changes it ended | Decision 13 with review correction 2; as 5.6a-5b-2 decision 3 |
+| A move onto a written date from a date after today the save does not write goes back to its old place with either choice: "drop" held and checked there (`calendar_blocked` by date), "cancel" cancelled with its reason; from today or earlier, 5.6a-5a decision 7 | Review correction 1: a day off removes the lessons of its date |
+| An end names the version in force on its stretch; one key over the stretches in date order; the preview takes no decisions; archive and restore take the withdraw's body; the refusals are details of `calendar_blocked`; no notice kind, audit action, area or migration; locks of 5.6b-1 | Decisions 5 to 11 |
+| **Build decision.** A move out of the run leaves out the cancelled copy the day would create at its old place (an exam week, a slot beyond a shortened day), and finds its old place by its pattern entry and date when the day shifts the times; in `sortDayChanges`, so a publish does the same | Spec review of the plan, must-fix 1 |
+| **Build decision.** Plan test 4 ("recorded again" on a lesson created again) cannot be reached by a calendar save: `pairDated` pairs by class or group, subject and times, never by teacher, so a lesson at the same place keeps its identity; the test edits a special day to a shortened template and checks the kept room change on the same lesson and the dropped one beyond the slots | Plan test 4 |
+
 ## 19 October 2026: calendar entries after publishing (task 5.6b-1)
 
 Plan approved on pull request #167 with corrections 1 and 2; decisions 1 to 11, 13 and 14 confirmed there, decision 12 changed by correction 1. Flagged on issue #42.
