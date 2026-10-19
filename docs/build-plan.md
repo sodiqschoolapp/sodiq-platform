@@ -712,7 +712,7 @@ How to read the task lines:
   - Build: a bulk cancel for an event: the chosen classes, a date and slots, with a reason (`06`, Changes after publishing, Bulk cancel); the blocks shared with classes not chosen listed, each cancelled whole or kept with the chosen classes' students exempted for those slots in the same action (`edge/timetable`, After publishing, the 7 Oxford row); what a slot that cuts a double lesson does (5.6a-1 decision 4).
   - Done when: the 7 Oxford row of the "After publishing" table has a test, both choices.
 
-- [ ] **5.6a-4 One-day changes: correction of a past lesson** (5.6a split in five, pull request #160, decision 1)
+- [x] **5.6a-4 One-day changes: correction of a past lesson** (5.6a split in five, pull request #160, decision 1; pull request #163)
   - Read: `06` (Changes after publishing), `edge/timetable` (After publishing, Versions and drafts).
   - Build: the correction of a past lesson one at a time by the Academic Vice Principal with a reason (`06`, How surprises are prevented: "A past lesson can only be corrected one at a time by the Academic Vice Principal, with a reason"); an unresolved lesson cancelled with a reason or its teacher recorded (`edge/timetable`, After publishing, "The lesson time passes and nobody was assigned").
   - Done when: a past lesson is corrected only by the Academic Vice Principal, one at a time, with a reason, and an unresolved lesson never counts as held.
@@ -751,6 +751,7 @@ How to read the task lines:
   - From 3.6c-2 (pull request #125, decision 11): an absence on a Tutor lesson is kept by a later `followTutors`, which must not give the lesson back to the absent Tutor; the inactive status of a Tutor sends the Tutor lessons from its date to "needs a teacher" (a `left` already does, through the end of the Tutor role).
   - From 5.5b-1 (pull request #152, review correction 1): a leaving does not yet touch a teacher's regular lessons; a leaving that commits while a publish writes leaves the publish's regular lessons after the leaving with the teacher, and this task lists them like any other future lesson of the leaving (`06`, How surprises are prevented, "No lesson without a teacher or room"). The publish already writes a lesson after a leaving known when it runs with no teacher (`teacher_out`).
   - From 5.5c-2b (pull request #157, review correction 3): `06`, Filling a vacancy: "A vacancy with no load left is closed." The close reads `vacancy_close_holders` (0083) and stays as narrow as it is: a later published version counts as started only from its start day, so a fill from tomorrow cannot close the vacancy in its own step (until the fill's version starts it can still be withdrawn and the earlier rows hold); this task decides when such a vacancy is closed. A write that puts a lesson under a staff record (`lessons.teacher_id`: the fill, an absence that gives lessons back) refuses a closed vacancy; nothing in `lessons_check` reads the teacher's status today, and only a publish writes the column now, through rows that `load_teacher_status` checks.
+  - From 5.6a-4 (pull request #163, decision 11): `lessonStateOf` (`packages/shared/src/timetable.ts`) is the one place of a lesson's state (upcoming, needs a teacher, held, unresolved, cancelled); this task gives it the absence: a lesson of an absent teacher with no substitute keeps its teacher and is "needs a teacher", then "unresolved" (`edge/timetable`, After publishing, "The lesson time passes and nobody was assigned": "It never counts as held, and never as 'attendance not marked' against the absent teacher"); the home page's "unresolved" list reads it. A past lesson is settled through the correction (`POST /api/timetable/lessons/:id/correction`, `day-changes.service.ts`).
 
 - [ ] **5.7b Substitution**
   - Read: `06` (Changes after publishing), `edge/timetable` (After publishing).
@@ -759,6 +760,7 @@ How to read the task lines:
   - From 5.2 (pull request #109, decision 17, correction 3): a substitute is a placement with `substitute: true`; `substitute_language` is a warning that needs a confirmation, `substitute_vacancy` blocks, and the option `noSubjectTeacherFree` of `checkTimetable` turns `teacher_subject`, `teacher_grade` and `teacher_unavailable` of the substitute's own lesson (`substitute: true`, `mode: 'dated'`) into warnings with a tick; every other lesson keeps them blocked, and double booking stays blocked.
   - From 3.6c-2 (pull request #125, decision 11): a substitution on a Tutor lesson is kept by a later `followTutors`; the substitute of a Tutor lesson needs the subject in the profile like any substitute (`teacherProblems` skips the profile rule for the class's Tutor only).
   - From 5.5c-2b (pull request #157, review decision 10): a substitution never puts a vacancy on a lesson (`substitute_vacancy` blocks), so it needs no check of a closed vacancy; the writes of `lessons.teacher_id` that do (a fill, an absence that gives lessons back) refuse a closed vacancy by the From line of 5.7a.
+  - From 5.6a-4 (pull request #163, decision 14): the person recorded as having taught a past lesson (a correction of kind `teacher`, audit entry `lesson.correct`) becomes the lesson's teacher with no substitution record; this task brings those corrections under its records (who was replaced, by whom, why), read from the `lesson.correct` entries, and gives the person recorded the substitute's edit period for that column.
 
 - [ ] **5.8 Protection and version history**
   - Read: `06` (Protection), `03` (Quarters), `edge/timetable` (Versions and drafts).
@@ -909,6 +911,7 @@ How to read the task lines:
   - Read: `07` (Lesson status, Reminders).
   - Build: the four lesson statuses; the reminders panel on the journal and the teacher home page; counts per teacher for Head Teachers and the Academic Vice Principal.
   - Done when: the counts on the home page match the journal.
+  - From 5.6a-4 (pull request #163, decision 11): a held lesson is the one `lessonStateOf` (`packages/shared/src/timetable.ts`) calls `held`; an unresolved or cancelled lesson never counts as held, and an unresolved one never as "attendance not marked" against anyone (`edge/00-definitions`, Held lesson; `edge/timetable`, After publishing).
 
 - [ ] **8.8 Plans in the journal**
   - Read: `09` (In the journal, Reports), `edge/lesson-plans` (Plans and the journal).

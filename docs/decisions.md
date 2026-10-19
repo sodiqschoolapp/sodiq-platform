@@ -265,6 +265,22 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 19 October 2026: one-day changes, correction of a past lesson (task 5.6a-4)
+
+Plan approved on pull request #163 with corrections 1 to 3; decisions 1 to 14 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a spec contradiction). A correction takes the one lesson named, never its double's other half. Proposed `/spec-change` for `edge/timetable`, Structure, "Double lessons": "They are moved, cancelled and substituted together; a correction of a past lesson takes one lesson at a time." | Decision 1; each half is its own journal column and held lesson |
+| **Look first** (a relaxed rule). A correction records a fact: one place at a time, travel, a vacancy and a person not active on the date stay blocked; subject, grades, language and availability are warnings that need a tick, for every kind. A restore or a room of a vacancy's lesson is checked without the substitute flag and stays unresolved | Decision 2 with review correction 1 |
+| No guard in the database and no correction table; the audit entry keeps before, after and reason | Decision 3 |
+| The person recorded is active on the lesson's date (a person who left since included), read on that date | Decision 4 |
+| "Past" is the other side of `lesson_started`: the lesson, or the earlier half of its double, has started | Decision 5 with review correction 2 |
+| `timetable` `edit`; no move or other time of a past lesson; one `timetable.day_changed` per teacher and the mark; audit `lesson.correct` | Decisions 6 to 8 |
+| A closed year is refused `timetable_year_closed`; a restore takes only a cancel of cause `reason` | Decisions 9 and 10, review correction 3 |
+| `lessonStateOf` in `packages/shared` is the one reader of held and unresolved | Decision 11 |
+| Every correction keeps the stored teacher (no Tutor follow) unless it records another; the tick is `confirm`; the recorded teacher is not yet a substitution record (5.7b) | Decisions 12 to 14 |
+
 ## 19 October 2026: one-day changes, bulk cancel (task 5.6a-3)
 
 Plan approved on pull request #162 with corrections 1 and 2; decisions 1 to 15 confirmed there. Flagged on issue #42.

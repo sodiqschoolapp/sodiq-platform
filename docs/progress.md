@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 19 October 2026: task 5.6a-4 One-day changes: correction of a past lesson
+
+- On "Day changes" a started lesson shows "Held" or "Unresolved" and, for the Academic Vice Principal (and the Super Admin), "Correct": cancel it, restore it, record who taught it, or its room, one lesson at a time with a reason (`POST /api/timetable/lessons/:id/correction`); the people offered are the branch's staff active on the lesson's date (`GET …/correction-teachers`).
+- A restore, a teacher and a room run `storedDayCheck` on the date with the stored teacher kept (no Tutor follow) or the person recorded; double booking, travel, a vacancy and a person not active then are refused `correction_blocked`; subject, grades, language and availability come back `correction_needs_confirm` until ticked (`confirm`).
+- `lessonStateOf` (`packages/shared`) gives upcoming, needs a teacher, held, unresolved, cancelled; audit `lesson.correct`, notice `timetable.day_changed`, the "changed" mark. No migration.
+- Left out: the home page's unresolved list and the absence's state (5.7a), substitution records of a recorded teacher (5.7b), held counts (8.7), all by From lines; a lesson with data and a closed quarter (6.1, 9.2b); a browser test (the browser scene has no past lesson: a publish writes from tomorrow; the route and page tests cover it).
+
+The next sessions must know:
+
+- `storedDayCheck` takes `keepTeacher`, `teacherId` and `relaxed` (one lesson only); `stateOf` of `TimetablePattern` and `LoadFacts.of` take extra teacher ids for a person no row names.
+- `BlockedRules` is `apps/web/src/features/timetable/blocked-rules.tsx`; the correction dialog is `correction-dialog.tsx`.
+- The next task is 5.6a-5.
+
 ## 19 October 2026: task 5.6a-3 One-day changes: bulk cancel
 
 - On "Day changes" the Academic Vice Principal (and the Super Admin) open "Bulk cancel": the classes (or every class of the branch), the lesson numbers of the date and a reason; "Check" (`POST /api/timetable/bulk-cancels/check`) lists the lessons to cancel, the other half of a double brought in, the lessons already cancelled, a started half held, and each block shared with classes not chosen, which needs "cancel the whole lesson" or "keep it, the chosen classes' students exempt"; the save (`POST /api/timetable/bulk-cancels`) sends what the check listed.
