@@ -1317,6 +1317,19 @@ export async function dayLessonsOf(
       },
     ]),
   );
+  // A teacher the branch filter hides (they work in another branch now) is
+  // still the person recorded: only the kind is read, never the name, so the
+  // lesson reads held (edge/00-definitions, Held lesson; review of #163).
+  for (const id of teacherIds.filter((one) => !teacherOf.has(one))) {
+    const kind = (
+      await sql<{ kind: string | null }>`select staff_record_kind(${id}::uuid) as kind`.execute(
+        transaction,
+      )
+    ).rows[0]?.kind;
+    // A vacancy has one branch (0025), so a hidden record is a person; a
+    // record with no row any more is a deleted vacancy, as in load-facts.
+    teacherOf.set(id, { id, kind: kind === 'person' ? 'person' : 'vacancy', name: '' });
+  }
   const roomOf = new Map(rooms.map((one) => [one.id, one.name]));
   const markOf = new Map(marks.map((one) => [one.lesson_id, one.changed_at]));
   const dates = lessons.map((one) => one.date).sort();

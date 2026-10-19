@@ -3289,6 +3289,32 @@ describe('one-day changes: cancel and restore', () => {
       );
     });
 
+    it('answers a past lesson held when its teacher no longer works in the branch, without the name (review of #163)', async () => {
+      const s = await scene();
+      const away = await scene();
+      const lesson = await pastOne(s);
+      await t.database.migrator.transaction().execute(async (transaction) => {
+        await transaction
+          .updateTable('staff_branches')
+          .set({ is_main: false })
+          .where('staff_id', '=', s.teacher.staffId)
+          .execute();
+        await transaction
+          .insertInto('staff_branches')
+          .values({ staff_id: s.teacher.staffId, branch_id: away.branch, is_main: true })
+          .execute();
+        await transaction
+          .deleteFrom('staff_branches')
+          .where('staff_id', '=', s.teacher.staffId)
+          .where('branch_id', '=', s.branch)
+          .execute();
+      });
+      expect(await shownOf(s, s.classId, FRIDAY, lesson)).toMatchObject({
+        state: 'held',
+        teacher: { id: s.teacher.staffId, kind: 'person', name: '' },
+      });
+    });
+
     it('lists only the branch’s people active on the lesson’s date, by every status and its bounds (permission review should-fix 2)', async () => {
       const s = await scene();
       const away = await scene();
