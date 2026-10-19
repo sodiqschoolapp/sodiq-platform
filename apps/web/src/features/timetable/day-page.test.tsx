@@ -160,6 +160,29 @@ describe('the day page', () => {
     expect(screen.queryByRole('columnheader', { name: en.timetable.day.actions })).toBeNull();
   });
 
+  it('shows no cancel, room change or move on a started lesson', async () => {
+    await openPage({
+      lessons: [
+        lesson(1, { canCancel: false, canRestore: false }),
+        lesson(2, { start: 535, end: 580 }),
+      ],
+    });
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(2);
+    });
+    const [started, ahead] = [...document.querySelectorAll('tbody tr')];
+    if (!(started instanceof HTMLElement) || !(ahead instanceof HTMLElement)) {
+      throw new Error('two rows expected');
+    }
+    expect(within(started).queryByRole('button', { name: en.timetable.day.cancel })).toBeNull();
+    expect(within(started).queryByRole('button', { name: en.timetable.day.changeRoom })).toBeNull();
+    expect(within(started).queryByRole('button', { name: en.timetable.day.move })).toBeNull();
+    expect(within(started).queryByRole('button', { name: en.timetable.day.restore })).toBeNull();
+    expect(within(ahead).getByRole('button', { name: en.timetable.day.cancel })).not.toBeNull();
+    expect(within(ahead).getByRole('button', { name: en.timetable.day.changeRoom })).not.toBeNull();
+    expect(within(ahead).getByRole('button', { name: en.timetable.day.move })).not.toBeNull();
+  });
+
   it('says when the class has no lessons on the date', async () => {
     await openPage({ lessons: [] });
     expect(await screen.findByText(en.timetable.day.empty)).not.toBeNull();
