@@ -281,6 +281,22 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 19 October 2026: calendar changes, the shortened day's choice (task 5.6b-2b)
+
+Plan approved on pull request #171 with corrections 1 to 3; decisions 1 to 10 confirmed there (4 and 7 as changed by the spec review of the plan, 6 by correction 2). Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a trigger widened by a requirement). `pattern_rows_draft` (0089) lets `timetable_day_keeps` be inserted or deleted for a published version when the row's date is after `branch_today` (an unset moment counts as not after); today, the past, an archived version and a closed year stay refused. This narrows 5.5a-3a decision 3 for this one table; `PUT /api/timetable/versions/:id/day-keeps` stays off published versions by its edit lock check (`lockDraft`, 409 `version_not_draft`, tested) only | Decision 1; the task line names the migration; permission review should-fix 1 |
+| **Look first** (tests changed). The database tests "refuses a choice added or removed on a version that is not a draft" (`day-keeps.database.test.ts`) and the "day keep insert/delete" rows of `publish-chain.database.test.ts` keep their refusal on cases 0089 still refuses (today or earlier, an archived version, an unset moment) | Review correction 3: a requirement of this task, not code that fails |
+| **Look first** (a reading of the spec). The choice is taken for the dates a calendar save writes in a published run, per date and class, with the draft's shape and codes, the date checked first; an empty list removes it on any date written | Decision 2 with correction 1; `edge/time-dates-calendar`, "The Academic Vice Principal can choose which lessons are kept" |
+| **Look first** (a reading of the spec). The choice belongs to the published version in force on its date; a draft copied afterwards carries it, a draft started before does not and is marked out of date; a withdraw runs the earlier version's own choice | Decision 5 |
+| A choice for a date of the entry after today makes that date a date written, also on an edit of an unchanged entry | Decision 3 |
+| A stored choice that decides nothing after a save stays stored and is shown again when the day is shortened again | Decision 4 as changed by the spec review of the plan |
+| No new route, area, audit action or notice kind; the entry's audit entry carries `dayKeeps` (per version, date and class: before and after) | Decision 6 with correction 2 |
+| A choice that changes a stored choice marks the drafts of its dates out of date, also when the entry is otherwise unchanged | Decision 7 as changed by the spec review of the plan; `edge/timetable`, "Two drafts are open" |
+| The preview takes the ticks and shows their outcome; a tick it cannot apply is a line of `keepRefusals`, never thrown. The save refuses it with its own `day_keep_*` code, not a detail of `calendar_blocked` | Decisions 8 to 10 |
+
 ## 19 October 2026: calendar changes, stored one-day changes and bulk cancels (task 5.6b-2a)
 
 Plan approved on pull request #168 with corrections 1 and 2; decisions 1 to 13 confirmed there. Flagged on issue #42.

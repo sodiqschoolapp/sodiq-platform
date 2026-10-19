@@ -3,9 +3,10 @@ import { Injectable } from '@nestjs/common';
 import {
   CALENDAR_CANCEL_CAUSES,
   type CalendarLesson,
+  type CalendarDaysBody,
   type CalendarLessons,
   type DayChangeChoice,
-  type DayDecisionsBody,
+  type DayKeepBody,
   type ErrorDetail,
   type RuleResultAnswer,
   weekdaySchema,
@@ -86,6 +87,14 @@ import {
  * over the findings with the kept changes applied. A stored exam on a date
  * written, or a move between two stretches, still refuses the save (5.6b-1
  * decision 7; 5.6b-2a decision 3) until 5.6b-2c.
+ *
+ * Task 5.6b-2b (pull request #171): the choices of the lessons kept on the
+ * shortened days of the dates written (`edge/time-dates-calendar`, "A
+ * shortened day ...: The Academic Vice Principal can choose which lessons are
+ * kept") are stored for the version in force on each date before its stretch
+ * is checked, so the findings, the sorting and its key follow them; a choice
+ * the day cannot take refuses the save with the draft's codes (decision 9),
+ * and is a line of the preview, left out (decision 10).
  */
 
 /** One stretch of consecutive lesson dates of one published version. */
@@ -111,8 +120,21 @@ export interface CalendarRewrite {
     /** Task 5.6b-2a: the outcome of the stored changes per stretch, and the moves put back. */
     readonly dayChanges: readonly StretchDays[];
     readonly movedBack: readonly string[];
+    /** Task 5.6b-2b: each choice sent, per version, date and class, before and after. */
+    readonly dayKeeps: readonly KeepAudit[];
   } | null;
 }
+
+/** A choice of the lessons kept on a shortened day as the audit entry keeps it (task 5.6b-2b). */
+export interface KeepAudit {
+  readonly versionId: string;
+  readonly date: string;
+  readonly classId: string;
+  readonly before: readonly number[];
+  readonly after: readonly number[];
+}
+
+type KeepRefusal = CalendarLessons['keepRefusals'][number];
 
 /** The entry named in the notices. */
 export interface CalendarEvent {
@@ -132,6 +154,8 @@ export const NO_LESSONS: CalendarLessons = {
   blocked: [],
   stored: [],
   dayChanges: { key: calendarDaysKeyOf([]), kept: [], decide: [], dropped: [], bulk: [] },
+  shortenedDays: [],
+  keepRefusals: [],
   names: EMPTY_NAMES,
 };
 
@@ -270,8 +294,11 @@ export class TimetableCalendarLessons {
       readonly dates: readonly string[];
       readonly event: CalendarEvent;
       readonly preview: boolean;
-      /** Task 5.6b-2a: the key of the sorting shown and the choices, of the save. */
-      readonly days: DayDecisionsBody;
+      /**
+       * Task 5.6b-2a: the key of the sorting shown and the choices, of the
+       * save; task 5.6b-2b: the shortened days' choices, of the save and the preview.
+       */
+      readonly days: CalendarDaysBody;
     },
   ): Promise<CalendarRewrite> {
     const { branchId, today } = input;
@@ -280,7 +307,27 @@ export class TimetableCalendarLessons {
       // The calendar refuses today and the past first (answer 16); a fault here.
       throw new Error('A calendar rewrite reached today or a past date.');
     }
-    if (dates.length === 0) return { lessons: NO_LESSONS, audit: null };
+
+    // Task 5.6b-2b: a choice is refused by the save (decision 9) and left out
+    // by the preview, answered as a line (decision 10). Today is the
+    // transaction's, as the database's guard reads it (`pattern_rows_draft`, 0089).
+    const keepRefusals: KeepRefusal[] = [];
+    const refuseKeep = (keep: DayKeepBody, code: KeepRefusal['code']) => {
+      if (!input.preview) throw new ApiException(code, 409);
+      keepRefusals.push({ date: keep.date, classId: keep.classId, code });
+    };
+    const keepToday = await this.timetable.todayIn(transaction, branchId);
+    let keeps: DayKeepBody[] = [];
+    for (const keep of input.days.dayKeeps ?? []) {
+      if (keep.date <= keepToday) refuseKeep(keep, 'day_keep_date_passed');
+      else keeps.push(keep);
+    }
+    const noLessons = (): CalendarRewrite => {
+      // No date written: no choice has a day to decide.
+      for (const keep of keeps) refuseKeep(keep, 'day_keep_not_short');
+      return { lessons: { ...NO_LESSONS, keepRefusals }, audit: null };
+    };
+    if (dates.length === 0) return noLessons();
 
     // The published version of each date (decision 10: none, nothing written).
     const years = await transaction
@@ -324,7 +371,14 @@ export class TimetableCalendarLessons {
       if (id !== null) byVersion.set(id, [...(byVersion.get(id) ?? []), date]);
     }
     const written = [...byVersion.values()].flat().sort();
-    if (written.length === 0) return { lessons: NO_LESSONS, audit: null };
+    if (written.length === 0) return noLessons();
+    const writtenDates = new Set(written);
+    keeps = keeps.filter((keep) => {
+      if (writtenDates.has(keep.date)) return true;
+      refuseKeep(keep, 'day_keep_not_short');
+      return false;
+    });
+    const keepAudit: KeepAudit[] = [];
 
     // Each stretch of each version, read as if it started on its first date.
     const stretches: Stretch[] = [];
@@ -341,11 +395,47 @@ export class TimetableCalendarLessons {
           await this.pattern.stateOf(transaction, row, input.accountId, rows),
           part.last,
         );
+        // Task 5.6b-2b: the choices of the stretch stored for its version
+        // first, so the check reads them (`readDayKeeps`); one the day cannot
+        // take is refused, or left out by the preview with the stored one back.
+        const own = keeps.filter((keep) => part.first <= keep.date && keep.date <= part.last);
+        const storedKeeps = await this.storeKeeps(transaction, branchId, versionId, own);
         // A published version cannot be edited: a teacher out is "needs a
         // teacher" on each date, never a refusal (as for a withdraw).
-        const findings = await datedCheck(transaction, state, part.first, [], {
-          outOnStart: false,
-        });
+        const check = () =>
+          datedCheck(transaction, state, part.first, [], {
+            outOnStart: false,
+          });
+        let findings = await check();
+        const refusedHere: DayKeepBody[] = [];
+        for (const keep of own) {
+          const code = keepRefusalOf(keep, findings.dated.shortened);
+          if (code === null) continue;
+          refuseKeep(keep, code);
+          refusedHere.push(keep);
+        }
+        if (refusedHere.length > 0) {
+          await this.storeKeeps(
+            transaction,
+            branchId,
+            versionId,
+            refusedHere.map((keep) => ({
+              ...keep,
+              slotPositions: [...(storedKeeps.get(`${keep.date}|${keep.classId}`) ?? [])],
+            })),
+          );
+          findings = await check();
+        }
+        for (const keep of own) {
+          if (refusedHere.includes(keep)) continue;
+          keepAudit.push({
+            versionId,
+            date: keep.date,
+            classId: keep.classId,
+            before: storedKeeps.get(`${keep.date}|${keep.classId}`) ?? [],
+            after: [...keep.slotPositions].sort((a, b) => a - b),
+          });
+        }
         // Task 5.6b-2a: the stored one-day changes and bulk cancels of the
         // stretch, sorted as a publish sorts them (decision 2), the bulk
         // cancels on the findings with the kept changes applied.
@@ -591,12 +681,34 @@ export class TimetableCalendarLessons {
       bulk: bulkAll.map((one) => one.answer),
     };
     const named = dayChangeIdsOf(items, bulkAll);
+    // Task 5.6b-2b: the dates written that are shortened for a class.
+    const shortenedDays: CalendarLessons['shortenedDays'] = stretches
+      .flatMap((one) => one.findings.dated.shortened)
+      .map((one) => ({
+        date: one.date,
+        classId: one.classId,
+        lessonSlots: one.lessonSlots,
+        lessons: one.lessons.map((lesson) => ({
+          slotPosition: lesson.slotPosition,
+          entryIds: [...lesson.entryIds],
+          subjects: lesson.entryIds.flatMap((id) => {
+            const found = entryUnits.get(id);
+            return found === undefined ? [] : [found];
+          }),
+        })),
+        kept: [...one.kept],
+        chosen: one.chosen,
+        missingPositions: [...one.missingPositions],
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date) || a.classId.localeCompare(b.classId));
     let lessons: CalendarLessons = {
       ...NO_LESSONS,
       needsTeacher,
       blocked: blockedLines,
       stored,
       dayChanges,
+      shortenedDays,
+      keepRefusals,
     };
     let notices: WeekNotices = { notified: 0, marked: 0 };
     let shown: StoredLesson[] = [];
@@ -623,12 +735,18 @@ export class TimetableCalendarLessons {
           ...shown.map((one) => one.lesson.unitId),
           ...needsTeacher.map((one) => one.unitId),
           ...blockedLines.flatMap((one) => one.lessons.map((lesson) => lesson.unitId)),
+          ...shortenedDays.flatMap((one) =>
+            one.lessons.flatMap((lesson) => lesson.subjects.map((s) => s.unitId)),
+          ),
           ...named.unitIds,
         ],
         subjectIds: [
           ...shown.map((one) => one.lesson.subjectId),
           ...needsTeacher.map((one) => one.subjectId),
           ...blockedLines.flatMap((one) => one.lessons.map((lesson) => lesson.subjectId)),
+          ...shortenedDays.flatMap((one) =>
+            one.lessons.flatMap((lesson) => lesson.subjects.map((s) => s.subjectId)),
+          ),
           ...named.subjectIds,
         ],
         teacherIds: [...shown.flatMap((one) => one.lesson.teacherIds), ...teacherIds],
@@ -676,8 +794,52 @@ export class TimetableCalendarLessons {
         notices,
         dayChanges: days,
         movedBack: backs.map((one) => one.key).sort(),
+        dayKeeps: keepAudit,
       },
     };
+  }
+
+  /**
+   * Task 5.6b-2b: the choices given stored for a version, each replacing the
+   * stored one of its date and class (an empty list removes it), as the
+   * draft's choice is stored (`setDayKeep`). Answers the positions stored
+   * before, by date and class.
+   */
+  private async storeKeeps(
+    transaction: Transaction,
+    branchId: string,
+    versionId: string,
+    keeps: readonly DayKeepBody[],
+  ): Promise<Map<string, number[]>> {
+    const before = new Map<string, number[]>();
+    for (const keep of keeps) {
+      const rows = await transaction
+        .deleteFrom('timetable_day_keeps')
+        .where('version_id', '=', versionId)
+        .where('class_id', '=', keep.classId)
+        .where('kept_on', '=', keep.date)
+        .returning('slot_position')
+        .execute();
+      before.set(
+        `${keep.date}|${keep.classId}`,
+        rows.map((row) => row.slot_position).sort((a, b) => a - b),
+      );
+      if (keep.slotPositions.length > 0) {
+        await transaction
+          .insertInto('timetable_day_keeps')
+          .values(
+            keep.slotPositions.map((slotPosition) => ({
+              branch_id: branchId,
+              version_id: versionId,
+              class_id: keep.classId,
+              kept_on: keep.date,
+              slot_position: slotPosition,
+            })),
+          )
+          .execute();
+      }
+    }
+    return before;
   }
 
   /**
@@ -895,4 +1057,27 @@ function calendarDaysKeyOf(
       ),
     )
     .digest('hex');
+}
+
+/**
+ * Why a choice cannot be taken on its date (task 5.6b-2b, decision 2; the
+ * draft's refusals, 5.5a-2b-2 decision 6), or `null`: the date is not
+ * shortened for the class, a position is not a lesson of the class, or more
+ * lessons than the day's lesson slots. An empty list removes the stored
+ * choice on any date written (review correction 1).
+ */
+function keepRefusalOf(
+  keep: DayKeepBody,
+  shortened: DatedFindings['dated']['shortened'],
+): KeepRefusal['code'] | null {
+  if (keep.slotPositions.length === 0) return null;
+  const day = shortened.find((one) => one.date === keep.date && one.classId === keep.classId);
+  if (day === undefined) return 'day_keep_not_short';
+  if (
+    keep.slotPositions.some((one) => !day.lessons.some((lesson) => lesson.slotPosition === one))
+  ) {
+    return 'day_keep_lessons';
+  }
+  if (keep.slotPositions.length > day.lessonSlots) return 'day_keep_over_slots';
+  return null;
 }

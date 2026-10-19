@@ -5,8 +5,10 @@ import { weekdaySchema } from './setup.js';
 import {
   dayChangesAnswerSchema,
   dayDecisionsSchema,
+  dayKeepBodySchema,
   NEEDS_TEACHER_REASONS,
   previewNamesSchema,
+  shortenedDaySchema,
   transitionKeySchema,
 } from './timetable.js';
 
@@ -112,6 +114,21 @@ export const calendarEntryRecordSchema = calendarEntryFields.superRefine(refineE
 export type CalendarEntryRecord = z.infer<typeof calendarEntryRecordSchema>;
 
 /**
+ * The choices of the lessons kept on the shortened days of the dates a
+ * calendar save writes (task 5.6b-2b, pull request #171, decision 2): one per
+ * date and class, in the shape of the draft's choice (`dayKeepBodySchema`);
+ * an empty list of positions removes the stored choice.
+ */
+export const calendarDayKeepsSchema = z
+  .array(dayKeepBodySchema)
+  .max(500)
+  .refine((list) => new Set(list.map((one) => `${one.date}|${one.classId}`)).size === list.length, {
+    message: 'Each date and class once.',
+  });
+
+export type CalendarDayKeeps = z.infer<typeof calendarDayKeepsSchema>;
+
+/**
  * A create or an edit (task 5.6b-2a): the entry, with the key of the sorting
  * of the stored one-day changes and bulk cancels the preview showed
  * (`CalendarLessons.dayChanges.key`) and a choice for each "needs a
@@ -124,8 +141,24 @@ export const calendarSaveSchema = z
     ...calendarEntryFields.shape,
     dayChangesKey: transitionKeySchema.optional(),
     dayDecisions: dayDecisionsSchema.optional(),
+    /** Task 5.6b-2b: the shortened days' choices. */
+    dayKeeps: calendarDayKeepsSchema.optional(),
   })
   .superRefine(refineEntry);
+
+/**
+ * An archive or a restore: the body of a withdraw (task 5.6b-2a) and the
+ * shortened days' choices (task 5.6b-2b).
+ */
+export const calendarDaysBodySchema = z
+  .strictObject({
+    dayChangesKey: transitionKeySchema.optional(),
+    dayDecisions: dayDecisionsSchema.optional(),
+    dayKeeps: calendarDayKeepsSchema.optional(),
+  })
+  .default({});
+
+export type CalendarDaysBody = z.infer<typeof calendarDaysBodySchema>;
 
 export type CalendarSave = z.infer<typeof calendarSaveSchema>;
 
@@ -134,10 +167,27 @@ export type CalendarSave = z.infer<typeof calendarSaveSchema>;
  * `edge/time-dates-calendar`, "the impact preview is shown first"; decision 11).
  */
 export const calendarChangeSchema = z.discriminatedUnion('action', [
-  z.object({ action: z.literal('create'), record: calendarEntryRecordSchema }),
-  z.object({ action: z.literal('edit'), id: z.uuid(), record: calendarEntryRecordSchema }),
-  z.object({ action: z.literal('archive'), id: z.uuid() }),
-  z.object({ action: z.literal('restore'), id: z.uuid() }),
+  z.object({
+    action: z.literal('create'),
+    record: calendarEntryRecordSchema,
+    dayKeeps: calendarDayKeepsSchema.optional(),
+  }),
+  z.object({
+    action: z.literal('edit'),
+    id: z.uuid(),
+    record: calendarEntryRecordSchema,
+    dayKeeps: calendarDayKeepsSchema.optional(),
+  }),
+  z.object({
+    action: z.literal('archive'),
+    id: z.uuid(),
+    dayKeeps: calendarDayKeepsSchema.optional(),
+  }),
+  z.object({
+    action: z.literal('restore'),
+    id: z.uuid(),
+    dayKeeps: calendarDayKeepsSchema.optional(),
+  }),
 ]);
 
 export type CalendarChange = z.infer<typeof calendarChangeSchema>;
@@ -274,6 +324,36 @@ export const calendarLessonsSchema = z.object({
    * dates, sorted as a publish sorts them, with the key the save sends back.
    */
   dayChanges: dayChangesAnswerSchema,
+  /**
+   * Task 5.6b-2b: the dates written that are shortened for a class, with the
+   * lessons kept (the choice sent, the stored one, or by their order in the day).
+   */
+  shortenedDays: z.array(
+    shortenedDaySchema.extend({
+      /** Each lesson with its class or group and subject, named in `names`. */
+      lessons: z.array(
+        shortenedDaySchema.shape.lessons.element.extend({
+          subjects: z.array(z.object({ unitId: z.uuid(), subjectId: z.uuid() })),
+        }),
+      ),
+    }),
+  ),
+  /**
+   * Task 5.6b-2b, decision 10: the preview's ticks it cannot apply, left out
+   * (the stored choice decides); the save refuses them with the same code.
+   */
+  keepRefusals: z.array(
+    z.object({
+      date: schoolDateSchema,
+      classId: z.uuid(),
+      code: z.enum([
+        'day_keep_date_passed',
+        'day_keep_not_short',
+        'day_keep_lessons',
+        'day_keep_over_slots',
+      ]),
+    }),
+  ),
   names: previewNamesSchema,
 });
 

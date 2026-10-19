@@ -373,7 +373,10 @@ describe('the chain of published versions in the database', () => {
       }
     });
 
-    // Review correction 1: the five tables of `pattern_rows_draft`.
+    // Review correction 1: the five tables of `pattern_rows_draft`. Task 5.6b-2b
+    // (pull request #171, review correction 3): a published version's choice
+    // for a date after today is let through (0089), so the choice here is for
+    // today, which stays refused.
     it('refuses a pin, a lock and a shortened-day choice, written or removed', async () => {
       const f = await fixture();
       // One of each, written while the version was a draft.
@@ -398,7 +401,7 @@ describe('the chain of published versions in the database', () => {
           branch_id: g.branch,
           version_id: g.version,
           class_id: g.classId,
-          kept_on: '2026-11-02',
+          kept_on: TODAY,
           slot_position: 1,
         })
         .execute();
@@ -455,7 +458,7 @@ describe('the chain of published versions in the database', () => {
                 branch_id: f.branch,
                 version_id: f.version,
                 class_id: f.classId,
-                kept_on: '2026-11-02',
+                kept_on: TODAY,
                 slot_position: 1,
               })
               .execute(),

@@ -5,7 +5,7 @@ import {
   calendarDayQuerySchema,
   calendarEntryListSchema,
   calendarSaveSchema,
-  dayDecisionsBodySchema,
+  calendarDaysBodySchema,
   calendarEntrySchema,
   calendarPreviewSchema,
   setupIdParamsSchema,
@@ -15,7 +15,7 @@ import {
   type CalendarEntry,
   type CalendarEntryList,
   type CalendarSave,
-  type DayDecisionsBody,
+  type CalendarDaysBody,
   type CalendarPreview,
   type SetupIdParams,
 } from '@sodiq/shared';
@@ -85,7 +85,7 @@ export class CalendarController {
   archive(
     @CurrentAccess() access: Access,
     @ValidParams(setupIdParamsSchema) params: SetupIdParams,
-    @ValidBody(dayDecisionsBodySchema) days: DayDecisionsBody,
+    @ValidBody(calendarDaysBodySchema) days: CalendarDaysBody,
     @RequestId() requestId: string,
   ): Promise<CalendarEntry> {
     return this.calendar.archive(access, branchOf(access), params.id, days, requestId);
@@ -98,7 +98,7 @@ export class CalendarController {
   restore(
     @CurrentAccess() access: Access,
     @ValidParams(setupIdParamsSchema) params: SetupIdParams,
-    @ValidBody(dayDecisionsBodySchema) days: DayDecisionsBody,
+    @ValidBody(calendarDaysBodySchema) days: CalendarDaysBody,
     @RequestId() requestId: string,
   ): Promise<CalendarEntry> {
     return this.calendar.restore(access, branchOf(access), params.id, days, requestId);

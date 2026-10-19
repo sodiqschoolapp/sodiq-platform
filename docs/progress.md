@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 19 October 2026: task 5.6b-2b Calendar changes: the shortened day's choice over published dates
+
+- A calendar save (create, edit, archive, restore) and its preview take `dayKeeps` (per date and class, the draft's shape): stored for the published version in force on each date in `timetable_day_keeps` before its stretch is checked, so the lessons, the sorting and its key follow them (`TimetableCalendarLessons.storeKeeps`, `keepRefusalOf`). The save refuses a choice with the draft's codes (date first); the preview lists it in `keepRefusals` and leaves it out. An edit of an unchanged entry with a choice writes the choice's dates and marks the drafts.
+- Migration 0089: `pattern_rows_draft` lets a published version's choice be written for a date after `branch_today` (unset moment: refused). Answer `lessons.shortenedDays` (with each lesson's class and subject) and `keepRefusals`; archive and restore take `calendarDaysBodySchema`. The calendar dialog shows the shortened days with ticks (`calendar-shortened.tsx`).
+- Left out: exams and a move between two stretches (5.6b-2c); the two-grade group (5.6b-3); a template change that shortens published days (5.6b-4); a browser test (no published version under a calendar entry in the browser scene).
+
+The next sessions must know:
+
+- A special day's "follows weekday" applies only on a weekday that is not a working one (`dayOn`, `packages/timetable-rules/src/calendar.ts`): a working Tuesday follows itself, so the two-version test spans the vacation with its weekend days following Monday.
+- `storedRowsOf` of `calendar-lessons.test.ts` now holds `timetable_day_keeps`; the scene takes `three` for a class with three Monday lessons.
+- The next task is 5.6b-2c.
+
 ## 19 October 2026: task 5.6b-2a Calendar changes: stored one-day changes and bulk cancels sorted
 
 - 5.6b-2 split in three (5.6b-2a to 5.6b-2c, `docs/build-plan.md`). A calendar save (create, edit, archive, restore) over published dates sorts the stored one-day changes and bulk cancels of each stretch of its lesson dates as a publish does (`sortDayChanges`, `sortBulkOf`), under one key (`calendarDaysKeyOf`), writes over the findings with the kept changes applied, ends what is not applied in the stretch version's name (`settleDayChanges`) and records the bulk cancels' choices (`recordBulkBlocks`).

@@ -752,7 +752,7 @@ How to read the task lines:
   - Done when: a day off over a stored move and over a bulk cancel, an exam week and a shortened day over a move out of the date, and a save over two versions each has a test.
   - From 5.6b-1 (pull request #167, decision 7): until this task a calendar save whose changed dates hold a one-day change in force or a bulk cancel is refused `calendar_stored_changes` (`apps/api/src/modules/timetable/calendar-lessons.ts`); this task replaces the refusal with the sorting for those two kinds.
 
-- [ ] **5.6b-2b Calendar changes: the shortened day's choice over published dates** (5.6b-2 split in three, pull request #168, decision 1)
+- [x] **5.6b-2b Calendar changes: the shortened day's choice over published dates** (5.6b-2 split in three, pull request #168, decision 1)
   - Read: `edge/time-dates-calendar` ("A shortened day has 5 lesson slots"), `edge/timetable` (Versions and drafts), `edge/developer-rules`.
   - Build: the choice of which lessons of a shortened special day over published dates are kept, taken in the calendar save and its preview for the version in force and written to `timetable_day_keeps` (0074), which today a draft only may write (`pattern_rows_draft`): a migration lets a calendar save write a published version's choice for a date after today.
   - Done when: a special shortened day over published dates keeps the two lessons chosen, with a test, and the preview and the dated lessons follow the choice.
