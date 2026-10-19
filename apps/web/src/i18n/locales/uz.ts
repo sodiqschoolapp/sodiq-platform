@@ -3553,6 +3553,23 @@ export const uz: Texts<'one' | 'other'> = {
         tick: 'Oʻtish haftasi darslarini tekshirdim',
         tickNeeded: 'Eʼlon qilish uchun oʻtish haftasini belgilang.',
       },
+      dayChanges: {
+        title: 'Bir kunlik oʻzgarishlar',
+        keptTitle_one: 'Saqlanadi: {{count}}',
+        keptTitle_other: 'Saqlanadi: {{count}}',
+        decideTitle_one: 'Qaror kerak: {{count}}',
+        decideTitle_other: 'Qaror kerak: {{count}}',
+        droppedTitle_one: 'Bekor boʻladi: {{count}}',
+        droppedTitle_other: 'Bekor boʻladi: {{count}}',
+        cancel: 'dars bekor qilingan',
+        room: 'xona {{room}}',
+        move: '{{date}} {{time}} ga koʻchirilgan',
+        reason: 'Sabab: {{reason}}',
+        inVersion: '{{number}}-versiyada',
+        choice_drop: 'Oʻzgarishni bekor qilish',
+        choice_cancel: 'Darsni oʻsha kuni bekor qilish',
+        decisionNeeded: 'Qaror kerak boʻlgan har bir bir kunlik oʻzgarish uchun tanlang.',
+      },
       chain: {
         title: 'Keyingi eʼlon qilingan versiyalar',
         intro:
@@ -3598,6 +3615,12 @@ export const uz: Texts<'one' | 'other'> = {
           'Tekshirganingizdan keyin keyingi eʼlon qilingan versiyalar oʻzgardi. Ularni qayta tekshirib, tanlang.',
         transition_unacknowledged:
           'Oʻtish haftasi darslari yuklamaga mos emas yoki tekshirilgandan keyin oʻzgardi. Ularni qayta tekshiring va belgilang.',
+        day_change_undecided:
+          'Bir kunlik oʻzgarish uchun qaror kerak. U bilan nima boʻlishini tanlang.',
+        day_decision_unknown:
+          'Endi qaror talab qilmaydigan bir kunlik oʻzgarish uchun tanlov yuborildi. Qayta tekshiring.',
+        day_changes_changed:
+          'Tekshirganingizdan keyin bu sanalarning bir kunlik oʻzgarishlari oʻzgardi. Ularni qayta tekshiring.',
         version_start_too_early:
           'Boshlanish sanasi eng erta ertaga. Bugungi oʻzgarish — bir kunlik oʻzgarish.',
         version_start_outside_year: 'Boshlanish sanasi oʻquv yilidan tashqarida.',

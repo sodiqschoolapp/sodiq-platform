@@ -1,6 +1,7 @@
 import {
   classDisplayName,
   type CarryChangeAnswer,
+  type DayChangeChoice,
   type LoadRow,
   type PublishChain,
   type PublishRefusal,
@@ -22,6 +23,7 @@ import { nameOf } from '@/features/setup/setup-api';
 import { schoolDateText, weekdayName } from '@/lib/dates';
 import { numbersText } from './grid-conflicts';
 import { PublishChainQuestion } from './publish-chain';
+import { PublishDayChanges } from './publish-day-changes';
 import { PublishImpact } from './publish-impact';
 import { classNameFrom, PublishShortened } from './publish-shortened';
 import { ruleText } from './rule-text';
@@ -71,6 +73,8 @@ export function PublishStep({
   const [tickedKey, setTickedKey] = useState<string | null>(null);
   // Task 5.5a-3a: the answer to the later published versions, chosen by the person.
   const [chain, setChain] = useState<PublishChain | null>(null);
+  // Task 5.6a-5a: the choice for each "needs a decision" one-day change, by its key.
+  const [dayChoices, setDayChoices] = useState<Record<string, DayChangeChoice>>({});
   const check = useQuery(
     publishCheckQuery(branchId, version.id, startsOn === '' ? null : startsOn, chain),
   );
@@ -82,13 +86,18 @@ export function PublishStep({
       date,
       transitionKey,
       answered,
+      days,
     }: {
       date: string;
       transitionKey: string | null;
       answered: { chain: PublishChain; laterKey: string } | null;
+      days: {
+        dayChangesKey: string;
+        dayDecisions: { key: string; choice: DayChangeChoice }[];
+      } | null;
     }) => {
       key.current ??= crypto.randomUUID();
-      return publishVersion(version.id, date, key.current, transitionKey, answered);
+      return publishVersion(version.id, date, key.current, transitionKey, answered, days);
     },
     onSettled: async () => {
       key.current = null;
@@ -208,6 +217,9 @@ export function PublishStep({
         });
       case 'chain_carry_not_offered':
       case 'chain_changed':
+      case 'day_change_undecided':
+      case 'day_decision_unknown':
+      case 'day_changes_changed':
       case 'transition_unacknowledged':
       case 'version_start_too_early':
       case 'version_start_outside_year':
@@ -246,6 +258,15 @@ export function PublishStep({
         : `${unitOf(row)}, ${nameOf(row.subject.names, language)}`;
     };
     const ticked = transitionKey === null || tickedKey === transitionKey;
+    // Task 5.6a-5a: a choice counts only for an item shown now.
+    const decide = answer.impact?.dayChanges.decide ?? [];
+    const dayDecisions = decide.flatMap((item) => {
+      const choice = dayChoices[item.key];
+      return choice === undefined ? [] : [{ key: item.key, choice }];
+    });
+    const decided = dayDecisions.length === decide.length;
+    const days =
+      answer.impact === null ? null : { dayChangesKey: answer.impact.dayChanges.key, dayDecisions };
     const blocked = answer.refusals.some(
       (one) => one.code === 'pattern_blocked' || one.code === 'date_blocked',
     );
@@ -365,6 +386,16 @@ export function PublishStep({
           lessonsText={lessonsText}
         />
         {answer.impact !== null && (
+          <PublishDayChanges
+            impact={answer.impact}
+            choices={dayChoices}
+            canEdit={canEdit}
+            onChoose={(itemKey, choice) => {
+              setDayChoices((all) => ({ ...all, [itemKey]: choice }));
+            }}
+          />
+        )}
+        {answer.impact !== null && (
           <PublishImpact
             impact={answer.impact}
             ticked={ticked}
@@ -378,7 +409,7 @@ export function PublishStep({
         {canEdit && (
           <div>
             <Button
-              disabled={!answer.canPublish || !ticked || publish.isPending}
+              disabled={!answer.canPublish || !ticked || !decided || publish.isPending}
               onClick={() => {
                 void (async () => {
                   if (
@@ -390,7 +421,12 @@ export function PublishStep({
                       action: t('timetable.publish.action'),
                     })
                   ) {
-                    publish.mutate({ date: startsOn, transitionKey, answered });
+                    publish.mutate({
+                      date: startsOn,
+                      transitionKey,
+                      answered,
+                      days,
+                    });
                   }
                 })();
               }}
@@ -400,6 +436,11 @@ export function PublishStep({
             {answer.canPublish && !ticked && (
               <p className="mt-2 text-sm" data-tick-needed="true">
                 {t('timetable.publish.transition.tickNeeded')}
+              </p>
+            )}
+            {answer.canPublish && !decided && (
+              <p className="mt-2 text-sm" data-decision-needed="true">
+                {t('timetable.publish.dayChanges.decisionNeeded')}
               </p>
             )}
           </div>
