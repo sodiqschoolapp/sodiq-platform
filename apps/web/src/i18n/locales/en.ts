@@ -422,6 +422,17 @@ export const en = {
     move_unchanged: 'The lesson is already at that place. Choose another slot, date or room.',
     move_room_parts:
       'This lesson is part of a split or of parallel groups, so each part keeps its own room. Move it without a room, then change each part’s room.',
+    bulk_cancel_empty:
+      'No lesson of the chosen classes in those lesson slots is left to cancel. Choose other classes or slots.',
+    bulk_cancel_out_of_year:
+      'That date is outside every academic year of the branch. Choose a school date.',
+    class_not_active:
+      'A chosen class is archived or belongs to another academic year. Choose classes of this year.',
+    bulk_choice_missing:
+      'A lesson shared with classes not chosen still needs a choice. Check again and choose for each.',
+    bulk_choice_unknown: 'The shared lessons changed since the check. Check again.',
+    bulk_scope_changed:
+      'The lessons to cancel changed since the check. Check again before you cancel.',
     withdraw_started:
       'This version has started, so it can no longer be withdrawn. Publish a new version to change it.',
     withdraw_blocked:
@@ -2685,6 +2696,7 @@ export const en = {
         restore: 'Cancelled lesson restored',
         room_change: 'Room of a lesson changed for one day',
         move: 'Lesson moved for one day',
+        bulk_cancel: 'Lessons cancelled for an event (bulk cancel)',
       },
       teaching_load: {
         create: 'Teaching load row added',
@@ -3128,6 +3140,29 @@ export const en = {
       roomSend: 'Change the room',
       moveSend: 'Move the lesson',
       restoreSend: 'Restore the lesson',
+    },
+    bulk: {
+      open: 'Bulk cancel',
+      title: 'Bulk cancel on {{date}}',
+      classes: 'Classes',
+      everyClass: 'Every class of the branch',
+      slots: 'Lesson slots',
+      slot: 'Lesson {{number}}',
+      check: 'Check',
+      toCancel: 'Lessons to cancel',
+      noneToCancel: 'Only shared lessons, chosen below.',
+      broughtIn: 'other half of a double lesson',
+      shared: 'Shared by {{chosen}} with {{others}}',
+      choice_cancel: 'Cancel the whole lesson',
+      choice_keep: 'Keep it for the other classes; the chosen classes’ students are exempt',
+      alreadyCancelled: 'Already cancelled, left as they are',
+      held: 'Already started, held as they are',
+      chooseEach: 'Choose for each shared lesson.',
+      reasonNeeded: 'Write the reason for the bulk cancel.',
+      send: 'Cancel lessons',
+      lesson: '{{start}}–{{end}} {{unit}}, {{subject}}, {{teacher}}',
+      done_one: '{{count}} lesson was cancelled.',
+      done_other: '{{count}} lessons were cancelled.',
     },
     rule: {
       teacher_double: 'A teacher cannot be in two lessons at the same time.',

@@ -22,9 +22,10 @@ function mondaysAhead(count: number): string[] {
 // Task 5.6a-1, pull request #160. The publishable grid scene: the Academic
 // Vice Principal publishes from step 8, opens Day changes, cancels 7 Oxford's
 // Monday lesson with a reason and restores it, then changes its room and
-// moves it to another lesson slot of the day (task 5.6a-2, pull request #161).
+// moves it to another lesson slot of the day (task 5.6a-2, pull request #161),
+// and cancels it with a bulk cancel of lesson 3 (task 5.6a-3, pull request #162).
 // All names are invented.
-test('an Academic Vice Principal cancels a lesson for one day, restores it, changes its room and moves it', async ({
+test('an Academic Vice Principal cancels a lesson for one day, restores it, changes its room, moves it and bulk cancels it', async ({
   page,
 }) => {
   const account = accountOf('dayChanges');
@@ -106,4 +107,20 @@ test('an Academic Vice Principal cancels a lesson for one day, restores it, chan
   await expect(page.getByText(day.moved, { exact: true })).toBeVisible();
   await expect(page.locator('tbody tr').first()).toContainText('09:30–10:15');
   await expect(page.locator('tbody tr').first()).toContainText('Room 21');
+
+  // Task 5.6a-3: a bulk cancel of 7 Oxford in lesson 3, checked first, then
+  // sent with its reason; the moved lesson shows cancelled with the reason.
+  const bulk = en.timetable.bulk;
+  await page.getByRole('button', { name: bulk.open, exact: true }).click();
+  const bulkDialog = page.getByRole('dialog');
+  await bulkDialog
+    .getByRole('checkbox', { name: bulk.slot.replace('{{number}}', '3'), exact: true })
+    .check();
+  await bulkDialog.getByRole('button', { name: bulk.check, exact: true }).click();
+  await expect(bulkDialog.locator('[data-bulk-cancel] li')).toHaveCount(1);
+  await expect(bulkDialog.locator('[data-bulk-cancel] li')).toContainText('09:30–10:15');
+  await bulkDialog.getByLabel(day.reason, { exact: true }).fill('School concert');
+  await bulkDialog.getByRole('button', { name: bulk.send, exact: true }).click();
+  await expect(page.getByText('1 lesson was cancelled.', { exact: true })).toBeVisible();
+  await expect(page.locator('tbody tr').first()).toContainText('Cancelled: School concert');
 });

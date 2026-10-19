@@ -449,4 +449,165 @@ describe('the day page', () => {
     expect(await screen.findByText(en.timetable.day.restored)).not.toBeNull();
     expect(bodies).toEqual([{}, { roomId: uid(402), reason: 'Room 12 is taken' }]);
   });
+
+  // Task 5.6a-3: the bulk cancel of the date, a shared block chosen.
+  describe('the bulk cancel', () => {
+    const PRINCETON: SchoolClass = { ...OXFORD, id: uid(102), name: 'Princeton' };
+    const shared = (n: number, name: string) =>
+      lesson(n, {
+        start: 535,
+        end: 580,
+        unit: { kind: 'group', id: uid(700 + n), name },
+        subject: { id: uid(201), names: { uz: 'Ingliz tili', ru: 'Английский', en: 'English' } },
+      });
+    const checkAnswer = {
+      date: '2026-10-12',
+      cancel: [{ lesson: lesson(1), broughtIn: false }],
+      shared: [
+        {
+          blockId: uid(800),
+          pairBlockId: null,
+          lessons: [shared(11, '7-E-1'), shared(12, '7-E-2')],
+          chosenOnly: [],
+          chosenClasses: [{ id: OXFORD.id, name: '7 Oxford' }],
+          otherClasses: [{ id: PRINCETON.id, name: '7 Princeton' }],
+        },
+      ],
+      alreadyCancelled: [],
+      held: [],
+    };
+
+    it('checks the classes and slots, needs a choice for the shared block and sends what the check listed', async () => {
+      const page = await openPage({
+        extra: {
+          'GET /api/classes': () => json({ classes: [OXFORD, PRINCETON] }),
+          'POST /api/timetable/bulk-cancels/check': () => json(checkAnswer),
+          'POST /api/timetable/bulk-cancels': () =>
+            json({ id: uid(900), cancelled: [uid(301)], kept: [uid(800)] }),
+        },
+      });
+      fireEvent.click(await screen.findByRole('button', { name: en.timetable.bulk.open }));
+      const dialog = await screen.findByRole('dialog');
+      const check = within(dialog).getByRole('button', { name: en.timetable.bulk.check });
+      // The page's class is chosen; no slot yet, so nothing to check.
+      expect(
+        within(dialog).getByRole<HTMLInputElement>('checkbox', { name: '7 Oxford' }).checked,
+      ).toBe(true);
+      expect(check.hasAttribute('disabled')).toBe(true);
+      for (const number of [1, 2]) {
+        fireEvent.click(
+          within(dialog).getByRole('checkbox', {
+            name: en.timetable.bulk.slot.replace('{{number}}', String(number)),
+          }),
+        );
+      }
+      fireEvent.click(check);
+      const block = await within(dialog).findByRole('group', {
+        name: 'Shared by 7 Oxford with 7 Princeton',
+      });
+      expect(
+        within(dialog).getByText('08:00–08:45 7 Oxford, Mathematics, Karimova Aziza'),
+      ).not.toBeNull();
+      const send = within(dialog).getByRole('button', { name: en.timetable.bulk.send });
+      expect(send.hasAttribute('disabled')).toBe(true);
+      expect(within(dialog).getByText(en.timetable.bulk.chooseEach)).not.toBeNull();
+      fireEvent.click(within(block).getByRole('radio', { name: en.timetable.bulk.choice_keep }));
+      fireEvent.change(within(dialog).getByLabelText(en.timetable.day.reason), {
+        target: { value: 'Excursion to the museum' },
+      });
+      expect(send.hasAttribute('disabled')).toBe(false);
+      fireEvent.click(send);
+      expect(await screen.findByText('1 lesson was cancelled.')).not.toBeNull();
+      expect(
+        page.calls
+          .filter((call) => call.route.startsWith('POST /api/timetable/bulk-cancels'))
+          .map((call) => [call.route, call.body]),
+      ).toEqual([
+        [
+          'POST /api/timetable/bulk-cancels/check',
+          { date: '2026-10-12', classIds: [OXFORD.id], lessonNumbers: [1, 2] },
+        ],
+        [
+          'POST /api/timetable/bulk-cancels',
+          {
+            date: '2026-10-12',
+            classIds: [OXFORD.id],
+            lessonNumbers: [1, 2],
+            reason: 'Excursion to the museum',
+            blocks: [{ blockId: uid(800), choice: 'keep' }],
+            lessonIds: [uid(301)],
+          },
+        ],
+      ]);
+    });
+
+    it('asks for a new check when a class changes, and ticks every class with “Every class of the branch”', async () => {
+      await openPage({
+        extra: {
+          'GET /api/classes': () => json({ classes: [OXFORD, PRINCETON] }),
+          'POST /api/timetable/bulk-cancels/check': () => json(checkAnswer),
+        },
+      });
+      fireEvent.click(await screen.findByRole('button', { name: en.timetable.bulk.open }));
+      const dialog = await screen.findByRole('dialog');
+      fireEvent.click(
+        within(dialog).getByRole('checkbox', {
+          name: en.timetable.bulk.slot.replace('{{number}}', '1'),
+        }),
+      );
+      fireEvent.click(within(dialog).getByRole('button', { name: en.timetable.bulk.check }));
+      expect(await within(dialog).findByText(en.timetable.bulk.toCancel)).not.toBeNull();
+      fireEvent.click(within(dialog).getByRole('checkbox', { name: en.timetable.bulk.everyClass }));
+      expect(
+        within(dialog).getByRole<HTMLInputElement>('checkbox', { name: '7 Princeton' }).checked,
+      ).toBe(true);
+      expect(within(dialog).queryByText(en.timetable.bulk.toCancel)).toBeNull();
+      expect(
+        within(dialog)
+          .getByRole('button', { name: en.timetable.bulk.send })
+          .hasAttribute('disabled'),
+      ).toBe(true);
+    });
+
+    it('shows a refusal of the save with its text', async () => {
+      await openPage({
+        extra: {
+          'POST /api/timetable/bulk-cancels/check': () => json({ ...checkAnswer, shared: [] }),
+          'POST /api/timetable/bulk-cancels': () =>
+            json(
+              {
+                error: {
+                  code: 'bulk_scope_changed',
+                  message: 'ENGLISH TEXT FOR THE DEVELOPER',
+                  requestId: 'test-request',
+                },
+              },
+              409,
+            ),
+        },
+      });
+      fireEvent.click(await screen.findByRole('button', { name: en.timetable.bulk.open }));
+      const dialog = await screen.findByRole('dialog');
+      fireEvent.click(
+        within(dialog).getByRole('checkbox', {
+          name: en.timetable.bulk.slot.replace('{{number}}', '1'),
+        }),
+      );
+      fireEvent.click(within(dialog).getByRole('button', { name: en.timetable.bulk.check }));
+      await within(dialog).findByText(en.timetable.bulk.toCancel);
+      fireEvent.change(within(dialog).getByLabelText(en.timetable.day.reason), {
+        target: { value: 'School closes at 11:00' },
+      });
+      fireEvent.click(within(dialog).getByRole('button', { name: en.timetable.bulk.send }));
+      expect(await within(dialog).findByText(en.errors.bulk_scope_changed)).not.toBeNull();
+    });
+
+    it('offers no bulk cancel to the Principal', async () => {
+      await openPage({ role: 'principal' });
+      await waitFor(() => {
+        expect(rowsDrawn()).toHaveLength(1);
+      });
+      expect(screen.queryByRole('button', { name: en.timetable.bulk.open })).toBeNull();
+    });
+  });
 });

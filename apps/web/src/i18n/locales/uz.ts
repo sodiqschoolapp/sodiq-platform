@@ -432,6 +432,17 @@ export const uz: Texts<'one' | 'other'> = {
     move_unchanged: 'Dars allaqachon shu joyda. Boshqa vaqt, sana yoki xonani tanlang.',
     move_room_parts:
       'Bu dars guruhlarga boʻlingan blokning qismi, har bir qism oʻz xonasida qoladi. Uni xonasiz koʻchiring, soʻng har bir qismning xonasini almashtiring.',
+    bulk_cancel_empty:
+      'Tanlangan sinflarning bu darslarida bekor qilinadigan dars qolmagan. Boshqa sinf yoki darslarni tanlang.',
+    bulk_cancel_out_of_year:
+      'Bu sana filialning hech bir oʻquv yiliga kirmaydi. Oʻquv kunini tanlang.',
+    class_not_active:
+      'Tanlangan sinf arxivda yoki boshqa oʻquv yiliga tegishli. Shu yilning sinflarini tanlang.',
+    bulk_choice_missing:
+      'Tanlanmagan sinflar bilan umumiy dars uchun hali qaror yoʻq. Qayta tekshiring va har biri uchun tanlang.',
+    bulk_choice_unknown: 'Tekshiruvdan keyin umumiy darslar oʻzgardi. Qayta tekshiring.',
+    bulk_scope_changed:
+      'Tekshiruvdan keyin bekor qilinadigan darslar oʻzgardi. Bekor qilishdan oldin qayta tekshiring.',
     withdraw_started:
       'Bu versiya kuchga kirgan, uni endi qaytarib olib boʻlmaydi. Oʻzgartirish uchun yangi versiyani eʼlon qiling.',
     withdraw_blocked:
@@ -2707,6 +2718,7 @@ export const uz: Texts<'one' | 'other'> = {
         restore: 'Bekor qilingan dars tiklandi',
         room_change: 'Darsning xonasi bir kunga almashtirildi',
         move: 'Dars bir kunga koʻchirildi',
+        bulk_cancel: 'Tadbir uchun darslar bekor qilindi (ommaviy bekor qilish)',
       },
       teaching_load: {
         create: 'Oʻquv yuklamasi qatori qoʻshildi',
@@ -3157,6 +3169,29 @@ export const uz: Texts<'one' | 'other'> = {
       roomSend: 'Xonani almashtirish',
       moveSend: 'Darsni koʻchirish',
       restoreSend: 'Darsni tiklash',
+    },
+    bulk: {
+      open: 'Ommaviy bekor qilish',
+      title: '{{date}} kuni ommaviy bekor qilish',
+      classes: 'Sinflar',
+      everyClass: 'Filialning barcha sinflari',
+      slots: 'Darslar',
+      slot: '{{number}}-dars',
+      check: 'Tekshirish',
+      toCancel: 'Bekor qilinadigan darslar',
+      noneToCancel: 'Faqat umumiy darslar, qaror quyida.',
+      broughtIn: 'juft darsning ikkinchi yarmi',
+      shared: '{{chosen}} va {{others}} uchun umumiy',
+      choice_cancel: 'Darsni butunlay bekor qilish',
+      choice_keep: 'Boshqa sinflar uchun qoldirish; tanlangan sinflar oʻquvchilari ozod',
+      alreadyCancelled: 'Allaqachon bekor qilingan, oʻzgarishsiz qoladi',
+      held: 'Allaqachon boshlangan, oʻzgarishsiz qoladi',
+      chooseEach: 'Har bir umumiy dars uchun tanlang.',
+      reasonNeeded: 'Ommaviy bekor qilish sababini yozing.',
+      send: 'Darslarni bekor qilish',
+      lesson: '{{start}}–{{end}} {{unit}}, {{subject}}, {{teacher}}',
+      done_one: '{{count}} ta dars bekor qilindi.',
+      done_other: '{{count}} ta dars bekor qilindi.',
     },
     rule: {
       teacher_double: 'Oʻqituvchi bir vaqtda ikkita darsda boʻla olmaydi.',

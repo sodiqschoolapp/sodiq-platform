@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 19 October 2026: task 5.6a-3 One-day changes: bulk cancel
+
+- On "Day changes" the Academic Vice Principal (and the Super Admin) open "Bulk cancel": the classes (or every class of the branch), the lesson numbers of the date and a reason; "Check" (`POST /api/timetable/bulk-cancels/check`) lists the lessons to cancel, the other half of a double brought in, the lessons already cancelled, a started half held, and each block shared with classes not chosen, which needs "cancel the whole lesson" or "keep it, the chosen classes' students exempt"; the save (`POST /api/timetable/bulk-cancels`) sends what the check listed.
+- Each class's slots are read from its own day of the date by clock time; today's started lessons and past dates are cancelled too (the calendar's "school closes at 11:00" row); a kept block loses only its parts fed by chosen classes alone and keeps its class claims.
+- Cancelled with cause `reason` (each restores alone), marked, one `timetable.day_changed` per teacher, one audit entry `lesson.bulk_cancel`; stored in `bulk_cancels`, `bulk_cancel_classes`, `bulk_cancel_spans`, `bulk_cancel_blocks` (0086).
+- Left out: the exempt cells and their notices (8.5), applying it again after a publish (5.6a-5), the exam week after publishing (5.6b), a lesson with data (6.1), all by From lines; the undo of a whole bulk cancel (not in the spec); a browser test of a shared block kept (the route and page tests cover it; the browser scene has no shared block).
+
+The next sessions must know:
+
+- `scopeOf` (`bulk-cancels.service.ts`) computes what a bulk cancel covers; the save computes it again under the locks and refuses `bulk_scope_changed`, `bulk_choice_missing`, `bulk_choice_unknown` when it differs from the check.
+- `classSlotsOn` and `dayLessonsOf` are exported from `day-changes.service.ts`.
+- The next task is 5.6a-4.
+
 ## 19 October 2026: task 5.6a-2 One-day changes: room change and move of one lesson
 
 - On "Day changes" the Academic Vice Principal (and the Super Admin) change a lesson's room for its date (`POST /api/timetable/lessons/:id/room`) or move it to a lesson slot of a date in its quarter (`/move`), each with a reason; a refused restore is sent again into a room it offered (`/restore` with `{ roomId, reason }`).

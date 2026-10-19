@@ -46,6 +46,7 @@ import {
 import { useView } from '@/features/access/use-view';
 import { classesQuery } from '@/features/classes/classes-api';
 import { roomsQuery } from '@/features/setup/setup-api';
+import { BulkCancelDialog } from './bulk-cancel-dialog';
 import { ruleText } from './rule-text';
 import {
   cancelLesson,
@@ -96,6 +97,8 @@ export function DayPage(): React.JSX.Element {
     | null
   >(null);
   const [message, setMessage] = useState<string | null>(null);
+  // The bulk cancel of the date (task 5.6a-3).
+  const [bulk, setBulk] = useState(false);
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: timetableKey(branchId) });
   const restore = useMutation({
@@ -132,6 +135,20 @@ export function DayPage(): React.JSX.Element {
         { label: t('home.title'), to: '/' },
         { label: t('timetable.title'), to: '/timetable' },
       ]}
+      actions={
+        edits && date !== null && classId !== null ? (
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setMessage(null);
+              restore.reset();
+              setBulk(true);
+            }}
+          >
+            {t('timetable.bulk.open')}
+          </Button>
+        ) : undefined
+      }
     />
   );
   if (versions.isError || classes.isError) {
@@ -334,6 +351,23 @@ export function DayPage(): React.JSX.Element {
           onCancelled={async () => {
             setCancelling(null);
             setMessage(t('timetable.day.cancelled'));
+            await refresh();
+          }}
+        />
+      )}
+      {bulk && (
+        <BulkCancelDialog
+          date={date}
+          classes={active}
+          startClassId={classId}
+          slotCount={day.data?.slots.length ?? 0}
+          language={language}
+          onClose={() => {
+            setBulk(false);
+          }}
+          onDone={async (answer) => {
+            setBulk(false);
+            setMessage(t('timetable.bulk.done', { count: answer.cancelled.length }));
             await refresh();
           }}
         />
