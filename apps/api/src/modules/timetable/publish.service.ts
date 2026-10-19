@@ -5,6 +5,7 @@ import {
   timetableVersionSchema,
   type CancelledLesson,
   type DayChangeChoice,
+  type DayDecisions,
   type DayKeep,
   type DayKeepBody,
   type ErrorCode,
@@ -133,7 +134,7 @@ interface Findings {
  * bulk cancels' together; a place cancelled by either is cancelled
  * (decision 13).
  */
-function planOfRun(
+export function planOfRun(
   sorting: DaySorting,
   bulk: readonly SortedBulk[],
   decisions: ReadonlyMap<string, DayChangeChoice>,
@@ -151,7 +152,7 @@ function planOfRun(
  * one-day change or a lesson of the branch; another branch's or an unknown
  * key is 404, before any lock or write.
  */
-async function refuseUnknownKeys(
+export async function refuseUnknownKeys(
   transaction: Transaction,
   branchId: string,
   keys: readonly string[],
@@ -199,7 +200,7 @@ async function refuseUnknownKeys(
 }
 
 /** What the audit entry of a publish or a carry keeps of the one-day changes of its run. */
-type DayAudit = {
+export type DayAudit = {
   kept: string[];
   decided: { key: string; choice: DayChangeChoice | null }[];
   dropped: string[];
@@ -212,13 +213,98 @@ type DayAudit = {
 type BulkChoiceAudit = BulkChoiceEntry;
 type BulkAudit = { kept: string[]; decided: BulkChoiceAudit[]; carried: BulkChoiceAudit[] };
 
+/** The choices sent: of one-day changes by key, of bulk cancels' blocks by `dayDecisionKeyOf`. */
+export function dayDecisionsOf(sent: DayDecisions | undefined): {
+  decisions: Map<string, DayChangeChoice>;
+  bulkDecisions: Map<string, DayChangeChoice>;
+} {
+  const list = sent ?? [];
+  return {
+    decisions: new Map(
+      list.filter((one) => one.blockId === undefined).map((one) => [one.key, one.choice]),
+    ),
+    // Task 5.6a-5b-1: the choices of bulk cancels' blocks, by `dayDecisionKeyOf`.
+    bulkDecisions: new Map(
+      list
+        .filter((one) => one.blockId !== undefined)
+        .map((one) => [dayDecisionKeyOf(one), one.choice]),
+    ),
+  };
+}
+
+/**
+ * What refuses a write over a sorting (tasks 5.6a-5a and 5.6a-5b-1; a
+ * withdraw too, task 5.6a-5b-2): a key other than the sorting's
+ * (`day_changes_changed`), a "needs a decision" item with no choice, a
+ * choice for no such item, and a choice of the other kind.
+ */
+export function dayRefusalsOf(
+  days: {
+    readonly key: string;
+    readonly items: readonly SortedDayChange[];
+    readonly bulk: readonly SortedBulk[];
+  },
+  input: {
+    readonly dayChangesKey?: string | undefined;
+    readonly dayDecisions?: DayDecisions | undefined;
+  },
+): PublishRefusal[] {
+  const refusals: PublishRefusal[] = [];
+  const { decisions } = dayDecisionsOf(input.dayDecisions);
+  const bulkSent = (input.dayDecisions ?? []).filter((one) => one.blockId !== undefined);
+  const bulkDecisions = new Set(bulkSent.map((one) => dayDecisionKeyOf(one)));
+  const { key, items, bulk } = days;
+  if (
+    (items.length > 0 || bulk.length > 0 || input.dayChangesKey !== undefined) &&
+    input.dayChangesKey !== key
+  ) {
+    refusals.push({ code: 'day_changes_changed' });
+  }
+  const open = new Set(
+    items.filter((one) => one.category === 'decide').map((one) => one.answer.key),
+  );
+  for (const one of [...open].sort()) {
+    if (!decisions.has(one)) refusals.push({ code: 'day_change_undecided', key: one });
+  }
+  for (const one of [...decisions.keys()].sort()) {
+    if (!open.has(one)) refusals.push({ code: 'day_decision_unknown', key: one });
+    else if (decisions.get(one) === 'keep') {
+      refusals.push({ code: 'day_choice_not_offered', key: one });
+    }
+  }
+  const openBulk = openBulkBlocks(bulk);
+  for (const item of bulk) {
+    for (const block of item.blocks) {
+      if (block.carried === null && !bulkDecisions.has(block.decisionKey)) {
+        refusals.push({
+          code: 'day_change_undecided',
+          key: item.answer.key,
+          blockId: block.patternBlockId,
+          blockDate: block.blockDate,
+        });
+      }
+    }
+  }
+  for (const one of [...bulkSent].sort((a, b) =>
+    dayDecisionKeyOf(a) < dayDecisionKeyOf(b) ? -1 : 1,
+  )) {
+    const at = { key: one.key, blockId: one.blockId, blockDate: one.blockDate };
+    if (!openBulk.has(dayDecisionKeyOf(one))) {
+      refusals.push({ code: 'day_decision_unknown', ...at });
+    } else if (one.choice === 'drop') {
+      refusals.push({ code: 'day_choice_not_offered', ...at });
+    }
+  }
+  return refusals;
+}
+
 /** The one-day changes of a carried version for its audit entry, none when it wrote nothing. */
 function dayOfCarry(days: DayAudit | undefined): { dayChanges?: DayAudit } {
   return days === undefined ? {} : { dayChanges: days };
 }
 
 /** The outcome of every stored one-day change of a run for the audit entry, by key (review should-fix 3). */
-function dayAuditOf(
+export function dayAuditOf(
   items: readonly SortedDayChange[],
   decisions: ReadonlyMap<string, DayChangeChoice>,
   settled: { readonly ended: readonly string[]; readonly recordedAgain: readonly string[] },
@@ -243,7 +329,7 @@ function dayAuditOf(
 }
 
 /** The bulk cancels of a run for the audit entry (task 5.6a-5b-1). */
-function bulkAuditOf(
+export function bulkAuditOf(
   items: readonly SortedBulk[],
   recorded: { readonly decided: BulkChoiceAudit[]; readonly carried: BulkChoiceAudit[] },
 ): BulkAudit | null {
@@ -256,7 +342,7 @@ function bulkAuditOf(
 }
 
 /** A refusal as a detail of `publish_blocked` (decision 12). */
-function detailOf(refusal: PublishRefusal): ErrorDetail {
+export function detailOf(refusal: PublishRefusal): ErrorDetail {
   const path =
     refusal.step !== undefined
       ? `steps.${refusal.step}`
@@ -576,58 +662,18 @@ export class TimetablePublish {
     // Task 5.6a-5a: the one-day changes as shown, and a choice for each
     // "needs a decision" item (edge/timetable, Versions and drafts: "Publish
     // waits until every 'needs a decision' item is settled").
-    const decisions = new Map(
-      (input.dayDecisions ?? [])
-        .filter((one) => one.blockId === undefined)
-        .map((one) => [one.key, one.choice]),
-    );
-    // Task 5.6a-5b-1: the choices of bulk cancels' blocks, by `dayDecisionKeyOf`.
-    const bulkSent = (input.dayDecisions ?? []).filter((one) => one.blockId !== undefined);
-    const bulkDecisions = new Map(bulkSent.map((one) => [dayDecisionKeyOf(one), one.choice]));
+    const { decisions, bulkDecisions } = dayDecisionsOf(input.dayDecisions);
     if (findings.days !== null) {
-      const { key, items } = findings.days;
-      const bulkItems = [...findings.days.bulk.values()].flat();
-      if (
-        (items.length > 0 || bulkItems.length > 0 || input.dayChangesKey !== undefined) &&
-        input.dayChangesKey !== key
-      ) {
-        findings.refusals.push({ code: 'day_changes_changed' });
-      }
-      const open = new Set(
-        items.filter((one) => one.category === 'decide').map((one) => one.answer.key),
+      findings.refusals.push(
+        ...dayRefusalsOf(
+          {
+            key: findings.days.key,
+            items: findings.days.items,
+            bulk: [...findings.days.bulk.values()].flat(),
+          },
+          input,
+        ),
       );
-      for (const one of [...open].sort()) {
-        if (!decisions.has(one)) findings.refusals.push({ code: 'day_change_undecided', key: one });
-      }
-      for (const one of [...decisions.keys()].sort()) {
-        if (!open.has(one)) findings.refusals.push({ code: 'day_decision_unknown', key: one });
-        else if (decisions.get(one) === 'keep') {
-          findings.refusals.push({ code: 'day_choice_not_offered', key: one });
-        }
-      }
-      const openBulk = openBulkBlocks(bulkItems);
-      for (const item of bulkItems) {
-        for (const block of item.blocks) {
-          if (block.carried === null && !bulkDecisions.has(block.decisionKey)) {
-            findings.refusals.push({
-              code: 'day_change_undecided',
-              key: item.answer.key,
-              blockId: block.patternBlockId,
-              blockDate: block.blockDate,
-            });
-          }
-        }
-      }
-      for (const one of [...bulkSent].sort((a, b) =>
-        dayDecisionKeyOf(a) < dayDecisionKeyOf(b) ? -1 : 1,
-      )) {
-        const at = { key: one.key, blockId: one.blockId, blockDate: one.blockDate };
-        if (!openBulk.has(dayDecisionKeyOf(one))) {
-          findings.refusals.push({ code: 'day_decision_unknown', ...at });
-        } else if (one.choice === 'drop') {
-          findings.refusals.push({ code: 'day_choice_not_offered', ...at });
-        }
-      }
     }
     if (findings.refusals.length > 0) {
       throw new ApiException('publish_blocked', 409, undefined, findings.refusals.map(detailOf));

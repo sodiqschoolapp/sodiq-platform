@@ -455,7 +455,7 @@ export const uz: Texts<'one' | 'other'> = {
     withdraw_started:
       'Bu versiya kuchga kirgan, uni endi qaytarib olib boʻlmaydi. Oʻzgartirish uchun yangi versiyani eʼlon qiling.',
     withdraw_blocked:
-      'Qayta kuchga kiradigan versiya koʻrsatilgan sanalarda bloklovchi toʻqnashuvga uchraydi. Ularni hal qilib, qayta qaytarib oling.',
+      'Qaytarib olish quyidagi sabablarga koʻra rad etildi: qayta kuchga kiradigan versiyaning bloklovchi toʻqnashuvi yoki qaror talab qiladigan bir kunlik oʻzgarish. Ularni hal qilib, qayta qaytarib oling.',
     draft_not_ready:
       'Qoralamaning bir qadami tayyor emas. Avval tayyor emas deb belgilangan qadamlarni tugating.',
     load_unit_year:

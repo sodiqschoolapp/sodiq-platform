@@ -13,6 +13,8 @@ import {
   publishCheckSchema,
   timetableVersionListSchema,
   timetableVersionSchema,
+  withdrawCheckSchema,
+  type WithdrawBody,
   type DayKeepBody,
   type LessonCancelBody,
   type LessonCorrectionBody,
@@ -393,13 +395,32 @@ export const publishVersion = (
   ).then((answer) => timetableVersionSchema.parse(answer));
 
 /** The withdraw of a published version before its start (task 5.5c-2a); `key` makes a repeat harmless. */
-export const withdrawVersion = (versionId: string, key: string) =>
+/**
+ * What a withdraw would do with the stored one-day changes and bulk cancels
+ * of the withdrawn dates (task 5.6a-5b-2), read when the dialog opens.
+ */
+export const withdrawCheckQuery = (branchId: string | null, versionId: string) =>
+  queryOptions({
+    queryKey: [...timetableKey(branchId), 'load', versionId, 'withdraw-check'],
+    queryFn: async () =>
+      withdrawCheckSchema.parse(
+        await answerOf(
+          api.GET('/api/timetable/versions/{id}/withdraw-check', {
+            params: { header: branchHeader(), path: { id: versionId } },
+          }),
+        ),
+      ),
+  });
+
+/** Task 5.6a-5b-2: with the key of the sorting shown and the choices of its "needs a decision" items. */
+export const withdrawVersion = (versionId: string, key: string, body: WithdrawBody) =>
   answerOf(
     api.POST('/api/timetable/versions/{id}/withdraw', {
       params: {
         header: { ...branchHeader(), 'Idempotency-Key': key },
         path: { id: versionId },
       },
+      body,
     }),
   ).then((answer) => timetableVersionSchema.parse(answer));
 

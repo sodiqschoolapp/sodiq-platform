@@ -1,10 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import {
+  dayDecisionKeyOf,
   timetableVersionSchema,
   type ErrorCode,
   type ErrorDetail,
   type RuleResultAnswer,
   type TimetableVersion,
+  type WithdrawBody,
+  type WithdrawCheck,
 } from '@sodiq/shared';
 import {
   addDays,
@@ -15,7 +18,7 @@ import {
 } from '@sodiq/timetable-rules';
 import { sql } from 'kysely';
 import { RequestKeys } from '../../database/request-keys.js';
-import { Transactions, type Transaction } from '../../database/transactions.js';
+import { Transactions, transactionMoment, type Transaction } from '../../database/transactions.js';
 import type { JsonValue } from '../../database/types.generated.js';
 import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
@@ -23,20 +26,41 @@ import { Audit } from '../audit/audit.service.js';
 import { Notifications } from '../notifications/notifications.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { laterVersionsOf, runningUntil } from './chain.js';
-import { datedCheck } from './dated-check.js';
+import {
+  bulkKeyPartOf,
+  bulkRecordsOf,
+  recordBulkBlocks,
+  sortBulkOf,
+  type SortedBulk,
+} from './bulk-cancels-kept.js';
+import { datedCheck, type DatedFindings } from './dated-check.js';
 import { removeDatedLessons, writeDatedLessons } from './dated-lessons.js';
+import {
+  dayChangesKeyOf,
+  settleDayChanges,
+  sortDayChanges,
+  type DaySorting,
+} from './day-changes-kept.js';
+import { dayChangeIdsOf, namesOf } from './impact.js';
 import { runsOf, syncJournals } from './journals.js';
 import { markWithdrawn, outOfDateColumn } from './out-of-date.js';
-import { TimetablePattern } from './pattern.service.js';
+import { TimetablePattern, type PatternState } from './pattern.service.js';
 import {
   PUBLISH_LOCK,
   PUBLISH_REFUSALS,
+  bulkAuditOf,
   datedAuditOf,
+  dayAuditOf,
+  dayDecisionsOf,
+  dayRefusalsOf,
+  detailOf,
   lockPublishChain,
+  planOfRun,
+  refuseUnknownKeys,
   refusingPublish,
 } from './publish.service.js';
 import { resultAnswerOf } from './rule-answers.js';
-import { Timetable } from './timetable.service.js';
+import { Timetable, type VersionRow } from './timetable.service.js';
 import { sendWeekChanges, snapshotWeek } from './week-changes.js';
 
 /**
@@ -65,6 +89,28 @@ function blockedDetail(code: 'pattern_blocked' | 'date_blocked', result: RuleRes
 }
 
 /**
+ * What a withdraw finds before it writes (task 5.5c-2a; task 5.6a-5b-2): the
+ * version that runs again and until when, its state and dated check over the
+ * withdrawn dates, the blocked results, and the stored one-day changes and
+ * bulk cancels of those dates sorted as a publish sorts them (decision 1).
+ * The withdraw check route and the withdraw read the same, both with the
+ * version still published (review correction 1), so their keys agree.
+ */
+interface WithdrawFindings {
+  readonly version: VersionRow;
+  readonly earlier: { readonly id: string; readonly number: number } | null;
+  readonly runEnd: string;
+  /** The version that runs again, read as if it started on the withdrawn start; with none, the withdrawn version's own. */
+  readonly state: PatternState;
+  /** Its dated check; with no version running again, with no lessons (decision 13). */
+  readonly dated: DatedFindings;
+  readonly blocked: ErrorDetail[];
+  readonly sorting: DaySorting;
+  readonly bulk: readonly SortedBulk[];
+  readonly key: string;
+}
+
+/**
  * Withdraw (task 5.5c-2a, pull request #156; `06`, How surprises are
  * prevented: "Withdraw. A published version can be withdrawn only before its
  * start date."; `edge/timetable`, Versions and drafts: "'Withdraw' works only
@@ -90,27 +136,95 @@ export class TimetableWithdraw {
     private readonly notifications: Notifications,
   ) {}
 
+  /**
+   * What a withdraw would do with the stored one-day changes and bulk cancels
+   * of the withdrawn dates (task 5.6a-5b-2), written nowhere: a view, as the
+   * publish check (decision 7). Refused as the withdraw is.
+   */
+  check(access: Access, id: string): Promise<WithdrawCheck> {
+    const branchId = branchOf(access);
+    return this.transactions.run(access.branchIds, async (transaction) => {
+      await this.timetable.findVersion(transaction, branchId, id);
+      const found = await this.findingsOf(transaction, access, id);
+      const named = dayChangeIdsOf(found.sorting.items, found.bulk);
+      const { names } = await namesOf(
+        transaction,
+        { ...named, teacherIds: [] },
+        new Map(found.state.pattern.model.data.units.map((unit) => [unit.id, unit] as const)),
+      );
+      return {
+        runsAgain: found.earlier,
+        runsAgainUntil: found.earlier === null ? null : found.runEnd,
+        dayChanges: {
+          key: found.key,
+          kept: found.sorting.items
+            .filter((one) => one.category === 'kept')
+            .map((one) => one.answer),
+          decide: found.sorting.items
+            .filter((one) => one.category === 'decide')
+            .map((one) => one.answer),
+          dropped: found.sorting.items
+            .filter((one) => one.category === 'dropped')
+            .map((one) => one.answer),
+          bulk: found.bulk.map((one) => one.answer),
+        },
+        names,
+      };
+    });
+  }
+
   /** Permission and the version's branch before the request key (`.claude/rules/api.md`). */
-  withdraw(access: Access, id: string, key: string, requestId: string): Promise<TimetableVersion> {
+  withdraw(
+    access: Access,
+    id: string,
+    input: WithdrawBody,
+    key: string,
+    requestId: string,
+  ): Promise<TimetableVersion> {
     const branchId = branchOf(access);
     return refusingPublish(
       () =>
         this.transactions.run(access.branchIds, async (transaction) => {
-          await sql`select pg_advisory_xact_lock(${PUBLISH_LOCK})`.execute(transaction);
+          // Task 5.6a-5b-2 (decision 12 of the review): every key and block
+          // of a decision is the branch's, checked before any lock.
+          await refuseUnknownKeys(
+            transaction,
+            branchId,
+            (input.dayDecisions ?? []).map((one) => one.key),
+            (input.dayDecisions ?? []).flatMap((one) =>
+              one.blockId === undefined ? [] : [one.blockId],
+            ),
+          );
+          // Permission review should-fix 6: the path id before any lock.
           await this.timetable.findVersion(transaction, branchId, id);
+          await sql`select pg_advisory_xact_lock(${PUBLISH_LOCK})`.execute(transaction);
           const once = await this.requestKeys.runOnce(
             transaction,
             {
               key,
               scope: 'timetable.withdraw',
               accountId: access.accountId,
-              input: { versionId: id },
+              input: {
+                versionId: id,
+                dayChangesKey: input.dayChangesKey ?? null,
+                dayDecisions: [...(input.dayDecisions ?? [])]
+                  .map((one) => ({ at: dayDecisionKeyOf(one), one }))
+                  .sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0))
+                  .map(({ one }) => ({
+                    key: one.key,
+                    ...(one.blockId === undefined
+                      ? {}
+                      : { blockId: one.blockId, blockDate: one.blockDate ?? null }),
+                    choice: one.choice,
+                  })),
+              },
             },
             async () =>
               (await this.withdrawLocked(
                 transaction,
                 access,
                 id,
+                input,
                 requestId,
               )) as unknown as JsonValue,
           );
@@ -124,33 +238,29 @@ export class TimetableWithdraw {
     transaction: Transaction,
     access: Access,
     id: string,
+    input: WithdrawBody,
     requestId: string,
   ): Promise<TimetableVersion> {
     const branchId = branchOf(access);
     const named = await this.timetable.findVersion(transaction, branchId, id);
     await lockPublishChain(transaction, branchId, named.academic_year_id);
-    const version = await this.timetable.versionRow(transaction, id);
-    if (version.status !== 'published') {
-      throw new ApiException('version_not_published', 409);
+    // Review correction 1: everything is read with the version still
+    // published, as the check reads it, before the archive below.
+    const found = await this.findingsOf(transaction, access, id);
+    const { version, earlier, runEnd } = found;
+    // Task 5.6a-5b-2 (decision 10): the sorting as shown and a choice for each
+    // "needs a decision" item, refused with the blocked results in one answer.
+    const details = [
+      ...found.blocked,
+      ...dayRefusalsOf({ key: found.key, items: found.sorting.items, bulk: found.bulk }, input).map(
+        detailOf,
+      ),
+    ];
+    if (details.length > 0) {
+      throw new ApiException('withdraw_blocked', 409, undefined, details);
     }
-    if (version.year_status === 'closed') {
-      throw new ApiException('timetable_year_closed', 409);
-    }
-    const today = await this.timetable.todayIn(transaction, branchId);
-    if (version.starts_on <= today) {
-      throw new ApiException('withdraw_started', 409);
-    }
-
-    // Decision 3: the chain as it stands before the withdraw; the version in
-    // force before it, a tie on a start to the higher number (`runsOf`), runs
-    // again to the day before the next published start, else the year's end.
-    const chain = runsOf(await laterVersionsOf(transaction, version, version.start_date));
-    const earlier = chain.filter((one) => one.run.from < version.starts_on).at(-1) ?? null;
-    const next = chain
-      .map((one) => one.run.from)
-      .filter((from) => from > version.starts_on)
-      .sort()[0];
-    const runEnd = next === undefined ? version.end_date : addDays(next, -1);
+    const { decisions, bulkDecisions } = dayDecisionsOf(input.dayDecisions);
+    const plan = planOfRun(found.sorting, found.bulk, decisions, bulkDecisions);
 
     // Task 5.5c-3a: the lessons before the withdraw, read before its write.
     const week = await snapshotWeek(transaction, branchId, version.starts_on, runEnd);
@@ -160,77 +270,38 @@ export class TimetableWithdraw {
       .where('id', '=', id)
       .execute();
 
-    let earlierNumber: number | null = null;
-    let lessons;
-    if (earlier === null) {
-      lessons = await removeDatedLessons(transaction, branchId, version.starts_on, runEnd);
-    } else {
-      const stored = await this.timetable.versionRow(transaction, earlier.id);
-      earlierNumber = stored.number;
-      // Code review must-fix 1: the version is read as if it started on the
-      // withdrawn start, the first day it runs again: its facts (busy
-      // elsewhere, availability, statuses) on the later of that day and
-      // today, as a publish reads a draft on its start.
-      // A Tutor row takes the class's Tutor of that day, as a publish reads
-      // its draft on a changed start; with none, no teacher.
-      const row = { ...stored, starts_on: version.starts_on };
-      const rows = await this.timetable.withVersionTutors(
-        transaction,
-        await this.timetable.contextOf(transaction, row),
-        await this.timetable.rowsOf(transaction, earlier.id),
-      );
-      const state = runningUntil(
-        await this.pattern.stateOf(transaction, row, access.accountId, rows),
-        runEnd,
-      );
-      // Decision 5: the full rule set. A teacher out is "needs a teacher" on
-      // each date (`teacher_inactive` of the pattern is decided by date), never
-      // a refusal: the version cannot be edited (spec review must-fix 2). So is
-      // a Tutor lesson: the dated check gives it the Tutor of each date, checked
-      // by time and travel, or "needs a teacher" with none (3.6c-2 decision 11).
-      const tutorSubjects = new Set(
-        state.pattern.model.data.subjects.filter((one) => one.tutorSubject).map((one) => one.id),
-      );
-      const tutorRows = new Set(
-        state.rows
-          .filter((one) => one.class_id !== null && tutorSubjects.has(one.subject_id))
-          .map((one) => one.id),
-      );
-      const rowOfLesson = new Map(
-        state.blocks.flatMap((block) =>
-          block.lessons.map((one) => [one.id, one.loadRowId] as const),
-        ),
-      );
-      const ofTutorRows = (ids: readonly string[]) =>
-        ids.length > 0 &&
-        ids.every((id) => tutorRows.has(rowOfLesson.get(patternIdOf(id)?.id ?? id) ?? ''));
-      const patternBlocked = publishRefusals(
-        checkTimetable(
-          checkedPlacements(state.pattern.model, state.blocks),
-          state.pattern.model.facts,
-        ),
-      ).blocked.filter((one) => one.rule !== 'teacher_inactive' && !ofTutorRows(one.lessonIds));
-      const dated = await datedCheck(transaction, state, version.starts_on, patternBlocked, {
-        outOnStart: false,
-      });
-      // Another branch's lessons are never named by their ids (5.5a-2a
-      // decision 8; permission review S2): only this branch's are kept.
-      const elsewhere = new Set(state.pattern.model.fixed.map((one) => one.id));
-      const details = [
-        ...patternBlocked.map((one) => {
-          const answer = resultAnswerOf(one);
-          return blockedDetail('pattern_blocked', {
-            ...answer,
-            lessonIds: answer.lessonIds.filter((id) => !elsewhere.has(id)),
+    const lessons =
+      earlier === null
+        ? await removeDatedLessons(transaction, branchId, version.starts_on, runEnd, plan)
+        : await writeDatedLessons(
+            transaction,
+            found.state,
+            found.sorting.findings,
+            version.starts_on,
+            runEnd,
+            plan,
+          );
+    // Task 5.6a-5b-2: the changes not applied ended in the withdrawn
+    // version's name (decision 5), those kept on a lesson created again
+    // recorded again; the bulk cancels' choices on the blocks written.
+    const settled = await settleDayChanges(transaction, {
+      branchId,
+      versionId: id,
+      moment: await transactionMoment(transaction),
+      accountId: access.accountId,
+      items: found.sorting.items,
+      decisions,
+    });
+    const bulkRecorded =
+      earlier === null
+        ? { decided: [], carried: [] }
+        : await recordBulkBlocks(transaction, {
+            branchId,
+            versionId: earlier.id,
+            begins: found.dated.begins,
+            items: found.bulk,
+            decisions: bulkDecisions,
           });
-        }),
-        ...dated.blocked.map((one) => blockedDetail('date_blocked', one)),
-      ];
-      if (details.length > 0) {
-        throw new ApiException('withdraw_blocked', 409, undefined, details);
-      }
-      lessons = await writeDatedLessons(transaction, state, dated, version.starts_on, runEnd);
-    }
 
     const actor = {
       actorId: access.accountId,
@@ -260,9 +331,15 @@ export class TimetableWithdraw {
       oldValue: { status: 'published', number: version.number, startsOn: version.starts_on },
       newValue: {
         status: 'archived',
-        runsAgain: earlier === null ? null : { id: earlier.id, number: earlierNumber },
+        runsAgain: earlier,
         runsAgainUntil: earlier === null ? null : runEnd,
         datedLessons: datedAuditOf(lessons),
+        dayChanges: dayAuditOf(
+          found.sorting.items,
+          decisions,
+          settled,
+          bulkAuditOf(found.bulk, bulkRecorded),
+        ),
         journals: { ...journals },
         notices: { ...notices },
         markedOutOfDate: drafts.map((one) => one.id),
@@ -276,5 +353,149 @@ export class TimetableWithdraw {
       ...actor,
     });
     return this.timetable.answerOf(transaction, id, access.accountId);
+  }
+
+  /** What the withdraw of `id` finds before it writes (`WithdrawFindings`), refusing as the withdraw refuses. */
+  private async findingsOf(
+    transaction: Transaction,
+    access: Access,
+    id: string,
+  ): Promise<WithdrawFindings> {
+    const branchId = branchOf(access);
+    const version = await this.timetable.versionRow(transaction, id);
+    if (version.status !== 'published') {
+      throw new ApiException('version_not_published', 409);
+    }
+    if (version.year_status === 'closed') {
+      throw new ApiException('timetable_year_closed', 409);
+    }
+    const today = await this.timetable.todayIn(transaction, branchId);
+    if (version.starts_on <= today) {
+      throw new ApiException('withdraw_started', 409);
+    }
+
+    // Decision 3: the chain as it stands before the withdraw; the version in
+    // force before it, a tie on a start to the higher number (`runsOf`), runs
+    // again to the day before the next published start, else the year's end.
+    const chain = runsOf(await laterVersionsOf(transaction, version, version.start_date));
+    const before = chain.filter((one) => one.run.from < version.starts_on).at(-1) ?? null;
+    const next = chain
+      .map((one) => one.run.from)
+      .filter((from) => from > version.starts_on)
+      .sort()[0];
+    const runEnd = next === undefined ? version.end_date : addDays(next, -1);
+
+    let earlier: WithdrawFindings['earlier'] = null;
+    let state: PatternState;
+    let dated: DatedFindings;
+    const blocked: ErrorDetail[] = [];
+    if (before === null) {
+      // Task 5.6a-5b-2 (decision 13): no version runs again, the lessons are
+      // removed; the stored changes are sorted over no lessons, with the
+      // withdrawn version's own facts, the other branches' claims and the
+      // exams of each date.
+      state = runningUntil(
+        await this.pattern.stateOf(transaction, version, access.accountId),
+        runEnd,
+      );
+      const own = await datedCheck(transaction, state, version.starts_on, [], {
+        outOnStart: false,
+      });
+      dated = {
+        ...own,
+        blocked: [],
+        warnings: [],
+        needsTeacher: [],
+        cancelled: [],
+        dated: { lessons: [], cancelled: [], noTutor: [], shortened: [], unusedKeeps: [] },
+      };
+    } else {
+      const stored = await this.timetable.versionRow(transaction, before.id);
+      earlier = { id: before.id, number: stored.number };
+      // Code review must-fix 1: the version is read as if it started on the
+      // withdrawn start, the first day it runs again: its facts (busy
+      // elsewhere, availability, statuses) on the later of that day and
+      // today, as a publish reads a draft on its start.
+      // A Tutor row takes the class's Tutor of that day, as a publish reads
+      // its draft on a changed start; with none, no teacher.
+      const row = { ...stored, starts_on: version.starts_on };
+      const rows = await this.timetable.withVersionTutors(
+        transaction,
+        await this.timetable.contextOf(transaction, row),
+        await this.timetable.rowsOf(transaction, before.id),
+      );
+      state = runningUntil(
+        await this.pattern.stateOf(transaction, row, access.accountId, rows),
+        runEnd,
+      );
+      // Decision 5: the full rule set. A teacher out is "needs a teacher" on
+      // each date (`teacher_inactive` of the pattern is decided by date), never
+      // a refusal: the version cannot be edited (spec review must-fix 2). So is
+      // a Tutor lesson: the dated check gives it the Tutor of each date, checked
+      // by time and travel, or "needs a teacher" with none (3.6c-2 decision 11).
+      const tutorSubjects = new Set(
+        state.pattern.model.data.subjects.filter((one) => one.tutorSubject).map((one) => one.id),
+      );
+      const tutorRows = new Set(
+        state.rows
+          .filter((one) => one.class_id !== null && tutorSubjects.has(one.subject_id))
+          .map((one) => one.id),
+      );
+      const rowOfLesson = new Map(
+        state.blocks.flatMap((block) =>
+          block.lessons.map((one) => [one.id, one.loadRowId] as const),
+        ),
+      );
+      const ofTutorRows = (ids: readonly string[]) =>
+        ids.length > 0 &&
+        ids.every((one) => tutorRows.has(rowOfLesson.get(patternIdOf(one)?.id ?? one) ?? ''));
+      const patternBlocked = publishRefusals(
+        checkTimetable(
+          checkedPlacements(state.pattern.model, state.blocks),
+          state.pattern.model.facts,
+        ),
+      ).blocked.filter((one) => one.rule !== 'teacher_inactive' && !ofTutorRows(one.lessonIds));
+      dated = await datedCheck(transaction, state, version.starts_on, patternBlocked, {
+        outOnStart: false,
+      });
+      // Another branch's lessons are never named by their ids (5.5a-2a
+      // decision 8; permission review S2): only this branch's are kept.
+      const elsewhere = new Set(state.pattern.model.fixed.map((one) => one.id));
+      blocked.push(
+        ...patternBlocked.map((one) => {
+          const answer = resultAnswerOf(one);
+          return blockedDetail('pattern_blocked', {
+            ...answer,
+            lessonIds: answer.lessonIds.filter((lesson) => !elsewhere.has(lesson)),
+          });
+        }),
+        ...dated.blocked.map((one) => blockedDetail('date_blocked', one)),
+      );
+    }
+
+    // Task 5.6a-5b-2 (decision 1): the stored one-day changes and bulk
+    // cancels of the withdrawn dates, sorted as a publish sorts them, the
+    // bulk cancels on the findings with the kept changes applied.
+    const sorting = await sortDayChanges(transaction, {
+      state,
+      findings: dated,
+      firstDate: version.starts_on,
+      lastDate: runEnd,
+      carriedVersionId: null,
+    });
+    const bulk = sortBulkOf({
+      lessons: sorting.findings.dated.lessons,
+      movedAt: sorting.movedAt,
+      begins: sorting.findings.begins,
+      records: await bulkRecordsOf(transaction, branchId, version.starts_on, runEnd),
+      carriedVersionId: null,
+    });
+    const key = dayChangesKeyOf(
+      version.id,
+      version.starts_on,
+      sorting.items,
+      bulk.length === 0 ? null : bulkKeyPartOf(bulk),
+    );
+    return { version, earlier, runEnd, state, dated, blocked, sorting, bulk, key };
   }
 }

@@ -505,6 +505,13 @@ describe('one-day changes: cancel and restore', () => {
         .execute(),
       t.database.migrator.selectFrom('journals').selectAll().orderBy('id').execute(),
       t.database.migrator.selectFrom('request_keys').selectAll().orderBy('key').execute(),
+      // Task 5.6a-5b-2 (permission review must-fix 2): a withdraw records bulk cancels' choices.
+      t.database.migrator
+        .selectFrom('bulk_cancel_blocks')
+        .selectAll()
+        .orderBy('bulk_cancel_id')
+        .orderBy('block_id')
+        .execute(),
     ]);
 
   /**
@@ -4333,6 +4340,813 @@ describe('one-day changes: cancel and restore', () => {
         403,
         'permission_denied',
       );
+    });
+  });
+
+  // Task 5.6a-5b-2: a withdraw sorts and applies the stored one-day changes of
+  // the withdrawn dates as a publish does (decision 1; edge/timetable,
+  // Versions and drafts: "One-day changes, absences, room closures and exams
+  // are stored on their own and applied again after a publish. The preview
+  // sorts them into kept, needs a decision and dropped."; 06, How surprises
+  // are prevented: "Withdraw. A published version can be withdrawn only
+  // before its start date.").
+  describe('one-day changes kept after a withdraw (task 5.6a-5b-2)', () => {
+    interface DayItem {
+      key: string;
+      kind: string;
+      from: { date: string; start: number };
+      to: { date: string; start: number; roomId: string | null };
+      blocked: { rule: string }[];
+    }
+    interface WithdrawChecked {
+      runsAgain: { id: string; number: number } | null;
+      runsAgainUntil: string | null;
+      dayChanges: { key: string; kept: DayItem[]; decide: DayItem[]; dropped: DayItem[] };
+      names: { units: { id: string }[]; rooms: { id: string }[] };
+    }
+
+    /** The Monday two weeks after `MONDAY`, the start of the version withdrawn. */
+    const WEEK3 = '2026-10-26';
+    /** Its Wednesday. */
+    const WEDNESDAY3 = '2026-10-28';
+    /** The first Monday of the second quarter, after the autumn vacation. */
+    const WEEK4 = '2026-11-09';
+    /** The Monday after it. */
+    const WEEK5 = '2026-11-16';
+
+    /**
+     * A copy of the scene's version, its rows placed by `place` (weekday and
+     * slot position; Monday's first lesson when not given), a row's teacher
+     * changed by `teacherOf`.
+     */
+    async function copyOf(
+      s: Scene,
+      place?: (row: { class_id: string | null }) => [number, number],
+      teacherOf?: (row: { class_id: string | null }) => string | null,
+    ) {
+      const created = await t.post('/api/timetable/versions', s.branch, {
+        academicYearId: s.year,
+        startsOn: MONDAY,
+        copyFrom: s.version,
+      });
+      expect(created.status, JSON.stringify(created.body)).toBe(201);
+      const version = (created.body as { id: string }).id;
+      await t.database.migrator
+        .deleteFrom('pattern_blocks')
+        .where('version_id', '=', version)
+        .execute();
+      const rows = await t.database.migrator
+        .selectFrom('teaching_load_rows')
+        .select(['id', 'class_id'])
+        .where('version_id', '=', version)
+        .orderBy('id')
+        .execute();
+      for (const row of rows) {
+        const teacher = teacherOf?.(row) ?? null;
+        if (teacher !== null) {
+          await t.database.migrator
+            .updateTable('teaching_load_rows')
+            .set({ teacher_id: teacher })
+            .where('id', '=', row.id)
+            .execute();
+        }
+        const [weekday, slot] = place?.(row) ?? [1, 1];
+        await placeAt(s.branch, version, row.id, weekday, slot);
+      }
+      const confirmed = await t.post(
+        `/api/timetable/versions/${version}/templates/confirm`,
+        s.branch,
+      );
+      expect(confirmed.status, JSON.stringify(confirmed.body)).toBe(200);
+      await load.freeEditLock(version);
+      return version;
+    }
+
+    /** A publish from `startsOn` with the key of the one-day changes its check shows. */
+    async function published(s: Scene, version: string, startsOn: string) {
+      const checked = await t.get(
+        `/api/timetable/versions/${version}/publish-check?startsOn=${startsOn}`,
+        s.branch,
+      );
+      expect(checked.status, JSON.stringify(checked.body)).toBe(200);
+      const key = (checked.body as { impact: { dayChanges: { key: string } } }).impact.dayChanges
+        .key;
+      const answer = await request(t.kit.server)
+        .post(`/api/timetable/versions/${version}/publish`)
+        .set('Cookie', t.admin)
+        .set(BRANCH_HEADER, s.branch)
+        .set(REQUEST_KEY_HEADER, randomUUID())
+        .send({ startsOn, dayChangesKey: key });
+      expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+      return version;
+    }
+
+    /**
+     * The scene's version from 12 October, A (a copy placed by `a`) from 19
+     * October and B (a copy placed by `b`) from 26 October, the version withdrawn.
+     */
+    async function chain(
+      input: {
+        a?: (s: Scene) => Parameters<typeof copyOf>[1];
+        aTeacher?: (s: Scene) => Parameters<typeof copyOf>[2];
+        b?: (s: Scene) => Parameters<typeof copyOf>[1];
+        /** Run while A is in force and before B is published: a move recorded then. */
+        beforeB?: (s: Scene) => Promise<void>;
+      } = {},
+    ) {
+      const s = await scene();
+      const a = await published(s, await copyOf(s, input.a?.(s), input.aTeacher?.(s)), NEXT_MONDAY);
+      await input.beforeB?.(s);
+      const b = await published(s, await copyOf(s, input.b?.(s)), WEEK3);
+      return { s, a, b };
+    }
+
+    const checkOf = async (s: Scene, version: string, cookie = t.admin) => {
+      const answer = await t.get(
+        `/api/timetable/versions/${version}/withdraw-check`,
+        s.branch,
+        cookie,
+      );
+      expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+      return answer.body as WithdrawChecked;
+    };
+
+    const withdrawWith = (
+      s: Scene,
+      version: string,
+      body: object | undefined,
+      key: string = randomUUID(),
+      cookie = t.admin,
+    ) =>
+      request(t.kit.server)
+        .post(`/api/timetable/versions/${version}/withdraw`)
+        .set('Cookie', cookie)
+        .set(BRANCH_HEADER, s.branch)
+        .set(REQUEST_KEY_HEADER, key)
+        .send(body);
+
+    const refusals = (response: Response) => {
+      refusedWith(response, 409, 'withdraw_blocked');
+      return (response.body as { error: { details: { code: string; path: string }[] } }).error
+        .details;
+    };
+
+    const endsOf = (ids: readonly string[]) =>
+      t.database.migrator
+        .selectFrom('lesson_day_change_ends')
+        .selectAll()
+        .where('change_id', 'in', [...ids, UNKNOWN])
+        .orderBy('change_id')
+        .execute();
+
+    /** The lessons of a class and the scene's subject on a date, by start, with their block's version. */
+    const lessonsOn = (s: Scene, date: string, classId = s.classId) =>
+      t.database.migrator
+        .selectFrom('lessons')
+        .innerJoin('lesson_blocks', 'lesson_blocks.id', 'lessons.block_id')
+        .selectAll('lessons')
+        .select('lesson_blocks.version_id')
+        .where('lessons.class_id', '=', classId)
+        .where('lessons.subject_id', '=', s.subject)
+        .where('lessons.lesson_date', '=', date)
+        .orderBy('lessons.starts_at')
+        .execute();
+
+    /**
+     * Permission review must-fix 2 and should-fix 5: a room change of the
+     * north scene's maths of 19 October and a bulk cancel's choice on its
+     * block, rows of another branch a withdraw must leave; their ids.
+     */
+    async function northStored() {
+      const lesson = await lessonOf(northScene, NEXT_MONDAY);
+      changed(
+        await roomChange(northScene.branch, lesson.id, await load.classes.room(northScene.branch)),
+      );
+      const rows = await dayChangesOf(lesson.id);
+      const bulk = await t.database.migrator
+        .insertInto('bulk_cancels')
+        .values({
+          branch_id: northScene.branch,
+          cancel_date: NEXT_MONDAY,
+          lesson_numbers: [1],
+          reason: 'Excursion to the museum',
+          changed_at: new Date(START),
+          changed_by: (
+            await t.database.migrator
+              .selectFrom('accounts')
+              .select('id')
+              .orderBy('id')
+              .executeTakeFirstOrThrow()
+          ).id,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await t.database.migrator
+        .insertInto('bulk_cancel_blocks')
+        .values({
+          branch_id: northScene.branch,
+          bulk_cancel_id: bulk.id,
+          block_id: lesson.block_id,
+          choice: 'keep',
+          lesson_date: NEXT_MONDAY,
+          starts_at: lesson.starts_at,
+          ends_at: lesson.ends_at,
+        })
+        .execute();
+      const block = await t.database.migrator
+        .selectFrom('pattern_blocks')
+        .select('id')
+        .where('version_id', '=', northScene.version)
+        .orderBy('id')
+        .executeTakeFirstOrThrow();
+      return {
+        lesson: lesson.id,
+        change: rows.at(-1)?.id ?? '',
+        bulk: bulk.id,
+        block: block.id,
+      };
+    }
+
+    const statusOf = async (version: string) =>
+      (
+        await t.database.migrator
+          .selectFrom('timetable_versions')
+          .select('status')
+          .where('id', '=', version)
+          .executeTakeFirstOrThrow()
+      ).status;
+
+    /**
+     * From `from` the scene's first teacher works every weekday but
+     * Wednesday, or with `start` every weekday from that minute.
+     */
+    async function noWednesdays(s: Scene, from: string, start: number | null = null) {
+      for (const table of ['staff_availability', 'staff_availability_ranges'] as const) {
+        await t.database.migrator
+          .updateTable(table)
+          .set({ valid_until: from })
+          .where('staff_id', '=', s.teacher.staffId)
+          .where('branch_id', '=', s.branch)
+          .execute();
+      }
+      const entry = await t.database.migrator
+        .insertInto('staff_availability')
+        .values({ branch_id: s.branch, staff_id: s.teacher.staffId, valid_from: from })
+        .returning(['id', 'valid_until'])
+        .executeTakeFirstOrThrow();
+      for (const weekday of start === null ? [1, 2, 4, 5] : [1, 2, 3, 4, 5]) {
+        await t.database.migrator
+          .insertInto('staff_availability_ranges')
+          .values({
+            entry_id: entry.id,
+            branch_id: s.branch,
+            staff_id: s.teacher.staffId,
+            weekday,
+            start_minutes: start ?? 0,
+            end_minutes: 1440,
+            valid_from: from,
+            valid_until: entry.valid_until,
+          })
+          .execute();
+      }
+    }
+
+    it('keeps a move from before the withdrawn start under its version (Done when)', async () => {
+      // A's lesson of Monday 19 October moved to Wednesday 28 October while
+      // A ran there; B's publish from 26 October kept the move (5.6a-5a decision 7).
+      let movedId = '';
+      const { s, a, b } = await chain({
+        beforeB: async (scene) => {
+          movedId = (await lessonOf(scene, NEXT_MONDAY)).id;
+          changed(await move(scene.branch, movedId, { date: WEDNESDAY3, lessonNumber: 2 }));
+        },
+      });
+      const moved = { id: movedId };
+      expect((await lessonsOn(s, WEDNESDAY3)).map((one) => [one.id, one.version_id])).toEqual([
+        [moved.id, a],
+      ]);
+      const [row] = await dayChangesOf(moved.id);
+      const checked = await checkOf(s, b);
+      expect(checked.runsAgain).toMatchObject({ id: a });
+      expect(checked.dayChanges.kept.map((one) => [one.key, one.kind])).toEqual([
+        [row?.id, 'move'],
+      ]);
+      expect(checked.dayChanges.decide).toEqual([]);
+      expect(checked.dayChanges.dropped).toEqual([]);
+      expect(checked.names.units.map((one) => one.id)).toContain(s.classId);
+      // Without the key of the sorting, refused.
+      expect(refusals(await withdrawWith(s, b, {})).map((one) => one.code)).toEqual([
+        'day_changes_changed',
+      ]);
+      const answer = await withdrawWith(s, b, { dayChangesKey: checked.dayChanges.key });
+      expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+      // The moved lesson stays where the move put it, under A, its change in force.
+      expect(await rowOf(moved.id)).toMatchObject({
+        lesson_date: WEDNESDAY3,
+        starts_at: at(WEDNESDAY3, '08:55'),
+        cancel_cause: null,
+      });
+      expect((await lessonsOn(s, WEDNESDAY3)).map((one) => [one.id, one.version_id])).toEqual([
+        [moved.id, a],
+      ]);
+      expect(await endsOf([row?.id ?? ''])).toEqual([]);
+      const [entry] = await t.entries('timetable_version.withdraw', b);
+      expect(entry?.new_value).toMatchObject({
+        dayChanges: { kept: [row?.id], decided: [], dropped: [], ended: [] },
+      });
+    });
+
+    it('keeps a move inside the withdrawn dates on the version that runs again, the check and the withdraw agreeing', async () => {
+      const { s, b } = await chain();
+      const moved = await lessonOf(s, WEEK3);
+      changed(await move(s.branch, moved.id, { date: WEDNESDAY3, lessonNumber: 2 }));
+      const [row] = await dayChangesOf(moved.id);
+      const before = await everything();
+      const checked = await checkOf(s, b);
+      // The check writes nothing.
+      expect(await everything()).toEqual(before);
+      expect(checked.dayChanges.kept.map((one) => one.key)).toEqual([row?.id]);
+      const answer = await withdrawWith(s, b, { dayChangesKey: checked.dayChanges.key });
+      expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+      // The first class's maths of 26 October is on Wednesday 28 October in lesson 2.
+      expect(await lessonsOn(s, WEEK3)).toEqual([]);
+      // The version that runs again has the lesson at the moved place, so the
+      // pairing keeps the stored lesson (an unchanged lesson keeps its
+      // identity) and its change stays in force, not ended, not recorded again.
+      expect(await lessonsOn(s, WEDNESDAY3)).toEqual([
+        expect.objectContaining({
+          id: moved.id,
+          starts_at: at(WEDNESDAY3, '08:55'),
+          cancel_cause: null,
+        }),
+      ]);
+      expect(await endsOf([row?.id ?? ''])).toEqual([]);
+      const [entry] = await t.entries('timetable_version.withdraw', b);
+      expect(entry?.new_value).toMatchObject({
+        dayChanges: { kept: [row?.id], dropped: [], ended: [], recordedAgain: [] },
+      });
+    });
+
+    it('drops and ends a room change on a lesson the version that runs again lacks, keeps a cancel on one it has and drops one on a lesson it removes', async () => {
+      // B has the other class's maths on Tuesday; A, as the scene, on Monday.
+      const { s, b } = await chain({
+        b: (scene) => (row) => (row.class_id === scene.otherClass ? [2, 1] : [1, 1]),
+      });
+      const tuesday = '2026-10-27';
+      const roomed = await lessonOf(s, tuesday, s.otherClass);
+      changed(await roomChange(s.branch, roomed.id, s.spareRoom));
+      const [roomRow] = await dayChangesOf(roomed.id);
+      const kept = await lessonOf(s, WEEK3);
+      changed(await cancel(s.branch, kept.id, 'Excursion to the zoo'));
+      const lost = await lessonOf(s, '2026-11-10', s.otherClass);
+      changed(await cancel(s.branch, lost.id, 'Excursion to the park'));
+      const checked = await checkOf(s, b);
+      expect(checked.dayChanges.kept.map((one) => [one.key, one.kind])).toEqual([
+        [kept.id, 'cancel'],
+      ]);
+      expect(checked.dayChanges.dropped.map((one) => [one.key, one.kind]).sort()).toEqual(
+        [
+          [roomRow?.id, 'room'],
+          [lost.id, 'cancel'],
+        ].sort(),
+      );
+      const answer = await withdrawWith(s, b, { dayChangesKey: checked.dayChanges.key });
+      expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+      // The room change is ended in the withdrawn version's name (decision 5).
+      expect(await endsOf([roomRow?.id ?? ''])).toEqual([
+        expect.objectContaining({ change_id: roomRow?.id, version_id: b }),
+      ]);
+      // A's maths of 26 October is cancelled with the reason.
+      expect(await lessonsOn(s, WEEK3)).toEqual([
+        expect.objectContaining({ cancel_cause: 'reason', cancel_reason: 'Excursion to the zoo' }),
+      ]);
+      // The other class's Tuesday lessons are gone; its Monday ones are A's, held.
+      expect(await lessonsOn(s, tuesday, s.otherClass)).toEqual([]);
+      expect(await lessonsOn(s, WEEK4, s.otherClass)).toEqual([
+        expect.objectContaining({ cancel_cause: null }),
+      ]);
+      const [entry] = await t.entries('timetable_version.withdraw', b);
+      expect(entry?.new_value).toMatchObject({
+        dayChanges: {
+          kept: [kept.id],
+          dropped: [roomRow?.id, lost.id].sort(),
+          ended: [roomRow?.id],
+        },
+      });
+    });
+
+    describe('a move that needs a decision', () => {
+      /**
+       * A gives the other class's maths to the first class's teacher on
+       * Wednesday in lesson 2; B has it on Monday with its own teacher. B's
+       * maths of the first class on 26 October moved to Wednesday 28 October
+       * in lesson 2 then meets the teacher's lesson of A.
+       */
+      const clashScene = () =>
+        chain({
+          a: (scene) => (row) => (row.class_id === scene.otherClass ? [3, 3] : [1, 1]),
+          aTeacher: (scene) => (row) =>
+            row.class_id === scene.otherClass ? scene.teacher.staffId : null,
+        });
+
+      it('refuses until it is settled, refuses “keep”, and drops the move with “drop”', async () => {
+        const { s, b } = await clashScene();
+        const moved = await lessonOf(s, WEEK3);
+        changed(await move(s.branch, moved.id, { date: WEDNESDAY3, lessonNumber: 2 }));
+        const [row] = await dayChangesOf(moved.id);
+        const checked = await checkOf(s, b);
+        expect(checked.dayChanges.decide.map((one) => one.key)).toEqual([row?.id]);
+        expect(checked.dayChanges.decide[0]?.blocked.map((one) => one.rule)).toContain(
+          'teacher_double',
+        );
+        const key = checked.dayChanges.key;
+        const north = await northStored();
+        const before = await everything();
+        expect(refusals(await withdrawWith(s, b, { dayChangesKey: key }))).toEqual([
+          expect.objectContaining({ code: 'day_change_undecided', path: `dayChanges.${row?.id}` }),
+        ]);
+        // Review correction 2: a refused withdraw writes nothing, the version
+        // still published, no end and no lesson changed.
+        expect(await statusOf(b)).toBe('published');
+        expect(await everything()).toEqual(before);
+        expect(
+          refusals(
+            await withdrawWith(s, b, {
+              dayChangesKey: key,
+              dayDecisions: [{ key: row?.id, choice: 'keep' }],
+            }),
+          ).map((one) => one.code),
+        ).toEqual(['day_choice_not_offered']);
+        // A key of the branch that is no item.
+        expect(
+          refusals(
+            await withdrawWith(s, b, {
+              dayChangesKey: key,
+              dayDecisions: [
+                { key: row?.id, choice: 'drop' },
+                { key: moved.id, choice: 'drop' },
+              ],
+            }),
+          ).map((one) => one.code),
+        ).toEqual(['day_decision_unknown']);
+        // Another branch's lesson, one-day change and bulk cancel as keys,
+        // and an unknown one: 404 before any lock.
+        for (const wrong of [north.lesson, north.change, north.bulk, UNKNOWN]) {
+          refusedWith(
+            await withdrawWith(s, b, {
+              dayChangesKey: key,
+              dayDecisions: [{ key: wrong, choice: 'drop' }],
+            }),
+            404,
+            'not_found',
+          );
+        }
+        expect(await everything()).toEqual(before);
+        const answer = await withdrawWith(s, b, {
+          dayChangesKey: key,
+          dayDecisions: [{ key: row?.id, choice: 'drop' }],
+        });
+        expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+        // A's maths is on Monday, as A has it; the move is ended.
+        expect(await lessonsOn(s, WEEK3)).toEqual([
+          expect.objectContaining({ starts_at: at(WEEK3, '08:00'), cancel_cause: null }),
+        ]);
+        expect(await endsOf([row?.id ?? ''])).toEqual([expect.objectContaining({ version_id: b })]);
+        const [entry] = await t.entries('timetable_version.withdraw', b);
+        expect(entry?.new_value).toMatchObject({
+          dayChanges: { decided: [{ key: row?.id, choice: 'drop' }], ended: [row?.id] },
+        });
+      });
+
+      it('cancels the lesson that day with “cancel”', async () => {
+        const { s, b } = await clashScene();
+        const moved = await lessonOf(s, WEEK3);
+        changed(await move(s.branch, moved.id, { date: WEDNESDAY3, lessonNumber: 2 }));
+        const [row] = await dayChangesOf(moved.id);
+        const checked = await checkOf(s, b);
+        const answer = await withdrawWith(s, b, {
+          dayChangesKey: checked.dayChanges.key,
+          dayDecisions: [{ key: row?.id, choice: 'cancel' }],
+        });
+        expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+        expect(await lessonsOn(s, WEEK3)).toEqual([
+          expect.objectContaining({
+            starts_at: at(WEEK3, '08:00'),
+            cancel_cause: 'reason',
+            cancel_reason: 'Excursion to the museum',
+          }),
+        ]);
+      });
+
+      it('sorts a move from before the withdrawn start into a blocked rule: “drop” removes its block, “cancel” keeps it cancelled', async () => {
+        for (const choice of ['drop', 'cancel'] as const) {
+          // A's maths of 19 October moved to Wednesday 28 October while A ran
+          // there, kept by B's publish; from 26 October the teacher works no
+          // Wednesdays, so A running again cannot keep it there.
+          let movedId = '';
+          const { s, a, b } = await chain({
+            beforeB: async (scene) => {
+              movedId = (await lessonOf(scene, NEXT_MONDAY)).id;
+              changed(await move(scene.branch, movedId, { date: WEDNESDAY3, lessonNumber: 2 }));
+            },
+          });
+          await noWednesdays(s, WEEK3);
+          const moved = { id: movedId };
+          const [row] = await dayChangesOf(moved.id);
+          const checked = await checkOf(s, b);
+          expect(checked.dayChanges.decide.map((one) => one.key)).toEqual([row?.id]);
+          const answer = await withdrawWith(s, b, {
+            dayChangesKey: checked.dayChanges.key,
+            dayDecisions: [{ key: row?.id, choice }],
+          });
+          expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+          if (choice === 'drop') {
+            expect(await rowOf(moved.id)).toBeUndefined();
+          } else {
+            expect(await rowOf(moved.id)).toMatchObject({
+              lesson_date: WEDNESDAY3,
+              cancel_cause: 'reason',
+              cancel_reason: 'Excursion to the museum',
+            });
+          }
+          // A's own maths of 26 October is there either way.
+          expect(await lessonsOn(s, WEEK3)).toEqual([
+            expect.objectContaining({ version_id: a, cancel_cause: null }),
+          ]);
+        }
+      });
+
+      it('answers a blocked result of the version that runs again and an undecided item in one refusal', async () => {
+        // A's maths of 19 October moved to Wednesday 28 October in lesson 2,
+        // kept by B's publish; from 26 October the teacher works from 09:00
+        // only: A's Monday maths at 08:00 is blocked, and so is the move.
+        let movedId = '';
+        const { s, b } = await chain({
+          beforeB: async (scene) => {
+            movedId = (await lessonOf(scene, NEXT_MONDAY)).id;
+            changed(await move(scene.branch, movedId, { date: WEDNESDAY3, lessonNumber: 2 }));
+          },
+        });
+        await noWednesdays(s, WEEK3, 540);
+        const [row] = await dayChangesOf(movedId);
+        const checked = await checkOf(s, b);
+        const codes = refusals(
+          await withdrawWith(s, b, { dayChangesKey: checked.dayChanges.key }),
+        ).map((one) => one.code);
+        expect([...new Set(codes)].sort()).toEqual(['day_change_undecided', 'pattern_blocked']);
+        expect(checked.dayChanges.decide.map((one) => one.key)).toEqual([row?.id]);
+      });
+
+      // `.claude/rules/timetable.md`: the version that runs again is read as
+      // if it started on the withdrawn start, the sorting's check too.
+      it('reads the teacher’s availability in force on the withdrawn start, not on the start of the version that runs again', async () => {
+        const s0 = await scene();
+        const a = await published(s0, await copyOf(s0), NEXT_MONDAY);
+        const b = await published(s0, await copyOf(s0), WEEK3);
+        const moved = await lessonOf(s0, WEEK3);
+        changed(await move(s0.branch, moved.id, { date: WEDNESDAY3, lessonNumber: 2 }));
+        const [row] = await dayChangesOf(moved.id);
+        // From the withdrawn start the teacher works no Wednesdays.
+        await noWednesdays(s0, WEEK3);
+        const checked = await checkOf(s0, b);
+        expect(checked.runsAgain).toMatchObject({ id: a });
+        // Read from A's own start, the entry of 26 October would be a later
+        // one, a warning: the move would be kept.
+        expect(checked.dayChanges.kept).toEqual([]);
+        expect(checked.dayChanges.decide.map((one) => one.key)).toEqual([row?.id]);
+      });
+    });
+
+    // `.claude/rules/timetable.md`: a lesson is named by its entry and the
+    // date of its pattern block.
+    it('tells a lesson moved onto the same weekday a week later from the lesson of its entry there', async () => {
+      const { s, b } = await chain();
+      const moved = await lessonOf(s, WEEK4);
+      changed(await move(s.branch, moved.id, { date: WEEK5, lessonNumber: 2 }));
+      const own = await lessonOf(s, WEEK5);
+      changed(await cancel(s.branch, own.id, 'Excursion to the zoo'));
+      const checked = await checkOf(s, b);
+      expect(checked.dayChanges.kept.map((one) => one.kind).sort()).toEqual(['cancel', 'move']);
+      const answer = await withdrawWith(s, b, { dayChangesKey: checked.dayChanges.key });
+      expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+      expect(await lessonsOn(s, WEEK4)).toEqual([]);
+      expect((await lessonsOn(s, WEEK5)).map((one) => [one.starts_at, one.cancel_cause])).toEqual([
+        [at(WEEK5, '08:00'), 'reason'],
+        [at(WEEK5, '08:55'), null],
+      ]);
+    });
+
+    describe('no version running again', () => {
+      it('drops the changes of the lessons it removes and keeps a lesson of the next version moved onto its dates (decision 13)', async () => {
+        const s = await scene();
+        const roomed = await lessonOf(s, MONDAY, s.otherClass);
+        changed(await roomChange(s.branch, roomed.id, s.spareRoom));
+        const [roomRow] = await dayChangesOf(roomed.id);
+        // The maths of 19 October moved onto Wednesday 14 October, then A
+        // published from 19 October: the move stays (5.6a-5a decision 7). The
+        // scene's version, from 12 October, is withdrawn.
+        const moved = await lessonOf(s, NEXT_MONDAY);
+        changed(await move(s.branch, moved.id, { date: '2026-10-14', lessonNumber: 2 }));
+        const [moveRow] = await dayChangesOf(moved.id);
+        await published(s, await copyOf(s), NEXT_MONDAY);
+        const checked = await checkOf(s, s.version);
+        expect(checked.runsAgain).toBeNull();
+        expect(checked.dayChanges.kept.map((one) => one.key)).toEqual([moveRow?.id]);
+        expect(checked.dayChanges.dropped.map((one) => one.key)).toEqual([roomRow?.id]);
+        const answer = await withdrawWith(s, s.version, {
+          dayChangesKey: checked.dayChanges.key,
+        });
+        expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+        expect(await lessonsOn(s, MONDAY, s.otherClass)).toEqual([]);
+        expect(await rowOf(moved.id)).toMatchObject({ lesson_date: '2026-10-14' });
+        expect((await dayChangesOf(moved.id)).map((one) => one.id)).toEqual([moveRow?.id]);
+        expect(await endsOf([moveRow?.id ?? '', roomRow?.id ?? ''])).toEqual([
+          expect.objectContaining({ change_id: roomRow?.id, version_id: s.version }),
+        ]);
+      });
+
+      it('writes a kept lesson of the next version cancelled with “cancel” when its move needs a decision (decision 13)', async () => {
+        const s = await scene();
+        // The maths of 19 October moved onto Wednesday 14 October, A published
+        // from 19 October keeping the move; then the teacher works no
+        // Wednesdays from 12 October, the withdrawn start.
+        const moved = await lessonOf(s, NEXT_MONDAY);
+        changed(await move(s.branch, moved.id, { date: '2026-10-14', lessonNumber: 2 }));
+        const [row] = await dayChangesOf(moved.id);
+        await published(s, await copyOf(s), NEXT_MONDAY);
+        await noWednesdays(s, MONDAY);
+        const checked = await checkOf(s, s.version);
+        expect(checked.runsAgain).toBeNull();
+        expect(checked.dayChanges.decide.map((one) => one.key)).toEqual([row?.id]);
+        expect(checked.dayChanges.decide[0]?.blocked.map((one) => one.rule)).toContain(
+          'teacher_unavailable',
+        );
+        const answer = await withdrawWith(s, s.version, {
+          dayChangesKey: checked.dayChanges.key,
+          dayDecisions: [{ key: row?.id, choice: 'cancel' }],
+        });
+        expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+        expect(await rowOf(moved.id)).toMatchObject({
+          lesson_date: '2026-10-14',
+          cancel_cause: 'reason',
+          cancel_reason: 'Excursion to the museum',
+        });
+        expect(await lessonsOn(s, MONDAY)).toEqual([]);
+        const [entry] = await t.entries('timetable_version.withdraw', s.version);
+        expect(entry?.new_value).toMatchObject({
+          datedLessons: {
+            changed: [
+              expect.objectContaining({ id: moved.id, cancel: { from: null, to: 'reason' } }),
+            ],
+          },
+          dayChanges: { decided: [{ key: row?.id, choice: 'cancel' }], ended: [row?.id] },
+        });
+      });
+
+      it('keeps a lesson of a later version moved onto the dates of a version withdrawn with one running again', async () => {
+        // The maths of 26 October moved onto Wednesday 21 October while A ran
+        // on both; B, published from 26 October, leaves it there.
+        let movedId = '';
+        const { s, a } = await chain({
+          beforeB: async (scene) => {
+            movedId = (await lessonOf(scene, WEEK3)).id;
+            changed(await move(scene.branch, movedId, { date: '2026-10-21', lessonNumber: 2 }));
+          },
+        });
+        const moved = { id: movedId };
+        const [row] = await dayChangesOf(moved.id);
+        const checked = await checkOf(s, a);
+        expect(checked.runsAgainUntil).toBe('2026-10-25');
+        expect(checked.dayChanges.kept.map((one) => one.key)).toEqual([row?.id]);
+        const answer = await withdrawWith(s, a, { dayChangesKey: checked.dayChanges.key });
+        expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+        expect(await rowOf(moved.id)).toMatchObject({ lesson_date: '2026-10-21' });
+        expect(await endsOf([row?.id ?? ''])).toEqual([]);
+      });
+    });
+
+    it('leaves ended a change the withdrawn version’s publish ended (decision 3 of the review)', async () => {
+      const s = await scene();
+      // A room change on the other class's maths of 19 October, which A,
+      // with that maths on Tuesday, drops at its publish.
+      const roomed = await lessonOf(s, NEXT_MONDAY, s.otherClass);
+      changed(await roomChange(s.branch, roomed.id, s.spareRoom));
+      const [roomRow] = await dayChangesOf(roomed.id);
+      const a = await published(
+        s,
+        await copyOf(s, (row) => (row.class_id === s.otherClass ? [2, 1] : [1, 1])),
+        NEXT_MONDAY,
+      );
+      const ended = await endsOf([roomRow?.id ?? '']);
+      expect(ended).toEqual([expect.objectContaining({ version_id: a })]);
+      const checked = await checkOf(s, a);
+      expect([
+        ...checked.dayChanges.kept,
+        ...checked.dayChanges.decide,
+        ...checked.dayChanges.dropped,
+      ]).toEqual([]);
+      const answer = await withdrawWith(s, a, {});
+      expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+      expect(await endsOf([roomRow?.id ?? ''])).toEqual(ended);
+    });
+
+    it('refuses a key of an older sorting', async () => {
+      const { s, b } = await chain();
+      const first = await lessonOf(s, WEEK3);
+      changed(await cancel(s.branch, first.id, 'Excursion to the zoo'));
+      const old = (await checkOf(s, b)).dayChanges.key;
+      const second = await lessonOf(s, WEEK3, s.otherClass);
+      changed(await cancel(s.branch, second.id, 'Excursion to the zoo'));
+      expect(
+        refusals(await withdrawWith(s, b, { dayChangesKey: old })).map((one) => one.code),
+      ).toEqual(['day_changes_changed']);
+      expect(await statusOf(b)).toBe('published');
+      const fresh = (await checkOf(s, b)).dayChanges.key;
+      expect(fresh).not.toBe(old);
+      const answer = await withdrawWith(s, b, { dayChangesKey: fresh });
+      expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+    });
+
+    it('answers a repeat with the stored answer, refuses the key from another account and with other decisions, and a used key with another branch’s key 404', async () => {
+      const { s, b } = await chain();
+      const first = await lessonOf(s, WEEK3);
+      changed(await cancel(s.branch, first.id, 'Excursion to the zoo'));
+      const body = { dayChangesKey: (await checkOf(s, b)).dayChanges.key };
+      const key = randomUUID();
+      const answer = await withdrawWith(s, b, body, key);
+      expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+      const again = await withdrawWith(s, b, body, key);
+      expect(again.status, JSON.stringify(again.body)).toBe(200);
+      expect(again.body).toEqual(answer.body);
+      refusedWith(
+        await withdrawWith(
+          s,
+          b,
+          { ...body, dayDecisions: [{ key: first.id, choice: 'drop' }] },
+          key,
+        ),
+        409,
+        'request_key_reused',
+      );
+      // The kit's Academic Vice Principal, given the role in the scene's branch.
+      await load.classes.role(
+        (
+          await t.database.migrator
+            .selectFrom('assignments')
+            .select('account_id')
+            .where('id', '=', t.viceAssignment)
+            .executeTakeFirstOrThrow()
+        ).account_id,
+        s.branch,
+        'academic_vice_principal',
+      );
+      refusedWith(await withdrawWith(s, b, body, key, t.vicePrincipal), 409, 'request_key_reused');
+      // Permission review should-fix 4: a repeat of a used key with another
+      // branch's or an unknown key or block is 404, from a refused role 403,
+      // each before the stored answer and writing nothing.
+      const north = await northStored();
+      const after = await everything();
+      for (const decision of [
+        { key: north.lesson, choice: 'drop' },
+        { key: UNKNOWN, choice: 'drop' },
+        { key: first.id, blockId: north.block, blockDate: WEEK3, choice: 'keep' },
+        { key: first.id, blockId: UNKNOWN, blockDate: WEEK3, choice: 'keep' },
+      ]) {
+        refusedWith(
+          await withdrawWith(s, b, { ...body, dayDecisions: [decision] }, key),
+          404,
+          'not_found',
+        );
+      }
+      const principal = await t.database.migrator
+        .selectFrom('assignments')
+        .select('account_id')
+        .where('role', '=', 'principal')
+        .where('branch_id', '=', t.north)
+        .executeTakeFirstOrThrow();
+      await load.classes.role(principal.account_id, s.branch, 'principal');
+      refusedWith(await withdrawWith(s, b, body, key, t.principal), 403, 'permission_denied');
+      expect(await everything()).toEqual(after);
+    });
+
+    it('refuses the check as the withdraw: a draft, another branch’s and an unknown id; the Principal reads it', async () => {
+      const { s, a, b } = await chain();
+      const draft = await copyOf(s);
+      refusedWith(
+        await t.get(`/api/timetable/versions/${draft}/withdraw-check`, s.branch),
+        409,
+        'version_not_published',
+      );
+      for (const id of [northScene.version, UNKNOWN]) {
+        refusedWith(
+          await t.get(`/api/timetable/versions/${id}/withdraw-check`, s.branch),
+          404,
+          'not_found',
+        );
+      }
+      // The kit's Principal holds the role in the north branch.
+      expect((await checkOf(northScene, northScene.version, t.principal)).runsAgain).toBeNull();
+      expect((await checkOf(s, b)).runsAgain).toMatchObject({ id: a });
     });
   });
 });

@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import {
   listName,
   weekdaySchema,
+  type PreviewNamesAnswer,
   type PublishImpactAnswer,
   type TransitionRowAnswer,
 } from '@sodiq/shared';
@@ -243,88 +244,31 @@ export async function impactOf(
 
   // The names of what the preview names (decision 12): records of the branch only.
   // A class reached only through a group lesson is in `classIds` alone (review of #142).
+  const named = dayChangeIdsOf(days.items, days.bulk);
   const unitIds = new Set<string>([
-    ...days.items.map((one) => one.answer.unitId),
-    ...days.bulk.flatMap((one) => [
-      ...one.answer.classIds,
-      ...one.answer.blocks.flatMap((block) => [
-        ...block.lessons.map((lesson) => lesson.unitId),
-        ...block.chosenClassIds,
-        ...block.otherClassIds,
-      ]),
-    ]),
+    ...named.unitIds,
     ...impact.classIds,
     ...allChanges.flatMap((one) => [one.unitId, ...one.classIds]),
     ...(week?.rows ?? []).map((one) => one.unitId),
   ]);
   const subjectIds = new Set<string>([
-    ...days.items.map((one) => one.answer.subjectId),
-    ...days.bulk.flatMap((one) =>
-      one.answer.blocks.flatMap((block) => block.lessons.map((lesson) => lesson.subjectId)),
-    ),
+    ...named.subjectIds,
     ...allChanges.map((one) => one.subjectId),
     ...(week?.rows ?? []).map((one) => one.subjectId),
   ]);
   const teacherIds = new Set<string>([...impact.teacherIds, ...vacancies.keys()]);
-  const roomIds = new Set<string>([
-    ...impact.roomIds,
-    ...days.items
-      .flatMap((one) => [one.answer.from.roomId, one.answer.to.roomId])
-      .flatMap((id) => (id === null ? [] : [id])),
-  ]);
+  const roomIds = new Set<string>([...impact.roomIds, ...named.roomIds]);
   const units = new Map(
     [...states.values(), draft].flatMap((state) =>
       state.pattern.model.data.units.map((unit) => [unit.id, unit] as const),
     ),
   );
-  const ids = (set: Set<string>) => [...set].filter((id) => id !== '').sort();
-  const [classes, groups, subjects, staff, rooms] = await Promise.all([
-    ids(unitIds).length === 0
-      ? Promise.resolve([])
-      : transaction
-          .selectFrom('classes')
-          .select(['id', 'name'])
-          .where('id', 'in', ids(unitIds))
-          .execute(),
-    ids(unitIds).length === 0
-      ? Promise.resolve([])
-      : transaction
-          .selectFrom('groups')
-          .select(['id', 'name'])
-          .where('id', 'in', ids(unitIds))
-          .execute(),
-    ids(subjectIds).length === 0
-      ? Promise.resolve([])
-      : transaction
-          .selectFrom('subjects')
-          .select(['id', 'name_uz', 'name_ru', 'name_en'])
-          .where('id', 'in', ids(subjectIds))
-          .orderBy('id')
-          .execute(),
-    ids(teacherIds).length === 0
-      ? Promise.resolve([])
-      : transaction
-          .selectFrom('staff')
-          .select(['id', 'kind', 'first_name', 'last_name', 'vacancy_name', 'account_id'])
-          .where('id', 'in', ids(teacherIds))
-          .orderBy('id')
-          .execute(),
-    ids(roomIds).length === 0
-      ? Promise.resolve([])
-      : transaction
-          .selectFrom('rooms')
-          .select(['id', 'name'])
-          .where('id', 'in', ids(roomIds))
-          .orderBy('id')
-          .execute(),
-  ]);
+  const { names, staff } = await namesOf(
+    transaction,
+    { unitIds, subjectIds, teacherIds, roomIds },
+    units,
+  );
   const staffOf = new Map(staff.map((one) => [one.id, one]));
-  const unitNames = [
-    ...classes.map((one) => ({ ...one, kind: 'class' as const })),
-    ...groups.map((one) => ({ ...one, kind: 'group' as const })),
-  ]
-    .map((one) => ({ ...one, grades: [...(units.get(one.id)?.grades ?? [])] }))
-    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 
   return {
     answer: {
@@ -372,24 +316,125 @@ export async function impactOf(
         dropped: days.items.filter((one) => one.category === 'dropped').map((one) => one.answer),
         bulk: days.bulk.map((one) => one.answer),
       },
-      names: {
-        units: unitNames,
-        subjects: subjects.map((one) => ({
-          id: one.id,
-          names: { uz: one.name_uz, ru: one.name_ru, en: one.name_en },
-        })),
-        teachers: staff.map((one) => ({
-          id: one.id,
-          name:
-            one.kind === 'vacancy'
-              ? (one.vacancy_name ?? '')
-              : listName({ firstName: one.first_name ?? '', lastName: one.last_name ?? '' }),
-        })),
-        rooms: rooms.map((one) => ({ id: one.id, name: one.name })),
-      },
+      names,
     },
     acknowledged: differing.map((row) => ({ ...row })),
   };
+}
+
+/** The classes, groups, subjects and rooms a sorting of one-day changes and bulk cancels names. */
+export function dayChangeIdsOf(
+  items: readonly SortedDayChange[],
+  bulk: readonly SortedBulk[],
+): { unitIds: string[]; subjectIds: string[]; roomIds: string[] } {
+  return {
+    // A class reached only through a group lesson is in `classIds` alone (review of #142).
+    unitIds: [
+      ...items.map((one) => one.answer.unitId),
+      ...bulk.flatMap((one) => [
+        ...one.answer.classIds,
+        ...one.answer.blocks.flatMap((block) => [
+          ...block.lessons.map((lesson) => lesson.unitId),
+          ...block.chosenClassIds,
+          ...block.otherClassIds,
+        ]),
+      ]),
+    ],
+    subjectIds: [
+      ...items.map((one) => one.answer.subjectId),
+      ...bulk.flatMap((one) =>
+        one.answer.blocks.flatMap((block) => block.lessons.map((lesson) => lesson.subjectId)),
+      ),
+    ],
+    roomIds: items
+      .flatMap((one) => [one.answer.from.roomId, one.answer.to.roomId])
+      .flatMap((id) => (id === null ? [] : [id])),
+  };
+}
+
+/**
+ * The names of what a preview names (decision 12): records of the branch
+ * only; a unit's grades from `units`. Also the withdraw check's (task
+ * 5.6a-5b-2).
+ */
+export async function namesOf(
+  transaction: Transaction,
+  input: {
+    readonly unitIds: Iterable<string>;
+    readonly subjectIds: Iterable<string>;
+    readonly teacherIds: Iterable<string>;
+    readonly roomIds: Iterable<string>;
+  },
+  units: ReadonlyMap<string, { readonly grades: readonly number[] }>,
+) {
+  const unitIds = new Set(input.unitIds);
+  const subjectIds = new Set(input.subjectIds);
+  const teacherIds = new Set(input.teacherIds);
+  const roomIds = new Set(input.roomIds);
+  const ids = (set: Set<string>) => [...set].filter((id) => id !== '').sort();
+  const [classes, groups, subjects, staff, rooms] = await Promise.all([
+    ids(unitIds).length === 0
+      ? Promise.resolve([])
+      : transaction
+          .selectFrom('classes')
+          .select(['id', 'name'])
+          .where('id', 'in', ids(unitIds))
+          .execute(),
+    ids(unitIds).length === 0
+      ? Promise.resolve([])
+      : transaction
+          .selectFrom('groups')
+          .select(['id', 'name'])
+          .where('id', 'in', ids(unitIds))
+          .execute(),
+    ids(subjectIds).length === 0
+      ? Promise.resolve([])
+      : transaction
+          .selectFrom('subjects')
+          .select(['id', 'name_uz', 'name_ru', 'name_en'])
+          .where('id', 'in', ids(subjectIds))
+          .orderBy('id')
+          .execute(),
+    ids(teacherIds).length === 0
+      ? Promise.resolve([])
+      : transaction
+          .selectFrom('staff')
+          .select(['id', 'kind', 'first_name', 'last_name', 'vacancy_name', 'account_id'])
+          .where('id', 'in', ids(teacherIds))
+          .orderBy('id')
+          .execute(),
+    ids(roomIds).length === 0
+      ? Promise.resolve([])
+      : transaction
+          .selectFrom('rooms')
+          .select(['id', 'name'])
+          .where('id', 'in', ids(roomIds))
+          .orderBy('id')
+          .execute(),
+  ]);
+  const unitNames = [
+    ...classes.map((one) => ({ ...one, kind: 'class' as const })),
+    ...groups.map((one) => ({ ...one, kind: 'group' as const })),
+  ]
+    .map((one) => ({ ...one, grades: [...(units.get(one.id)?.grades ?? [])] }))
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+
+  const names: PreviewNamesAnswer = {
+    units: unitNames,
+    subjects: subjects.map((one) => ({
+      id: one.id,
+      names: { uz: one.name_uz, ru: one.name_ru, en: one.name_en },
+    })),
+    teachers: staff.map((one) => ({
+      id: one.id,
+      name:
+        one.kind === 'vacancy'
+          ? (one.vacancy_name ?? '')
+          : listName({ firstName: one.first_name ?? '', lastName: one.last_name ?? '' }),
+    })),
+    rooms: rooms.map((one) => ({ id: one.id, name: one.name })),
+  };
+  return { names, staff };
 }
 
 /**

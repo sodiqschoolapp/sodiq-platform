@@ -265,6 +265,22 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 19 October 2026: one-day changes kept after a withdraw (task 5.6a-5b-2)
+
+Plan approved on pull request #166 with corrections 1 and 2; decisions 1 to 13 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a reading of the spec). A withdraw sorts and applies the stored one-day changes and bulk cancels of the withdrawn dates as a publish does, the version that runs again in the new version's place: the same categories, choices and refusal codes | Decision 1; `edge/timetable`, Versions and drafts, "applied again after a publish" |
+| **Look first** (a refusal widened). A withdraw over stored changes needs the check's `dayChangesKey`, and a choice for each "needs a decision" item | Decision 2; the 5.5c-2a tests have nothing stored and pass unchanged |
+| **Look first** (a reading of the spec). A change the withdrawn version's publish ended stays ended; the withdraw restores lessons, not ended changes | Decision 3; 0087 is insert only. The other reading (undo the automatic drops) is the owner's to choose |
+| With no version running again, the changes of removed lessons are dropped and ended, a move onto or off the withdrawn dates from outside them is sorted with the withdrawn version's own facts among no lessons, a bulk cancel is kept with nothing under it | Decisions 4 and 13 |
+| An end written by a withdraw names the withdrawn version; `bulk_cancel_blocks` rows name the blocks of the version that runs again | Decision 5; no rule reads `version_id` |
+| The sorting is the publish's code; the check route is a view; it answers the sorting only; `{}` or no body is valid; the `day_*` refusals are details of `withdraw_blocked` with the blocked results, thrown once; no new audit action, notice kind or area; keys and blocks checked against the branch before any lock | Decisions 6 to 12 |
+| The check and the withdraw read everything before the archive, so their keys agree | Review correction 1 |
+| **Build decision.** `removeDatedLessons` takes the write plan: a kept move's stored lesson stays with its block, cancelled with `cancelStored` | Spec review of the plan, must-fix 1 |
+| **Build decision.** The withdraw dialog's button waits while the check is read again, so a refused older key is never sent twice | Spec review of the code, should-fix 7 |
+
 ## 19 October 2026: one-day changes kept after a publish, bulk cancels (task 5.6a-5b-1)
 
 Plan approved on pull request #165 with no corrections; decisions 1 to 13 confirmed there. Flagged on issue #42.

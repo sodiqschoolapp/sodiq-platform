@@ -8,6 +8,7 @@ import {
   type TimetableVersion,
   type TimetableVersionCreate,
   type TimetableVersionEdit,
+  type WithdrawBody,
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
@@ -46,6 +47,18 @@ import {
   withdrawVersion,
 } from './timetable-api';
 import { comingQuarterStarts, NewDraftForm, StartForm } from './version-form';
+import { WithdrawDialog } from './withdraw-dialog';
+
+/** The refusals of a withdraw's sorting (task 5.6a-5b-2), named as the publish names them. */
+const DAY_REFUSALS = [
+  'day_change_undecided',
+  'day_decision_unknown',
+  'day_changes_changed',
+  'day_choice_not_offered',
+] as const;
+
+const isDayRefusal = (code: string): code is (typeof DAY_REFUSALS)[number] =>
+  (DAY_REFUSALS as readonly string[]).includes(code);
 
 /** The class or group of a row as a person reads it: "7 Oxford", or the group's name. */
 const unitText = (row: LoadRow): string =>
@@ -138,10 +151,11 @@ export function LoadPage(): React.JSX.Element {
   });
   // Task 5.5c-2a: one key per withdraw asked, so a repeat of the same click is harmless.
   const withdrawKey = useRef<string | null>(null);
+  const [withdrawing, setWithdrawing] = useState<TimetableVersion | null>(null);
   const withdraw = useMutation({
-    mutationFn: (versionId: string) => {
+    mutationFn: ({ versionId, body }: { versionId: string; body: WithdrawBody }) => {
       withdrawKey.current ??= crypto.randomUUID();
-      return withdrawVersion(versionId, withdrawKey.current);
+      return withdrawVersion(versionId, withdrawKey.current, body);
     },
     onSuccess: async () => {
       withdrawKey.current = null;
@@ -420,31 +434,43 @@ export function LoadPage(): React.JSX.Element {
           other.startsOn < one.startsOn,
       )
       .sort((a, b) => b.startsOn.localeCompare(a.startsOn) || b.number - a.number)[0];
-  // Task 5.5c-2a: asks first, naming the version and the one that runs again.
-  const askWithdraw = async (one: TimetableVersion) => {
-    const earlier = earlierOf(one);
-    const date = schoolDateText(one.startsOn, language);
-    if (
-      await confirm({
-        title: t('timetable.load.withdrawTitle', { number: one.number }),
-        text:
-          earlier === undefined
-            ? t('timetable.load.withdrawTextNone', { date })
-            : t('timetable.load.withdrawText', { date, earlier: earlier.number }),
-        names: [versionLabel(one)],
-        action: t('timetable.load.withdraw'),
-        destructive: true,
-      })
-    ) {
-      withdraw.mutate(one.id);
-    }
-  };
+  // Task 5.5c-2a: asks first, naming the version and the one that runs again;
+  // task 5.6a-5b-2: with the one-day changes of its dates and their choices.
+  const withdrawDialog =
+    withdrawing === null
+      ? null
+      : (() => {
+          const earlier = earlierOf(withdrawing);
+          const date = schoolDateText(withdrawing.startsOn, language);
+          return (
+            <WithdrawDialog
+              branchId={branchId}
+              versionId={withdrawing.id}
+              title={t('timetable.load.withdrawTitle', { number: withdrawing.number })}
+              text={
+                earlier === undefined
+                  ? t('timetable.load.withdrawTextNone', { date })
+                  : t('timetable.load.withdrawText', { date, earlier: earlier.number })
+              }
+              name={versionLabel(withdrawing)}
+              action={t('timetable.load.withdraw')}
+              onClose={() => {
+                setWithdrawing(null);
+              }}
+              onWithdraw={(body) => {
+                setWithdrawing(null);
+                withdraw.mutate({ versionId: withdrawing.id, body });
+              }}
+            />
+          );
+        })();
   const rowName = (row: LoadRow) => `${unitText(row)}, ${nameOf(row.subject.names, language)}`;
   const leftRows = load.data?.leftRows ?? [];
 
   return (
     <>
       {header}
+      {withdrawDialog}
       {editLock.othersEditing && (
         <div className="mb-6">
           <EditLockBanner version={chosen} take={editLock.take} />
@@ -490,7 +516,7 @@ export function LoadPage(): React.JSX.Element {
               variant="destructive"
               disabled={withdraw.isPending}
               onClick={() => {
-                void askWithdraw(chosen);
+                setWithdrawing(chosen);
               }}
             >
               {t('timetable.load.withdraw')}
@@ -504,13 +530,16 @@ export function LoadPage(): React.JSX.Element {
               <ul className="grid gap-1 text-sm">
                 {(withdraw.error.details ?? []).map((detail, index) => (
                   <li key={`${detail.path}-${String(index)}`}>
-                    {t('timetable.load.withdrawBlocked', {
-                      date:
-                        detail.day === undefined
-                          ? t('timetable.load.everyWeek')
-                          : schoolDateText(detail.day, language),
-                      rule: ruleText(t, detail.path.split('.').at(-1) ?? ''),
-                    })}
+                    {isDayRefusal(detail.code)
+                      ? // Task 5.6a-5b-2: a reason of the sorting, as the publish names it.
+                        t(`timetable.publish.refusals.${detail.code}`)
+                      : t('timetable.load.withdrawBlocked', {
+                          date:
+                            detail.day === undefined
+                              ? t('timetable.load.everyWeek')
+                              : schoolDateText(detail.day, language),
+                          rule: ruleText(t, detail.path.split('.').at(-1) ?? ''),
+                        })}
                   </li>
                 ))}
               </ul>

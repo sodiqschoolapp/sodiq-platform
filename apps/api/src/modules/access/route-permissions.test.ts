@@ -566,6 +566,11 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     branch: 'request',
     roles: ['super_admin', 'academic_vice_principal'],
   },
+  // Task 5.6a-5b-2 (decision 7): the withdraw's check, a view as the publish check.
+  'GET /api/timetable/versions/:id/withdraw-check': {
+    branch: 'request',
+    roles: ['super_admin', 'principal', 'academic_vice_principal'],
+  },
   // Task 5.6a-1 (decision 2): one-day changes under `timetable`, no role widened.
   'GET /api/timetable/day': {
     branch: 'request',

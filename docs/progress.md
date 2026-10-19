@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 19 October 2026: task 5.6a-5b-2 One-day changes kept after a withdraw
+
+- A withdraw sorts the stored one-day changes and bulk cancels of the withdrawn dates as a publish does, over the version that runs again (read as if it started on the withdrawn start), or over no lessons with the withdrawn version's own facts when none runs again; a move from before the withdrawn start keeps its block under its version.
+- New `GET /api/timetable/versions/:id/withdraw-check` (timetable view) answers the sorting and its names; the withdraw takes `{ dayChangesKey, dayDecisions }` (`{}` or no body when nothing is stored) and refuses `day_*` reasons as details of `withdraw_blocked`, with the blocked results in one answer. The withdraw dialog of the load page shows the sorting and waits for each choice.
+- Ends name the withdrawn version; a change the withdrawn version's publish ended stays ended. `removeDatedLessons` keeps a kept move's lesson (and writes `cancelStored`). Audit `dayChanges` on `timetable_version.withdraw`. No migration.
+- Left out: the blocked results shown before the click (5.5c-2a decision 7 stands); exemption of a kept block's students (8.5); substitutions (5.7b), absences and closures (5.7a), exams (5.6c); a browser test (no stored change under two versions in the browser scene).
+
+The next sessions must know:
+
+- `withdraw.service.ts` `findingsOf` is the one reader for the check and the withdraw, before the archive; `dayRefusalsOf`, `dayDecisionsOf`, `planOfRun` and `refuseUnknownKeys` of `publish.service.ts` serve both.
+- The dated check of a withdraw does not read exams yet: an exam under a lesson of the version that runs again is refused by the database (`timetable_busy`), not by `withdraw_blocked` (5.6c).
+- The next task is 5.6b.
+
 ## 19 October 2026: task 5.6a-5b-1 One-day changes kept after a publish: bulk cancels
 
 - A publish (and each later version it carries a change into) applies the stored bulk cancels of its dates again (`bulk-cancels-kept.ts`): the new version's lessons of the chosen classes in the stored spans are cancelled with the reason when the write creates them; a lesson it keeps keeps its state (a restore stands).

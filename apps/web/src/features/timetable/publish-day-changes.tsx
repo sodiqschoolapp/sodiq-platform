@@ -39,7 +39,9 @@ export function PublishDayChanges({
   onChoose,
   canEdit,
 }: {
-  impact: PublishImpactAnswer;
+  /** The sorting and its names: a publish's impact, or a withdraw's check (task 5.6a-5b-2). */
+  impact: Pick<PublishImpactAnswer, 'names' | 'dayChanges'> &
+    Partial<Pick<PublishImpactAnswer, 'carried'>>;
   choices: Readonly<Record<string, DayChangeChoice>>;
   onChoose: (key: string, choice: DayChangeChoice) => void;
   canEdit: boolean;
@@ -75,7 +77,9 @@ export function PublishDayChanges({
       : (names.rooms.find((one) => one.id === id)?.name ??
         t('timetable.publish.impact.unknownRoom'));
   const versionNumber = (id: string | null): number | null =>
-    id === null ? null : (impact.carried.find((one) => one.versionId === id)?.number ?? null);
+    id === null
+      ? null
+      : ((impact.carried ?? []).find((one) => one.versionId === id)?.number ?? null);
 
   const itemText = (item: DayChangeItemAnswer): string => {
     const date = schoolDateText(item.from.date, language);
