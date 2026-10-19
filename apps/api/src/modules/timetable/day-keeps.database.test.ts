@@ -1,3 +1,4 @@
+import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
@@ -12,6 +13,8 @@ const UNIQUE_VIOLATION = '23505';
 const NOW = '2026-10-15T10:00:00+05:00';
 const STARTS_ON = '2026-10-19';
 const SHORT_DATE = '2026-11-16';
+const TODAY = '2026-10-15';
+const YESTERDAY = '2026-10-14';
 
 /** The error a promise was refused with, or a failure when it was not refused. */
 async function refusal(work: Promise<unknown>): Promise<{ code?: string; constraint?: string }> {
@@ -26,7 +29,8 @@ async function refusal(work: Promise<unknown>): Promise<{ code?: string; constra
 // What the database keeps of the lessons kept on a shortened day
 // (db/migrations/0074; task 5.5a-2b-2, pull request #143, decision 2): a
 // version, a class, a date and a slot position, once each; changed only while
-// the version is a draft of a year that is not closed; never updated; removed
+// the version is a draft of a year that is not closed (or, task 5.6b-2b, a
+// published version's choice for a date after today); never updated; removed
 // with its version. All names are invented.
 describe('the lessons kept on a shortened day in the database', () => {
   let database: TestDatabase;
@@ -129,14 +133,87 @@ describe('the lessons kept on a shortened day in the database', () => {
     );
   });
 
-  it('refuses a choice added or removed on a version that is not a draft', async () => {
+  // Task 5.6b-2b (pull request #171, decision 1, review correction 3): a
+  // calendar save writes a published version's choice for a date after today
+  // (0089); today, the past, an archived version and an unset moment stay
+  // refused. This test was "refuses a choice added or removed on a version
+  // that is not a draft" and keeps its refusal on the cases 0089 still refuses.
+  it("lets a published version's choice be added and removed after today only", async () => {
     const { branch, version, classId } = await draft();
     const kept = await keep(branch, version, classId);
     await kit.setVersion(version, 'published');
+    const added = await keep(branch, version, classId, 3);
+    await unkeep(branch, added.id);
+    await unkeep(branch, kept.id);
+    const left = await database.migrator
+      .selectFrom('timetable_day_keeps')
+      .select('id')
+      .where('version_id', '=', version)
+      .execute();
+    expect(left).toEqual([]);
+  });
+
+  it("refuses a published version's choice added or removed for today or earlier", async () => {
+    for (const keptOn of [TODAY, YESTERDAY]) {
+      const { branch, version, classId } = await draft();
+      // Written while the version was a draft: a draft may hold any date.
+      const kept = await keep(branch, version, classId, 1, keptOn);
+      await kit.setVersion(version, 'published');
+      expect((await refusal(keep(branch, version, classId, 3, keptOn))).constraint, keptOn).toBe(
+        'pattern_version_draft',
+      );
+      expect((await refusal(unkeep(branch, kept.id))).constraint, keptOn).toBe(
+        'pattern_version_draft',
+      );
+    }
+  });
+
+  it('refuses a choice added or removed on an archived version', async () => {
+    const { branch, version, classId } = await draft();
+    const kept = await keep(branch, version, classId);
+    await kit.setVersion(version, 'archived');
     expect((await refusal(keep(branch, version, classId, 3))).constraint).toBe(
       'pattern_version_draft',
     );
     expect((await refusal(unkeep(branch, kept.id))).constraint).toBe('pattern_version_draft');
+  });
+
+  it("refuses a published version's choice while the moment is not set", async () => {
+    const { branch, version, classId } = await draft();
+    const kept = await keep(branch, version, classId);
+    await kit.setVersion(version, 'published');
+    const unset = <T>(work: (transaction: Transaction) => Promise<T>) =>
+      inBranch(branch, async (transaction) => {
+        await sql`select set_config('app.now', '', true)`.execute(transaction);
+        return work(transaction);
+      });
+    expect(
+      (
+        await refusal(
+          unset((transaction) =>
+            transaction
+              .insertInto('timetable_day_keeps')
+              .values({
+                branch_id: branch,
+                version_id: version,
+                class_id: classId,
+                kept_on: SHORT_DATE,
+                slot_position: 3,
+              })
+              .execute(),
+          ),
+        )
+      ).constraint,
+    ).toBe('pattern_version_draft');
+    expect(
+      (
+        await refusal(
+          unset((transaction) =>
+            transaction.deleteFrom('timetable_day_keeps').where('id', '=', kept.id).execute(),
+          ),
+        )
+      ).constraint,
+    ).toBe('pattern_version_draft');
   });
 
   it('refuses a choice added or removed in a closed year', async () => {
