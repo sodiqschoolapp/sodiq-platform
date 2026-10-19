@@ -9,6 +9,7 @@ import type {
   SchoolGroup,
   Subject,
   TimetableVersion,
+  WithdrawCheck,
 } from '@sodiq/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
@@ -624,11 +625,40 @@ describe('the teaching load page', () => {
 describe('the teaching load page: withdraw', () => {
   const earlier = version(1, { status: 'published', startsOn: '2026-09-01' });
   const later = version(2, { status: 'published', startsOn: '2026-11-09' });
+  const KEY = 'a'.repeat(64);
+  /** The withdraw check of `later` (task 5.6a-5b-2), with nothing stored unless given. */
+  const checkRoute = (dayChanges: Partial<WithdrawCheck['dayChanges']> = {}) => ({
+    [`GET /api/timetable/versions/${later.id}/withdraw-check`]: () =>
+      json({
+        runsAgain: { id: earlier.id, number: 1 },
+        runsAgainUntil: '2027-05-31',
+        dayChanges: { key: KEY, kept: [], decide: [], dropped: [], bulk: [], ...dayChanges },
+        names: {
+          units: [{ id: OXFORD.id, kind: 'class', name: 'Oxford', grades: [7] }],
+          subjects: [{ id: MATHS.id, names: MATHS.names }],
+          teachers: [],
+          rooms: [],
+        },
+      } satisfies WithdrawCheck),
+  });
+  /** A one-day move of Oxford's maths stored for a withdrawn date. */
+  const moveItem = (key: string) => ({
+    key,
+    kind: 'move' as const,
+    unitId: OXFORD.id,
+    subjectId: MATHS.id,
+    from: { date: '2026-11-16', start: 480, end: 525, roomId: null },
+    to: { date: '2026-11-18', start: 535, end: 580, roomId: null },
+    reason: 'Excursion to the museum',
+    carriedVersionId: null,
+    blocked: [],
+  });
 
   it('withdraws a published version before its start, naming the version that runs again', async () => {
     const calls = await openPage({
       versions: [later, earlier],
       extra: {
+        ...checkRoute(),
         [`POST /api/timetable/versions/${later.id}/withdraw`]: () =>
           json({ ...later, status: 'archived' }),
       },
@@ -641,16 +671,124 @@ describe('the teaching load page: withdraw', () => {
         'It is withdrawn before it starts on 9 November 2026. Version 1 runs again over its dates.',
       ),
     ).not.toBeNull();
-    fireEvent.click(within(dialog).getByRole('button', { name: en.timetable.load.withdraw }));
+    const send = within(dialog).getByRole('button', { name: en.timetable.load.withdraw });
+    // The check is read first: the button waits for it.
+    await waitFor(() => {
+      expect((send as HTMLButtonElement).disabled).toBe(false);
+    });
+    fireEvent.click(send);
     await waitFor(() => {
       expect(
         calls.filter((call) => call.route === `POST /api/timetable/versions/${later.id}/withdraw`),
       ).toHaveLength(1);
     });
+    // Task 5.6a-5b-2: with the key of the sorting shown, nothing to decide.
+    expect(
+      calls.find((call) => call.route === `POST /api/timetable/versions/${later.id}/withdraw`)
+        ?.body,
+    ).toEqual({ dayChangesKey: KEY, dayDecisions: [] });
+  });
+
+  // Task 5.6a-5b-2 (edge/timetable, Versions and drafts: "The preview sorts
+  // them into kept, needs a decision and dropped. Publish waits until every
+  // 'needs a decision' item is settled.").
+  it('shows the one-day changes of the withdrawn dates and waits for a choice for each one that needs a decision', async () => {
+    const kept = uid(901);
+    const open = uid(902);
+    const calls = await openPage({
+      versions: [later, earlier],
+      extra: {
+        ...checkRoute({ kept: [moveItem(kept)], decide: [moveItem(open)] }),
+        [`POST /api/timetable/versions/${later.id}/withdraw`]: () =>
+          json({ ...later, status: 'archived' }),
+      },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: en.timetable.load.withdraw }));
+    const dialog = await screen.findByRole('alertdialog');
+    const keptList = await waitFor(() => {
+      const found = dialog.querySelector<HTMLElement>('[data-day-changes="kept"]');
+      expect(found).not.toBeNull();
+      return found as HTMLElement;
+    });
+    expect(keptList.querySelector(`[data-key="${kept}"]`)).not.toBeNull();
+    const decide = dialog.querySelector<HTMLElement>(
+      `[data-day-changes="decide"] [data-key="${open}"]`,
+    );
+    expect(decide).not.toBeNull();
+    const send = within(dialog).getByRole('button', { name: en.timetable.load.withdraw });
+    expect((send as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(
+      within(decide as HTMLElement).getByRole('radio', {
+        name: en.timetable.publish.dayChanges.choice_cancel,
+      }),
+    );
+    await waitFor(() => {
+      expect((send as HTMLButtonElement).disabled).toBe(false);
+    });
+    fireEvent.click(send);
+    await waitFor(() => {
+      expect(
+        calls.find((call) => call.route === `POST /api/timetable/versions/${later.id}/withdraw`)
+          ?.body,
+      ).toEqual({ dayChangesKey: KEY, dayDecisions: [{ key: open, choice: 'cancel' }] });
+    });
+  });
+
+  it('names a refusal of the sorting as the publish names it', async () => {
+    await openPage({
+      versions: [later, earlier],
+      extra: {
+        ...checkRoute(),
+        [`POST /api/timetable/versions/${later.id}/withdraw`]: () =>
+          Response.json(
+            {
+              error: {
+                code: 'withdraw_blocked',
+                message: 'ENGLISH TEXT FOR THE DEVELOPER',
+                requestId: 'test-request',
+                details: [{ path: 'dayChanges', code: 'day_changes_changed', message: 'x' }],
+              },
+            },
+            { status: 409 },
+          ),
+      },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: en.timetable.load.withdraw }));
+    const dialog = await screen.findByRole('alertdialog');
+    const send = within(dialog).getByRole('button', { name: en.timetable.load.withdraw });
+    await waitFor(() => {
+      expect((send as HTMLButtonElement).disabled).toBe(false);
+    });
+    fireEvent.click(send);
+    const failure = await waitFor(() => {
+      const found = document.querySelector<HTMLElement>('[data-withdraw-failure]');
+      expect(found).not.toBeNull();
+      return found as HTMLElement;
+    });
+    expect(
+      within(failure).getByText(en.timetable.publish.refusals.day_changes_changed),
+    ).not.toBeNull();
+  });
+
+  it('shows a failed check with a retry and offers no withdraw', async () => {
+    await openPage({
+      versions: [later, earlier],
+      extra: {
+        [`GET /api/timetable/versions/${later.id}/withdraw-check`]: () =>
+          refusal('withdraw_started', 409),
+      },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: en.timetable.load.withdraw }));
+    const dialog = await screen.findByRole('alertdialog');
+    expect(await within(dialog).findByText(en.errors.withdraw_started)).not.toBeNull();
+    expect(
+      within(dialog).getByRole<HTMLButtonElement>('button', { name: en.timetable.load.withdraw })
+        .disabled,
+    ).toBe(true);
   });
 
   it('says when no version runs over the dates of the first one', async () => {
-    await openPage({ versions: [later] });
+    await openPage({ versions: [later], extra: checkRoute() });
     fireEvent.click(await screen.findByRole('button', { name: en.timetable.load.withdraw }));
     const dialog = await screen.findByRole('alertdialog');
     expect(
@@ -680,6 +818,7 @@ describe('the teaching load page: withdraw', () => {
     await openPage({
       versions: [later, earlier],
       extra: {
+        ...checkRoute(),
         [`POST /api/timetable/versions/${later.id}/withdraw`]: () =>
           Response.json(
             {
@@ -703,7 +842,11 @@ describe('the teaching load page: withdraw', () => {
     });
     fireEvent.click(await screen.findByRole('button', { name: en.timetable.load.withdraw }));
     const dialog = await screen.findByRole('alertdialog');
-    fireEvent.click(within(dialog).getByRole('button', { name: en.timetable.load.withdraw }));
+    const send = within(dialog).getByRole('button', { name: en.timetable.load.withdraw });
+    await waitFor(() => {
+      expect((send as HTMLButtonElement).disabled).toBe(false);
+    });
+    fireEvent.click(send);
     const failure = await waitFor(() => {
       const found = document.querySelector<HTMLElement>('[data-withdraw-failure]');
       expect(found).not.toBeNull();

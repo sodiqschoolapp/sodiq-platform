@@ -445,7 +445,7 @@ export const en = {
     withdraw_started:
       'This version has started, so it can no longer be withdrawn. Publish a new version to change it.',
     withdraw_blocked:
-      'The version that would run again meets a blocked conflict on the dates listed. Settle them, then withdraw again.',
+      'The withdraw is refused for the reasons listed: a blocked conflict of the version that would run again, or a one-day change that needs a decision. Settle them, then withdraw again.',
     draft_not_ready: 'A step of the draft is not ready. Finish the steps marked not ready first.',
     load_unit_year:
       "That class or group is of another academic year than the version. Choose one of the version's year.",

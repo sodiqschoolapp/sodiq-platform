@@ -2145,6 +2145,220 @@ describe('the bulk cancel', () => {
       refusedWith(await publishWith(s, draft, body, key, t.principal), 403, 'permission_denied');
       expect(await everything()).toEqual(after);
     });
+
+    // Task 5.6a-5b-2: a withdraw sorts and applies the stored bulk cancels of
+    // the withdrawn dates as a publish does (decision 1); 5.6a-5b-1 decision 5:
+    // a choice whose block the withdraw removes carries nothing, and the block
+    // in its place is asked in the withdraw's own sorting.
+    describe('and after a withdraw (task 5.6a-5b-2)', () => {
+      interface WithdrawChecked {
+        runsAgain: { id: string } | null;
+        dayChanges: { key: string; bulk: BulkItem[] };
+      }
+
+      /** `draft` published from the Monday after next, with the key its check shows. */
+      const published = async (s: Scene, draft: string) => {
+        const days = (await checkOn(s, draft, NEXT_MONDAY)).impact.dayChanges;
+        const answer = await publishWith(s, draft, { dayChangesKey: days.key });
+        expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+        return draft;
+      };
+
+      const withdrawCheck = async (s: Scene, version: string) => {
+        const answer = await t.get(`/api/timetable/versions/${version}/withdraw-check`, s.branch);
+        expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+        return answer.body as WithdrawChecked;
+      };
+
+      const withdrawWith = (s: Scene, version: string, body: object) =>
+        request(t.kit.server)
+          .post(`/api/timetable/versions/${version}/withdraw`)
+          .set('Cookie', t.admin)
+          .set(BRANCH_HEADER, s.branch)
+          .set(REQUEST_KEY_HEADER, randomUUID())
+          .send(body);
+
+      const withdrawRefusals = (response: Response) => {
+        refusedWith(response, 409, 'withdraw_blocked');
+        return (response.body as { error: { details: { code: string; path: string }[] } }).error
+          .details;
+      };
+
+      it('asks for a decision on a shared block of the version that runs again with no stored choice, and keeps it with “keep”', async () => {
+        const s = await scene();
+        // B: the English block in lesson 1, maths in lesson 2; 7 Oxford away
+        // in lessons 1 and 2 with "keep" on B's block.
+        const b = await published(s, await draftOf(s, { maths: 3, english: 1 }));
+        const bulk = await oxfordAway(s, 'keep');
+        const stored = await blocksOf(bulk);
+        expect(stored).toHaveLength(1);
+        const checked = await withdrawCheck(s, b);
+        expect(checked.runsAgain).toMatchObject({ id: s.version });
+        // The scene's English block, in lesson 2, has no counterpart among B's blocks.
+        expect(checked.dayChanges.bulk).toHaveLength(1);
+        const [item] = checked.dayChanges.bulk;
+        expect(item).toMatchObject({ key: bulk, category: 'decide', cancelled: 1 });
+        const block = item?.blocks[0];
+        expect(block).toMatchObject({
+          blockDate: NEXT_MONDAY,
+          chosenClassIds: [s.oxford],
+          otherClassIds: [s.princeton],
+          choice: null,
+        });
+        const blockId = block?.blockId ?? '';
+        const named = { key: bulk, blockId, blockDate: NEXT_MONDAY };
+        const key = checked.dayChanges.key;
+        const before = await everything();
+        expect(withdrawRefusals(await withdrawWith(s, b, { dayChangesKey: key }))).toContainEqual(
+          expect.objectContaining({
+            code: 'day_change_undecided',
+            path: `dayChanges.${bulk}.blocks.${blockId}.${NEXT_MONDAY}`,
+          }),
+        );
+        expect(
+          withdrawRefusals(
+            await withdrawWith(s, b, {
+              dayChangesKey: key,
+              dayDecisions: [{ ...named, choice: 'drop' }],
+            }),
+          ).map((one) => one.code),
+        ).toEqual(['day_choice_not_offered']);
+        // Another branch's pattern block and an unknown one: 404 before any lock.
+        const northBlock = await t.database.migrator
+          .selectFrom('pattern_blocks')
+          .select('id')
+          .where('version_id', '=', northScene.version)
+          .orderBy('id')
+          .executeTakeFirstOrThrow();
+        for (const wrong of [northBlock.id, UNKNOWN]) {
+          refusedWith(
+            await withdrawWith(s, b, {
+              dayChangesKey: key,
+              dayDecisions: [{ ...named, blockId: wrong, choice: 'keep' }],
+            }),
+            404,
+            'not_found',
+          );
+        }
+        // Review correction 2: nothing written by a refused withdraw, the
+        // bulk cancel's rows included.
+        expect(await everything()).toEqual(before);
+
+        const answer = await withdrawWith(s, b, {
+          dayChangesKey: key,
+          dayDecisions: [{ ...named, choice: 'keep' }],
+        });
+        expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+        // 7 Oxford's own English group and its maths are cancelled; the shared group is held.
+        const shared = await mondayOf(s, { groupId: s.groups[0] ?? '' }, s.english);
+        const own = await mondayOf(s, { groupId: s.groups[2] ?? '' }, s.english);
+        expect(shared).toMatchObject({ starts_at: at(NEXT_MONDAY, '08:55'), cancel_cause: null });
+        expect(own).toMatchObject({ cancel_cause: 'reason', cancel_reason: reason });
+        expect(await mondayOf(s, { classId: s.oxford }, s.maths)).toMatchObject({
+          starts_at: at(NEXT_MONDAY, '08:00'),
+          cancel_cause: 'reason',
+        });
+        expect((await mondayOf(s, { classId: s.princeton }, s.maths)).cancel_cause).toBeNull();
+        // The choice recorded on the block of the version that runs again.
+        expect((await blocksOf(bulk)).filter((one) => one.block_id === shared.block_id)).toEqual([
+          expect.objectContaining({ choice: 'keep', lesson_date: NEXT_MONDAY }),
+        ]);
+        const [entry] = await t.entries('timetable_version.withdraw', b);
+        expect(entry?.new_value).toMatchObject({
+          dayChanges: {
+            bulk: {
+              kept: [bulk],
+              decided: [{ key: bulk, blockId, blockDate: NEXT_MONDAY, choice: 'keep' }],
+            },
+          },
+        });
+      });
+
+      it('cancels the whole shared block with “cancel”', async () => {
+        const s = await scene();
+        const b = await published(s, await draftOf(s, { maths: 3, english: 1 }));
+        const bulk = await oxfordAway(s, 'keep');
+        const checked = await withdrawCheck(s, b);
+        const blockId = checked.dayChanges.bulk[0]?.blocks[0]?.blockId ?? '';
+        const answer = await withdrawWith(s, b, {
+          dayChangesKey: checked.dayChanges.key,
+          dayDecisions: [{ key: bulk, blockId, blockDate: NEXT_MONDAY, choice: 'cancel' }],
+        });
+        expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+        for (const group of s.groups) {
+          expect(await mondayOf(s, { groupId: group }, s.english)).toMatchObject({
+            cancel_cause: 'reason',
+            cancel_reason: reason,
+          });
+        }
+      });
+
+      it('carries a stored choice to a block with the same lessons, asking nothing and adding no row', async () => {
+        const s = await scene();
+        const b = await published(s, await draftOf(s));
+        const bulk = await oxfordAway(s, 'keep');
+        const rows = await blocksOf(bulk);
+        const checked = await withdrawCheck(s, b);
+        expect(checked.dayChanges.bulk).toEqual([
+          expect.objectContaining({ key: bulk, category: 'kept' }),
+        ]);
+        expect(checked.dayChanges.bulk[0]?.blocks.map((one) => one.choice)).toEqual(['keep']);
+        const answer = await withdrawWith(s, b, { dayChangesKey: checked.dayChanges.key });
+        expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+        expect(await blocksOf(bulk)).toEqual(rows);
+        expect(
+          (await mondayOf(s, { groupId: s.groups[0] ?? '' }, s.english)).cancel_cause,
+        ).toBeNull();
+      });
+
+      // `.claude/rules/timetable.md`: a choice named by a block the pairing reuses.
+      it('updates the stored choice of a block the version that runs again changes but keeps by its id', async () => {
+        const s = await scene();
+        // B's English block lacks 7-E-2; the scene's has it.
+        const b = await published(s, await draftOf(s, { withoutGroup: s.groups[1] ?? '' }));
+        const bulk = await oxfordAway(s, 'keep');
+        const [row] = await blocksOf(bulk);
+        expect(row?.choice).toBe('keep');
+        const checked = await withdrawCheck(s, b);
+        const block = checked.dayChanges.bulk[0]?.blocks[0];
+        expect(block?.choice).toBeNull();
+        const answer = await withdrawWith(s, b, {
+          dayChangesKey: checked.dayChanges.key,
+          dayDecisions: [
+            { key: bulk, blockId: block?.blockId, blockDate: NEXT_MONDAY, choice: 'cancel' },
+          ],
+        });
+        expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+        const shared = await mondayOf(s, { groupId: s.groups[0] ?? '' }, s.english);
+        expect(shared.cancel_cause).toBe('reason');
+        expect((await blocksOf(bulk)).filter((one) => one.block_id === shared.block_id)).toEqual([
+          expect.objectContaining({ choice: 'cancel' }),
+        ]);
+      });
+
+      it('keeps a bulk cancel with nothing under it when no version runs again (decision 4)', async () => {
+        const s = await scene();
+        const bulk = await oxfordAway(s, 'keep');
+        const checked = await withdrawCheck(s, s.version);
+        expect(checked.runsAgain).toBeNull();
+        expect(checked.dayChanges.bulk).toEqual([
+          expect.objectContaining({ key: bulk, category: 'kept', cancelled: 0, blocks: [] }),
+        ]);
+        const answer = await withdrawWith(s, s.version, { dayChangesKey: checked.dayChanges.key });
+        expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+        expect(
+          await t.database.migrator
+            .selectFrom('bulk_cancels')
+            .select('id')
+            .where('id', '=', bulk)
+            .execute(),
+        ).toEqual([{ id: bulk }]);
+        const [entry] = await t.entries('timetable_version.withdraw', s.version);
+        expect(entry?.new_value).toMatchObject({
+          dayChanges: { bulk: { kept: [bulk], decided: [], carried: [] } },
+        });
+      });
+    });
   });
 
   describe('at the same moment', () => {

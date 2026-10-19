@@ -1253,6 +1253,46 @@ export const bulkItemSchema = z.object({
 export type BulkItemAnswer = z.infer<typeof bulkItemSchema>;
 
 /**
+ * The stored one-day changes of the dates written, sorted into kept, needs a
+ * decision and dropped (task 5.6a-5a; `edge/timetable`, Versions and drafts,
+ * "A substitution and a one-day move are already recorded for a date after
+ * the new version starts"); `key` goes back with the publish, or with the
+ * withdraw (task 5.6a-5b-2).
+ */
+export const dayChangesAnswerSchema = z.object({
+  key: transitionKeySchema,
+  kept: z.array(dayChangeItemSchema),
+  decide: z.array(dayChangeItemSchema),
+  dropped: z.array(dayChangeItemSchema),
+  /** Task 5.6a-5b-1: the bulk cancels of the dates, once each. */
+  bulk: z.array(bulkItemSchema),
+});
+
+export type DayChangesAnswer = z.infer<typeof dayChangesAnswerSchema>;
+
+/** The names of what a preview names (task 5.5a-2b-1, decision 12): records of the branch only. */
+export const previewNamesSchema = z.object({
+  units: z.array(
+    z.object({
+      id: z.uuid(),
+      kind: z.enum(['class', 'group']),
+      name: z.string(),
+      grades: z.array(z.int()),
+    }),
+  ),
+  subjects: z.array(
+    z.object({
+      id: z.uuid(),
+      names: z.object({ uz: z.string(), ru: z.string(), en: z.string() }),
+    }),
+  ),
+  teachers: z.array(z.object({ id: z.uuid(), name: z.string() })),
+  rooms: z.array(z.object({ id: z.uuid(), name: z.string() })),
+});
+
+export type PreviewNamesAnswer = z.infer<typeof previewNamesSchema>;
+
+/**
  * The impact preview of a publish (task 5.5a-2b-1; `06`, How surprises are
  * prevented, Impact preview): the lessons created, moved, removed and changed
  * against the version in force before the start, the teachers, classes and
@@ -1311,33 +1351,9 @@ export const publishImpactSchema = z.object({
    * drafts, "A substitution and a one-day move are already recorded for a
    * date after the new version starts"); `key` goes back with the publish.
    */
-  dayChanges: z.object({
-    key: transitionKeySchema,
-    kept: z.array(dayChangeItemSchema),
-    decide: z.array(dayChangeItemSchema),
-    dropped: z.array(dayChangeItemSchema),
-    /** Task 5.6a-5b-1: the bulk cancels of the dates, once each. */
-    bulk: z.array(bulkItemSchema),
-  }),
+  dayChanges: dayChangesAnswerSchema,
   /** The names of what the preview names (decision 12). */
-  names: z.object({
-    units: z.array(
-      z.object({
-        id: z.uuid(),
-        kind: z.enum(['class', 'group']),
-        name: z.string(),
-        grades: z.array(z.int()),
-      }),
-    ),
-    subjects: z.array(
-      z.object({
-        id: z.uuid(),
-        names: z.object({ uz: z.string(), ru: z.string(), en: z.string() }),
-      }),
-    ),
-    teachers: z.array(z.object({ id: z.uuid(), name: z.string() })),
-    rooms: z.array(z.object({ id: z.uuid(), name: z.string() })),
-  }),
+  names: previewNamesSchema,
 });
 
 export type PublishImpactAnswer = z.infer<typeof publishImpactSchema>;
@@ -1400,6 +1416,32 @@ export const dayDecisionKeyOf = (one: {
   readonly blockDate?: string | undefined;
 }): string => `${one.key}|${one.blockId ?? ''}|${one.blockDate ?? ''}`;
 
+/**
+ * A choice for each "needs a decision" item of a sorting (task 5.6a-5a),
+ * sent with a publish or a withdraw (task 5.6a-5b-2). Task 5.6a-5b-1: a bulk
+ * cancel's block is named by `blockId` and `blockDate` besides its key; one
+ * choice per key and block.
+ */
+export const dayDecisionsSchema = z
+  .array(
+    z
+      .strictObject({
+        key: z.uuid(),
+        blockId: z.uuid().optional(),
+        blockDate: schoolDateSchema.optional(),
+        choice: dayChangeChoiceSchema,
+      })
+      .refine((one) => (one.blockId === undefined) === (one.blockDate === undefined), {
+        message: 'block_incomplete',
+      }),
+  )
+  .max(2000)
+  .refine((list) => new Set(list.map(dayDecisionKeyOf)).size === list.length, {
+    message: 'keys_not_unique',
+  });
+
+export type DayDecisions = z.infer<typeof dayDecisionsSchema>;
+
 /** A publish (decision 7): the start date, the draft's or a changed one. */
 export const publishBodySchema = z.strictObject({
   startsOn: schoolDateSchema,
@@ -1413,29 +1455,41 @@ export const publishBodySchema = z.strictObject({
   laterKey: transitionKeySchema.optional(),
   /** Task 5.6a-5a: the key of the one-day changes shown, and a choice for each "needs a decision" item. */
   dayChangesKey: transitionKeySchema.optional(),
-  // Task 5.6a-5b-1: a bulk cancel's block is named by `blockId` and
-  // `blockDate` besides its key; one choice per key and block.
-  dayDecisions: z
-    .array(
-      z
-        .strictObject({
-          key: z.uuid(),
-          blockId: z.uuid().optional(),
-          blockDate: schoolDateSchema.optional(),
-          choice: dayChangeChoiceSchema,
-        })
-        .refine((one) => (one.blockId === undefined) === (one.blockDate === undefined), {
-          message: 'block_incomplete',
-        }),
-    )
-    .max(2000)
-    .refine((list) => new Set(list.map(dayDecisionKeyOf)).size === list.length, {
-      message: 'keys_not_unique',
-    })
-    .optional(),
+  dayDecisions: dayDecisionsSchema.optional(),
 });
 
 export type PublishBody = z.infer<typeof publishBodySchema>;
+
+/**
+ * A withdraw (task 5.6a-5b-2): the key of the sorting of the stored one-day
+ * changes the withdraw check showed (`WithdrawCheck.dayChanges.key`), and a
+ * choice for each "needs a decision" item, as a publish sends them. `{}`, or
+ * no body as before this task, is a withdraw over dates with nothing stored
+ * (decision 9).
+ */
+export const withdrawBodySchema = z
+  .strictObject({
+    dayChangesKey: transitionKeySchema.optional(),
+    dayDecisions: dayDecisionsSchema.optional(),
+  })
+  .default({});
+
+export type WithdrawBody = z.infer<typeof withdrawBodySchema>;
+
+/**
+ * What a withdraw would do with the stored one-day changes and bulk cancels
+ * of the withdrawn dates (task 5.6a-5b-2): the version that runs again over
+ * them and until when (`null`: none, the lessons are removed), the sorting
+ * as a publish's preview shows it, and the names it names.
+ */
+export const withdrawCheckSchema = z.object({
+  runsAgain: z.object({ id: z.uuid(), number: z.int().min(1) }).nullable(),
+  runsAgainUntil: schoolDateSchema.nullable(),
+  dayChanges: dayChangesAnswerSchema,
+  names: previewNamesSchema,
+});
+
+export type WithdrawCheck = z.infer<typeof withdrawCheckSchema>;
 
 /**
  * A date shortened for a class (task 5.5a-2b-2, edge/time-dates-calendar, "A

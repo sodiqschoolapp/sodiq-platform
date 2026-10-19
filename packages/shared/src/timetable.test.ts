@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   CHANGED_MARK_DAYS,
   publishBodySchema,
+  withdrawBodySchema,
   isMarkedChanged,
   lessonStateOf,
   LOAD_LESSONS_MAX,
@@ -304,5 +305,42 @@ describe('publishBodySchema: the decisions of bulk cancels’ blocks', () => {
         publishBodySchema.safeParse({ startsOn: '2026-10-19', dayDecisions: [decision] }).success,
       ).toBe(false);
     }
+  });
+});
+
+// Task 5.6a-5b-2: a withdraw takes the publish's key of the sorting and its
+// decisions; no body, or `{}`, is a withdraw over dates with nothing stored.
+describe('withdrawBodySchema', () => {
+  const KEY = '01b15000-0000-7000-8000-000000000001';
+  const BLOCK = '01b15000-0000-7000-8000-000000000002';
+
+  it('takes no body and an empty one as no key and no decisions', () => {
+    expect(withdrawBodySchema.parse(undefined)).toEqual({});
+    expect(withdrawBodySchema.parse({})).toEqual({});
+  });
+
+  it('takes the key and the decisions of a publish, and refuses another field', () => {
+    expect(
+      withdrawBodySchema.safeParse({
+        dayChangesKey: 'a'.repeat(64),
+        dayDecisions: [
+          { key: KEY, choice: 'drop' },
+          { key: KEY, blockId: BLOCK, blockDate: '2026-10-26', choice: 'keep' },
+        ],
+      }).success,
+    ).toBe(true);
+    expect(withdrawBodySchema.safeParse({ startsOn: '2026-10-26' }).success).toBe(false);
+  });
+
+  it('refuses a block without its date, and one key and block twice', () => {
+    expect(
+      withdrawBodySchema.safeParse({ dayDecisions: [{ key: KEY, blockId: BLOCK, choice: 'keep' }] })
+        .success,
+    ).toBe(false);
+    const twice = { key: KEY, blockId: BLOCK, blockDate: '2026-10-26', choice: 'keep' };
+    expect(
+      withdrawBodySchema.safeParse({ dayDecisions: [twice, { ...twice, choice: 'cancel' }] })
+        .success,
+    ).toBe(false);
   });
 });

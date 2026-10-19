@@ -6,6 +6,8 @@ import {
   type OutOfDateAnswer,
   type UpToDateBody,
   publishBodySchema,
+  withdrawBodySchema,
+  withdrawCheckSchema,
   dayKeepBodySchema,
   dayKeepSchema,
   type DayKeep,
@@ -13,6 +15,8 @@ import {
   publishCheckQuerySchema,
   publishCheckSchema,
   type PublishBody,
+  type WithdrawBody,
+  type WithdrawCheck,
   type PublishCheck,
   type PublishCheckQuery,
   gridSchema,
@@ -198,7 +202,26 @@ export class TimetableController {
     return this.publisher.publish(access, params.id, input, key, requestId);
   }
 
-  /** The withdraw of a published version before its start (task 5.5c-2a), safe to repeat with its key. */
+  /**
+   * What a withdraw would do with the stored one-day changes and bulk cancels
+   * of the withdrawn dates (task 5.6a-5b-2), written nowhere: a view, as the
+   * publish check (decision 7).
+   */
+  @Get('versions/:id/withdraw-check')
+  @Requires('timetable', 'view')
+  @Returns(withdrawCheckSchema)
+  withdrawCheck(
+    @CurrentAccess() access: Access,
+    @ValidParams(timetableVersionParamsSchema) params: TimetableVersionParams,
+  ): Promise<WithdrawCheck> {
+    return this.withdrawer.check(access, params.id);
+  }
+
+  /**
+   * The withdraw of a published version before its start (task 5.5c-2a), safe
+   * to repeat with its key; task 5.6a-5b-2: with the key of the sorting shown
+   * and the choices of its "needs a decision" items.
+   */
   @Post('versions/:id/withdraw')
   @HttpCode(200)
   @Requires('timetable', 'edit')
@@ -207,9 +230,10 @@ export class TimetableController {
     @CurrentAccess() access: Access,
     @ValidParams(timetableVersionParamsSchema) params: TimetableVersionParams,
     @RequestKey() key: string,
+    @ValidBody(withdrawBodySchema) input: WithdrawBody,
     @RequestId() requestId: string,
   ): Promise<TimetableVersion> {
-    return this.withdrawer.withdraw(access, params.id, key, requestId);
+    return this.withdrawer.withdraw(access, params.id, input, key, requestId);
   }
 
   @Get('versions/:id/load')

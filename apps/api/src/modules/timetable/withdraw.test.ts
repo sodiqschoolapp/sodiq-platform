@@ -97,6 +97,10 @@ describe('withdraw', () => {
       .set(REQUEST_KEY_HEADER, key)
       .send();
 
+  /** The withdraw check (task 5.6a-5b-2), refused as the withdraw is. */
+  const check = (branch: string, version: string) =>
+    t.get(`/api/timetable/versions/${version}/withdraw-check`, branch);
+
   /** Hours of a person in the branch from 1 September, Monday to Friday, all day. */
   async function hours(branch: string, staffId: string) {
     const entry = await t.database.migrator
@@ -520,6 +524,7 @@ describe('withdraw', () => {
       const other = await draft(s.branch, s.year);
       let before = await written([s.version]);
       refusedWith(await withdraw(s.branch, other), 409, 'version_not_published');
+      refusedWith(await check(s.branch, other), 409, 'version_not_published');
       expect(await written([s.version])).toEqual(before);
 
       // Six minutes later it is 11 October in Tashkent, the start day, and
@@ -527,6 +532,7 @@ describe('withdraw', () => {
       t.clock.set(new Date(new Date(START).getTime() + 6 * 60_000));
       try {
         refusedWith(await withdraw(s.branch, s.version), 409, 'withdraw_started');
+        refusedWith(await check(s.branch, s.version), 409, 'withdraw_started');
         expect(await written([s.version])).toEqual(before);
       } finally {
         t.clock.set(START);
@@ -535,6 +541,7 @@ describe('withdraw', () => {
       versionOf(await withdraw(s.branch, s.version));
       before = await written([s.version]);
       refusedWith(await withdraw(s.branch, s.version), 409, 'version_not_published');
+      refusedWith(await check(s.branch, s.version), 409, 'version_not_published');
       expect(await written([s.version])).toEqual(before);
     });
 
@@ -548,6 +555,7 @@ describe('withdraw', () => {
         .execute();
       const before = await written([s.version]);
       refusedWith(await withdraw(s.branch, s.version), 409, 'timetable_year_closed');
+      refusedWith(await check(s.branch, s.version), 409, 'timetable_year_closed');
       expect(await written([s.version])).toEqual(before);
     });
 

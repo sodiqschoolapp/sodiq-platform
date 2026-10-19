@@ -912,15 +912,21 @@ async function wantedOf(
  * `lastDate` (task 5.5c-2a, decision 11): a withdraw of the first version of
  * the chain leaves its dates with no version. The database refuses a delete
  * dated today or earlier (0079); before 6.1 no lesson holds data.
+ *
+ * Task 5.6a-5b-2 (spec review of the plan, must-fix 1): a lesson of
+ * `plan.keepStored` (a kept move onto a withdrawn date from a date outside
+ * them) stays with its block, cancelled with the reason of
+ * `plan.cancelStored`, as `writeDatedLessons` leaves it.
  */
 export async function removeDatedLessons(
   transaction: Transaction,
   branchId: string,
   firstDate: string,
   lastDate: string,
+  plan: Pick<DayWritePlan, 'keepStored' | 'cancelStored'> | null = null,
 ): Promise<DatedWrite> {
   await sql`set constraints all deferred`.execute(transaction);
-  const blocks = await transaction
+  const allBlocks = await transaction
     .selectFrom('lesson_blocks')
     .select('id')
     .where('branch_id', '=', branchId)
@@ -929,7 +935,7 @@ export async function removeDatedLessons(
     .orderBy('id')
     .forUpdate()
     .execute();
-  const rows = await transaction
+  const allRows = await transaction
     .selectFrom('lessons')
     .select([
       'id',
@@ -942,6 +948,7 @@ export async function removeDatedLessons(
       'teacher_id',
       'room_id',
       'cancel_cause',
+      'block_id',
     ])
     .where('branch_id', '=', branchId)
     .where('lesson_date', '>=', firstDate)
@@ -949,6 +956,28 @@ export async function removeDatedLessons(
     .orderBy('id')
     .forUpdate()
     .execute();
+  const keepStored = plan?.keepStored ?? new Set<string>();
+  const keptBlocks = new Set(
+    allRows.filter((one) => keepStored.has(one.id)).map((one) => one.block_id),
+  );
+  const rows = allRows.filter((one) => !keptBlocks.has(one.block_id));
+  const blocks = allBlocks.filter((one) => !keptBlocks.has(one.id));
+  const changed: ChangedLesson[] = [];
+  for (const [id, reason] of plan?.cancelStored ?? []) {
+    const row = allRows.find((one) => one.id === id);
+    if (row === undefined || !keptBlocks.has(row.block_id) || row.cancel_cause !== null) continue;
+    changed.push({
+      id,
+      teacherId: { from: row.teacher_id, to: row.teacher_id },
+      roomId: { from: row.room_id, to: row.room_id },
+      cancel: { from: null, to: 'reason' },
+    });
+    await transaction
+      .updateTable('lessons')
+      .set({ cancel_cause: 'reason', cancel_reason: reason })
+      .where('id', '=', id)
+      .execute();
+  }
   for (let index = 0; index < rows.length; index += BATCH) {
     await transaction
       .deleteFrom('lessons')
@@ -988,6 +1017,6 @@ export async function removeDatedLessons(
       roomId: row.room_id,
       cancelCause: row.cancel_cause,
     })),
-    changed: [],
+    changed,
   };
 }
