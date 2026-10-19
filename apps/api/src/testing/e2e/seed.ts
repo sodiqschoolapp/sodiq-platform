@@ -3734,6 +3734,19 @@ try {
   });
   seeded.draftPublish = { login: publishVice.login, password: publishVice.firstPassword };
 
+  // One-day changes (task 5.6a-1): the publishable scene again, in a branch
+  // of its own, which the browser test publishes before it cancels and
+  // restores a lesson.
+  const dayVice = await gridScene({
+    branch: 'Day changes browser test branch',
+    vice: ['Kamola', 'Rashidova'],
+    staffId: 'S-269340',
+    phone: '+998935557340',
+    rooms: [],
+    publishable: true,
+  });
+  seeded.dayChanges = { login: dayVice.login, password: dayVice.firstPassword };
+
   // The department move (task 3.4c): a branch of its own with a year around
   // today, 7 Oxford, the attendance-only subject Cosmology of STEAM and a
   // draft whose row of it names a STEAM teacher who no longer has it in the

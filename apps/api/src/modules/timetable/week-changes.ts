@@ -26,9 +26,14 @@ import { storedLessonRows, type StoredLesson } from './stored-lessons.js';
  * are compared by `weekChanges`.
  */
 
-/** What makes two lessons the same for a teacher's week (decision 3). */
+/**
+ * What makes two lessons the same for a teacher's week (decision 3), and
+ * whether a one-day cancel is on it (task 5.6a-1, decision 11): a lesson
+ * cancelled on one side only is changed.
+ */
 const keyOf = (one: StoredLesson): string =>
   [
+    one.cancelCause === null ? 'held' : 'cancelled',
     one.lesson.date,
     one.lesson.start,
     one.lesson.end,
@@ -60,7 +65,7 @@ export interface WeekChanges {
 
 /**
  * Pairs the two sides one to one by date, start, end, class or group,
- * subject, teacher and room, a lesson with itself first, then in the order of
+ * subject, teacher, room and the cancel, a lesson with itself first, then in the order of
  * the ids. An unpaired lesson after the event is changed, and is marked in a
  * week (Monday to Sunday) where the branch had a lesson before, `unwritten`
  * days included (decision 4, read by the week: a lesson moved to a weekday
@@ -208,7 +213,8 @@ const clockOf = (minutes: number): string =>
   `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
 
 /**
- * Reads the side after the event, marks the changed lessons and sends one
+ * Reads the side after the event (a publish, a withdraw, or a one-day change
+ * of task 5.6a-1), marks the changed lessons and sends one
  * notice to each affected teacher with an account (never a vacancy;
  * 5.5a-2b-1 decision 7), labelled with the branch, in the event's
  * transaction.
@@ -217,7 +223,9 @@ export async function sendWeekChanges(
   transaction: Transaction,
   notifications: Notifications,
   snapshot: WeekSnapshot,
-  event: { readonly kind: WeekChangeKind; readonly number: number },
+  event:
+    | { readonly kind: WeekChangeKind; readonly number: number }
+    | { readonly kind: 'timetable.day_changed' },
 ): Promise<WeekNotices> {
   const after = await storedLessonRows(transaction, {
     branchId: snapshot.branchId,
@@ -257,12 +265,19 @@ export async function sendWeekChanges(
     beforeDiffers: changes.beforeDiffers,
     afterDiffers: changes.afterDiffers,
     send: (accountId, week) =>
-      notifications.send(transaction, {
-        kind: event.kind,
-        branchId: snapshot.branchId,
-        accountIds: [accountId],
-        data: { number: String(event.number), ...week },
-      }),
+      event.kind === 'timetable.day_changed'
+        ? notifications.send(transaction, {
+            kind: event.kind,
+            branchId: snapshot.branchId,
+            accountIds: [accountId],
+            data: week,
+          })
+        : notifications.send(transaction, {
+            kind: event.kind,
+            branchId: snapshot.branchId,
+            accountIds: [accountId],
+            data: { number: String(event.number), ...week },
+          }),
   });
   return { notified, marked: changes.marked.length };
 }

@@ -153,6 +153,24 @@ describe('the pairing of stored and new dated lessons', () => {
     expect(tie.reused).toEqual(['block-y']);
     expect(idsOf(tie.pairs, [a, b])).toEqual([null, 'lesson-b']);
   });
+
+  // Task 5.6a-1 (build decision): a lesson created again in another block
+  // keeps its one-day cancel, so the writer is told which stored lesson it was.
+  it('names the stored lesson of a pair dropped for its block, and only that one', () => {
+    const a = wanted('entry-a', { unitId: 'group-1' });
+    const b = wanted('entry-b', { unitId: 'group-2' });
+    const c = wanted('entry-c', { unitId: 'group-3' });
+    const { pairs, recreated } = pairDated(
+      [
+        stored('lesson-a', 'block-y', { unitId: 'group-1', cancelCause: 'reason' }),
+        stored('lesson-b', 'block-z', { unitId: 'group-2' }),
+        stored('lesson-c', 'block-z', { unitId: 'group-3' }),
+      ],
+      [{ lessons: [a, b, c] }],
+    );
+    expect(idsOf(pairs, [a, b, c])).toEqual([null, 'lesson-b', 'lesson-c']);
+    expect(idsOf(recreated, [a, b, c])).toEqual(['lesson-a', null, null]);
+  });
 });
 
 // Task 5.5b-2, pull request #154 (decision 5): the teacher a lesson is

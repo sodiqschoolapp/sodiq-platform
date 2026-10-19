@@ -216,6 +216,9 @@ export const AUDIT_ACTION_GROUPS = {
     // Task 5.5c-1: journals opened, and their days changed, by a publish.
     'journal.open',
     'journal.runs',
+    // Task 5.6a-1: a one-day cancel of a dated lesson, and its restore.
+    'lesson.cancel',
+    'lesson.restore',
   ],
   exports: [
     'building.export',

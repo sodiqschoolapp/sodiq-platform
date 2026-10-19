@@ -402,6 +402,13 @@ export const en = {
     publish_blocked:
       'The draft cannot be published yet. Step 8 lists every reason; settle them and publish again.',
     version_not_published: 'Only a published version can be withdrawn. Read the list again.',
+    lesson_started:
+      'This lesson has already started. A one-day change is made before a lesson starts; a past lesson is corrected.',
+    lesson_cancelled: 'This lesson is already cancelled.',
+    lesson_not_restorable:
+      'Only a lesson cancelled with a reason can be restored here. A lesson cancelled for an exam comes back when the exam is cancelled.',
+    restore_blocked:
+      'The lesson cannot be restored: a rule is broken at its time. The reasons and the free rooms are listed.',
     withdraw_started:
       'This version has started, so it can no longer be withdrawn. Publish a new version to change it.',
     withdraw_blocked:
@@ -2660,6 +2667,10 @@ export const en = {
         open: 'Journal opened at a publish',
         runs: 'Days of a journal changed by a publish',
       },
+      lesson: {
+        cancel: 'Lesson cancelled for one day',
+        restore: 'Cancelled lesson restored',
+      },
       teaching_load: {
         create: 'Teaching load row added',
         edit: 'Teaching load row changed',
@@ -3020,6 +3031,8 @@ export const en = {
           'Timetable version {{number}} was withdrawn and your lessons changed. Your week before and after:',
         tutor_changed:
           "A change of a class's Tutor changed your Tutor lessons. Your week before and after:",
+        day_changed:
+          'A one-day change (a cancel or a restore) changed your lessons. Your week before and after:',
       },
     },
     // The week before and after of a notice of a timetable change (task 5.5c-3a).
@@ -3037,6 +3050,43 @@ export const en = {
     title: 'Timetable',
     loadLink: 'Teaching load',
     builderLink: 'Draft builder',
+    dayLink: 'Day changes',
+    day: {
+      title: 'Day changes',
+      date: 'Date',
+      class: 'Class',
+      empty: 'No lessons for this class on this date.',
+      noClasses: 'This branch has no classes yet.',
+      time: 'Time',
+      unit: 'Class or group',
+      subject: 'Subject',
+      teacher: 'Teacher',
+      room: 'Room',
+      state: 'State',
+      actions: 'Actions',
+      asPlanned: 'As planned',
+      needsTeacher: 'needs a teacher',
+      needsRoom: 'needs a room',
+      changed: 'changed',
+      cancelledReason: 'Cancelled: {{reason}}',
+      cause_not_in_template: 'Cancelled: not in the day’s template',
+      cause_exam: 'Cancelled for an exam',
+      cause_exam_week: 'Cancelled: exam week',
+      cause_day_off: 'Cancelled: day off',
+      cancel: 'Cancel lesson',
+      restore: 'Restore',
+      cancelTitle: 'Cancel {{subject}} at {{time}}',
+      reason: 'Reason',
+      reasonNeeded: 'Write the reason for the cancel.',
+      cancelSend: 'Cancel the lesson',
+      keep: 'Keep the lesson',
+      cancelled: 'The lesson was cancelled.',
+      restored: 'The lesson was restored.',
+      warning: 'Restored with a warning: {{rule}}',
+      blocked: 'Broken at its time: {{rule}}',
+      freeRooms: 'Rooms free at that time: {{rooms}}',
+      noFreeRoom: 'No room is free at that time.',
+    },
     rule: {
       teacher_double: 'A teacher cannot be in two lessons at the same time.',
       room_double:

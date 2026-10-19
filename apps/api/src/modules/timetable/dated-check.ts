@@ -128,71 +128,20 @@ export async function datedCheck(
     startsOn,
     lastDate,
   );
-  const teacherIds = data.teachers.map((one) => one.id);
-  const statuses =
-    teacherIds.length === 0
-      ? []
-      : await transaction
-          .selectFrom('staff_statuses')
-          .select([
-            'staff_id',
-            'status',
-            sql<string>`valid_from::text`.as('valid_from'),
-            sql<string | null>`valid_until::text`.as('valid_until'),
-          ])
-          .where('staff_id', 'in', teacherIds)
-          .execute();
+  const { outOn, teachersOn } = await teacherStatesOf(transaction, data.teachers, branchId);
   // Every other branch's claims of the teachers, on the branch's dates and minutes.
-  const elsewhere = new Map<string, Placement[]>();
-  const fixedBranches = new Map<string, string>();
+  const { elsewhere, fixedBranches } = await claimsElsewhere(transaction, {
+    branchId,
+    timeZone: branch.time_zone,
+    teacherIds: data.teachers
+      .filter((one) => one.branchIds.includes(branchId))
+      .map((one) => one.id),
+    from: begins(startsOn),
+    until: begins(addDays(lastDate, 1)),
+  });
   for (const busy of model.fixed) {
     fixedBranches.set(busy.id, busy.branchId);
   }
-  const linked = data.teachers.filter((one) => one.branchIds.includes(branchId));
-  const from = begins(startsOn);
-  const until = begins(addDays(lastDate, 1));
-  for (const teacher of linked) {
-    const { rows: claims } = await sql<{
-      branch_id: string;
-      day: string;
-      start_minutes: number;
-      end_minutes: number;
-    }>`
-      select c.branch_id,
-        (c.starts_at at time zone ${branch.time_zone})::date::text as day,
-        (extract(epoch from (c.starts_at at time zone ${branch.time_zone})
-          - (c.starts_at at time zone ${branch.time_zone})::date::timestamp) / 60)::int as start_minutes,
-        (extract(epoch from (c.ends_at at time zone ${branch.time_zone})
-          - (c.starts_at at time zone ${branch.time_zone})::date::timestamp) / 60)::int as end_minutes
-      from teacher_claims_elsewhere(${branchId}::uuid, ${teacher.id}::uuid, ${from}::timestamptz, ${until}::timestamptz) c
-      where c.branch_id <> ${branchId}::uuid
-      order by c.starts_at, c.ends_at, c.branch_id
-    `.execute(transaction);
-    claims.forEach((claim, index) => {
-      const id = `elsewhere:${teacher.id}:${claim.day}:${String(index)}`;
-      fixedBranches.set(id, claim.branch_id);
-      const list = elsewhere.get(claim.day) ?? [];
-      list.push(busyPlacement(id, teacher.id, claim));
-      elsewhere.set(claim.day, list);
-    });
-  }
-
-  // The status of each teacher on each date (decision 10).
-  const outOn = (teacherId: string, date: string) =>
-    statuses.some(
-      (row) =>
-        row.staff_id === teacherId &&
-        OUT_STATUSES.includes(row.status) &&
-        row.valid_from <= date &&
-        (row.valid_until === null || date < row.valid_until),
-    );
-  const teachersOn = (date: string): Map<string, EngineTeacher> =>
-    new Map(
-      data.teachers.map((one) => [
-        one.id,
-        { ...one, out: one.branchIds.includes(branchId) ? outOn(one.id, date) : one.out },
-      ]),
-    );
 
   const byDate = new Map<string, DatedLesson[]>();
   for (const lesson of dated.lessons) {
@@ -481,7 +430,7 @@ export async function datedLessonsOf(
     keptOn: (classId, date) => keptOf.get(`${classId}|${date}`) ?? null,
   });
 
-  return { dated, begins, classOn, dayOfDate, branch, cancelledTeacher };
+  return { dated, begins, classOn, studentsOn, tutorOn, dayOfDate, branch, cancelledTeacher };
 }
 
 /** The stored choices of the lessons kept on a shortened day of a version between two dates (task 5.5a-2b-2). */
@@ -501,6 +450,95 @@ export function readDayKeeps(
     .orderBy('kept_on')
     .orderBy('slot_position')
     .execute();
+}
+
+/**
+ * The status of each teacher on a date (decision 10 of 5.5a-2a): `outOn`,
+ * and the teachers with `out` set on that date for one of the branch;
+ * another branch's teacher keeps the `out` it was read with. Shared by the
+ * publish's check and the stored-day check of a one-day change (task 5.6a-1).
+ */
+export async function teacherStatesOf(
+  transaction: Transaction,
+  teachers: readonly EngineTeacher[],
+  branchId: string,
+) {
+  const teacherIds = teachers.map((one) => one.id);
+  const statuses =
+    teacherIds.length === 0
+      ? []
+      : await transaction
+          .selectFrom('staff_statuses')
+          .select([
+            'staff_id',
+            'status',
+            sql<string>`valid_from::text`.as('valid_from'),
+            sql<string | null>`valid_until::text`.as('valid_until'),
+          ])
+          .where('staff_id', 'in', teacherIds)
+          .execute();
+  const outOn = (teacherId: string, date: string) =>
+    statuses.some(
+      (row) =>
+        row.staff_id === teacherId &&
+        OUT_STATUSES.includes(row.status) &&
+        row.valid_from <= date &&
+        (row.valid_until === null || date < row.valid_until),
+    );
+  const teachersOn = (date: string): Map<string, EngineTeacher> =>
+    new Map(
+      teachers.map((one) => [
+        one.id,
+        { ...one, out: one.branchIds.includes(branchId) ? outOn(one.id, date) : one.out },
+      ]),
+    );
+  return { outOn, teachersOn };
+}
+
+/**
+ * The claims of the teachers in every other branch from `from` to `until`
+ * (`teacher_claims_elsewhere`, 0067: dated lessons not cancelled and exams,
+ * moments and branch only), as fixed placements by the branch's date, with
+ * the branch of each (busy elsewhere, decision 2 of 5.5a-2a).
+ */
+export async function claimsElsewhere(
+  transaction: Transaction,
+  input: {
+    readonly branchId: string;
+    readonly timeZone: string;
+    readonly teacherIds: readonly string[];
+    readonly from: Date;
+    readonly until: Date;
+  },
+) {
+  const elsewhere = new Map<string, Placement[]>();
+  const fixedBranches = new Map<string, string>();
+  for (const teacherId of input.teacherIds) {
+    const { rows: claims } = await sql<{
+      branch_id: string;
+      day: string;
+      start_minutes: number;
+      end_minutes: number;
+    }>`
+      select c.branch_id,
+        (c.starts_at at time zone ${input.timeZone})::date::text as day,
+        (extract(epoch from (c.starts_at at time zone ${input.timeZone})
+          - (c.starts_at at time zone ${input.timeZone})::date::timestamp) / 60)::int as start_minutes,
+        (extract(epoch from (c.ends_at at time zone ${input.timeZone})
+          - (c.starts_at at time zone ${input.timeZone})::date::timestamp) / 60)::int as end_minutes
+      from teacher_claims_elsewhere(${input.branchId}::uuid, ${teacherId}::uuid, ${input.from}::timestamptz, ${input.until}::timestamptz) c
+      where c.branch_id <> ${input.branchId}::uuid
+      order by c.starts_at, c.ends_at, c.branch_id
+    `.execute(transaction);
+    claims.forEach((claim, index) => {
+      const id = `elsewhere:${teacherId}:${claim.day}:${String(index)}`;
+      fixedBranches.set(id, claim.branch_id);
+      const list = elsewhere.get(claim.day) ?? [];
+      list.push(busyPlacement(id, teacherId, claim));
+      elsewhere.set(claim.day, list);
+    });
+  }
+  return { elsewhere, fixedBranches };
 }
 
 /** A teacher's claim in another branch as a fixed placement (busy elsewhere). */
