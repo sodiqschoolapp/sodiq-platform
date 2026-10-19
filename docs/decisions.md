@@ -280,6 +280,9 @@ Plan approved on pull request #163 with corrections 1 to 3; decisions 1 to 14 co
 | A closed year is refused `timetable_year_closed`; a restore takes only a cancel of cause `reason` | Decisions 9 and 10, review correction 3 |
 | `lessonStateOf` in `packages/shared` is the one reader of held and unresolved | Decision 11 |
 | Every correction keeps the stored teacher (no Tutor follow) unless it records another; the tick is `confirm`; the recorded teacher is not yet a substitution record (5.7b) | Decisions 12 to 14 |
+| **Build decision.** A restore or a room of a past lesson whose teacher no longer works in the branch is refused `teacher_left_branch`; such a person is not recorded (404) | Permission review of the code, must-fix 2: the staff row is hidden by its row filter (0024) |
+| **Build decision.** `storedDayCheck` reads the facts of every branch teacher of the date's lessons, not only the load rows' | Found by the build: a person a correction recorded would fail every later check of that date |
+| **Build decision.** A corrected half of a double is checked alone, not as half of a pair; another kind, person or room takes the tick away; "room" is offered on an unresolved lesson too | Spec review of the code, must-fixes 1 and 2 |
 
 ## 19 October 2026: one-day changes, bulk cancel (task 5.6a-3)
 
