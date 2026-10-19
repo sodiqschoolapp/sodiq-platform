@@ -256,4 +256,81 @@ describe('the record of a one-day change in the database', () => {
       .executeTakeFirstOrThrow();
     expect(claim.starts).toEqual(at(DATE, '11:00'));
   });
+
+  // Task 5.6a-5a, pull request #164: the end of a change a publish did not
+  // apply again (db/migrations/0087; decision 4).
+  describe('the end of a change', () => {
+    const end = (
+      place: Fresh,
+      changeId: string,
+      branch = place.branch,
+      versionId = place.source.versionId,
+    ) =>
+      app().run([branch], (transaction) =>
+        transaction
+          .insertInto('lesson_day_change_ends')
+          .values({
+            change_id: changeId,
+            branch_id: branch,
+            version_id: versionId,
+            ended_at: new Date(NOW),
+            ended_by: account,
+          })
+          .execute(),
+      );
+
+    it('is written by the application, seen in its branch only, and never changed or deleted', async () => {
+      const place = await fresh();
+      const other = await fresh();
+      const { id } = await record(place);
+      expect(await outcome(end(place, id))).toBe('written');
+      const seen = (branch: string) =>
+        app().run([branch], (transaction) =>
+          transaction
+            .selectFrom('lesson_day_change_ends')
+            .select('change_id')
+            .where('change_id', '=', id)
+            .execute(),
+        );
+      expect(await seen(place.branch)).toEqual([{ change_id: id }]);
+      expect(await seen(other.branch)).toEqual([]);
+      expect(
+        await outcome(
+          app().run([place.branch], (transaction) =>
+            transaction
+              .updateTable('lesson_day_change_ends')
+              .set({ ended_at: new Date('2026-10-16T10:00:00+05:00') })
+              .where('change_id', '=', id)
+              .execute(),
+          ),
+        ),
+      ).toBe('42501');
+      expect(
+        await outcome(
+          app().run([place.branch], (transaction) =>
+            transaction.deleteFrom('lesson_day_change_ends').where('change_id', '=', id).execute(),
+          ),
+        ),
+      ).toBe('42501');
+      // A change ends once.
+      expect(await outcome(end(place, id))).toBe('lesson_day_change_ends_pkey');
+    });
+
+    it('refuses a change or a version of another branch', async () => {
+      const place = await fresh();
+      const other = await fresh();
+      const { id } = await record(place);
+      const { id: otherId } = await record(other);
+      // Another branch's change named in this branch's row.
+      expect(await outcome(end(place, otherId))).toBe('lesson_day_change_ends_change_fkey');
+      // Another branch's version.
+      expect(await outcome(end(place, id, place.branch, other.source.versionId))).toBe(
+        'lesson_day_change_ends_version_fkey',
+      );
+      // A row of another branch through this branch's filter.
+      expect(await outcome(end(other, otherId, place.branch, other.source.versionId))).not.toBe(
+        'written',
+      );
+    });
+  });
 });

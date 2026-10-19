@@ -1446,6 +1446,82 @@ describe('publish', () => {
       });
     });
 
+    // Task 5.6a-5a (review should-fix 6, correction 1): a carried version's
+    // one-day changes are sorted and written with its carry; a version left
+    // as it is keeps its own, and they are neither listed nor ended.
+    it('keeps the one-day room change of a carried version, and leaves those of a version left alone', async () => {
+      let d = '';
+      const s = await chainScene(async (scene) => {
+        d = await placedCopy(scene.branch, scene.year, scene.c);
+        const room3 = await load.classes.room(scene.branch);
+        const otherClass = await load.classes.schoolClass(scene.branch, scene.year, {
+          grade: 7,
+          room: room3,
+        });
+        const otherRow = await load.row({
+          branch_id: scene.branch,
+          version_id: d,
+          class_id: otherClass,
+          subject_id: scene.subject,
+          teacher_id: scene.second,
+          lessons_per_week: 1,
+        });
+        await placeAt(scene.branch, d, otherRow, 1);
+        versionOf(await publish(scene.branch, d, '2027-03-30'));
+      });
+      const spare = await load.classes.room(s.branch);
+      const lessonOn = async (date: string) =>
+        (await lessonsOf(s.branch)).find((one) => one.date === date && one.class_id === s.classId);
+      const changeRoom = (id: string) =>
+        request(t.kit.server)
+          .post(`/api/timetable/lessons/${id}/room`)
+          .set('Cookie', t.admin)
+          .set(BRANCH_HEADER, s.branch)
+          .set(REQUEST_KEY_HEADER, randomUUID())
+          .send({ roomId: spare, reason: 'The room is painted' });
+      const inB = await lessonOn('2026-11-16');
+      const inD = await lessonOn('2027-04-05');
+      for (const one of [inB, inD]) {
+        const roomed = await changeRoom(one?.id ?? '');
+        expect(roomed.status, JSON.stringify(roomed.body)).toBe(200);
+      }
+      const changes = await t.database.migrator
+        .selectFrom('lesson_day_changes')
+        .select(['id', 'lesson_id'])
+        .where('branch_id', '=', s.branch)
+        .execute();
+      const keyOf = (lesson: string | undefined) =>
+        changes.find((one) => one.lesson_id === lesson)?.id;
+      const answer = checkOf(await checkChain(s.branch, s.fix, '2026-10-19', 'carry'));
+      const days = answer.impact?.dayChanges;
+      expect(days?.kept.map((one) => [one.key, one.carriedVersionId])).toEqual([
+        [keyOf(inB?.id), s.b],
+      ]);
+      expect([...(days?.decide ?? []), ...(days?.dropped ?? [])]).toEqual([]);
+      versionOf(
+        await publishChain(
+          s.branch,
+          s.fix,
+          '2026-10-19',
+          'carry',
+          answer.chain?.key,
+          randomUUID(),
+          { dayChangesKey: days?.key ?? '' },
+        ),
+      );
+      // B carries the second teacher and room2, but the one-day room stays.
+      expect(await lessonOn('2026-11-16')).toMatchObject({ teacher_id: s.second, room_id: spare });
+      expect(await lessonOn('2026-11-23')).toMatchObject({ room_id: s.room2 });
+      expect((await lessonOn('2027-04-05'))?.room_id).toBe(spare);
+      const [carry] = await t.entries('timetable_version.carry', s.b);
+      expect(carry?.new_value).toMatchObject({
+        dayChanges: { kept: [keyOf(inB?.id)], ended: [] },
+      });
+      expect(
+        await t.database.migrator.selectFrom('lesson_day_change_ends').selectAll().execute(),
+      ).toEqual([]);
+    });
+
     it('refuses without an answer, and a refused publish changes nothing', async () => {
       const s = await chainScene();
       const before = await written([s.fix]);

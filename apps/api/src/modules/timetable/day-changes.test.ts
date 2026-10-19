@@ -3479,6 +3479,7 @@ describe('one-day changes: cancel and restore', () => {
       s: Scene,
       place?: (row: { class_id: string | null }) => [number, number] | null,
       teacherOf?: (row: { class_id: string | null }) => string | null,
+      roomOf?: (row: { class_id: string | null }) => string | null,
     ) {
       const created = await t.post('/api/timetable/versions', s.branch, {
         academicYearId: s.year,
@@ -3499,6 +3500,14 @@ describe('one-day changes: cancel and restore', () => {
           .orderBy('id')
           .execute();
         for (const row of rows) {
+          const roomId = roomOf?.(row) ?? null;
+          if (roomId !== null) {
+            await t.database.migrator
+              .updateTable('teaching_load_rows')
+              .set({ room_id: roomId })
+              .where('id', '=', row.id)
+              .execute();
+          }
           const teacher = teacherOf?.(row) ?? null;
           if (teacher !== null) {
             await t.database.migrator
@@ -3890,6 +3899,55 @@ describe('one-day changes: cancel and restore', () => {
         lesson_date: '2026-10-22',
         cancel_cause: null,
       });
+    });
+
+    it('asks for a decision on a room change whose room the new version gives another lesson, and drops one into the room it already gives', async () => {
+      for (const roomFor of ['first', 'same'] as const) {
+        const s = await scene();
+        const roomed = await lessonOf(s, NEXT_MONDAY, s.otherClass);
+        changed(await roomChange(s.branch, roomed.id, s.spareRoom));
+        const [roomRow] = await dayChangesOf(roomed.id);
+        // `first`: the first class's maths in the spare room at the same time;
+        // `same`: the other class's maths in the spare room itself.
+        const draft = await draftOf(s, undefined, undefined, (row) =>
+          (roomFor === 'first' ? row.class_id === s.classId : row.class_id === s.otherClass)
+            ? s.spareRoom
+            : null,
+        );
+        const days = (await checkOn(s, draft, NEXT_MONDAY)).impact.dayChanges;
+        if (roomFor === 'same') {
+          expect(days.dropped.map((one) => one.key)).toEqual([roomRow?.id]);
+          continue;
+        }
+        expect(days.decide.map((one) => one.key)).toEqual([roomRow?.id]);
+        expect(days.decide[0]?.blocked.map((one) => one.rule)).toContain('room_double');
+        const published = await publishWith(s, draft, NEXT_MONDAY, {
+          dayChangesKey: days.key,
+          dayDecisions: [{ key: roomRow?.id, choice: 'drop' }],
+        });
+        expect(published.status, JSON.stringify(published.body)).toBe(200);
+        expect((await rowOf(roomed.id))?.room_id).toBe(s.otherRoom);
+        expect(await endsOf([roomRow?.id ?? ''])).toHaveLength(1);
+      }
+    });
+
+    it('keeps a move onto a date a later availability entry leaves out, availability being a warning there', async () => {
+      const s = await scene();
+      const moved = await lessonOf(s, NEXT_MONDAY);
+      changed(await move(s.branch, moved.id, { date: '2026-10-21', lessonNumber: 2 }));
+      const [moveRow] = await dayChangesOf(moved.id);
+      // From 20 October the teacher comes at 10:00 only: the entry before ends.
+      // Its ranges follow (`staff_availability_ranges_entry_fkey`, on update cascade).
+      await t.database.migrator
+        .updateTable('staff_availability')
+        .set({ valid_until: '2026-10-20' })
+        .where('staff_id', '=', s.teacher.staffId)
+        .execute();
+      await hours(s.branch, s.teacher.staffId, '2026-10-20', 600);
+      const draft = await draftOf(s);
+      const days = (await checkOn(s, draft, NEXT_MONDAY)).impact.dayChanges;
+      expect(days.kept.map((one) => one.key)).toEqual([moveRow?.id]);
+      expect(days.decide).toEqual([]);
     });
 
     it('needs no key and no decision when no one-day change is stored', async () => {
