@@ -12,6 +12,7 @@ import { Transactions, type Transaction } from '../../database/transactions.js';
 import {
   dayTemplatesKit,
   MONDAY,
+  START,
   UNKNOWN,
   type DayTemplatesKit,
 } from '../../testing/day-templates-kit.js';
@@ -4108,6 +4109,156 @@ describe('one-day changes: cancel and restore', () => {
         starts_at: at('2026-10-21', '08:55'),
       });
       expect(await lessonsOn(s, NEXT_MONDAY)).toEqual([]);
+    });
+
+    /** The draft's load row of the first class, placed no more as a double. */
+    const singleRowOf = async (draft: string, s: Scene) => {
+      const row = await t.database.migrator
+        .updateTable('teaching_load_rows')
+        .set({ double_lessons: false })
+        .where('version_id', '=', draft)
+        .where('class_id', '=', s.classId)
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      return row.id;
+    };
+
+    it('keeps the older of two moves that clash only with each other, and asks for a decision on the newer (decision 6, review of the code)', async () => {
+      const s = await scene({ twoLessons: true });
+      // The first class's second maths of Monday (08:55, its teacher) and the
+      // other class's maths (08:00, the other teacher) both to Wednesday's
+      // second lesson, rooms and teachers apart: both pass under the old version.
+      const older = await lessonOf2(s, NEXT_MONDAY, 1);
+      changed(await move(s.branch, older, { date: '2026-10-21', lessonNumber: 2 }));
+      // The items are the changes of one request: one person’s rows of one
+      // moment. The second move is a second later, a request of its own.
+      const newer = await lessonOf(s, NEXT_MONDAY, s.otherClass);
+      t.clock.advance(1000);
+      try {
+        changed(await move(s.branch, newer.id, { date: '2026-10-21', lessonNumber: 2 }));
+      } finally {
+        t.clock.set(START);
+      }
+      const [olderRow] = await dayChangesOf(older);
+      const [newerRow] = await dayChangesOf(newer.id);
+      // The draft gives the other class's maths the first class's teacher at
+      // Monday 08:00, and the first class's maths Monday 08:55 and 09:50: the
+      // pattern has no clash, the Wednesday only one between the two moves.
+      const draft = await draftOf(
+        s,
+        (row) => (row.class_id === s.otherClass ? [1, 1] : [1, 3]),
+        (row) => (row.class_id === s.otherClass ? s.teacher.staffId : null),
+      );
+      await placeAt(s.branch, draft, await singleRowOf(draft, s), 1, 5);
+      await load.freeEditLock(draft);
+      const answer = await checkOn(s, draft, NEXT_MONDAY);
+      expect(answer.refusals).toEqual([]);
+      const days = answer.impact.dayChanges;
+      expect(days.kept.map((one) => one.key)).toEqual([olderRow?.id]);
+      expect(days.decide.map((one) => one.key)).toEqual([newerRow?.id]);
+      expect(days.decide[0]?.blocked.map((one) => one.rule)).toContain('teacher_double');
+      expect(days.dropped).toEqual([]);
+      const published = await publishWith(s, draft, NEXT_MONDAY, {
+        dayChangesKey: days.key,
+        dayDecisions: [{ key: newerRow?.id, choice: 'drop' }],
+      });
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      expect(await rowOf(older)).toMatchObject({
+        lesson_date: '2026-10-21',
+        starts_at: at('2026-10-21', '08:55'),
+        teacher_id: s.teacher.staffId,
+      });
+      expect(
+        (await lessonsOn(s, NEXT_MONDAY, s.otherClass)).map((one) => [
+          one.starts_at,
+          one.teacher_id,
+          one.cancel_cause,
+        ]),
+      ).toEqual([[at(NEXT_MONDAY, '08:00'), s.teacher.staffId, null]]);
+      expect(await lessonsOn(s, '2026-10-21', s.otherClass)).toEqual([]);
+      expect(await endsOf([newerRow?.id ?? ''])).toHaveLength(1);
+      expect(await endsOf([olderRow?.id ?? ''])).toEqual([]);
+      // The teacher holds one lesson at a time on both dates.
+      const taught = await t.database.migrator
+        .selectFrom('lessons')
+        .select('starts_at')
+        .where('teacher_id', '=', s.teacher.staffId)
+        .where('lesson_date', 'in', [NEXT_MONDAY, '2026-10-21'])
+        .where('cancel_cause', 'is', null)
+        .execute();
+      const starts = taught.map((one) => one.starts_at.toISOString());
+      expect(new Set(starts).size).toBe(starts.length);
+    });
+
+    it('asks for a decision on a double moved whose old place the new version keeps only one half of (review of the code)', async () => {
+      for (const choice of ['drop', 'cancel'] as const) {
+        const s = await scene({ twoLessons: true });
+        const first = await lessonOf2(s, NEXT_MONDAY, 0);
+        const second = await lessonOf2(s, NEXT_MONDAY, 1);
+        const blocks = await t.database.migrator
+          .selectFrom('lessons')
+          .select('block_id')
+          .where('id', 'in', [first, second])
+          .execute();
+        await t.database.migrator
+          .updateTable('lesson_blocks')
+          .set({ double_pair_id: randomUUID() })
+          .where(
+            'id',
+            'in',
+            blocks.map((one) => one.block_id),
+          )
+          .execute();
+        changed(
+          await move(
+            s.branch,
+            first,
+            { date: '2026-10-21', lessonNumber: 1 },
+            t.admin,
+            randomUUID(),
+            'Concert rehearsal',
+          ),
+        );
+        const rows = [...(await dayChangesOf(first)), ...(await dayChangesOf(second))];
+        expect(rows).toHaveLength(2);
+        // The draft keeps the first half on Monday 08:00 and puts the second
+        // on Tuesday: the old place holds one of the two lessons moved.
+        const draft = await draftOf(s);
+        await placeAt(s.branch, draft, await singleRowOf(draft, s), 2, 1);
+        await load.freeEditLock(draft);
+        const days = (await checkOn(s, draft, NEXT_MONDAY)).impact.dayChanges;
+        expect(days.kept).toEqual([]);
+        expect(days.dropped).toEqual([]);
+        expect(days.decide.map((one) => one.kind)).toEqual(['move']);
+        const key = days.decide[0]?.key ?? '';
+        expect(rows.map((one) => one.id)).toContain(key);
+        expect(
+          refusals(await publishWith(s, draft, NEXT_MONDAY, { dayChangesKey: days.key })),
+        ).toContainEqual(
+          expect.objectContaining({ code: 'day_change_undecided', path: `dayChanges.${key}` }),
+        );
+        const published = await publishWith(s, draft, NEXT_MONDAY, {
+          dayChangesKey: days.key,
+          dayDecisions: [{ key, choice }],
+        });
+        expect(published.status, JSON.stringify(published.body)).toBe(200);
+        // Nothing is left on Wednesday; Monday holds the new version's lesson,
+        // cancelled with the change's reason when chosen; both rows are ended.
+        expect(await lessonsOn(s, '2026-10-21')).toEqual([]);
+        expect(
+          (await lessonsOn(s, NEXT_MONDAY)).map((one) => [
+            one.starts_at,
+            one.cancel_cause,
+            one.cancel_reason,
+          ]),
+        ).toEqual([
+          choice === 'drop'
+            ? [at(NEXT_MONDAY, '08:00'), null, null]
+            : [at(NEXT_MONDAY, '08:00'), 'reason', 'Concert rehearsal'],
+        ]);
+        expect(await lessonsOn(s, '2026-10-20')).toHaveLength(1);
+        expect(await endsOf(rows.map((one) => one.id))).toHaveLength(2);
+      }
     });
 
     it('leaves a lesson of a bulk cancel out of the sorting, to 5.6a-5b', async () => {
