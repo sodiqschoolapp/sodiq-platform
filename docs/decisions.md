@@ -265,6 +265,27 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 19 October 2026: one-day changes, cancel and restore of one lesson (task 5.6a-1)
+
+Plan approved on pull request #160 with corrections 1 and 2; decisions 1 to 12 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a task split). 5.6a is split into 5.6a-1 (cancel and restore), 5.6a-2 (room change and move), 5.6a-3 (bulk cancel), 5.6a-4 (correction of a past lesson), 5.6a-5 (one-day changes kept after a publish); each later part runs the stored-day check of 5.6a-1 (`storedDayCheck`) | Decision 1 |
+| **Look first** (a pinned list widened). `WEEK_KINDS` gains `timetable.day_changed`; its test names the new kind | Decision 10: a new kind of notice with the week before and after |
+| **Build decision, Look first** (decision 11 read another way). The impact preview's pairing does not compare the cancel; instead a publish keeps a one-day cancel of cause `reason` on a lesson it creates again in another block (`pairDated`'s `recreated`, moved here from 5.6a-5). A publish then never changes a one-day cancel, so the preview, which shows such a lesson as held on both sides, names every teacher the publish notifies; comparing the cancel in the preview would have listed every kept cancelled lesson as changed, which the publish does not do | Decision 11; the plan's "preview pairs with the cancel" would make the preview disagree with the publish on every kept cancel |
+| No new area: the day is `timetable` `view`, a cancel and a restore `timetable` `edit` | Decision 2 |
+| A lesson whose start is not after the request's moment is refused `lesson_started`; its correction is 5.6a-4 | Decision 3 |
+| A one-day cancel takes one lesson; a half of a double whose other half is not held is checked as a single lesson | Decision 4 |
+| Only a cancel of cause `reason` is restored (`lesson_not_restorable` otherwise); no trigger | Decision 5 |
+| The publish advisory lock and `lockPublishChain` first, then `snapshotWeek` of the lesson's date, then the lesson read again (404 when a publish removed it) | Decision 6 |
+| A refused restore lists the free rooms (`restore_blocked` details with `room`); the restore into one is a room change of 5.6a-2 | Decision 7 |
+| Every blocked result refuses a restore, availability and an inactive teacher included; warnings are returned without a tick; `teacher_week_load` is left out of the one-date check | Decision 8 |
+| A restored Tutor lesson takes the Tutor at its start (`tutorAt`); the rows are read with the Tutor of the date, so that Tutor is checked with every rule, as a publish from that date checks it | Decision 9, read at the build |
+| Kind `timetable.day_changed`, data `{ weekStart, before, after }`, one notice per teacher per request, the lesson marked changed | Decision 10 |
+| `keyOf` (`week-changes.ts`) compares whether a lesson is cancelled | Decision 11 |
+| The cancel of a lesson with data and "not in a closed quarter" go to 6.1 and 9.2b by From lines | Decision 12 |
+
 ## 18 October 2026: the notice and the changed mark of a Tutor change (task 5.5c-3b)
 
 Plan approved on pull request #159 with corrections 1 to 3; decisions 1 to 7 confirmed there. Flagged on issue #42.
