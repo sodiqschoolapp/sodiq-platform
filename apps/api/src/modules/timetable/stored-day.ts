@@ -167,7 +167,7 @@ export async function storedLessonsOn(
 }
 
 /** The branch's own exams of the date as fixed placements, from their claims (0060). */
-async function examsOn(
+export async function examsOn(
   transaction: Transaction,
   branchId: string,
   timeZone: string,

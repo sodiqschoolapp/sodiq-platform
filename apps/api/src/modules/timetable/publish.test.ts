@@ -100,7 +100,7 @@ describe('publish', () => {
     startsOn: string,
     cookie = t.admin,
     key: string = randomUUID(),
-    extra: { transitionKey?: string } = {},
+    extra: { transitionKey?: string; dayChangesKey?: string; dayDecisions?: object[] } = {},
   ) =>
     request(t.kit.server)
       .post(`/api/timetable/versions/${version}/publish`)
@@ -1011,13 +1011,14 @@ describe('publish', () => {
       chain: string,
       laterKey: string | undefined,
       key: string = randomUUID(),
+      extra: { dayChangesKey?: string; dayDecisions?: object[] } = {},
     ) =>
       request(t.kit.server)
         .post(`/api/timetable/versions/${version}/publish`)
         .set('Cookie', t.admin)
         .set(BRANCH_HEADER, branch)
         .set(REQUEST_KEY_HEADER, key)
-        .send({ startsOn, chain, ...(laterKey === undefined ? {} : { laterKey }) });
+        .send({ startsOn, chain, ...(laterKey === undefined ? {} : { laterKey }), ...extra });
 
     const rowsOf = (version: string) =>
       t.database.migrator
@@ -1344,7 +1345,17 @@ describe('publish', () => {
         .map((one) => one.id);
       expect(shown.sort()).toEqual([s.teacherId, s.second].sort());
       const version = versionOf(
-        await publishChain(s.branch, s.fix, '2026-10-19', 'carry', answer.chain?.key),
+        await publishChain(
+          s.branch,
+          s.fix,
+          '2026-10-19',
+          'carry',
+          answer.chain?.key,
+          randomUUID(),
+          {
+            dayChangesKey: answer.impact?.dayChanges.key ?? '',
+          },
+        ),
       );
       const notices = await noticesOf(s.branch, 'timetable.published', version.number);
       expect(notices.map((one) => one.account_id).sort()).toEqual((await accountsOf(shown)).sort());
@@ -4436,7 +4447,13 @@ describe('publish', () => {
         .set({ cancel_cause: 'reason', cancel_reason: 'Excursion to the museum' })
         .where('id', 'in', cancelled)
         .execute();
-      versionOf(await publish(s.branch, split, '2026-10-26'));
+      // Task 5.6a-5a: the one-day cancels shown go back with the publish.
+      const days = checkOf(await check(s.branch, split, '2026-10-26')).impact?.dayChanges;
+      versionOf(
+        await publish(s.branch, split, '2026-10-26', t.admin, randomUUID(), {
+          dayChangesKey: days?.key ?? '',
+        }),
+      );
       const causes = await t.database.migrator
         .selectFrom('lessons')
         .select([
@@ -5597,7 +5614,11 @@ describe('publish', () => {
         .filter((one) => one.notified)
         .map((one) => one.id);
       expect(shown.sort()).toEqual([s.teacherId, s.artTeacher, third].sort());
-      const version = versionOf(await publish(s.branch, fix, '2026-10-19'));
+      const version = versionOf(
+        await publish(s.branch, fix, '2026-10-19', t.admin, randomUUID(), {
+          dayChangesKey: answer.impact?.dayChanges.key ?? '',
+        }),
+      );
       const notices = await noticesOf(s.branch, 'timetable.published', version.number);
       expect(notices.map((one) => one.account_id).sort()).toEqual((await accountsOf(shown)).sort());
       // The Art teacher's week before shows Tuesday's lesson, cancelled (review correction 3).

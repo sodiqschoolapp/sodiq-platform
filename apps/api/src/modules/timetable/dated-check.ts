@@ -52,6 +52,15 @@ export interface DatedFindings {
    * date"); for any other row, the entry's teacher or vacancy.
    */
   readonly cancelledTeacher: (blockId: string, entryId: string, date: string) => string | null;
+  /**
+   * The facts each date was checked with, the other branches' claims of
+   * that date and the members of a class or group on a date (task 5.6a-5a):
+   * a stored one-day change applied again is checked with them.
+   */
+  readonly factsOn: (date: string) => Facts;
+  readonly elsewhereOn: (date: string) => readonly Placement[];
+  readonly studentsOn: (unitId: string, date: string) => string[];
+  readonly timeZone: string;
 }
 
 /**
@@ -122,12 +131,8 @@ export async function datedCheck(
   const { data } = model;
   const branchId = data.branchId;
   const lastDate = data.versionEnd;
-  const { dated, begins, classOn, dayOfDate, branch, cancelledTeacher } = await datedLessonsOf(
-    transaction,
-    state,
-    startsOn,
-    lastDate,
-  );
+  const { dated, begins, classOn, studentsOn, dayOfDate, branch, cancelledTeacher } =
+    await datedLessonsOf(transaction, state, startsOn, lastDate);
   const { outOn, teachersOn } = await teacherStatesOf(transaction, data.teachers, branchId);
   // Every other branch's claims of the teachers, on the branch's dates and minutes.
   const { elsewhere, fixedBranches } = await claimsElsewhere(transaction, {
@@ -152,18 +157,19 @@ export async function datedCheck(
     ...one,
     reason: 'no_tutor',
   }));
+  const factsOn = (date: string): Facts => ({
+    ...model.facts,
+    mode: 'dated',
+    teachers: teachersOn(date),
+    classStudents: (classId) => classOn(classId, date),
+    dayOf: (_branch, grade) => dayOfDate(grade, date).engine,
+    // Task 5.5b-1 (From 5.4c-3b): the rows, so that `checkBlocks` knows
+    // one block of the load and a pairing by date too.
+    loadRows: model.facts.loadRows,
+    otherDrafts: [],
+  });
   for (const [date, lessons] of byDate) {
-    const facts: Facts = {
-      ...model.facts,
-      mode: 'dated',
-      teachers: teachersOn(date),
-      classStudents: (classId) => classOn(classId, date),
-      dayOf: (_branch, grade) => dayOfDate(grade, date).engine,
-      // Task 5.5b-1 (From 5.4c-3b): the rows, so that `checkBlocks` knows
-      // one block of the load and a pairing by date too.
-      loadRows: model.facts.loadRows,
-      otherDrafts: [],
-    };
+    const facts = factsOn(date);
     const fixed = elsewhere.get(date) ?? [];
     // A Tutor other than the entry's teacher is checked by time and travel
     // only (decision 11); the rest of the date with every rule.
@@ -228,6 +234,10 @@ export async function datedCheck(
     dated,
     begins,
     cancelledTeacher,
+    factsOn,
+    elsewhereOn: (date) => elsewhere.get(date) ?? [],
+    studentsOn,
+    timeZone: branch.time_zone,
   };
 }
 
