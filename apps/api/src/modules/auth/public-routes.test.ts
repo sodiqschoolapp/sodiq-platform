@@ -267,6 +267,8 @@ describe('the routes that work without sign-in', () => {
       'POST /api/setup/subjects/:id/quarter-weights/copy',
       'POST /api/setup/subjects/:id/restore',
       'POST /api/setup/subjects/export',
+      'POST /api/timetable/bulk-cancels',
+      'POST /api/timetable/bulk-cancels/check',
       'POST /api/timetable/lessons/:id/cancel',
       'POST /api/timetable/lessons/:id/move',
       'POST /api/timetable/lessons/:id/restore',

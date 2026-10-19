@@ -230,6 +230,8 @@ describe('OpenAPI document', () => {
         '/api/setup/subjects/{id}/quarter-weights/{quarterId}',
         '/api/setup/subjects/{id}/restore',
         '/api/setup/travel-times',
+        '/api/timetable/bulk-cancels',
+        '/api/timetable/bulk-cancels/check',
         '/api/timetable/day',
         '/api/timetable/lessons/{id}/cancel',
         '/api/timetable/lessons/{id}/move',
