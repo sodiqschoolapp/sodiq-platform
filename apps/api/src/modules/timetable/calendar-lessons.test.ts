@@ -1330,11 +1330,13 @@ describe('calendar entries after publishing', () => {
         .orderBy('id')
         .execute();
     }
-    // The delivery jobs of the notices (permission review must-fix 1), every one.
+    // The delivery jobs of the notices of the branch (permission review must-fix 1).
     rows.jobs = (
-      await sql<{ id: string }>`select id::text from pgboss.job order by id`.execute(
-        t.database.migrator,
-      )
+      await sql<{ id: string }>`
+        select id::text from pgboss.job
+        where data->'branchIds' ? ${branch}
+        order by id
+      `.execute(t.database.migrator)
     ).rows;
     rows.lesson_changes = await t.database.migrator
       .selectFrom('lesson_changes')
