@@ -126,10 +126,18 @@ export const NOTIFICATION_KINDS = {
    */
   'timetable.tutor_changed': z.strictObject(teacherWeek),
   /**
-   * A one-day change (a cancel or a restore) changed this teacher's lessons in
+   * A one-day change (a cancel, a restore, a room change or a move) changed this teacher's lessons in
    * the branch (task 5.6a-1, decision 10): the week only, no version.
    */
-  'timetable.day_changed': z.strictObject(teacherWeek),
+  'timetable.day_changed': z.strictObject({
+    ...teacherWeek,
+    /**
+     * A move into another week changes two weeks of the teacher: the second
+     * one, in the same notice (task 5.6a-2, decision 11; edge/timetable: "One
+     * notice per person per event").
+     */
+    also: z.strictObject(teacherWeek).optional(),
+  }),
 } as const satisfies Record<string, z.ZodType>;
 
 export type NotificationKind = keyof typeof NOTIFICATION_KINDS;

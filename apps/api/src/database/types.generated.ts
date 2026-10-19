@@ -425,6 +425,29 @@ export interface LessonChanges {
   lesson_id: string;
 }
 
+export interface LessonDayChanges {
+  branch_id: string;
+  changed_at: Timestamp;
+  changed_by: string;
+  class_id: string | null;
+  created_at: Generated<Timestamp>;
+  from_date: string;
+  from_ends_at: Timestamp;
+  from_room_id: string | null;
+  from_starts_at: Timestamp;
+  group_id: string | null;
+  id: Generated<string>;
+  kind: string;
+  lesson_id: string | null;
+  load_row_id: string | null;
+  reason: string;
+  subject_id: string;
+  to_date: string;
+  to_ends_at: Timestamp;
+  to_room_id: string | null;
+  to_starts_at: Timestamp;
+}
+
 export interface Lessons {
   block_id: string;
   branch_id: string;
@@ -1028,6 +1051,7 @@ export interface DB {
   lesson_block_class_outs: LessonBlockClassOuts;
   lesson_blocks: LessonBlocks;
   lesson_changes: LessonChanges;
+  lesson_day_changes: LessonDayChanges;
   lessons: Lessons;
   notifications: Notifications;
   password_reset_links: PasswordResetLinks;

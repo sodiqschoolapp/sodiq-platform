@@ -63,6 +63,19 @@ describe('weekChanges', () => {
     expect([...changes.teachers]).toEqual([['t1', '2026-10-19']]);
   });
 
+  // Task 5.6a-2 (decision 11): a one-day move into another week shows both weeks in one notice.
+  it('names the later week of a teacher whose changes lie in two weeks, and none for one week', () => {
+    const changes = weekChanges(
+      [lesson('a', '2026-10-19'), lesson('b', '2026-10-20', { teacherId: 't2' })],
+      [lesson('a', '2026-10-27'), lesson('b', '2026-10-21', { teacherId: 't2' })],
+    );
+    expect([...changes.teachers]).toEqual([
+      ['t1', '2026-10-19'],
+      ['t2', '2026-10-19'],
+    ]);
+    expect([...changes.laterWeeks]).toEqual([['t1', '2026-10-26']]);
+  });
+
   it('marks a room change and names the teacher', () => {
     const changes = weekChanges(
       [lesson('a', '2026-10-19')],

@@ -36,10 +36,41 @@ export const lessonCancelBodySchema = z.strictObject({
 
 export type LessonCancelBody = z.infer<typeof lessonCancelBodySchema>;
 
-/** A restore takes nothing: a restore into another room is a room change (5.6a-2, decision 7). */
-export const lessonRestoreBodySchema = z.strictObject({});
+const reason = z.string().trim().min(1).max(DAY_CHANGE_REASON_MAX);
+
+/**
+ * A restore takes nothing, or a room and a reason: the restore into one of
+ * the free rooms a refused restore listed, stored as a room change (task
+ * 5.6a-2, decision 10; 5.6a-1 decision 7). Both or neither.
+ */
+export const lessonRestoreBodySchema = z
+  .strictObject({ roomId: z.uuid().optional(), reason: reason.optional() })
+  .refine((body) => (body.roomId === undefined) === (body.reason === undefined), {
+    path: ['reason'],
+    message: 'A room and a reason go together.',
+  });
 
 export type LessonRestoreBody = z.infer<typeof lessonRestoreBodySchema>;
+
+/** A one-day room change of a lesson (both halves of a double), with its reason (task 5.6a-2). */
+export const lessonRoomBodySchema = z.strictObject({ roomId: z.uuid(), reason });
+
+export type LessonRoomBody = z.infer<typeof lessonRoomBodySchema>;
+
+/**
+ * A one-day move of a lesson's block (and both halves of a double) to a
+ * lesson slot of a date, named by its number among the day's lesson slots,
+ * never by a time (task 5.6a-2, decision 6); a room only for a lesson of one
+ * part (decision 9).
+ */
+export const lessonMoveBodySchema = z.strictObject({
+  date: schoolDateSchema,
+  lessonNumber: z.int().min(1).max(30),
+  roomId: z.uuid().optional(),
+  reason,
+});
+
+export type LessonMoveBody = z.infer<typeof lessonMoveBodySchema>;
 
 /** The causes a stored lesson can be cancelled with (0058). */
 export const LESSON_CANCEL_CAUSES = [
@@ -84,9 +115,21 @@ export const dayLessonSchema = z.object({
 
 export type DayLesson = z.infer<typeof dayLessonSchema>;
 
+/** A lesson slot of the class's day, for the move dialog (task 5.6a-2, decision 12). */
+export const daySlotSchema = z.object({
+  lessonNumber: z.int().min(1),
+  /** Clock minutes of the day in branch time, half-open. */
+  start: z.int().min(0),
+  end: z.int().min(1),
+});
+
+export type DaySlot = z.infer<typeof daySlotSchema>;
+
 export const dayAnswerSchema = z.object({
   date: schoolDateSchema,
   classId: z.uuid(),
+  /** The lesson slots of the class's day on the date; none on a day without lessons. */
+  slots: z.array(daySlotSchema),
   /** Today in the branch at the moment of the request, so the page never reads the device's clock. */
   today: schoolDateSchema,
   lessons: z.array(dayLessonSchema),
@@ -94,7 +137,7 @@ export const dayAnswerSchema = z.object({
 
 export type DayAnswer = z.infer<typeof dayAnswerSchema>;
 
-/** The lesson after a cancel or a restore, with the warnings a restore found (decision 8). */
+/** The lesson after a one-day change, with the warnings its check found (decision 8). */
 export const dayChangeAnswerSchema = z.object({
   lesson: dayLessonSchema,
   warnings: z.array(ruleResultSchema),

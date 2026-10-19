@@ -419,6 +419,19 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu yerda faqat sabab bilan bekor qilingan dars tiklanadi. Imtihon tufayli bekor qilingan dars imtihon bekor qilinganda qaytadi.',
     restore_blocked:
       'Darsni oʻz vaqtida tiklab boʻlmaydi: u yerda qoida buziladi yoki boshqa oʻzgarish hozirgina uning xonasi, oʻqituvchisi yoki sinfini egalladi. Topilgan sabablar quyida keltirilgan.',
+    day_change_blocked:
+      'Oʻzgarish darsning yangi joyida qoidani buzadi. Sabablar roʻyxatda; muammo xonada boʻlsa, boʻsh xonani tanlash mumkin.',
+    room_unchanged: 'Dars allaqachon shu xonada. Boshqa xonani tanlang.',
+    move_target_started: 'Bu dars vaqti allaqachon boshlangan. Keyingi vaqt yoki sanani tanlang.',
+    move_other_quarter:
+      'Darsni faqat oʻz choragi ichida koʻchirish mumkin. Shu chorakdagi sanani tanlang.',
+    move_other_version:
+      'Bu sanada dars jadvalining boshqa versiyasi amalda. Dars versiyasi qamrab olgan sanani tanlang.',
+    move_no_slot:
+      'Bu sanada bunday dars vaqti yoʻq (qoʻsh dars uchun keyingi vaqt ham kerak). Boshqa vaqtni tanlang.',
+    move_unchanged: 'Dars allaqachon shu joyda. Boshqa vaqt, sana yoki xonani tanlang.',
+    move_room_parts:
+      'Bu dars guruhlarga boʻlingan blokning qismi, har bir qism oʻz xonasida qoladi. Uni xonasiz koʻchiring, soʻng har bir qismning xonasini almashtiring.',
     withdraw_started:
       'Bu versiya kuchga kirgan, uni endi qaytarib olib boʻlmaydi. Oʻzgartirish uchun yangi versiyani eʼlon qiling.',
     withdraw_blocked:
@@ -2692,6 +2705,8 @@ export const uz: Texts<'one' | 'other'> = {
       lesson: {
         cancel: 'Dars bir kunga bekor qilindi',
         restore: 'Bekor qilingan dars tiklandi',
+        room_change: 'Darsning xonasi bir kunga almashtirildi',
+        move: 'Dars bir kunga koʻchirildi',
       },
       teaching_load: {
         create: 'Oʻquv yuklamasi qatori qoʻshildi',
@@ -3115,6 +3130,33 @@ export const uz: Texts<'one' | 'other'> = {
       blocked: 'Uning vaqtida buziladi: {{rule}}',
       freeRooms: 'Shu vaqtda boʻsh xonalar: {{rooms}}',
       noFreeRoom: 'Shu vaqtda boʻsh xona yoʻq.',
+      changeRoom: 'Xonani almashtirish',
+      move: 'Koʻchirish',
+      restoreInto: '{{room}} xonasida tiklash',
+      useRoom: '{{room}} xonasini tanlash',
+      roomChanged: 'Bu kun uchun xona almashtirildi.',
+      moved: 'Dars bu kun uchun koʻchirildi.',
+      changedWarning: 'Ogohlantirish bilan: {{rule}}',
+      reasonNeededChange: 'Oʻzgarish sababini yozing.',
+      roomNeeded: 'Xonani tanlang.',
+      slotNeeded: 'Dars vaqtini tanlang.',
+      roomTitle: '{{time}} dagi {{subject}} darsining xonasini almashtirish',
+      moveTitle: '{{time}} dagi {{subject}} darsini koʻchirish',
+      restoreTitle: '{{time}} dagi {{subject}} darsini boshqa xonada tiklash',
+      restoreRoom: 'Dars {{room}} xonasida qaytadi.',
+      moveDate: 'Yangi sana',
+      noSlots: 'Bu sanada dars yoʻq.',
+      slot: 'Dars vaqti',
+      slotChoose: 'Dars vaqtini tanlang',
+      slotLabel: '{{number}}-dars, {{start}}–{{end}}',
+      moveRoom: 'Xona',
+      newRoom: 'Yangi xona',
+      keepRoom: 'Xonasi qoladi',
+      roomChoose: 'Xonani tanlang',
+      back: 'Orqaga',
+      roomSend: 'Xonani almashtirish',
+      moveSend: 'Darsni koʻchirish',
+      restoreSend: 'Darsni tiklash',
     },
     rule: {
       teacher_double: 'Oʻqituvchi bir vaqtda ikkita darsda boʻla olmaydi.',

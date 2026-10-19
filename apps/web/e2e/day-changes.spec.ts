@@ -21,8 +21,10 @@ function mondaysAhead(count: number): string[] {
 // publishing: "A cancelled lesson is restored … Every rule is checked again."
 // Task 5.6a-1, pull request #160. The publishable grid scene: the Academic
 // Vice Principal publishes from step 8, opens Day changes, cancels 7 Oxford's
-// Monday lesson with a reason and restores it. All names are invented.
-test('an Academic Vice Principal cancels a lesson for one day and restores it', async ({
+// Monday lesson with a reason and restores it, then changes its room and
+// moves it to another lesson slot of the day (task 5.6a-2, pull request #161).
+// All names are invented.
+test('an Academic Vice Principal cancels a lesson for one day, restores it, changes its room and moves it', async ({
   page,
 }) => {
   const account = accountOf('dayChanges');
@@ -84,4 +86,24 @@ test('an Academic Vice Principal cancels a lesson for one day and restores it', 
   await page.getByRole('button', { name: day.restore, exact: true }).first().click();
   await expect(page.getByText(day.restored, { exact: true })).toBeVisible();
   await expect(page.locator('tbody tr').first()).toContainText(day.asPlanned);
+
+  // Task 5.6a-2: the lesson's room changed for the day, then the lesson
+  // moved to lesson 3, which the teacher (Princeton has lesson 2) and the
+  // class have free.
+  await page.getByRole('button', { name: day.changeRoom, exact: true }).first().click();
+  const roomDialog = page.getByRole('dialog');
+  await roomDialog.getByLabel(day.newRoom, { exact: true }).selectOption({ label: 'Room 21' });
+  await roomDialog.getByLabel(day.reason, { exact: true }).fill('The room is painted');
+  await roomDialog.getByRole('button', { name: day.roomSend, exact: true }).click();
+  await expect(page.getByText(day.roomChanged, { exact: true })).toBeVisible();
+  await expect(page.locator('tbody tr').first()).toContainText('Room 21');
+
+  await page.getByRole('button', { name: day.move, exact: true }).first().click();
+  const moving = page.getByRole('dialog');
+  await moving.getByLabel(day.slot, { exact: true }).selectOption('3');
+  await moving.getByLabel(day.reason, { exact: true }).fill('Concert in the hall');
+  await moving.getByRole('button', { name: day.moveSend, exact: true }).click();
+  await expect(page.getByText(day.moved, { exact: true })).toBeVisible();
+  await expect(page.locator('tbody tr').first()).toContainText('09:30–10:15');
+  await expect(page.locator('tbody tr').first()).toContainText('Room 21');
 });

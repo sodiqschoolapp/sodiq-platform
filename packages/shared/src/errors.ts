@@ -564,6 +564,22 @@ export const ERROR_CODES = [
   'lesson_not_restorable',
   /** A restore meets a blocked rule on its date; `details` lists each, and the free rooms of its time (task 5.6a-1, edge/timetable, After publishing). */
   'restore_blocked',
+  /** A one-day room change or move meets a blocked rule at the lesson's new place; `details` lists each, and the free rooms of its time when a room rule blocks (task 5.6a-2). */
+  'day_change_blocked',
+  /** The lesson already has that room (task 5.6a-2). */
+  'room_unchanged',
+  /** The new place of a one-day move has started: a move targets a lesson slot that has not started (task 5.6a-2, decision 5). */
+  'move_target_started',
+  /** A one-day move stays inside the lesson's quarter (task 5.6a-2; edge/time-dates-calendar). */
+  'move_other_quarter',
+  /** Another published version is in force on the date of a one-day move (task 5.6a-2, decision 1). */
+  'move_other_version',
+  /** The date has no lesson slot of that number, or none after it for a double lesson (task 5.6a-2). */
+  'move_no_slot',
+  /** A one-day move to the place the lesson already has (task 5.6a-2). */
+  'move_unchanged',
+  /** A room for a one-day move is taken only for a lesson of one part (task 5.6a-2, decision 9). */
+  'move_room_parts',
   /** The class or group of a load row is of another academic year than the version (task 3.4a). */
   'load_unit_year',
   /** The class or group of a load row is archived (task 3.4a). */
@@ -737,7 +753,7 @@ export const errorDetailSchema = z.object({
   rule: z
     .object({ weekday: z.int().min(1).max(7).nullable(), lessonIds: z.array(z.string()) })
     .optional(),
-  /** A room free at the time of a refused restore, on a `restore_blocked` (task 5.6a-1, decision 7). */
+  /** A room free at the time of a refused restore, room change or move, on a `restore_blocked` or `day_change_blocked` (tasks 5.6a-1 and 5.6a-2). */
   room: z.object({ id: z.uuid(), name: z.string() }).optional(),
   /** The number of items a list of details leaves out, on its detail `more` (`year_cut_holds`, task 3.6b-2). */
   more: z.int().min(1).optional(),

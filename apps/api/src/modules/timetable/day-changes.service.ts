@@ -15,9 +15,13 @@ import {
   type ErrorCode,
   type ErrorDetail,
   type LessonCancelBody,
+  type LessonMoveBody,
+  type LessonRestoreBody,
+  type LessonRoomBody,
+  type DaySlot,
   type RuleResultAnswer,
 } from '@sodiq/shared';
-import { weekdayOf, type RuleResult } from '@sodiq/timetable-rules';
+import { dayOn, weekdayOf, type RuleResult } from '@sodiq/timetable-rules';
 import { sql } from 'kysely';
 import { RequestKeys } from '../../database/request-keys.js';
 import { Transactions, transactionMoment, type Transaction } from '../../database/transactions.js';
@@ -27,6 +31,8 @@ import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { Notifications } from '../notifications/notifications.service.js';
+import { loadCalendarSettings } from '../setup/calendar-state.js';
+import { dayOf, loadStore } from '../setup/day-template-state.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { dayBeginnings } from './dated-check.js';
 import { TimetablePattern } from './pattern.service.js';
@@ -36,9 +42,16 @@ import {
   lockPublishChain,
   refusingPublish,
 } from './publish.service.js';
-import { pairOf, storedDayCheck, storedLessonsOn, type StoredDayLesson } from './stored-day.js';
+import {
+  pairOf,
+  slotMomentsOn,
+  storedDayCheck,
+  storedLessonsOn,
+  type StoredDayLesson,
+  type StoredDayResult,
+} from './stored-day.js';
 import { Timetable } from './timetable.service.js';
-import { sendWeekChanges, snapshotWeek } from './week-changes.js';
+import { sendWeekChanges, snapshotDates, snapshotWeek } from './week-changes.js';
 
 /**
  * The claims and the commit checks of 0058 that a restore can meet after its
@@ -56,12 +69,29 @@ export const DAY_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   lesson_block_student_twice: 'restore_blocked',
 };
 
-/** A blocked result of the stored-day check as a detail of `restore_blocked`. */
+/**
+ * The same for a one-day room change and a move (task 5.6a-2): their own
+ * code, and a block's date in another quarter, which the route refuses first,
+ * as `move_other_quarter`.
+ */
+export const MOVE_REFUSALS: Readonly<Record<string, ErrorCode>> = {
+  ...PUBLISH_REFUSALS,
+  time_claims_teacher_excl: 'day_change_blocked',
+  time_claims_room_excl: 'day_change_blocked',
+  time_claims_class_excl: 'day_change_blocked',
+  room_shared_full: 'day_change_blocked',
+  room_shared_capacity: 'day_change_blocked',
+  lesson_block_student_twice: 'day_change_blocked',
+  lesson_block_quarter: 'move_other_quarter',
+  lesson_block_quarter_fixed: 'move_other_quarter',
+};
+
+/** A blocked result of the stored-day check as a detail of `restore_blocked` or `day_change_blocked`. */
 function blockedDetail(result: RuleResult): ErrorDetail {
   return {
     path: `rules.${result.rule}`,
     code: result.rule,
-    message: 'A blocked rule of the restored lesson on its date.',
+    message: 'A blocked rule of the changed lesson on its date.',
     rule: { weekday: weekdaySchema.parse(weekdayOf(result.day)), lessonIds: [...result.lessonIds] },
     day: result.day,
   };
@@ -79,7 +109,9 @@ const answerOfResult = (result: RuleResult): RuleResultAnswer => ({
 });
 
 /**
- * One-day changes of a published timetable (task 5.6a-1, pull request #160):
+ * One-day changes of a published timetable (task 5.6a-1, pull request #160;
+ * the room change, the move and the restore into another room of task
+ * 5.6a-2, pull request #161):
  * the day of a class, the cancel of one lesson with a reason and its restore
  * (`06`, Changes after publishing: "One-day change. … cancel. Every one-day
  * change needs a reason, applies to that date only and passes the same
@@ -145,6 +177,7 @@ export class TimetableDayChanges {
       return dayAnswerSchema.parse({
         date: query.date,
         classId: query.classId,
+        slots: await classSlotsOn(transaction, branchId, query.classId, query.date),
         today: schoolDateOf(moment, branch.time_zone),
         lessons: await dayLessonsOf(transaction, lessons, moment),
       });
@@ -164,10 +197,68 @@ export class TimetableDayChanges {
     );
   }
 
-  /** The restore of a one-day cancel, safe to repeat with its key. */
-  restore(access: Access, id: string, key: string, requestId: string): Promise<DayChangeAnswer> {
-    return this.keyed(access, id, key, 'timetable.lesson_restore', {}, (t) =>
-      this.restoreLocked(t, access, id, requestId),
+  /**
+   * The restore of a one-day cancel, into another room with a reason when
+   * given (task 5.6a-2, decision 10), safe to repeat with its key.
+   */
+  restore(
+    access: Access,
+    id: string,
+    input: LessonRestoreBody,
+    key: string,
+    requestId: string,
+  ): Promise<DayChangeAnswer> {
+    return this.keyed(
+      access,
+      id,
+      key,
+      'timetable.lesson_restore',
+      input.roomId === undefined ? {} : { roomId: input.roomId, reason: input.reason ?? '' },
+      (t) => this.restoreLocked(t, access, id, input, requestId),
+      { rooms: input.roomId === undefined ? [] : [input.roomId] },
+    );
+  }
+
+  /** A one-day room change with its reason (task 5.6a-2), safe to repeat with its key. */
+  room(
+    access: Access,
+    id: string,
+    input: LessonRoomBody,
+    key: string,
+    requestId: string,
+  ): Promise<DayChangeAnswer> {
+    return this.keyed(
+      access,
+      id,
+      key,
+      'timetable.lesson_room',
+      { roomId: input.roomId, reason: input.reason },
+      (t) => this.roomLocked(t, access, id, input, requestId),
+      { rooms: [input.roomId], refusals: MOVE_REFUSALS },
+    );
+  }
+
+  /** A one-day move with its reason (task 5.6a-2), safe to repeat with its key. */
+  move(
+    access: Access,
+    id: string,
+    input: LessonMoveBody,
+    key: string,
+    requestId: string,
+  ): Promise<DayChangeAnswer> {
+    return this.keyed(
+      access,
+      id,
+      key,
+      'timetable.lesson_move',
+      {
+        date: input.date,
+        lessonNumber: String(input.lessonNumber),
+        roomId: input.roomId ?? '',
+        reason: input.reason,
+      },
+      (t) => this.moveLocked(t, access, id, input, requestId),
+      { rooms: input.roomId === undefined ? [] : [input.roomId], refusals: MOVE_REFUSALS },
     );
   }
 
@@ -179,13 +270,29 @@ export class TimetableDayChanges {
     scope: string,
     input: { readonly [field: string]: string },
     work: (transaction: Transaction) => Promise<DayChangeAnswer>,
+    options: {
+      readonly rooms?: readonly string[];
+      readonly refusals?: Readonly<Record<string, ErrorCode>>;
+    } = {},
   ): Promise<DayChangeAnswer> {
     const branchId = branchOf(access);
     return refusingPublish(
       () =>
         this.transactions.run(access.branchIds, async (transaction) => {
-          // The lesson of the branch first, so an unknown or foreign id never waits on a publish.
+          // The lesson and the rooms of the branch first, so an unknown or
+          // foreign id never waits on a publish.
           await this.yearOf(transaction, branchId, id);
+          for (const roomId of options.rooms ?? []) {
+            const room = await transaction
+              .selectFrom('rooms')
+              .select('id')
+              .where('id', '=', roomId)
+              .where('branch_id', '=', branchId)
+              .executeTakeFirst();
+            if (room === undefined) {
+              throw notFound();
+            }
+          }
           await sql`select pg_advisory_xact_lock(${PUBLISH_LOCK})`.execute(transaction);
           const once = await this.requestKeys.runOnce(
             transaction,
@@ -194,7 +301,7 @@ export class TimetableDayChanges {
           );
           return dayChangeAnswerSchema.parse(once.result);
         }),
-      DAY_REFUSALS,
+      options.refusals ?? DAY_REFUSALS,
     );
   }
 
@@ -220,7 +327,12 @@ export class TimetableDayChanges {
    * and `lesson_started` when it, or the earlier half of its pair, has
    * started (decision 3).
    */
-  private async lockedLesson(transaction: Transaction, branchId: string, id: string) {
+  private async lockedLesson(
+    transaction: Transaction,
+    branchId: string,
+    id: string,
+    toDate?: string,
+  ) {
     const yearId = await this.yearOf(transaction, branchId, id);
     await lockPublishChain(transaction, branchId, yearId);
     const dated = await transaction
@@ -232,7 +344,11 @@ export class TimetableDayChanges {
     if (dated === undefined) {
       throw notFound();
     }
-    const week = await snapshotWeek(transaction, branchId, dated.date, dated.date);
+    // A move to another date locks the blocks of both dates only (spec review should-fix 5).
+    const week =
+      toDate === undefined || toDate === dated.date
+        ? await snapshotWeek(transaction, branchId, dated.date, dated.date)
+        : await snapshotDates(transaction, branchId, [dated.date, toDate]);
     const lessons = await storedLessonsOn(transaction, branchId, dated.date);
     const lesson = lessons.find((one) => one.id === id);
     if (lesson === undefined) {
@@ -243,7 +359,7 @@ export class TimetableDayChanges {
     if (pair.some((one) => one.startsAt.getTime() <= moment.getTime())) {
       throw new ApiException('lesson_started', 409);
     }
-    return { lesson, pair, week, moment };
+    return { lesson, pair, week, moment, lessons };
   }
 
   private async cancelLocked(
@@ -291,6 +407,7 @@ export class TimetableDayChanges {
     transaction: Transaction,
     access: Access,
     id: string,
+    input: LessonRestoreBody,
     requestId: string,
   ): Promise<DayChangeAnswer> {
     const branchId = branchOf(access);
@@ -302,32 +419,18 @@ export class TimetableDayChanges {
     // half cancelled by another cause stays cancelled (decision 4).
     const lessons = pair.filter((one) => one.cancelCause === 'reason');
     const lessonIds = lessons.map((one) => one.id);
+    // Into another room with a reason when given (decision 10); its own room
+    // is no room change (spec review of the code, should-fix 3).
+    const roomId = input.roomId;
+    if (roomId !== undefined && lessons.every((one) => one.roomId === roomId)) {
+      throw new ApiException('room_unchanged', 409);
+    }
     const checked = await storedDayCheck(
       transaction,
       { timetable: this.timetable, pattern: this.pattern },
-      { accountId: access.accountId, lessons },
+      { accountId: access.accountId, lessons, ...(roomId === undefined ? {} : { roomId }) },
     );
-    if (checked.blocked.length > 0) {
-      const rooms =
-        checked.freeRooms.length === 0
-          ? []
-          : await transaction
-              .selectFrom('rooms')
-              .select(['id', 'name'])
-              .where('id', 'in', checked.freeRooms)
-              .where('branch_id', '=', branchId)
-              .orderBy('name')
-              .execute();
-      throw new ApiException('restore_blocked', 409, undefined, [
-        ...checked.blocked.map(blockedDetail),
-        ...rooms.map((room) => ({
-          path: 'rooms',
-          code: 'room_free',
-          message: 'A room free at the lesson’s time.',
-          room: { id: room.id, name: room.name },
-        })),
-      ]);
-    }
+    await refuseBlocked(transaction, branchId, 'restore_blocked', checked);
     for (const one of lessons) {
       await transaction
         .updateTable('lessons')
@@ -335,12 +438,22 @@ export class TimetableDayChanges {
           cancel_cause: null,
           cancel_reason: null,
           teacher_id: checked.teacherIds.get(one.id) ?? null,
+          ...(roomId === undefined ? {} : { room_id: roomId }),
         })
         .where('id', '=', one.id)
         .execute();
     }
     // The commit checks of 0058 now, so that a race meets the refusals here.
     await sql`set constraints all immediate`.execute(transaction);
+    if (roomId !== undefined) {
+      await recordChanges(
+        transaction,
+        access,
+        'room',
+        lessons.map((one) => ({ from: one, to: { ...one, roomId } })),
+        input.reason ?? '',
+      );
+    }
     const notices = await sendWeekChanges(transaction, this.notifications, week, {
       kind: 'timetable.day_changed',
     });
@@ -357,10 +470,270 @@ export class TimetableDayChanges {
         reason: lesson.cancelReason,
       },
       newValue: {
-        ...valuesOf({ ...lesson, teacherId: checked.teacherIds.get(id) ?? null }),
+        ...valuesOf({
+          ...lesson,
+          teacherId: checked.teacherIds.get(id) ?? null,
+          roomId: roomId ?? lesson.roomId,
+        }),
         lessonIds,
         teacherIds: Object.fromEntries(checked.teacherIds),
         cancelCause: null,
+        ...(roomId === undefined ? {} : { roomId, roomReason: input.reason ?? '' }),
+        warnings: checked.warnings.map((one) => one.rule),
+        notices: { ...notices },
+      },
+      requestId,
+    });
+    return this.answerOf(transaction, branchId, id, moment, checked.warnings);
+  }
+
+  private async roomLocked(
+    transaction: Transaction,
+    access: Access,
+    id: string,
+    input: LessonRoomBody,
+    requestId: string,
+  ): Promise<DayChangeAnswer> {
+    const branchId = branchOf(access);
+    const { lesson, pair, week, moment } = await this.lockedLesson(transaction, branchId, id);
+    if (lesson.cancelCause !== null) {
+      throw new ApiException('lesson_cancelled', 409);
+    }
+    // Both halves of a double take the room ("the same teacher and room");
+    // a half cancelled by another cause keeps its own (decision 4).
+    const lessons = pair.filter((one) => one.cancelCause === null);
+    if (lessons.every((one) => one.roomId === input.roomId)) {
+      throw new ApiException('room_unchanged', 409);
+    }
+    const checked = await storedDayCheck(
+      transaction,
+      { timetable: this.timetable, pattern: this.pattern },
+      { accountId: access.accountId, lessons, roomId: input.roomId },
+    );
+    // The lesson's own room is no other room to offer.
+    const own = new Set(lessons.map((one) => one.roomId));
+    await refuseBlocked(transaction, branchId, 'day_change_blocked', {
+      ...checked,
+      freeRooms: checked.freeRooms.filter((one) => !own.has(one)),
+    });
+    for (const one of lessons) {
+      await transaction
+        .updateTable('lessons')
+        .set({ room_id: input.roomId, teacher_id: checked.teacherIds.get(one.id) ?? null })
+        .where('id', '=', one.id)
+        .execute();
+    }
+    await sql`set constraints all immediate`.execute(transaction);
+    await recordChanges(
+      transaction,
+      access,
+      'room',
+      lessons.map((one) => ({ from: one, to: { ...one, roomId: input.roomId } })),
+      input.reason,
+    );
+    const lessonIds = lessons.map((one) => one.id);
+    const notices = await sendWeekChanges(transaction, this.notifications, week, {
+      kind: 'timetable.day_changed',
+    });
+    await this.audit.record(transaction, {
+      branchId,
+      actorId: access.accountId,
+      assignmentId: access.assignmentId,
+      action: 'lesson.room_change',
+      record: { type: 'lesson', id },
+      oldValue: { ...valuesOf(lesson), lessonIds },
+      newValue: {
+        ...valuesOf({
+          ...lesson,
+          roomId: input.roomId,
+          teacherId: checked.teacherIds.get(id) ?? null,
+        }),
+        lessonIds,
+        teacherIds: Object.fromEntries(checked.teacherIds),
+        reason: input.reason,
+        warnings: checked.warnings.map((one) => one.rule),
+        notices: { ...notices },
+      },
+      requestId,
+    });
+    return this.answerOf(transaction, branchId, id, moment, checked.warnings);
+  }
+
+  /**
+   * A one-day move (task 5.6a-2): the lesson's block, every part of it, and
+   * for a double both halves, to lesson slots `lessonNumber`, … of the date
+   * (decisions 4 to 6, 9; edge/timetable, Structure: blocks "are placed and
+   * moved whole"; edge/time-dates-calendar: "A one-day move stays inside the
+   * same quarter and targets a school day from today on").
+   */
+  private async moveLocked(
+    transaction: Transaction,
+    access: Access,
+    id: string,
+    input: LessonMoveBody,
+    requestId: string,
+  ): Promise<DayChangeAnswer> {
+    const branchId = branchOf(access);
+    const { lesson, pair, week, moment, lessons } = await this.lockedLesson(
+      transaction,
+      branchId,
+      id,
+      input.date,
+    );
+    if (pair.some((one) => one.cancelCause !== null)) {
+      throw new ApiException('lesson_cancelled', 409);
+    }
+    // Every part of the blocks; a part cancelled with a reason moves with
+    // them and stays cancelled, one cancelled by another cause (an exam, the
+    // day's template) keeps the block where it is (review correction 1).
+    const blockIds = [...new Set(pair.map((one) => one.blockId))];
+    const parts = lessons.filter((one) => blockIds.includes(one.blockId));
+    if (parts.some((one) => one.cancelCause !== null && one.cancelCause !== 'reason')) {
+      throw new ApiException('lesson_cancelled', 409);
+    }
+    const held = parts.filter((one) => one.cancelCause === null);
+    const units = new Set(parts.map((one) => one.classId ?? one.groupId ?? ''));
+    if (input.roomId !== undefined && units.size > 1) {
+      throw new ApiException('move_room_parts', 409);
+    }
+
+    const blocks = await transaction
+      .selectFrom('lesson_blocks')
+      .select(['id', 'quarter_id', 'academic_year_id'])
+      .where('id', 'in', blockIds)
+      .execute();
+    const block = blocks[0];
+    if (block === undefined) throw new Error('The lesson’s block was not read.');
+    // The quarter of the date: another quarter refuses; none (a vacation,
+    // after the year) is the rule check's (review must-fix 2).
+    const quarter = await transaction
+      .selectFrom('quarters')
+      .select('id')
+      .where('academic_year_id', '=', block.academic_year_id)
+      .where('branch_id', '=', branchId)
+      .where('start_date', '<=', input.date)
+      .where('end_date', '>=', input.date)
+      .executeTakeFirst();
+    if (quarter !== undefined && quarter.id !== block.quarter_id) {
+      throw new ApiException('move_other_quarter', 409);
+    }
+
+    const services = { timetable: this.timetable, pattern: this.pattern };
+    const first = pair[0] ?? lesson;
+    const moments = await slotMomentsOn(transaction, services, {
+      accountId: access.accountId,
+      lesson: first,
+      date: input.date,
+      lessonNumber: input.lessonNumber,
+      count: pair.length,
+    });
+    if (moments === null) {
+      throw new ApiException('move_no_slot', 409);
+    }
+    const target = new Map(pair.map((one, at) => [one.blockId, moments[at]]));
+    const placed = (one: StoredDayLesson): StoredDayLesson => {
+      const to = target.get(one.blockId);
+      if (to === undefined) throw new Error('A part of the move has no place.');
+      return {
+        ...one,
+        date: input.date,
+        startsAt: to.startsAt,
+        endsAt: to.endsAt,
+        roomId: input.roomId ?? one.roomId,
+      };
+    };
+    if ((moments[0]?.startsAt.getTime() ?? 0) <= moment.getTime()) {
+      throw new ApiException('move_target_started', 409);
+    }
+    // The version in force on the date must be the lesson's (decision 1).
+    const inForce = await transaction
+      .selectFrom('timetable_versions')
+      .select('id')
+      .where('branch_id', '=', branchId)
+      .where('academic_year_id', '=', block.academic_year_id)
+      .where('status', '=', 'published')
+      .where('starts_on', '<=', input.date)
+      .orderBy('starts_on', 'desc')
+      .executeTakeFirst();
+    if (inForce?.id !== lesson.versionId) {
+      throw new ApiException('move_other_version', 409);
+    }
+    if (
+      parts.every((one) => {
+        const to = placed(one);
+        return (
+          to.date === one.date &&
+          to.startsAt.getTime() === one.startsAt.getTime() &&
+          to.roomId === one.roomId
+        );
+      })
+    ) {
+      throw new ApiException('move_unchanged', 409);
+    }
+
+    const checked = await storedDayCheck(transaction, services, {
+      accountId: access.accountId,
+      lessons: held.map(placed),
+      alongside: parts.filter((one) => one.cancelCause !== null).map(placed),
+      ...(input.roomId === undefined ? {} : { roomId: input.roomId }),
+    });
+    await refuseBlocked(
+      transaction,
+      branchId,
+      'day_change_blocked',
+      units.size > 1 ? { ...checked, freeRooms: [] } : checked,
+    );
+
+    // A double moved by one slot meets its own other half while the first
+    // block is written: the exclusions are checked on the end state (review
+    // must-fix 1).
+    await sql`set constraints time_claims_teacher_excl, time_claims_room_excl, time_claims_class_excl deferred`.execute(
+      transaction,
+    );
+    for (const one of pair) {
+      const to = target.get(one.blockId);
+      if (to === undefined) continue;
+      await transaction
+        .updateTable('lesson_blocks')
+        .set({ lesson_date: input.date, starts_at: to.startsAt, ends_at: to.endsAt })
+        .where('id', '=', one.blockId)
+        .execute();
+    }
+    for (const one of held) {
+      await transaction
+        .updateTable('lessons')
+        .set({
+          teacher_id: checked.teacherIds.get(one.id) ?? null,
+          ...(input.roomId === undefined ? {} : { room_id: input.roomId }),
+        })
+        .where('id', '=', one.id)
+        .execute();
+    }
+    await sql`set constraints all immediate`.execute(transaction);
+    await recordChanges(
+      transaction,
+      access,
+      'move',
+      parts.map((one) => ({ from: one, to: placed(one) })),
+      input.reason,
+    );
+    const lessonIds = parts.map((one) => one.id);
+    const notices = await sendWeekChanges(transaction, this.notifications, week, {
+      kind: 'timetable.day_changed',
+    });
+    await this.audit.record(transaction, {
+      branchId,
+      actorId: access.accountId,
+      assignmentId: access.assignmentId,
+      action: 'lesson.move',
+      record: { type: 'lesson', id },
+      oldValue: { ...valuesOf(lesson), lessonIds },
+      newValue: {
+        ...valuesOf({ ...placed(lesson), teacherId: checked.teacherIds.get(id) ?? null }),
+        lessonIds,
+        lessonNumber: input.lessonNumber,
+        teacherIds: Object.fromEntries(checked.teacherIds),
+        reason: input.reason,
         warnings: checked.warnings.map((one) => one.rule),
         notices: { ...notices },
       },
@@ -390,6 +763,117 @@ export class TimetableDayChanges {
     if (lesson === undefined) throw new Error('The changed lesson was not read.');
     return dayChangeAnswerSchema.parse({ lesson, warnings: warnings.map(answerOfResult) });
   }
+}
+
+/**
+ * Refuses a one-day change whose check found a blocked rule, with the
+ * results and the free rooms of its time, by name.
+ */
+async function refuseBlocked(
+  transaction: Transaction,
+  branchId: string,
+  code: 'restore_blocked' | 'day_change_blocked',
+  checked: StoredDayResult,
+): Promise<void> {
+  if (checked.blocked.length === 0) return;
+  const rooms =
+    checked.freeRooms.length === 0
+      ? []
+      : await transaction
+          .selectFrom('rooms')
+          .select(['id', 'name'])
+          .where('id', 'in', checked.freeRooms)
+          .where('branch_id', '=', branchId)
+          .orderBy('name')
+          .execute();
+  throw new ApiException(code, 409, undefined, [
+    ...checked.blocked.map(blockedDetail),
+    ...rooms.map((room) => ({
+      path: 'rooms',
+      code: 'room_free',
+      message: 'A room free at the lesson’s time.',
+      room: { id: room.id, name: room.name },
+    })),
+  ]);
+}
+
+/**
+ * Stores what each lesson of a one-day room change or move was and became
+ * (decision 8), at the transaction's moment, so that a publish can apply it
+ * again (5.6a-5).
+ */
+async function recordChanges(
+  transaction: Transaction,
+  access: Access,
+  kind: 'room' | 'move',
+  changes: readonly { readonly from: StoredDayLesson; readonly to: StoredDayLesson }[],
+  reason: string,
+): Promise<void> {
+  if (changes.length === 0) return;
+  const moment = await transactionMoment(transaction);
+  await transaction
+    .insertInto('lesson_day_changes')
+    .values(
+      changes.map(({ from, to }) => ({
+        branch_id: from.branchId,
+        lesson_id: from.id,
+        kind,
+        class_id: from.classId,
+        group_id: from.groupId,
+        subject_id: from.subjectId,
+        load_row_id: from.loadRowId,
+        from_date: from.date,
+        from_starts_at: from.startsAt,
+        from_ends_at: from.endsAt,
+        from_room_id: from.roomId,
+        to_date: to.date,
+        to_starts_at: to.startsAt,
+        to_ends_at: to.endsAt,
+        to_room_id: to.roomId,
+        reason,
+        changed_at: moment,
+        changed_by: access.accountId,
+      })),
+    )
+    .execute();
+}
+
+/**
+ * The lesson slots of a class's day on a date (task 5.6a-2, decision 12): the
+ * day template of the class's grade on the date; none on a day without
+ * lessons.
+ */
+async function classSlotsOn(
+  transaction: Transaction,
+  branchId: string,
+  classId: string,
+  date: string,
+): Promise<DaySlot[]> {
+  const [schoolClass, branch] = await Promise.all([
+    transaction
+      .selectFrom('classes')
+      .select('grade')
+      .where('id', '=', classId)
+      .executeTakeFirstOrThrow(),
+    transaction
+      .selectFrom('branches')
+      .select('working_weekdays')
+      .where('id', '=', branchId)
+      .executeTakeFirstOrThrow(),
+  ]);
+  const [settings, store] = await Promise.all([
+    loadCalendarSettings(transaction, branch.working_weekdays),
+    loadStore(transaction),
+  ]);
+  const found = dayOn(schoolClass.grade, date, settings);
+  if (!found.lessons) return [];
+  const timed = dayOf(store, found.dayTemplateId, date);
+  if (timed === null) return [];
+  return timed.day.slots.flatMap((slot) =>
+    slot.lessonNumber === null
+      ? []
+      : [{ lessonNumber: slot.lessonNumber, start: slot.start, end: slot.end }],
+  );
 }
 
 /** What an audit entry keeps of a lesson. */

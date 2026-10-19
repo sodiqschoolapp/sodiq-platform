@@ -17,7 +17,9 @@ import {
 } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
-import { DAY_REFUSALS } from './day-changes.service.js';
+import { MembersKit } from '../../testing/members-kit.js';
+import { DAY_REFUSALS, MOVE_REFUSALS } from './day-changes.service.js';
+import { followTutors } from './tutor-lessons.js';
 
 const refusedWith = (response: Response, status: number, code: string) => {
   expect(response.status, JSON.stringify(response.body)).toBe(status);
@@ -29,9 +31,9 @@ const changed = (response: Response) => {
   return dayChangeAnswerSchema.parse(response.body);
 };
 
-/** The details of a `restore_blocked`. */
-const blockedBy = (response: Response) => {
-  refusedWith(response, 409, 'restore_blocked');
+/** The details of a `restore_blocked` (or of the code given). */
+const blockedBy = (response: Response, code = 'restore_blocked') => {
+  refusedWith(response, 409, code);
   const body = response.body as {
     error: { details: { code: string; path: string; room?: { id: string; name: string } }[] };
   };
@@ -70,6 +72,7 @@ describe('one-day changes: cancel and restore', () => {
   let t: DayTemplatesKit;
   let load: LoadKit;
   let northScene: Scene;
+  let members: MembersKit;
 
   const keyed = (path: string, branch: string, body: object, cookie: string, key: string) =>
     request(t.kit.server)
@@ -89,6 +92,32 @@ describe('one-day changes: cancel and restore', () => {
 
   const restore = (branch: string, id: string, cookie = t.admin, key: string = randomUUID()) =>
     keyed(`/api/timetable/lessons/${id}/restore`, branch, {}, cookie, key);
+
+  const restoreInto = (
+    branch: string,
+    id: string,
+    body: { roomId?: string; reason?: string },
+    cookie = t.admin,
+    key: string = randomUUID(),
+  ) => keyed(`/api/timetable/lessons/${id}/restore`, branch, body, cookie, key);
+
+  const roomChange = (
+    branch: string,
+    id: string,
+    roomId: string,
+    reason: unknown = 'The room is painted',
+    cookie = t.admin,
+    key: string = randomUUID(),
+  ) => keyed(`/api/timetable/lessons/${id}/room`, branch, { roomId, reason }, cookie, key);
+
+  const move = (
+    branch: string,
+    id: string,
+    target: { date: string; lessonNumber: number; roomId?: string },
+    cookie = t.admin,
+    key: string = randomUUID(),
+    reason = 'Excursion to the museum',
+  ) => keyed(`/api/timetable/lessons/${id}/move`, branch, { ...target, reason }, cookie, key);
 
   const day = (branch: string, classId: string, date: string, cookie = t.admin) =>
     t.get(`/api/timetable/day?date=${date}&classId=${classId}`, branch, cookie);
@@ -154,7 +183,16 @@ describe('one-day changes: cancel and restore', () => {
    * of each class on Monday in the first slot with a teacher of its own, and
    * `tutor` a Tutor row of the first class on Tuesday.
    */
-  async function scene(input: { branch?: string; tutor?: boolean; twoLessons?: boolean } = {}) {
+  async function scene(
+    input: {
+      branch?: string;
+      tutor?: boolean;
+      twoLessons?: boolean;
+      split?: boolean;
+      twoGrades?: boolean;
+      vacancy?: boolean;
+    } = {},
+  ) {
     const branch = input.branch ?? (await t.newBranch());
     const year = await load.classes.year(branch);
     for (const [index, [start, end]] of QUARTERS.entries()) {
@@ -202,15 +240,65 @@ describe('one-day changes: cancel and restore', () => {
     await placeAt(branch, version, rowId, 1);
     // With `twoLessons`, the first class's maths also in the second lesson of Monday.
     if (input.twoLessons === true) await placeAt(branch, version, rowId, 1, 3);
+    // With `vacancy`, the other class's maths is a vacancy's.
+    let vacancy: string | null = null;
+    if (input.vacancy === true) {
+      vacancy = await load.vacancy(branch, { subjects: [{ subject, grades: [7] }] });
+      await hours(branch, vacancy);
+    }
+    const otherTeacherId = vacancy ?? otherTeacher.staffId;
     const otherRow = await load.row({
       branch_id: branch,
       version_id: version,
       class_id: otherClass,
       subject_id: subject,
-      teacher_id: otherTeacher.staffId,
+      teacher_id: otherTeacherId,
       lessons_per_week: 1,
     });
     await placeAt(branch, version, otherRow, 1);
+    // With `split`, the first class split in two groups for English on
+    // Wednesday in the first slot, one block of the load (task 5.6a-2).
+    let english: string | null = null;
+    const splitTeachers: { staffId: string; accountId: string }[] = [];
+    if (input.split === true) {
+      english = await load.classes.subject({ grades: [7], journalType: 'attendance_only' });
+      const rows: string[] = [];
+      for (let index = 0; index < 2; index += 1) {
+        const group = await load.classes.group(branch, year, english, [classId]);
+        const person = await teacherOf(branch, english);
+        splitTeachers.push(person);
+        rows.push(
+          await load.row({
+            branch_id: branch,
+            version_id: version,
+            group_id: group,
+            subject_id: english,
+            teacher_id: person.staffId,
+            lessons_per_week: 1,
+          }),
+        );
+      }
+      await placeAt(branch, version, rows[0] ?? '', 3);
+    }
+    // With `twoGrades`, a group of the first class and a class of grade 8
+    // for Art on Thursday in the first slot (task 5.6a-2).
+    let art: string | null = null;
+    if (input.twoGrades === true) {
+      art = await load.classes.subject({ grades: [7, 8], journalType: 'attendance_only' });
+      const eighth = await load.classes.schoolClass(branch, year, { grade: 8 });
+      const group = await load.classes.group(branch, year, art, [classId, eighth]);
+      const person = await load.teacher(branch, { subjects: [{ subject: art, grades: [7, 8] }] });
+      await hours(branch, person.staffId);
+      const artRow = await load.row({
+        branch_id: branch,
+        version_id: version,
+        group_id: group,
+        subject_id: art,
+        teacher_id: person.staffId,
+        lessons_per_week: 1,
+      });
+      await placeAt(branch, version, artRow, 4);
+    }
     let tutorSubject: string | null = null;
     let tutor: { staffId: string; accountId: string } | null = null;
     let tutorRowId: string | null = null;
@@ -258,6 +346,10 @@ describe('one-day changes: cancel and restore', () => {
       tutorSubject,
       tutor,
       tutorRowId,
+      english,
+      splitTeachers,
+      art,
+      vacancy,
     };
   }
 
@@ -273,6 +365,79 @@ describe('one-day changes: cancel and restore', () => {
       .where('subject_id', '=', subject)
       .where('lesson_date', '=', date)
       .executeTakeFirstOrThrow();
+
+  /** The two Monday lessons of the first class of a scene with `twoLessons`, by start. */
+  const lessonOf2 = async (s: Scene, date: string, index: number) => {
+    const both = await t.database.migrator
+      .selectFrom('lessons')
+      .select('id')
+      .where('class_id', '=', s.classId)
+      .where('subject_id', '=', s.subject)
+      .where('lesson_date', '=', date)
+      .orderBy('starts_at')
+      .execute();
+    const found = both[index];
+    if (found === undefined) throw new Error('No such lesson.');
+    return found.id;
+  };
+
+  /** The records of one-day room changes and moves of a lesson (task 5.6a-2). */
+  const dayChangesOf = (id: string) =>
+    t.database.migrator
+      .selectFrom('lesson_day_changes')
+      .selectAll()
+      .where('lesson_id', '=', id)
+      .orderBy('changed_at')
+      .orderBy('id')
+      .execute();
+
+  /** An exam of the scene's branch on `date` in the first slot, one room, class and invigilator. */
+  async function examOf(
+    s: Scene,
+    date: string,
+    input: { roomId: string; classId: string; staffId: string },
+  ) {
+    await t.database.migrator.transaction().execute(async (transaction) => {
+      const exam = await transaction
+        .insertInto('exams')
+        .values({
+          branch_id: s.branch,
+          academic_year_id: s.year,
+          exam_date: date,
+          starts_at: at(date, '08:00'),
+          ends_at: at(date, '08:45'),
+          first_slot: 1,
+          last_slot: 1,
+          title: 'Quarter exam in English',
+          subject_id: s.subject,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      const room = await transaction
+        .insertInto('exam_rooms')
+        .values({ branch_id: s.branch, exam_id: exam.id, room_id: input.roomId })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await transaction
+        .insertInto('exam_room_classes')
+        .values({
+          branch_id: s.branch,
+          exam_id: exam.id,
+          exam_room_id: room.id,
+          class_id: input.classId,
+        })
+        .execute();
+      await transaction
+        .insertInto('exam_invigilators')
+        .values({
+          branch_id: s.branch,
+          exam_id: exam.id,
+          exam_room_id: room.id,
+          staff_id: input.staffId,
+        })
+        .execute();
+    });
+  }
 
   const rowOf = (id: string) =>
     t.database.migrator.selectFrom('lessons').selectAll().where('id', '=', id).executeTakeFirst();
@@ -309,6 +474,7 @@ describe('one-day changes: cancel and restore', () => {
       t.database.migrator.selectFrom('lesson_blocks').selectAll().orderBy('id').execute(),
       t.database.migrator.selectFrom('time_claims').selectAll().orderBy('id').execute(),
       t.database.migrator.selectFrom('lesson_changes').selectAll().orderBy('lesson_id').execute(),
+      t.database.migrator.selectFrom('lesson_day_changes').selectAll().orderBy('id').execute(),
       t.database.migrator.selectFrom('notifications').select('id').orderBy('id').execute(),
       sql<{ id: string }>`select id from pgboss.job order by id`
         .execute(t.database.migrator)
@@ -365,6 +531,7 @@ describe('one-day changes: cancel and restore', () => {
   beforeAll(async () => {
     t = await dayTemplatesKit({ jobs: true });
     load = new LoadKit(t.database.migrator);
+    members = new MembersKit(t.database.migrator, await load.classes.account());
     northScene = await scene({ branch: t.north });
   });
 
@@ -1107,6 +1274,1122 @@ describe('one-day changes: cancel and restore', () => {
     });
   });
 
+  describe('a room change (task 5.6a-2)', () => {
+    it('changes the room of one lesson for its date: the claims follow, the record is stored, the lesson is marked, its teacher notified once and the log written', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, NEXT_MONDAY);
+      const answer = changed(
+        await roomChange(s.branch, lesson.id, s.spareRoom, '  The room is painted  '),
+      );
+      expect(answer.lesson).toMatchObject({
+        id: lesson.id,
+        room: { id: s.spareRoom },
+        changed: true,
+      });
+      expect(await rowOf(lesson.id)).toMatchObject({ room_id: s.spareRoom, cancel_cause: null });
+      const claim = await t.database.migrator
+        .selectFrom('time_claims')
+        .select('room_id')
+        .where('lesson_id', '=', lesson.id)
+        .where('kind', '=', 'lesson')
+        .executeTakeFirstOrThrow();
+      expect(claim.room_id).toBe(s.spareRoom);
+      expect(await dayChangesOf(lesson.id)).toMatchObject([
+        {
+          kind: 'room',
+          class_id: s.classId,
+          subject_id: s.subject,
+          load_row_id: s.rowId,
+          from_date: NEXT_MONDAY,
+          to_date: NEXT_MONDAY,
+          from_room_id: s.room,
+          to_room_id: s.spareRoom,
+          reason: 'The room is painted',
+        },
+      ]);
+      const [record] = await dayChangesOf(lesson.id);
+      expect(record?.from_starts_at).toEqual(lesson.starts_at);
+      expect(record?.to_starts_at).toEqual(lesson.starts_at);
+      expect(record?.changed_at).toEqual(at('2026-10-10', '23:55'));
+      expect(await markOf(lesson.id)).not.toBeNull();
+      const notices = await noticesOf(s.teacher.accountId);
+      expect(notices).toHaveLength(1);
+      expect(notices[0]).toMatchObject({
+        branch_id: s.branch,
+        data: { weekStart: NEXT_MONDAY, before: [{ changed: true }], after: [{ changed: true }] },
+      });
+      expect(notices[0]?.data).not.toHaveProperty('also');
+      expect(await noticesOf(s.otherTeacher.accountId)).toEqual([]);
+      const [entry] = await t.entries('lesson.room_change', lesson.id);
+      expect(entry).toMatchObject({
+        old_value: { roomId: s.room, lessonIds: [lesson.id] },
+        new_value: {
+          roomId: s.spareRoom,
+          reason: 'The room is painted',
+          notices: { notified: 1, marked: 1 },
+        },
+      });
+    });
+
+    it('is refused when the room is taken at that time, with the free rooms offered, and nothing is written', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, NEXT_MONDAY);
+      const before = await everything();
+      const response = await roomChange(s.branch, lesson.id, s.otherRoom);
+      const blocked = blockedBy(response, 'day_change_blocked');
+      expect(blocked.rules).toContain('room_double');
+      expect(blocked.rooms).toContain(s.spareRoom);
+      expect(blocked.rooms).not.toContain(s.otherRoom);
+      expect(blocked.rooms).not.toContain(s.room);
+      expect(await everything()).toEqual(before);
+      expect(await dayChangesOf(lesson.id)).toEqual([]);
+    });
+
+    it('refuses a room that is not in use, takes a shared room with space left and refuses a full one', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, NEXT_MONDAY);
+      const closed = await load.classes.room(s.branch, 'closed');
+      expect(
+        blockedBy(await roomChange(s.branch, lesson.id, closed), 'day_change_blocked').rules,
+      ).toContain('room_inactive');
+      // The other class's room becomes a hall for two lessons at once.
+      await t.database.migrator
+        .updateTable('rooms')
+        .set({ shared: true, max_simultaneous_lessons: 2, capacity: 60 })
+        .where('id', '=', s.otherRoom)
+        .execute();
+      changed(await roomChange(s.branch, lesson.id, s.otherRoom));
+      // On 26 October an exam also uses the hall beside the other class's lesson: it is full.
+      const examClass = await load.classes.schoolClass(s.branch, s.year, { grade: 7 });
+      const invigilator = await load.teacher(s.branch);
+      await examOf(s, '2026-10-26', {
+        roomId: s.otherRoom,
+        classId: examClass,
+        staffId: invigilator.staffId,
+      });
+      const next = await lessonOf(s, '2026-10-26');
+      expect(
+        blockedBy(await roomChange(s.branch, next.id, s.otherRoom), 'day_change_blocked').rules,
+      ).toContain('room_shared_full');
+    });
+
+    it('takes a room smaller than the class and returns the capacity warning', async () => {
+      const s = await scene();
+      for (let index = 0; index < 2; index += 1) {
+        const student = await members.student(s.branch, { startsOn: '2026-09-01' });
+        await members.member({
+          branch: s.branch,
+          classId: s.classId,
+          studentId: student,
+          from: '2026-09-01',
+        });
+      }
+      await t.database.migrator
+        .updateTable('rooms')
+        .set({ capacity: 1 })
+        .where('id', '=', s.spareRoom)
+        .execute();
+      const lesson = await lessonOf(s, NEXT_MONDAY);
+      const answer = changed(await roomChange(s.branch, lesson.id, s.spareRoom));
+      expect(answer.warnings.map((one) => one.rule)).toContain('room_capacity');
+    });
+
+    it('is refused when an exam holds the room at that time', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, NEXT_MONDAY);
+      const examClass = await load.classes.schoolClass(s.branch, s.year, { grade: 7 });
+      const invigilator = await load.teacher(s.branch);
+      await examOf(s, NEXT_MONDAY, {
+        roomId: s.spareRoom,
+        classId: examClass,
+        staffId: invigilator.staffId,
+      });
+      expect(
+        blockedBy(await roomChange(s.branch, lesson.id, s.spareRoom), 'day_change_blocked').rules,
+      ).toContain('room_double');
+    });
+
+    it('refuses the same room, a cancelled lesson and one that started; a room of another branch or unknown is 404 and nothing changes', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, NEXT_MONDAY);
+      refusedWith(await roomChange(s.branch, lesson.id, s.room), 409, 'room_unchanged');
+      const elsewhere = await load.classes.room(t.south);
+      const before = await everything();
+      refusedWith(await roomChange(s.branch, lesson.id, elsewhere), 404, 'not_found');
+      refusedWith(await roomChange(s.branch, lesson.id, UNKNOWN), 404, 'not_found');
+      expect(await everything()).toEqual(before);
+      const started = await todayLesson(s, '23:50', '23:55');
+      refusedWith(await roomChange(s.branch, started, s.spareRoom), 409, 'lesson_started');
+      changed(await cancel(s.branch, lesson.id));
+      refusedWith(await roomChange(s.branch, lesson.id, s.spareRoom), 409, 'lesson_cancelled');
+    });
+
+    it('refuses a reason missing, of spaces only or of 501 characters as an input error', async () => {
+      const s = northScene;
+      const lesson = await lessonOf(s, '2027-02-01');
+      for (const reason of [null, '   ', 'x'.repeat(501)]) {
+        refusedWith(
+          await roomChange(s.branch, lesson.id, s.spareRoom, reason),
+          400,
+          'validation_failed',
+        );
+      }
+    });
+
+    it('answers 404 for a lesson or a room of another branch and an unknown one, as the Academic Vice Principal and the Super Admin, and refuses the Principal', async () => {
+      const s = northScene;
+      const other = await scene();
+      const otherLesson = await lessonOf(other, NEXT_MONDAY);
+      const lesson = await lessonOf(s, '2027-02-08');
+      const elsewhere = await load.classes.room(other.branch);
+      const before = await everything();
+      for (const cookie of [t.vicePrincipal, t.admin]) {
+        refusedWith(
+          await roomChange(s.branch, otherLesson.id, s.spareRoom, 'Painted', cookie),
+          404,
+          'not_found',
+        );
+        refusedWith(
+          await roomChange(s.branch, UNKNOWN, s.spareRoom, 'Painted', cookie),
+          404,
+          'not_found',
+        );
+        refusedWith(
+          await move(s.branch, otherLesson.id, { date: NEXT_MONDAY, lessonNumber: 2 }, cookie),
+          404,
+          'not_found',
+        );
+        refusedWith(
+          await move(s.branch, UNKNOWN, { date: NEXT_MONDAY, lessonNumber: 2 }, cookie),
+          404,
+          'not_found',
+        );
+        for (const roomId of [elsewhere, UNKNOWN]) {
+          refusedWith(
+            await roomChange(s.branch, lesson.id, roomId, 'Painted', cookie),
+            404,
+            'not_found',
+          );
+          refusedWith(
+            await move(
+              s.branch,
+              lesson.id,
+              { date: '2027-02-08', lessonNumber: 2, roomId },
+              cookie,
+            ),
+            404,
+            'not_found',
+          );
+        }
+      }
+      refusedWith(
+        await roomChange(s.branch, lesson.id, s.spareRoom, 'Painted', t.principal),
+        403,
+        'permission_denied',
+      );
+      refusedWith(
+        await move(s.branch, lesson.id, { date: NEXT_MONDAY, lessonNumber: 2 }, t.principal),
+        403,
+        'permission_denied',
+      );
+      expect(await everything()).toEqual(before);
+      expect(
+        await t.database.migrator
+          .selectFrom('lesson_day_changes')
+          .select('id')
+          .where('branch_id', 'in', [s.branch, other.branch])
+          .execute(),
+      ).toEqual([]);
+    });
+
+    it('keeps a used key to its account, its branch and its role, for every id it names (request keys)', async () => {
+      const s = northScene;
+      const other = await scene();
+      const otherLesson = (await lessonOf(other, NEXT_MONDAY)).id;
+      const otherRoom = await load.classes.room(other.branch);
+      const lesson = await lessonOf(s, '2027-02-15');
+      const target = { date: '2027-02-15', lessonNumber: 2 };
+
+      // A room change as the Academic Vice Principal, named in the log.
+      const key = randomUUID();
+      changed(await roomChange(s.branch, lesson.id, s.spareRoom, 'Painted', t.vicePrincipal, key));
+      expect(await t.entries('lesson.room_change', lesson.id)).toMatchObject([
+        { assignment_id: t.viceAssignment },
+      ]);
+      let before = await everything();
+      // The repeat answers the stored change and writes nothing more.
+      changed(await roomChange(s.branch, lesson.id, s.spareRoom, 'Painted', t.vicePrincipal, key));
+      refusedWith(
+        await roomChange(s.branch, lesson.id, s.spareRoom, 'Painted', t.admin, key),
+        409,
+        'request_key_reused',
+      );
+      for (const [id, roomId] of [
+        [otherLesson, s.spareRoom],
+        [UNKNOWN, s.spareRoom],
+        [lesson.id, otherRoom],
+        [lesson.id, UNKNOWN],
+      ] as const) {
+        refusedWith(
+          await roomChange(s.branch, id, roomId, 'Painted', t.vicePrincipal, key),
+          404,
+          'not_found',
+        );
+      }
+      refusedWith(
+        await roomChange(s.branch, lesson.id, s.spareRoom, 'Painted', t.principal, key),
+        403,
+        'permission_denied',
+      );
+      expect(await everything()).toEqual(before);
+
+      // A move as the Academic Vice Principal.
+      const moveKey = randomUUID();
+      changed(await move(s.branch, lesson.id, target, t.vicePrincipal, moveKey));
+      expect(await t.entries('lesson.move', lesson.id)).toMatchObject([
+        { assignment_id: t.viceAssignment },
+      ]);
+      before = await everything();
+      changed(await move(s.branch, lesson.id, target, t.vicePrincipal, moveKey));
+      refusedWith(
+        await move(s.branch, lesson.id, target, t.admin, moveKey),
+        409,
+        'request_key_reused',
+      );
+      for (const id of [otherLesson, UNKNOWN]) {
+        refusedWith(await move(s.branch, id, target, t.vicePrincipal, moveKey), 404, 'not_found');
+      }
+      for (const roomId of [otherRoom, UNKNOWN]) {
+        refusedWith(
+          await move(s.branch, lesson.id, { ...target, roomId }, t.vicePrincipal, moveKey),
+          404,
+          'not_found',
+        );
+      }
+      refusedWith(
+        await move(s.branch, lesson.id, target, t.principal, moveKey),
+        403,
+        'permission_denied',
+      );
+      expect(await everything()).toEqual(before);
+
+      // A restore into a room as the Academic Vice Principal.
+      const restored = await lessonOf(s, '2027-03-01');
+      changed(await cancel(s.branch, restored.id));
+      const restoreKey = randomUUID();
+      const body = { roomId: s.spareRoom, reason: 'Back' };
+      changed(await restoreInto(s.branch, restored.id, body, t.vicePrincipal, restoreKey));
+      expect(await t.entries('lesson.restore', restored.id)).toMatchObject([
+        { assignment_id: t.viceAssignment, new_value: { roomId: s.spareRoom } },
+      ]);
+      before = await everything();
+      changed(await restoreInto(s.branch, restored.id, body, t.vicePrincipal, restoreKey));
+      refusedWith(
+        await restoreInto(s.branch, restored.id, body, t.admin, restoreKey),
+        409,
+        'request_key_reused',
+      );
+      for (const roomId of [otherRoom, UNKNOWN]) {
+        refusedWith(
+          await restoreInto(
+            s.branch,
+            restored.id,
+            { roomId, reason: 'Back' },
+            t.vicePrincipal,
+            restoreKey,
+          ),
+          404,
+          'not_found',
+        );
+      }
+      refusedWith(
+        await restoreInto(s.branch, otherLesson, body, t.vicePrincipal, restoreKey),
+        404,
+        'not_found',
+      );
+      refusedWith(
+        await restoreInto(s.branch, restored.id, body, t.principal, restoreKey),
+        403,
+        'permission_denied',
+      );
+      expect(await everything()).toEqual(before);
+    });
+
+    it('maps the claims and the commit checks of 0058 to day_change_blocked, and a quarter to move_other_quarter', () => {
+      for (const name of [
+        'time_claims_teacher_excl',
+        'time_claims_room_excl',
+        'time_claims_class_excl',
+        'room_shared_full',
+        'room_shared_capacity',
+        'lesson_block_student_twice',
+      ]) {
+        expect(MOVE_REFUSALS[name]).toBe('day_change_blocked');
+      }
+      expect(MOVE_REFUSALS.lesson_block_quarter).toBe('move_other_quarter');
+      expect(MOVE_REFUSALS.lesson_block_quarter_fixed).toBe('move_other_quarter');
+    });
+  });
+
+  describe('a move (task 5.6a-2)', () => {
+    it('moves a lesson to another slot of its day: the block and the claims follow, the record is stored and its teacher notified once', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, NEXT_MONDAY);
+      const answer = changed(
+        await move(s.branch, lesson.id, { date: NEXT_MONDAY, lessonNumber: 3 }),
+      );
+      expect(answer.lesson).toMatchObject({ id: lesson.id, start: 590, end: 635, changed: true });
+      const row = await rowOf(lesson.id);
+      expect(row?.starts_at).toEqual(at(NEXT_MONDAY, '09:50'));
+      expect(row?.ends_at).toEqual(at(NEXT_MONDAY, '10:35'));
+      const block = await t.database.migrator
+        .selectFrom('lesson_blocks')
+        .select(['starts_at'])
+        .where('id', '=', lesson.block_id)
+        .executeTakeFirstOrThrow();
+      expect(block.starts_at).toEqual(at(NEXT_MONDAY, '09:50'));
+      const claim = await t.database.migrator
+        .selectFrom('time_claims')
+        .select('during')
+        .where('lesson_id', '=', lesson.id)
+        .where('kind', '=', 'lesson')
+        .executeTakeFirstOrThrow();
+      // 10:35 in Tashkent.
+      expect(String(claim.during)).toContain('2026-10-19 05:35:00+00');
+      expect(await dayChangesOf(lesson.id)).toMatchObject([
+        {
+          kind: 'move',
+          from_date: NEXT_MONDAY,
+          to_date: NEXT_MONDAY,
+          from_room_id: s.room,
+          to_room_id: s.room,
+          reason: 'Excursion to the museum',
+        },
+      ]);
+      const [record] = await dayChangesOf(lesson.id);
+      expect(record?.from_starts_at).toEqual(at(NEXT_MONDAY, '08:00'));
+      expect(record?.to_starts_at).toEqual(at(NEXT_MONDAY, '09:50'));
+      expect(await noticesOf(s.teacher.accountId)).toHaveLength(1);
+      const [entry] = await t.entries('lesson.move', lesson.id);
+      expect(entry).toMatchObject({
+        old_value: { startsAt: at(NEXT_MONDAY, '08:00').toISOString() },
+        new_value: {
+          startsAt: at(NEXT_MONDAY, '09:50').toISOString(),
+          lessonNumber: 3,
+          notices: { notified: 1 },
+        },
+      });
+    });
+
+    it('moves a lesson to another day of the week, with a room of its own', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, NEXT_MONDAY);
+      const answer = changed(
+        await move(s.branch, lesson.id, {
+          date: '2026-10-21',
+          lessonNumber: 2,
+          roomId: s.spareRoom,
+        }),
+      );
+      expect(answer.lesson).toMatchObject({
+        date: '2026-10-21',
+        start: 535,
+        room: { id: s.spareRoom },
+      });
+      expect(await rowOf(lesson.id)).toMatchObject({
+        lesson_date: '2026-10-21',
+        room_id: s.spareRoom,
+      });
+      const day19 = dayAnswerSchema.parse((await day(s.branch, s.classId, NEXT_MONDAY)).body);
+      expect(day19.lessons.map((one) => one.id)).not.toContain(lesson.id);
+      const day21 = dayAnswerSchema.parse((await day(s.branch, s.classId, '2026-10-21')).body);
+      expect(day21.lessons.map((one) => one.id)).toEqual([lesson.id]);
+      expect(day21.slots).toEqual([
+        { lessonNumber: 1, start: 480, end: 525 },
+        { lessonNumber: 2, start: 535, end: 580 },
+        { lessonNumber: 3, start: 590, end: 635 },
+      ]);
+      const notices = await noticesOf(s.teacher.accountId);
+      expect(notices).toHaveLength(1);
+      expect(notices[0]?.data).not.toHaveProperty('also');
+    });
+
+    it('moves a lesson into another week with one notice to its teacher holding both weeks (decision 11)', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, NEXT_MONDAY);
+      changed(await move(s.branch, lesson.id, { date: '2026-10-27', lessonNumber: 2 }));
+      const notices = await noticesOf(s.teacher.accountId);
+      expect(notices).toHaveLength(1);
+      expect(notices[0]).toMatchObject({
+        data: {
+          weekStart: NEXT_MONDAY,
+          before: [{ date: NEXT_MONDAY, changed: true }],
+          after: [],
+          also: {
+            weekStart: '2026-10-26',
+            before: [{ date: '2026-10-26', changed: false }],
+            after: [
+              { date: '2026-10-26', changed: false },
+              { date: '2026-10-27', changed: true },
+            ],
+          },
+        },
+      });
+    });
+
+    it('is refused when the teacher, the class or the room is taken at the new time, with the free rooms offered for the room', async () => {
+      const s = await scene({ twoLessons: true });
+      // The first class has maths in lesson 2 of Monday too (its own second lesson).
+      const lesson = await lessonOf2(s, NEXT_MONDAY, 0);
+      // Lesson 2 belongs to the class and the teacher already.
+      const taken = blockedBy(
+        await move(s.branch, lesson, { date: NEXT_MONDAY, lessonNumber: 2 }),
+        'day_change_blocked',
+      );
+      expect(taken.rules).toEqual(expect.arrayContaining(['teacher_double', 'class_double']));
+      expect(taken.rooms).toEqual([]);
+      // The other class's teacher on Wednesday lesson 1 in a room of its own: only the room clashes.
+      const other = await lessonOf(s, NEXT_MONDAY, s.otherClass);
+      changed(
+        await move(s.branch, other.id, { date: '2026-10-21', lessonNumber: 1, roomId: s.room }),
+      );
+      const roomTaken = blockedBy(
+        await move(s.branch, lesson, { date: '2026-10-21', lessonNumber: 1 }),
+        'day_change_blocked',
+      );
+      expect(roomTaken.rules).toEqual(['room_double']);
+      expect(roomTaken.rooms).toEqual(expect.arrayContaining([s.otherRoom, s.spareRoom]));
+      expect(roomTaken.rooms).not.toContain(s.room);
+    });
+
+    it('is refused when the class sits an exam, or the teacher invigilates one, at the new time', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, NEXT_MONDAY);
+      const examRoom = await load.classes.room(s.branch);
+      const invigilator = await load.teacher(s.branch);
+      await examOf(s, '2026-10-21', {
+        roomId: examRoom,
+        classId: s.classId,
+        staffId: invigilator.staffId,
+      });
+      expect(
+        blockedBy(
+          await move(s.branch, lesson.id, { date: '2026-10-21', lessonNumber: 1 }),
+          'day_change_blocked',
+        ).rules,
+      ).toContain('class_double');
+      const otherRoom = await load.classes.room(s.branch);
+      const otherClass = await load.classes.schoolClass(s.branch, s.year, { grade: 7 });
+      await examOf(s, '2026-10-22', {
+        roomId: otherRoom,
+        classId: otherClass,
+        staffId: s.teacher.staffId,
+      });
+      expect(
+        blockedBy(
+          await move(s.branch, lesson.id, { date: '2026-10-22', lessonNumber: 1 }),
+          'day_change_blocked',
+        ).rules,
+      ).toContain('teacher_double');
+    });
+
+    it('is refused when the teacher has a lesson in another branch at that real clock time, or within the travel time', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, NEXT_MONDAY);
+      const away = await scene({ tutor: true });
+      if (away.tutorSubject === null) throw new Error('The scene has no Tutor row.');
+      await t.database.migrator
+        .insertInto('staff_branches')
+        .values({ staff_id: s.teacher.staffId, branch_id: away.branch, is_main: false })
+        .execute();
+      // The away branch's Tutor lesson of Tuesday 20 October at 08:00 goes to the teacher.
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ teacher_id: s.teacher.staffId })
+        .where('id', '=', (await lessonOf(away, '2026-10-20', away.classId, away.tutorSubject)).id)
+        .execute();
+      expect(
+        blockedBy(
+          await move(s.branch, lesson.id, { date: '2026-10-20', lessonNumber: 1 }),
+          'day_change_blocked',
+        ).rules,
+      ).toContain('teacher_double');
+      // Lesson 2 starts ten minutes after it ends; the travel time is 30.
+      const [a, b] = [s.branch, away.branch].sort();
+      await t.database.migrator
+        .insertInto('travel_times')
+        .values({ branch_low: a ?? '', branch_high: b ?? '', minutes: 30 })
+        .execute();
+      expect(
+        blockedBy(
+          await move(s.branch, lesson.id, { date: '2026-10-20', lessonNumber: 2 }),
+          'day_change_blocked',
+        ).rules,
+      ).toContain('travel_time');
+    });
+
+    it('is refused outside the teacher’s hours on the new date (blocked, not a tick: decision 7)', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, NEXT_MONDAY);
+      // From 26 October the teacher comes at 09:00.
+      await t.database.migrator
+        .updateTable('staff_availability')
+        .set({ valid_until: '2026-10-26' })
+        .where('staff_id', '=', s.teacher.staffId)
+        .execute();
+      await t.database.migrator
+        .updateTable('staff_availability_ranges')
+        .set({ valid_until: '2026-10-26' })
+        .where('staff_id', '=', s.teacher.staffId)
+        .execute();
+      await hours(s.branch, s.teacher.staffId, '2026-10-26', 540);
+      const blocked = blockedBy(
+        await move(s.branch, lesson.id, { date: '2026-10-27', lessonNumber: 1 }),
+        'day_change_blocked',
+      );
+      expect(blocked.rules).toContain('teacher_unavailable');
+      changed(await move(s.branch, lesson.id, { date: '2026-10-27', lessonNumber: 3 }));
+    });
+
+    it('refuses a day off, a vacation date and a date after the year by the rule check, a school day of the next quarter as move_other_quarter', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, NEXT_MONDAY);
+      await t.database.migrator
+        .insertInto('calendar_entries')
+        .values({
+          branch_id: s.branch,
+          kind: 'day_off',
+          name: 'Holiday',
+          first_date: '2026-10-21',
+          last_date: '2026-10-21',
+        })
+        .execute();
+      const before = await everything();
+      expect(
+        blockedBy(
+          await move(s.branch, lesson.id, { date: '2026-10-21', lessonNumber: 1 }),
+          'day_change_blocked',
+        ).rules,
+      ).toContain('day_off');
+      expect(
+        blockedBy(
+          await move(s.branch, lesson.id, { date: '2026-11-02', lessonNumber: 1 }),
+          'day_change_blocked',
+        ).rules,
+      ).toContain('vacation');
+      expect(
+        blockedBy(
+          await move(s.branch, lesson.id, { date: '2027-06-07', lessonNumber: 1 }),
+          'day_change_blocked',
+        ).rules,
+      ).toContain('outside_year');
+      refusedWith(
+        await move(s.branch, lesson.id, { date: '2026-11-09', lessonNumber: 1 }),
+        409,
+        'move_other_quarter',
+      );
+      expect(await everything()).toEqual(before);
+    });
+
+    it('refuses a date under another published version (decision 1), a lesson number the date lacks, a target that started and the same place', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, NEXT_MONDAY);
+      refusedWith(
+        await move(s.branch, lesson.id, { date: NEXT_MONDAY, lessonNumber: 4 }),
+        409,
+        'move_no_slot',
+      );
+      refusedWith(
+        await move(s.branch, lesson.id, { date: NEXT_MONDAY, lessonNumber: 1 }),
+        409,
+        'move_unchanged',
+      );
+      refusedWith(
+        await move(s.branch, lesson.id, { date: '2026-10-09', lessonNumber: 1 }),
+        409,
+        'move_target_started',
+      );
+      const started = await todayLesson(s, '23:50', '23:55');
+      refusedWith(
+        await move(s.branch, started, { date: NEXT_MONDAY, lessonNumber: 2 }),
+        409,
+        'lesson_started',
+      );
+      // A version from 26 October.
+      const created = await t.post('/api/timetable/versions', s.branch, {
+        academicYearId: s.year,
+        startsOn: '2026-10-26',
+        copyFrom: s.version,
+      });
+      expect(created.status, JSON.stringify(created.body)).toBe(201);
+      const later = (created.body as { id: string }).id;
+      await t.database.migrator
+        .deleteFrom('pattern_blocks')
+        .where('version_id', '=', later)
+        .execute();
+      const laterRows = await t.database.migrator
+        .selectFrom('teaching_load_rows')
+        .select('id')
+        .where('version_id', '=', later)
+        .execute();
+      for (const row of laterRows) await placeAt(s.branch, later, row.id, 1);
+      expect(
+        (await t.post(`/api/timetable/versions/${later}/templates/confirm`, s.branch)).status,
+      ).toBe(200);
+      await load.freeEditLock(later);
+      const published = await publish(s.branch, later, '2026-10-26');
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      refusedWith(
+        await move(s.branch, lesson.id, { date: '2026-10-27', lessonNumber: 2 }),
+        409,
+        'move_other_version',
+      );
+      changed(await move(s.branch, lesson.id, { date: '2026-10-23', lessonNumber: 2 }));
+    });
+
+    it('moves a group of two grades only to a lesson slot with the same times in both grades’ templates', async () => {
+      const s = await scene({ twoGrades: true });
+      const lesson = await t.database.migrator
+        .selectFrom('lessons')
+        .select('id')
+        .where('branch_id', '=', s.branch)
+        .where('subject_id', '=', s.art ?? '')
+        .where('lesson_date', '=', '2026-10-22')
+        .executeTakeFirstOrThrow();
+      // From Wednesday 21 October grade 8 has a shorter first break: its
+      // lesson 2 starts at 08:50, grade 7's at 08:55.
+      const slot = await t.createSlotType(s.branch, 'Lesson 8', 'lesson', 45);
+      const pause = await t.createSlotType(s.branch, 'Short break', 'break', 5);
+      const eighth = await t.createTemplate(s.branch, 'Grade 8', [slot, pause, slot, pause, slot]);
+      await t.assign(s.branch, eighth, { level: 'grades', gradeFrom: 8, gradeTo: 8 }, '2026-10-21');
+      expect(
+        blockedBy(
+          await move(s.branch, lesson.id, { date: '2026-10-21', lessonNumber: 2 }),
+          'day_change_blocked',
+        ).rules,
+      ).toContain('two_grade_slot');
+      changed(await move(s.branch, lesson.id, { date: '2026-10-21', lessonNumber: 1 }));
+    });
+
+    it('binds a vacancy as a teacher and notifies no vacancy (edge/timetable, the vacancy rows)', async () => {
+      const s = await scene({ vacancy: true });
+      const lesson = await lessonOf(s, NEXT_MONDAY, s.otherClass);
+      expect(lesson.teacher_id).toBe(s.vacancy);
+      expect(
+        blockedBy(
+          await move(s.branch, lesson.id, { date: '2026-10-26', lessonNumber: 1 }),
+          'day_change_blocked',
+        ).rules,
+      ).toContain('teacher_double');
+      const before = await t.database.migrator.selectFrom('notifications').select('id').execute();
+      changed(await move(s.branch, lesson.id, { date: NEXT_MONDAY, lessonNumber: 2 }));
+      expect(await t.database.migrator.selectFrom('notifications').select('id').execute()).toEqual(
+        before,
+      );
+      expect(await t.entries('lesson.move', lesson.id)).toMatchObject([
+        { new_value: { notices: { notified: 0, marked: 1 } } },
+      ]);
+    });
+
+    it('refuses a lesson that starts at the clock or a minute before, for a room change and a move (decision 5)', async () => {
+      for (const [start, end] of [
+        ['23:54', '23:58'],
+        ['23:55', '23:59'],
+      ] as const) {
+        const s = await scene();
+        const started = await todayLesson(s, start, end);
+        refusedWith(await roomChange(s.branch, started, s.spareRoom), 409, 'lesson_started');
+        refusedWith(
+          await move(s.branch, started, { date: NEXT_MONDAY, lessonNumber: 2 }),
+          409,
+          'lesson_started',
+        );
+      }
+    });
+
+    it('gives a moved Tutor lesson the Tutor in force at its new start', async () => {
+      const s = await scene({ tutor: true });
+      const first = s.tutor;
+      if (first === null || s.tutorSubject === null || s.tutorRowId === null) {
+        throw new Error('The scene has no Tutor row.');
+      }
+      const lesson = await lessonOf(s, '2026-10-20', s.classId, s.tutorSubject);
+      // A new Tutor from 22 October.
+      const ended = await t.post(`/api/classes/${s.classId}/tutors/${s.tutorRowId}/end`, s.branch, {
+        from: '2026-10-22',
+      });
+      expect(ended.status, JSON.stringify(ended.body)).toBe(200);
+      const second = await load.teacher(s.branch);
+      await hours(s.branch, second.staffId);
+      const role = await load.classes.role(second.accountId, s.branch, 'tutor');
+      const given = await t.post(`/api/classes/${s.classId}/tutors`, s.branch, {
+        assignmentId: role,
+        kind: 'tutor',
+        from: '2026-10-22',
+        until: null,
+      });
+      expect(given.status, JSON.stringify(given.body)).toBe(201);
+      expect((await rowOf(lesson.id))?.teacher_id).toBe(first.staffId);
+      const answer = changed(
+        await move(s.branch, lesson.id, { date: '2026-10-22', lessonNumber: 2 }),
+      );
+      expect(answer.lesson.teacher).toMatchObject({ id: second.staffId });
+      expect((await rowOf(lesson.id))?.teacher_id).toBe(second.staffId);
+    });
+
+    it('keeps a one-day change’s room and time when the Tutor changes later, and gives the lesson the new Tutor (decision 2)', async () => {
+      const s = await scene({ tutor: true });
+      const first = s.tutor;
+      if (first === null || s.tutorSubject === null || s.tutorRowId === null) {
+        throw new Error('The scene has no Tutor row.');
+      }
+      const moved = await lessonOf(s, '2026-10-27', s.classId, s.tutorSubject);
+      changed(
+        await move(s.branch, moved.id, {
+          date: '2026-10-28',
+          lessonNumber: 3,
+          roomId: s.spareRoom,
+        }),
+      );
+      const other = await lessonOf(s, '2026-10-20', s.classId, s.tutorSubject);
+      changed(await roomChange(s.branch, other.id, s.spareRoom));
+      const ended = await t.post(`/api/classes/${s.classId}/tutors/${s.tutorRowId}/end`, s.branch, {
+        from: NEXT_MONDAY,
+      });
+      expect(ended.status, JSON.stringify(ended.body)).toBe(200);
+      const second = await load.teacher(s.branch);
+      await hours(s.branch, second.staffId);
+      const role = await load.classes.role(second.accountId, s.branch, 'tutor');
+      const given = await t.post(`/api/classes/${s.classId}/tutors`, s.branch, {
+        assignmentId: role,
+        kind: 'tutor',
+        from: NEXT_MONDAY,
+        until: null,
+      });
+      expect(given.status, JSON.stringify(given.body)).toBe(201);
+      expect(await rowOf(moved.id)).toMatchObject({
+        teacher_id: second.staffId,
+        lesson_date: '2026-10-28',
+        room_id: s.spareRoom,
+      });
+      expect((await rowOf(moved.id))?.starts_at).toEqual(at('2026-10-28', '09:50'));
+      expect(await rowOf(other.id)).toMatchObject({
+        teacher_id: second.staffId,
+        room_id: s.spareRoom,
+      });
+    });
+
+    it('is refused when the follow of a Tutor change gives the teacher a lesson at the new time between the check and the write (the claims constraint)', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, NEXT_MONDAY);
+      // The teacher is also a Tutor in another branch, whose Tutor lesson of
+      // 20 October at 08:00 the follow of an appointment gives to the teacher
+      // (`followTutors` writes the lesson's teacher, under no publish lock).
+      const away = await scene({ tutor: true });
+      if (away.tutorSubject === null) throw new Error('The scene has no Tutor row.');
+      await t.database.migrator
+        .insertInto('staff_branches')
+        .values({ staff_id: s.teacher.staffId, branch_id: away.branch, is_main: false })
+        .execute();
+      const tutorLesson = await lessonOf(away, '2026-10-20', away.classId, away.tutorSubject);
+      // The teacher's Tutor role in the other branch, and the acting Tutor row
+      // the held side writes, as a give of an acting Tutor writes it.
+      const role = await load.classes.role(s.teacher.accountId, away.branch, 'tutor');
+      const givenBy = await load.classes.account();
+      let release: () => void = () => undefined;
+      const released = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let ready: () => void = () => undefined;
+      const isReady = new Promise<void>((resolve) => {
+        ready = resolve;
+      });
+      const held = t.app
+        .get(Transactions)
+        .run([away.branch], async (transaction: Transaction) => {
+          await transaction
+            .insertInto('class_tutors')
+            .values({
+              branch_id: away.branch,
+              class_id: away.classId,
+              assignment_id: role,
+              kind: 'acting',
+              valid_from: at('2026-10-11', '00:00'),
+              own_until: null,
+              given_by: givenBy,
+            })
+            .execute();
+          // The real follow of the change: the class's Tutor lessons go to the acting Tutor.
+          await followTutors(transaction, [away.classId], at('2026-10-11', '00:00'));
+          ready();
+          await released;
+        })
+        .catch((error: unknown) => error);
+      await isReady;
+      const moved = move(s.branch, lesson.id, { date: '2026-10-20', lessonNumber: 1 }).then(
+        (response) => response,
+      );
+      await expect
+        .poll(
+          async () =>
+            (
+              await sql<{ n: number }>`
+                select count(distinct l.pid)::int as n
+                from pg_locks l join pg_stat_activity a on a.pid = l.pid
+                where a.datname = current_database() and not l.granted
+              `.execute(t.database.migrator)
+            ).rows[0]?.n ?? 0,
+          { timeout: 20_000, interval: 25 },
+        )
+        .toBe(1);
+      release();
+      expect(await held).toBeUndefined();
+      refusedWith(await moved, 409, 'day_change_blocked');
+      // The follow gave the other branch's Tutor lesson to the teacher.
+      expect((await rowOf(tutorLesson.id))?.teacher_id).toBe(s.teacher.staffId);
+      expect(await rowOf(lesson.id)).toMatchObject({ lesson_date: NEXT_MONDAY });
+      expect(await dayChangesOf(lesson.id)).toEqual([]);
+      expect(await t.entries('lesson.move', lesson.id)).toEqual([]);
+    });
+  });
+
+  describe('a block of two parts (task 5.6a-2, decision 4)', () => {
+    /** The two group lessons of the scene's split on `date`, by id. */
+    async function partsOf(s: Scene, date: string) {
+      const parts = await t.database.migrator
+        .selectFrom('lessons')
+        .select(['id', 'block_id'])
+        .where('branch_id', '=', s.branch)
+        .where('subject_id', '=', s.english ?? '')
+        .where('lesson_date', '=', date)
+        .orderBy('id')
+        .execute();
+      const [lesson, part] = parts;
+      if (lesson === undefined || part === undefined) throw new Error('No split.');
+      expect(lesson.block_id).toBe(part.block_id);
+      return { lesson: lesson.id, part: part.id };
+    }
+
+    it('moves the block whole, each part in its own room; a room for both is refused', async () => {
+      const s = await scene({ split: true });
+      const { lesson, part } = await partsOf(s, '2026-10-21');
+      refusedWith(
+        await move(s.branch, lesson, { date: '2026-10-21', lessonNumber: 2, roomId: s.spareRoom }),
+        409,
+        'move_room_parts',
+      );
+      changed(await move(s.branch, lesson, { date: '2026-10-21', lessonNumber: 2 }));
+      for (const id of [lesson, part]) {
+        const row = await rowOf(id);
+        expect(row?.starts_at).toEqual(at('2026-10-21', '08:55'));
+        expect(row?.room_id).toBeNull();
+      }
+      expect(await dayChangesOf(part)).toMatchObject([{ kind: 'move', to_date: '2026-10-21' }]);
+      for (const teacher of s.splitTeachers) {
+        expect(await noticesOf(teacher.accountId)).toHaveLength(1);
+      }
+    });
+
+    it('moves a part cancelled with a reason with its block, still cancelled, and keeps a block whose part an exam cancelled where it is (review correction 1)', async () => {
+      const s = await scene({ split: true });
+      const first = await partsOf(s, '2026-10-21');
+      changed(await cancel(s.branch, first.part));
+      changed(await move(s.branch, first.lesson, { date: '2026-10-21', lessonNumber: 3 }));
+      const part = await rowOf(first.part);
+      expect(part?.starts_at).toEqual(at('2026-10-21', '09:50'));
+      expect(part?.cancel_cause).toBe('reason');
+      const second = await partsOf(s, '2026-10-28');
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ cancel_cause: 'exam' })
+        .where('id', '=', second.part)
+        .execute();
+      const before = await everything();
+      refusedWith(
+        await move(s.branch, second.lesson, { date: '2026-10-28', lessonNumber: 2 }),
+        409,
+        'lesson_cancelled',
+      );
+      expect(await everything()).toEqual(before);
+    });
+  });
+
+  describe('a restore into an offered room (task 5.6a-2, decision 10)', () => {
+    it('restores a refused lesson into a room it offered, with a reason: one record of the room and one notice', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, NEXT_MONDAY);
+      const other = await lessonOf(s, NEXT_MONDAY, s.otherClass);
+      changed(await cancel(s.branch, lesson.id));
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ room_id: s.room })
+        .where('id', '=', other.id)
+        .execute();
+      const offered = blockedBy(await restore(s.branch, lesson.id)).rooms;
+      expect(offered).toContain(s.spareRoom);
+      const before = (await noticesOf(s.teacher.accountId)).length;
+      // A room not in use is refused as the restore is.
+      const closed = await load.classes.room(s.branch, 'closed');
+      refusedWith(
+        await restoreInto(s.branch, lesson.id, { roomId: closed, reason: 'Back in the hall' }),
+        409,
+        'restore_blocked',
+      );
+      const answer = changed(
+        await restoreInto(s.branch, lesson.id, { roomId: s.spareRoom, reason: 'Back in the hall' }),
+      );
+      expect(answer.lesson).toMatchObject({ cancelCause: null, room: { id: s.spareRoom } });
+      expect(await rowOf(lesson.id)).toMatchObject({ cancel_cause: null, room_id: s.spareRoom });
+      expect(await dayChangesOf(lesson.id)).toMatchObject([
+        { kind: 'room', from_room_id: s.room, to_room_id: s.spareRoom, reason: 'Back in the hall' },
+      ]);
+      expect(await noticesOf(s.teacher.accountId)).toHaveLength(before + 1);
+      const [entry] = await t.entries('lesson.restore', lesson.id);
+      expect(entry).toMatchObject({
+        new_value: { roomId: s.spareRoom, roomReason: 'Back in the hall' },
+      });
+    });
+
+    it('refuses a restore into the lesson’s own room as no room change, and keeps a used key to its room', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, NEXT_MONDAY);
+      changed(await cancel(s.branch, lesson.id));
+      refusedWith(
+        await restoreInto(s.branch, lesson.id, { roomId: s.room, reason: 'Back' }),
+        409,
+        'room_unchanged',
+      );
+      const key = randomUUID();
+      changed(
+        await restoreInto(
+          s.branch,
+          lesson.id,
+          { roomId: s.spareRoom, reason: 'Back' },
+          t.admin,
+          key,
+        ),
+      );
+      refusedWith(
+        await restoreInto(
+          s.branch,
+          lesson.id,
+          { roomId: s.otherRoom, reason: 'Back' },
+          t.admin,
+          key,
+        ),
+        409,
+        'request_key_reused',
+      );
+      expect(await dayChangesOf(lesson.id)).toHaveLength(1);
+    });
+
+    it('takes a room and a reason together, and answers 404 for a room of another branch or unknown', async () => {
+      const s = northScene;
+      const lesson = await lessonOf(s, '2027-02-22');
+      changed(await cancel(s.branch, lesson.id));
+      refusedWith(
+        await restoreInto(s.branch, lesson.id, { roomId: s.spareRoom }),
+        400,
+        'validation_failed',
+      );
+      refusedWith(
+        await restoreInto(s.branch, lesson.id, { reason: 'Back' }),
+        400,
+        'validation_failed',
+      );
+      const elsewhere = await load.classes.room(t.south);
+      const before = await everything();
+      for (const cookie of [t.vicePrincipal, t.admin]) {
+        refusedWith(
+          await restoreInto(s.branch, lesson.id, { roomId: elsewhere, reason: 'Back' }, cookie),
+          404,
+          'not_found',
+        );
+        refusedWith(
+          await restoreInto(s.branch, lesson.id, { roomId: UNKNOWN, reason: 'Back' }, cookie),
+          404,
+          'not_found',
+        );
+      }
+      expect(await everything()).toEqual(before);
+    });
+  });
+
+  describe('a double lesson moved and its room changed (task 5.6a-2)', () => {
+    async function doubleOf(s: Scene, date: string) {
+      const both = await t.database.migrator
+        .selectFrom('lessons')
+        .select(['id', 'block_id'])
+        .where('class_id', '=', s.classId)
+        .where('lesson_date', '=', date)
+        .orderBy('starts_at')
+        .execute();
+      const [first, second] = both;
+      if (first === undefined || second === undefined) throw new Error('No double lesson.');
+      await t.database.migrator
+        .updateTable('lesson_blocks')
+        .set({ double_pair_id: randomUUID() })
+        .where('id', 'in', [first.block_id, second.block_id])
+        .execute();
+      return { first: first.id, second: second.id };
+    }
+
+    const startOf = async (id: string) => (await rowOf(id))?.starts_at;
+
+    it('moves both halves one slot later and back one slot earlier, over their own old place (review must-fix 1)', async () => {
+      const s = await scene({ twoLessons: true });
+      const { first, second } = await doubleOf(s, NEXT_MONDAY);
+      // Named by its later half: the earlier half goes to lesson 2, the later to 3.
+      changed(await move(s.branch, second, { date: NEXT_MONDAY, lessonNumber: 2 }));
+      expect(await startOf(first)).toEqual(at(NEXT_MONDAY, '08:55'));
+      expect(await startOf(second)).toEqual(at(NEXT_MONDAY, '09:50'));
+      changed(await move(s.branch, first, { date: NEXT_MONDAY, lessonNumber: 1 }));
+      expect(await startOf(first)).toEqual(at(NEXT_MONDAY, '08:00'));
+      expect(await startOf(second)).toEqual(at(NEXT_MONDAY, '08:55'));
+      expect(await dayChangesOf(first)).toHaveLength(2);
+      expect(await noticesOf(s.teacher.accountId)).toHaveLength(2);
+    });
+
+    it('moves both halves to another day, and refuses a lesson number with no lesson slot after it (review correction 2)', async () => {
+      const s = await scene({ twoLessons: true });
+      const { first, second } = await doubleOf(s, NEXT_MONDAY);
+      refusedWith(
+        await move(s.branch, first, { date: '2026-10-21', lessonNumber: 3 }),
+        409,
+        'move_no_slot',
+      );
+      changed(await move(s.branch, first, { date: '2026-10-21', lessonNumber: 2 }));
+      expect(await rowOf(first)).toMatchObject({ lesson_date: '2026-10-21' });
+      expect(await startOf(second)).toEqual(at('2026-10-21', '09:50'));
+    });
+
+    it('refuses a move of a double whose other half is cancelled', async () => {
+      const s = await scene({ twoLessons: true });
+      const { first, second } = await doubleOf(s, NEXT_MONDAY);
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ cancel_cause: 'exam' })
+        .where('id', '=', second)
+        .execute();
+      refusedWith(
+        await move(s.branch, first, { date: '2026-10-21', lessonNumber: 1 }),
+        409,
+        'lesson_cancelled',
+      );
+    });
+
+    it('changes the room of both halves when either is named', async () => {
+      const s = await scene({ twoLessons: true });
+      const { first, second } = await doubleOf(s, NEXT_MONDAY);
+      changed(await roomChange(s.branch, second, s.spareRoom));
+      expect((await rowOf(first))?.room_id).toBe(s.spareRoom);
+      expect((await rowOf(second))?.room_id).toBe(s.spareRoom);
+      expect(await t.entries('lesson.room_change', second)).toMatchObject([
+        { new_value: { lessonIds: [first, second] } },
+      ]);
+    });
+  });
+
   describe('a one-day change and a publish of the branch at the same moment', () => {
     /** A draft copied from the scene's version with every row moved to Wednesday. */
     async function wednesdayDraft(s: Scene) {
@@ -1176,6 +2459,38 @@ describe('one-day changes: cancel and restore', () => {
       expect(await held).toBeUndefined();
       return Promise.all([one, two]);
     }
+
+    it('runs a move after a publish that removed the lesson: the move answers 404 (task 5.6a-2)', async () => {
+      const s = await scene();
+      const draft = await wednesdayDraft(s);
+      const lesson = await lessonOf(s, '2026-10-26');
+      const [published, moved] = await inOrder(
+        s.branch,
+        () => publish(s.branch, draft, NEXT_MONDAY),
+        () => move(s.branch, lesson.id, { date: '2026-10-26', lessonNumber: 2 }),
+      );
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      refusedWith(moved, 404, 'not_found');
+      expect(await t.entries('lesson.move', lesson.id)).toEqual([]);
+    });
+
+    it('gives two room changes into one room at one time the room once, in either order', async () => {
+      for (const order of [0, 1]) {
+        const s = await scene();
+        const one = await lessonOf(s, NEXT_MONDAY);
+        const other = await lessonOf(s, NEXT_MONDAY, s.otherClass);
+        const [a, b] = order === 0 ? [one, other] : [other, one];
+        const [firstAnswer, secondAnswer] = await inOrder(
+          s.branch,
+          () => roomChange(s.branch, a.id, s.spareRoom),
+          () => roomChange(s.branch, b.id, s.spareRoom),
+        );
+        changed(firstAnswer);
+        expect(blockedBy(secondAnswer, 'day_change_blocked').rules).toContain('room_double');
+        expect((await rowOf(a.id))?.room_id).toBe(s.spareRoom);
+        expect((await rowOf(b.id))?.room_id).not.toBe(s.spareRoom);
+      }
+    });
 
     it('runs a cancel and a publish that removes the lesson one after the other, in either order (decision 6)', async () => {
       for (const order of [0, 1]) {

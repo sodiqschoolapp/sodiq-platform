@@ -219,6 +219,9 @@ export const AUDIT_ACTION_GROUPS = {
     // Task 5.6a-1: a one-day cancel of a dated lesson, and its restore.
     'lesson.cancel',
     'lesson.restore',
+    // Task 5.6a-2: a one-day room change and a one-day move.
+    'lesson.room_change',
+    'lesson.move',
   ],
   exports: [
     'building.export',
