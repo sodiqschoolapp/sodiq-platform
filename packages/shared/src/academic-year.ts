@@ -183,27 +183,41 @@ const lineUnitSchema = z.object({
   grade: z.int().nullable(),
 });
 
+/** A subject named in the three languages, as `previewNamesSchema` names one. */
+const lineSubjectSchema = z.object({
+  id: z.uuid(),
+  names: z.object({ uz: z.string(), ru: z.string(), en: z.string() }),
+});
+
 /**
  * What stands in the way of a save of the quarters (decisions 3, 5 and 6):
  * a lesson of today or earlier on a date whose quarter would change
  * (`quarter_past_lessons`); a standing exam on a date that would leave every
  * quarter (`quarter_leaves_exam`); a stored one-day move whose two dates
- * would lie in two quarters (`quarter_splits_move`).
+ * would lie in two quarters (`quarter_splits_move`). Task 5.6b-5b: an exam
+ * of the year that new year dates would leave out (`year_leaves_exam`),
+ * cancelled ones too, marked; a lesson names its subject in the three
+ * languages, so a refusal's lines need no second query.
  */
 export const quarterItemSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('past_lesson'),
     date: schoolDateSchema,
     unit: lineUnitSchema,
-    subjectId: z.uuid(),
+    subject: lineSubjectSchema,
   }),
-  z.object({ kind: z.literal('exam'), date: schoolDateSchema, title: z.string() }),
+  z.object({
+    kind: z.literal('exam'),
+    date: schoolDateSchema,
+    title: z.string(),
+    cancelled: z.boolean(),
+  }),
   z.object({
     kind: z.literal('split_move'),
     fromDate: schoolDateSchema,
     toDate: schoolDateSchema,
     unit: lineUnitSchema,
-    subjectId: z.uuid(),
+    subject: lineSubjectSchema,
   }),
 ]);
 

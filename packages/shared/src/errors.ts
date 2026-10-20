@@ -800,7 +800,7 @@ export const errorDetailSchema = z.object({
     .optional(),
   /** A room free at the time of a refused restore, room change or move, on a `restore_blocked` or `day_change_blocked` (tasks 5.6a-1 and 5.6a-2). */
   room: z.object({ id: z.uuid(), name: z.string() }).optional(),
-  /** What stands in the way of a save of the quarters, on a `quarter_past_lessons`, `quarter_leaves_exam` or `quarter_splits_move` (task 5.6b-5a). */
+  /** What stands in the way of a save of the quarters, on a `quarter_past_lessons`, `quarter_leaves_exam` or `quarter_splits_move` (task 5.6b-5a), or an exam left out by new year dates, on a `year_leaves_exam` (task 5.6b-5b). */
   quarterItem: quarterItemSchema.optional(),
   /** The number of items a list of details leaves out, on its detail `more` (`year_cut_holds`, task 3.6b-2). */
   more: z.int().min(1).optional(),

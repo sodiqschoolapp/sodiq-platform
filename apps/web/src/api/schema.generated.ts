@@ -3800,14 +3800,22 @@ export interface components {
                             name: string;
                             grade: number | null;
                         };
-                        /** Format: uuid */
-                        subjectId: string;
+                        subject: {
+                            /** Format: uuid */
+                            id: string;
+                            names: {
+                                uz: string;
+                                ru: string;
+                                en: string;
+                            };
+                        };
                     } | {
                         /** @enum {string} */
                         kind: "exam";
                         /** Format: date */
                         date: string;
                         title: string;
+                        cancelled: boolean;
                     } | {
                         /** @enum {string} */
                         kind: "split_move";
@@ -3821,8 +3829,15 @@ export interface components {
                             name: string;
                             grade: number | null;
                         };
-                        /** Format: uuid */
-                        subjectId: string;
+                        subject: {
+                            /** Format: uuid */
+                            id: string;
+                            names: {
+                                uz: string;
+                                ru: string;
+                                en: string;
+                            };
+                        };
                     };
                     more?: number;
                 }[];
@@ -4620,14 +4635,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -4641,8 +4664,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -4802,14 +4832,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -4823,8 +4861,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -5096,14 +5141,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -5117,8 +5170,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -5260,14 +5320,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -5281,8 +5349,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -5416,14 +5491,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -5437,8 +5520,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -5582,14 +5672,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -5603,8 +5701,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -5745,14 +5850,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -5766,8 +5879,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -5906,14 +6026,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -5927,8 +6055,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -6071,14 +6206,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -6092,8 +6235,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -6229,14 +6379,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -6250,8 +6408,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -6396,14 +6561,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -6417,8 +6590,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -6557,14 +6737,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -6578,8 +6766,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -6718,14 +6913,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -6739,8 +6942,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -6878,14 +7088,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -6899,8 +7117,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -7038,14 +7263,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -7059,8 +7292,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -7192,14 +7432,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -7213,8 +7461,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -7346,14 +7601,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -7367,8 +7630,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -7510,14 +7780,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -7531,8 +7809,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -7687,14 +7972,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -7708,8 +8001,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -7845,14 +8145,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -7866,8 +8174,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -8024,14 +8339,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -8045,8 +8368,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -8198,14 +8528,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -8219,8 +8557,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -8373,14 +8718,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -8394,8 +8747,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -8531,14 +8891,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -8552,8 +8920,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -8708,14 +9083,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -8729,8 +9112,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -8875,14 +9265,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -8896,8 +9294,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -9042,14 +9447,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -9063,8 +9476,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -9207,14 +9627,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -9228,8 +9656,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -9372,14 +9807,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -9393,8 +9836,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -9527,14 +9977,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -9548,8 +10006,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -9682,14 +10147,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -9703,8 +10176,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -9846,14 +10326,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -9867,8 +10355,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -10017,14 +10512,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -10038,8 +10541,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -10190,14 +10700,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -10211,8 +10729,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -10354,14 +10879,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -10375,8 +10908,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -10558,14 +11098,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -10579,8 +11127,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -11004,14 +11559,22 @@ export interface operations {
                                     name: string;
                                     grade: number | null;
                                 };
-                                /** Format: uuid */
-                                subjectId: string;
+                                subject: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    names: {
+                                        uz: string;
+                                        ru: string;
+                                        en: string;
+                                    };
+                                };
                             } | {
                                 /** @enum {string} */
                                 kind: "exam";
                                 /** Format: date */
                                 date: string;
                                 title: string;
+                                cancelled: boolean;
                             } | {
                                 /** @enum {string} */
                                 kind: "split_move";
@@ -11025,8 +11588,15 @@ export interface operations {
                                     name: string;
                                     grade: number | null;
                                 };
-                                /** Format: uuid */
-                                subjectId: string;
+                                subject: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    names: {
+                                        uz: string;
+                                        ru: string;
+                                        en: string;
+                                    };
+                                };
                             })[];
                             more: number;
                         };
@@ -11042,14 +11612,22 @@ export interface operations {
                                     name: string;
                                     grade: number | null;
                                 };
-                                /** Format: uuid */
-                                subjectId: string;
+                                subject: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    names: {
+                                        uz: string;
+                                        ru: string;
+                                        en: string;
+                                    };
+                                };
                             } | {
                                 /** @enum {string} */
                                 kind: "exam";
                                 /** Format: date */
                                 date: string;
                                 title: string;
+                                cancelled: boolean;
                             } | {
                                 /** @enum {string} */
                                 kind: "split_move";
@@ -11063,8 +11641,15 @@ export interface operations {
                                     name: string;
                                     grade: number | null;
                                 };
-                                /** Format: uuid */
-                                subjectId: string;
+                                subject: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    names: {
+                                        uz: string;
+                                        ru: string;
+                                        en: string;
+                                    };
+                                };
                             })[];
                             more: number;
                         };
@@ -11080,14 +11665,22 @@ export interface operations {
                                     name: string;
                                     grade: number | null;
                                 };
-                                /** Format: uuid */
-                                subjectId: string;
+                                subject: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    names: {
+                                        uz: string;
+                                        ru: string;
+                                        en: string;
+                                    };
+                                };
                             } | {
                                 /** @enum {string} */
                                 kind: "exam";
                                 /** Format: date */
                                 date: string;
                                 title: string;
+                                cancelled: boolean;
                             } | {
                                 /** @enum {string} */
                                 kind: "split_move";
@@ -11101,8 +11694,15 @@ export interface operations {
                                     name: string;
                                     grade: number | null;
                                 };
-                                /** Format: uuid */
-                                subjectId: string;
+                                subject: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    names: {
+                                        uz: string;
+                                        ru: string;
+                                        en: string;
+                                    };
+                                };
                             })[];
                             more: number;
                         };
@@ -11194,14 +11794,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -11215,8 +11823,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -11365,14 +11980,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -11386,8 +12009,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -11530,14 +12160,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -11551,8 +12189,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -11700,14 +12345,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -11721,8 +12374,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -11869,14 +12529,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -11890,8 +12558,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -12069,14 +12744,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -12090,8 +12773,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -12232,14 +12922,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -12253,8 +12951,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -12395,14 +13100,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -12416,8 +13129,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -12554,14 +13274,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -12575,8 +13303,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -12737,14 +13472,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -12758,8 +13501,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -12916,14 +13666,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -12937,8 +13695,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -13099,14 +13864,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -13120,8 +13893,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -13314,14 +14094,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -13335,8 +14123,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -13491,14 +14286,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -13512,8 +14315,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -13668,14 +14478,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -13689,8 +14507,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -13831,14 +14656,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -13852,8 +14685,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -14033,14 +14873,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -14054,8 +14902,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -14230,14 +15085,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -14251,8 +15114,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -14393,14 +15263,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -14414,8 +15292,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -15081,14 +15966,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -15102,8 +15995,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -15250,14 +16150,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -15271,8 +16179,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -15468,14 +16383,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -15489,8 +16412,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -16132,14 +17062,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -16153,8 +17091,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -16352,14 +17297,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -16373,8 +17326,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -16551,14 +17511,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -16572,8 +17540,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -16757,14 +17732,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -16778,8 +17761,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -16931,14 +17921,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -16952,8 +17950,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -17083,14 +18088,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -17104,8 +18117,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -17241,14 +18261,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -17262,8 +18290,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -17402,14 +18437,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -17423,8 +18466,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -17560,14 +18610,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -17581,8 +18639,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -17724,14 +18789,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -17745,8 +18818,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -17888,14 +18968,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -17909,8 +18997,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -18041,14 +19136,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -18062,8 +19165,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -18193,14 +19303,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -18214,8 +19332,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -18353,14 +19478,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -18374,8 +19507,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -18537,14 +19677,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -18558,8 +19706,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -18746,14 +19901,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -18767,8 +19930,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -18904,14 +20074,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -18925,8 +20103,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -19115,14 +20300,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -19136,8 +20329,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -19306,14 +20506,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -19327,8 +20535,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -19489,14 +20704,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -19510,8 +20733,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -19672,14 +20902,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -19693,8 +20931,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -19842,14 +21087,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -19863,8 +21116,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -20020,14 +21280,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -20041,8 +21309,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -20195,14 +21470,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -20216,8 +21499,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -20375,14 +21665,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -20396,8 +21694,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -20565,14 +21870,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -20586,8 +21899,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -20752,14 +22072,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -20773,8 +22101,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -21067,14 +22402,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -21088,8 +22431,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -21257,14 +22607,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -21278,8 +22636,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -21869,14 +23234,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -21890,8 +23263,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -22032,14 +23412,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -22053,8 +23441,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -22233,14 +23628,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -22254,8 +23657,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -22576,14 +23986,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -22597,8 +24015,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -22771,14 +24196,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -22792,8 +24225,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -23049,14 +24489,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -23070,8 +24518,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -23266,14 +24721,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -23287,8 +24750,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -23439,14 +24909,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -23460,8 +24938,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -23847,14 +25332,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -23868,8 +25361,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -24255,14 +25755,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -24276,8 +25784,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -24678,14 +26193,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -24699,8 +26222,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -25102,14 +26632,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -25123,8 +26661,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -25280,14 +26825,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -25301,8 +26854,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -25784,14 +27344,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -25805,8 +27373,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -26266,14 +27841,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -26287,8 +27870,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -26683,14 +28273,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -26704,8 +28302,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -27092,14 +28697,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -27113,8 +28726,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -27573,14 +29193,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -27594,8 +29222,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -28074,14 +29709,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -28095,8 +29738,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -28561,14 +30211,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -28582,8 +30240,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -29064,14 +30729,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -29085,8 +30758,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -29553,14 +31233,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -29574,8 +31262,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -30044,14 +31739,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -30065,8 +31768,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -30526,14 +32236,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -30547,8 +32265,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -30700,14 +32425,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -30721,8 +32454,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -30846,14 +32586,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -30867,8 +32615,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -31057,14 +32812,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -31078,8 +32841,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -31263,14 +33033,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -31284,8 +33062,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -31475,14 +33260,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -31496,8 +33289,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -31689,14 +33489,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -31710,8 +33518,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -31903,14 +33718,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -31924,8 +33747,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -32120,14 +33950,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -32141,8 +33979,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -32355,14 +34200,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -32376,8 +34229,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -32508,14 +34368,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -32529,8 +34397,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -32865,14 +34740,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -32886,8 +34769,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -33033,14 +34923,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -33054,8 +34952,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -33228,14 +35133,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -33249,8 +35162,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -33512,14 +35432,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -33533,8 +35461,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -33670,14 +35605,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -33691,8 +35634,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -33922,14 +35872,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -33943,8 +35901,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -34208,14 +36173,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -34229,8 +36202,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -34388,14 +36368,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -34409,8 +36397,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -34651,14 +36646,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -34672,8 +36675,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -34911,14 +36921,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -34932,8 +36950,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -35180,14 +37205,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -35201,8 +37234,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -35331,14 +37371,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -35352,8 +37400,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -35530,14 +37585,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -35551,8 +37614,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -35690,14 +37760,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -35711,8 +37789,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -35839,14 +37924,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -35860,8 +37953,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -36038,14 +38138,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -36059,8 +38167,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -36249,14 +38364,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -36270,8 +38393,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -36456,14 +38586,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -36477,8 +38615,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -36664,14 +38809,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -36685,8 +38838,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -36809,14 +38969,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -36830,8 +38998,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -36958,14 +39133,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -36979,8 +39162,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -37142,14 +39332,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -37163,8 +39361,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -37332,14 +39537,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -37353,8 +39566,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -37516,14 +39736,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -37537,8 +39765,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -37670,14 +39905,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -37691,8 +39934,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -37824,14 +40074,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -37845,8 +40103,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -37984,14 +40249,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -38005,8 +40278,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -38159,14 +40439,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -38180,8 +40468,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -38307,14 +40602,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -38328,8 +40631,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -38564,14 +40874,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -38585,8 +40903,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -38709,14 +41034,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -38730,8 +41063,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -38978,14 +41318,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -38999,8 +41347,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -39173,14 +41528,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -39194,8 +41557,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -39338,14 +41708,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -39359,8 +41737,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -39527,14 +41912,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -39548,8 +41941,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -39685,14 +42085,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -39706,8 +42114,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -39860,14 +42275,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -39881,8 +42304,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -40051,14 +42481,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -40072,8 +42510,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -40226,14 +42671,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -40247,8 +42700,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -40401,14 +42861,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -40422,8 +42890,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -40546,14 +43021,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -40567,8 +43050,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -40773,14 +43263,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -40794,8 +43292,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -41279,14 +43784,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -41300,8 +43813,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -41426,14 +43946,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -41447,8 +43975,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -41584,14 +44119,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -41605,8 +44148,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -41751,14 +44301,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -41772,8 +44330,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -42167,14 +44732,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -42188,8 +44761,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -42621,14 +45201,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -42642,8 +45230,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -43045,14 +45640,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -43066,8 +45669,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -43202,14 +45812,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -43223,8 +45841,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -43627,14 +46252,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -43648,8 +46281,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -44049,14 +46689,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -44070,8 +46718,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -44472,14 +47127,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -44493,8 +47156,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -44906,14 +47576,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -44927,8 +47605,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -45328,14 +48013,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -45349,8 +48042,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -45755,14 +48455,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -45776,8 +48484,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -45907,14 +48622,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -45928,8 +48651,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -46334,14 +49064,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -46355,8 +49093,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -46761,14 +49506,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -46782,8 +49535,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -47183,14 +49943,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -47204,8 +49972,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -47606,14 +50381,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -47627,8 +50410,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -48033,14 +50823,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -48054,8 +50852,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -48458,14 +51263,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -48479,8 +51292,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -48878,14 +51698,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -48899,8 +51727,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -49300,14 +52135,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -49321,8 +52164,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -49578,14 +52428,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -49599,8 +52457,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -50004,14 +52869,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -50025,8 +52898,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -50424,14 +53304,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -50445,8 +53333,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -50575,14 +53470,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -50596,8 +53499,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -50742,14 +53652,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -50763,8 +53681,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -50905,14 +53830,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -50926,8 +53859,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -51335,14 +54275,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -51356,8 +54304,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -51510,14 +54465,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -51531,8 +54494,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -51798,14 +54768,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -51819,8 +54797,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -52229,14 +55214,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -52250,8 +55243,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -52377,14 +55377,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -52398,8 +55406,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -52527,14 +55542,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -52548,8 +55571,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -52672,14 +55702,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -52693,8 +55731,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -52842,14 +55887,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -52863,8 +55916,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -52989,14 +56049,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -53010,8 +56078,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -53152,14 +56227,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -53173,8 +56256,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -53330,14 +56420,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -53351,8 +56449,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -53523,14 +56628,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -53544,8 +56657,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -53714,14 +56834,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -53735,8 +56863,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -53864,14 +56999,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -53885,8 +57028,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -54029,14 +57179,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -54050,8 +57208,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -54242,14 +57407,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -54263,8 +57436,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -54418,14 +57598,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -54439,8 +57627,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -54591,14 +57786,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -54612,8 +57815,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -54897,14 +58107,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -54918,8 +58136,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -55213,14 +58438,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -55234,8 +58467,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -55456,14 +58696,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -55477,8 +58725,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -55624,14 +58879,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -55645,8 +58908,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -55782,14 +59052,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -55803,8 +59081,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -55938,14 +59223,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -55959,8 +59252,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -56152,14 +59452,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -56173,8 +59481,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -56402,14 +59717,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -56423,8 +59746,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -56571,14 +59901,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -56592,8 +59930,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -56726,14 +60071,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -56747,8 +60100,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -56884,14 +60244,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -56905,8 +60273,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -57122,14 +60497,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -57143,8 +60526,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -57375,14 +60765,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -57396,8 +60794,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -57613,14 +61018,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -57634,8 +61047,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -57851,14 +61271,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -57872,8 +61300,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -58102,14 +61537,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -58123,8 +61566,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -58300,14 +61750,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -58321,8 +61779,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -58546,14 +62011,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -58567,8 +62040,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -58713,14 +62193,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -58734,8 +62222,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -58900,14 +62395,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -58921,8 +62424,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -59068,14 +62578,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -59089,8 +62607,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -59260,14 +62785,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -59281,8 +62814,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -59480,14 +63020,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -59501,8 +63049,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -59642,14 +63197,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -59663,8 +63226,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -59825,14 +63395,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -59846,8 +63424,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -59987,14 +63572,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -60008,8 +63601,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -60145,14 +63745,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -60166,8 +63774,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -60351,14 +63966,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -60372,8 +63995,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -60570,14 +64200,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -60591,8 +64229,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -60776,14 +64421,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -60797,8 +64450,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -60989,14 +64649,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -61010,8 +64678,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -61164,14 +64839,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -61185,8 +64868,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -61350,14 +65040,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -61371,8 +65069,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -61526,14 +65231,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -61547,8 +65260,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -61702,14 +65422,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -61723,8 +65451,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -61858,14 +65593,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -61879,8 +65622,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];
@@ -62018,14 +65768,22 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 } | {
                                     /** @enum {string} */
                                     kind: "exam";
                                     /** Format: date */
                                     date: string;
                                     title: string;
+                                    cancelled: boolean;
                                 } | {
                                     /** @enum {string} */
                                     kind: "split_move";
@@ -62039,8 +65797,15 @@ export interface operations {
                                         name: string;
                                         grade: number | null;
                                     };
-                                    /** Format: uuid */
-                                    subjectId: string;
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
                                 };
                                 more?: number;
                             }[];

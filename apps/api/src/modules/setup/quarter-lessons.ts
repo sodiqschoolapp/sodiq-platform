@@ -83,6 +83,17 @@ const quarterOn = (quarters: readonly Dated[], date: string): number | null =>
       date <= one.endDate,
   )?.number ?? null;
 
+/** A lesson's subject as a refusal line names it (task 5.6b-5b). */
+const subjectOf = (row: {
+  subject_id: string;
+  name_uz: string;
+  name_ru: string;
+  name_en: string;
+}): { id: string; names: { uz: string; ru: string; en: string } } => ({
+  id: row.subject_id,
+  names: { uz: row.name_uz, ru: row.name_ru, en: row.name_en },
+});
+
 const itemsOf = (items: readonly QuarterItem[]): Items => ({
   items: items.slice(0, QUARTER_ITEMS_LISTED),
   more: Math.max(0, items.length - QUARTER_ITEMS_LISTED),
@@ -216,6 +227,7 @@ export class QuarterLessons {
       .innerJoin('lesson_blocks', 'lesson_blocks.id', 'lessons.block_id')
       .leftJoin('classes', 'classes.id', 'lessons.class_id')
       .leftJoin('groups', 'groups.id', 'lessons.group_id')
+      .innerJoin('subjects', 'subjects.id', 'lessons.subject_id')
       .select([
         sql<string>`lessons.lesson_date::text`.as('date'),
         'lessons.class_id',
@@ -223,6 +235,9 @@ export class QuarterLessons {
         'classes.grade',
         'groups.name as group_name',
         'lessons.subject_id',
+        'subjects.name_uz',
+        'subjects.name_ru',
+        'subjects.name_en',
       ])
       .where('lesson_blocks.academic_year_id', '=', yearId)
       .where('lesson_blocks.lesson_date', 'in', dates)
@@ -237,7 +252,7 @@ export class QuarterLessons {
         row.class_id === null
           ? { kind: 'group', name: row.group_name ?? '', grade: null }
           : { kind: 'class', name: row.class_name ?? '', grade: row.grade },
-      subjectId: row.subject_id,
+      subject: subjectOf(row),
     }));
   }
 
@@ -258,7 +273,12 @@ export class QuarterLessons {
       .orderBy('starts_at')
       .orderBy('id')
       .execute();
-    return rows.map((row) => ({ kind: 'exam', date: row.date, title: row.title }));
+    return rows.map((row) => ({
+      kind: 'exam',
+      date: row.date,
+      title: row.title,
+      cancelled: false,
+    }));
   }
 
   /**
@@ -285,12 +305,17 @@ export class QuarterLessons {
       grade: number | null;
       group_name: string | null;
       subject_id: string;
+      name_uz: string;
+      name_ru: string;
+      name_en: string;
     }>`
       select distinct on (c.lesson_id)
         c.from_date::text as from_date, b.lesson_date::text as to_date,
-        l.class_id, k.name as class_name, k.grade, g.name as group_name, l.subject_id
+        l.class_id, k.name as class_name, k.grade, g.name as group_name, l.subject_id,
+        s.name_uz, s.name_ru, s.name_en
       from lesson_day_changes c
       join lessons l on l.id = c.lesson_id
+      join subjects s on s.id = l.subject_id
       join lesson_blocks b on b.id = l.block_id
       left join classes k on k.id = l.class_id
       left join groups g on g.id = l.group_id
@@ -325,7 +350,7 @@ export class QuarterLessons {
           row.class_id === null
             ? { kind: 'group', name: row.group_name ?? '', grade: null }
             : { kind: 'class', name: row.class_name ?? '', grade: row.grade },
-        subjectId: row.subject_id,
+        subject: subjectOf(row),
       }));
   }
 

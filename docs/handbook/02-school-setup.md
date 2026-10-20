@@ -109,3 +109,66 @@ Not built yet: the mark on the timetable itself (task 5.4a).
 
 - Over a used lesson slot: "This change removes or reorders a lesson slot that the published timetable uses. Keep the slot, or first publish a timetable version that no longer uses it."
 - In the preview, under the lesson slots in use: "The change cannot be saved: keep these lesson slots, or first publish a timetable version that no longer uses them."
+
+## Changing quarter or year dates after the timetable is published
+
+<!-- Sources: spec edge/time-dates-calendar ("Quarter dates are edited after lessons exist", "The academic year is extended or shortened", "Vacations between quarters", "A lesson is moved by a one-day change to a date in another quarter"), edge/00-definitions (Quarter of a lesson), 06 (How surprises are prevented, Impact preview); tasks 5.6b-5a and 5.6b-5b, decisions on pull requests #179 and #180 -->
+
+**What it is.** New dates for the quarters of a year, or for the year itself, saved while a published timetable already has lessons in that year. The lessons follow the quarter dates.
+
+**Who can use it.**
+
+| Role | What the role may do | Where |
+| --- | --- | --- |
+| Super Admin | Change the year's dates; change the quarters and see their preview | Every branch |
+| Academic Vice Principal | Change the quarters and see their preview | Own branch |
+| Principal | See the year and its quarters | Own branch |
+
+**How it works.**
+
+1. School setup → **Academic years** (**Oʻquv yillari**), and open the year.
+2. Press **Change quarters** (**Choraklarni oʻzgartirish**), type the new dates and press **Save**.
+3. When the new dates change anything in the published timetable, the preview **What the new quarter dates change** (**Chorak sanalari nimani oʻzgartiradi**) opens. It shows:
+   - what stops the save: lessons already held on dates that would change quarter, exams on dates that would leave every quarter, and lessons moved for one day whose two dates would lie in two quarters, each as a line, then "and N more";
+   - the dates whose lessons go to another quarter, with the number of lesson times on each;
+   - the lessons removed, created and created cancelled, with the reason, and those that will need a teacher;
+   - how many teachers are told;
+   - the conflicts that stop the save, by date;
+   - the exams on the changed dates, and for a shared block the choice to cancel the whole lesson or keep it for the other classes;
+   - the shortened special dates, with the lessons each class keeps, which can be ticked;
+   - the one-day changes and bulk cancels of those dates: kept, needs a decision, or dropped.
+4. Choose for each item that needs a decision, then press **Save the quarters** (**Choraklarni saqlash**), or **Cancel** (**Bekor qilish**) to go back to the form with nothing changed.
+5. When the new dates change nothing in the published timetable, no preview opens and the quarters are saved.
+6. The year's own dates are changed with **Edit** on the year (Super Admin). That change adds or removes no lesson.
+
+**Rules.**
+
+- A quarter boundary moves only over dates that hold no lesson of today or earlier. A held lesson never changes quarter.
+- A past date with no lesson may still change quarter, so a year can be set up before its lessons start.
+- A future date that goes from one quarter to another keeps its lessons. They now count in the new quarter. Nobody is told, as nothing changes for a teacher.
+- A future date that leaves every quarter (a longer vacation, an earlier end) loses its lessons.
+- A future date that joins a quarter (a shorter vacation, a later end) gets lessons from the timetable in force, checked with all the timetable rules.
+- A lesson moved for one day keeps its two dates in one quarter. New dates that would split them are refused.
+- An exam on a date that would leave every quarter must be cancelled or moved first.
+- A longer year gets its lessons through its last quarter: first the year's end moves later, then the last quarter's end. A shorter year is the other way round: first the last quarter's end moves earlier, then the year's end.
+- The year's dates cannot leave out an exam of the year, a cancelled one included. The refusal lists the exams.
+- Save stays off until every item that needs a decision has a choice and nothing stops the save.
+- Each teacher whose week changes is told once, with the first and last date changed.
+
+**What happens if…**
+
+| Case | What happens |
+| --- | --- |
+| Quarter 1's end moved before a lesson already held | Refused, with the lessons listed by date, class and subject. |
+| Quarter 2 starts a week earlier, all after today | The lessons of that week stay and count in quarter 2. |
+| The last quarter's end moved earlier over future lessons | Those lessons are removed and listed in the preview. |
+| A lesson was moved for one day inside quarter 1, and its old date would now be in quarter 2 | Refused, with the move listed. Take the move back first, or keep both dates in one quarter. |
+| The year's end moved before an exam | Refused, with the exams listed; a cancelled exam is marked "(cancelled)". |
+| The timetable changed between the preview and the save | The save is refused; save again to see the new preview. |
+| Another person saves the quarters at the same moment | One save waits for the other and is checked against its dates. |
+
+**What the person sees.**
+
+- In the preview, under what stops the save: "The new dates cannot be saved: a held lesson keeps its quarter, an exam is cancelled or moved first, and a one-day move keeps its two dates in one quarter."
+- Over held lessons in the way: "These quarter dates would move lessons of today or earlier to another quarter, or out of every quarter. Only future dates can change quarter: keep the dates of the lessons listed."
+- Over exams outside the year: "An exam of this year would lie outside the new dates. Keep the year around the exam, or change the exam first."

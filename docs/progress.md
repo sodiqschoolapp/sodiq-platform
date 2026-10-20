@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 20 October 2026: task 5.6b-5b Quarter and year dates after lessons exist: the preview dialog
+
+- The quarters form asks `POST setup/academic-years/:id/quarters/preview` before its save (`useQuartersPreview`, `apps/web/src/features/setup/quarters-preview.tsx`): the refusal lists, the dates whose lessons change quarter and the calendar dialog's parts; Save is off while the server would refuse; the save sends `days`. With nothing to show, no dialog opens.
+- Refused saves of the quarters and of the year's dates list their items under the form (`QuarterRefusalLines`); `year_leaves_exam` now names its exams, a cancelled one marked; quarter items name the subject in three languages.
+- Handbook: "Changing quarter or year dates after the timetable is published" in `02-school-setup.md`.
+- Left out: a browser test (no published version in the browser scene).
+
+The next sessions must know:
+
+- `QuarterItem`'s lesson items carry `subject: { id, names }`, not `subjectId`; the `exam` item has `cancelled`.
+- The next task is 5.6c.
+
 ## 20 October 2026: task 5.6b-5a Quarter and year dates after lessons exist: the API and the database
 
 - A save of a year's quarters over a published timetable follows its lessons (`apps/api/src/modules/setup/quarter-lessons.ts`): blocks of dates after today that change quarter take the new one in place; dates after today that leave or join every quarter are written again by the calendar save's rewrite (lessons removed, or created from the version in force and checked). Refused, listed: a date of today or earlier with a lesson (`quarter_past_lessons`), a standing exam on a date leaving the quarters (`quarter_leaves_exam`), a stored move split across quarters (`quarter_splits_move`). Preview route `POST setup/academic-years/:id/quarters/preview`; notice `timetable.quarters_changed`.

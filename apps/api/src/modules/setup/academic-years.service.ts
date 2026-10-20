@@ -3,6 +3,7 @@ import {
   academicYearName,
   academicYearStatusSchema,
   periodOn,
+  QUARTER_ITEMS_LISTED,
   schoolDateOf,
   type AcademicYear,
   type AcademicYearList,
@@ -299,19 +300,40 @@ export class AcademicYears {
         // Task 5.6b-5a (the From line of 5.1b, decision 8): every exam of the
         // year, cancelled ones too, stays inside its dates; the database keeps
         // the same rule (`academic_years_exams`, 0093).
+        // Task 5.6b-5b (decisions 2 and 7): one detail per exam, cancelled
+        // ones marked, at most `QUARTER_ITEMS_LISTED`, then the count of the rest.
         const examsOut = await transaction
           .selectFrom('exams')
-          .select(sql<string>`exam_date::text`.as('exam_date'))
+          .select([
+            sql<string>`exam_date::text`.as('exam_date'),
+            'title',
+            sql<boolean>`cancel_cause is not null`.as('cancelled'),
+          ])
           .where('academic_year_id', '=', id)
           .where((eb) =>
             eb.or([eb('exam_date', '<', record.startDate), eb('exam_date', '>', record.endDate)]),
           )
+          .orderBy('exam_date')
+          .orderBy('starts_at')
+          .orderBy('id')
           .execute();
         if (examsOut.length > 0) {
-          throw refused('year_leaves_exam', [
-            ...(examsOut.some((exam) => exam.exam_date < record.startDate) ? ['startDate'] : []),
-            ...(examsOut.some((exam) => exam.exam_date > record.endDate) ? ['endDate'] : []),
-          ]);
+          const code = 'year_leaves_exam';
+          const details: ErrorDetail[] = examsOut.slice(0, QUARTER_ITEMS_LISTED).map((exam) => ({
+            path: exam.exam_date < record.startDate ? 'startDate' : 'endDate',
+            code,
+            message: code,
+            day: exam.exam_date,
+            quarterItem: {
+              kind: 'exam',
+              date: exam.exam_date,
+              title: exam.title,
+              cancelled: exam.cancelled,
+            },
+          }));
+          const more = examsOut.length - QUARTER_ITEMS_LISTED;
+          if (more > 0) details.push({ path: 'more', code, message: code, more });
+          throw new ApiException(code, 409, undefined, details);
         }
         // L128: made longer at any time, shorter only when no stay stands in
         // the days cut off; the database keeps the same rule (0064).
