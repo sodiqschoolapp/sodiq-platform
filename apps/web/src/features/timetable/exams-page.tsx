@@ -335,8 +335,15 @@ function CancelExamDialog({
         done.current = true;
       } catch (error) {
         if (error instanceof ApiFailure && error.code === 'exam_restore_blocked') {
+          // A rule names the lessons on both sides of the clash: only the
+          // exam's own lessons are kept cancelled.
+          const own = new Set(exam.lessonIds);
           setBlocked([
-            ...new Set((error.details ?? []).flatMap((one) => one.rule?.lessonIds ?? [])),
+            ...new Set(
+              (error.details ?? [])
+                .flatMap((one) => one.rule?.lessonIds ?? [])
+                .filter((id) => own.has(id)),
+            ),
           ]);
         }
         throw error;

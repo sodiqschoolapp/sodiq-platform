@@ -499,7 +499,8 @@ describe('the exams page (task 5.6c-2)', () => {
                   message: 'ENGLISH TEXT FOR THE DEVELOPER',
                   requestId: 'test-request',
                   details: [
-                    rule('room_double', [uid(301)]),
+                    // The rule names the lesson that holds the time too.
+                    rule('room_double', [uid(301), uid(399)]),
                     {
                       path: 'rooms',
                       code: 'room_free',
