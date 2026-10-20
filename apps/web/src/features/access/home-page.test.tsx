@@ -201,7 +201,11 @@ describe('the home page', () => {
           'GET /api/people/students/no-class': () => json({ count: 0 }),
           'GET /api/people/relatives/no-valid-phone': () => json({ count: 0 }),
           'GET /api/timetable/attention': () =>
-            json({ needsTeacher: causes, unresolved: [], needsInvigilator: [] } satisfies Attention),
+            json({
+              needsTeacher: causes,
+              unresolved: [],
+              needsInvigilator: [],
+            } satisfies Attention),
         });
         renderApp('/', language);
         await bothAsked(calls);

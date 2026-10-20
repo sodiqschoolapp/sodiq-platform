@@ -201,7 +201,7 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
   'staff_status_moments_write()':
     "The trigger that writes the moments of every status row and moves their end on a cut (task 5.7a-2a, decision 3 and correction 1 of pull request #186, Look first): it reads the main branch's time zone past the membership filter, and the application has no write right on the table, so no writer of staff_statuses leaves a row without its moments.",
   'account_lock_spans_write()':
-    "The trigger that opens a lock span at a lock of an account and closes it at the unlock, at app.now (task 5.7a-2a, decision 5 and correction 1 of pull request #186, Look first): the application has no write right on the table, so the spans never differ from accounts.locked_at.",
+    'The trigger that opens a lock span at a lock of an account and closes it at the unlock, at app.now (task 5.7a-2a, decision 5 and correction 1 of pull request #186, Look first): the application has no write right on the table, so the spans never differ from accounts.locked_at.',
   'absence_notice_accounts(uuid,timestamp with time zone,timestamp with time zone)':
     "The accounts of the current Academic Vice Principals of every branch linked to a person the transaction sees or holding the person's lessons in a range, ids only, for the notice of an absence (task 5.7a-1, decision 3 of pull request #185, Look first; as relative_notice_accounts).",
   'branch_moves_incoming(uuid)':

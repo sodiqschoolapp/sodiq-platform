@@ -1178,7 +1178,14 @@ describe('teacher absences', () => {
         ]);
       });
       await asViceAt(s.branch, at(MONDAY, '09:30'), async (cookie) => {
-        ok(await t.post(`/api/people/staff/${s.teacher.staffId}/account/unlock`, s.branch, {}, cookie));
+        ok(
+          await t.post(
+            `/api/people/staff/${s.teacher.staffId}/account/unlock`,
+            s.branch,
+            {},
+            cookie,
+          ),
+        );
         expect(await awayOn(s, MONDAY, cookie)).toEqual([
           { state: 'held', away: null },
           { state: 'unresolved', away: 'locked' },
@@ -1209,7 +1216,9 @@ describe('teacher absences', () => {
       const s = await scene();
       await statusFrom(s.teacher.staffId, 'inactive', MONDAY);
       await asViceAt(s.branch, at(MONDAY, '10:00'), async (cookie) => {
-        expect(await awayOn(s, MONDAY, cookie)).toEqual([{ state: 'unresolved', away: 'inactive' }]);
+        expect(await awayOn(s, MONDAY, cookie)).toEqual([
+          { state: 'unresolved', away: 'inactive' },
+        ]);
         const [lesson] = await lessonsOn(s, MONDAY);
         if (lesson === undefined) throw new Error('No lesson.');
         refusedWith(
@@ -1282,7 +1291,12 @@ describe('teacher absences', () => {
         present: await load.teacher(s.branch),
       };
       for (const one of Object.values(people)) await hours(s.branch, one.staffId);
-      const examOn = async (branch: string, classId: string, date: string, invigilators: string[]) => {
+      const examOn = async (
+        branch: string,
+        classId: string,
+        date: string,
+        invigilators: string[],
+      ) => {
         const room = await load.classes.room(branch);
         const created = await request(t.kit.server)
           .post('/api/timetable/exams')
@@ -1295,7 +1309,9 @@ describe('teacher absences', () => {
             lastLesson: 2,
             title: 'Quarter exam',
             subjectId: null,
-            rooms: [{ roomId: room, classIds: [classId], groupIds: [], invigilatorIds: invigilators }],
+            rooms: [
+              { roomId: room, classIds: [classId], groupIds: [], invigilatorIds: invigilators },
+            ],
             blockChoices: [],
             confirm: true,
           });
@@ -1331,7 +1347,10 @@ describe('teacher absences', () => {
       await asViceAt(s.branch, at(MONDAY, '10:00'), async (cookie) => {
         const listed = await attention(s.branch, cookie);
         expect(listed.needsInvigilator.map((one) => one.examId)).toEqual([listedExam]);
-        expect(listed.needsInvigilator[0]).toMatchObject({ date: NEXT_MONDAY, title: 'Quarter exam' });
+        expect(listed.needsInvigilator[0]).toMatchObject({
+          date: NEXT_MONDAY,
+          title: 'Quarter exam',
+        });
         expect(
           new Map(listed.needsInvigilator[0]?.invigilators.map((one) => [one.id, one.cause])),
         ).toEqual(
