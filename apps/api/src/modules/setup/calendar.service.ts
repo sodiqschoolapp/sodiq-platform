@@ -173,6 +173,10 @@ const lessonsAuditOf = (rewrite: CalendarRewrite) =>
                 after: [...one.after],
               })),
             }),
+        // Task 5.6b-2c-1 (decision 7): each exam of its dates, when any.
+        ...(rewrite.audit.exams.length === 0
+          ? {}
+          : { exams: rewrite.audit.exams.map((one) => structuredClone(one)) }),
       };
 
 /** The dates whose stored choice a save changed (task 5.6b-2b, decision 7). */
@@ -340,7 +344,25 @@ export class Calendar {
           );
           // Task 5.6b-2b: every class of a choice is the branch's, checked
           // before any lock or write (`.claude/rules/api.md`).
-          const classIds = [...new Set((days.dayKeeps ?? []).map((one) => one.classId))];
+          // Task 5.6b-2c-1: so is every exam and class of a block's choice.
+          const classIds = [
+            ...new Set([
+              ...(days.dayKeeps ?? []).map((one) => one.classId),
+              ...(days.examBlocks ?? []).map((one) => one.classId),
+            ]),
+          ];
+          const examIds = [...new Set((days.examBlocks ?? []).map((one) => one.examId))];
+          if (examIds.length > 0) {
+            const known = await transaction
+              .selectFrom('exams')
+              .select('id')
+              .where('id', 'in', examIds)
+              .where('branch_id', '=', branchId)
+              .execute();
+            if (known.length !== examIds.length) {
+              throw notFound();
+            }
+          }
           if (classIds.length > 0) {
             const known = await transaction
               .selectFrom('classes')
@@ -615,8 +637,12 @@ export class Calendar {
         },
         change.action === 'restore' ? RESTORE_REFUSALS : REFUSALS,
         true,
-        // Task 5.6b-2b (decision 8): the ticks, whose outcome the preview shows.
-        change.dayKeeps === undefined ? {} : { dayKeeps: change.dayKeeps },
+        // Task 5.6b-2b (decision 8): the ticks, whose outcome the preview
+        // shows; task 5.6b-2c-1: the choices for shared blocks under an exam.
+        {
+          ...(change.dayKeeps === undefined ? {} : { dayKeeps: change.dayKeeps }),
+          ...(change.examBlocks === undefined ? {} : { examBlocks: change.examBlocks }),
+        },
       );
     } catch (error) {
       if (error instanceof PreviewDone) {
@@ -849,13 +875,14 @@ export class Calendar {
 
 /** A create or an edit: the entry, and the key and choices of the sorting (task 5.6b-2a). */
 function splitSave(save: CalendarSave): { record: CalendarEntryRecord; days: CalendarDaysBody } {
-  const { dayChangesKey, dayDecisions, dayKeeps, ...record } = save;
+  const { dayChangesKey, dayDecisions, dayKeeps, examBlocks, ...record } = save;
   return {
     record,
     days: {
       ...(dayChangesKey === undefined ? {} : { dayChangesKey }),
       ...(dayDecisions === undefined ? {} : { dayDecisions }),
       ...(dayKeeps === undefined ? {} : { dayKeeps }),
+      ...(examBlocks === undefined ? {} : { examBlocks }),
     },
   };
 }

@@ -281,6 +281,29 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 20 October 2026: calendar changes, exams (task 5.6b-2c-1)
+
+Plan approved on pull request #173 with corrections 1 and 2; decisions 1 to 12 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a task split). 5.6b-2c is split into 5.6b-2c-1 (exams under a calendar change) and 5.6b-2c-2 (the stored move between two stretches) | Decision 1; the two share no code |
+| **Look first** (a reading of the spec). A day off (or a working day taken back) of any grade of an exam's classes cancels the whole exam `day_off`; the lessons it cancelled for the classes that still have school are held again | Decision 2; `edge/timetable`, Exams: "a day off removes the exam and tells the Academic Vice Principal"; `06`, Exam: "cancelling the exam restores only the lessons it cancelled". Proposed `/spec-change` of the Exams row: "A day off for some of an exam's classes cancels the whole exam; the Academic Vice Principal makes a new exam for the classes that have school." |
+| **Look first** (a test changed). The 5.6b-1 test of stored records keeps only the move between two stretches | Decision 3: a requirement of this task |
+| **Look first** (a pinned list widened). Notice kind `timetable.exam_day_off` (entry name, exam title, date) to every current Academic Vice Principal of the branch; the invigilators are told by 5.6c (From line) | Decision 4 |
+| **Look first** (a reading of the spec). A shared block newly under an exam takes the Exams row's two choices in the save (`examBlocks`, refused `calendar_exam_block_choice` without one); one already under it keeps its stored choice (an out row: kept; cancelled "exam": cancelled whole) | Decision 5 |
+| A sitting group's own lessons must be one block or a double pair at exactly the exam's time after the save, else `calendar_exam_slots`; the other groups of its block are held | Review corrections 1 and 2 |
+| An exam kept on a date written: the new lessons of its classes in its time cancelled "exam"; a lesson kept keeps its state | Decision 6 |
+| No route, area or audit action is new; the entry's audit entry carries `exams` | Decision 7 |
+| `first_slot` and `last_slot` are positions of the day's slots (as `pattern_blocks.slot_position`), each a lesson slot; the exam runs from the start of the first to the end of the last | Decision 8 |
+| A moved or kept exam is checked by the rule engine against the day's lessons after the save; a blocked result refuses the save by date | Decision 9 |
+| A refused exam is a detail of `calendar_blocked` in the save and a line of the preview, which then writes nothing | Decision 10 |
+| An out row moves only where its block is deleted or no longer overlaps the exam | Decision 11 |
+| Exams on a date the save does not write are untouched | Decision 12 |
+| **Build decision.** The exam's choices for shared blocks are given per exam and sitting class, not per block: the block the save writes may be new, and one class has one block at a time | The preview and the save name the same pair before the write |
+| **Build decision.** The ids of `examBlocks` (an exam, a class) are checked against the branch before any lock: another branch's or an unknown one is 404 | `.claude/rules/api.md`, an id in the body |
+| **Build decision.** The pattern check of a date still reads the lessons an exam cancels as held, as a publish does: it can only refuse more, never let a clash through | The dated check is the expansion's; the sorting and the exam's own check leave those lessons out |
+
 ## 19 October 2026: calendar changes, the shortened day's choice (task 5.6b-2b)
 
 Plan approved on pull request #171 with corrections 1 to 3; decisions 1 to 10 confirmed there (4 and 7 as changed by the spec review of the plan, 6 by correction 2). Flagged on issue #42.

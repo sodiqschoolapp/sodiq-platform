@@ -166,7 +166,13 @@ export const uz: Texts<'one' | 'other'> = {
     calendar_blocked:
       'Bu oʻzgarish u oʻzgartiradigan sanada yoki koʻchirilgan dars qaytadigan sanada taqiqlangan toʻqnashuvga uchraydi; yoki uning sanalaridagi bir kunlik oʻzgarishlar oldindan koʻrishdan keyin oʻzgargan; yoki tanlov qilinmagan. Oldindan koʻrishni qayta oching, koʻrsatilganini hal qiling va qaror talab qiladigan har bir oʻzgarish uchun tanlang.',
     calendar_stored_changes:
-      'Bu oʻzgarish tegadigan sanada imtihon yoki shu oʻzgarish qayta yozadigan ikki sana orasida bir kunga koʻchirilgan dars bor. Avval imtihonni bekor qiling yoki darsni joyiga qaytaring, soʻng qayta saqlang.',
+      'Bu oʻzgarish tegadigan sanada shu oʻzgarish qayta yozadigan ikki sana orasida bir kunga koʻchirilgan dars bor. Avval darsni joyiga qaytaring, soʻng qayta saqlang.',
+    calendar_exam_slots:
+      'Bu oʻzgarishdan keyin imtihonning oʻz sanasida oʻz dars sloti yoʻq yoki uning guruhida shu vaqtda dars yoʻq. Avval imtihonni oʻzgartiring, soʻng qayta saqlang.',
+    calendar_exam_templates:
+      'Bu oʻzgarishdan keyin imtihon sinflari ikki xil kun shablonida boʻlib qoladi. Avval imtihonni oʻzgartiring, soʻng qayta saqlang.',
+    calendar_exam_block_choice:
+      'Umumiy dars endi imtihon vaqtiga toʻgʻri keladi. Oldindan koʻrishni qayta oching va tanlang: darsni bekor qilish yoki uni boshqa sinflar uchun qoldirish.',
     own_account:
       'Oʻz hisobingizni bloklay, blokdan chiqara yoki tiklay olmaysiz. Boshqa administratorga murojaat qiling.',
     account_already_locked:
@@ -1330,6 +1336,27 @@ export const uz: Texts<'one' | 'other'> = {
         notified_one: '{{count}} ta oʻqituvchiga xabar beriladi.',
         notified_other: '{{count}} ta oʻqituvchiga xabar beriladi.',
         refused: 'Yuqoridagilar hal qilinmaguncha bu saqlash rad etiladi.',
+        exams: {
+          title: 'Shu sanalardagi imtihonlar',
+          outcomes: {
+            cancelled_day_off:
+              'bekor qilindi: sana dam olish kuniga aylanadi; oʻquv ishlari boʻyicha direktor oʻrinbosarlari xabardor qilinadi',
+            moved: 'oʻz slotlari bilan {{time}} ga koʻchirildi',
+            kept: 'oʻz vaqtida qoladi',
+            refused: 'rad etildi',
+          },
+          codes: {
+            calendar_exam_slots:
+              'bu kunda imtihonning dars sloti yoʻq yoki uning guruhida shu vaqtda dars yoʻq; avval imtihonni oʻzgartiring',
+            calendar_exam_templates:
+              'uning sinflari ikki xil kun shablonida boʻlib qoladi; avval imtihonni oʻzgartiring',
+          },
+          blocked: 'toʻqnashuv: {{rules}}',
+          block:
+            '{{unit}} imtihon topshiradi, lekin uning darsi topshirmaydigan sinflar bilan umumiy: {{lessons}}',
+          choice_cancel: 'Imtihon uchun butun darsni bekor qilish',
+          choice_keep: 'Uni boshqa sinflar uchun qoldirish; {{unit}} undan chiqariladi',
+        },
       },
     },
     templateSettings: {
@@ -3137,6 +3164,8 @@ export const uz: Texts<'one' | 'other'> = {
           'Bir kunlik oʻzgarish (bekor qilish yoki tiklash) darslaringizni oʻzgartirdi. Haftangiz oldin va keyin:',
         calendar_changed:
           '«{{name}}» taqvim yozuvi darslaringizni oʻzgartirdi. Haftangiz oldin va keyin:',
+        exam_day_off:
+          '«{{name}}» taqvim yozuvi {{date}} sanasini dam olish kuni qildi: «{{title}}» imtihoni bekor qilindi.',
       },
     },
     // The week before and after of a notice of a timetable change (task 5.5c-3a).

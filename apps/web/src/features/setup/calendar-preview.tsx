@@ -34,6 +34,7 @@ import {
 import { dayDecisionsBodyOf, PublishDayChanges } from '@/features/timetable/publish-day-changes';
 import { calendarPreviewOf } from './calendar-api';
 import { CalendarLessonsPreview, refusesSave } from './calendar-lessons-preview';
+import { CalendarExamsPreview, examBlocksOf, examsRefuseSave } from './calendar-exams-preview';
 import { CalendarShortened, dayKeepsOf } from './calendar-shortened';
 import { schoolDateText, weekdayName } from '@/lib/dates';
 
@@ -142,6 +143,8 @@ export function useCalendarPreview(): {
   const [question, setQuestion] = useState<Question | null>(null);
   const [choices, setChoices] = useState<Record<string, DayChangeChoice>>({});
   const [ticks, setTicks] = useState<Record<string, number[]>>({});
+  // Task 5.6b-2c-1: the choices for shared blocks newly under an exam.
+  const [examChoices, setExamChoices] = useState<Record<string, 'cancel' | 'keep'>>({});
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState<unknown>(null);
 
@@ -150,6 +153,7 @@ export function useCalendarPreview(): {
     const days = await new Promise<CalendarDaysBody | null>((resolve) => {
       setChoices({});
       setTicks({});
+      setExamChoices({});
       setRefreshError(null);
       setQuestion({ change, preview, answer: resolve });
     });
@@ -166,8 +170,15 @@ export function useCalendarPreview(): {
   const decided =
     question === null ? null : dayDecisionsBodyOf(question.preview.lessons.dayChanges, choices);
   const dayKeeps = dayKeepsOf(ticks);
+  const examBlocks = examBlocksOf(examChoices);
   const days: CalendarDaysBody | null =
-    decided === null ? null : { ...decided, ...(dayKeeps.length === 0 ? {} : { dayKeeps }) };
+    decided === null
+      ? null
+      : {
+          ...decided,
+          ...(dayKeeps.length === 0 ? {} : { dayKeeps }),
+          ...(examBlocks.length === 0 ? {} : { examBlocks }),
+        };
 
   /** The ticks of a date and class changed: the preview again with every tick. */
   const tick = async (key: string, positions: number[]) => {
@@ -207,6 +218,13 @@ export function useCalendarPreview(): {
           </DialogHeader>
           {question.preview.changes.length > 0 && <PreviewTable preview={question.preview} />}
           <CalendarLessonsPreview lessons={question.preview.lessons} />
+          <CalendarExamsPreview
+            lessons={question.preview.lessons}
+            choices={examChoices}
+            onChoose={(key, choice) => {
+              setExamChoices({ ...examChoices, [key]: choice });
+            }}
+          />
           <CalendarShortened
             lessons={question.preview.lessons}
             ticks={ticks}
@@ -237,6 +255,7 @@ export function useCalendarPreview(): {
             <Button
               disabled={
                 refusesSave(question.preview.lessons) ||
+                examsRefuseSave(question.preview.lessons, examChoices) ||
                 days === null ||
                 refreshing ||
                 refreshError !== null ||

@@ -1639,7 +1639,8 @@ describe('calendar entries after publishing', () => {
   });
 
   describe('stored records that still refuse a save', () => {
-    it('a move between two stretches of one save (decision 3, until 5.6b-2c) and an exam (until 5.6b-2c), each listed, with nothing written', async () => {
+    // Task 5.6b-2c-1 (decision 3): an exam is sorted since, in calendar-exams.test.ts.
+    it('a move between two stretches of one save (decision 3, until 5.6b-2c-2), listed, with nothing written', async () => {
       const s = await scene();
       // A day off of Tuesday 20 to Sunday 25 October, edited to 19 to 26
       // October: the dates written are 19 and 26 October, two stretches.
@@ -1662,52 +1663,6 @@ describe('calendar entries after publishing', () => {
       ]);
       expect(await storedRowsOf(s.branch)).toEqual(rows);
       expect(await t.auditCount()).toBe(before);
-
-      // An exam on 30 November (exams have no route before 5.6c).
-      const s4 = await scene();
-      const examRoom = await load.classes.room(s4.branch);
-      await t.database.migrator.transaction().execute(async (transaction) => {
-        const written = await transaction
-          .insertInto('exams')
-          .values({
-            branch_id: s4.branch,
-            academic_year_id: s4.year,
-            exam_date: '2026-11-30',
-            starts_at: new Date('2026-11-30T09:50:00+05:00'),
-            ends_at: new Date('2026-11-30T10:35:00+05:00'),
-            first_slot: 5,
-            last_slot: 5,
-            title: 'Quarter exam',
-          })
-          .returning('id')
-          .executeTakeFirstOrThrow();
-        const room = await transaction
-          .insertInto('exam_rooms')
-          .values({ branch_id: s4.branch, exam_id: written.id, room_id: examRoom })
-          .returning('id')
-          .executeTakeFirstOrThrow();
-        await transaction
-          .insertInto('exam_room_classes')
-          .values({
-            branch_id: s4.branch,
-            exam_id: written.id,
-            exam_room_id: room.id,
-            class_id: s4.classId,
-          })
-          .execute();
-        await transaction
-          .insertInto('exam_invigilators')
-          .values({
-            branch_id: s4.branch,
-            exam_id: written.id,
-            exam_room_id: room.id,
-            staff_id: s4.seniorTeacher,
-          })
-          .execute();
-      });
-      const exam = await create(s4.branch, dayOff('2026-11-30'));
-      refusedWith(exam, 409, 'calendar_stored_changes');
-      expect(detailsOf(exam).map((one) => one.path.split('.')[1])).toEqual(['exam']);
     });
   });
 
@@ -2373,6 +2328,62 @@ describe('calendar entries after publishing', () => {
           .execute(),
       ).toHaveLength(1);
     }
+    // Task 5.6b-2c-1: in each branch an exam of the grade-10 class on 16
+    // November in slot 3, its lesson cancelled "exam", which a save of that
+    // date would sort (`.claude/rules/api.md`: a route that writes more
+    // tables widens the rows of its 404 tests).
+    const examOf: Record<string, string> = {};
+    for (const one of [north, south]) {
+      const history = await lessonOf(one, '2026-11-16', one.seniorId);
+      const examRoom = await load.classes.room(one.branch);
+      examOf[one.branch] = await t.database.migrator.transaction().execute(async (transaction) => {
+        await sql`set constraints all deferred`.execute(transaction);
+        await transaction
+          .updateTable('lessons')
+          .set({ cancel_cause: 'exam' })
+          .where('id', '=', history.id)
+          .execute();
+        const written = await transaction
+          .insertInto('exams')
+          .values({
+            branch_id: one.branch,
+            academic_year_id: one.year,
+            exam_date: '2026-11-16',
+            starts_at: new Date('2026-11-16T08:55:00+05:00'),
+            ends_at: new Date('2026-11-16T09:40:00+05:00'),
+            first_slot: 3,
+            last_slot: 3,
+            title: 'Quarter exam',
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        const room = await transaction
+          .insertInto('exam_rooms')
+          .values({ branch_id: one.branch, exam_id: written.id, room_id: examRoom })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('exam_room_classes')
+          .values({
+            branch_id: one.branch,
+            exam_id: written.id,
+            exam_room_id: room.id,
+            class_id: one.seniorId,
+          })
+          .execute();
+        await transaction
+          .insertInto('exam_invigilators')
+          .values({
+            branch_id: one.branch,
+            exam_id: written.id,
+            exam_room_id: room.id,
+            staff_id: one.teacherId,
+          })
+          .execute();
+        await sql`set constraints all immediate`.execute(transaction);
+        return written.id;
+      });
+    }
     const southLesson = await lessonOf(south, '2026-11-16', south.classId);
     const southBlock = await t.database.migrator
       .selectFrom('pattern_blocks')
@@ -2490,6 +2501,47 @@ describe('calendar entries after publishing', () => {
               action: 'restore',
               id: northEntry.id,
               dayKeeps,
+            }),
+        ]) {
+          refusedWith(await attempt(), 404, 'not_found');
+        }
+      }
+      // Task 5.6b-2c-1: a block's choice naming another branch's exam or
+      // class, or an unknown one, on every save and preview that takes it.
+      for (const examBlocks of [
+        [{ examId: examOf[south.branch] ?? '', classId: north.seniorId, choice: 'keep' }],
+        [{ examId: UNKNOWN, classId: north.seniorId, choice: 'keep' }],
+        [{ examId: examOf[north.branch] ?? '', classId: south.seniorId, choice: 'cancel' }],
+        [{ examId: examOf[north.branch] ?? '', classId: UNKNOWN, choice: 'cancel' }],
+      ]) {
+        for (const attempt of [
+          () => create(north.branch, { ...dayOff('2026-11-16'), examBlocks }),
+          () =>
+            t.patch(
+              `/api/setup/calendar-entries/${northEntry.id}`,
+              north.branch,
+              { ...specialDay(OCT19, '2026-11-16', north.short), examBlocks },
+              cookie,
+            ),
+          () =>
+            post(`/api/setup/calendar-entries/${northEntry.id}/archive`, north.branch, {
+              examBlocks,
+            }),
+          () =>
+            post(`/api/setup/calendar-entries/${northEntry.id}/restore`, north.branch, {
+              examBlocks,
+            }),
+          () =>
+            post('/api/setup/calendar-entries/preview', north.branch, {
+              action: 'create',
+              record: dayOff('2026-11-16'),
+              examBlocks,
+            }),
+          () =>
+            post('/api/setup/calendar-entries/preview', north.branch, {
+              action: 'archive',
+              id: northEntry.id,
+              examBlocks,
             }),
         ]) {
           refusedWith(await attempt(), 404, 'not_found');
@@ -2906,6 +2958,28 @@ describe('calendar entries after publishing', () => {
       .selectAll()
       .where('branch_id', '=', branch)
       .orderBy('lesson_id')
+      .execute();
+    // Task 5.6b-2c-1: the exams, their rows and the classes kept out of
+    // blocks, which the save now writes.
+    for (const table of [
+      'exams',
+      'exam_rooms',
+      'exam_room_classes',
+      'exam_invigilators',
+    ] as const) {
+      rows[table] = await t.database.migrator
+        .selectFrom(table)
+        .selectAll()
+        .where('branch_id', '=', branch)
+        .orderBy('id')
+        .execute();
+    }
+    rows.lesson_block_class_outs = await t.database.migrator
+      .selectFrom('lesson_block_class_outs')
+      .selectAll()
+      .where('branch_id', '=', branch)
+      .orderBy('block_id')
+      .orderBy('class_id')
       .execute();
     return rows;
   }

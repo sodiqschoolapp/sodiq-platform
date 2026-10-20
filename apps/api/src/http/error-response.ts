@@ -79,7 +79,13 @@ const MESSAGE: Record<ErrorCode, string> = {
   go_live_school_day_taken: 'The change would leave the go-live date without lessons.',
   calendar_blocked: 'The change meets a blocked conflict on a date it changes; each is listed.',
   calendar_stored_changes:
-    'A date the change touches holds a one-day change, bulk cancel or exam; each is listed.',
+    'A date the change touches holds a one-day move between two of the dates it rewrites; each is listed.',
+  calendar_exam_slots:
+    'The day after the change has no lesson slot of an exam, or its group no lesson at its time; each is listed.',
+  calendar_exam_templates:
+    'The classes of an exam are on two day templates after the change; each is listed.',
+  calendar_exam_block_choice:
+    'A shared lesson newly under an exam needs a choice: cancel it or keep it for the other classes.',
   travel_time_same_branch: 'Travel time is set between two different branches.',
   subject_archived: 'The subject is archived. Restore it first.',
   department_not_academic: 'A subject belongs to a department of the Academic division.',

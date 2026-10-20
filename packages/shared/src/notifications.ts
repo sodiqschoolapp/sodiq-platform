@@ -151,6 +151,18 @@ export const NOTIFICATION_KINDS = {
     ...teacherWeek,
     also: z.strictObject(teacherWeek).optional(),
   }),
+  /**
+   * A calendar entry made the date of an exam a day off, and the exam is
+   * cancelled (`edge/timetable`, Exams: "a day off removes the exam and tells
+   * the Academic Vice Principal"; task 5.6b-2c-1, decision 4): the entry's
+   * name, the exam's title and its date. Sent to every Academic Vice
+   * Principal of the branch.
+   */
+  'timetable.exam_day_off': z.strictObject({
+    name: z.string().min(1).max(200),
+    title: z.string().min(1).max(200),
+    date: schoolDateSchema,
+  }),
 } as const satisfies Record<string, z.ZodType>;
 
 export type NotificationKind = keyof typeof NOTIFICATION_KINDS;

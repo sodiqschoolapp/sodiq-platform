@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 20 October 2026: task 5.6b-2c-1 Calendar changes: exams
+
+- 5.6b-2c split in two (5.6b-2c-1 exams, 5.6b-2c-2 the move between two stretches, `docs/build-plan.md`). A calendar save over published dates sorts the exams standing on the dates it writes (`apps/api/src/modules/timetable/calendar-exams.ts`): a grade of the exam off (`day_off`, `not_working_day`) cancels the whole exam `day_off` and tells every Academic Vice Principal of the branch (notice kind `timetable.exam_day_off`); two templates refuse it `calendar_exam_templates`; a day without its slots (or a sitting group without its own lesson at the exam's time) refuses it `calendar_exam_slots`; else it moves with its slots or is kept, and is checked again by the rule engine (`calendar_blocked` by date).
+- The write runs inside the deferred span of `writeDatedLessons` (`ExamWrite`: `start`, `beforeBlocksDeleted`, `end`): cancels and new times first; then the lessons under each standing exam cancelled "exam", the lessons no exam covers any longer held again, the out rows moved where their block went, and the exam's claims written again. A shared block newly under an exam takes `examBlocks` (`cancel` or `keep`) in the save and the preview, refused `calendar_exam_block_choice` without one. The sorting of stored one-day changes reads the exams at their times after the save.
+- Preview: `lessons.exams` (outcome, times, code, rules met, blocks waiting for a choice); the calendar dialog lists them with the two choices (`calendar-exams-preview.tsx`). Audit: `exams` on the entry's own entry. No migration.
+- Left out: the move between two stretches (5.6b-2c-2, still `calendar_stored_changes`); the invigilators' notice (5.6c); plan tests 4b (a stored move sorted against a moved exam: a one-day move recorded before the exam has no place on the template that moves the exam, so the scene cannot be built by the routes), 4c (a lesson held again after a move: on a template that moves the exam the lessons of its class move with it; the same code path is tested by the partial day off) and 11 (a refusal after the exam writes: no refusal of the database is reachable after the engine's check in one transaction); a browser test (no published version and no exam under a calendar entry in the browser scene).
+
+The next sessions must know:
+
+- `first_slot` and `last_slot` are positions of the day's slots, breaks counted, as `pattern_blocks.slot_position`; the template `Later` of `calendar-exams.test.ts` moves every slot an hour.
+- A sitting group's exam placement for the engine has no classes: the group holds them through its own block (`examPlacementOf`).
+- The next task is 5.6b-2c-2.
+
 ## 19 October 2026: task 5.6b-2b Calendar changes: the shortened day's choice over published dates
 
 - A calendar save (create, edit, archive, restore) and its preview take `dayKeeps` (per date and class, the draft's shape): stored for the published version in force on each date in `timetable_day_keeps` before its stretch is checked, so the lessons, the sorting and its key follow them (`TimetableCalendarLessons.storeKeeps`, `keepRefusalOf`). The save refuses a choice with the draft's codes (date first); the preview lists it in `keepRefusals` and leaves it out. An edit of an unchanged entry with a choice writes the choice's dates and marks the drafts.
