@@ -2430,6 +2430,7 @@ export const en = {
     unresolved: { title: 'Unresolved lessons' },
     attention: {
       absence: '{{name}}, absent',
+      absenceUnnamed: 'A teacher of another branch, absent',
       vacancy: '{{name}} (vacancy)',
       nobody: 'Nobody recorded',
       lessons_one: '{{n}} lesson',

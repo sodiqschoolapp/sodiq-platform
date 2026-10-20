@@ -75,7 +75,10 @@ function Tile({
       ? t('home.attention.nobody')
       : group.cause === 'vacancy'
         ? t('home.attention.vacancy', { name: group.teacher?.name ?? '' })
-        : t('home.attention.absence', { name: group.teacher?.name ?? '' });
+        : // A person the branch no longer sees is named by nothing (code review finding 1).
+          (group.teacher?.name ?? '') === ''
+          ? t('home.attention.absenceUnnamed')
+          : t('home.attention.absence', { name: group.teacher?.name ?? '' });
   const date = (value: string) => schoolDateText(value, i18n.language, false);
   return (
     <section aria-label={title} className={cn(PANEL, 'grid max-w-2xl gap-3')} data-tile={kind}>

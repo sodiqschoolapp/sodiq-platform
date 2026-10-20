@@ -153,6 +153,30 @@ describe('the home page', () => {
       expect(emptyPage()).toBeNull();
     });
 
+    it('names an absence the branch cannot name with a text of its own, never a blank (code review finding 1)', async () => {
+      const calls = fakeApi({
+        'GET /api/auth/session': () => json(sessionAs('academic_vice_principal')),
+        'GET /api/people/students/no-class': () => json({ count: 0 }),
+        'GET /api/people/relatives/no-valid-phone': () => json({ count: 0 }),
+        'GET /api/timetable/attention': () =>
+          json({
+            needsTeacher: [
+              {
+                ...absence,
+                teacher: { ...absence.teacher, name: '' } as AttentionGroup['teacher'],
+              },
+            ],
+            unresolved: [],
+          } satisfies Attention),
+      });
+      renderApp('/');
+      await bothAsked(calls);
+      const needs = await screen.findByRole('region', { name: en.home.needsTeacher.title });
+      const row = needs.querySelector('[data-group="absence"]') as HTMLElement;
+      expect(within(row).getByText(en.home.attention.absenceUnnamed)).toBeDefined();
+      expect(within(row).queryByText(/^, /)).toBeNull();
+    });
+
     it('hides an empty list and keeps the page empty when all four are 0', async () => {
       const calls = fakeApi({
         'GET /api/auth/session': () => json(sessionAs('academic_vice_principal')),

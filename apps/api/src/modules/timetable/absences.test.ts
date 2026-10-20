@@ -1174,6 +1174,74 @@ describe('teacher absences', () => {
     });
   });
 
+  // Code review finding 2: a kept stored lesson cancelled with a reason is
+  // cancelled, never "needs a teacher", so the preview does not count it.
+  describe('the count of a kept move', () => {
+    it('leaves a kept moved lesson cancelled for the day out of the absence’s count', async () => {
+      const s = await scene();
+      const keyed = (path: string, body: object) =>
+        request(t.kit.server)
+          .post(path)
+          .set('Cookie', t.admin)
+          .set(BRANCH_HEADER, s.branch)
+          .set(REQUEST_KEY_HEADER, randomUUID())
+          .send(body);
+      const [monday] = await lessonsOn(s, MONDAY);
+      if (monday === undefined) throw new Error('No lesson.');
+      // Moved from Monday, before the new start, to Wednesday's second lesson.
+      ok(
+        await keyed(`/api/timetable/lessons/${monday.id}/move`, {
+          date: '2026-10-14',
+          lessonNumber: 2,
+          reason: 'Excursion to the museum',
+        }),
+      );
+      const absence = await entered(s.branch, {
+        staffId: s.teacher.staffId,
+        startsOn: TUESDAY,
+        endsOn: null,
+        reason: 'Ill',
+      });
+      const created = await t.post('/api/timetable/versions', s.branch, {
+        academicYearId: s.year,
+        startsOn: TUESDAY,
+        copyFrom: s.version,
+      });
+      expect(created.status, JSON.stringify(created.body)).toBe(201);
+      const draft = (created.body as { id: string }).id;
+      // The copy places the maths on Monday, as the version it was copied from.
+      await t.database.migrator
+        .deleteFrom('pattern_blocks')
+        .where('version_id', '=', draft)
+        .execute();
+      const row = await t.database.migrator
+        .selectFrom('teaching_load_rows')
+        .select('id')
+        .where('version_id', '=', draft)
+        .executeTakeFirstOrThrow();
+      await placeAt(s.branch, draft, row.id, 1);
+      ok(await t.post(`/api/timetable/versions/${draft}/templates/confirm`, s.branch));
+      await load.freeEditLock(draft);
+      const counted = async () => {
+        const checked = ok(
+          await t.get(
+            `/api/timetable/versions/${draft}/publish-check?startsOn=${TUESDAY}`,
+            s.branch,
+          ),
+        ).body as { impact: { dayChanges: { absences: { id: string; lessons: number }[] } } };
+        return checked.impact.dayChanges.absences.find((one) => one.id === absence.id)?.lessons;
+      };
+      const before = await counted();
+      if (before === undefined) throw new Error('The absence is not listed.');
+      ok(
+        await keyed(`/api/timetable/lessons/${monday.id}/cancel`, {
+          reason: 'Excursion to the museum',
+        }),
+      );
+      expect(await counted()).toBe(before - 1);
+    });
+  });
+
   describe('the personal data report', () => {
     it('lists the person’s absences, a withdrawn one marked', async () => {
       const person = await load.teacher(t.north);

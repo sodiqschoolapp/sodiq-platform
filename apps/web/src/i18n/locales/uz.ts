@@ -2458,6 +2458,7 @@ export const uz: Texts<'one' | 'other'> = {
     unresolved: { title: 'Hal qilinmagan darslar' },
     attention: {
       absence: '{{name}}, ishda emas',
+      absenceUnnamed: 'Boshqa filial oʻqituvchisi, ishda emas',
       vacancy: '{{name}} (vakansiya)',
       nobody: 'Hech kim koʻrsatilmagan',
       lessons_one: '{{n}} ta dars',

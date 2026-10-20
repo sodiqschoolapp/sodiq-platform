@@ -2563,6 +2563,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     unresolved: { title: 'Нерешённые уроки' },
     attention: {
       absence: '{{name}}, отсутствует',
+      absenceUnnamed: 'Учитель другого филиала, отсутствует',
       vacancy: '{{name}} (вакансия)',
       nobody: 'Никто не указан',
       lessons_one: '{{n}} урок',
