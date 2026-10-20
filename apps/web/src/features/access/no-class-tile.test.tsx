@@ -24,6 +24,7 @@ describe('the "No class" counter of the home page', () => {
       'GET /api/auth/session': () => json(sessionAs('academic_vice_principal')),
       // The parents with no valid phone, the second tile (task 2.5b-1), hidden at 0.
       'GET /api/people/relatives/no-valid-phone': () => json({ count: 0 }),
+      'GET /api/timetable/attention': () => json({ needsTeacher: [], unresolved: [] }),
       'GET /api/people/students/no-class': () => json({ count: 1234 }),
       'GET /api/people/students': () =>
         json({
@@ -56,6 +57,7 @@ describe('the "No class" counter of the home page', () => {
       'GET /api/auth/session': () => json(sessionAs('academic_vice_principal')),
       // The parents with no valid phone, the second tile (task 2.5b-1), hidden at 0.
       'GET /api/people/relatives/no-valid-phone': () => json({ count: 0 }),
+      'GET /api/timetable/attention': () => json({ needsTeacher: [], unresolved: [] }),
       'GET /api/people/students/no-class': () => json({ count: 0 }),
     });
     renderApp('/');
@@ -75,6 +77,7 @@ describe('the "No class" counter of the home page', () => {
       'GET /api/auth/session': () => json(sessionAs('academic_vice_principal')),
       // The parents with no valid phone, the second tile (task 2.5b-1), hidden at 0.
       'GET /api/people/relatives/no-valid-phone': () => json({ count: 0 }),
+      'GET /api/timetable/attention': () => json({ needsTeacher: [], unresolved: [] }),
       'GET /api/people/students/no-class': () => {
         answers += 1;
         return answers === 1 ? refusal('internal_error', 500) : json({ count: 7 });
@@ -90,6 +93,7 @@ describe('the "No class" counter of the home page', () => {
   it('is in Russian', async () => {
     fakeApi({
       'GET /api/auth/session': () => json(sessionAs('academic_vice_principal', 'ru')),
+      'GET /api/timetable/attention': () => json({ needsTeacher: [], unresolved: [] }),
       'GET /api/people/students/no-class': () => json({ count: 3 }),
     });
     renderApp('/', 'ru');

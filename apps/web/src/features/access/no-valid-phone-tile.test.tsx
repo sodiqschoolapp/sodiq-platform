@@ -22,6 +22,7 @@ describe('the "no valid phone" counter of the home page', () => {
   it('shows the Academic Vice Principal the count, linking to the list it counts', async () => {
     const calls = fakeApi({
       'GET /api/auth/session': () => json(sessionAs('academic_vice_principal')),
+      'GET /api/timetable/attention': () => json({ needsTeacher: [], unresolved: [] }),
       'GET /api/people/students/no-class': () => json({ count: 0 }),
       'GET /api/people/relatives/no-valid-phone': () => json({ count: 3 }),
       'GET /api/people/relatives': () =>
@@ -51,6 +52,7 @@ describe('the "no valid phone" counter of the home page', () => {
   it('is hidden at 0', async () => {
     const calls = fakeApi({
       'GET /api/auth/session': () => json(sessionAs('academic_vice_principal')),
+      'GET /api/timetable/attention': () => json({ needsTeacher: [], unresolved: [] }),
       'GET /api/people/students/no-class': () => json({ count: 0 }),
       'GET /api/people/relatives/no-valid-phone': () => json({ count: 0 }),
     });
@@ -69,6 +71,7 @@ describe('the "no valid phone" counter of the home page', () => {
     let answers = 0;
     fakeApi({
       'GET /api/auth/session': () => json(sessionAs('academic_vice_principal', 'ru')),
+      'GET /api/timetable/attention': () => json({ needsTeacher: [], unresolved: [] }),
       'GET /api/people/students/no-class': () => json({ count: 0 }),
       'GET /api/people/relatives/no-valid-phone': () => {
         answers += 1;
