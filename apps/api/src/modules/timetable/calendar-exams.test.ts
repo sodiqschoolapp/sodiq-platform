@@ -331,6 +331,8 @@ describe('exams under a calendar change', () => {
       classIds?: string[];
       groupIds?: string[];
       invigilator: string;
+      /** Task 5.6c-3b: further invigilators of its room. */
+      alsoInvigilators?: string[];
       cancel?: string[];
       outs?: { blockId: string; classId: string }[];
       subjectId?: string;
@@ -395,15 +397,17 @@ describe('exams under a calendar change', () => {
           })
           .execute();
       }
-      await transaction
-        .insertInto('exam_invigilators')
-        .values({
-          branch_id: s.branch,
-          exam_id: written.id,
-          exam_room_id: examRoom.id,
-          staff_id: input.invigilator,
-        })
-        .execute();
+      for (const staffId of [input.invigilator, ...(input.alsoInvigilators ?? [])]) {
+        await transaction
+          .insertInto('exam_invigilators')
+          .values({
+            branch_id: s.branch,
+            exam_id: written.id,
+            exam_room_id: examRoom.id,
+            staff_id: staffId,
+          })
+          .execute();
+      }
       for (const out of input.outs ?? []) {
         await transaction
           .insertInto('lesson_block_class_outs')
@@ -1209,6 +1213,187 @@ describe('exams under a calendar change', () => {
           .map((one) => one.path),
       ).toEqual([`exams.${sat.id}`]);
       expect(await lessonsOn(s.branch, OCT24)).toEqual(lessons);
+    });
+  });
+
+  // Task 5.6c-3b (decision 3; 5.6b-2c-1 decision 4: "the invigilators are
+  // told by 5.6c"): the invigilators of an exam a calendar save moves or
+  // cancels are told in the entry's own notice, one notice per person.
+  describe("the invigilators' notices", () => {
+    const accountOf = async (staffId: string) =>
+      (
+        await t.database.migrator
+          .selectFrom('staff')
+          .select('account_id')
+          .where('id', '=', staffId)
+          .executeTakeFirstOrThrow()
+      ).account_id ?? '';
+
+    const calendarNotices = (branch: string) =>
+      t.database.migrator
+        .selectFrom('notifications')
+        .select(['account_id', 'data'])
+        .where('branch_id', '=', branch)
+        .where('kind', '=', 'timetable.calendar_changed')
+        .orderBy('account_id')
+        .execute();
+
+    const roomName = async (id: string) =>
+      (
+        await t.database.migrator
+          .selectFrom('rooms')
+          .select('name')
+          .where('id', '=', id)
+          .executeTakeFirstOrThrow()
+      ).name;
+
+    /** A person of the branch who teaches no row of the version, with hours every day. */
+    const watcher = async (s: Scene) => {
+      const id = (await load.teacher(s.branch)).staffId;
+      await hours(s.branch, id);
+      return id;
+    };
+
+    it('a special template that moves the exam: an invigilator on no row is told of the exam alone, one whose lessons changed in the same notice, a teacher who invigilates nothing without it; the preview tells nobody', async () => {
+      const s = await scene();
+      const watcherId = await watcher(s);
+      const [maths] = await lessonOf(s.branch, OCT19, s.classId);
+      // The history teacher's lesson moves with the template too (08:55 to
+      // 09:55), clear of the exam at 09:00 to 09:45.
+      const sat = await exam(s, {
+        date: OCT19,
+        from: '08:00',
+        until: '08:45',
+        slots: [1, 1],
+        classIds: [s.classId],
+        invigilator: watcherId,
+        alsoInvigilators: [s.seniorTeacher],
+        cancel: [maths?.id ?? ''],
+      });
+      const record = specialDay(OCT19, s.later);
+      await preview(s.branch, { action: 'create', record });
+      expect(await calendarNotices(s.branch)).toEqual([]);
+
+      const saved = okay(await create(s.branch, record), 201);
+
+      const moved = {
+        title: 'Quarter exam',
+        date: OCT19,
+        action: 'moved',
+        invigilation: { start: '09:00', end: '09:45', room: await roomName(sat.room) },
+      };
+      const notices = await calendarNotices(s.branch);
+      const byAccount = new Map(notices.map((one) => [one.account_id, one.data]));
+      expect(notices).toHaveLength(byAccount.size);
+      expect(byAccount.get(await accountOf(watcherId))).toEqual({
+        name: 'Open day',
+        firstDate: OCT19,
+        lastDate: OCT19,
+        exams: [moved],
+      });
+      const senior = byAccount.get(await accountOf(s.seniorTeacher)) as Record<string, unknown>;
+      expect(senior.exams).toEqual([moved]);
+      expect(senior.weekStart).toBe(OCT19);
+      const mathsTeacher = byAccount.get(await accountOf(s.teacherId)) as Record<string, unknown>;
+      expect(mathsTeacher.weekStart).toBe(OCT19);
+      expect(mathsTeacher).not.toHaveProperty('exams');
+      const [entry] = await t.entries('calendar_entry.create', saved.id);
+      expect((entry?.new_value as { notices: { notified: number } }).notices.notified).toBe(
+        notices.length,
+      );
+    });
+
+    it('a day off that cancels the exam: its invigilators are told it is cancelled; the Academic Vice Principal still gets the day-off notice', async () => {
+      const s = await scene();
+      const viceId = await vice(s);
+      const watcherId = await watcher(s);
+      const [maths] = await lessonOf(s.branch, OCT19, s.classId);
+      await exam(s, {
+        date: OCT19,
+        from: '08:00',
+        until: '08:45',
+        slots: [1, 1],
+        classIds: [s.classId],
+        invigilator: watcherId,
+        cancel: [maths?.id ?? ''],
+      });
+
+      okay(await create(s.branch, dayOff(OCT19)), 201);
+
+      const account = await accountOf(watcherId);
+      const mine = (await calendarNotices(s.branch)).filter((one) => one.account_id === account);
+      expect(mine.map((one) => one.data)).toEqual([
+        {
+          name: 'Navruz',
+          firstDate: OCT19,
+          lastDate: OCT19,
+          exams: [{ title: 'Quarter exam', date: OCT19, action: 'cancelled', invigilation: null }],
+        },
+      ]);
+      expect((await examNotices(s.branch)).map((one) => one.account_id)).toEqual([viceId]);
+    });
+
+    it('an exam the save keeps tells its invigilators nothing', async () => {
+      const s = await scene();
+      const watcherId = await watcher(s);
+      const [maths] = await lessonOf(s.branch, OCT19, s.classId);
+      await exam(s, {
+        date: OCT19,
+        from: '08:00',
+        until: '08:45',
+        slots: [1, 1],
+        classIds: [s.classId],
+        invigilator: watcherId,
+        cancel: [maths?.id ?? ''],
+      });
+      // A special template for grade 10 only: the grade-7 exam is kept.
+      okay(
+        await create(
+          s.branch,
+          specialDay(OCT19, s.later, { grades: { gradeFrom: 10, gradeTo: 10 } }),
+        ),
+        201,
+      );
+      const account = await accountOf(watcherId);
+      expect((await calendarNotices(s.branch)).filter((one) => one.account_id === account)).toEqual(
+        [],
+      );
+    });
+
+    it('an exam whose invigilator teaches no row is moved and checked: another exam of that person at the new time refuses the save', async () => {
+      const s = await scene();
+      const watcherId = await watcher(s);
+      const [maths] = await lessonOf(s.branch, OCT19, s.classId);
+      const sat = await exam(s, {
+        date: OCT19,
+        from: '08:00',
+        until: '08:45',
+        slots: [1, 1],
+        classIds: [s.classId],
+        invigilator: watcherId,
+        cancel: [maths?.id ?? ''],
+      });
+      // The person, still on no row, invigilates a grade-10 exam in slot 3
+      // (08:55 to 09:40); a special template for grade 7 moves the first
+      // exam to 09:00, onto it. Without the invigilators as teachers of the
+      // facts the engine could not place either exam.
+      const [history] = await lessonOf(s.branch, OCT19, s.seniorId);
+      await exam(s, {
+        date: OCT19,
+        from: '08:55',
+        until: '09:40',
+        slots: [3, 3],
+        classIds: [s.seniorId],
+        invigilator: watcherId,
+        cancel: [history?.id ?? ''],
+      });
+      const record = specialDay(OCT19, s.later, { grades: { gradeFrom: 7, gradeTo: 7 } });
+
+      const refused = await create(s.branch, record);
+
+      refusedWith(refused, 409, 'calendar_blocked');
+      expect(detailsOf(refused).some((one) => one.day === OCT19)).toBe(true);
+      expect((await examRow(sat.id)).starts_at).toEqual(at(OCT19, '08:00'));
     });
   });
 });

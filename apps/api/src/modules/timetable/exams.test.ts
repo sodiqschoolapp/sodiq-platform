@@ -455,6 +455,13 @@ describe('exams in the timetable', () => {
         .orderBy('lesson_id')
         .orderBy('exam_id')
         .execute(),
+      // Task 5.6c-3b: the rating link the save writes.
+      t.database.migrator
+        .selectFrom('exam_rating_journals')
+        .selectAll()
+        .orderBy('exam_id')
+        .orderBy('journal_id')
+        .execute(),
       t.database.migrator.selectFrom('lessons').selectAll().orderBy('id').execute(),
       t.database.migrator.selectFrom('time_claims').selectAll().orderBy('id').execute(),
       t.database.migrator.selectFrom('lesson_changes').selectAll().orderBy('lesson_id').execute(),
@@ -3378,6 +3385,262 @@ describe('exams in the timetable', () => {
         400,
         'validation_failed',
       );
+    });
+  });
+
+  // Task 5.6c-3b, pull request #184 (edge/timetable, Exams, "The exam is the
+  // quarter's rating exam": "An exam can be linked to the rating exam of the
+  // journals of its subject whose students all belong to its classes: class
+  // journals, and group journals whose students all come from sitting
+  // classes. A group journal with students outside the exam is listed and not
+  // linked; its teacher sets the date by hand"; edge/calculation, "The rating
+  // exam": one column per rating journal and quarter).
+  describe('the rating-exam link', () => {
+    /**
+     * A scene with art (a group of the first class and a grade-8 class) whose
+     * maths and art are rating subjects from after the publish, and a student
+     * in each class: `seventh` in the first class and the art group,
+     * `eighth` in the grade-8 class and the art group (from `eighthFrom`),
+     * `other` in the other grade-7 class.
+     */
+    async function ratingScene(input: { eighthFrom?: string } = {}) {
+      const s = await scene({ art: true });
+      const art = s.art;
+      if (art === null) throw new Error('The scene has art.');
+      await t.database.migrator
+        .updateTable('subjects')
+        .set({ journal_type: 'graded', rating_exam: true })
+        .where('id', 'in', [s.maths, art.subject])
+        .execute();
+      // A student of a class with a group subject is in one of its groups
+      // (`class_memberships_need_groups`): both rows in one transaction.
+      const eighthFrom = input.eighthFrom ?? '2026-09-01';
+      const student = async (classId: string, grade: number, group: string | null, from: string) => {
+        const id = await members.student(s.branch, { grade, startsOn: '2026-09-01' });
+        await t.database.migrator.transaction().execute(async (transaction) => {
+          await sql`set constraints all deferred`.execute(transaction);
+          await members.member({ branch: s.branch, classId, studentId: id, from }, transaction);
+          if (group !== null) {
+            await members.groupMember(
+              { branch: s.branch, groupId: group, subjectId: art.subject, studentId: id, from },
+              transaction,
+            );
+          }
+        });
+        return id;
+      };
+      const seventh = await student(s.classId, 7, art.group, '2026-09-01');
+      // With `eighthFrom` after the exam's date, the grade-8 student joins the
+      // class and the group only then.
+      const eighth = await student(art.eighth, 8, art.group, eighthFrom);
+      const other = await student(s.otherClass, 7, null, '2026-09-01');
+      const journalOf = async (unit: { classId?: string; groupId?: string }, subject: string) =>
+        (
+          await t.database.migrator
+            .selectFrom('journals')
+            .select('id')
+            .where('branch_id', '=', s.branch)
+            .where('subject_id', '=', subject)
+            .where(
+              unit.classId === undefined ? 'group_id' : 'class_id',
+              '=',
+              unit.classId ?? unit.groupId ?? '',
+            )
+            .executeTakeFirstOrThrow()
+        ).id;
+      return {
+        ...s,
+        art,
+        journals: {
+          maths: await journalOf({ classId: s.classId }, s.maths),
+          otherMaths: await journalOf({ classId: s.otherClass }, s.maths),
+          art: await journalOf({ groupId: art.group }, art.subject),
+        },
+        students: { seventh, eighth, other },
+      };
+    }
+
+    type RatingScene = Awaited<ReturnType<typeof ratingScene>>;
+
+    /** A rating exam of the first class alone, in lesson 3 (free) of a Monday. */
+    const ratingOf = (
+      s: RatingScene,
+      input: { subjectId?: string | null; date?: string; classIds?: string[] } = {},
+    ) => ({
+      ...examOf(s, {
+        first: 3,
+        classIds: input.classIds ?? [s.classId],
+        subjectId: input.subjectId === undefined ? s.maths : input.subjectId,
+        confirm: true,
+        ...(input.date === undefined ? {} : { date: input.date }),
+      }),
+      ratingExam: true,
+    });
+
+    const ids = (rating: { linked: { id: string }[]; notLinked: { id: string }[] } | null) =>
+      rating === null
+        ? null
+        : { linked: rating.linked.map((one) => one.id), notLinked: rating.notLinked.map((one) => one.id) };
+
+    const rowsOf = (examId: string) =>
+      t.database.migrator
+        .selectFrom('exam_rating_journals')
+        .select(['journal_id', 'linked'])
+        .where('exam_id', '=', examId)
+        .orderBy('journal_id')
+        .execute();
+
+    it("links a sitting class's journal, lists not linked a group journal with a student outside the exam, and leaves out a journal of another subject or a class that does not sit (decision 4)", async () => {
+      const s = await ratingScene();
+      const maths = examSaveAnswerSchema.parse(saved(await create(s.branch, ratingOf(s))));
+      // The other class's maths journal: its class does not sit.
+      expect(ids(maths.exam.rating)).toEqual({ linked: [s.journals.maths], notLinked: [] });
+      expect(maths.exam.rating?.linked[0]?.unit).toEqual({
+        kind: 'class',
+        id: s.classId,
+        name: expect.any(String) as string,
+      });
+      expect(await rowsOf(maths.exam.id)).toEqual([
+        { journal_id: s.journals.maths, linked: true },
+      ]);
+      // Art, the same class on another date: the group holds a grade-8
+      // student who does not sit.
+      const art = examSaveAnswerSchema.parse(
+        saved(await create(s.branch, ratingOf(s, { subjectId: s.art.subject, date: LATER_MONDAY }))),
+      );
+      expect(ids(art.exam.rating)).toEqual({ linked: [], notLinked: [s.journals.art] });
+      // The grade-8 class sitting too links it.
+      const both = examSaveAnswerSchema.parse(
+        saved(
+          await change(s.branch, art.exam.id, {
+            ...ratingOf(s, {
+              subjectId: s.art.subject,
+              date: LATER_MONDAY,
+              classIds: [s.classId, s.art.eighth],
+            }),
+          }),
+          200,
+        ),
+      );
+      expect(ids(both.exam.rating)).toEqual({ linked: [s.journals.art], notLinked: [] });
+    });
+
+    it('reads the group on the exam\'s date: a student of a class that does not sit who joins after it leaves the journal linked (decision 1)', async () => {
+      const s = await ratingScene({ eighthFrom: '2026-10-20' });
+      const answer = examSaveAnswerSchema.parse(
+        saved(await create(s.branch, ratingOf(s, { subjectId: s.art.subject }))),
+      );
+      expect(answer.exam.date).toBe(NEXT_MONDAY);
+      expect(ids(answer.exam.rating)).toEqual({ linked: [s.journals.art], notLinked: [] });
+    });
+
+    it('links the journal of a group that sits in its own lesson, its grade-8 student included (decision 9)', async () => {
+      const s = await ratingScene();
+      const answer = examSaveAnswerSchema.parse(
+        saved(
+          await create(s.branch, {
+            ...examOf(s, {
+              date: THURSDAY,
+              classIds: [],
+              groupIds: [s.art.group],
+              subjectId: s.art.subject,
+              confirm: true,
+            }),
+            ratingExam: true,
+          }),
+        ),
+      );
+      expect(ids(answer.exam.rating)).toEqual({ linked: [s.journals.art], notLinked: [] });
+    });
+
+    it('refuses a subject without the rating exam, and a rating exam with no subject (decision 5)', async () => {
+      const s = await ratingScene();
+      const before = await everything();
+      await t.database.migrator
+        .updateTable('subjects')
+        .set({ rating_exam: false })
+        .where('id', '=', s.maths)
+        .execute();
+      refusedWith(await create(s.branch, ratingOf(s)), 409, 'exam_rating_subject');
+      refusedWith(await create(s.branch, ratingOf(s, { subjectId: null })), 400, 'validation_failed');
+      expect(await everything()).toEqual(before);
+    });
+
+    it('refuses a journal another standing rating exam of the quarter links; another quarter, or the first one cancelled, saves (decision 2)', async () => {
+      const s = await ratingScene();
+      const first = examSaveAnswerSchema.parse(saved(await create(s.branch, ratingOf(s))));
+      const before = await everything();
+      const taken = await create(s.branch, ratingOf(s, { date: LATER_MONDAY }));
+      refusedWith(taken, 409, 'exam_rating_taken');
+      expect(detailsOf(taken).map((one) => one.recordId)).toEqual([s.journals.maths]);
+      expect(await everything()).toEqual(before);
+      // 9 November is in the second quarter.
+      saved(await create(s.branch, ratingOf(s, { date: '2026-11-09' })));
+      // Not a rating exam: no link, no refusal.
+      saved(await create(s.branch, { ...ratingOf(s, { date: LATER_MONDAY }), ratingExam: false }));
+      saved(await cancel(s.branch, first.exam.id), 200);
+      const again = examSaveAnswerSchema.parse(
+        saved(
+          await create(s.branch, {
+            ...ratingOf(s, { date: LATER_MONDAY }),
+            firstLesson: 2,
+            lastLesson: 2,
+          }),
+        ),
+      );
+      expect(ids(again.exam.rating)).toEqual({ linked: [s.journals.maths], notLinked: [] });
+      // The cancelled exam keeps its rows as history (decision 6).
+      expect(await rowsOf(first.exam.id)).toEqual([{ journal_id: s.journals.maths, linked: true }]);
+    });
+
+    it('writes the rows again on a change: the tick taken off removes them, a class added adds its journal; the check lists them and writes nothing; the audit entries carry them', async () => {
+      const s = await ratingScene();
+      const created = examSaveAnswerSchema.parse(saved(await create(s.branch, ratingOf(s))));
+      const [made] = await t.entries('exam.create', created.exam.id);
+      expect((made?.new_value as { rating: unknown }).rating).toEqual({
+        linked: [s.journals.maths],
+        notLinked: [],
+      });
+
+      const before = await everything();
+      const checked = examCheckSchema.parse(
+        (
+          await t.post('/api/timetable/exams/check', s.branch, {
+            ...ratingOf(s, { classIds: [s.classId, s.otherClass] }),
+            confirm: undefined,
+            examId: created.exam.id,
+          })
+        ).body,
+      );
+      expect(ids(checked.rating)).toEqual({
+        linked: [s.journals.maths, s.journals.otherMaths].sort(),
+        notLinked: [],
+      });
+      expect(await everything()).toEqual(before);
+
+      const wider = examSaveAnswerSchema.parse(
+        saved(
+          await change(
+            s.branch,
+            created.exam.id,
+            ratingOf(s, { classIds: [s.classId, s.otherClass] }),
+          ),
+          200,
+        ),
+      );
+      expect(new Set(ids(wider.exam.rating)?.linked)).toEqual(
+        new Set([s.journals.maths, s.journals.otherMaths]),
+      );
+      const [changed] = await t.entries('exam.change', created.exam.id);
+      expect(
+        new Set((changed?.new_value as { rating: { linked: string[] } }).rating.linked),
+      ).toEqual(new Set([s.journals.maths, s.journals.otherMaths]));
+
+      const off = examSaveAnswerSchema.parse(
+        saved(await change(s.branch, created.exam.id, { ...ratingOf(s), ratingExam: false }), 200),
+      );
+      expect(off.exam.rating).toBeNull();
+      expect(await rowsOf(created.exam.id)).toEqual([]);
     });
   });
 });
