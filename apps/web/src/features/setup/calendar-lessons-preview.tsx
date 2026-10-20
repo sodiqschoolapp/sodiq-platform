@@ -14,21 +14,16 @@ export function hasLessons(lessons: CalendarLessons): boolean {
     lessons.cancelled.length > 0 ||
     lessons.needsTeacher.length > 0 ||
     lessons.blocked.length > 0 ||
-    lessons.stored.length > 0 ||
     lessons.exams.length > 0
   );
 }
 
 /**
- * Whether the server will refuse the save: a blocked conflict or a stored
- * record (task 5.6b-1), or an exam refused (task 5.6b-2c-1).
+ * Whether the server will refuse the save: a blocked conflict (task 5.6b-1)
+ * or an exam refused (task 5.6b-2c-1).
  */
 export function refusesSave(lessons: CalendarLessons): boolean {
-  return (
-    lessons.blocked.length > 0 ||
-    lessons.stored.length > 0 ||
-    lessons.exams.some((one) => one.outcome === 'refused')
-  );
+  return lessons.blocked.length > 0 || lessons.exams.some((one) => one.outcome === 'refused');
 }
 
 /**
@@ -36,7 +31,7 @@ export function refusesSave(lessons: CalendarLessons): boolean {
  * `edge/time-dates-calendar`: "the impact preview is shown first"): the
  * lessons removed, created and created cancelled with the reason, those that
  * will need a teacher, how many teachers are told, and what refuses the
- * save: the blocked conflicts by date and the stored records of those dates.
+ * save: the blocked conflicts by date.
  * The server decides; this shows its answer.
  */
 export function CalendarLessonsPreview({
@@ -83,13 +78,6 @@ export function CalendarLessonsPreview({
   return (
     <div className="space-y-3" data-testid="calendar-lessons">
       <h3 className={SECTION_TITLE}>{t('setup.calendar.lessons.title')}</h3>
-      {list(
-        t('setup.calendar.lessons.stored', { count: lessons.stored.length }),
-        lessons.stored.map((one) => ({
-          key: `${one.kind}-${one.id}`,
-          text: `${schoolDateText(one.date, language)} · ${t(`setup.calendar.lessons.storedKinds.${one.kind}`)}`,
-        })),
-      )}
       {list(
         t('setup.calendar.lessons.blocked', { count: lessons.blocked.length }),
         lessons.blocked.map((one, index) => ({

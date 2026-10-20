@@ -135,8 +135,6 @@ export const ERROR_CODES = [
   'go_live_school_day_taken',
   /** A calendar save over published dates meets a blocked conflict on a date it changes; `details` lists each by date (task 5.6b-1). */
   'calendar_blocked',
-  /** A date a calendar save changes holds a stored one-day move between two of its stretches, which 5.6b-2c-2 sorts; `details` lists each (task 5.6b-1; exams sorted since 5.6b-2c-1). */
-  'calendar_stored_changes',
   /** Task 5.6b-2c-1: the day after a calendar save has no lesson slot of the exam, or its group no lesson at the exam's time; a detail of `calendar_blocked`. */
   'calendar_exam_slots',
   /** Task 5.6b-2c-1: the classes of an exam are on two day templates after a calendar save; a detail of `calendar_blocked`. */

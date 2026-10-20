@@ -100,8 +100,7 @@ import {
  * are sorted as a publish sorts them (`sortDayChanges`, `sortBulkOf`), kept,
  * needs a decision or dropped, with one key over the stretches; the save
  * takes the key and a choice for each "needs a decision" item, and writes
- * over the findings with the kept changes applied. A move between two
- * stretches still refuses the save (5.6b-2a decision 3) until 5.6b-2c-2.
+ * over the findings with the kept changes applied.
  *
  * Task 5.6b-2b (pull request #171): the choices of the lessons kept on the
  * shortened days of the dates written (`edge/time-dates-calendar`, "A
@@ -117,7 +116,20 @@ import {
  * checked again; refused, listed, when the day drops a slot or puts their
  * classes on two templates; the lessons under them cancelled "exam" over the
  * rewrite, and those no longer under one held again.
+ *
+ * Task 5.6b-2c-2: a stored move between two stretches is sorted once over
+ * both (`across` of `sortDayChanges`): kept when its new place takes it,
+ * else needs a decision in both halves; settled and audited once, in the
+ * stretch of its old place.
  */
+
+/** A stretch as read once: its version, dates, state and findings (task 5.6b-2c-2). */
+interface StretchBase {
+  readonly versionId: string;
+  readonly part: { readonly first: string; readonly last: string };
+  readonly state: PatternState;
+  readonly findings: DatedFindings;
+}
 
 /** One stretch of consecutive lesson dates of one published version. */
 interface Stretch {
@@ -192,7 +204,6 @@ export const NO_LESSONS: CalendarLessons = {
   needsTeacher: [],
   notified: [],
   blocked: [],
-  stored: [],
   dayChanges: { key: calendarDaysKeyOf([]), kept: [], decide: [], dropped: [], bulk: [] },
   shortenedDays: [],
   keepRefusals: [],
@@ -452,7 +463,7 @@ export class TimetableCalendarLessons {
         null;
 
     // Each stretch of each version, read as if it started on its first date.
-    const stretches: Stretch[] = [];
+    const bases: StretchBase[] = [];
     for (const [versionId, own] of byVersion) {
       const stored = await this.timetable.versionRow(transaction, versionId);
       for (const part of stretchesOf(own)) {
@@ -507,171 +518,170 @@ export class TimetableCalendarLessons {
             after: [...keep.slotPositions].sort((a, b) => a - b),
           });
         }
-        // Task 5.6b-2c-1: the exams of the stretch by the day after the save,
-        // with their stored choices, and the lessons they cover on the
-        // findings, which the sorting leaves out (should-fix 5).
-        const ownExams = standing.filter(
-          (exam) => part.first <= exam.date && exam.date <= part.last,
-        );
-        const examsSorted = sortExams(ownExams, findings, branchId);
-        const groupOfRow = (loadRowId: string) =>
-          state.rows.find((row) => row.id === loadRowId)?.group_id ?? null;
-        for (const one of examsSorted) {
-          const lessonsThere = await storedExamLessonsOn(
-            transaction,
-            branchId,
-            one.exam.date,
-            findings.begins(one.exam.date),
-          );
-          for (const [key, choice] of storedChoicesOf(one.exam, one.before, lessonsThere)) {
-            storedChoices.set(`${one.exam.id}|${key}`, choice);
-          }
-        }
-        const coveredOf = (on: DatedFindings) => {
-          const covered = new Set<string>();
-          for (const one of examsSorted) {
-            if (one.after === null) continue;
-            const found = examLessonsOf(
-              one.exam,
-              one.after,
-              findingsLessonsOn(on, one.exam.date),
-              (classId, block) => choiceOf(one.exam.id)(classId, block) ?? 'cancel',
-            );
-            for (const id of found.covered) covered.add(id);
-          }
-          return covered;
-        };
-        // Task 5.6b-2a: the stored one-day changes and bulk cancels of the
-        // stretch, sorted as a publish sorts them (decision 2), the bulk
-        // cancels on the findings with the kept changes applied.
-        const sorting = await sortDayChanges(transaction, {
-          state,
-          findings,
-          firstDate: part.first,
-          lastDate: part.last,
-          carriedVersionId: null,
-          ...(examsSorted.length === 0
-            ? {}
-            : {
-                exams: {
-                  on: (date: string) => examPlacementsOn(examsSorted, branchId, date),
-                  covered: coveredOf(findings),
-                },
-              }),
-        });
-        // Review correction 1: a sitting group whose own lessons are not one
-        // block at the exam's time after the save refuses the exam. Then the
-        // recheck of each exam that stands (decision 9) and the shared blocks
-        // newly under one (decision 5), on the findings the save writes.
-        const examBlockedHere: { examId: string; result: RuleResult }[] = [];
-        const examNeeds: ExamNeed[] = [];
-        for (const one of examsSorted) {
-          if (one.after === null) continue;
-          const there = [
-            ...findingsLessonsOn(sorting.findings, one.exam.date),
-            ...examWeekLessonsOn(sorting.findings, state.blocks, groupOfRow, one.exam.date),
-          ];
-          const fresh = examLessonsOf(one.exam, one.after, there, storedChoiceOf(one.exam.id));
-          if (fresh.groupMisses) {
-            one.outcome = 'refused';
-            one.code = 'calendar_exam_slots';
-            one.after = null;
-            continue;
-          }
-          for (const need of fresh.needs) {
-            examNeeds.push({
-              examId: one.exam.id,
-              date: one.exam.date,
-              classId: need.classId,
-              start: need.start,
-              lessonIds: need.lessons.map((lesson) => lesson.id),
-            });
-          }
-          // The recheck reads the choices sent: a block kept for the other
-          // classes stays in it without the class (must-fix 4); one cancelled,
-          // or still without a choice (refused below), is left out.
-          const decided = examLessonsOf(one.exam, one.after, there, choiceOf(one.exam.id));
-          const skipped = new Set([
-            ...decided.covered,
-            ...decided.needs.flatMap((need) => need.lessons.map((lesson) => lesson.id)),
-          ]);
-          const others = examPlacementsOn(examsSorted, branchId, one.exam.date).filter(
-            (placement) => placement.id !== `exam:${one.exam.id}`,
-          );
-          for (const result of examBlocked(
-            one,
-            branchId,
-            sorting.findings,
-            others,
-            skipped,
-            decided.outs,
-          )) {
-            examBlockedHere.push({ examId: one.exam.id, result });
-          }
-        }
-        const bulk = sortBulkOf({
-          lessons: sorting.findings.dated.lessons,
-          movedAt: sorting.movedAt,
-          begins: sorting.findings.begins,
-          records: await bulkRecordsOf(transaction, branchId, part.first, part.last),
-          carriedVersionId: null,
-        });
-        stretches.push({
-          versionId,
-          firstDate: part.first,
-          lastDate: part.last,
-          state,
-          findings,
-          sorting,
-          bulk,
-          key: dayChangesKeyOf(
-            versionId,
-            part.first,
-            sorting.items,
-            bulk.length === 0 ? null : bulkKeyPartOf(bulk),
-          ),
-          exams: examsSorted,
-          examBlocked: examBlockedHere,
-          examNeeds,
-        });
+        bases.push({ versionId, part, state, findings });
       }
     }
+
+    // Task 5.6b-2c-2: the sorting of a stretch, run again while a move
+    // between two stretches is "needs a decision" in one half that the
+    // other kept (a move put back at its old place can take another move's
+    // new place). A move put in `decided` stays there (decision 5), so each
+    // pass that goes on adds a key and the loop ends.
+    const writtenAll = new Set(written);
+    const decided = new Map<string, readonly RuleResultAnswer[]>();
+    const sortStretch = async ({ versionId, part, state, findings }: StretchBase) => {
+      // Task 5.6b-2c-1: the exams of the stretch by the day after the save,
+      // with their stored choices, and the lessons they cover on the
+      // findings, which the sorting leaves out (should-fix 5).
+      const ownExams = standing.filter((exam) => part.first <= exam.date && exam.date <= part.last);
+      const examsSorted = sortExams(ownExams, findings, branchId);
+      const groupOfRow = (loadRowId: string) =>
+        state.rows.find((row) => row.id === loadRowId)?.group_id ?? null;
+      for (const one of examsSorted) {
+        const lessonsThere = await storedExamLessonsOn(
+          transaction,
+          branchId,
+          one.exam.date,
+          findings.begins(one.exam.date),
+        );
+        for (const [key, choice] of storedChoicesOf(one.exam, one.before, lessonsThere)) {
+          storedChoices.set(`${one.exam.id}|${key}`, choice);
+        }
+      }
+      const coveredOf = (on: DatedFindings) => {
+        const covered = new Set<string>();
+        for (const one of examsSorted) {
+          if (one.after === null) continue;
+          const found = examLessonsOf(
+            one.exam,
+            one.after,
+            findingsLessonsOn(on, one.exam.date),
+            (classId, block) => choiceOf(one.exam.id)(classId, block) ?? 'cancel',
+          );
+          for (const id of found.covered) covered.add(id);
+        }
+        return covered;
+      };
+      // Task 5.6b-2a: the stored one-day changes and bulk cancels of the
+      // stretch, sorted as a publish sorts them (decision 2), the bulk
+      // cancels on the findings with the kept changes applied.
+      const sorting = await sortDayChanges(transaction, {
+        state,
+        findings,
+        firstDate: part.first,
+        lastDate: part.last,
+        carriedVersionId: null,
+        across: {
+          written: (date: string) =>
+            writtenAll.has(date) && (date < part.first || part.last < date),
+          decided,
+        },
+        ...(examsSorted.length === 0
+          ? {}
+          : {
+              exams: {
+                on: (date: string) => examPlacementsOn(examsSorted, branchId, date),
+                covered: coveredOf(findings),
+              },
+            }),
+      });
+      // Review correction 1: a sitting group whose own lessons are not one
+      // block at the exam's time after the save refuses the exam. Then the
+      // recheck of each exam that stands (decision 9) and the shared blocks
+      // newly under one (decision 5), on the findings the save writes.
+      const examBlockedHere: { examId: string; result: RuleResult }[] = [];
+      const examNeeds: ExamNeed[] = [];
+      for (const one of examsSorted) {
+        if (one.after === null) continue;
+        const there = [
+          ...findingsLessonsOn(sorting.findings, one.exam.date),
+          ...examWeekLessonsOn(sorting.findings, state.blocks, groupOfRow, one.exam.date),
+        ];
+        const fresh = examLessonsOf(one.exam, one.after, there, storedChoiceOf(one.exam.id));
+        if (fresh.groupMisses) {
+          one.outcome = 'refused';
+          one.code = 'calendar_exam_slots';
+          one.after = null;
+          continue;
+        }
+        for (const need of fresh.needs) {
+          examNeeds.push({
+            examId: one.exam.id,
+            date: one.exam.date,
+            classId: need.classId,
+            start: need.start,
+            lessonIds: need.lessons.map((lesson) => lesson.id),
+          });
+        }
+        // The recheck reads the choices sent: a block kept for the other
+        // classes stays in it without the class (must-fix 4); one cancelled,
+        // or still without a choice (refused below), is left out.
+        const chosen = examLessonsOf(one.exam, one.after, there, choiceOf(one.exam.id));
+        const skipped = new Set([
+          ...chosen.covered,
+          ...chosen.needs.flatMap((need) => need.lessons.map((lesson) => lesson.id)),
+        ]);
+        const others = examPlacementsOn(examsSorted, branchId, one.exam.date).filter(
+          (placement) => placement.id !== `exam:${one.exam.id}`,
+        );
+        for (const result of examBlocked(
+          one,
+          branchId,
+          sorting.findings,
+          others,
+          skipped,
+          chosen.outs,
+        )) {
+          examBlockedHere.push({ examId: one.exam.id, result });
+        }
+      }
+      const bulk = sortBulkOf({
+        lessons: sorting.findings.dated.lessons,
+        movedAt: sorting.movedAt,
+        begins: sorting.findings.begins,
+        records: await bulkRecordsOf(transaction, branchId, part.first, part.last),
+        carriedVersionId: null,
+      });
+      return {
+        versionId,
+        firstDate: part.first,
+        lastDate: part.last,
+        state,
+        findings,
+        sorting,
+        bulk,
+        key: dayChangesKeyOf(
+          versionId,
+          part.first,
+          sorting.items,
+          bulk.length === 0 ? null : bulkKeyPartOf(bulk),
+        ),
+        exams: examsSorted,
+        examBlocked: examBlockedHere,
+        examNeeds,
+      } satisfies Stretch;
+    };
+    let stretches: Stretch[] = [];
+    for (;;) {
+      stretches = [];
+      for (const base of bases) stretches.push(await sortStretch(base));
+      let grew = false;
+      for (const item of stretches.flatMap((one) => one.sorting.items)) {
+        if (item.half === null || item.category !== 'decide') continue;
+        if (decided.has(item.answer.key)) continue;
+        decided.set(item.answer.key, item.answer.blocked);
+        grew = true;
+      }
+      if (!grew) break;
+    }
+    // Correction 1: the key and the lists from the last pass only.
     const key = calendarDaysKeyOf(stretches);
     const items = stretches.flatMap((one) => one.sorting.items);
     const bulkAll = stretches.flatMap((one) => one.bulk);
 
-    // What refuses the save as stored records (decision 7 of 5.6b-1): a move
-    // between two stretches (5.6b-2a decision 3), until 5.6b-2c-2. Exams are
-    // sorted since 5.6b-2c-1.
-    const stored: CalendarLessons['stored'] = [];
-    const stretchOf = (date: string) =>
-      stretches.findIndex((one) => one.firstDate <= date && date <= one.lastDate);
-    for (const item of items) {
-      if (item.answer.kind !== 'move') continue;
-      const from = stretchOf(item.answer.from.date);
-      const to = stretchOf(item.answer.to.date);
-      if (from < 0 || to < 0 || from === to) continue;
-      if (stored.some((one) => one.id === item.answer.key)) continue;
-      stored.push({ kind: 'day_change', id: item.answer.key, date: item.answer.to.date });
-    }
-    if (!input.preview && stored.length > 0) {
-      throw new ApiException(
-        'calendar_stored_changes',
-        409,
-        undefined,
-        stored.map((one) => ({
-          path: `stored.${one.kind}.${one.id}`,
-          code: 'calendar_stored_changes',
-          message: 'A stored record on a date the calendar save changes.',
-          day: one.date,
-        })),
-      );
-    }
-
     // Task 5.6b-2a: the sorting as shown and a choice for each "needs a
     // decision" item, refused with the blocked dates in one answer
     // (decision 9). The preview takes no decisions (decision 7).
-    const writtenSet = new Set(written);
     const { decisions, bulkDecisions } = dayDecisionsOf(
       input.preview ? undefined : input.days.dayDecisions,
     );
@@ -681,7 +691,7 @@ export class TimetableCalendarLessons {
           accountId: input.accountId,
           branchId,
           today,
-          written: writtenSet,
+          written: writtenAll,
           items,
           decisions,
         });
@@ -781,9 +791,8 @@ export class TimetableCalendarLessons {
     );
 
     // The write, over the findings with the kept changes applied, as a
-    // withdraw writes. A preview with a stored record writes nothing (it
-    // would be lost); one with a blocked conflict tries in a savepoint, as
-    // the database may refuse it.
+    // withdraw writes. A preview with a blocked conflict tries in a
+    // savepoint, as the database may refuse it.
     const writes: DatedWrite[] = [];
     const days: StretchDays[] = [];
     const examAudit: ExamAudit[] = [];
@@ -821,13 +830,16 @@ export class TimetableCalendarLessons {
       for (const one of stretches) {
         // The changes not applied ended in the name of the stretch's version
         // (decision 5), those kept on a lesson created again recorded again;
-        // the bulk cancels' choices on the blocks written.
+        // the bulk cancels' choices on the blocks written. Task 5.6b-2c-2
+        // (decision 4): a move between two stretches is settled and audited
+        // once, in the stretch of its old place.
+        const own = one.sorting.items.filter((item) => item.half !== 'new_place');
         const settled = await settleDayChanges(transaction, {
           branchId,
           versionId: one.versionId,
           moment,
           accountId: input.accountId,
-          items: one.sorting.items,
+          items: own,
           decisions,
         });
         const recorded = await recordBulkBlocks(transaction, {
@@ -837,11 +849,11 @@ export class TimetableCalendarLessons {
           items: one.bulk,
           decisions: bulkDecisions,
         });
-        if (one.sorting.items.length > 0 || one.bulk.length > 0) {
+        if (own.length > 0 || one.bulk.length > 0) {
           days.push({
             versionId: one.versionId,
             firstDate: one.firstDate,
-            ...dayAuditOf(one.sorting.items, decisions, settled, bulkAuditOf(one.bulk, recorded)),
+            ...dayAuditOf(own, decisions, settled, bulkAuditOf(one.bulk, recorded)),
           });
         }
       }
@@ -849,7 +861,7 @@ export class TimetableCalendarLessons {
     let wrote = true;
     if (!input.preview) {
       await doWrite();
-    } else if (stored.length > 0 || refusedExams.length > 0) {
+    } else if (refusedExams.length > 0) {
       // Task 5.6b-2c-1 (must-fix 4): a refused exam keeps its claims, which
       // the rewrite would meet; the preview writes nothing.
       wrote = false;
@@ -930,7 +942,6 @@ export class TimetableCalendarLessons {
       ...NO_LESSONS,
       needsTeacher,
       blocked: blockedLines,
-      stored,
       dayChanges,
       shortenedDays,
       keepRefusals,

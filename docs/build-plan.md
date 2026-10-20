@@ -765,7 +765,7 @@ How to read the task lines:
   - From 5.6b-1 (pull request #167, decision 7): a calendar save whose changed dates hold an exam not cancelled is refused `calendar_stored_changes`; this task replaces the refusal.
   - From 5.1b (pull request #108, decisions 9 and 12): a day off cancels an exam on its date with `exams.cancel_cause = 'day_off'` (final, its claims removed) and tells the Academic Vice Principal; a special template for an exam's date moves the exam with its slots (`first_slot`, `last_slot`) and rechecks it, and refuses one that drops a slot of the exam (`edge/timetable`, Exams). (The year's dates moved past an exam are 5.6b-5's.)
 
-- [ ] **5.6b-2c-2 Calendar changes: a move between two stretches** (5.6b-2c split in two, pull request #173, decision 1)
+- [x] **5.6b-2c-2 Calendar changes: a move between two stretches** (5.6b-2c split in two, pull request #173, decision 1)
   - Read: `edge/timetable` (Versions and drafts), `edge/time-dates-calendar`, `06` (Changes after publishing).
   - Build: the stored move between two stretches of one save sorted once over both.
   - Done when: a move between two stretches has a test, and the refusal `calendar_stored_changes` of 5.6b-1 is gone.

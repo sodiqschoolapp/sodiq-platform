@@ -281,6 +281,22 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 20 October 2026: calendar changes, a move between two stretches (task 5.6b-2c-2)
+
+Plan approved on pull request #174 with corrections 1 and 2; decisions 1 to 8 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a reading of the spec). A stored move between two stretches of one save is sorted once, as the two halves a calendar save already sorts: kept when its new place takes it among the lessons the save writes there; otherwise needs a decision, with the blocked rules of the new place; never dropped | Decision 1; `edge/timetable`, Versions and drafts; 5.6a-5a decision 7 |
+| **Look first** (tests changed). The test "a move between two stretches of one save" no longer expects the refusal, the two `lessons.stored` asserts go with the field, and the web test "keeps Save off" proves it through a `blocked` line | Decision 6: the task line removes the refusal |
+| "Drop the change" holds the lesson at its old place as the save's day gives it, "cancel" writes it cancelled with the change's reason; the stored lesson at the new place is removed; the change is ended either way; an old place with no lesson after the save leaves none | Decision 2 |
+| The moved lesson keeps its identity only when the move is kept; otherwise the lesson at the old place is the one the rewrite writes | Decision 3; `pairDated` pairs by date |
+| The joined item is settled and audited once, in the stretch of its old place, its end named by that stretch's version | Decision 4 |
+| The sorting runs again while a joined move is "needs a decision" in one half; a move once found so stays so (the loop ends; it can only ask one choice more) | Decision 5 |
+| The refusal goes whole: `calendar_stored_changes`, `lessons.stored`, `CALENDAR_STORED_KINDS`, the dialog's list and texts | Decision 7 |
+| No migration, route, area, audit action or notice kind | Decision 8 |
+| **Build decision.** The two halves are named `half` (`old_place`, `new_place`) on `SortedDayChange`; the plan said `across` (`from`, `to`) | The same behaviour, clearer words (code review, should-fix 5) |
+
 ## 20 October 2026: calendar changes, exams (task 5.6b-2c-1)
 
 Plan approved on pull request #173 with corrections 1 and 2; decisions 1 to 12 confirmed there. Flagged on issue #42.

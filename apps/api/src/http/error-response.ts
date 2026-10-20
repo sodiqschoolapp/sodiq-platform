@@ -78,8 +78,6 @@ const MESSAGE: Record<ErrorCode, string> = {
   year_leaves_calendar_entry: 'A calendar entry would lie outside the year.',
   go_live_school_day_taken: 'The change would leave the go-live date without lessons.',
   calendar_blocked: 'The change meets a blocked conflict on a date it changes; each is listed.',
-  calendar_stored_changes:
-    'A date the change touches holds a one-day move between two of the dates it rewrites; each is listed.',
   calendar_exam_slots:
     'The day after the change has no lesson slot of an exam, or its group no lesson at its time; each is listed.',
   calendar_exam_templates:

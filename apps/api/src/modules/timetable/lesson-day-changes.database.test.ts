@@ -417,6 +417,7 @@ describe('the record of a one-day change in the database', () => {
         cancelledParts: new Map(),
         storedIds: [],
         chains: [chain],
+        half: null,
       };
       const settled = await app().run([place.branch], (transaction) =>
         settleDayChanges(transaction, {

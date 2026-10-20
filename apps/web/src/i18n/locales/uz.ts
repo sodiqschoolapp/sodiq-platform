@@ -165,8 +165,6 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu oʻzgarish ishga tushirish sanasini darssiz qoldiradi. Oʻquv kunini qoldiring yoki avval ishga tushirish sanasini koʻchiring.',
     calendar_blocked:
       'Bu oʻzgarish u oʻzgartiradigan sanada yoki koʻchirilgan dars qaytadigan sanada taqiqlangan toʻqnashuvga uchraydi; yoki uning sanalaridagi bir kunlik oʻzgarishlar oldindan koʻrishdan keyin oʻzgargan; yoki tanlov qilinmagan. Oldindan koʻrishni qayta oching, koʻrsatilganini hal qiling va qaror talab qiladigan har bir oʻzgarish uchun tanlang.',
-    calendar_stored_changes:
-      'Bu oʻzgarish tegadigan sanada shu oʻzgarish qayta yozadigan ikki sana orasida bir kunga koʻchirilgan dars bor. Avval darsni joyiga qaytaring, soʻng qayta saqlang.',
     calendar_exam_slots:
       'Bu oʻzgarishdan keyin imtihonning oʻz sanasida oʻz dars sloti yoʻq yoki uning guruhida shu vaqtda dars yoʻq. Avval imtihonni oʻzgartiring, soʻng qayta saqlang.',
     calendar_exam_templates:
@@ -1311,13 +1309,6 @@ export const uz: Texts<'one' | 'other'> = {
         refreshing: 'Oldindan koʻrish yangilanmoqda…',
         keepRemoved:
           'Tanlov olib tashlanadi; darslar kundagi tartibi boʻyicha qoldiriladi: {{day}}',
-        stored_one: '{{count}} ta saqlangan oʻzgarish bu saqlashni toʻxtatadi',
-        stored_other: '{{count}} ta saqlangan oʻzgarish bu saqlashni toʻxtatadi',
-        storedKinds: {
-          day_change: 'oʻzgargan ikki sana orasida koʻchirilgan dars',
-          bulk_cancel: 'ommaviy bekor qilish',
-          exam: 'imtihon',
-        },
         blocked_one: '{{count}} ta taqiqlangan toʻqnashuv bu saqlashni toʻxtatadi',
         blocked_other: '{{count}} ta taqiqlangan toʻqnashuv bu saqlashni toʻxtatadi',
         removed_one: '{{count}} ta dars olib tashlanadi',

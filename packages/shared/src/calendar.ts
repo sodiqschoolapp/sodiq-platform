@@ -320,14 +320,6 @@ export type CalendarLesson = z.infer<typeof calendarLessonSchema>;
 /** Why the rewrite of a date creates a lesson cancelled (`edge/time-dates-calendar`). */
 export const CALENDAR_CANCEL_CAUSES = ['not_in_template', 'day_off', 'exam_week'] as const;
 
-/**
- * What a stored record on a changed date is that refuses the save (decision
- * 7): since 5.6b-2a a move between two stretches of the save (`day_change`,
- * 5.6b-2a decision 3), until 5.6b-2c-2; `bulk_cancel` and `exam` (sorted
- * since 5.6b-2c-1) are no longer given.
- */
-export const CALENDAR_STORED_KINDS = ['day_change', 'bulk_cancel', 'exam'] as const;
-
 /** A time of a day in minutes, as `calendarLessonSchema` gives it. */
 const dayTimeSchema = z.object({
   start: z.int().min(0).max(1440),
@@ -340,8 +332,7 @@ const dayTimeSchema = z.object({
  * first"): the lessons of the changed dates removed, created and created
  * cancelled, those that will need a teacher, the teachers who will be told,
  * and what refuses the save: the blocked conflicts by date
- * (`calendar_blocked`) and the stored records on those dates
- * (`calendar_stored_changes`). It names records of the branch only.
+ * (`calendar_blocked`). It names records of the branch only.
  */
 export const calendarLessonsSchema = z.object({
   removed: z.array(calendarLessonSchema),
@@ -364,9 +355,6 @@ export const calendarLessonsSchema = z.object({
       rule: z.string().regex(/^[a-z_]+$/),
       lessons: z.array(z.object({ unitId: z.uuid(), subjectId: z.uuid() })),
     }),
-  ),
-  stored: z.array(
-    z.object({ kind: z.enum(CALENDAR_STORED_KINDS), id: z.uuid(), date: schoolDateSchema }),
   ),
   /**
    * Task 5.6b-2a: the stored one-day changes and bulk cancels of the changed

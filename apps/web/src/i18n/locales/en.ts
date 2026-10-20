@@ -160,8 +160,6 @@ export const en = {
       'This change would leave the go-live date without lessons. Keep the school day, or move the go-live date first.',
     calendar_blocked:
       'This change meets a blocked conflict on a date it changes or on the date a moved lesson goes back to, or the stored one-day changes of its dates changed since the preview, or a choice is missing. Open the preview again, settle what it lists and choose for each change that needs a decision.',
-    calendar_stored_changes:
-      'A date this change touches holds a lesson moved for one day between two dates this change rewrites. Move the lesson back first, then save again.',
     calendar_exam_slots:
       'After this change an exam has no lesson slot of its own on its date, or its group no lesson at its time. Change the exam first, then save again.',
     calendar_exam_templates:
@@ -1295,13 +1293,6 @@ export const en = {
         keepRefused: '{{day}}: {{reason}}',
         refreshing: 'Updating the preview…',
         keepRemoved: 'The choice is removed; lessons are kept by their order in the day: {{day}}',
-        stored_one: '{{count}} stored change stops this save',
-        stored_other: '{{count}} stored changes stop this save',
-        storedKinds: {
-          day_change: 'a lesson moved between two changed dates',
-          bulk_cancel: 'a bulk cancel',
-          exam: 'an exam',
-        },
         blocked_one: '{{count}} blocked conflict stops this save',
         blocked_other: '{{count}} blocked conflicts stop this save',
         removed_one: '{{count}} lesson is removed',
