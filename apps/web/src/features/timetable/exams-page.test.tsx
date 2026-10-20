@@ -129,6 +129,7 @@ const EXAM: Exam = {
   cancelled: false,
   started: false,
   lessonIds: [uid(301)],
+  rating: null,
 };
 
 const SHARED_BLOCK = uid(700);
@@ -140,6 +141,7 @@ const checkOf = (fields: Partial<ExamCheck>): ExamCheck => ({
   warnings: [],
   givenBack: [],
   freeRooms: [],
+  rating: null,
   canSave: true,
   ...fields,
 });
@@ -354,6 +356,8 @@ describe('the exams page (task 5.6c-2)', () => {
         { roomId: HALL.id, classIds: [OXFORD.id], groupIds: [], invigilatorIds: [INVIGILATOR.id] },
       ],
       blockChoices: [{ classId: OXFORD.id, blockId: SHARED_BLOCK, choice: 'keep' }],
+      // Task 5.6c-3b: the schema's default, sent as parsed.
+      ratingExam: false,
       confirm: true,
     });
   });
@@ -593,5 +597,83 @@ describe('the exams page (task 5.6c-2)', () => {
       {},
       { keepCancelled: [uid(301)], keepReason: 'The room is taken' },
     ]);
+  });
+
+  // Task 5.6c-3b (decisions 5 and 8): the rating exam of the quarter.
+  describe('the rating exam', () => {
+    const RATED: Subject = { ...MATHS, journalType: 'graded', ratingExam: true };
+    const journal = (n: number, kind: 'class' | 'group', name: string) => ({
+      id: uid(800 + n),
+      unit: { kind, id: uid(820 + n), name },
+    });
+
+    it('offers the tick only for a subject with the rating exam, sends it, and lists the journals the check links and does not link', async () => {
+      const calls = await openPage({
+        exams: [],
+        check: () =>
+          json(
+            checkOf({
+              cancels: [lesson(1)],
+              rating: {
+                linked: [journal(1, 'class', '7 Oxford')],
+                notLinked: [journal(2, 'group', '7-8 Art')],
+              },
+            }),
+          ),
+        extra: {
+          'GET /api/setup/subjects': () =>
+            json({
+              subjects: [
+                MATHS,
+                { ...RATED, id: uid(201), names: { uz: 'Fizika', ru: 'Физика', en: 'Physics' } },
+              ],
+              mayMoveDepartment: false,
+            }),
+          'POST /api/timetable/exams': () =>
+            json({ exam: { ...EXAM, id: uid(901) }, warnings: [] }, 201),
+        },
+      });
+      fireEvent.click(screen.getAllByRole('button', { name: texts.new })[0] as HTMLElement);
+      const dialog = await screen.findByRole('dialog');
+      await fillNew(dialog);
+      const subject = within(dialog).getByLabelText(texts.subject);
+      fireEvent.change(subject, { target: { value: MATHS.id } });
+      expect(within(dialog).queryByLabelText(texts.ratingExam)).toBeNull();
+      fireEvent.change(subject, { target: { value: uid(201) } });
+      fireEvent.click(await within(dialog).findByLabelText(texts.ratingExam));
+      fireEvent.click(within(dialog).getByRole('button', { name: texts.check }));
+      const lists = await waitFor(() => {
+        const found = dialog.querySelector('[data-exam-rating-journals]');
+        expect(found).not.toBeNull();
+        return found as HTMLElement;
+      });
+      expect(lists.querySelector('[data-rating="linked"] li')?.textContent).toBe('7 Oxford');
+      expect(lists.querySelector('[data-rating="not-linked"] li')?.textContent).toBe('7-8 Art');
+      expect(within(lists).getByText(texts.ratingNotLinked)).not.toBeNull();
+      expect(checksOf(calls).at(-1)).toMatchObject({ subjectId: uid(201), ratingExam: true });
+      await waitFor(() => {
+        expect(saveButton(dialog)).toHaveProperty('disabled', false);
+      });
+      fireEvent.click(saveButton(dialog));
+      expect(await screen.findByText(texts.created)).not.toBeNull();
+      const created = calls.find((one) => one.route === 'POST /api/timetable/exams');
+      expect(created?.body).toMatchObject({ subjectId: uid(201), ratingExam: true });
+    });
+
+    it('lists the linked journals of a rating exam in the side panel, and says when none is linked', async () => {
+      await openPage({
+        role: 'principal',
+        exams: [{ ...EXAM, rating: { linked: [], notLinked: [journal(2, 'group', '7-8 Art')] } }],
+        path: `/timetable/exams?date=${DATE}&open=${EXAM.id}`,
+      });
+      const panel = await waitFor(() => {
+        const found = document.querySelector(`[data-exam-panel="${EXAM.id}"]`);
+        expect(found).not.toBeNull();
+        return found as HTMLElement;
+      });
+      const linked = panel.querySelector('[data-rating="linked"]') as HTMLElement;
+      expect(within(linked).getByText(texts.ratingNoneLinked)).not.toBeNull();
+      expect(panel.querySelector('[data-rating="not-linked"] li')?.textContent).toBe('7-8 Art');
+    });
   });
 });

@@ -523,9 +523,7 @@ export class TimetableExams {
         choices: planned.chosen.map((one) => ({ ...one })),
         warnings: planned.warnings.map((one) => one.rule),
         rating:
-          rating === null
-            ? null
-            : { linked: [...rating.linked], notLinked: [...rating.notLinked] },
+          rating === null ? null : { linked: [...rating.linked], notLinked: [...rating.notLinked] },
         notices: { ...notices },
       },
       requestId,

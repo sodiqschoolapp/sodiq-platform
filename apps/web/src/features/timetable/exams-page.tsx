@@ -32,7 +32,7 @@ import {
 import { useView } from '@/features/access/use-view';
 import { groupsQuery } from '@/features/classes/groups-api';
 import { BlockedRules } from './blocked-rules';
-import { ExamForm } from './exam-form';
+import { ExamForm, RatingJournals } from './exam-form';
 import { cancelExam, dayQuery, examsQuery, timetableKey, versionsQuery } from './timetable-api';
 
 type Language = 'uz' | 'ru' | 'en';
@@ -233,6 +233,7 @@ export function ExamsPage(): React.JSX.Element {
                   </li>
                 ))}
               </ul>
+              {row.rating !== null && <RatingJournals rating={row.rating} />}
               {edits && !row.cancelled && !row.started && (
                 <div className="flex flex-wrap gap-2">
                   <Button

@@ -52,3 +52,48 @@ Not written yet for most of the teaching load and the timetable: task 3.7 descri
 **What the person sees.**
 
 - In the notifications, a teacher whose week changed sees the week before and after. When the publish or withdraw cancelled an exam the teacher invigilated or taught under, the notice also says: "Exam cancelled by this change: Quarter exam in maths, 19 October 2026." An invigilator whose week did not change gets the notice with this line alone.
+
+## Exams under a calendar change: the invigilators are told
+
+<!-- Sources: edge/timetable (Exams: "A special template for its date moves the exam with its slots and rechecks it ... a day off removes the exam"; "One notice per person per event"); task 5.6b-2c-1, decision 4; task 5.6c-3b, decision 3 -->
+
+**What it is.** A calendar entry or a change of the day templates can move an exam with its lesson slots, or cancel it for a day off. The exam's invigilators are told in the same notice that tells teachers about their week.
+
+**Rules.**
+
+- An invigilator of an exam that moved is told the new time and room: "Exam moved by this change: Quarter exam in maths, 19 October 2026. You invigilate 09:00–09:45 in Hall."
+- An invigilator of an exam cancelled for a day off is told: "Exam cancelled by this change: …". The Academic Vice Principal still gets the notice that the day off cancelled the exam.
+- An invigilator whose week did not change gets the notice with the exam line alone. One notice per person per change.
+- An exam the change leaves where it was tells nobody. A preview tells nobody.
+- An invigilator who teaches no lesson of the timetable is checked at the exam's new time like any other: another exam of that person at the new time refuses the change.
+
+## The rating exam of the quarter
+
+<!-- Sources: edge/timetable (Exams: "The exam is the quarter's rating exam"); edge/calculation ("The rating exam": one column per rating journal and quarter); task 5.6c-3b, decisions 1, 2 and 4 to 9 -->
+
+**What it is.** An exam of a subject with a rating exam can be marked as the quarter's rating exam. It is then linked to the journals of that subject whose students all sit it; the journals' rating exam date is the exam's date (entered in the journal from task 8.2).
+
+**Who can do it.** The Academic Vice Principal of the branch and the Super Admin, in the exam form; everyone who can see exams sees the journals in the exam's panel.
+
+**How.**
+
+1. In the exam form, choose the subject. When the subject has a rating exam, tick **Rating exam of the quarter**.
+2. Press **Check**. The check lists **Journals linked to this rating exam** and, if any, **Journals not linked: their teacher sets the date by hand**.
+3. Save. The exam's panel shows the same two lists.
+
+**Rules.**
+
+- A class journal of a class that sits the exam is linked.
+- A group journal is linked when every student of the group on the exam's date comes from a class that sits, or when the group itself sits the exam in its own lesson. A group with a student from a class that does not sit is listed as not linked.
+- Students are read on the exam's date. A student who joins after it does not count. Each save of the exam reads them again.
+- A journal has one rating exam per quarter. Saving a second rating exam for the same journal in the same quarter is refused; cancel or change the first one, or take the tick off.
+- New quarter dates that would bring two rating exams of one journal into one quarter are refused, and the preview lists them.
+- A cancelled exam keeps its list as history but no longer counts as the rating exam.
+
+**What happens if…**
+
+| Case | What happens |
+| --- | --- |
+| The subject has no rating exam | The tick is not offered; a save that sends it is refused. |
+| No journal is linked | The exam saves; the list says no journal is linked. |
+| The tick is taken off in a change | The journals are no longer linked. |

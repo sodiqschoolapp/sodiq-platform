@@ -53,6 +53,7 @@ const ITEM_CODES = [
   'quarter_past_lessons',
   'quarter_leaves_exam',
   'quarter_splits_move',
+  'quarter_rating_exams',
   'year_leaves_exam',
 ] as const;
 
@@ -112,6 +113,15 @@ export function QuarterItemsList({
           unit: unitText(item.unit),
           subject: nameOf(item.subject.names, language),
         });
+      case 'rating_exams':
+        // Task 5.6c-3b: a journal given two rating exams in one quarter.
+        return t('setup.years.preview.ratingLine', {
+          unit: unitText(item.unit),
+          subject: nameOf(item.subject.names, language),
+          exams: item.exams
+            .map((one) => `${schoolDateText(one.date, language)} ${one.title}`)
+            .join(', '),
+        });
     }
   };
   return (
@@ -132,6 +142,7 @@ const LIST_TITLES = {
   quarter_past_lessons: 'setup.years.preview.pastLessons',
   quarter_leaves_exam: 'setup.years.preview.exams',
   quarter_splits_move: 'setup.years.preview.splitMoves',
+  quarter_rating_exams: 'setup.years.preview.ratingExams',
   year_leaves_exam: 'setup.years.preview.yearExams',
 } as const;
 
@@ -143,9 +154,9 @@ export function QuarterRefusalLines({ failure }: { failure: unknown }): React.JS
   return <QuarterItemsList title={t(LIST_TITLES[list.code])} list={list} />;
 }
 
-/** Whether the preview refuses the save with a list (`pastLessons`, `exams`, `splitMoves`). */
+/** Whether the preview refuses the save with a list (`pastLessons`, `exams`, `splitMoves`, `ratingExams`). */
 const listsRefuse = (preview: QuartersPreview): boolean =>
-  [preview.pastLessons, preview.exams, preview.splitMoves].some(
+  [preview.pastLessons, preview.exams, preview.splitMoves, preview.ratingExams].some(
     (list) => list.items.length > 0 || list.more > 0,
   );
 
@@ -317,6 +328,10 @@ export function useQuartersPreview(): {
               <QuarterItemsList
                 title={t('setup.years.preview.splitMoves')}
                 list={question.preview.splitMoves}
+              />
+              <QuarterItemsList
+                title={t('setup.years.preview.ratingExams')}
+                list={question.preview.ratingExams}
               />
               <p className="text-sm font-medium text-destructive" role="alert">
                 {t('setup.years.preview.refused')}

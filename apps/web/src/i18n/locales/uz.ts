@@ -181,6 +181,8 @@ export const uz: Texts<'one' | 'other'> = {
       'Imtihon bu chorak sanalari barcha choraklardan chiqaradigan sanada turibdi. Avval imtihonni bekor qiling yoki koʻchiring, yoki bu sanani chorak ichida qoldiring.',
     quarter_splits_move:
       'Bir kunga koʻchirilgan darsning eski va yangi sanasi ikki xil chorakka tushib qoladi. Avval bu darsni oʻz sanasiga qaytaring yoki ikkala sanani bitta chorakda qoldiring.',
+    quarter_rating_exams:
+      'Bu chorak sanalarida jurnalning bitta chorakda ikkita reyting imtihoni boʻlib qoladi (quyidagi roʻyxat). Imtihonlarni ikki chorakda qoldiring yoki avval ulardan birining reyting belgisini olib tashlang.',
     quarter_leaves_lesson:
       'Dars oʻz choragi sanalaridan tashqarida qolib ketadi. Sahifani yangilab, qaytadan urinib koʻring.',
     year_leaves_exam:
@@ -208,6 +210,12 @@ export const uz: Texts<'one' | 'other'> = {
     exam_warnings: 'Quyidagi ogohlantirishlarni tekshiring va imtihonni saqlash uchun belgilang.',
     exam_restore_blocked:
       'Imtihon bekor qilgan baʼzi darslarni qaytarib boʻlmaydi (quyidagi roʻyxat). Ularni sabab bilan bekor holida qoldiring yoki avval vaqtini boʻshating.',
+    exam_rating_subject:
+      'Bu imtihon fanida reyting imtihoni yoʻq, shuning uchun imtihon uning reyting imtihoni boʻla olmaydi. Belgini olib tashlang yoki reyting imtihoni bor fanni tanlang.',
+    exam_rating_taken:
+      'Bu imtihon jurnalining shu chorakda boshqa imtihonda reyting imtihoni bor. Belgini olib tashlang yoki avval oʻsha imtihonni oʻzgartiring.',
+    exam_rating_journal:
+      'Bu reyting imtihoni jurnali boshqa fan yoki oʻquv yiliga tegishli. Imtihonni qayta tekshiring va yana saqlang.',
     own_account:
       'Oʻz hisobingizni bloklay, blokdan chiqara yoki tiklay olmaysiz. Boshqa administratorga murojaat qiling.',
     account_already_locked:
@@ -1483,6 +1491,8 @@ export const uz: Texts<'one' | 'other'> = {
         examLine: '{{date}} · {{title}}',
         cancelledExamLine: '{{date}} · {{title}} (bekor qilingan)',
         moveLine: '{{from}} → {{to}} · {{unit}} · {{subject}}',
+        ratingExams: 'Bitta chorakda ikkita reyting imtihoni boʻlib qoladigan jurnallar',
+        ratingLine: '{{unit}} · {{subject}}: {{exams}}',
         more_one: 'va yana {{count}} ta',
         more_other: 'va yana {{count}} ta',
         refused:
@@ -3251,6 +3261,8 @@ export const uz: Texts<'one' | 'other'> = {
       cancelled: 'Imtihon bekor qilindi.',
       invigilation: 'Siz {{start}}–{{end}} da {{room}} xonasida nazoratchisiz.',
       cancelledBy: 'Bu oʻzgarish imtihonni bekor qildi: {{title}}, {{date}}.',
+      movedBy:
+        'Bu oʻzgarish imtihonni koʻchirdi: {{title}}, {{date}}. Siz {{start}}–{{end}} da {{room}} xonasida nazorat qilasiz.',
     },
     // The week before and after of a notice of a timetable change (task 5.5c-3a).
     week: {
@@ -3324,6 +3336,10 @@ export const uz: Texts<'one' | 'other'> = {
       blocked: 'Imtihonni saqlab boʻlmaydi',
       warnings: 'Ogohlantirishlar',
       tick: 'Ogohlantirishlarni oʻqidim va imtihonni ular bilan saqlayman.',
+      ratingExam: 'Chorakning reyting imtihoni',
+      ratingLinked: 'Bu reyting imtihoniga bogʻlangan jurnallar',
+      ratingNoneLinked: 'Hech bir jurnal bogʻlanmagan.',
+      ratingNotLinked: 'Bogʻlanmagan jurnallar: sanani oʻqituvchisi qoʻlda belgilaydi',
       givenBack: 'Qaytariladigan darslar',
       givenBackLater:
         'Oʻzgarish qaytaradigan darslar imtihonga hech narsa toʻsqinlik qilmaganda koʻrsatiladi.',

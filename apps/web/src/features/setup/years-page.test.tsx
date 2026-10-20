@@ -73,6 +73,7 @@ const NOTHING: QuartersPreview = {
   pastLessons: { items: [], more: 0 },
   exams: { items: [], more: 0 },
   splitMoves: { items: [], more: 0 },
+  ratingExams: { items: [], more: 0 },
 };
 
 const PREVIEW_ROUTE = `POST /api/setup/academic-years/${uid(1)}/quarters/preview`;
@@ -493,7 +494,19 @@ describe('the quarters preview', () => {
     unit: { kind: 'class' as const, name: 'Oxford', grade: 7 },
     subject: { id: MATHS, names: mathsNames },
   };
+  // Task 5.6c-3b (decision 2): a journal given two rating exams in one quarter.
+  const ratingExams = {
+    kind: 'rating_exams' as const,
+    date: '2026-11-16',
+    unit: { kind: 'class' as const, name: 'Oxford', grade: 7 },
+    subject: { id: MATHS, names: mathsNames },
+    exams: [
+      { title: 'Quarter exam', date: '2026-10-26' },
+      { title: 'Retake', date: '2026-11-16' },
+    ],
+  };
   const LINES = {
+    rating_exams: '7 Oxford · Mathematics: 26 October 2026 Quarter exam, 16 November 2026 Retake',
     past_lesson: '19 October 2026 · 7 Oxford · Mathematics',
     exam: '4 November 2026 · Quarter exam',
     split_move: '9 November 2026 → 3 November 2026 · 7 Oxford · Mathematics',
@@ -573,10 +586,12 @@ describe('the quarters preview', () => {
     await savedInPanel(panel);
   });
 
-  it.each(['pastLessons', 'exams', 'splitMoves'] as const)(
+  it.each(['pastLessons', 'exams', 'splitMoves', 'ratingExams'] as const)(
     'lists what stands in the way (%s) with the count of the rest, keeps Save off, and Cancel sends nothing',
     async (list) => {
-      const item = { pastLessons: pastLesson, exams: exam, splitMoves: splitMove }[list];
+      const item = { pastLessons: pastLesson, exams: exam, splitMoves: splitMove, ratingExams }[
+        list
+      ];
       const { calls, dialog, save, form } = await dialogOf(() => ({
         ...NOTHING,
         [list]: { items: [item], more: 2 },
@@ -789,6 +804,7 @@ describe('the quarters preview', () => {
     ['quarter_past_lessons', 'pastLessons', pastLesson],
     ['quarter_leaves_exam', 'exams', exam],
     ['quarter_splits_move', 'splitMoves', splitMove],
+    ['quarter_rating_exams', 'ratingExams', ratingExams],
   ] as const)(
     'shows the lines of a refused save under the quarters form: %s',
     async (code, list, item) => {

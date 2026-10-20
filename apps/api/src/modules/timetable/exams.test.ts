@@ -3415,7 +3415,12 @@ describe('exams in the timetable', () => {
       // A student of a class with a group subject is in one of its groups
       // (`class_memberships_need_groups`): both rows in one transaction.
       const eighthFrom = input.eighthFrom ?? '2026-09-01';
-      const student = async (classId: string, grade: number, group: string | null, from: string) => {
+      const student = async (
+        classId: string,
+        grade: number,
+        group: string | null,
+        from: string,
+      ) => {
         const id = await members.student(s.branch, { grade, startsOn: '2026-09-01' });
         await t.database.migrator.transaction().execute(async (transaction) => {
           await sql`set constraints all deferred`.execute(transaction);
@@ -3480,7 +3485,10 @@ describe('exams in the timetable', () => {
     const ids = (rating: { linked: { id: string }[]; notLinked: { id: string }[] } | null) =>
       rating === null
         ? null
-        : { linked: rating.linked.map((one) => one.id), notLinked: rating.notLinked.map((one) => one.id) };
+        : {
+            linked: rating.linked.map((one) => one.id),
+            notLinked: rating.notLinked.map((one) => one.id),
+          };
 
     const rowsOf = (examId: string) =>
       t.database.migrator
@@ -3500,13 +3508,13 @@ describe('exams in the timetable', () => {
         id: s.classId,
         name: expect.any(String) as string,
       });
-      expect(await rowsOf(maths.exam.id)).toEqual([
-        { journal_id: s.journals.maths, linked: true },
-      ]);
+      expect(await rowsOf(maths.exam.id)).toEqual([{ journal_id: s.journals.maths, linked: true }]);
       // Art, the same class on another date: the group holds a grade-8
       // student who does not sit.
       const art = examSaveAnswerSchema.parse(
-        saved(await create(s.branch, ratingOf(s, { subjectId: s.art.subject, date: LATER_MONDAY }))),
+        saved(
+          await create(s.branch, ratingOf(s, { subjectId: s.art.subject, date: LATER_MONDAY })),
+        ),
       );
       expect(ids(art.exam.rating)).toEqual({ linked: [], notLinked: [s.journals.art] });
       // The grade-8 class sitting too links it.
@@ -3525,7 +3533,7 @@ describe('exams in the timetable', () => {
       expect(ids(both.exam.rating)).toEqual({ linked: [s.journals.art], notLinked: [] });
     });
 
-    it('reads the group on the exam\'s date: a student of a class that does not sit who joins after it leaves the journal linked (decision 1)', async () => {
+    it("reads the group on the exam's date: a student of a class that does not sit who joins after it leaves the journal linked (decision 1)", async () => {
       const s = await ratingScene({ eighthFrom: '2026-10-20' });
       const answer = examSaveAnswerSchema.parse(
         saved(await create(s.branch, ratingOf(s, { subjectId: s.art.subject }))),
@@ -3562,7 +3570,11 @@ describe('exams in the timetable', () => {
         .where('id', '=', s.maths)
         .execute();
       refusedWith(await create(s.branch, ratingOf(s)), 409, 'exam_rating_subject');
-      refusedWith(await create(s.branch, ratingOf(s, { subjectId: null })), 400, 'validation_failed');
+      refusedWith(
+        await create(s.branch, ratingOf(s, { subjectId: null })),
+        400,
+        'validation_failed',
+      );
       expect(await everything()).toEqual(before);
     });
 

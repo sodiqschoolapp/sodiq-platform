@@ -285,6 +285,23 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 20 October 2026: exams in the timetable, the calendar notices and the rating-exam link (task 5.6c-3b)
+
+Plan approved on pull request #184 with corrections 1 and 2; decisions 1 to 9 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a reading of the spec). The rating link stores the journals reached, linked and not linked, at each save of the exam from the memberships on its date; a later membership change does not rewrite them | Decision 1; the Build line ("stored, with the journals linked and not linked") |
+| **Look first** (a refusal added). One linked standing exam per journal and quarter: `exam_rating_taken` in the exam save, `quarter_rating_exams` in the quarter save and its preview; no trigger, both writers serialized on the year row | Decision 2; `edge/calculation`, "The rating exam" |
+| **Look first** (a pinned list widened). `timetable.calendar_changed` and `timetable.template_changed` take `exams` and an exams-alone form; no new kind | Decision 3; "One notice per person per event" |
+| The journals reached: of the exam's year and subject, whose runs hold its date, with a student on that date among the exam's students; linked when all are | Decision 4 |
+| The tick needs `subjects.rating_exam` (`exam_rating_subject`); a rating exam needs a subject (400); a tick that links nothing saves | Decision 5 |
+| A cancelled exam keeps its rows; readers read `rating_exam and cancel_cause is null`; the save clears the rows when the tick is off | Decision 6 |
+| A quarter change moves no exam and carries no `exams` | Decision 7 |
+| The not-linked list says the teacher sets the date by hand | Decision 8 |
+| A group that sits in its own lesson counts as one of the exam's units: its journal is linked | Decision 9, correction 2 |
+| **Build decision.** `exam_rating_journal` (0095): a row's journal is of the exam's subject and year, checked on the row's insert and, at the commit, on a change of the exam's subject | `.claude/rules/database.md`, a rule between a child row and a column of its parent |
+
 ## 20 October 2026: exams in the timetable, the exam kept after a publish (task 5.6c-3a)
 
 Plan approved on pull request #183 with correction 1; decisions 1 to 11 confirmed there. Flagged on issue #42.

@@ -216,9 +216,7 @@ export class QuarterLessons {
         splitMoves,
         ratingExams,
       },
-      refused: [pastLessons, exams, splitMoves, ratingExams].some(
-        (list) => list.items.length > 0,
-      ),
+      refused: [pastLessons, exams, splitMoves, ratingExams].some((list) => list.items.length > 0),
     };
   }
 

@@ -331,6 +331,57 @@ describe('the notifications of the top bar', () => {
       expect(within(dialog).getAllByTestId('week-before')).toHaveLength(1);
     });
 
+    // Task 5.6c-3b (decision 3): an exam a calendar or template change
+    // moved or cancelled rides in its own notice, with the week or alone.
+    it('names the exams a calendar or template change moved or cancelled, with the invigilation of a moved one', async () => {
+      const calendar: Notification = {
+        ...MONDAY,
+        kind: 'timetable.calendar_changed',
+        data: {
+          name: 'Open day',
+          firstDate: '2026-10-19',
+          lastDate: '2026-10-19',
+          exams: [
+            {
+              title: 'Quarter exam',
+              date: '2026-10-19',
+              action: 'moved',
+              invigilation: { start: '09:00', end: '09:45', room: 'Hall' },
+            },
+          ],
+        },
+      };
+      const template: Notification = {
+        ...ROOM,
+        kind: 'timetable.template_changed',
+        data: {
+          from: '2026-11-09',
+          weekStart: '2026-11-09',
+          before: [{ ...lesson, changed: true }],
+          after: [],
+          exams: [
+            { title: 'Spring exam', date: '2026-11-10', action: 'cancelled', invigilation: null },
+          ],
+        },
+      };
+      open({ [LIST]: () => json({ unreadCount: 2, items: [calendar, template] }) });
+      const dialog = await openDialog('en', 2);
+      const parts = [...dialog.querySelectorAll<HTMLElement>('[data-exams-changed]')];
+      expect(parts.map((one) => one.textContent)).toEqual([
+        en.notifications.exam.movedBy
+          .replace('{{title}}', 'Quarter exam')
+          .replace('{{date}}', '19 October 2026')
+          .replace('{{start}}', '09:00')
+          .replace('{{end}}', '09:45')
+          .replace('{{room}}', 'Hall'),
+        en.notifications.exam.cancelledBy
+          .replace('{{title}}', 'Spring exam')
+          .replace('{{date}}', '10 November 2026'),
+      ]);
+      // The calendar notice without a week draws none.
+      expect(within(dialog).getAllByTestId('week-before')).toHaveLength(1);
+    });
+
     it('shows the text and the week before and after, the changed and cancelled lines marked', async () => {
       open({ [LIST]: () => json({ unreadCount: 1, items: [PUBLISHED, WITHDRAWN] }) });
       const dialog = await openDialog('en', 1);
