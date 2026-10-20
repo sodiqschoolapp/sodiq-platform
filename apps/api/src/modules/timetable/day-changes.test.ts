@@ -393,6 +393,45 @@ describe('one-day changes: cancel and restore', () => {
       .execute();
 
   /** An exam of the scene's branch on `date` in the first slot, one room, class and invigilator. */
+  /**
+   * A lesson cancelled 'exam' with the link every such lesson has
+   * (lessons_exam_link, 0094, task 5.6c-1): to an exam of its time,
+   * cancelled since, so the exam holds no claim.
+   */
+  async function cancelForExam(s: Scene, lessonId: string) {
+    await t.database.migrator.transaction().execute(async (transaction) => {
+      const lesson = await transaction
+        .selectFrom('lessons')
+        .select([sql<string>`lesson_date::text`.as('date'), 'starts_at', 'ends_at'])
+        .where('id', '=', lessonId)
+        .executeTakeFirstOrThrow();
+      const exam = await transaction
+        .insertInto('exams')
+        .values({
+          branch_id: s.branch,
+          academic_year_id: s.year,
+          exam_date: lesson.date,
+          starts_at: lesson.starts_at,
+          ends_at: lesson.ends_at,
+          first_slot: 1,
+          last_slot: 1,
+          title: 'Earlier exam',
+          cancel_cause: 'cancelled',
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await transaction
+        .updateTable('lessons')
+        .set({ cancel_cause: 'exam' })
+        .where('id', '=', lessonId)
+        .execute();
+      await transaction
+        .insertInto('lesson_exam_cancels')
+        .values({ branch_id: s.branch, lesson_id: lessonId, exam_id: exam.id })
+        .execute();
+    });
+  }
+
   async function examOf(
     s: Scene,
     date: string,
@@ -851,11 +890,15 @@ describe('one-day changes: cancel and restore', () => {
       refusedWith(await restore(s.branch, held.id), 409, 'lesson_not_restorable');
       for (const cause of ['exam', 'day_off'] as const) {
         const lesson = await lessonOf(s, cause === 'exam' ? '2027-01-11' : '2027-01-18');
-        await t.database.migrator
-          .updateTable('lessons')
-          .set({ cancel_cause: cause })
-          .where('id', '=', lesson.id)
-          .execute();
+        if (cause === 'exam') {
+          await cancelForExam(s, lesson.id);
+        } else {
+          await t.database.migrator
+            .updateTable('lessons')
+            .set({ cancel_cause: cause })
+            .where('id', '=', lesson.id)
+            .execute();
+        }
         const before = await everything();
         refusedWith(await restore(s.branch, lesson.id), 409, 'lesson_not_restorable');
         expect(await everything()).toEqual(before);
@@ -1346,11 +1389,7 @@ describe('one-day changes: cancel and restore', () => {
     it('leaves a half cancelled by an exam as it is: the other half is cancelled and restored alone (decision 4)', async () => {
       const s = await scene({ twoLessons: true });
       const pair = await doubleOf(s, NEXT_MONDAY);
-      await t.database.migrator
-        .updateTable('lessons')
-        .set({ cancel_cause: 'exam' })
-        .where('id', '=', pair.second)
-        .execute();
+      await cancelForExam(s, pair.second);
       refusedWith(await cancel(s.branch, pair.second), 409, 'lesson_cancelled');
       changed(await cancel(s.branch, pair.first));
       expect(await causeOf(pair.first)).toBe('reason');
@@ -2287,11 +2326,7 @@ describe('one-day changes: cancel and restore', () => {
       expect(part?.starts_at).toEqual(at('2026-10-21', '09:50'));
       expect(part?.cancel_cause).toBe('reason');
       const second = await partsOf(s, '2026-10-28');
-      await t.database.migrator
-        .updateTable('lessons')
-        .set({ cancel_cause: 'exam' })
-        .where('id', '=', second.part)
-        .execute();
+      await cancelForExam(s, second.part);
       const before = await everything();
       refusedWith(
         await move(s.branch, second.lesson, { date: '2026-10-28', lessonNumber: 2 }),
@@ -2454,11 +2489,7 @@ describe('one-day changes: cancel and restore', () => {
     it('refuses a move of a double whose other half is cancelled', async () => {
       const s = await scene({ twoLessons: true });
       const { first, second } = await doubleOf(s, NEXT_MONDAY);
-      await t.database.migrator
-        .updateTable('lessons')
-        .set({ cancel_cause: 'exam' })
-        .where('id', '=', second)
-        .execute();
+      await cancelForExam(s, second);
       refusedWith(
         await move(s.branch, first, { date: '2026-10-21', lessonNumber: 1 }),
         409,

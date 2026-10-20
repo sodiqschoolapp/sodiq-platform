@@ -514,6 +514,13 @@ export interface LessonDayChanges {
   to_starts_at: Timestamp;
 }
 
+export interface LessonExamCancels {
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  exam_id: string;
+  lesson_id: string;
+}
+
 export interface Lessons {
   block_id: string;
   branch_id: string;
@@ -1136,6 +1143,7 @@ export interface DB {
   lesson_changes: LessonChanges;
   lesson_day_change_ends: LessonDayChangeEnds;
   lesson_day_changes: LessonDayChanges;
+  lesson_exam_cancels: LessonExamCancels;
   lessons: Lessons;
   notifications: Notifications;
   password_reset_links: PasswordResetLinks;

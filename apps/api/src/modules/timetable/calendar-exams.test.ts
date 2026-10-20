@@ -361,6 +361,13 @@ describe('exams under a calendar change', () => {
         })
         .returning('id')
         .executeTakeFirstOrThrow();
+      // Each lesson cancelled 'exam' names its exam (0094, task 5.6c-1).
+      for (const lessonId of input.cancel ?? []) {
+        await transaction
+          .insertInto('lesson_exam_cancels')
+          .values({ branch_id: s.branch, lesson_id: lessonId, exam_id: written.id })
+          .execute();
+      }
       const examRoom = await transaction
         .insertInto('exam_rooms')
         .values({ branch_id: s.branch, exam_id: written.id, room_id: room })
@@ -549,6 +556,47 @@ describe('exams under a calendar change', () => {
       const [after] = await lessonOf(s.branch, OCT19, s.seniorId);
       expect(after?.id).toBe(history?.id);
       expect(after?.cancel_cause).toBeNull();
+    });
+
+    it('for grade 7 only cancels the exam it covers, and leaves the block another standing exam keeps cancelled with its link (task 5.6c-1, must-fix 3)', async () => {
+      const s = await scene({ nineGroup: true });
+      const [both] = await lessonOf(s.branch, OCT19, s.groups[0] ?? '');
+      const [nines] = await lessonOf(s.branch, OCT19, s.groups[1] ?? '');
+      const ids = [both?.id ?? '', nines?.id ?? ''];
+      const off = await exam(s, {
+        date: OCT19,
+        from: '09:50',
+        until: '10:35',
+        slots: [5, 5],
+        classIds: [s.classId, s.seniorId],
+        invigilator: s.seniorTeacher,
+        cancel: ids,
+      });
+      // A second exam of the grade-9 class, which has school, over the same block.
+      const kept = await exam(s, {
+        date: OCT19,
+        from: '09:50',
+        until: '10:35',
+        slots: [5, 5],
+        classIds: [s.nineId],
+        invigilator: s.teacherId,
+        cancel: ids,
+      });
+
+      okay(await create(s.branch, dayOff(OCT19, { gradeFrom: 7, gradeTo: 7 })), 201);
+
+      expect((await examRow(off.id)).cancel_cause).toBe('day_off');
+      expect((await examRow(kept.id)).cancel_cause).toBeNull();
+      for (const unit of [s.groups[0] ?? '', s.groups[1] ?? '']) {
+        const [after] = await lessonOf(s.branch, OCT19, unit);
+        expect(after?.cancel_cause).toBe('exam');
+        const links = await t.database.migrator
+          .selectFrom('lesson_exam_cancels')
+          .select('exam_id')
+          .where('lesson_id', '=', after?.id ?? '')
+          .execute();
+        expect(links.map((one) => one.exam_id)).toEqual([kept.id]);
+      }
     });
 
     it('for grade 7 only cancels an exam of a grade-7 and a grade-10 class and holds again every lesson of the shared block it had cancelled whole, the one of no sitting class too (code review round 1)', async () => {

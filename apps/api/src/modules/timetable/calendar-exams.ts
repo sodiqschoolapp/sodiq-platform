@@ -84,6 +84,9 @@ export interface SortedExam {
 
 const MINUTE = 60_000;
 
+/** An id no lesson has, for an `in` over an empty list. */
+const NO_LESSON = '00000000-0000-0000-0000-000000000000';
+
 /**
  * The exams standing on `dates`, each locked as `exam_claims` locks it
  * first, in the order of their id.
@@ -624,6 +627,16 @@ export function examPlacementOf(
   exam: StandingExam,
   branchId: string,
   time: { readonly start: number; readonly end: number },
+  /**
+   * The exam's subject and the students of each room, for the warnings of
+   * the exam save (task 5.6c-1, spec review of the plan must-fix 6:
+   * `invigilator_subject`, `room_capacity`); the calendar path keeps only
+   * blocked results and passes none.
+   */
+  warned: {
+    readonly subjectId: string | null;
+    readonly students: ReadonlyMap<string, number>;
+  } = { subjectId: null, students: new Map() },
 ): Placement {
   return {
     id: `exam:${exam.id}`,
@@ -641,12 +654,15 @@ export function examPlacementOf(
     classIds: [...exam.classIds],
     studentIds: [],
     exemptStudentIds: [],
-    subjectId: null,
+    subjectId: warned.subjectId,
     loadRowId: null,
     teacherIds: [...exam.invigilatorIds],
     substitute: false,
     roomId: null,
-    examRooms: exam.roomIds.map((roomId) => ({ roomId, students: 0 })),
+    examRooms: exam.roomIds.map((roomId) => ({
+      roomId,
+      students: warned.students.get(roomId) ?? 0,
+    })),
     fixed: false,
   };
 }
@@ -739,6 +755,8 @@ export function examWriteOf(input: {
   const moment = (date: string, minutes: number) =>
     new Date(begins(date).getTime() + minutes * MINUTE);
   const removedOuts = new Map<string, { blockId: string; classId: string }[]>();
+  /** The lessons whose link to an exam the write removed, by exam (task 5.6c-1). */
+  const unlinkedOf = new Map<string, Set<string>>();
   const keyOf = (out: { blockId: string; classId: string }) => `${out.blockId}|${out.classId}`;
   return {
     async start(transaction) {
@@ -751,6 +769,14 @@ export function examWriteOf(input: {
             .set({ cancel_cause: 'day_off' })
             .where('id', '=', one.exam.id)
             .execute();
+          // Its links go: a lesson no other standing exam keeps is held again
+          // at `end` (0094, task 5.6c-1).
+          const unlinked = await transaction
+            .deleteFrom('lesson_exam_cancels')
+            .where('exam_id', '=', one.exam.id)
+            .returning('lesson_id')
+            .execute();
+          unlinkedOf.set(one.exam.id, new Set(unlinked.map((row) => row.lesson_id)));
           if (one.exam.outs.length > 0) {
             await transaction
               .deleteFrom('lesson_block_class_outs')
@@ -809,36 +835,61 @@ export function examWriteOf(input: {
             )
             .execute();
         }
-        // Decision 2 (spec review must-fix 2): a lesson cancelled "exam" of
-        // an exam's classes at its time before the save (or the other half of
-        // its double) that no standing exam covers after it is held again, and
-        // so is every lesson of a block (and its double partner) holding such
-        // a lesson: a shared block cancelled whole has lessons of classes that
-        // do not sit (code review round 1).
-        const wasUnder = (exam: SortedExam) => {
-          const under = lessons.filter((one) => overlaps(one, exam.before));
-          const pairs = new Set(under.flatMap((one) => one.doublePairId ?? []));
-          const sits = (one: ExamDayLesson) =>
-            one.classIds.some((id) => exam.exam.classIds.includes(id)) ||
-            (one.groupId !== null && exam.exam.groups.has(one.groupId));
-          const blocks = new Set(
-            withPartners(
-              [...new Set(under.filter(sits).map((one) => one.blockId))],
-              lessons,
-            ).flat(),
+        // Each lesson cancelled "exam" names the exams that cover it, and
+        // only those (0094, task 5.6c-1): links of an exam of the date that no
+        // longer covers the lesson go, those it covers are written; a lesson
+        // cancelled by another cause gets none.
+        for (const one of own) {
+          const covers = perExam.get(one.exam.id)?.covered ?? new Set<string>();
+          const linked = lessons.filter(
+            (lesson) =>
+              covers.has(lesson.id) &&
+              (lesson.cancelCause === null || lesson.cancelCause === 'exam'),
           );
-          return (one: ExamDayLesson) =>
-            blocks.has(one.blockId) ||
-            ((overlaps(one, exam.before) ||
-              (one.doublePairId !== null && pairs.has(one.doublePairId))) &&
-              sits(one));
-        };
-        const under = new Map(own.map((exam) => [exam.exam.id, wasUnder(exam)]));
+          const gone = await transaction
+            .deleteFrom('lesson_exam_cancels')
+            .where('exam_id', '=', one.exam.id)
+            .where(
+              'lesson_id',
+              'not in',
+              linked.length === 0 ? [NO_LESSON] : linked.map((lesson) => lesson.id),
+            )
+            .returning('lesson_id')
+            .execute();
+          const unlinked = unlinkedOf.get(one.exam.id) ?? new Set<string>();
+          for (const row of gone) unlinked.add(row.lesson_id);
+          unlinkedOf.set(one.exam.id, unlinked);
+          if (linked.length > 0) {
+            await transaction
+              .insertInto('lesson_exam_cancels')
+              .values(
+                linked.map((lesson) => ({
+                  branch_id: branchId,
+                  lesson_id: lesson.id,
+                  exam_id: one.exam.id,
+                })),
+              )
+              .onConflict((conflict) => conflict.doNothing())
+              .execute();
+          }
+        }
+        // Decision 2 of 5.6b-2c-1, by the links (task 5.6c-1): a lesson
+        // cancelled "exam" that no exam keeps after the save is held again.
+        const keptIds = new Set(
+          (
+            await transaction
+              .selectFrom('lesson_exam_cancels')
+              .select('lesson_id')
+              .where(
+                'lesson_id',
+                'in',
+                lessons.length === 0 ? [NO_LESSON] : lessons.map((one) => one.id),
+              )
+              .execute()
+          ).map((row) => row.lesson_id),
+        );
         const restore = lessons.filter(
-          (one) =>
-            one.cancelCause === 'exam' &&
-            !coveredAll.has(one.id) &&
-            own.some((exam) => under.get(exam.exam.id)?.(one) === true),
+          (one) => one.cancelCause === 'exam' && !coveredAll.has(one.id) && !keptIds.has(one.id),
         );
         if (restore.length > 0) {
           await transaction
@@ -919,7 +970,7 @@ export function examWriteOf(input: {
                   },
             cancelled: cancel.filter((lesson) => ownCovered.has(lesson.id)).map((l) => l.id),
             restored: restore
-              .filter((lesson) => under.get(one.exam.id)?.(lesson) === true)
+              .filter((lesson) => unlinkedOf.get(one.exam.id)?.has(lesson.id) === true)
               .map((lesson) => lesson.id),
             outsAdded: add,
             outsRemoved: [

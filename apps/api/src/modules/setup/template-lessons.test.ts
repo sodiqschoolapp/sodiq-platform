@@ -550,6 +550,13 @@ describe('template changes after publishing', () => {
         })
         .returning('id')
         .executeTakeFirstOrThrow();
+      // The lesson cancelled 'exam' names its exam (0094, task 5.6c-1).
+      if (slots[0] === 3) {
+        await transaction
+          .insertInto('lesson_exam_cancels')
+          .values({ branch_id: s.branch, lesson_id: history.id, exam_id: written.id })
+          .execute();
+      }
       const room = await transaction
         .insertInto('exam_rooms')
         .values({

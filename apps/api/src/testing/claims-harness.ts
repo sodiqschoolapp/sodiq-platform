@@ -193,8 +193,66 @@ export function claimsHarness() {
         .returning('id')
         .executeTakeFirstOrThrow();
       ids.push(row.id);
+      if (lesson.cancel === true) await linkEarlierExam(transaction, branch, row.id);
     }
     return { block: written.id, lessons: ids };
+  }
+
+  /**
+   * A lesson cancelled 'exam', with the link every such lesson has
+   * (lessons_exam_link, 0094, task 5.6c-1): to an earlier exam of its time,
+   * cancelled since, so the link holds no claim of its own.
+   */
+  async function linkEarlierExam(transaction: Transaction, branch: string, lessonId: string) {
+    const lesson = await transaction
+      .selectFrom('lessons')
+      .select([sql<string>`lesson_date::text`.as('date'), 'starts_at', 'ends_at'])
+      .where('id', '=', lessonId)
+      .executeTakeFirstOrThrow();
+    const earlier = await transaction
+      .insertInto('exams')
+      .values({
+        branch_id: branch,
+        academic_year_id: yearOf(branch),
+        exam_date: lesson.date,
+        starts_at: lesson.starts_at,
+        ends_at: lesson.ends_at,
+        first_slot: 1,
+        last_slot: 1,
+        title: 'Earlier exam',
+        subject_id: null,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .updateTable('exams')
+      .set({ cancel_cause: 'cancelled' })
+      .where('id', '=', earlier.id)
+      .execute();
+    await transaction
+      .insertInto('lesson_exam_cancels')
+      .values({ branch_id: branch, lesson_id: lessonId, exam_id: earlier.id })
+      .execute();
+  }
+
+  /** A lesson cancelled 'exam' in the transaction given, with its link. */
+  async function cancelForExam(transaction: Transaction, branch: string, lessonId: string) {
+    await transaction
+      .updateTable('lessons')
+      .set({ cancel_cause: 'exam', cancel_reason: null })
+      .where('id', '=', lessonId)
+      .execute();
+    await linkEarlierExam(transaction, branch, lessonId);
+  }
+
+  /** A lesson cancelled 'exam' held again, its links removed with it. */
+  async function restoreFromExam(transaction: Transaction, lessonId: string) {
+    await transaction.deleteFrom('lesson_exam_cancels').where('lesson_id', '=', lessonId).execute();
+    await transaction
+      .updateTable('lessons')
+      .set({ cancel_cause: null, cancel_reason: null })
+      .where('id', '=', lessonId)
+      .execute();
   }
 
   /** An exam with its out rows, rooms, classes and invigilators, in the transaction given. */
@@ -289,6 +347,8 @@ export function claimsHarness() {
     yearOf,
     inBranch,
     writeBlock,
+    cancelForExam,
+    restoreFromExam,
     writeExam,
     /** A block and its lessons, written as the application writes them. */
     place: (branch: string, block: BlockInput, lessons: readonly LessonInput[]) =>

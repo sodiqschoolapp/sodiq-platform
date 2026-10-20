@@ -87,8 +87,9 @@ describe('the notices of a timetable change', () => {
     );
     // Task 5.6a-1 (decision 10, Look first: a pinned list widened by a new kind),
     // task 5.6b-1 (decision 8, Look first: the calendar change's kind) and
-    // task 5.6b-4a (decision 6, Look first: the template change's kind) and
-    // task 5.6b-5a (decision 9, Look first: the quarter change's kind).
+    // task 5.6b-4a (decision 6, Look first: the template change's kind),
+    // task 5.6b-5a (decision 9, Look first: the quarter change's kind) and
+    // task 5.6c-1 (decision 2, Look first: the exam's kind).
     expect(WEEK_KINDS).toEqual([
       ...WEEK_CHANGE_KINDS,
       'timetable.tutor_changed',
@@ -96,6 +97,7 @@ describe('the notices of a timetable change', () => {
       'timetable.calendar_changed',
       'timetable.template_changed',
       'timetable.quarters_changed',
+      'timetable.exam_changed',
     ]);
   });
 

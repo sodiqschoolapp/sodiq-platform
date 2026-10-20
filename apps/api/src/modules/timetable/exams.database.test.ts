@@ -1,3 +1,6 @@
+import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import { sql } from 'kysely';
 import { describe, expect, it } from 'vitest';
 import {
@@ -190,22 +193,14 @@ describe('exams and their time claims in the database', () => {
         constraint: 'time_claims_class_excl',
       });
       await h.inBranch(north(), async (transaction) => {
-        await transaction
-          .updateTable('lessons')
-          .set({ cancel_cause: 'exam' })
-          .where('id', '=', lesson.lessons[0] ?? '')
-          .execute();
+        await h.cancelForExam(transaction, north(), lesson.lessons[0] ?? '');
         await h.writeExam(transaction, north(), p.input);
       });
       // Restoring the lesson while the exam stands is refused.
       expect(
         await refusal(
           h.inBranch(north(), (transaction) =>
-            transaction
-              .updateTable('lessons')
-              .set({ cancel_cause: null })
-              .where('id', '=', lesson.lessons[0] ?? '')
-              .execute(),
+            h.restoreFromExam(transaction, lesson.lessons[0] ?? ''),
           ),
         ),
       ).toMatchObject({ constraint: 'time_claims_class_excl' });
@@ -256,11 +251,7 @@ describe('exams and their time claims in the database', () => {
     }
 
     const cancelIn = (transaction: Parameters<Parameters<typeof h.inBranch>[1]>[0], id: string) =>
-      transaction
-        .updateTable('lessons')
-        .set({ cancel_cause: 'exam' })
-        .where('id', '=', id)
-        .execute();
+      h.cancelForExam(transaction, north(), id);
 
     it('passes a group in its own slot with its lesson cancelled while the other group keeps its lesson', async () => {
       const s = await split('2026-10-26');
@@ -424,11 +415,7 @@ describe('exams and their time claims in the database', () => {
       expect(
         await refusal(
           h.inBranch(north(), (transaction) =>
-            transaction
-              .updateTable('lessons')
-              .set({ cancel_cause: null })
-              .where('id', '=', s.block.lessons[0] ?? '')
-              .execute(),
+            h.restoreFromExam(transaction, s.block.lessons[0] ?? ''),
           ),
         ),
       ).toMatchObject({ constraint: 'exam_group_slots' });
@@ -696,11 +683,7 @@ describe('exams and their time claims in the database', () => {
       await held.ready;
       const second = outcome(
         h.inBranch(north(), async (transaction) => {
-          await transaction
-            .updateTable('lessons')
-            .set({ cancel_cause: null })
-            .where('id', '=', s.block.lessons[0] ?? '')
-            .execute();
+          await h.restoreFromExam(transaction, s.block.lessons[0] ?? '');
           await sql`set constraints lessons_exam_group_slots immediate`.execute(transaction);
         }),
       );
@@ -1274,6 +1257,176 @@ describe('exams and their time claims in the database', () => {
           ),
         ),
       ).toMatchObject({ code: INSUFFICIENT_PRIVILEGE });
+    });
+  });
+
+  // Task 5.6c-1 (0094, decisions 3 and 4; spec review of the plan, must-fixes
+  // 1 and 3): a lesson cancelled "exam" names the exams that cancelled it,
+  // one row per exam, and is cancelled "exam" exactly while it has one.
+  describe('the link of a lesson to its exams (lessons_exam_link)', () => {
+    const LINK_DATE = '2026-10-28';
+
+    it('refuses a lesson cancelled "exam" with no link and a link on a lesson not cancelled "exam"; a lesson keeps its cause while one link is left', async () => {
+      const oxford = await h.schoolClass(north());
+      const placed = await h.place(north(), { date: LINK_DATE, start: '14:00', end: '14:45' }, [
+        { classId: oxford },
+      ]);
+      const lessonId = placed.lessons[0] ?? '';
+      expect(
+        await refusal(
+          h.inBranch(north(), (transaction) =>
+            transaction
+              .updateTable('lessons')
+              .set({ cancel_cause: 'exam' })
+              .where('id', '=', lessonId)
+              .execute(),
+          ),
+        ),
+      ).toMatchObject({ code: CHECK_VIOLATION, constraint: 'lessons_exam_link' });
+      const p = await plain('15:00', '15:45', LINK_DATE);
+      const standing = await h.exam(north(), p.input);
+      expect(
+        await refusal(
+          h.inBranch(north(), (transaction) =>
+            transaction
+              .insertInto('lesson_exam_cancels')
+              .values({ branch_id: north(), lesson_id: lessonId, exam_id: standing.exam })
+              .execute(),
+          ),
+        ),
+      ).toMatchObject({ code: CHECK_VIOLATION, constraint: 'lessons_exam_link' });
+      // Two exams over the lesson: one link goes, the lesson stays cancelled.
+      await h.inBranch(north(), async (transaction) => {
+        await h.cancelForExam(transaction, north(), lessonId);
+        await transaction
+          .insertInto('lesson_exam_cancels')
+          .values({ branch_id: north(), lesson_id: lessonId, exam_id: standing.exam })
+          .execute();
+      });
+      await h.inBranch(north(), (transaction) =>
+        transaction
+          .deleteFrom('lesson_exam_cancels')
+          .where('lesson_id', '=', lessonId)
+          .where('exam_id', '=', standing.exam)
+          .execute(),
+      );
+      const cause = async () =>
+        (
+          await h.state.database.migrator
+            .selectFrom('lessons')
+            .select('cancel_cause')
+            .where('id', '=', lessonId)
+            .executeTakeFirstOrThrow()
+        ).cancel_cause;
+      expect(await cause()).toBe('exam');
+      // The last link cannot go while the cause stays; both together can.
+      expect(
+        await refusal(
+          h.inBranch(north(), (transaction) =>
+            transaction
+              .deleteFrom('lesson_exam_cancels')
+              .where('lesson_id', '=', lessonId)
+              .execute(),
+          ),
+        ),
+      ).toMatchObject({ code: CHECK_VIOLATION, constraint: 'lessons_exam_link' });
+      await h.inBranch(north(), (transaction) => h.restoreFromExam(transaction, lessonId));
+      expect(await cause()).toBeNull();
+    });
+
+    it('links the rows the calendar path wrote without a link, in every shape it wrote them (the backfill of 0094)', async () => {
+      const oxford = await h.schoolClass(north());
+      const cambridge = await h.schoolClass(north());
+      const english = await h.state.kit.load.classes.subject({ grades: [7] });
+      const team = await h.group(north(), [oxford, cambridge], english);
+      const pair = randomUUID();
+      // A double of a sitting class with its second half outside the exam.
+      const first = await h.place(
+        north(),
+        { date: LINK_DATE, start: '09:00', end: '09:45', pairId: pair },
+        [{ classId: oxford, cancel: true }],
+      );
+      const second = await h.place(
+        north(),
+        { date: LINK_DATE, start: '09:55', end: '10:40', pairId: pair },
+        [{ classId: oxford, cancel: true }],
+      );
+      // A block shared with a class that does not sit, cancelled whole.
+      const shared = await h.place(north(), { date: LINK_DATE, start: '11:00', end: '11:45' }, [
+        { groupId: team, subjectId: english, cancel: true },
+      ]);
+      // A block under two exams, one of each of its classes.
+      const twice = await h.place(north(), { date: LINK_DATE, start: '12:00', end: '12:45' }, [
+        { groupId: team, subjectId: english, cancel: true },
+      ]);
+      const examOf = async (start: string, end: string, classId: string) =>
+        (
+          await h.exam(north(), {
+            date: LINK_DATE,
+            start,
+            end,
+            rooms: [
+              {
+                roomId: await room(),
+                classes: [classId],
+                invigilators: [await h.teacher(north())],
+              },
+            ],
+          })
+        ).exam;
+      const a = await examOf('09:00', '09:45', oxford);
+      const b = await examOf('11:00', '11:45', oxford);
+      const c = await examOf('12:00', '12:45', oxford);
+      const d = await examOf('12:00', '12:45', cambridge);
+      const ids = [first, second, shared, twice].map((one) => one.lessons[0] ?? '');
+      const text = await readFile(
+        fileURLToPath(new URL('../../../../../db/migrations/0094_exam_save.sql', import.meta.url)),
+        'utf8',
+      );
+      const statement =
+        /insert into lesson_exam_cancels \(branch_id, lesson_id, exam_id\)\nselect[\s\S]*?;\n/.exec(
+          text,
+        )?.[0] ?? '';
+      expect(statement).not.toBe('');
+      class Rollback extends Error {
+        constructor(readonly rows: { lesson_id: string; exam_id: string }[]) {
+          super('rollback');
+        }
+      }
+      // The rows as the calendar path wrote them: no link. The guard of
+      // 0094 is switched off in this transaction only, which is rolled back.
+      const linked = await h.state.database.migrator
+        .transaction()
+        .execute(async (transaction) => {
+          await sql`alter table lesson_exam_cancels disable trigger lesson_exam_cancels_link`.execute(
+            transaction,
+          );
+          await sql`alter table lessons disable trigger lessons_exam_link`.execute(transaction);
+          await transaction
+            .deleteFrom('lesson_exam_cancels')
+            .where('lesson_id', 'in', ids)
+            .execute();
+          await sql.raw(statement).execute(transaction);
+          const rows = await transaction
+            .selectFrom('lesson_exam_cancels')
+            .select(['lesson_id', 'exam_id'])
+            .where('lesson_id', 'in', ids)
+            .execute();
+          throw new Rollback(rows);
+        })
+        .catch((error: unknown) => {
+          if (error instanceof Rollback) return error.rows;
+          throw error;
+        });
+      const of = (lessonId: string) =>
+        linked
+          .filter((one) => one.lesson_id === lessonId)
+          .map((one) => one.exam_id)
+          .sort();
+      expect(of(ids[0] ?? '')).toEqual([a]);
+      expect(of(ids[1] ?? '')).toEqual([a]);
+      expect(of(ids[2] ?? '')).toEqual([b]);
+      expect(of(ids[3] ?? '')).toEqual([c, d].sort());
     });
   });
 });
