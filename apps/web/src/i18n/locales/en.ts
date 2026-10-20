@@ -180,6 +180,30 @@ export const en = {
       'A lesson would lie outside the dates of its quarter. Reload the page and try again.',
     year_leaves_exam:
       'An exam of this year would lie outside the new dates. Keep the year around the exam, or change the exam first.',
+    exam_year: 'The exam date lies outside the academic year. Choose a date in the exam’s year.',
+    exam_no_timetable:
+      'No published timetable is in force on this date, so there are no lessons for the exam to replace. Publish the timetable first.',
+    exam_started:
+      'The exam, or a lesson it would cancel or bring back, has already started. Exams are made and changed only in slots that have not started.',
+    exam_cancelled: 'This exam is cancelled. A cancelled exam cannot be changed; make a new one.',
+    exam_templates:
+      'The classes of this exam have different lesson times on that date. Make one exam per set of lesson times.',
+    exam_slots:
+      'The chosen lessons are not lesson slots of the classes’ day. Choose lessons the day has.',
+    exam_block_choice:
+      'A class that sits the exam shares a lesson with classes that do not. Choose for each such lesson: cancel it for everyone, or keep it for the other classes.',
+    exam_group_slots:
+      'A group sits an exam only in the time of its own lesson. Make the exam fit the group’s lesson exactly.',
+    exam_group_subject:
+      'A group sits only an exam of its own subject. Choose the group’s subject for the exam.',
+    exam_unit_year: 'A class or group of another academic year cannot sit this exam.',
+    exam_blocked:
+      'The exam clashes with lessons or exams listed below. Move or cancel them first, or change the exam.',
+    exam_warnings: 'Check the warnings below and tick them to save the exam.',
+    exam_restore_blocked:
+      'Some lessons the exam cancelled cannot be brought back, listed below. Keep them cancelled with a reason, or free their time first.',
+    publish_over_exam:
+      'An exam stands on a date this change would rewrite. Cancel or move the exam first.',
     own_account: 'You cannot lock, unlock or reset your own account. Ask another administrator.',
     account_already_locked: 'This account is already locked. Reload the page to see who locked it.',
     account_not_locked:
@@ -2803,6 +2827,11 @@ export const en = {
         open: 'Journal opened at a publish',
         runs: 'Days of a journal changed by a publish',
       },
+      exam: {
+        create: 'Exam created',
+        change: 'Exam changed',
+        cancel: 'Exam cancelled',
+      },
       lesson: {
         cancel: 'Lesson cancelled for one day',
         restore: 'Cancelled lesson restored',
@@ -3181,6 +3210,7 @@ export const en = {
           'A change of the quarter dates changed your lessons from {{firstDate}} to {{lastDate}}. Your week before and after:',
         exam_day_off:
           'The calendar entry "{{name}}" made {{date}} a day off: the exam "{{title}}" is cancelled.',
+        exam_changed: 'Exam "{{title}}" on {{date}}: your lessons or invigilation changed.',
       },
     },
     // The week before and after of a notice of a timetable change (task 5.5c-3a).

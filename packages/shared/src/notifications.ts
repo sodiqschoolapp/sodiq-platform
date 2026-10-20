@@ -186,6 +186,26 @@ export const NOTIFICATION_KINDS = {
     title: z.string().min(1).max(200),
     date: schoolDateSchema,
   }),
+  /**
+   * An exam was created, changed or cancelled (task 5.6c-1, decision 2;
+   * `06`, Exam: "the affected staff are notified as for a one-day change";
+   * edge/timetable: "One notice per person per event"): its title and date,
+   * the person's own invigilation after the save (`null`: none), and, when
+   * the person's lessons changed, the week before and after with a second,
+   * later week as a one-day change shows one.
+   */
+  'timetable.exam_changed': z.strictObject({
+    action: z.enum(['created', 'changed', 'cancelled']),
+    title: z.string().min(1).max(200),
+    date: schoolDateSchema,
+    invigilation: z
+      .strictObject({ start: clockTime, end: clockTime, room: z.string().min(1).max(200) })
+      .nullable(),
+    weekStart: teacherWeek.weekStart.optional(),
+    before: teacherWeek.before.optional(),
+    after: teacherWeek.after.optional(),
+    also: z.strictObject(teacherWeek).optional(),
+  }),
 } as const satisfies Record<string, z.ZodType>;
 
 export type NotificationKind = keyof typeof NOTIFICATION_KINDS;
@@ -199,8 +219,9 @@ export type WeekChangeKind = (typeof WEEK_CHANGE_KINDS)[number];
  * Every kind that carries a teacher's week before and after, which the web
  * shows under the text (task 5.5c-3b, spec review should-fix 5): the version
  * kinds, the Tutor change, a one-day change (task 5.6a-1), a calendar
- * change (task 5.6b-1), a template change (task 5.6b-4a) and a quarter change
- * (task 5.6b-5a).
+ * change (task 5.6b-1), a template change (task 5.6b-4a), a quarter change
+ * (task 5.6b-5a) and an exam (task 5.6c-1, whose week is there only when the
+ * person's lessons changed).
  */
 export const WEEK_KINDS = [
   ...WEEK_CHANGE_KINDS,
@@ -209,6 +230,7 @@ export const WEEK_KINDS = [
   'timetable.calendar_changed',
   'timetable.template_changed',
   'timetable.quarters_changed',
+  'timetable.exam_changed',
 ] as const;
 
 export const NOTIFICATION_KIND_NAMES = Object.keys(NOTIFICATION_KINDS) as [

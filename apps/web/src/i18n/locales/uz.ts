@@ -185,6 +185,31 @@ export const uz: Texts<'one' | 'other'> = {
       'Dars oʻz choragi sanalaridan tashqarida qolib ketadi. Sahifani yangilab, qaytadan urinib koʻring.',
     year_leaves_exam:
       'Bu yilning imtihoni yangi sanalardan tashqarida qolib ketadi. Yilni imtihon atrofida qoldiring yoki avval imtihonni oʻzgartiring.',
+    exam_year: 'Imtihon sanasi oʻquv yilidan tashqarida. Imtihon yilidagi sanani tanlang.',
+    exam_no_timetable:
+      'Bu sanada eʼlon qilingan dars jadvali yoʻq, imtihon almashtiradigan dars yoʻq. Avval dars jadvalini eʼlon qiling.',
+    exam_started:
+      'Imtihon yoki u bekor qiladigan yoki qaytaradigan dars allaqachon boshlangan. Imtihonlar faqat boshlanmagan darslarda yaratiladi va oʻzgartiriladi.',
+    exam_cancelled:
+      'Bu imtihon bekor qilingan. Bekor qilingan imtihonni oʻzgartirib boʻlmaydi, yangisini yarating.',
+    exam_templates:
+      'Bu imtihon sinflarining shu kundagi dars vaqtlari har xil. Har bir dars vaqti uchun alohida imtihon yarating.',
+    exam_slots:
+      'Tanlangan darslar sinflar kunining dars vaqtlariga kirmaydi. Kunda bor darslarni tanlang.',
+    exam_block_choice:
+      'Imtihon topshiradigan sinf darsni imtihon topshirmaydigan sinflar bilan baham koʻradi. Har bir shunday dars uchun tanlang: hamma uchun bekor qilish yoki boshqa sinflar uchun qoldirish.',
+    exam_group_slots:
+      'Guruh imtihonni faqat oʻz darsi vaqtida topshiradi. Imtihon vaqtini guruh darsiga aynan moslang.',
+    exam_group_subject:
+      'Guruh faqat oʻz fanidan imtihon topshiradi. Imtihon uchun guruh fanini tanlang.',
+    exam_unit_year: 'Boshqa oʻquv yilining sinfi yoki guruhi bu imtihonni topshira olmaydi.',
+    exam_blocked:
+      'Imtihon quyidagi darslar yoki imtihonlar bilan toʻqnashadi. Avval ularni koʻchiring yoki bekor qiling, yoki imtihonni oʻzgartiring.',
+    exam_warnings: 'Quyidagi ogohlantirishlarni tekshiring va imtihonni saqlash uchun belgilang.',
+    exam_restore_blocked:
+      'Imtihon bekor qilgan baʼzi darslarni qaytarib boʻlmaydi (quyidagi roʻyxat). Ularni sabab bilan bekor holida qoldiring yoki avval vaqtini boʻshating.',
+    publish_over_exam:
+      'Bu oʻzgarish qayta yozadigan sanada imtihon turibdi. Avval imtihonni bekor qiling yoki koʻchiring.',
     own_account:
       'Oʻz hisobingizni bloklay, blokdan chiqara yoki tiklay olmaysiz. Boshqa administratorga murojaat qiling.',
     account_already_locked:
@@ -2827,6 +2852,11 @@ export const uz: Texts<'one' | 'other'> = {
         open: 'Nashrda jurnal ochildi',
         runs: 'Nashr jurnal kunlarini oʻzgartirdi',
       },
+      exam: {
+        create: 'Imtihon yaratildi',
+        change: 'Imtihon oʻzgartirildi',
+        cancel: 'Imtihon bekor qilindi',
+      },
       lesson: {
         cancel: 'Dars bir kunga bekor qilindi',
         restore: 'Bekor qilingan dars tiklandi',
@@ -3212,6 +3242,8 @@ export const uz: Texts<'one' | 'other'> = {
           'Chorak sanalarining oʻzgarishi {{firstDate}} dan {{lastDate}} gacha darslaringizni oʻzgartirdi. Haftangiz oldin va keyin:',
         exam_day_off:
           '«{{name}}» taqvim yozuvi {{date}} sanasini dam olish kuni qildi: «{{title}}» imtihoni bekor qilindi.',
+        exam_changed:
+          '«{{title}}» imtihoni, {{date}}: darslaringiz yoki imtihondagi navbatchiligingiz oʻzgardi.',
       },
     },
     // The week before and after of a notice of a timetable change (task 5.5c-3a).

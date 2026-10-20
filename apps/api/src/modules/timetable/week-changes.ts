@@ -336,7 +336,8 @@ export async function sendWeekChanges(
         readonly kind: 'timetable.quarters_changed';
         readonly firstDate: string;
         readonly lastDate: string;
-      },
+      }
+    | ExamChangeEvent,
 ): Promise<WeekNotices> {
   const after =
     snapshot.dates === undefined
@@ -371,6 +372,7 @@ export async function sendWeekChanges(
       .execute();
   }
 
+  const sentTo = new Set<string>();
   const notified = await sendTeacherWeeks(transaction, {
     branchId: snapshot.branchId,
     teachers: changes.teachers,
@@ -384,11 +386,26 @@ export async function sendWeekChanges(
     ...(event.kind === 'timetable.day_changed' ||
     event.kind === 'timetable.calendar_changed' ||
     event.kind === 'timetable.template_changed' ||
-    event.kind === 'timetable.quarters_changed'
+    event.kind === 'timetable.quarters_changed' ||
+    event.kind === 'timetable.exam_changed'
       ? { laterWeeks: changes.laterWeeks }
       : {}),
     send: (accountId, week) => {
+      sentTo.add(accountId);
       switch (event.kind) {
+        case 'timetable.exam_changed':
+          return notifications.send(transaction, {
+            kind: event.kind,
+            branchId: snapshot.branchId,
+            accountIds: [accountId],
+            data: {
+              action: event.action,
+              title: event.title,
+              date: event.date,
+              invigilation: event.invigilations.get(accountId) ?? null,
+              ...week,
+            },
+          });
         case 'timetable.day_changed':
           return notifications.send(transaction, {
             kind: event.kind,
@@ -432,7 +449,48 @@ export async function sendWeekChanges(
       }
     },
   });
-  return { notified, marked: changes.marked.length };
+  // Task 5.6c-1 (spec review of the plan, should-fix 2): an invigilator whose
+  // week did not change is told of the exam alone; one notice per person.
+  let invigilators = 0;
+  if (event.kind === 'timetable.exam_changed') {
+    for (const [accountId, invigilation] of [...event.invigilations].sort(([a], [b]) =>
+      a.localeCompare(b),
+    )) {
+      if (sentTo.has(accountId) || !event.told.has(accountId)) continue;
+      await notifications.send(transaction, {
+        kind: event.kind,
+        branchId: snapshot.branchId,
+        accountIds: [accountId],
+        data: { action: event.action, title: event.title, date: event.date, invigilation },
+      });
+      invigilators += 1;
+    }
+  }
+  return { notified: notified + invigilators, marked: changes.marked.length };
+}
+
+/** One person's invigilation after an exam save: its clock times and room. */
+export interface Invigilation {
+  readonly start: string;
+  readonly end: string;
+  readonly room: string;
+}
+
+/**
+ * An exam created, changed or cancelled (task 5.6c-1, decision 2): every
+ * teacher whose week changed is told, with the invigilation of
+ * `invigilations` (by account; `null`: none of this exam after the save),
+ * and every invigilator in `told` whose week did not change is told of the
+ * exam alone; one notice per person.
+ */
+export interface ExamChangeEvent {
+  readonly kind: 'timetable.exam_changed';
+  readonly action: 'created' | 'changed' | 'cancelled';
+  readonly title: string;
+  readonly date: string;
+  readonly invigilations: ReadonlyMap<string, Invigilation | null>;
+  /** The invigilators added, removed, or whose date, time or room changed. */
+  readonly told: ReadonlySet<string>;
 }
 
 /** A teacher's week before and after an event, as a notice carries it. */

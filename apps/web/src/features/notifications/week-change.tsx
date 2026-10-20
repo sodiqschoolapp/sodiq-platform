@@ -36,6 +36,8 @@ export function WeekChange({ item }: { item: Notification }) {
   const week = NOTIFICATION_KINDS[item.kind].safeParse(item.data);
   if (!week.success) return null;
   const { before, after, weekStart } = week.data;
+  // An exam's notice carries a week only when the person's lessons changed (task 5.6c-1).
+  if (before === undefined || after === undefined || weekStart === undefined) return null;
   const also =
     item.kind === 'timetable.day_changed'
       ? NOTIFICATION_KINDS['timetable.day_changed'].safeParse(item.data).data?.also

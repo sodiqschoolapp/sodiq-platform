@@ -156,6 +156,34 @@ export const ERROR_CODES = [
   'quarter_leaves_lesson',
   /** Task 5.6b-5a: an exam of the year would lie outside the year's new dates (the From line of 5.1b). */
   'year_leaves_exam',
+  /** Task 5.6c-1: the exam's date lies in no academic year of the branch, or a change moves it into another year. */
+  'exam_year',
+  /** Task 5.6c-1 (decision 16): no published timetable is in force on the exam's date. */
+  'exam_no_timetable',
+  /** Task 5.6c-1: the exam, or a lesson it would cancel or restore (or the earlier half of its double), has started; exams are made and changed from today on, in slots that have not started. */
+  'exam_started',
+  /** Task 5.6c-1: the exam is cancelled; a cancel is final. */
+  'exam_cancelled',
+  /** Task 5.6c-1: the classes of the exam are on two day templates on its date; two exams are made. */
+  'exam_templates',
+  /** Task 5.6c-1: the first or last lesson of the exam is not a lesson slot of the classes' day. */
+  'exam_slots',
+  /** Task 5.6c-1: a sitting class shares a block with classes that do not sit and the save has no choice for it; `details` lists each block (`classId`, `recordId` the block). */
+  'exam_block_choice',
+  /** Task 5.6c-1: a sitting group has no lesson, or more than one, at exactly the exam's time. */
+  'exam_group_slots',
+  /** Task 5.6c-1: a sitting group's subject is not the exam's. */
+  'exam_group_subject',
+  /** Task 5.6c-1: a sitting class or group is of another academic year than the exam. */
+  'exam_unit_year',
+  /** Task 5.6c-1: the exam meets a blocked rule (an invigilator or a room in a lesson or another exam, a vacancy or an inactive invigilator, a day off); `details` lists each. */
+  'exam_blocked',
+  /** Task 5.6c-1 (decision 8): the exam meets warnings that need a tick; `details` lists each, and the save is sent again with `confirm`. */
+  'exam_warnings',
+  /** Task 5.6c-1 (decision 3): a lesson the exam no longer covers cannot be restored; `details` lists each with the free rooms of its time, and the save is sent again with the lesson in `keepCancelled`. */
+  'exam_restore_blocked',
+  /** Task 5.6c-1 (decision 5): a publish or withdraw would create, remove or change a lesson under a standing exam; `details` lists each exam (until 5.6c-3). */
+  'publish_over_exam',
   /** The go-live date must be a school day: some grade has lessons on it (`edge/academic-year`; task 1.4). */
   'go_live_not_school_day',
   /** Travel time is set between two different branches (task 1.6). */

@@ -227,14 +227,14 @@ export async function examsOn(
   });
 }
 
-type Services = { readonly timetable: Timetable; readonly pattern: TimetablePattern };
+export type Services = { readonly timetable: Timetable; readonly pattern: TimetablePattern };
 
 /**
  * The facts of a version read as if it started on `date`
  * (`.claude/rules/timetable.md`): its pattern state with the Tutors of the
  * date, and the dated facts of that one date.
  */
-async function dayStateOf(
+export async function dayStateOf(
   transaction: Transaction,
   services: Services,
   accountId: string,
