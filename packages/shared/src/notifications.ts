@@ -227,6 +227,38 @@ export const NOTIFICATION_KINDS = {
     also: z.strictObject(teacherWeek).optional(),
   }),
   /**
+   * An absence of a person was entered, changed or withdrawn (task 5.7a-1,
+   * decision 8; `06`, Teachers who work in several branches: "Each branch's
+   * Academic Vice Principal gets the list of own affected lessons and arranges
+   * substitutes; the other is told"): the person's name and the absence's
+   * days after the change (the days before it for a withdraw). One kind per
+   * text, an open end apart (the text is not chosen by the data). Sent to the
+   * current Academic Vice Principals of every branch of the person, the
+   * author left out, labelled with the branch of the request.
+   */
+  'timetable.absence_entered': z.strictObject({
+    name: z.string().min(1).max(200),
+    startsOn: schoolDateSchema,
+    endsOn: schoolDateSchema,
+  }),
+  'timetable.absence_entered_open': z.strictObject({
+    name: z.string().min(1).max(200),
+    startsOn: schoolDateSchema,
+  }),
+  'timetable.absence_changed': z.strictObject({
+    name: z.string().min(1).max(200),
+    startsOn: schoolDateSchema,
+    endsOn: schoolDateSchema,
+  }),
+  'timetable.absence_changed_open': z.strictObject({
+    name: z.string().min(1).max(200),
+    startsOn: schoolDateSchema,
+  }),
+  'timetable.absence_withdrawn': z.strictObject({
+    name: z.string().min(1).max(200),
+    startsOn: schoolDateSchema,
+  }),
+  /**
    * A calendar entry made the date of an exam a day off, and the exam is
    * cancelled (`edge/timetable`, Exams: "a day off removes the exam and tells
    * the Academic Vice Principal"; task 5.6b-2c-1, decision 4): the entry's

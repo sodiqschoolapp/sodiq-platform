@@ -199,7 +199,11 @@ export function DayPage(): React.JSX.Element {
     }
     // A started lesson is held or unresolved (task 5.6a-4, `lessonStateOf`).
     if (lesson.state === 'held') return t('timetable.day.held');
-    if (lesson.state === 'unresolved') return t('timetable.day.unresolved');
+    // Task 5.7a-1: a lesson of an absent teacher keeps its teacher and needs one.
+    if (lesson.state === 'unresolved') {
+      return lesson.absent ? t('timetable.day.unresolvedAbsent') : t('timetable.day.unresolved');
+    }
+    if (lesson.absent) return t('timetable.day.needsTeacherAbsent');
     return t('timetable.day.asPlanned');
   };
 
@@ -320,6 +324,7 @@ export function DayPage(): React.JSX.Element {
                         <TableCell>{lesson.subject.names[language]}</TableCell>
                         <TableCell>
                           {lesson.teacher?.name ?? t('timetable.day.needsTeacher')}
+                          {lesson.absent && <> · {t('timetable.day.absent')}</>}
                         </TableCell>
                         <TableCell>{lesson.room?.name ?? t('timetable.day.needsRoom')}</TableCell>
                         <TableCell>

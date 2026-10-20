@@ -230,6 +230,10 @@ export const AUDIT_ACTION_GROUPS = {
     'exam.create',
     'exam.change',
     'exam.cancel',
+    // Task 5.7a-1: an absence entered, changed or withdrawn.
+    'absence.create',
+    'absence.edit',
+    'absence.withdraw',
   ],
   exports: [
     'building.export',

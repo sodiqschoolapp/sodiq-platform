@@ -573,6 +573,7 @@ describe('the preview of a template change over a published timetable', () => {
           dropped: [],
           bulk: [],
           exams: [],
+          absences: [],
         },
         names,
       },

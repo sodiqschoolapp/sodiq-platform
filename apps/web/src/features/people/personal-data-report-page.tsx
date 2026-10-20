@@ -413,6 +413,25 @@ function StaffParts({ report, words }: { report: StaffReport; words: Words }) {
                 ]),
         }))}
       />
+      {/* Task 5.7a-1: the absences held about the person, a withdrawn one marked. */}
+      <Part
+        title={t('timetable.absences.title')}
+        rows={
+          s.absences.length === 0
+            ? [[t('people.report.none'), words.empty]]
+            : s.absences.map((row): Row => [
+                row.until === null
+                  ? t('people.report.fromDate', { from: words.date(row.from) })
+                  : t('people.report.period', {
+                      from: words.date(row.from),
+                      until: words.date(row.until),
+                    }),
+                row.withdrawn
+                  ? `${row.reason} · ${t('timetable.absences.state_withdrawn')}`
+                  : row.reason,
+              ])
+        }
+      />
       <Part
         title={t('people.report.samePersonTitle')}
         rows={[

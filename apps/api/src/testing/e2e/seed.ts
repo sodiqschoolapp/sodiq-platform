@@ -3899,6 +3899,20 @@ try {
   });
   seeded.exams = { login: examVice.login, password: examVice.firstPassword };
 
+  // Absences (task 5.7a-1): the publishable scene again, in a branch of its
+  // own; the browser test publishes, enters an absence of the scene's
+  // teacher, finds her lessons under "needs a teacher" on the home page and
+  // shortens the absence.
+  const absenceVice = await gridScene({
+    branch: 'Absences browser test branch',
+    vice: ['Sevara', 'Yusupova'],
+    staffId: 'S-269343',
+    phone: '+998935557343',
+    rooms: [],
+    publishable: true,
+  });
+  seeded.absences = { login: absenceVice.login, password: absenceVice.firstPassword };
+
   // The department move (task 3.4c): a branch of its own with a year around
   // today, 7 Oxford, the attendance-only subject Cosmology of STEAM and a
   // draft whose row of it names a STEAM teacher who no longer has it in the

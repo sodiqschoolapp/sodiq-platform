@@ -184,8 +184,10 @@ export function CorrectionDialog({
                 label={t('timetable.day.whoTaught')}
                 options={[
                   { value: '', label: t('timetable.day.teacherChoose') },
+                  // Task 5.7a-1 (decision 12): the absent teacher may be recorded
+                  // as having taught it after all.
                   ...teachers.data.teachers
-                    .filter((one) => one.id !== lesson.teacher?.id)
+                    .filter((one) => lesson.absent || one.id !== lesson.teacher?.id)
                     .map((one) => ({ value: one.id, label: one.name })),
                 ]}
                 {...untick('teacherId')}

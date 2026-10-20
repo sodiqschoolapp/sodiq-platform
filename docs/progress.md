@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 20 October 2026: task 5.7a-1 Teacher absence: absences
+
+- An absence is entered once for a person and covers every branch (0096 `absences`, membership-filtered; `/timetable/absences`): a lesson of the person that starts inside it is "needs a teacher", then "unresolved", and keeps its teacher (`lessonStateOf` `absent`); recording the same person by the correction makes it held (`lesson_absence_taught`).
+- The Academic Vice Principal's home page lists "needs a teacher" and "unresolved" lessons by cause (`GET /api/timetable/attention`), with "consider a permanent change" after 10 school days; one notice to every branch of the person; the publish preview and the withdraw check list the absences kept.
+- Screens: the absences page, the two home lists, "absent" on the day page, the absences in the staff personal-data report. Handbook: `05-teaching-load-and-timetable.md`.
+- Left out: status, lock, room closure and exams (5.7a-2); vacancy fill and acting teacher (5.7a-3); substitutes (5.7b).
+
+The next sessions must know:
+
+- Read an absence only through `absences-read.ts` (`absences_of_teachers`): the rule compares moments, not days.
+- The calendar save lists no absences in its `dayChanges` (`absences: []`).
+- The next task is 5.7a-2.
+
 ## 20 October 2026: task 5.6c-3b Exams in the timetable: the calendar notices, the rating-exam link
 
 - A calendar or template change that moves an exam or cancels it for a day off tells its invigilators in its own notice (`exams` of `timetable.calendar_changed` / `template_changed`, with the week or alone); the calendar path reads the standing exams' invigilators as teachers of the facts (an invigilator on no row no longer fails the engine).

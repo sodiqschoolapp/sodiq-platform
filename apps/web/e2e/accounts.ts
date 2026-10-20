@@ -77,6 +77,7 @@ export type AccountKey =
   | 'draftPublish'
   | 'dayChanges'
   | 'exams'
+  | 'absences'
   | 'whoTeacher'
   | 'whoHeadTutor'
   | 'whoHeadTeacher';

@@ -17,6 +17,7 @@ import {
   type ImpactLesson,
 } from '@sodiq/timetable-rules';
 import type { Transaction } from '../../database/transactions.js';
+import { runAbsences } from './absences-read.js';
 import { datedLessonsOf, type DatedFindings } from './dated-check.js';
 import { needKeyOf, patternDateOf, vacanciesOf, writtenTeacherOf } from './dated-lessons.js';
 import type { SortedBulk } from './bulk-cancels-kept.js';
@@ -159,6 +160,10 @@ export async function impactOf(
     before.push(...(await lessonsOf(stretch.id, stretch.from, stretch.to, 'one_day')));
   }
   // Task 5.6a-5a: a kept move from outside the run keeps its stored lessons.
+  // Task 5.7a-1 (code review finding 2): the lessons an absence can put
+  // under "needs a teacher": a kept stored lesson cancelled with a reason or
+  // for an exam is cancelled, never counted.
+  const absenceLessons: ImpactLesson[] = [];
   const keptStoredOf = async (version: string | null, from: string, to: string) => {
     const ids = days.keptStored.get(version);
     if (ids === undefined || ids.size === 0) return [];
@@ -170,26 +175,30 @@ export async function impactOf(
       cancelled: 'one_day',
       lock: false,
     });
-    return rows.filter((row) => ids.has(row.id)).map((row) => row.lesson);
+    const kept = rows.filter((row) => ids.has(row.id));
+    absenceLessons.push(...kept.filter((row) => row.cancelCause === null).map((row) => row.lesson));
+    return kept.map((row) => row.lesson);
   };
-  const after = [
-    ...(await writtenLessonsOf(transaction, draftFindings)),
-    ...(await keptStoredOf(null, startsOn, lastDate)),
-  ];
+  const written = await writtenLessonsOf(transaction, draftFindings);
+  absenceLessons.push(...written);
+  const after = [...written, ...(await keptStoredOf(null, startsOn, lastDate))];
   const own = publishImpact({ before, after });
   // Spec review must-fix 1: each carried version over its own run.
   const carriedImpacts: { one: CarriedImpact; impact: ReturnType<typeof publishImpact> }[] = [];
   for (const one of carried) {
+    const oneWritten = await writtenLessonsOf(transaction, one.after);
+    absenceLessons.push(...oneWritten);
+    const oneAfter = [
+      ...oneWritten,
+      ...(await keptStoredOf(one.versionId, one.firstDate, one.lastDate)),
+    ];
     carriedImpacts.push({
       one,
       impact: publishImpact({
         before: (await isStored(one.versionId))
           ? await storedLessons(one.firstDate, one.lastDate, 'one_day')
           : one.before.lessons.map(impactLessonOf),
-        after: [
-          ...(await writtenLessonsOf(transaction, one.after)),
-          ...(await keptStoredOf(one.versionId, one.firstDate, one.lastDate)),
-        ],
+        after: oneAfter,
       }),
     });
   }
@@ -319,6 +328,7 @@ export async function impactOf(
         dropped: days.items.filter((one) => one.category === 'dropped').map((one) => one.answer),
         bulk: days.bulk.map((one) => one.answer),
         exams: days.exams.map((one) => one.answer),
+        absences: await runAbsences(transaction, draft.version.branch_id, absenceLessons),
       },
       names,
     },

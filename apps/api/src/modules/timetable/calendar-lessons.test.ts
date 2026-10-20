@@ -2886,6 +2886,8 @@ describe('calendar entries after publishing', () => {
         dropped: [],
         bulk: [],
         exams: [],
+        // Task 5.7a-1 (decision 7): a calendar save lists no absences.
+        absences: [],
       });
       expect(await storedRowsOf(s.branch)).toEqual(rows[0]);
       expect(await storedRowsOf(other.branch)).toEqual(rows[1]);

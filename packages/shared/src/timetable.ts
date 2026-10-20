@@ -111,12 +111,19 @@ export function lessonStateOf(
     readonly cancelled: boolean;
     /** The kind of the teacher recorded; `null` for nobody. */
     readonly teacher: 'person' | 'vacancy' | null;
+    /**
+     * The person recorded is absent at the lesson's start and was not
+     * recorded as having taught it after all (task 5.7a-1, decisions 5 and
+     * 12): the lesson keeps its teacher and is "needs a teacher", then
+     * "unresolved".
+     */
+    readonly absent: boolean;
   },
   now: Date,
 ): LessonState {
   if (lesson.cancelled) return 'cancelled';
   const started = lesson.startsAt.getTime() <= now.getTime();
-  if (lesson.teacher === 'person') return started ? 'held' : 'upcoming';
+  if (lesson.teacher === 'person' && !lesson.absent) return started ? 'held' : 'upcoming';
   return started ? 'unresolved' : 'needs_teacher';
 }
 
@@ -1342,6 +1349,21 @@ export const dayChangesAnswerSchema = z.object({
   bulk: z.array(bulkItemSchema),
   /** Task 5.6c-3a: the standing exams of the dates, once each. */
   exams: z.array(examItemSchema),
+  /**
+   * Task 5.7a-1 (decision 7): the live absences of the teachers of the run's
+   * new lessons that meet its dates, always kept, each with the number of
+   * those lessons it puts under "needs a teacher". Not part of `key`: no
+   * choice depends on them.
+   */
+  absences: z.array(
+    z.object({
+      id: z.uuid(),
+      name: z.string(),
+      startsOn: schoolDateSchema,
+      endsOn: schoolDateSchema.nullable(),
+      lessons: z.int().min(0),
+    }),
+  ),
 });
 
 export type DayChangesAnswer = z.infer<typeof dayChangesAnswerSchema>;

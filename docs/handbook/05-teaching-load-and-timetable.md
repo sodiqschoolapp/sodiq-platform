@@ -2,6 +2,45 @@
 
 Not written yet for most of the teaching load and the timetable: task 3.7 describes what is built so far. This page holds the parts that later tasks added.
 
+## Teacher absences
+
+<!-- Sources: spec 06 (Teachers who work in several branches, Absence; How surprises are prevented), edge/timetable (After publishing: "A teacher is ill for weeks", "The lesson time passes and nobody was assigned"; Versions and drafts), edge/00-definitions (Held lesson); task 5.7a-1, decisions 1 to 13 and plan review corrections 1 and 2 -->
+
+**What it is.** When a teacher cannot come, the Academic Vice Principal enters an absence once. It covers every branch the teacher works in. The teacher's lessons in those days stay in the timetable with the teacher's name, but need a teacher: before they start they are marked "Needs a teacher", and once they start with nobody recorded they are "Unresolved". They are never counted as held.
+
+**Who can use it.**
+
+| Role | What the role may do | Where |
+| --- | --- | --- |
+| Super Admin | Enter, change and withdraw absences; see the lists | Every branch |
+| Academic Vice Principal | Enter, change and withdraw absences of the people of the branch; see the lists on the home page | Own branch (the absence covers every branch of the person) |
+| Principal | See the absences and their lessons | Own branch |
+
+**How it works.**
+
+1. Timetable → Absences → Add an absence. Choose the person, the first day, the last day or "No return date yet", and a reason.
+2. The Academic Vice Principals of every branch where the person works, or has lessons in those days, get a notice. The one who entered it does not.
+3. Each branch's home page shows "Lessons that need a teacher" and "Unresolved lessons", one row for each absence, vacancy or lesson with nobody recorded, with the number of lessons, the dates and a link to the day.
+4. In the absence's side panel the branch sees its own lessons inside the absence. "Change the dates" shortens or lengthens it; "Withdraw" removes it while it has not started.
+
+**Rules.**
+
+- An absence starts today or later. One entered today starts at that moment: lessons that started earlier today keep their state.
+- Setting the last day to yesterday ends the absence at that moment: lessons that started before stay "Unresolved", later ones go back to the teacher.
+- An absence that has ended cannot be changed; enter a new one. A withdrawn absence cannot be changed again.
+- Two absences of one person never overlap.
+- A vacancy cannot be absent: its lessons already need a teacher.
+- After 10 school days of the branch the row on the home page suggests a new timetable version.
+- A new version published over the days keeps the absence: its new lessons of the teacher need a teacher too. The publish preview lists it.
+
+**What happens if…**
+
+- *The teacher came after all and taught a lesson.* Correct the past lesson: "Someone else taught it" and choose the same teacher. The lesson is held.
+- *The absence is shortened.* Its later lessons go back to the teacher at once, in every branch.
+- *The teacher works in two branches.* Each branch sees its own lessons; the absence is the same record.
+
+**Messages.** "This person already has an absence on some of these days." "This change would touch a day before today or a lesson that has already started." "This absence was withdrawn and cannot be changed." "A vacancy cannot be absent."
+
 ## Exams after a publish or a withdraw
 
 <!-- Sources: spec 06 (Changes after publishing, Exam), edge/timetable (Exams: "An exam is stored on its own like a one-day change and kept after a later publish"; Versions and drafts: "The preview sorts them into kept, needs a decision and dropped. Publish waits until every 'needs a decision' item is settled"); task 5.6c-3a, decisions 2 to 9 and plan review correction 1 -->

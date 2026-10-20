@@ -209,6 +209,12 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       'У журнала этого экзамена в этой четверти уже есть рейтинговый экзамен — другой экзамен. Снимите отметку или сначала измените тот экзамен.',
     exam_rating_journal:
       'Журнал этого рейтингового экзамена относится к другому предмету или году. Проверьте экзамен ещё раз и сохраните снова.',
+    absence_overlap:
+      'У этого человека уже есть отсутствие в некоторые из этих дней. Измените то отсутствие.',
+    absence_past:
+      'Это изменение затронет день до сегодняшнего или урок, который уже начался. Укажите последний день или внесите новое отсутствие.',
+    absence_withdrawn: 'Это отсутствие отозвано, его нельзя изменить. Внесите новое.',
+    absence_person: 'Вакансия не может отсутствовать: её уроки и так ждут учителя.',
     own_account:
       'Нельзя заблокировать, разблокировать или сбросить свою учётную запись. Обратитесь к другому администратору.',
     account_already_locked:
@@ -2553,6 +2559,22 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     title: 'Главная',
     noClass: { title: 'Ученики без класса', link: 'Открыть список' },
     noValidPhone: { title: 'Родители без действующего телефона', link: 'Открыть список' },
+    needsTeacher: { title: 'Уроки, которым нужен учитель' },
+    unresolved: { title: 'Нерешённые уроки' },
+    attention: {
+      absence: '{{name}}, отсутствует',
+      absenceUnnamed: 'Учитель другого филиала, отсутствует',
+      vacancy: '{{name}} (вакансия)',
+      nobody: 'Никто не указан',
+      lessons_one: '{{n}} урок',
+      lessons_few: '{{n}} урока',
+      lessons_many: '{{n}} уроков',
+      lessons_other: '{{n}} урока',
+      range: '{{from}} – {{to}}',
+      open: 'Открыть день',
+      permanent:
+        'Отсутствует 10 учебных дней или больше: стоит подготовить новую версию расписания.',
+    },
     emptyTitle: 'Здесь пока нечего делать',
     noRole: 'У вашей учётной записи пока нет роли.',
     teaching: 'Здесь будут ваши уроки и журналы.',
@@ -2966,6 +2988,11 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       journal: {
         open: 'Журнал открыт при публикации',
         runs: 'Дни журнала изменены публикацией',
+      },
+      absence: {
+        create: 'Отсутствие внесено',
+        edit: 'Даты отсутствия изменены',
+        withdraw: 'Отсутствие отозвано',
       },
       exam: {
         create: 'Экзамен создан',
@@ -3390,6 +3417,13 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
           'Изменение шаблонов дня с {{from}} изменило ваши уроки. Ваша неделя до и после:',
         quarters_changed:
           'Изменение дат четвертей изменило ваши уроки с {{firstDate}} по {{lastDate}}. Ваша неделя до и после:',
+        absence_entered: '{{name}} отсутствует с {{startsOn}} по {{endsOn}}. Урокам нужен учитель.',
+        absence_entered_open:
+          '{{name}} отсутствует с {{startsOn}}, дата возвращения пока неизвестна. Урокам нужен учитель.',
+        absence_changed: 'Отсутствие: {{name}}, теперь с {{startsOn}} по {{endsOn}}.',
+        absence_changed_open:
+          'Отсутствие: {{name}}, теперь с {{startsOn}}, дата возвращения пока неизвестна.',
+        absence_withdrawn: 'Отсутствие: {{name}} с {{startsOn}} отозвано.',
         exam_day_off:
           'Запись календаря «{{name}}» сделала {{date}} выходным: экзамен «{{title}}» отменён.',
         exam_changed:
@@ -3423,6 +3457,47 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     builderLink: 'Конструктор черновика',
     dayLink: 'Изменения на день',
     examsLink: 'Экзамены',
+    absencesLink: 'Отсутствия',
+    absences: {
+      title: 'Отсутствия',
+      caption: 'Отсутствия сотрудников филиала',
+      add: 'Добавить отсутствие',
+      newTitle: 'Новое отсутствие',
+      person: 'Сотрудник',
+      personChoose: 'Выберите сотрудника',
+      firstDay: 'Первый день',
+      lastDay: 'Последний день',
+      openEnded: 'Дата возвращения пока неизвестна',
+      open: 'Без даты окончания',
+      reason: 'Причина',
+      state: 'Состояние',
+      state_planned: 'Запланировано',
+      state_current: 'Сейчас',
+      state_ended: 'Закончилось',
+      state_withdrawn: 'Отозвано',
+      changeDates: 'Изменить даты',
+      withdraw: 'Отозвать',
+      withdrawTitle: 'Отозвать отсутствие?',
+      withdrawText: 'Уроки вернутся учителю. Отозванное отсутствие больше нельзя изменить.',
+      cancel: 'Отмена',
+      emptyTitle: 'Отсутствий нет',
+      empty:
+        'Внесите отсутствие, когда учитель не может прийти. Оно действует во всех его филиалах.',
+      lessons: 'Уроки этого филиала',
+      lessonsEmpty: 'Ни один урок этого филиала не попадает в отсутствие.',
+      date: 'Дата',
+      time: 'Время',
+      unit: 'Класс или группа',
+      subject: 'Предмет',
+      room: 'Кабинет',
+      noRoom: 'Без кабинета',
+      lessonState: 'Состояние',
+      state_needs_teacher: 'Нужен учитель',
+      state_unresolved: 'Не решён',
+      state_held: 'Проведён',
+      state_upcoming: 'Предстоит',
+      state_cancelled: 'Отменён',
+    },
     // The exams of a date (task 5.6c-2).
     exams: {
       title: 'Экзамены',
@@ -3567,6 +3642,9 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       restoreSend: 'Восстановить урок',
       held: 'Проведён',
       unresolved: 'Не решён: никто не указан',
+      needsTeacherAbsent: 'Нужен учитель: учитель отсутствует',
+      unresolvedAbsent: 'Не решён: учитель отсутствовал',
+      absent: 'отсутствует',
       correct: 'Исправить',
       correctTitle: 'Исправить: {{subject}} в {{time}}',
       correctKind: 'Что произошло',
@@ -3988,6 +4066,17 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       },
       dayChanges: {
         title: 'Изменения на один день',
+        absencesTitle_one: 'Отсутствия сохраняются: {{count}}',
+        absencesTitle_few: 'Отсутствия сохраняются: {{count}}',
+        absencesTitle_many: 'Отсутствия сохраняются: {{count}}',
+        absencesTitle_other: 'Отсутствия сохраняются: {{count}}',
+        absenceLine_one: '{{name}} отсутствует {{days}}: {{count}} новому уроку нужен учитель',
+        absenceLine_few: '{{name}} отсутствует {{days}}: {{count}} новым урокам нужен учитель',
+        absenceLine_many: '{{name}} отсутствует {{days}}: {{count}} новым урокам нужен учитель',
+        absenceLine_other: '{{name}} отсутствует {{days}}: {{count}} новым урокам нужен учитель',
+        absenceDays: 'с {{from}} по {{to}}',
+        absenceFrom: 'с {{from}}',
+        absenceUnnamed: 'Учитель другого филиала',
         keptTitle_one: 'Сохраняются: {{count}}',
         keptTitle_few: 'Сохраняются: {{count}}',
         keptTitle_many: 'Сохраняются: {{count}}',
