@@ -489,6 +489,24 @@ describe('quarter and year dates after lessons exist', () => {
       ]);
       expect(await storedRowsOf(s.branch)).toEqual(rows);
 
+      // Spec review of the plan, should-fix 4 (the shorter quarter, "refused,
+      // with the list of what is in the way"): quarter 1 ending before the
+      // held lessons takes 12 October out of every quarter.
+      const shorter = await saveQuarters(
+        s,
+        withQuarters({ 1: ['2026-09-01', '2026-10-11'] }),
+        undefined,
+        browser.cookie,
+      );
+      refusedWith(shorter, 409, 'quarter_past_lessons');
+      expect(
+        detailsOf(shorter).map((one) => [one.day, (one.quarterItem as { kind: string }).kind]),
+      ).toEqual([
+        [MONDAY, 'past_lesson'],
+        [MONDAY, 'past_lesson'],
+      ]);
+      expect(await storedRowsOf(s.branch)).toEqual(rows);
+
       // The first week of September holds no lesson: it leaves quarter 1.
       okay(
         await saveQuarters(
@@ -635,6 +653,45 @@ describe('quarter and year dates after lessons exist', () => {
       .where('lessons.id', '=', lesson.id)
       .executeTakeFirstOrThrow();
     expect(moved).toEqual({ date: OCT19, number: 2 });
+  });
+
+  // Spec review of the code, should-fix 5: a move made onto a date that has
+  // since passed, from a later one the save puts in another quarter.
+  it('a stored move onto a date now past, from a date the save puts in another quarter, refuses it', async () => {
+    const s = await scene();
+    const lesson = await lessonOf(s, OCT26, s.classId);
+    okay(
+      await keyed(`/api/timetable/lessons/${lesson.id}/move`, s.branch, {
+        date: MONDAY,
+        lessonNumber: 3,
+        reason: 'Excursion to the museum',
+      }),
+    );
+    t.clock.set('2026-10-12T15:00:00+05:00');
+    try {
+      const browser = await t.kit.completeSession('Nodira', 'Saidova');
+      await t.kit.giveRole(browser.account.id, { role: 'super_admin' });
+      const rows = await storedRowsOf(s.branch);
+      const refused = await saveQuarters(
+        s,
+        withQuarters({ 1: ['2026-09-01', '2026-10-25'], 2: [OCT26, '2026-12-28'] }),
+        undefined,
+        browser.cookie,
+      );
+      refusedWith(refused, 409, 'quarter_splits_move');
+      expect(detailsOf(refused).map((one) => one.quarterItem)).toEqual([
+        {
+          kind: 'split_move',
+          fromDate: OCT26,
+          toDate: MONDAY,
+          unit: { kind: 'class', name: expect.any(String) as string, grade: 7 },
+          subjectId: s.maths,
+        },
+      ]);
+      expect(await storedRowsOf(s.branch)).toEqual(rows);
+    } finally {
+      t.clock.set(START);
+    }
   });
 
   // Plan test 11.

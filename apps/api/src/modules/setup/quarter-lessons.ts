@@ -160,7 +160,7 @@ export class QuarterLessons {
       ),
     );
     const splitMoves = itemsOf(
-      await this.splitMoves(transaction, branchId, yearId, today, input.before, after),
+      await this.splitMoves(transaction, branchId, yearId, input.before, after),
     );
     for (const [code, list] of [
       ['quarter_past_lessons', pastLessons],
@@ -264,7 +264,9 @@ export class QuarterLessons {
   /**
    * The stored one-day moves of the year in force whose lesson's own date
    * (the first row of its changes in force) and the date it stands on now lie
-   * in one quarter before the save and in two after it (decision 6). A move
+   * in one quarter before the save and in two after it (decision 6), also a
+   * move onto a date of today or earlier from a later one (spec review of the
+   * code, should-fix 5). A move
    * with a side in no quarter after the save is the rewrite's: the date is
    * written again and the move sorted there.
    */
@@ -272,7 +274,6 @@ export class QuarterLessons {
     transaction: Transaction,
     branchId: string,
     yearId: string,
-    today: string,
     before: readonly Dated[],
     after: readonly Dated[],
   ): Promise<QuarterItem[]> {
@@ -295,7 +296,6 @@ export class QuarterLessons {
       left join groups g on g.id = l.group_id
       where c.branch_id = ${branchId}
         and b.academic_year_id = ${yearId}
-        and b.lesson_date > ${today}::date
         and not exists (select 1 from lesson_day_change_ends e where e.change_id = c.id)
         and exists (
           select 1 from lesson_day_changes m

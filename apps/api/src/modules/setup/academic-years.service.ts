@@ -420,9 +420,7 @@ export class AcademicYears {
     record: QuartersSave,
     requestId: string,
   ): Promise<AcademicYear> {
-    const answer = await this.writeQuarters(access, branchId, id, record, requestId, false);
-    if (answer instanceof PreviewDone) throw new ApiException('internal_error', 500);
-    return answer;
+    return this.writeQuarters(access, branchId, id, record, requestId, false);
   }
 
   /**
@@ -455,7 +453,7 @@ export class AcademicYears {
     record: QuartersSave,
     requestId: string,
     preview: boolean,
-  ): Promise<AcademicYear | PreviewDone> {
+  ): Promise<AcademicYear> {
     // The dated lessons a save writes are refused by the database as a
     // publish's are (the claims, `timetable_busy`).
     return refusingPublish(() =>
