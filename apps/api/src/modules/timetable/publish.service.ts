@@ -1675,6 +1675,12 @@ export const PUBLISH_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   room_shared_full: 'timetable_busy',
   room_shared_capacity: 'timetable_busy',
   lesson_block_student_twice: 'timetable_busy',
+  // Task 5.6c-3a (spec review of the code, must-fix 1): the guards of a
+  // standing exam that a publish or a withdraw meets at the commit (0060),
+  // which the sorting checks first; never a 500.
+  exam_group_slots: 'timetable_busy',
+  exam_incomplete: 'timetable_busy',
+  lesson_block_class_out_exam: 'timetable_busy',
 };
 
 const BUSY_CODES = new Set(['40P01', '40001']);

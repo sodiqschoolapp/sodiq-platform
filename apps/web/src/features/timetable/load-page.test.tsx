@@ -774,6 +774,7 @@ describe('the teaching load page: withdraw', () => {
                   sittingClassIds: [OXFORD.id],
                   otherClassIds: [OXFORD.id],
                   choice: null,
+                  keepOffered: true,
                 },
               ],
               blocked: [
@@ -875,6 +876,7 @@ describe('the teaching load page: withdraw', () => {
                   sittingClassIds: [OXFORD.id],
                   otherClassIds: [OXFORD.id],
                   choice: null,
+                  keepOffered: true,
                 },
               ],
               blocked: [

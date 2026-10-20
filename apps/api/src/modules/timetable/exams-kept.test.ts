@@ -2,6 +2,7 @@ import type { DayDecisions, ExamItemAnswer } from '@sodiq/shared';
 import { describe, expect, it } from 'vitest';
 import type { StandingExam } from './calendar-exams.js';
 import { examKeyPartOf, examRefusalsOf, type KeptExam } from './exams-kept.js';
+import { refusingPublish } from './publish.service.js';
 
 // All names are invented. Task 5.6c-3a, pull request #183: the choices of a
 // standing exam kept after a publish (decisions 2 to 6 and plan review
@@ -44,6 +45,7 @@ function kept(
     groupMisses?: boolean;
     noTimetable?: boolean;
     dropBlocked?: boolean;
+    keepBlocked?: boolean;
   } = {},
 ): KeptExam {
   const decide =
@@ -67,6 +69,7 @@ function kept(
               sittingClassIds: [],
               otherClassIds: [],
               choice: null,
+              keepOffered: input.keepBlocked !== true,
             },
           },
         ]
@@ -165,6 +168,17 @@ describe('the choices of a standing exam after a publish', () => {
     ).toEqual(['day_choice_not_offered@block']);
   });
 
+  it('refuses "keep" on a block whose lessons, kept for the other classes, would meet the exam (spec review of the code, must-fix 4)', () => {
+    const at = { key: EXAM, blockId: BLOCK, blockDate: DATE };
+    expect(codes(kept({ block: true, keepBlocked: true }), [{ ...at, choice: 'keep' }])).toEqual([
+      'day_choice_not_offered@block',
+    ]);
+    expect(codes(kept({ block: true, keepBlocked: true }), [{ ...at, choice: 'cancel' }])).toEqual(
+      [],
+    );
+    expect(codes(kept({ block: true }), [{ ...at, choice: 'keep' }])).toEqual([]);
+  });
+
   it('needs a reason for a "drop" exactly when it leaves lessons cancelled (plan review correction 1)', () => {
     const blocking = kept({ blocked: true, dropBlocked: true });
     expect(codes(blocking, [{ key: EXAM, choice: 'drop' }])).toEqual(['day_choice_not_offered']);
@@ -191,5 +205,18 @@ describe('the choices of a standing exam after a publish', () => {
     const other = kept({ blocked: true, dropBlocked: true });
     expect(examKeyPartOf([one])).toBe(examKeyPartOf([kept({ blocked: true })]));
     expect(examKeyPartOf([one])).not.toBe(examKeyPartOf([other]));
+  });
+
+  it('answers the guards of a standing exam that a publish or a withdraw meets at the commit as timetable_busy, never a 500 (spec review of the code, must-fix 1)', async () => {
+    for (const constraint of [
+      'exam_group_slots',
+      'exam_incomplete',
+      'lesson_block_class_out_exam',
+    ]) {
+      const failure = Object.assign(new Error(constraint), { code: '23514', constraint });
+      await expect(refusingPublish(() => Promise.reject(failure))).rejects.toMatchObject({
+        code: 'timetable_busy',
+      });
+    }
   });
 });

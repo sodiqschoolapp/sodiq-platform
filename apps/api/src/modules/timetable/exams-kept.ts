@@ -417,8 +417,31 @@ export function sortExamsKept(input: {
     });
     const sitting = new Set(exam.classIds);
     const units = unitsOf(there);
+    const others = fixedExamsOn(before.sorted, branchId, exam.date).filter(
+      (placement) => placement.id !== `exam:${exam.id}`,
+    );
+    // Spec review of the code, must-fix 4 (`edge/timetable`, Exams: "a lesson of
+    // an invigilator or in an exam room at that time is a 'needs a decision'
+    // item"; `.claude/rules/timetable.md`: a lesson still held for other classes
+    // stays in the check): an open block is checked kept for the other classes,
+    // the others as carried or cancelled whole; `keep` is offered only when
+    // none of its lessons then meets the exam.
+    const keepOfferedOf = (unitKey: string, lessonIds: ReadonlySet<string>): boolean => {
+      const kept = examLessonsOf(exam, one.before, there, (_classId, block) =>
+        unitKeyOf(block.patternBlockIds) === unitKey
+          ? 'keep'
+          : (carried.get(unitKeyOf(block.patternBlockIds)) ?? 'cancel'),
+      );
+      const skippedHere = new Set(
+        [...allCovered, ...kept.covered].filter((id) => !lessonIds.has(id) || kept.covered.has(id)),
+      );
+      return !examBlocked(one, branchId, findings, others, skippedHere, kept.outs).some((result) =>
+        result.lessonIds.some((id) => lessonIds.has(id)),
+      );
+    };
     const blocks: KeptBlock[] = [...asked.entries()].map(([unitKey, block]) => {
       const lessons = (units.get(unitKey) ?? []).slice().sort((a, b) => a.start - b.start);
+      const choice = carried.get(unitKey) ?? null;
       const first = lessons[0];
       const pair = lessons.find((lesson) => lesson.patternBlockId !== first?.patternBlockId);
       const classIds = [...new Set(lessons.flatMap((lesson) => lesson.classIds))].sort();
@@ -433,7 +456,9 @@ export function sortExamsKept(input: {
           lessons: lessons.flatMap(lessonAnswerOf),
           sittingClassIds: classIds.filter((id) => sitting.has(id)),
           otherClassIds: classIds.filter((id) => !sitting.has(id)),
-          choice: carried.get(unitKey) ?? null,
+          choice,
+          keepOffered:
+            choice !== null || keepOfferedOf(unitKey, new Set(lessons.map((lesson) => lesson.id))),
         },
       };
     });
@@ -441,9 +466,6 @@ export function sortExamsKept(input: {
     // `keep` (a block still asked is left out, as the calendar path does).
     const chosen = examLessonsOf(exam, one.before, there, carriedChoiceOf(carried, 'cancel'));
     const skipped = new Set([...allCovered, ...chosen.covered]);
-    const others = fixedExamsOn(before.sorted, branchId, exam.date).filter(
-      (placement) => placement.id !== `exam:${exam.id}`,
-    );
     const blocked = examBlocked(one, branchId, findings, others, skipped, chosen.outs);
     const own = (id: string) => datedById.has(id);
     const clashed = new Set(blocked.flatMap((result) => result.lessonIds.filter(own)));
@@ -668,9 +690,19 @@ export function examRefusalsOf(
         block.answer.blockId === one.blockId &&
         block.answer.blockDate === one.blockDate,
     );
+    const keepOffered = item.blocks.some(
+      (block) =>
+        block.answer.blockId === one.blockId &&
+        block.answer.blockDate === one.blockDate &&
+        block.answer.keepOffered,
+    );
     if (item.category !== 'decide' || !open) {
       refusals.push({ code: 'day_decision_unknown', ...at });
-    } else if (one.choice === 'drop' || whole.get(one.key)?.choice === 'drop') {
+    } else if (
+      one.choice === 'drop' ||
+      whole.get(one.key)?.choice === 'drop' ||
+      (one.choice === 'keep' && !keepOffered)
+    ) {
       refusals.push({ code: 'day_choice_not_offered', ...at });
     }
   }
@@ -693,15 +725,19 @@ export function examsWriteOf(input: {
 }): ExamWrite | null {
   if (input.items.length === 0) return null;
   const { whole, blocks } = examDecisionsOf(input.items, input.sent);
-  const cancelWith = new Map<string, string>();
+  const cancelWith = new Map<string, { readonly reason: string; readonly examId: string }>();
   const sorted: SortedExam[] = input.items.map((item) => {
     const decision = whole.get(item.exam.id);
     if (decision?.choice === 'cancel' && decision.reason !== null) {
-      for (const key of item.clashKeys) cancelWith.set(key, decision.reason);
+      for (const key of item.clashKeys) {
+        cancelWith.set(key, { reason: decision.reason, examId: item.exam.id });
+      }
     }
     if (decision?.choice === 'drop') {
       if (decision.reason !== null) {
-        for (const key of item.dropBlockedKeys) cancelWith.set(key, decision.reason);
+        for (const key of item.dropBlockedKeys) {
+          cancelWith.set(key, { reason: decision.reason, examId: item.exam.id });
+        }
       }
       return { exam: item.exam, outcome: 'dropped', code: null, before: item.before, after: null };
     }

@@ -94,7 +94,7 @@ export function dayDecisionsBodyOf(
       if (block.choice !== null) continue;
       const at = { key: item.key, blockId: block.blockId, blockDate: block.blockDate };
       const picked = choices[dayDecisionKeyOf(at)];
-      if (picked === undefined) return null;
+      if (picked === undefined || (picked === 'keep' && !block.keepOffered)) return null;
       dayDecisions.push({ ...at, choice: picked });
     }
   }
@@ -351,22 +351,24 @@ export function PublishDayChanges({
             return (
               <fieldset key={decisionKey} className="grid gap-1 ps-4">
                 <legend>{examBlockText(block)}</legend>
-                {(['cancel', 'keep'] as const).map((one) => (
-                  <label key={one} className={CHECKBOX_TARGET}>
-                    <input
-                      type="radio"
-                      name={`exam-block-${decisionKey}`}
-                      className={CHECKBOX}
-                      value={one}
-                      disabled={!canEdit}
-                      checked={choices[decisionKey] === one}
-                      onChange={() => {
-                        onChoose(decisionKey, one);
-                      }}
-                    />
-                    <span>{t(`timetable.publish.dayChanges.exams.blockChoice_${one}`)}</span>
-                  </label>
-                ))}
+                {(block.keepOffered ? (['cancel', 'keep'] as const) : (['cancel'] as const)).map(
+                  (one) => (
+                    <label key={one} className={CHECKBOX_TARGET}>
+                      <input
+                        type="radio"
+                        name={`exam-block-${decisionKey}`}
+                        className={CHECKBOX}
+                        value={one}
+                        disabled={!canEdit}
+                        checked={choices[decisionKey] === one}
+                        onChange={() => {
+                          onChoose(decisionKey, one);
+                        }}
+                      />
+                      <span>{t(`timetable.publish.dayChanges.exams.blockChoice_${one}`)}</span>
+                    </label>
+                  ),
+                )}
               </fieldset>
             );
           })}

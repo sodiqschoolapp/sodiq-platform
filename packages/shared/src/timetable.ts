@@ -1282,6 +1282,12 @@ export const examBlockSchema = z.object({
   sittingClassIds: z.array(z.uuid()),
   otherClassIds: z.array(z.uuid()),
   choice: z.enum(['keep', 'cancel']).nullable(),
+  /**
+   * Whether `keep` is offered: kept for the other classes, none of its
+   * lessons meets the exam's invigilators, rooms or classes (spec review of
+   * the code, must-fix 4).
+   */
+  keepOffered: z.boolean(),
 });
 
 export type ExamBlockAnswer = z.infer<typeof examBlockSchema>;

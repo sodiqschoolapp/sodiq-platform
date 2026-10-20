@@ -39015,6 +39015,9 @@
                                             "keep",
                                             "cancel"
                                           ]
+                                        },
+                                        "keepOffered": {
+                                          "type": "boolean"
                                         }
                                       },
                                       "required": [
@@ -39026,7 +39029,8 @@
                                         "lessons",
                                         "sittingClassIds",
                                         "otherClassIds",
-                                        "choice"
+                                        "choice",
+                                        "keepOffered"
                                       ],
                                       "additionalProperties": false
                                     }
@@ -62873,6 +62877,9 @@
                                             "keep",
                                             "cancel"
                                           ]
+                                        },
+                                        "keepOffered": {
+                                          "type": "boolean"
                                         }
                                       },
                                       "required": [
@@ -62884,7 +62891,8 @@
                                         "lessons",
                                         "sittingClassIds",
                                         "otherClassIds",
-                                        "choice"
+                                        "choice",
+                                        "keepOffered"
                                       ],
                                       "additionalProperties": false
                                     }
@@ -69498,6 +69506,9 @@
                                             "keep",
                                             "cancel"
                                           ]
+                                        },
+                                        "keepOffered": {
+                                          "type": "boolean"
                                         }
                                       },
                                       "required": [
@@ -69509,7 +69520,8 @@
                                         "lessons",
                                         "sittingClassIds",
                                         "otherClassIds",
-                                        "choice"
+                                        "choice",
+                                        "keepOffered"
                                       ],
                                       "additionalProperties": false
                                     }
@@ -104104,6 +104116,9 @@
                                             "keep",
                                             "cancel"
                                           ]
+                                        },
+                                        "keepOffered": {
+                                          "type": "boolean"
                                         }
                                       },
                                       "required": [
@@ -104115,7 +104130,8 @@
                                         "lessons",
                                         "sittingClassIds",
                                         "otherClassIds",
-                                        "choice"
+                                        "choice",
+                                        "keepOffered"
                                       ],
                                       "additionalProperties": false
                                     }
@@ -109012,6 +109028,9 @@
                                         "keep",
                                         "cancel"
                                       ]
+                                    },
+                                    "keepOffered": {
+                                      "type": "boolean"
                                     }
                                   },
                                   "required": [
@@ -109023,7 +109042,8 @@
                                     "lessons",
                                     "sittingClassIds",
                                     "otherClassIds",
-                                    "choice"
+                                    "choice",
+                                    "keepOffered"
                                   ],
                                   "additionalProperties": false
                                 }

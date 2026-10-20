@@ -11542,6 +11542,7 @@ export interface operations {
                                         otherClassIds: string[];
                                         /** @enum {string|null} */
                                         choice: "keep" | "cancel" | null;
+                                        keepOffered: boolean;
                                     }[];
                                     blocked: {
                                         rule: string;
@@ -15948,6 +15949,7 @@ export interface operations {
                                         otherClassIds: string[];
                                         /** @enum {string|null} */
                                         choice: "keep" | "cancel" | null;
+                                        keepOffered: boolean;
                                     }[];
                                     blocked: {
                                         rule: string;
@@ -17129,6 +17131,7 @@ export interface operations {
                                         otherClassIds: string[];
                                         /** @enum {string|null} */
                                         choice: "keep" | "cancel" | null;
+                                        keepOffered: boolean;
                                     }[];
                                     blocked: {
                                         rule: string;
@@ -23362,6 +23365,7 @@ export interface operations {
                                         otherClassIds: string[];
                                         /** @enum {string|null} */
                                         choice: "keep" | "cancel" | null;
+                                        keepOffered: boolean;
                                     }[];
                                     blocked: {
                                         rule: string;
@@ -24280,6 +24284,7 @@ export interface operations {
                                     otherClassIds: string[];
                                     /** @enum {string|null} */
                                     choice: "keep" | "cancel" | null;
+                                    keepOffered: boolean;
                                 }[];
                                 blocked: {
                                     rule: string;

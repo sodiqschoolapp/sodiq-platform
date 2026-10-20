@@ -794,7 +794,7 @@ export function examWriteOf(input: {
    * a publish's `cancel` settles, and a lesson a `drop` cannot give back
    * (plan review correction 1), which is never held again.
    */
-  readonly cancelWith?: ReadonlyMap<string, string>;
+  readonly cancelWith?: ReadonlyMap<string, { readonly reason: string; readonly examId: string }>;
 }): ExamWrite {
   const { branchId, sorted, begins } = input;
   const moment = (date: string, minutes: number) =>
@@ -933,11 +933,14 @@ export function examWriteOf(input: {
               .execute()
           ).map((row) => row.lesson_id),
         );
-        const cancelWith = input.cancelWith ?? new Map<string, string>();
-        const reasonOf = (lesson: ExamDayLesson) =>
+        const cancelWith =
+          input.cancelWith ??
+          new Map<string, { readonly reason: string; readonly examId: string }>();
+        const cancelOf = (lesson: ExamDayLesson) =>
           lesson.entryId == null
             ? undefined
             : cancelWith.get(examLessonKeyOf(lesson.entryId, date, lesson.start));
+        const reasonOf = (lesson: ExamDayLesson) => cancelOf(lesson)?.reason;
         const restore = lessons.filter(
           (one) =>
             one.cancelCause === 'exam' &&
@@ -1043,7 +1046,10 @@ export function examWriteOf(input: {
             restored: restore
               .filter((lesson) => unlinkedOf.get(one.exam.id)?.has(lesson.id) === true)
               .map((lesson) => lesson.id),
-            cancelledWithReason: withReason.map((lesson) => lesson.id),
+            // Review of the code, should-fix 3: only the lessons of its own decision.
+            cancelledWithReason: withReason
+              .filter((lesson) => cancelOf(lesson)?.examId === one.exam.id)
+              .map((lesson) => lesson.id),
             outsAdded: add,
             outsRemoved: [
               ...removed,

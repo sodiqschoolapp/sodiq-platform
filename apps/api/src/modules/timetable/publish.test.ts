@@ -24,6 +24,7 @@ import {
 } from '../../testing/day-templates-kit.js';
 import { LessonsKit, at } from '../../testing/lessons-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
+import { standingExamOver } from '../../testing/exams-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 import { datedLessonsOf } from './dated-check.js';
 import { TimetablePattern } from './pattern.service.js';
@@ -431,6 +432,28 @@ describe('publish', () => {
         .orderBy('bulk_cancel_id')
         .orderBy('block_id')
         .orderBy('starts_at')
+        .execute(),
+      // Task 5.6c-3a (permission review, must-fix 1): the standing exams a
+      // publish or withdraw keeps, drops or writes again.
+      t.database.migrator
+        .selectFrom('exams')
+        .selectAll()
+        .where('branch_id', 'in', branches)
+        .orderBy('id')
+        .execute(),
+      t.database.migrator
+        .selectFrom('lesson_exam_cancels')
+        .selectAll()
+        .where('branch_id', 'in', branches)
+        .orderBy('lesson_id')
+        .orderBy('exam_id')
+        .execute(),
+      t.database.migrator
+        .selectFrom('lesson_block_class_outs')
+        .selectAll()
+        .where('branch_id', 'in', branches)
+        .orderBy('block_id')
+        .orderBy('class_id')
         .execute(),
     ]);
   };
@@ -1811,6 +1834,52 @@ describe('publish', () => {
       ).toEqual({ cancel_cause: null });
     });
 
+    it('keeps an exam of a carried run: the carried version’s lessons under it written cancelled "exam" with the link (task 5.6c-3a)', async () => {
+      const s = await chainScene();
+      const lessonOn = async (date: string) =>
+        (await lessonsOf(s.branch)).find((one) => one.date === date && one.class_id === s.classId);
+      const inB = await lessonOn('2026-11-16');
+      if (inB === undefined) throw new Error('No lesson of the carried run.');
+      const examId = await standingExamOver(t.database.migrator, {
+        lessonId: inB.id,
+        roomId: await load.classes.room(s.branch),
+        staffId: s.teacherId,
+      });
+      const answer = checkOf(await checkChain(s.branch, s.fix, '2026-10-19', 'carry'));
+      const days = answer.impact?.dayChanges;
+      expect(days?.exams.map((one) => [one.key, one.category, one.carriedVersionId])).toEqual([
+        [examId, 'kept', s.b],
+      ]);
+      expect(days?.exams[0]?.cancelled).toHaveLength(1);
+      versionOf(
+        await publishChain(
+          s.branch,
+          s.fix,
+          '2026-10-19',
+          'carry',
+          answer.chain?.key,
+          randomUUID(),
+          { dayChangesKey: days?.key ?? '' },
+        ),
+      );
+      // The carried version's lesson takes the carried teacher and stays under the exam.
+      const after = await lessonOn('2026-11-16');
+      const row = await t.database.migrator
+        .selectFrom('lessons')
+        .select(['teacher_id', 'cancel_cause'])
+        .where('id', '=', after?.id ?? '')
+        .executeTakeFirstOrThrow();
+      expect(row).toEqual({ teacher_id: s.second, cancel_cause: 'exam' });
+      const links = await t.database.migrator
+        .selectFrom('lesson_exam_cancels')
+        .select('exam_id')
+        .where('lesson_id', '=', after?.id ?? '')
+        .execute();
+      expect(links).toEqual([{ exam_id: examId }]);
+      const [carry] = await t.entries('timetable_version.carry', s.b);
+      expect(carry?.new_value).toMatchObject({ exams: { kept: [examId], decided: [] } });
+    });
+
     it('refuses without an answer, and a refused publish changes nothing', async () => {
       const s = await chainScene();
       const before = await written([s.fix]);
@@ -2193,6 +2262,19 @@ describe('publish', () => {
           })
           .execute();
       }
+      // Task 5.6c-3a (permission review, must-fix 1): a standing exam in each
+      // branch over a lesson of the new version's dates, which a publish keeps.
+      for (const one of [s, theirs]) {
+        const lesson = (await lessonsOf(one.branch)).find(
+          (row) => row.date > '2026-11-01' && row.class_id === one.classId,
+        );
+        if (lesson === undefined) throw new Error('No lesson for the exam.');
+        await standingExamOver(t.database.migrator, {
+          lessonId: lesson.id,
+          roomId: await load.classes.room(one.branch),
+          staffId: one.teacherId,
+        });
+      }
       const before = await written([s.version, theirs.version]);
       expect(new Set(before[15].map((one) => one.branch_id)).size).toBe(2);
       expect(new Set(before[18].map((one) => one.branch_id)).size).toBe(2);
@@ -2201,6 +2283,10 @@ describe('publish', () => {
       expect(new Set(before[8].map((one) => one.branch_id)).size).toBe(2);
       // Task 5.5c-1: journals of both branches, which the Tutor rows added would change.
       expect(new Set(before[11].map((one) => one.branch_id)).size).toBe(2);
+      // Task 5.6c-3a: the exams and their links in both branches.
+      for (const index of [19, 20] as const) {
+        expect(new Set(before[index].map((one) => one.branch_id)).size).toBe(2);
+      }
       for (const cookie of [t.admin, t.vicePrincipal]) {
         for (const id of [theirs.version, UNKNOWN]) {
           refusedWith(await publish(s.branch, id, '2026-10-19', cookie), 404, 'not_found');
