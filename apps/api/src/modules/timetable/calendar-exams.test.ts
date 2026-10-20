@@ -158,11 +158,14 @@ describe('exams under a calendar change', () => {
    * Mondays maths of the grade-7 class in slot 1, history of the grade-10
    * class in slot 3, and physical education in slot 5 of a group of the
    * grade-9 and grade-10 classes, or with `twoGroups` two parallel groups of
-   * both, each with its own teacher. With `double` the maths is a double
+   * both, each with its own teacher, or with `nineGroup` a second group of
+   * the grade-9 class alone in the same block. With `double` the maths is a double
    * lesson in slots 1 and 3; with `tuesday` the grade-10 class has art on
    * Tuesdays in slot 5.
    */
-  async function scene(input: { twoGroups?: boolean; double?: boolean; tuesday?: boolean } = {}) {
+  async function scene(
+    input: { twoGroups?: boolean; nineGroup?: boolean; double?: boolean; tuesday?: boolean } = {},
+  ) {
     const branch = await t.newBranch();
     const year = await load.classes.year(branch);
     for (const [index, [start, end]] of QUARTERS.entries()) {
@@ -251,6 +254,9 @@ describe('exams under a calendar change', () => {
     for (let index = 0; index < (input.twoGroups === true ? 2 : 1); index += 1) {
       groups.push(await load.classes.group(branch, year, sport, [nineId, seniorId]));
     }
+    // Linked to the first by the grade-9 class: one block with it.
+    if (input.nineGroup === true)
+      groups.push(await load.classes.group(branch, year, sport, [nineId]));
     const groupRows: string[] = [];
     const groupTeachers: string[] = [];
     for (const groupId of groups) {
@@ -535,6 +541,40 @@ describe('exams under a calendar change', () => {
       const [after] = await lessonOf(s.branch, OCT19, s.seniorId);
       expect(after?.id).toBe(history?.id);
       expect(after?.cancel_cause).toBeNull();
+    });
+
+    it('for grade 7 only cancels an exam of a grade-7 and a grade-10 class and holds again every lesson of the shared block it had cancelled whole, the one of no sitting class too (code review round 1)', async () => {
+      const s = await scene({ nineGroup: true });
+      const [both] = await lessonOf(s.branch, OCT19, s.groups[0] ?? '');
+      const [nines] = await lessonOf(s.branch, OCT19, s.groups[1] ?? '');
+      expect(nines?.block_id).toBe(both?.block_id);
+      // "Cancel the whole block": the grade-9 group's lesson holds no sitting class.
+      const sat = await exam(s, {
+        date: OCT19,
+        from: '09:50',
+        until: '10:35',
+        slots: [5, 5],
+        classIds: [s.classId, s.seniorId],
+        invigilator: s.seniorTeacher,
+        cancel: [both?.id ?? '', nines?.id ?? ''],
+      });
+
+      const saved = okay(await create(s.branch, dayOff(OCT19, { gradeFrom: 7, gradeTo: 7 })), 201);
+
+      expect((await examRow(sat.id)).cancel_cause).toBe('day_off');
+      for (const [unit, before] of [
+        [s.groups[0] ?? '', both],
+        [s.groups[1] ?? '', nines],
+      ] as const) {
+        const [after] = await lessonOf(s.branch, OCT19, unit);
+        expect(after?.id).toBe(before?.id);
+        expect(after?.cancel_cause).toBeNull();
+      }
+      const [entry] = await t.entries('calendar_entry.create', saved.id);
+      const newValue = entry?.new_value as { exams: { id: string; restored: string[] }[] };
+      expect(newValue.exams.find((one) => one.id === sat.id)?.restored.toSorted()).toEqual(
+        [both?.id ?? '', nines?.id ?? ''].toSorted(),
+      );
     });
 
     it('a working Saturday taken back cancels the exam on it', async () => {

@@ -811,15 +811,27 @@ export function examWriteOf(input: {
         }
         // Decision 2 (spec review must-fix 2): a lesson cancelled "exam" of
         // an exam's classes at its time before the save (or the other half of
-        // its double) that no standing exam covers after it is held again.
+        // its double) that no standing exam covers after it is held again, and
+        // so is every lesson of a block (and its double partner) holding such
+        // a lesson: a shared block cancelled whole has lessons of classes that
+        // do not sit (code review round 1).
         const wasUnder = (exam: SortedExam) => {
           const under = lessons.filter((one) => overlaps(one, exam.before));
           const pairs = new Set(under.flatMap((one) => one.doublePairId ?? []));
+          const sits = (one: ExamDayLesson) =>
+            one.classIds.some((id) => exam.exam.classIds.includes(id)) ||
+            (one.groupId !== null && exam.exam.groups.has(one.groupId));
+          const blocks = new Set(
+            withPartners(
+              [...new Set(under.filter(sits).map((one) => one.blockId))],
+              lessons,
+            ).flat(),
+          );
           return (one: ExamDayLesson) =>
-            (overlaps(one, exam.before) ||
+            blocks.has(one.blockId) ||
+            ((overlaps(one, exam.before) ||
               (one.doublePairId !== null && pairs.has(one.doublePairId))) &&
-            (one.classIds.some((id) => exam.exam.classIds.includes(id)) ||
-              (one.groupId !== null && exam.exam.groups.has(one.groupId)));
+              sits(one));
         };
         const under = new Map(own.map((exam) => [exam.exam.id, wasUnder(exam)]));
         const restore = lessons.filter(
