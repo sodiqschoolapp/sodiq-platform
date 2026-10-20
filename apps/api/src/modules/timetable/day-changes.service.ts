@@ -43,7 +43,7 @@ import { Notifications } from '../notifications/notifications.service.js';
 import { loadCalendarSettings } from '../setup/calendar-state.js';
 import { dayOf, loadStore } from '../setup/day-template-state.js';
 import { notFound } from '../setup/setup-refusals.js';
-import { absentLessons } from './absences-read.js';
+import { awayLessons, settledByTaught } from './away-read.js';
 import { OUT_STATUSES, dayBeginnings } from './dated-check.js';
 import { examsOf } from './exams.service.js';
 import { TimetablePattern } from './pattern.service.js';
@@ -924,6 +924,7 @@ export class TimetableDayChanges {
     let cancelCause = lesson.cancelCause;
     let warnings: readonly RuleResult[] = [];
     let taught = false;
+    let taughtCause: string | null = null;
     if (input.kind === 'cancel') {
       if (lesson.cancelCause !== null) {
         throw new ApiException('lesson_cancelled', 409);
@@ -938,8 +939,12 @@ export class TimetableDayChanges {
       }
       if (input.kind === 'teacher' && input.teacherId === lesson.teacherId) {
         // Task 5.7a-1 (decision 12): the absent person taught it after all;
-        // the lesson keeps its teacher and is held from now on.
-        taught = (await absentLessons(transaction, [lesson])).has(id);
+        // the lesson keeps its teacher and is held from now on. The same for
+        // a person whose account was locked (task 5.7a-2a, decision 7); an
+        // inactive or left person stays refused.
+        const span = (await awayLessons(transaction, [lesson])).get(id);
+        taught = settledByTaught(span);
+        taughtCause = span?.cause ?? null;
         if (!taught) throw new ApiException('teacher_unchanged', 409);
       }
       const newRoom = input.kind === 'teacher' ? undefined : input.roomId;
@@ -1045,7 +1050,7 @@ export class TimetableDayChanges {
         kind: input.kind,
         cancelCause,
         reason: input.reason,
-        ...(taught ? { taughtWhileAbsent: true } : {}),
+        ...(taught ? { taughtWhileAbsent: true, awayCause: taughtCause } : {}),
         ...(input.kind !== 'cancel' && input.confirm === true ? { confirmed: true } : {}),
         warnings: warnings.map((one) => one.rule),
         notices: { ...notices },
@@ -1401,8 +1406,8 @@ export async function dayLessonsOf(
   }
   const roomOf = new Map(rooms.map((one) => [one.id, one.name]));
   const markOf = new Map(marks.map((one) => [one.lesson_id, one.changed_at]));
-  // Task 5.7a-1: a lesson of an absent person keeps its teacher and needs one.
-  const absent = await absentLessons(transaction, lessons);
+  // Tasks 5.7a-1 and 5.7a-2a: a lesson of a person away keeps its teacher and needs one.
+  const away = await awayLessons(transaction, lessons);
   const dates = lessons.map((one) => one.date).sort();
   const begins = await dayBeginnings(
     transaction,
@@ -1442,11 +1447,11 @@ export async function dayLessonsOf(
           startsAt: one.startsAt,
           cancelled: one.cancelCause !== null,
           teacher: teacher?.kind ?? null,
-          absent: absent.has(one.id),
+          away: away.has(one.id),
         },
         moment,
       ),
-      absent: absent.has(one.id),
+      away: away.get(one.id)?.cause ?? null,
       canCorrect: started && !closedBlocks.has(one.blockId),
     };
   });

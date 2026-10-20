@@ -20,6 +20,8 @@ const SCHOOL_WIDE_TABLES: Record<string, string> = {
   ...auditSchoolPartitions(),
   accounts:
     'One person has one account for every branch, and sign-in happens before a branch is known; a row holds no name.',
+  account_lock_spans:
+    'Every lock of an account as a span of moments, written by a trigger on accounts, so that a lesson that started while the account was locked keeps its state after the unlock (task 5.7a-2a, decision 5 of pull request #186, Look first); ids and moments only.',
   sessions:
     'A session belongs to an account, not to a branch; a row holds ids, moments and the name of a browser.',
   known_devices:
@@ -124,6 +126,12 @@ const MEMBERSHIP_FILTERED_TABLES: Record<
     policy: 'staff_membership',
     column: 'staff_id',
   },
+  staff_status_moments: {
+    reason:
+      'The moments of each status row of a staff record, written by a trigger on staff_statuses, that the state of a lesson compares (task 5.7a-2a, decision 4 of pull request #186, Look first).',
+    policy: 'staff_membership',
+    column: 'staff_id',
+  },
   absences: {
     reason:
       'The absences of a staff record, one for every branch the person works in (docs/spec/06, Teachers who work in several branches: "An absence is entered once for the person and covers every branch"; task 5.7a-1, decision 2 of pull request #185, Look first).',
@@ -188,6 +196,12 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
     'Writes the end of an assignment on its subject rows, which the application cannot update, so the exclusion constraints of one Head Teacher per subject see every end (task 2.3b-1, decision 2 of pull request #63).',
   'absences_of_teachers(uuid[],timestamp with time zone,timestamp with time zone)':
     "The live absences of the persons named that meet a range, ids and moments only, for every reader of a lesson's state (task 5.7a-1, decision 3 of pull request #185, Look first): a branch whose link to the person was removed while it still holds the person's lessons reads the same state.",
+  'teachers_away(uuid[],timestamp with time zone,timestamp with time zone)':
+    "Every span in which a person cannot teach (a live absence, an inactive or left status, a lock of the account) that meets a range, ids, causes and moments only, for every reader of a lesson's state (task 5.7a-2a, decision 3 of pull request #186, Look first): a branch whose link to the person was removed while it still holds the person's lessons reads the same state.",
+  'staff_status_moments_write()':
+    "The trigger that writes the moments of every status row and moves their end on a cut (task 5.7a-2a, decision 3 and correction 1 of pull request #186, Look first): it reads the main branch's time zone past the membership filter, and the application has no write right on the table, so no writer of staff_statuses leaves a row without its moments.",
+  'account_lock_spans_write()':
+    'The trigger that opens a lock span at a lock of an account and closes it at the unlock, at app.now (task 5.7a-2a, decision 5 and correction 1 of pull request #186, Look first): the application has no write right on the table, so the spans never differ from accounts.locked_at.',
   'absence_notice_accounts(uuid,timestamp with time zone,timestamp with time zone)':
     "The accounts of the current Academic Vice Principals of every branch linked to a person the transaction sees or holding the person's lessons in a range, ids only, for the notice of an absence (task 5.7a-1, decision 3 of pull request #185, Look first; as relative_notice_accounts).",
   'branch_moves_incoming(uuid)':

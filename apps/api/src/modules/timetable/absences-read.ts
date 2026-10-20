@@ -4,7 +4,7 @@ import type { Transaction } from '../../database/transactions.js';
 import { dayBeginnings } from './dated-check.js';
 
 /**
- * The absences as every reader of a lesson's state sees them (task 5.7a-1,
+ * The absences as the absence's own readers see them (task 5.7a-1,
  * pull request #185, decisions 3, 5 and 12): read through
  * `absences_of_teachers` (0096), ids and moments only, so that a branch
  * whose link to the person was removed while it holds the person's lessons
@@ -69,47 +69,6 @@ export function absenceAt(
           (one.until === null || at.getTime() < one.until.getTime()),
       ) ?? null
   );
-}
-
-/** A stored lesson as the state readers name it. */
-export interface StateLesson {
-  readonly id: string;
-  readonly teacherId: string | null;
-  readonly startsAt: Date;
-}
-
-/**
- * The stored lessons whose teacher is absent at their start and who was not
- * recorded as having taught them after all (decision 12), with the absence
- * of each.
- */
-export async function absentLessons(
-  transaction: Transaction,
-  lessons: readonly StateLesson[],
-): Promise<Map<string, AbsenceSpan>> {
-  const absent = new Map<string, AbsenceSpan>();
-  const withTeacher = lessons.filter((one) => one.teacherId !== null);
-  if (withTeacher.length === 0) return absent;
-  const times = withTeacher.map((one) => one.startsAt.getTime());
-  const spans = await absenceSpans(
-    transaction,
-    withTeacher.map((one) => one.teacherId ?? ''),
-    new Date(Math.min(...times)),
-    new Date(Math.max(...times) + 1),
-  );
-  if (spans.size === 0) return absent;
-  for (const one of withTeacher) {
-    const span = absenceAt(spans, one.teacherId, one.startsAt);
-    if (span !== null) absent.set(one.id, span);
-  }
-  if (absent.size === 0) return absent;
-  const taught = await transaction
-    .selectFrom('lesson_absence_taught')
-    .select('lesson_id')
-    .where('lesson_id', 'in', [...absent.keys()])
-    .execute();
-  for (const row of taught) absent.delete(row.lesson_id);
-  return absent;
 }
 
 /** A lesson a publish or a withdraw writes: its date, its start in minutes of the day, its teachers. */

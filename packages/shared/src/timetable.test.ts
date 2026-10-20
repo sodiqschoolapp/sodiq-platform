@@ -4,6 +4,8 @@ import {
   publishBodySchema,
   withdrawBodySchema,
   isMarkedChanged,
+  AWAY_CAUSES,
+  awayCauseSchema,
   lessonStateOf,
   LOAD_LESSONS_MAX,
   lessonRoomRecordSchema,
@@ -245,8 +247,8 @@ describe('the state of a lesson', () => {
     teacher: 'person' | 'vacancy' | null,
     cancelled: boolean,
     now: Date,
-    absent = false,
-  ) => lessonStateOf({ startsAt, cancelled, teacher, absent }, now);
+    away = false,
+  ) => lessonStateOf({ startsAt, cancelled, teacher, away }, now);
 
   it('is upcoming or needs a teacher before its start', () => {
     expect(state('person', false, before)).toBe('upcoming');
@@ -270,6 +272,12 @@ describe('the state of a lesson', () => {
     expect(state('person', false, startsAt, true)).toBe('unresolved');
     expect(state('vacancy', false, before, true)).toBe('needs_teacher');
     expect(state('vacancy', false, startsAt, true)).toBe('unresolved');
+  });
+
+  // Task 5.7a-2a (decision 6): one cause per lesson, the most lasting first.
+  it('names the causes of a person away in their order of precedence', () => {
+    expect(AWAY_CAUSES).toEqual(['left', 'inactive', 'locked', 'absence']);
+    expect(awayCauseSchema.safeParse('vacancy').success).toBe(false);
   });
 
   it('is cancelled, never held, whoever its teacher is', () => {

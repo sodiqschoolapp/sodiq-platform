@@ -159,6 +159,8 @@ describe('the sign-in access of an account', () => {
     const rows: Record<string, unknown> = {};
     for (const table of [
       'accounts',
+      // Task 5.7a-2a: the lock spans its trigger writes (0097).
+      'account_lock_spans',
       'sessions',
       'account_second_steps',
       'second_step_recovery_codes',
@@ -645,7 +647,18 @@ describe('the sign-in access of an account', () => {
         const other = await withAccount([{ role: 'teacher', branchId: t.south }], t.south);
         const bare = await person();
         const open = await vacancy();
+        // Task 5.7a-2a: an open lock span in each branch (0097), which a
+        // wrong unlock would close.
+        const lockedHere = await withAccount([{ role: 'teacher', branchId: t.north }]);
+        for (const accountId of [other.accountId, lockedHere.accountId]) {
+          await t.database.migrator
+            .updateTable('accounts')
+            .set({ locked_at: new Date(START), locked_by: viceAccount, lock_reason: 'Dismissed' })
+            .where('id', '=', accountId)
+            .execute();
+        }
         const before = await snapshot();
+        expect((before.account_lock_spans as unknown[]).length).toBeGreaterThanOrEqual(2);
         for (const cookie of [t.admin, t.vicePrincipal]) {
           refusedWith(await change(other.id, cookie), 404, 'not_found');
           refusedWith(await change(UNKNOWN, cookie), 404, 'not_found');

@@ -58,7 +58,7 @@ const lesson = (n: number, fields: Partial<DayLesson> = {}): DayLesson => ({
   teacher: { id: uid(600), kind: 'person', name: 'Karimova Aziza' },
   room: { id: uid(400), name: 'Room 12' },
   cancelCause: null,
-  absent: false,
+  away: null,
   cancelReason: null,
   changed: false,
   canCancel: true,
@@ -160,8 +160,8 @@ describe('the day page', () => {
   it('marks the teacher of a lesson absent, "needs a teacher" before it starts and "unresolved" after', async () => {
     await openPage({
       lessons: [
-        lesson(1, { absent: true, state: 'needs_teacher' }),
-        lesson(2, { start: 535, end: 580, absent: true, state: 'unresolved', canCancel: false }),
+        lesson(1, { away: 'absence', state: 'needs_teacher' }),
+        lesson(2, { start: 535, end: 580, away: 'absence', state: 'unresolved', canCancel: false }),
       ],
     });
     await waitFor(() => {
@@ -174,6 +174,27 @@ describe('the day page', () => {
       en.timetable.day.needsTeacherAbsent,
     ]);
     expect(second?.[5]).toBe(en.timetable.day.unresolvedAbsent);
+  });
+
+  // Task 5.7a-2a: a teacher inactive, left or locked.
+  it('names the teacher inactive, left or locked, "needs a teacher" before and "unresolved" after', async () => {
+    await openPage({
+      lessons: [
+        lesson(1, { away: 'locked', state: 'needs_teacher' }),
+        lesson(2, { start: 535, end: 580, away: 'left', state: 'unresolved', canCancel: false }),
+      ],
+    });
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(2);
+    });
+    const [first, second] = rowsDrawn();
+    expect(first?.slice(3, 6)).toEqual([
+      `Karimova Aziza · ${en.timetable.day.away_locked}`,
+      'Room 12',
+      en.timetable.day.needsTeacher_locked,
+    ]);
+    expect(second?.[3]).toBe(`Karimova Aziza · ${en.timetable.day.away_left}`);
+    expect(second?.[5]).toBe(en.timetable.day.unresolved_left);
   });
 
   it('shows no actions to the Principal', async () => {

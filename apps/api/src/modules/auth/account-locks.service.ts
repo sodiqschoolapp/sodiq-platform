@@ -1,7 +1,6 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { LOCK_REASON_MAX_LENGTH, type Clock } from '@sodiq/shared';
-import { CLOCK } from '../../clock/clock.module.js';
-import type { Transaction } from '../../database/transactions.js';
+import { Injectable } from '@nestjs/common';
+import { LOCK_REASON_MAX_LENGTH } from '@sodiq/shared';
+import { transactionMoment, type Transaction } from '../../database/transactions.js';
 import { Audit } from '../audit/audit.service.js';
 import { auditOf, UnknownAccountError, type AuditNames } from './password-resets.service.js';
 import { closeOpenResetLinks } from './reset-links.js';
@@ -65,7 +64,6 @@ export interface AccountUnlock extends AuditNames {
 @Injectable()
 export class AccountLocks {
   constructor(
-    @Inject(CLOCK) private readonly clock: Clock,
     private readonly audit: Audit,
     private readonly sessions: Sessions,
   ) {}
@@ -82,7 +80,9 @@ export class AccountLocks {
     if (account.locked_at !== null) {
       throw new AccountAlreadyLockedError();
     }
-    const now = this.clock.now();
+    // The moment of the database too: the lock span (0097) closes at
+    // `app.now` on the unlock (task 5.7a-2a, review correction 2).
+    const now = await transactionMoment(transaction);
     await transaction
       .updateTable('accounts')
       .set({ locked_at: now, locked_by: lock.lockedBy, lock_reason: reason })

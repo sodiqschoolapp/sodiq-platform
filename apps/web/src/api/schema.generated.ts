@@ -36551,7 +36551,8 @@ export interface operations {
                             canRestore: boolean;
                             /** @enum {string} */
                             state: "upcoming" | "needs_teacher" | "held" | "unresolved" | "cancelled";
-                            absent: boolean;
+                            /** @enum {string|null} */
+                            away: "left" | "inactive" | "locked" | "absence" | null;
                             canCorrect: boolean;
                         }[];
                         exams: {
@@ -36814,7 +36815,8 @@ export interface operations {
                             canRestore: boolean;
                             /** @enum {string} */
                             state: "upcoming" | "needs_teacher" | "held" | "unresolved" | "cancelled";
-                            absent: boolean;
+                            /** @enum {string|null} */
+                            away: "left" | "inactive" | "locked" | "absence" | null;
                             canCorrect: boolean;
                         };
                         warnings: {
@@ -37069,7 +37071,8 @@ export interface operations {
                             canRestore: boolean;
                             /** @enum {string} */
                             state: "upcoming" | "needs_teacher" | "held" | "unresolved" | "cancelled";
-                            absent: boolean;
+                            /** @enum {string|null} */
+                            away: "left" | "inactive" | "locked" | "absence" | null;
                             canCorrect: boolean;
                         };
                         warnings: {
@@ -37324,7 +37327,8 @@ export interface operations {
                             canRestore: boolean;
                             /** @enum {string} */
                             state: "upcoming" | "needs_teacher" | "held" | "unresolved" | "cancelled";
-                            absent: boolean;
+                            /** @enum {string|null} */
+                            away: "left" | "inactive" | "locked" | "absence" | null;
                             canCorrect: boolean;
                         };
                         warnings: {
@@ -37582,7 +37586,8 @@ export interface operations {
                             canRestore: boolean;
                             /** @enum {string} */
                             state: "upcoming" | "needs_teacher" | "held" | "unresolved" | "cancelled";
-                            absent: boolean;
+                            /** @enum {string|null} */
+                            away: "left" | "inactive" | "locked" | "absence" | null;
                             canCorrect: boolean;
                         };
                         warnings: {
@@ -37858,7 +37863,8 @@ export interface operations {
                             canRestore: boolean;
                             /** @enum {string} */
                             state: "upcoming" | "needs_teacher" | "held" | "unresolved" | "cancelled";
-                            absent: boolean;
+                            /** @enum {string|null} */
+                            away: "left" | "inactive" | "locked" | "absence" | null;
                             canCorrect: boolean;
                         };
                         warnings: {
@@ -38307,7 +38313,8 @@ export interface operations {
                                 canRestore: boolean;
                                 /** @enum {string} */
                                 state: "upcoming" | "needs_teacher" | "held" | "unresolved" | "cancelled";
-                                absent: boolean;
+                                /** @enum {string|null} */
+                                away: "left" | "inactive" | "locked" | "absence" | null;
                                 canCorrect: boolean;
                             };
                             broughtIn: boolean;
@@ -38360,7 +38367,8 @@ export interface operations {
                                 canRestore: boolean;
                                 /** @enum {string} */
                                 state: "upcoming" | "needs_teacher" | "held" | "unresolved" | "cancelled";
-                                absent: boolean;
+                                /** @enum {string|null} */
+                                away: "left" | "inactive" | "locked" | "absence" | null;
                                 canCorrect: boolean;
                             }[];
                             chosenOnly: string[];
@@ -38418,7 +38426,8 @@ export interface operations {
                             canRestore: boolean;
                             /** @enum {string} */
                             state: "upcoming" | "needs_teacher" | "held" | "unresolved" | "cancelled";
-                            absent: boolean;
+                            /** @enum {string|null} */
+                            away: "left" | "inactive" | "locked" | "absence" | null;
                             canCorrect: boolean;
                         }[];
                         held: {
@@ -38464,7 +38473,8 @@ export interface operations {
                             canRestore: boolean;
                             /** @enum {string} */
                             state: "upcoming" | "needs_teacher" | "held" | "unresolved" | "cancelled";
-                            absent: boolean;
+                            /** @enum {string|null} */
+                            away: "left" | "inactive" | "locked" | "absence" | null;
                             canCorrect: boolean;
                         }[];
                     };
@@ -40033,7 +40043,8 @@ export interface operations {
                             canRestore: boolean;
                             /** @enum {string} */
                             state: "upcoming" | "needs_teacher" | "held" | "unresolved" | "cancelled";
-                            absent: boolean;
+                            /** @enum {string|null} */
+                            away: "left" | "inactive" | "locked" | "absence" | null;
                             canCorrect: boolean;
                         }[];
                         choices: {
@@ -40085,7 +40096,8 @@ export interface operations {
                                 canRestore: boolean;
                                 /** @enum {string} */
                                 state: "upcoming" | "needs_teacher" | "held" | "unresolved" | "cancelled";
-                                absent: boolean;
+                                /** @enum {string|null} */
+                                away: "left" | "inactive" | "locked" | "absence" | null;
                                 canCorrect: boolean;
                             }[];
                             otherClasses: string[];
@@ -40418,7 +40430,8 @@ export interface operations {
                                 canRestore: boolean;
                                 /** @enum {string} */
                                 state: "upcoming" | "needs_teacher" | "held" | "unresolved" | "cancelled";
-                                absent: boolean;
+                                /** @enum {string|null} */
+                                away: "left" | "inactive" | "locked" | "absence" | null;
                                 canCorrect: boolean;
                             };
                             /** @enum {string} */
@@ -42090,7 +42103,7 @@ export interface operations {
                     "application/json": {
                         needsTeacher: {
                             /** @enum {string} */
-                            cause: "absence" | "vacancy" | "nobody";
+                            cause: "absence" | "inactive" | "left" | "locked" | "vacancy" | "nobody";
                             teacher: {
                                 /** Format: uuid */
                                 id: string;
@@ -42115,7 +42128,7 @@ export interface operations {
                         }[];
                         unresolved: {
                             /** @enum {string} */
-                            cause: "absence" | "vacancy" | "nobody";
+                            cause: "absence" | "inactive" | "left" | "locked" | "vacancy" | "nobody";
                             teacher: {
                                 /** Format: uuid */
                                 id: string;
@@ -42137,6 +42150,22 @@ export interface operations {
                             /** Format: date */
                             lastDate: string;
                             suggestPermanent: boolean;
+                        }[];
+                        needsInvigilator: {
+                            /** Format: uuid */
+                            examId: string;
+                            title: string;
+                            /** Format: date */
+                            date: string;
+                            start: number;
+                            end: number;
+                            invigilators: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                cause: "left" | "inactive" | "locked" | "absence";
+                            }[];
                         }[];
                     };
                 };

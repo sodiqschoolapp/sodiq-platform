@@ -1,13 +1,14 @@
 import type { Attention, AttentionGroup, Role } from '@sodiq/shared';
-import { screen, waitFor, within } from '@testing-library/react';
+import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
+import { ru } from '@/i18n/locales/ru';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
 
 const sessionAs = (role: Role) =>
   sessionOf({ assignments: [{ role, branchId: role === 'super_admin' ? null : NORTH.id }] });
 
-const NOTHING: Attention = { needsTeacher: [], unresolved: [] };
+const NOTHING: Attention = { needsTeacher: [], unresolved: [], needsInvigilator: [] };
 
 const emptyPage = () => screen.queryByRole('heading', { name: en.home.emptyTitle });
 
@@ -133,7 +134,11 @@ describe('the home page', () => {
         'GET /api/people/students/no-class': () => json({ count: 0 }),
         'GET /api/people/relatives/no-valid-phone': () => json({ count: 0 }),
         'GET /api/timetable/attention': () =>
-          json({ needsTeacher: [absence], unresolved: [vacancy] } satisfies Attention),
+          json({
+            needsTeacher: [absence],
+            unresolved: [vacancy],
+            needsInvigilator: [],
+          } satisfies Attention),
       });
       renderApp('/');
       await bothAsked(calls);
@@ -167,6 +172,7 @@ describe('the home page', () => {
               },
             ],
             unresolved: [],
+            needsInvigilator: [],
           } satisfies Attention),
       });
       renderApp('/');
@@ -175,6 +181,87 @@ describe('the home page', () => {
       const row = needs.querySelector('[data-group="absence"]') as HTMLElement;
       expect(within(row).getByText(en.home.attention.absenceUnnamed)).toBeDefined();
       expect(within(row).queryByText(/^, /)).toBeNull();
+    });
+
+    // Task 5.7a-2a: a person inactive, left or locked is a cause of its own.
+    it('names the inactive, left and locked causes, in Russian too', async () => {
+      const causes: AttentionGroup[] = (['inactive', 'left', 'locked'] as const).map(
+        (cause, index) => ({
+          ...absence,
+          cause,
+          teacher: { id: uid(10 + index), kind: 'person', name: `Rahimov Bobur ${String(index)}` },
+          absence: null,
+          suggestPermanent: false,
+        }),
+      );
+      const open = async (language: 'en' | 'ru') => {
+        const calls = fakeApi({
+          'GET /api/auth/session': () =>
+            json({ ...sessionAs('academic_vice_principal'), language }),
+          'GET /api/people/students/no-class': () => json({ count: 0 }),
+          'GET /api/people/relatives/no-valid-phone': () => json({ count: 0 }),
+          'GET /api/timetable/attention': () =>
+            json({
+              needsTeacher: causes,
+              unresolved: [],
+              needsInvigilator: [],
+            } satisfies Attention),
+        });
+        renderApp('/', language);
+        await bothAsked(calls);
+        const title = language === 'ru' ? ru.home.needsTeacher.title : en.home.needsTeacher.title;
+        const needs = await screen.findByRole('region', { name: title });
+        const name = (cause: string) =>
+          needs.querySelector(`[data-group="${cause}"] .font-semibold`)?.textContent;
+        return { name };
+      };
+      const english = await open('en');
+      expect(english.name('inactive')).toBe('Rahimov Bobur 0, inactive');
+      expect(english.name('left')).toBe('Rahimov Bobur 1, has left');
+      expect(english.name('locked')).toBe('Rahimov Bobur 2, account locked');
+      cleanup();
+      const russian = await open('ru');
+      expect(russian.name('locked')).toBe('Rahimov Bobur 2, учётная запись заблокирована');
+    });
+
+    // Task 5.7a-2a (decision 9): the exams that need an invigilator.
+    it('lists an exam that needs an invigilator with each one away and why, and keeps the page from being empty', async () => {
+      const calls = fakeApi({
+        'GET /api/auth/session': () => json(sessionAs('academic_vice_principal')),
+        'GET /api/people/students/no-class': () => json({ count: 0 }),
+        'GET /api/people/relatives/no-valid-phone': () => json({ count: 0 }),
+        'GET /api/timetable/attention': () =>
+          json({
+            needsTeacher: [],
+            unresolved: [],
+            needsInvigilator: [
+              {
+                examId: uid(20),
+                title: 'Quarter exam',
+                date: '2026-10-19',
+                start: 535,
+                end: 580,
+                invigilators: [
+                  { id: uid(21), name: 'Saidova Dilnoza', cause: 'absence' },
+                  { id: uid(22), name: '', cause: 'locked' },
+                ],
+              },
+            ],
+          } satisfies Attention),
+      });
+      renderApp('/');
+      await bothAsked(calls);
+      const exams = await screen.findByRole('region', { name: en.home.needsInvigilator.title });
+      const row = exams.querySelector(`[data-exam="${uid(20)}"]`) as HTMLElement;
+      expect(within(row).getByText(/^Quarter exam · /)).toBeDefined();
+      expect(within(row).getByText('Saidova Dilnoza · absent')).toBeDefined();
+      expect(
+        within(row).getByText(`${en.home.attention.invigilatorUnnamed} · account locked`),
+      ).toBeDefined();
+      expect(
+        within(row).getByRole('link', { name: en.home.attention.openExams }).getAttribute('href'),
+      ).toBe('/timetable/exams?date=2026-10-19');
+      expect(emptyPage()).toBeNull();
     });
 
     it('hides an empty list and keeps the page empty when all four are 0', async () => {

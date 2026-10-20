@@ -12,6 +12,7 @@ import {
   type AbsenceRecord,
   type AbsencesQuery,
   type Attention,
+  type AttentionExam,
   type AttentionGroup,
   type ErrorDetail,
   type NotificationKind,
@@ -26,7 +27,8 @@ import { branchOf } from '../classes/classes.service.js';
 import { Notifications } from '../notifications/notifications.service.js';
 import { loadCalendarSettings } from '../setup/calendar-state.js';
 import { notFound } from '../setup/setup-refusals.js';
-import { absenceSpans, absentLessons } from './absences-read.js';
+import { absenceSpans } from './absences-read.js';
+import { awayAt, awayLessons, awaySpans } from './away-read.js';
 import { dayBeginnings } from './dated-check.js';
 
 /**
@@ -407,7 +409,7 @@ export class TimetableAbsences {
       }
       const rows = await query.orderBy('lessons.starts_at').orderBy('lessons.id').execute();
       if (rows.length === 0) return { lessons: [] };
-      const absent = await absentLessons(
+      const away = await awayLessons(
         transaction,
         rows.map((row) => ({ id: row.id, teacherId: row.teacher_id, startsAt: row.starts_at })),
       );
@@ -442,7 +444,7 @@ export class TimetableAbsences {
               startsAt: row.starts_at,
               cancelled: false,
               teacher: 'person',
-              absent: absent.has(row.id),
+              away: away.has(row.id),
             },
             moment,
           ),
@@ -482,8 +484,9 @@ export class TimetableAbsences {
         .where('lessons.cancel_cause', 'is', null)
         .orderBy('lessons.starts_at')
         .execute();
-      if (lessons.length === 0) return { needsTeacher: [], unresolved: [] };
-      const absent = await absentLessons(
+      const needsInvigilator = await this.examsAway(transaction, branchId, moment);
+      if (lessons.length === 0) return { needsTeacher: [], unresolved: [], needsInvigilator };
+      const away = await awayLessons(
         transaction,
         lessons.map((one) => ({ id: one.id, teacherId: one.teacher_id, startsAt: one.starts_at })),
       );
@@ -495,7 +498,11 @@ export class TimetableAbsences {
         .select('time_zone')
         .where('id', '=', branchId)
         .executeTakeFirstOrThrow();
-      const spans = new Map([...absent.values()].map((one) => [one.absenceId, one]));
+      const spans = new Map(
+        [...away.values()].flatMap((one) =>
+          one.absenceId === null ? [] : [[one.absenceId, one] as const],
+        ),
+      );
       const stored =
         spans.size === 0
           ? []
@@ -505,10 +512,10 @@ export class TimetableAbsences {
               .where('id', 'in', [...spans.keys()])
               .execute();
       const storedOf = new Map(stored.map((one) => [one.id, one]));
-      const absences = [...spans.values()].map((span) => {
-        const row = storedOf.get(span.absenceId);
+      const absences = [...spans.entries()].map(([id, span]) => {
+        const row = storedOf.get(id);
         return {
-          id: span.absenceId,
+          id,
           starts_on: row?.starts_on ?? schoolDateOf(span.from, branch.time_zone),
           ends_on:
             row === undefined
@@ -526,7 +533,7 @@ export class TimetableAbsences {
         unresolved: new Map<string, AttentionGroup>(),
       };
       for (const one of lessons) {
-        const span = absent.get(one.id);
+        const span = away.get(one.id);
         // The one place of a lesson's state (5.6a-4 decision 11): a row of
         // the lists is a lesson that needs a teacher or is unresolved there.
         // A teacher the branch filter hides is a person (a vacancy has one
@@ -536,26 +543,33 @@ export class TimetableAbsences {
             startsAt: one.starts_at,
             cancelled: false,
             teacher: one.teacher_id === null ? null : one.kind === 'vacancy' ? 'vacancy' : 'person',
-            absent: span !== undefined,
+            away: span !== undefined,
           },
           moment,
         );
         if (state !== 'needs_teacher' && state !== 'unresolved') continue;
         let key: string;
         let group: Omit<AttentionGroup, 'lessons' | 'firstDate' | 'lastDate'>;
-        if (span !== undefined) {
+        const name =
+          one.kind === null
+            ? ''
+            : listName({ firstName: one.first_name ?? '', lastName: one.last_name ?? '' });
+        if (span !== undefined && span.absenceId === null) {
+          // Task 5.7a-2a: an inactive, left or locked person, one row per
+          // person and cause (decision 6).
+          key = `${span.cause}:${span.staffId}`;
+          group = {
+            cause: span.cause,
+            teacher: { id: span.staffId, kind: 'person', name },
+            absence: null,
+            suggestPermanent: false,
+          };
+        } else if (span !== undefined && span.absenceId !== null) {
           const days = absenceOf.get(span.absenceId);
           key = `absence:${span.absenceId}`;
           group = {
             cause: 'absence',
-            teacher: {
-              id: one.teacher_id ?? '',
-              kind: 'person',
-              name:
-                one.kind === null
-                  ? ''
-                  : listName({ firstName: one.first_name ?? '', lastName: one.last_name ?? '' }),
-            },
+            teacher: { id: one.teacher_id ?? '', kind: 'person', name },
             absence: {
               id: span.absenceId,
               startsOn: days?.starts_on ?? one.date,
@@ -590,8 +604,100 @@ export class TimetableAbsences {
             a.firstDate.localeCompare(b.firstDate) ||
             (a.teacher?.name ?? '').localeCompare(b.teacher?.name ?? ''),
         );
-      return { needsTeacher: listOf(groups.needsTeacher), unresolved: listOf(groups.unresolved) };
+      return {
+        needsTeacher: listOf(groups.needsTeacher),
+        unresolved: listOf(groups.unresolved),
+        needsInvigilator,
+      };
     });
+  }
+
+  /**
+   * The branch's exams not started and not cancelled, in the years not
+   * closed, with an invigilator away at the exam's start (task 5.7a-2a,
+   * decision 9): "needs an invigilator", settled by changing the exam.
+   */
+  private async examsAway(
+    transaction: Transaction,
+    branchId: string,
+    moment: Date,
+  ): Promise<AttentionExam[]> {
+    const rows = await transaction
+      .selectFrom('exams')
+      .innerJoin('academic_years', 'academic_years.id', 'exams.academic_year_id')
+      .innerJoin('exam_invigilators', 'exam_invigilators.exam_id', 'exams.id')
+      .leftJoin('staff', 'staff.id', 'exam_invigilators.staff_id')
+      .select([
+        'exams.id',
+        'exams.title',
+        sql<string>`exams.exam_date::text`.as('date'),
+        'exams.starts_at',
+        'exams.ends_at',
+        'exam_invigilators.staff_id',
+        'staff.first_name',
+        'staff.last_name',
+      ])
+      .where('exams.branch_id', '=', branchId)
+      .where('academic_years.status', '<>', 'closed')
+      .where('exams.cancel_cause', 'is', null)
+      .where('exams.starts_at', '>', moment)
+      .orderBy('exams.starts_at')
+      .orderBy('exams.id')
+      .execute();
+    if (rows.length === 0) return [];
+    const times = rows.map((one) => one.starts_at.getTime());
+    const spans = await awaySpans(
+      transaction,
+      rows.map((one) => one.staff_id),
+      new Date(Math.min(...times)),
+      new Date(Math.max(...times) + 1),
+    );
+    const awayRows = rows.flatMap((one) => {
+      const span = awayAt(spans, one.staff_id, one.starts_at);
+      return span === null ? [] : [{ ...one, span }];
+    });
+    if (awayRows.length === 0) return [];
+    const branch = await transaction
+      .selectFrom('branches')
+      .select('time_zone')
+      .where('id', '=', branchId)
+      .executeTakeFirstOrThrow();
+    const dates = awayRows.map((one) => one.date).sort();
+    const begins = await dayBeginnings(
+      transaction,
+      branch.time_zone,
+      dates[0] ?? '',
+      dates[dates.length - 1] ?? '',
+    );
+    const minutes = (date: string, at: Date) =>
+      Math.round((at.getTime() - begins(date).getTime()) / 60_000);
+    const exams = new Map<string, AttentionExam>();
+    for (const one of awayRows) {
+      const found = exams.get(one.id) ?? {
+        examId: one.id,
+        title: one.title,
+        date: one.date,
+        start: minutes(one.date, one.starts_at),
+        end: minutes(one.date, one.ends_at),
+        invigilators: [],
+      };
+      exams.set(one.id, {
+        ...found,
+        invigilators: [
+          ...found.invigilators,
+          {
+            id: one.staff_id,
+            // A person the branch no longer sees is named by nothing.
+            name:
+              one.first_name === null && one.last_name === null
+                ? ''
+                : listName({ firstName: one.first_name ?? '', lastName: one.last_name ?? '' }),
+            cause: one.span.cause,
+          },
+        ],
+      });
+    }
+    return [...exams.values()];
   }
 
   /**

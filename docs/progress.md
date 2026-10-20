@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 20 October 2026: task 5.7a-2a Teacher absence: status, lock and the invigilator
+
+- A lesson whose teacher is inactive or left on it, or whose account is locked at its start, keeps its teacher and is "needs a teacher", then "unresolved" (`lessonStateOf` `away`), read on every request through `teachers_away` (0097) with absences: no lesson is written, an unlock or a status taken back gives the lessons back.
+- 0097: `staff_status_moments` (a status from today starts at the save) and `account_lock_spans`, both written by triggers only; the home page lists one row per person and cause, and "Exams that need an invigilator".
+- 5.7a-2 split: room closure is 5.7a-2b. Handbook: `05-teaching-load-and-timetable.md`.
+- Left out: room closure and "needs a room" (5.7a-2b); vacancy fill and acting teacher (5.7a-3); substitutes (5.7b); settling an exam from the Free now board (5.7c).
+
+The next sessions must know:
+
+- Read a lesson's state only through `away-read.ts` (`awayLessons`); `absences-read.ts` keeps the absence's own readers and `runAbsences`.
+- `AccountLocks.lock` writes `locked_at` from `transactionMoment`; a status or lock write without `app.now` is refused for the application.
+- The next task is 5.7a-2b.
+
 ## 20 October 2026: task 5.7a-1 Teacher absence: absences
 
 - An absence is entered once for a person and covers every branch (0096 `absences`, membership-filtered; `/timetable/absences`): a lesson of the person that starts inside it is "needs a teacher", then "unresolved", and keeps its teacher (`lessonStateOf` `absent`); recording the same person by the correction makes it held (`lesson_absence_taught`).

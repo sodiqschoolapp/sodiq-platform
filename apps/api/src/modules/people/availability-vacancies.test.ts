@@ -131,6 +131,8 @@ describe('availability and vacancies', () => {
       'staff_subjects',
       'staff_languages',
       'staff_statuses',
+      // Task 5.7a-2a: the moments its trigger writes (0097).
+      'staff_status_moments',
       'staff_availability',
       'staff_availability_ranges',
       // Task 5.5a-3b-1: the drafts new hours mark out of date, and the marks.

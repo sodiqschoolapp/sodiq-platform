@@ -45,6 +45,13 @@ export interface AcademicYears {
   status: Generated<string>;
 }
 
+export interface AccountLockSpans {
+  account_id: string;
+  id: Generated<string>;
+  locked_at: Timestamp;
+  unlocked_at: Timestamp | null;
+}
+
 export interface Accounts {
   created_at: Timestamp;
   created_by: string | null;
@@ -819,6 +826,13 @@ export interface StaffStatuses {
   valid_until: string | null;
 }
 
+export interface StaffStatusMoments {
+  applies_from: Timestamp;
+  applies_until: Timestamp | null;
+  staff_id: string;
+  status_id: string;
+}
+
 export interface StaffStatusRoleEnds {
   assignment_id: string;
   previous_ended_by: string | null;
@@ -1132,6 +1146,7 @@ export interface TravelTimes {
 export interface DB {
   absences: Absences;
   academic_years: AcademicYears;
+  account_lock_spans: AccountLockSpans;
   account_second_steps: AccountSecondSteps;
   accounts: Accounts;
   assignment_subjects: AssignmentSubjects;
@@ -1200,6 +1215,7 @@ export interface DB {
   staff_divisions: StaffDivisions;
   staff_id_counters: StaffIdCounters;
   staff_languages: StaffLanguages;
+  staff_status_moments: StaffStatusMoments;
   staff_status_role_ends: StaffStatusRoleEnds;
   staff_statuses: StaffStatuses;
   staff_subjects: StaffSubjects;

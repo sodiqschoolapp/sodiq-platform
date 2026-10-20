@@ -285,6 +285,24 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 20 October 2026: teacher status, lock and the invigilator (task 5.7a-2a)
+
+Plan approved on pull request #186 with corrections 1 to 4; decisions 1 to 10 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a task split). 5.7a-2 is split into 5.7a-2a Status, lock and the invigilator and 5.7a-2b Room closure, each with Read, Build, Done-when and From lines | Decision 1; different tables and screens |
+| **Look first** (a reading of "No lesson without a teacher"). A status or a lock writes no lesson: the lesson keeps its teacher and reads its state | Decision 2; Staff over time, "Lock now ... needs no reassignment" |
+| **Look first** (SECURITY DEFINER; personal data across branches). `teachers_away` returns ids, causes and moments past the membership filter; the triggers `staff_status_moments_write` and `account_lock_spans_write` are definer too, the application has select only on their tables | Decision 3 and correction 3 |
+| **Look first** (a reading of "Held lesson"; a table added to a classified list). `staff_status_moments`: a status from today starts at the save, a cut to today ends at it, any other date at the start of its day in the main branch's time zone; a write of the application without `app.now` is refused, the migrator's rows take day starts | Decision 4 and correction 1 |
+| **Look first** (a new school-wide table). `account_lock_spans`: every lock as a span, so a lesson started during a lock stays "unresolved" after the unlock; `locked_at` written from `transactionMoment` | Decision 5 and corrections 1 and 2 |
+| One cause per lesson: left, inactive, locked, absence | Decision 6 |
+| The correction records the same person on a lesson of a locked teacher (`lesson_absence_taught`, audited with `awayCause`); an inactive or left one stays refused | Decision 7 |
+| No new notice; each branch's home page lists its own lessons | Decision 8 |
+| An exam not started and not cancelled with an invigilator away at its start "needs an invigilator", settled by changing the exam until 5.7c | Decision 9 |
+| A vacancy keeps the cause `vacancy` | Decision 10 |
+| **Build decision.** `staff_status_moments.status_id` cascades on delete, for `vacancy_delete` (0025), which deletes a vacancy's statuses | Found by the people tests at the build |
+
 ## 20 October 2026: teacher absences (task 5.7a-1)
 
 Plan approved on pull request #185 with corrections 1 to 4; decisions 1 to 13 confirmed there. Flagged on issue #42.

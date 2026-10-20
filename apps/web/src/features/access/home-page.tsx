@@ -57,6 +57,7 @@ function ViceHome() {
     noValidPhone.data?.count === 0 &&
     attention.data?.needsTeacher.length === 0 &&
     attention.data.unresolved.length === 0 &&
+    attention.data.needsInvigilator.length === 0 &&
     !noClass.isError &&
     !noValidPhone.isError &&
     !attention.isError;
