@@ -173,6 +173,8 @@ export const uz: Texts<'one' | 'other'> = {
       'Umumiy dars endi imtihon vaqtiga toʻgʻri keladi. Oldindan koʻrishni qayta oching va tanlang: darsni bekor qilish yoki uni boshqa sinflar uchun qoldirish.',
     calendar_group_block_choice:
       'Ikki parallel guruhining darsida endi maktabda faqat bitta parallel bor. Oldindan koʻrishni qayta oching va tanlang: dam olish kuni sifatida bekor qilish yoki maktabda boʻlgan parallel uchun qoldirish.',
+    template_day_changes:
+      'Bu oʻzgarish yangi vaqt beradigan sanada bir kunlik oʻzgarish yoki ommaviy bekor qilish bor. Ushbu sanalardan keyingi boshlanish sanasini tanlang yoki avval oʻsha oʻzgarishlarni bekor qiling.',
     template_slot_in_use:
       'Bu oʻzgarish eʼlon qilingan dars jadvali foydalanadigan dars slotini olib tashlaydi yoki tartibini oʻzgartiradi. Slotni qoldiring yoki avval uni ishlatmaydigan dars jadvali versiyasini eʼlon qiling.',
     own_account:

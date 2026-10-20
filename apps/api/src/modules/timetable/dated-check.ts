@@ -34,7 +34,7 @@ import { loadCalendarSettings } from '../setup/calendar-state.js';
 import { dayOf, loadStore } from '../setup/day-template-state.js';
 import { readTutorRows } from './load-facts.js';
 import type { PatternState } from './pattern.service.js';
-import { readVersionDays, weeklyDaysOf, weeklyKey } from './version-days.js';
+import { weeklyDaysOf, weeklyKey } from './version-days.js';
 
 /** What the dated check of a publish found (task 5.5a-2a), as the answer names it. */
 export interface DatedFindings {
@@ -279,63 +279,53 @@ export async function datedLessonsOf(
   const rows = data.rows;
   const classIds = [...new Set(data.units.flatMap((unit) => unit.classIds))].sort();
   const groupIds = data.units.filter((unit) => unit.kind === 'group').map((unit) => unit.id);
-  const [
-    classMembers,
-    groupMembers,
-    tutorRows,
-    begins,
-    classGrades,
-    keeps,
-    groupChoices,
-    storedWeekly,
-  ] = await Promise.all([
-    classIds.length === 0
-      ? Promise.resolve([] as MemberRow[])
-      : transaction
-          .selectFrom('class_memberships')
-          .select([
-            'class_id as unit_id',
-            'student_id',
-            sql<string>`valid_from::text`.as('valid_from'),
-            sql<string>`valid_until::text`.as('valid_until'),
-          ])
-          .where('class_id', 'in', classIds)
-          .where('valid_from', '<=', lastDate)
-          .where('valid_until', '>', startsOn)
-          .orderBy('student_id')
-          .execute(),
-    groupIds.length === 0
-      ? Promise.resolve([] as MemberRow[])
-      : transaction
-          .selectFrom('group_memberships')
-          .select([
-            'group_id as unit_id',
-            'student_id',
-            sql<string>`valid_from::text`.as('valid_from'),
-            sql<string>`valid_until::text`.as('valid_until'),
-          ])
-          .where('group_id', 'in', groupIds)
-          .where('valid_from', '<=', lastDate)
-          .where('valid_until', '>', startsOn)
-          .orderBy('student_id')
-          .execute(),
-    readTutorRows(
-      transaction,
-      rows.flatMap((row) => (row.classId === null ? [] : [row.classId])),
-    ),
-    dayBeginnings(transaction, branch.time_zone, startsOn, addDays(lastDate, 1)),
-    classIds.length === 0
-      ? Promise.resolve([] as { id: string; grade: number }[])
-      : transaction
-          .selectFrom('classes')
-          .select(['id', 'grade'])
-          .where('id', 'in', classIds)
-          .execute(),
-    readDayKeeps(transaction, state.version.id, startsOn, lastDate),
-    readGroupChoices(transaction, startsOn, lastDate),
-    // Task 5.6b-4a (decision 3): the weekly days the version was published against.
-    readVersionDays(transaction, state.version.id),
-  ]);
+  const [classMembers, groupMembers, tutorRows, begins, classGrades, keeps, groupChoices] =
+    await Promise.all([
+      classIds.length === 0
+        ? Promise.resolve([] as MemberRow[])
+        : transaction
+            .selectFrom('class_memberships')
+            .select([
+              'class_id as unit_id',
+              'student_id',
+              sql<string>`valid_from::text`.as('valid_from'),
+              sql<string>`valid_until::text`.as('valid_until'),
+            ])
+            .where('class_id', 'in', classIds)
+            .where('valid_from', '<=', lastDate)
+            .where('valid_until', '>', startsOn)
+            .orderBy('student_id')
+            .execute(),
+      groupIds.length === 0
+        ? Promise.resolve([] as MemberRow[])
+        : transaction
+            .selectFrom('group_memberships')
+            .select([
+              'group_id as unit_id',
+              'student_id',
+              sql<string>`valid_from::text`.as('valid_from'),
+              sql<string>`valid_until::text`.as('valid_until'),
+            ])
+            .where('group_id', 'in', groupIds)
+            .where('valid_from', '<=', lastDate)
+            .where('valid_until', '>', startsOn)
+            .orderBy('student_id')
+            .execute(),
+      readTutorRows(
+        transaction,
+        rows.flatMap((row) => (row.classId === null ? [] : [row.classId])),
+      ),
+      dayBeginnings(transaction, branch.time_zone, startsOn, addDays(lastDate, 1)),
+      classIds.length === 0
+        ? Promise.resolve([] as { id: string; grade: number }[])
+        : transaction
+            .selectFrom('classes')
+            .select(['id', 'grade'])
+            .where('id', 'in', classIds)
+            .execute(),
+      readDayKeeps(transaction, state.version.id, startsOn, lastDate),
+      readGroupChoices(transaction, startsOn, lastDate),
+    ]);
   const gradeOfClass = new Map(classGrades.map((row) => [row.id, row.grade]));
   const keptOf = new Map<string, number[]>();
   for (const keep of keeps) {
@@ -395,9 +385,11 @@ export async function datedLessonsOf(
   };
 
   // Task 5.6b-4a (decision 3): a block's lesson number is found by its weekly
-  // times in the weekly days its version was published against; a draft, or a
-  // version published before 0091, reads them from the templates on its start.
-  const weekly = storedWeekly ?? weeklyDaysOf(state);
+  // times in the weekly days its version was published against, which the
+  // pattern facts of a version no longer a draft carry (`readVersionDays`);
+  // a draft, or a version published before 0091, has those of the templates
+  // on its start.
+  const weekly = weeklyDaysOf(state);
   const units = new Map(data.units.map((unit) => [unit.id, unit]));
   const subjects = new Map(data.subjects.map((subject) => [subject.id, subject]));
   const blocks: DatedBlock[] = state.blocks.map((block) => {

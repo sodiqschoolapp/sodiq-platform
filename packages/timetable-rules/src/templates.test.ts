@@ -225,6 +225,13 @@ describe('usedSlotProblems', () => {
     expect(usedSlotProblems([L45, L45, L45], [L45, L45], [1, 2])).toEqual([]);
   });
 
+  it('refuses another slot type at a used number only within one template', () => {
+    expect(usedSlotProblems([L45, L40], [L40, L45], [1, 2], { sameTemplate: false })).toEqual([]);
+    expect(usedSlotProblems([L45, L40], [L40], [1, 2], { sameTemplate: false })).toEqual([
+      { lessonNumber: 2, problem: 'removed' },
+    ]);
+  });
+
   it('takes no number the day before already lacks (a shortened day)', () => {
     expect(usedSlotProblems([L45, L45], [L45], [1, 2, 6])).toEqual([
       { lessonNumber: 2, problem: 'removed' },

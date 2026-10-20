@@ -11,7 +11,7 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 
 The next sessions must know:
 
-- The four saves take `days` like a calendar save; without the key of the sorting shown a change over a date with a stored one-day change is refused (5.6b-4b sends it).
+- The four saves take `days` like a calendar save; a change over a date with a stored one-day change or bulk cancel is refused `template_day_changes` until 5.6b-4b makes them follow their lessons.
 - `DayTemplates.write` holds the branch row `for no key update`; the four changes lock people, classes and years (`TemplateLessons.lock`) before writing.
 - The next task is 5.6b-4b.
 

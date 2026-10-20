@@ -831,6 +831,31 @@ export class TimetableCalendarLessons {
     const key = calendarDaysKeyOf(stretches);
     const items = stretches.flatMap((one) => one.sorting.items);
     const bulkAll = stretches.flatMap((one) => one.bulk);
+    // Task 5.6b-4a (spec review of the code, must-fix 3): a stored one-day
+    // change or bulk cancel is matched to its lesson by its times, which a
+    // template change shifts; until its changes follow their lessons
+    // (5.6b-4b), a template change is refused on a date that holds one, so
+    // no cancel or room change is lost. The preview lists them.
+    if (
+      !input.preview &&
+      'templateFrom' in input.event &&
+      (items.length > 0 || bulkAll.length > 0)
+    ) {
+      throw new ApiException('template_day_changes', 409, undefined, [
+        ...items.map((one): ErrorDetail => ({
+          path: `dayChanges.${one.answer.key}`,
+          code: 'template_day_changes',
+          message: 'A stored one-day change on a date the change writes.',
+          day: one.answer.from.date,
+        })),
+        ...bulkAll.map((one): ErrorDetail => ({
+          path: `bulkCancels.${one.answer.key}`,
+          code: 'template_day_changes',
+          message: 'A stored bulk cancel on a date the change writes.',
+          day: one.date,
+        })),
+      ]);
+    }
 
     // Task 5.6b-2a: the sorting as shown and a choice for each "needs a
     // decision" item, refused with the blocked dates in one answer

@@ -702,11 +702,15 @@ describe('template changes after publishing', () => {
       });
     }
 
-    it("a change that moves a lesson onto its teacher's exam in another branch, by date", async () => {
+    // Spec review of the code, must-fix 1: the other branch's claim (an
+    // exam: the claims of every other branch are its lessons and exams, the
+    // same check) meets the new time only through the travel time.
+    it("a change that brings a lesson within the travel time of its teacher's claim in another branch, by date", async () => {
       const s = await scene();
       const late = await templateAt(s, 'Late', '09:00');
       // The history teacher invigilates an exam in another branch on 19
-      // October from 10:00 to 10:30, inside history's new time 09:55 to 10:40.
+      // October from 10:50 to 11:20; history's new time ends at 10:40, and the
+      // branches are 20 minutes apart.
       const other = await t.newBranch();
       const otherYear = await load.classes.year(other);
       await t.database.migrator
@@ -725,8 +729,8 @@ describe('template changes after publishing', () => {
             branch_id: other,
             academic_year_id: otherYear,
             exam_date: OCT19,
-            starts_at: at(OCT19, '10:00'),
-            ends_at: at(OCT19, '10:30'),
+            starts_at: at(OCT19, '10:50'),
+            ends_at: at(OCT19, '11:20'),
             first_slot: 1,
             last_slot: 1,
             title: 'Quarter exam',
@@ -757,6 +761,11 @@ describe('template changes after publishing', () => {
           })
           .execute();
       });
+      const [low, high] = [s.branch, other].sort();
+      await t.database.migrator
+        .insertInto('travel_times')
+        .values({ branch_low: low ?? '', branch_high: high ?? '', minutes: 20 })
+        .execute();
       const rows = await storedRowsOf(s.branch);
 
       const refused = await assign(
@@ -767,6 +776,17 @@ describe('template changes after publishing', () => {
       refusedWith(refused, 409, 'calendar_blocked');
       expect(detailsOf(refused).map((one) => one.day)).toEqual([OCT19]);
       expect(await storedRowsOf(s.branch)).toEqual(rows);
+
+      // With 5 minutes between the branches the same change goes through.
+      await t.database.migrator
+        .updateTable('travel_times')
+        .set({ minutes: 5 })
+        .where('branch_low', '=', low ?? '')
+        .execute();
+      okay(
+        await assign(s, setting(late, OCT19, { level: 'grades', gradeFrom: 10, gradeTo: 10 })),
+        201,
+      );
     });
   });
 
@@ -800,6 +820,42 @@ describe('template changes after publishing', () => {
       ]);
       expect(await storedRowsOf(s.branch)).toEqual(rows);
       expect(await t.auditCount()).toBe(audit);
+    });
+
+    // Spec review must-fix 2b: a date whose day already lacks the number
+    // before the change is no refusal; the run of dates ends before it.
+    it('is not refused on the dates whose day lacked it before the change', async () => {
+      const s = await scene({ group: true });
+      const two = await t.createTemplate(s.branch, 'Two', [s.lessonType, s.pause, s.lessonType]);
+      // Written straight into the table: grades 9 and 10 have two lessons
+      // from 16 November (the route would refuse it for the group's lesson 3).
+      await t.database.migrator
+        .insertInto('day_template_assignments')
+        .values({
+          branch_id: s.branch,
+          level: 'grades',
+          weekday: null,
+          grade_from: 9,
+          grade_to: 10,
+          day_template_id: two,
+          valid_from: NOV16,
+        })
+        .execute();
+      const shown = await preview(s.branch, {
+        kind: 'template_version',
+        dayTemplateId: s.regular,
+        change: {
+          from: OCT19,
+          startTime: '08:00',
+          slotTypeIds: [s.lessonType, s.pause, s.lessonType],
+        },
+      });
+      expect(
+        shown.slotsInUse.map((one) => [one.grade, one.lessonNumber, one.firstDate, one.lastDate]),
+      ).toEqual([
+        [9, 3, OCT19, NOV09],
+        [10, 3, OCT19, NOV09],
+      ]);
     });
 
     it('not used saves: the same version over a pattern without lesson 3 keeps every lesson', async () => {
@@ -866,6 +922,42 @@ describe('template changes after publishing', () => {
 
       const music = (await lessonsOn(s.branch, OCT26)).find((one) => one.subject_id === s.music);
       expect(music?.cancel_cause).toBe('not_in_template');
+      // Spec review must-fix 2a: the kept lessons chosen with the save:
+      // maths and music, music in the free lesson 2; art cancelled.
+      const kept = await scene({ three: true });
+      const keptOpen = await templateAt(kept, 'Open', '08:00');
+      okay(
+        await post('/api/setup/calendar-entries', kept.branch, {
+          kind: 'special_day',
+          name: 'Open day',
+          firstDate: OCT26,
+          lastDate: OCT26,
+          gradeFrom: null,
+          gradeTo: null,
+          dayTemplateId: keptOpen,
+          followsWeekday: null,
+          examWeek: null,
+        }),
+        201,
+      );
+      okay(
+        await addVersion(kept, keptOpen, [kept.lessonType, kept.pause, kept.lessonType], OCT19, {
+          dayKeeps: [{ date: OCT26, classId: kept.classId, slotPositions: [1, 5] }],
+        }),
+      );
+      const keptOn = (await lessonsOn(kept.branch, OCT26)).filter(
+        (lesson) => lesson.class_id === kept.classId,
+      );
+      expect(
+        keptOn.find((lesson) => lesson.subject_id === kept.music)?.cancel_cause ?? null,
+      ).toBeNull();
+      expect(
+        keptOn
+          .filter((lesson) => lesson.cancel_cause === null)
+          .map((lesson) => clock(lesson.starts_at)),
+      ).toEqual(['08:00', '08:55']);
+      expect(keptOn.filter((lesson) => lesson.cancel_cause === 'not_in_template')).toHaveLength(1);
+
       // The regular Mondays keep all three lessons.
       expect(
         (await lessonsOn(s.branch, NOV16)).filter((one) => one.class_id === s.classId),
@@ -950,98 +1042,80 @@ describe('template changes after publishing', () => {
     });
   });
 
-  describe('a stored one-day move', () => {
-    const lessonDayChanges = async (lessonId: string) =>
-      (
-        await t.database.migrator
-          .selectFrom('lesson_day_changes')
-          .select('id')
-          .where('lesson_id', '=', lessonId)
-          .execute()
-      ).map((one) => one.id);
+  // Spec review of the code, must-fix 3: a stored one-day change or bulk
+  // cancel is matched to its lesson by its times, which the change shifts;
+  // until its changes follow their lessons (5.6b-4b), the change is refused
+  // on a date that holds one, so none is lost.
+  describe('a stored one-day change or bulk cancel on a date the change writes', () => {
+    const cases = [
+      {
+        name: 'a one-lesson cancel',
+        make: async (s: Scene) => {
+          const lesson = await lessonOf(s, OCT26, s.classId);
+          okay(
+            await keyed(`/api/timetable/lessons/${lesson.id}/cancel`, s.branch, {
+              reason: 'Excursion to the museum',
+            }),
+          );
+        },
+      },
+      {
+        name: 'a one-day move',
+        make: async (s: Scene) => {
+          const lesson = await lessonOf(s, OCT26, s.classId);
+          okay(
+            await keyed(`/api/timetable/lessons/${lesson.id}/move`, s.branch, {
+              date: OCT26,
+              lessonNumber: 3,
+              reason: 'Excursion to the museum',
+            }),
+          );
+        },
+      },
+      {
+        name: 'a bulk cancel',
+        make: async (s: Scene) => {
+          await bulkCancel(
+            s,
+            { date: OCT26, classIds: [s.seniorId], lessonNumbers: [2] },
+            'cancel',
+          );
+        },
+      },
+    ];
+    for (const one of cases) {
+      it(`${one.name} refuses it, listed by date, with nothing written; the preview lists it; a change from after its date saves`, async () => {
+        const s = await scene();
+        await one.make(s);
+        const shown = await preview(s.branch, {
+          kind: 'slot_length',
+          slotTypeId: s.lessonType,
+          change: { lengthMinutes: 40, from: OCT19 },
+        });
+        const listed =
+          [
+            ...shown.lessons.dayChanges.kept,
+            ...shown.lessons.dayChanges.decide,
+            ...shown.lessons.dayChanges.dropped,
+          ].length + shown.lessons.dayChanges.bulk.length;
+        expect(listed).toBe(1);
+        const rows = await storedRowsOf(s.branch);
+        const audit = await t.auditCount();
 
-    const moveTo = (s: Scene, lessonId: string, date: string, lessonNumber: number) =>
-      keyed(`/api/timetable/lessons/${lessonId}/move`, s.branch, {
-        date,
-        lessonNumber,
-        reason: 'Excursion to the museum',
-      });
-
-    it('on a date the change writes, at times it does not change, is kept; the save takes the key of the sorting shown', async () => {
-      const s = await scene();
-      const late = await templateAt(s, 'Late', '09:00');
-      const moving = await lessonOf(s, OCT26, s.classId);
-      okay(await moveTo(s, moving.id, OCT19, 3));
-      // Grade 10 only from 19 October: grade 7's lesson 3 keeps its times.
-      const record = setting(late, OCT19, { level: 'grades', gradeFrom: 10, gradeTo: 10 });
-      const shown = await preview(s.branch, { kind: 'assignment_set', change: record });
-      expect(shown.lessons.dayChanges.kept.map((one) => one.key)).toHaveLength(1);
-      expect(shown.lessons.dayChanges.decide).toEqual([]);
-      refusedWith(await assign(s, record), 409, 'calendar_blocked');
-      okay(await assign(s, record, { dayChangesKey: shown.lessons.dayChanges.key }), 201);
-      const moved = (await lessonsOn(s.branch, OCT19)).find((one) => one.id === moving.id);
-      expect([moved?.date, moved && clock(moved.starts_at)]).toEqual([OCT19, '09:50']);
-    });
-
-    // Build decision: a stored move keeps its stored times, as after a
-    // special template that shifts the times (5.6b-2a); at times the day no
-    // longer has, it needs a decision.
-    it('whose times the change shifts needs a decision', async () => {
-      const s = await scene();
-      const moving = await lessonOf(s, OCT26, s.classId);
-      okay(await moveTo(s, moving.id, OCT19, 3));
-      const shown = await preview(s.branch, {
-        kind: 'slot_length',
-        slotTypeId: s.lessonType,
-        change: { lengthMinutes: 40, from: OCT19 },
-      });
-      expect(shown.lessons.dayChanges.kept).toEqual([]);
-      expect(
-        shown.lessons.dayChanges.decide.map((one) => [
-          one.key,
-          one.blocked.map((result) => result.rule),
-        ]),
-      ).toEqual([[(await lessonDayChanges(moving.id))[0], ['not_a_slot']]]);
-    });
-
-    it('whose place the change takes away needs a decision: refused without the key and a choice, settled with them', async () => {
-      const s = await scene();
-      const moving = await lessonOf(s, OCT26, s.classId);
-      okay(await moveTo(s, moving.id, OCT19, 3));
-      const shorter = [s.lessonType, s.pause, s.lessonType];
-      const change = { from: OCT19, startTime: '08:00', slotTypeIds: shorter };
-      const shown = await preview(s.branch, {
-        kind: 'template_version',
-        dayTemplateId: s.regular,
-        change,
-      });
-      const [item] = shown.lessons.dayChanges.decide;
-      expect(item?.kind).toBe('move');
-      const rows = await storedRowsOf(s.branch);
-
-      const refused = await addVersion(s, s.regular, shorter, OCT19);
-      refusedWith(refused, 409, 'calendar_blocked');
-      expect(detailsOf(refused).map((one) => one.code)).toEqual([
-        'day_changes_changed',
-        'day_change_undecided',
-      ]);
-      expect(await storedRowsOf(s.branch)).toEqual(rows);
-
-      okay(
-        await addVersion(s, s.regular, shorter, OCT19, {
+        const refused = await changeLength(s, 40, OCT19, {
           dayChangesKey: shown.lessons.dayChanges.key,
-          dayDecisions: [{ key: item?.key ?? '', choice: 'drop' }],
-        }),
-      );
-      // "Drop the change": maths is held at its old place on 26 October (its
-      // date is written again with the others), nothing in lesson 3 of 19 October.
-      expect(await timesOf(s, OCT26, s.classId)).toEqual([['08:00', '08:45', null]]);
-      expect(await timesOf(s, OCT19, s.classId)).toEqual([['08:00', '08:45', null]]);
-      const [entry] = await t.entries('day_template.version_create', s.regular);
-      expect((entry?.new_value as { dayChanges: unknown[] }).dayChanges).toEqual([
-        expect.objectContaining({ decided: [{ key: item?.key, choice: 'drop' }] }),
-      ]);
-    });
+        });
+
+        refusedWith(refused, 409, 'template_day_changes');
+        expect(detailsOf(refused).map((detail) => detail.day)).toEqual([OCT26]);
+        expect(await storedRowsOf(s.branch)).toEqual(rows);
+        expect(await t.auditCount()).toBe(audit);
+
+        // From 2 November the change writes no date that holds it.
+        okay(await changeLength(s, 40, NOV02));
+        expect(await timesOf(s, NOV09, s.seniorId)).toEqual([['08:50', '09:30', null]]);
+      });
+    }
   });
 
   // Decision 3: the weekly days a version was published against.
@@ -1166,6 +1240,7 @@ describe('template changes after publishing', () => {
 
       // The copy withdrawn: the first version runs again on the new times.
       okay(await keyed(`/api/timetable/versions/${next}/withdraw`, s.branch, {}));
+      expect(await timesOf(s, NOV09, s.classId)).toEqual([['08:00', '08:40', null]]);
       expect(await timesOf(s, NOV09, s.seniorId)).toEqual([['08:50', '09:30', null]]);
       expect((await lessonOf(s, NOV09, s.seniorId)).version_id).toBe(s.version);
     });

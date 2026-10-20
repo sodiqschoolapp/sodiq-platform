@@ -142,17 +142,21 @@ export interface UsedSlotProblem {
  * `after` are the slot types of the day's lesson slots in their order (number
  * 1 first), `used` the lesson numbers the published version's blocks take
  * that day. A used number the day before has and the day after has not is
- * `removed`; one the day after holds with another slot type is `reordered`
- * (also a "Lesson 40" type put in place of a "Lesson 45" slot: its length is
- * changed on the slot type instead). Everything else (breaks added, moved or
- * removed, the start, the lengths, lesson slots after the last used number)
- * takes the new times. A number the day before already lacks (a shortened
- * day) is no problem of the change.
+ * `removed`. Within one template (`sameTemplate`: a new version of the
+ * template the grade already has), one the day after holds with another slot
+ * type is `reordered` (also a "Lesson 40" type put in place of a "Lesson 45"
+ * slot: its length is changed on the slot type instead); a slot type tells
+ * lesson slots apart only within one template, so a setting that gives the
+ * grade another template is refused only for a used number it lacks.
+ * Everything else (breaks added, moved or removed, the start, the lengths,
+ * lesson slots after the last used number) takes the new times. A number the
+ * day before already lacks (a shortened day) is no problem of the change.
  */
 export function usedSlotProblems(
   before: readonly string[],
   after: readonly string[],
   used: readonly number[],
+  options: { readonly sameTemplate: boolean } = { sameTemplate: true },
 ): UsedSlotProblem[] {
   return [...new Set(used)]
     .sort((a, b) => a - b)
@@ -161,6 +165,6 @@ export function usedSlotProblems(
       if (was === undefined) return [];
       const now = after[lessonNumber - 1];
       if (now === undefined) return [{ lessonNumber, problem: 'removed' }];
-      return now === was ? [] : [{ lessonNumber, problem: 'reordered' }];
+      return now === was || !options.sameTemplate ? [] : [{ lessonNumber, problem: 'reordered' }];
     });
 }

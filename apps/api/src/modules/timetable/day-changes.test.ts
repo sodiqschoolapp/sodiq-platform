@@ -1095,7 +1095,7 @@ describe('one-day changes: cancel and restore', () => {
       // From 19 October Mondays start at 09:00. Task 5.6b-4a: the setting is
       // written straight into the table, as the route wrote it before: the
       // route now writes the lessons of those dates again on the new times
-      // (and sorts the stored cancel), so the state this check guards comes
+      // (and refuses a change over the stored cancel), so the state this check guards comes
       // only from a template row that the lessons were not written after.
       const slot = await t.createSlotType(s.branch, 'Late lesson', 'lesson', 45);
       const late = await t.createTemplate(s.branch, 'Late', [slot, slot, slot], '09:00');

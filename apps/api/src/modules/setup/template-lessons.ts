@@ -264,16 +264,12 @@ export class TemplateLessons {
         const now = dayOn(grade, date, input.after.settings);
         if (!was.lessons || !now.lessons || was.entryId !== null || now.entryId !== null) continue;
         const weekday = now.followsWeekday;
-        // Build decision: a slot type tells lesson slots apart only within one
-        // template; a setting that gives the grade another template replaces
-        // its slots, so only a used number it lacks is refused there.
-        const sameTemplate = was.dayTemplateId === now.dayTemplateId;
         for (const found of usedSlotProblems(
           lessonTypes(input.before.store, was.dayTemplateId, date),
           lessonTypes(input.after.store, now.dayTemplateId, date),
           used(grade, weekday),
+          { sameTemplate: was.dayTemplateId === now.dayTemplateId },
         )) {
-          if (found.problem === 'reordered' && !sameTemplate) continue;
           problems.push({ date, grade, weekday, ...found });
         }
       }
