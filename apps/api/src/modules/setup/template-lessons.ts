@@ -19,6 +19,7 @@ import { readVersionDays, weeklyKey } from '../timetable/version-days.js';
 import { calendarSettings, loadEntries } from './calendar-state.js';
 import { dayOf, loadStore, type TemplateStore } from './day-template-state.js';
 import { isWithdrawn } from './dated-rows.js';
+import { retimeStored, type MovedTimes } from './template-retime.js';
 
 /**
  * What a change of the day templates from a date does to the published
@@ -134,7 +135,7 @@ export class TemplateLessons {
       readonly preview: boolean;
       readonly days: TemplateDaysBody;
     },
-  ): Promise<{ rewrite: CalendarRewrite; slotsInUse: SlotInUse[] }> {
+  ): Promise<{ rewrite: CalendarRewrite; slotsInUse: SlotInUse[]; storedTimes: MovedTimes[] }> {
     const { branchId, today } = input;
     const [after, entries, years] = await Promise.all([
       loadStore(transaction),
@@ -179,6 +180,14 @@ export class TemplateLessons {
       );
     }
 
+    // Task 5.6b-4b: the stored one-day changes and bulk cancels of the dates
+    // follow their lessons to the new times, before the sorting reads them.
+    const { retime, moved } = await retimeStored(transaction, {
+      branchId,
+      dates,
+      before: { store: input.before, settings: settingsBefore },
+      after: { store: after, settings: settingsAfter },
+    });
     const rewrite = await this.lessons.rewrite(transaction, {
       branchId,
       accountId: input.accountId,
@@ -188,8 +197,9 @@ export class TemplateLessons {
       preview: input.preview,
       days: input.days,
       entryId: null,
+      retime,
     });
-    return { rewrite, slotsInUse };
+    return { rewrite, slotsInUse, storedTimes: [...moved] };
   }
 
   /**

@@ -4,7 +4,7 @@ import {
   timeText,
   type DayTemplateRename,
   type DayTemplateSummary,
-  type DayTemplateVersionRecord,
+  type DayTemplateVersionSave,
   type SlotType,
 } from '@sodiq/shared';
 import { inForceOn } from '@sodiq/timetable-rules';
@@ -75,7 +75,7 @@ export function DayTemplatePanel({
     onSuccess: refresh,
   });
   const addVersion = useMutation({
-    mutationFn: (record: DayTemplateVersionRecord) =>
+    mutationFn: (record: DayTemplateVersionSave) =>
       answerOf(api.POST('/api/setup/day-templates/{id}/versions', { ...path, body: record })),
     onSuccess: refresh,
   });
@@ -160,12 +160,12 @@ export function DayTemplatePanel({
               slotTypeIds: inForce?.slotTypeIds ?? [],
             }}
             onSave={async (change) => {
-              await preview.confirm({
+              const days = await preview.confirm({
                 kind: 'template_version',
                 dayTemplateId: summary.id,
                 change,
               });
-              await addVersion.mutateAsync(change);
+              await addVersion.mutateAsync({ ...change, days });
               panel.stop({ saved: true, key: 'slots' });
             }}
             onCancel={close}

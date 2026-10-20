@@ -384,6 +384,8 @@ describe('the day templates page', () => {
         from: TOMORROW,
         startTime: '08:00',
         slotTypeIds: [LESSON.id, LESSON.id],
+        // Task 5.6b-4b: the key of the sorting the preview showed.
+        days: { dayChangesKey: NO_LESSONS.dayChanges.key, dayDecisions: [] },
       });
     });
     await savedInPanel(panel);

@@ -214,6 +214,8 @@ describe('the slot types page', () => {
       ).toEqual({
         lengthMinutes: 30,
         from: '2026-10-11',
+        // Task 5.6b-4b: the key of the sorting the preview showed.
+        days: { dayChangesKey: NO_LESSONS.dayChanges.key, dayDecisions: [] },
       });
     });
     await savedInPanel(panel);

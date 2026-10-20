@@ -68,6 +68,43 @@ import { examsOn } from './stored-day.js';
 
 const MINUTE = 60_000;
 
+/** A stored lesson's date, class or group and times, as a template change reads them. */
+export interface StoredLessonTimes {
+  readonly lesson_date: string;
+  readonly class_id: string | null;
+  readonly group_id: string | null;
+  readonly starts_at: Date;
+  readonly ends_at: Date;
+}
+
+/**
+ * Task 5.6b-4b: a change of the day templates moves the times of the lessons
+ * of the dates it writes, by their lesson number in the day (5.6b-4a decision
+ * 4). Its stored one-day changes and bulk cancels are already at the new
+ * times (`TemplateLessons`, 0092); the stored lessons still hold the old ones
+ * until the write, so every reader of a stored lesson's times in the sorting
+ * reads them through `of`.
+ */
+export interface StoredRetime {
+  /** The new times of a stored lesson; its own when its date is not written or its number is gone. */
+  readonly of: (lesson: StoredLessonTimes) => { readonly starts_at: Date; readonly ends_at: Date };
+  /** The stored change rows whose new side has no slot of its lesson number after the change. */
+  readonly unplaced: ReadonlySet<string>;
+}
+
+/** The lesson with its times through `retime`, when one is given. */
+export function retimed<T extends StoredLessonTimes>(
+  lesson: T,
+  retime: StoredRetime | undefined,
+): T {
+  if (retime === undefined) return lesson;
+  const times = retime.of(lesson);
+  return times.starts_at.getTime() === lesson.starts_at.getTime() &&
+    times.ends_at.getTime() === lesson.ends_at.getTime()
+    ? lesson
+    : { ...lesson, starts_at: times.starts_at, ends_at: times.ends_at };
+}
+
 export type DayCategory = 'kept' | 'decide' | 'dropped';
 
 /** A stored one-day change as sorted, with what the write needs. */
@@ -185,6 +222,7 @@ async function chainsOf(
   branchId: string,
   firstDate: string,
   lastDate: string,
+  retime: StoredRetime | undefined,
 ): Promise<Chain[]> {
   const reaching = transaction
     .selectFrom('lesson_day_changes')
@@ -241,7 +279,9 @@ async function chainsOf(
     byLesson.set(row.lesson_id, list);
   }
   if (byLesson.size === 0) return [];
-  const lessons = await storedNowOf(transaction, [...byLesson.keys()]);
+  const lessons = (await storedNowOf(transaction, [...byLesson.keys()])).map((one) =>
+    retimed(one, retime),
+  );
   const lessonOf = new Map(lessons.map((one) => [one.id, one]));
   const chains: Chain[] = [];
   for (const [lessonId, list] of byLesson) {
@@ -299,8 +339,9 @@ async function cancelsOf(
   firstDate: string,
   lastDate: string,
   classIdsOf: (unitId: string) => readonly string[] | undefined,
+  retime: StoredRetime | undefined,
 ): Promise<StoredNow[]> {
-  const rows = await transaction
+  const read = await transaction
     .selectFrom('lessons')
     .innerJoin('lesson_blocks', 'lesson_blocks.id', 'lessons.block_id')
     .select([
@@ -325,6 +366,9 @@ async function cancelsOf(
     .where('lessons.cancel_cause', '=', 'reason')
     .orderBy('lessons.id')
     .execute();
+  // Task 5.6b-4b (spec review of the plan, must-fix 2): at the new times,
+  // as the bulk cancels' spans already are.
+  const rows = read.map((one) => retimed(one, retime));
   if (rows.length === 0) return [];
   const spans = await transaction
     .selectFrom('bulk_cancel_spans')
@@ -401,6 +445,8 @@ export async function sortDayChanges(
       readonly written: (date: string) => boolean;
       readonly decided: ReadonlyMap<string, readonly RuleResultAnswer[]>;
     };
+    /** Task 5.6b-4b: a template change's new times of the stored lessons. */
+    readonly retime?: StoredRetime;
   },
 ): Promise<DaySorting> {
   const { state, findings, firstDate, lastDate } = input;
@@ -410,9 +456,16 @@ export async function sortDayChanges(
   const elsewhere = (date: string) => input.across?.written(date) === true;
   const unitClasses = new Map(model.data.units.map((unit) => [unit.id, unit.classIds]));
 
-  const chains = await chainsOf(transaction, branchId, firstDate, lastDate);
+  const chains = await chainsOf(transaction, branchId, firstDate, lastDate, input.retime);
   const plainCancels = (
-    await cancelsOf(transaction, branchId, firstDate, lastDate, (unitId) => unitClasses.get(unitId))
+    await cancelsOf(
+      transaction,
+      branchId,
+      firstDate,
+      lastDate,
+      (unitId) => unitClasses.get(unitId),
+      input.retime,
+    )
   ).filter((one) => !chains.some((chain) => chain.lessonId === one.id));
 
   // The first moment of every date read: the run and every chain's dates.
@@ -571,6 +624,18 @@ export async function sortDayChanges(
     const [y] = b.chains;
     return x === undefined || y === undefined ? 0 : byAge(x.first, y.first);
   });
+  // Task 5.6b-4b (decision 7): a move whose new place has no slot of its
+  // lesson number after a template change needs a decision (drop the change,
+  // or cancel the lesson that day), as any stored change it cannot keep.
+  const unplaced = input.retime?.unplaced;
+  if (unplaced !== undefined) {
+    for (const draft of drafts) {
+      if (draft.kind !== 'move' || draft.category !== 'kept') continue;
+      if (draft.chains.some((chain) => chain.rows.some((row) => unplaced.has(row.id)))) {
+        draft.category = 'decide';
+      }
+    }
+  }
 
   // The rule check of every change kept, the oldest first (decision 6).
   const placed = new Map<DatedLesson, DatedLesson>();
@@ -883,7 +948,9 @@ export async function sortDayChanges(
       },
       category: found === undefined ? 'dropped' : 'kept',
       changeIds: [],
-      matched: new Map(),
+      // Task 5.6b-4b: the lesson it is kept on, which a template change
+      // creates at its new times; the write cancels it there.
+      matched: found === undefined ? new Map() : new Map([[cancel.id, found]]),
       cancelledParts: new Map(),
       storedIds: [],
       chains: [],
@@ -929,7 +996,17 @@ export function writePlanOf(
   const keepStored = new Set(keptStoredIds);
   const cancelStored = new Map<string, string>();
   for (const item of items) {
-    if (item.answer.kind === 'cancel') continue;
+    if (item.answer.kind === 'cancel') {
+      // Task 5.6b-4b: a kept one-lesson cancel on the lesson it is matched
+      // to; a lesson the write pairs with the stored one keeps its cancel.
+      for (const lesson of item.category === 'kept' ? item.matched.values() : []) {
+        cancels.set(
+          placeKeyOf(lesson.entryId, patternDateOf(lesson), lesson.date),
+          item.answer.reason,
+        );
+      }
+      continue;
+    }
     const choice = item.category === 'decide' ? decisions.get(item.answer.key) : undefined;
     if (item.category === 'kept') continue;
     if (item.storedIds.length > 0) {

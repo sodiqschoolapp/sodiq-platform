@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 20 October 2026: task 5.6b-4b Day template and slot length changes after publishing: the preview dialog
+
+- The template preview dialog (`usePreview` of `template-table.tsx`) shows what a change does to the published lessons with the calendar dialog's parts (lessons, blocked dates, exams, shortened dates with ticks, stored changes sorted) and the used lesson slots it removes or reorders; Save is off while the server would refuse; the four saves send the key shown and the choices in `days`.
+- Stored one-day changes and bulk cancels on the dates a template change writes follow their lessons by lesson number (`template-retime.ts`): their stored times move first (0092, dated after today, same date), the sorters read the stored lessons' times through the same map, a kept one-lesson cancel is applied on the lesson at its new times, a kept stored block takes its new times; a move into a removed lesson number needs a decision. `template_day_changes` is gone.
+- Handbook: "Changing a length or a day template after the timetable is published" in `02-school-setup.md`.
+- Left out: a browser test (no published version in the browser scene).
+
+The next sessions must know:
+
+- A template change passes `retime` to `TimetableCalendarLessons.rewrite`; a calendar save and a publish pass none.
+- 0092 lets the application update only the time columns of `lesson_day_changes`, `bulk_cancel_spans` and `bulk_cancel_blocks`, on a side dated after today, to that same date; a test fixture that forges a past record disables `lesson_day_changes_times` in its own transaction.
+- The next task is 5.6b-5.
+
 ## 20 October 2026: task 5.6b-4a Day template and slot length changes after publishing: the lessons
 
 - A slot length, a template version, a setting or a setting ended from a date writes the published lessons of every date after today whose day differs (slots, slot types, times, weekday followed, exam week) again through the calendar save's rewrite (`apps/api/src/modules/setup/template-lessons.ts`): checked with the full rule set, refused `calendar_blocked` by date, exams following their slots, stored changes sorted; future lessons take the new times, earlier ones keep theirs.

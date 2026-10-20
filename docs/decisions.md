@@ -285,6 +285,26 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 20 October 2026: day template and slot length changes after publishing, the preview dialog (task 5.6b-4b)
+
+Plan approved on pull request #178 with corrections 1 and 2; decisions 1 to 7 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a guard loosened). `lesson_day_changes`, `bulk_cancel_spans` and `bulk_cancel_blocks`, insert only until now, get an update grant on their time columns (0092); a trigger refuses a time of a side dated today or earlier in the branch's time zone, new times on another date than the row's own, and any update with no moment of the transaction. The template change moves them before its sorting reads them; its audit entry keeps the times before and after (`storedTimes`) | Decision 1, correction 1; a later publish or calendar save matches them to their lessons by their times (`06`, "Day template changed": future lessons take the new times, their one-day changes with them) |
+| **Look first** (a test changed by a requirement). The three tests of 5.6b-4a that expected `template_day_changes` are replaced by tests that the cancel, the move and the bulk cancel follow; the code `template_day_changes` is removed | Decision 2; this task's Build line removes the refusal |
+| **Look first** (a test fixture changed by a new guard). "removes a move from today or earlier onto a new day off" of `calendar-lessons.test.ts` forges its past record with the trigger `lesson_day_changes_times` disabled in a transaction of its own; its asserts are unchanged | 0092 refuses a time on another date than the row's own, which the fixture writes through the migrator |
+| A stored change's lesson number is read in the day of its unit's grade before the change, a group's through every grade of its classes; a two-grade group whose grades come apart has no new times, its lesson is cancelled "not in the day's template" and its change dropped and listed | Decision 3; 5.6b-4a decision 5 |
+| A move's side on a date the change does not write keeps its times | Decision 4 |
+| The template dialog draws no two-grade group choice | Decision 5; 5.6b-4a decision 8 |
+| The handbook section is in `docs/handbook/02-school-setup.md` | Decision 6 |
+| A stored move into a lesson number the change removes needs a decision (drop the change, or cancel the lesson that day), not a refusal | Decision 7; spec review of the plan, must-fix 3 |
+| A bulk cancel's span moves to the times of its own stored lesson number | Correction 2 |
+| **Build decision.** The sorters read the stored lessons' times through the same map as the stored rows (`StoredRetime`): the chains' lessons, the one-lesson cancels and the bulk cancels' stored blocks | Spec review of the plan, must-fix 1 and 2: they are matched by the lessons' own times, which the write moves only afterwards |
+| **Build decision.** A kept one-lesson cancel is written on the lesson it is matched to (`writePlanOf`), and a stored block kept where it is (a move from a date the change does not write) takes the new times of its lesson number after the write (`writeStoredTimes`) | Found in the build: the writer pairs stored and new lessons by their times, so a lesson at new times was created held, and a kept move stayed at its old times |
+| **Spec review of the code.** A kept stored block moved to its new times is in the change's audit entry (`storedBlocks`, before and after); a bulk cancel's block choice is updated by its own row, as a choice whose block a publish removed has no key of its own | Should-fix 4 (every change is audited) and 5 (two rows of one cancel could meet on a moved time) |
+| **Build decision.** The stored times move before the sorting, in the save and in the preview, whose transaction is rolled back; the plan said "after the rewrite" | The sorting itself then reads them at the new times, so the preview and the save sort alike; a test shows the preview writes nothing |
+
 ## 20 October 2026: day template and slot length changes after publishing (task 5.6b-4a)
 
 Plan approved on pull request #176 with corrections 1 to 3; decisions 1 to 10 confirmed there. Flagged on issue #42.
