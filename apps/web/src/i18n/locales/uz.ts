@@ -3336,6 +3336,7 @@ export const uz: Texts<'one' | 'other'> = {
       keep: 'Bekorligicha qoldirish',
       keepReason: 'Darslar bekorligicha qolishining sababi',
       keepReasonNeeded: 'Darslar nega bekorligicha qolishini yozing.',
+      keptLesson: 'Imtihon darsi',
       checkAgain: 'Saqlashdan oldin imtihonni qayta tekshiring.',
       save: 'Imtihonni saqlash',
       cancelTitle: '«{{title}}» imtihonini bekor qilasizmi?',

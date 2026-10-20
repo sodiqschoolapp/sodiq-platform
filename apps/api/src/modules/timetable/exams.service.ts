@@ -851,7 +851,13 @@ export class TimetableExams {
         if (checked.blocked.length > 0 && lessons.some((one) => kept.has(one.id))) {
           await transaction
             .updateTable('lessons')
-            .set({ cancel_cause: 'reason', cancel_reason: input.keepReason })
+            // A check names lessons to keep before the reason is typed; its
+            // write is rolled back, so a placeholder meets `lessons_reason_check`
+            // (spec review of the code, must-fix 1).
+            .set({
+              cancel_cause: 'reason',
+              cancel_reason: input.keepReason ?? (input.found === null ? null : 'check'),
+            })
             .where(
               'id',
               'in',
@@ -898,6 +904,9 @@ export class TimetableExams {
       }
     }
     if (input.found !== null) {
+      // A lesson named to stay cancelled that another exam still holds is
+      // refused as the save refuses it (spec review of the code, should-fix 6).
+      if (kept.size > 0) throw notFound();
       input.found.givenBack = items;
       input.found.freeRooms = [...freeRooms].sort();
       return result;

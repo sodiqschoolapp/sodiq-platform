@@ -3300,6 +3300,7 @@ export const en = {
       keep: 'Keep it cancelled',
       keepReason: 'Reason for keeping lessons cancelled',
       keepReasonNeeded: 'Write why the lessons stay cancelled.',
+      keptLesson: 'A lesson of the exam',
       checkAgain: 'Check the exam again before saving.',
       save: 'Save the exam',
       cancelTitle: 'Cancel the exam "{{title}}"?',

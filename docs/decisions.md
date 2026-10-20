@@ -300,6 +300,7 @@ Plan approved on pull request #182 with corrections 1 and 2; decisions 1 to 13 c
 | The lesson numbers come from the first chosen class's day; invigilators are active people of the staff list; groups are offered once a subject is chosen; one tick for the warnings | Decisions 8 to 11 |
 | The notice key is unchanged; the screen shows the action and the invigilation | Decision 12 |
 | The browser test has a scene of its own (account `exams`) with a block shared by two classes | Decision 2 |
+| **Build decision.** The check takes the locks of the save (the publish lock, the chain, the exam row) for its short transaction and rolls back, so it sees exactly what the save would; a save or publish meanwhile waits for it as for a save | Permission review should-fix 4; the calendar preview does the same |
 | **Build decision.** A change of a choice or a keep tick runs the check again; Save is on only while the newest check was made for exactly what the form holds | Plan review must-fix 1 |
 
 ## 20 October 2026: exams in the timetable, the exam save (task 5.6c-1)

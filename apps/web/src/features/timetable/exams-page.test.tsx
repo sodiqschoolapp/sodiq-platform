@@ -416,6 +416,55 @@ describe('the exams page (task 5.6c-2)', () => {
     });
   });
 
+  it('takes the tick away when the check answers other warnings (spec review of the code, must-fix 2)', async () => {
+    await openPage({
+      exams: [],
+      check: (body) => {
+        const chosen = (body as { blockChoices: { choice: string }[] }).blockChoices[0];
+        if (chosen === undefined) {
+          return json(
+            checkOf({
+              choices: [sharedChoice(null)],
+              blocked: null,
+              warnings: null,
+              givenBack: null,
+              canSave: false,
+            }),
+          );
+        }
+        return json(
+          checkOf({
+            choices: [sharedChoice(chosen.choice === 'keep' ? 'keep' : 'cancel')],
+            warnings: [
+              rule(chosen.choice === 'keep' ? 'room_capacity' : 'invigilator_subject', []),
+            ],
+          }),
+        );
+      },
+    });
+    fireEvent.click(screen.getAllByRole('button', { name: texts.new })[0] as HTMLElement);
+    const dialog = await screen.findByRole('dialog');
+    await fillNew(dialog);
+    fireEvent.click(within(dialog).getByRole('button', { name: texts.check }));
+    const sharedOf = () => dialog.querySelector(`[data-shared="${SHARED_BLOCK}"]`) as HTMLElement;
+    await waitFor(() => {
+      expect(sharedOf()).not.toBeNull();
+    });
+    fireEvent.click(within(sharedOf()).getByLabelText(texts.choice_keep));
+    await waitFor(() => {
+      expect(dialog.querySelector('[data-exam-warnings]')).not.toBeNull();
+    });
+    fireEvent.click(within(dialog).getByLabelText(texts.tick));
+    await waitFor(() => {
+      expect(saveButton(dialog)).toHaveProperty('disabled', false);
+    });
+    fireEvent.click(within(sharedOf()).getByLabelText(texts.choice_cancel));
+    await waitFor(() => {
+      expect(within(dialog).getByLabelText(texts.tick)).toHaveProperty('checked', false);
+    });
+    expect(saveButton(dialog)).toHaveProperty('disabled', true);
+  });
+
   it('changes an exam: a lesson given back that cannot come back is kept cancelled with a reason (plan test 15)', async () => {
     const blockedLesson = lesson(5, { cancelCause: 'exam', state: 'cancelled' });
     const calls = await openPage({
@@ -531,6 +580,10 @@ describe('the exams page (task 5.6c-2)', () => {
       return found as HTMLElement;
     });
     expect(blocked.textContent).toContain('Room 14');
+    // The lesson kept cancelled is named (spec review of the code, must-fix 3).
+    expect(dialog.querySelector('[data-exam-kept-lessons] li')?.textContent).toBe(
+      '08:00–08:45 · 7 Oxford · Mathematics · Karimova Aziza',
+    );
     fireEvent.change(within(dialog).getByLabelText(texts.keepReason), {
       target: { value: 'The room is taken' },
     });

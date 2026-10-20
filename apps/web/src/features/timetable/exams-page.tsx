@@ -7,7 +7,7 @@ import {
   type ExamCancelBody,
   type ExamSaveAnswer,
 } from '@sodiq/shared';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -30,9 +30,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useView } from '@/features/access/use-view';
+import { groupsQuery } from '@/features/classes/groups-api';
 import { BlockedRules } from './blocked-rules';
 import { ExamForm } from './exam-form';
-import { cancelExam, examsQuery, timetableKey, versionsQuery } from './timetable-api';
+import { cancelExam, dayQuery, examsQuery, timetableKey, versionsQuery } from './timetable-api';
 
 type Language = 'uz' | 'ru' | 'en';
 
@@ -284,6 +285,8 @@ export function ExamsPage(): React.JSX.Element {
         <CancelExamDialog
           key={cancelling.id}
           exam={cancelling}
+          branchId={branchId}
+          language={language}
           onClose={() => {
             setCancelling(null);
           }}
@@ -309,14 +312,37 @@ export function ExamsPage(): React.JSX.Element {
  */
 function CancelExamDialog({
   exam,
+  branchId,
+  language,
   onClose,
   onCancelled,
 }: {
   exam: Exam;
+  branchId: string | null;
+  language: Language;
   onClose: () => void;
   onCancelled: () => Promise<void>;
 }) {
   const { t } = useTranslation();
+  // The lessons the exam keeps cancelled, named from the day of each class
+  // that sits (spec review of the code, must-fix 3); a group's lesson is on
+  // the day of a class that feeds it.
+  const groups = useQuery(groupsQuery(branchId));
+  const groupIds = new Set(exam.rooms.flatMap((one) => one.groups.map((unit) => unit.id)));
+  const classIds = [
+    ...new Set([
+      ...exam.rooms.flatMap((one) => one.classes.map((unit) => unit.id)),
+      ...(groups.data?.groups ?? [])
+        .filter((one) => groupIds.has(one.id))
+        .flatMap((one) => one.classes.map((unit) => unit.id)),
+    ]),
+  ];
+  const days = useQueries({
+    queries: classIds.map((classId) => dayQuery(branchId, exam.date, classId)),
+  });
+  const lessonsById = new Map(
+    days.flatMap((one) => one.data?.lessons ?? []).map((one) => [one.id, one]),
+  );
   const done = useRef(false);
   // A key per body: the second send keeps lessons the first did not.
   const keys = useRef(new Map<string, string>());
@@ -338,12 +364,15 @@ function CancelExamDialog({
           // A rule names the lessons on both sides of the clash: only the
           // exam's own lessons are kept cancelled.
           const own = new Set(exam.lessonIds);
-          setBlocked([
-            ...new Set(
-              (error.details ?? [])
+          setBlocked((before) => [
+            ...new Set([
+              // The lessons kept on an earlier send stay kept (spec review of
+              // the code, should-fix 8).
+              ...before,
+              ...(error.details ?? [])
                 .flatMap((one) => one.rule?.lessonIds ?? [])
                 .filter((id) => own.has(id)),
-            ),
+            ]),
           ]);
         }
         throw error;
@@ -402,6 +431,26 @@ function CancelExamDialog({
                 intoText={(name) => t('timetable.day.useRoom', { room: name })}
               />
             </div>
+          )}
+          {blocked.length > 0 && (
+            <ul className="grid gap-1 text-sm" data-exam-kept-lessons="true">
+              {blocked.map((id) => {
+                const lesson = lessonsById.get(id);
+                return (
+                  <li key={id}>
+                    {lesson === undefined
+                      ? t('timetable.exams.keptLesson')
+                      : t('timetable.exams.lesson', {
+                          start: timeText(lesson.start),
+                          end: timeText(lesson.end),
+                          unit: lesson.unit.name,
+                          subject: lesson.subject.names[language],
+                          teacher: lesson.teacher?.name ?? t('timetable.day.needsTeacher'),
+                        })}
+                  </li>
+                );
+              })}
+            </ul>
           )}
           {blocked.length > 0 && (
             <TextAreaField

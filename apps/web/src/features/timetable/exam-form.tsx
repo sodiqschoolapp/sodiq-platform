@@ -138,6 +138,9 @@ export function ExamForm({
   );
   const [keeps, setKeeps] = useState<readonly string[]>([]);
   const [ticked, setTicked] = useState(false);
+  // The warnings the tick was given for: other warnings need it again (spec
+  // review of the code, must-fix 2).
+  const tickedFor = useRef('');
   // The body the newest check was made for, to tell a stale answer.
   const [checkedFor, setCheckedFor] = useState<string | null>(null);
 
@@ -204,6 +207,13 @@ export function ExamForm({
   const check = useMutation({
     mutationFn: (body: ExamCheckBody) => checkExam(body),
     onSuccess: (answer, body) => {
+      const warned = JSON.stringify(
+        (answer.warnings ?? []).map((one) => [one.code, one.rule?.lessonIds ?? []]),
+      );
+      if (warned !== tickedFor.current) {
+        tickedFor.current = warned;
+        setTicked(false);
+      }
       // The choice the check used (the stored one of a change) stands as
       // chosen, so the answer is the one for what the form now holds.
       const merged: Record<string, ExamBlockChoiceBody['choice']> = {};
@@ -504,7 +514,11 @@ export function ExamForm({
                 variant="secondary"
                 disabled={!valid || check.isPending}
                 onClick={() => {
-                  runCheck(current);
+                  // A new check of the fields starts the keep ticks again: a
+                  // lesson ticked before may no longer be given back (spec
+                  // review of the code, should-fix 7).
+                  setKeeps([]);
+                  runCheck(bodyOf(typed, choices, []));
                 }}
               >
                 {t('timetable.exams.check')}

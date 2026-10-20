@@ -896,10 +896,12 @@ describe('the correction of a past lesson', () => {
     });
     const row = document.querySelector(`[data-exam="${uid(901)}"]`);
     const cells = [...(row?.querySelectorAll('td') ?? [])].map((one) => one.textContent);
+    // In time order among the lessons (spec review of the code, should-fix 9).
+    expect(document.querySelector('tbody tr')?.getAttribute('data-exam')).toBe(uid(901));
     expect(cells.slice(0, 6)).toEqual([
       '08:00–09:30',
+      '7 Oxford',
       'Quarter exam in maths',
-      '',
       'Karimova Dilnoza',
       'Hall',
       en.timetable.day.exam,

@@ -1965,7 +1965,9 @@ describe('exams in the timetable', () => {
         await check(
           s.branch,
           asCheck(
-            { ...body, keepCancelled: [other.id], keepReason: 'The room is taken' },
+            // No reason yet: the dialog asks the check before it is typed
+            // (spec review of the code, must-fix 1).
+            { ...body, keepCancelled: [other.id] },
             exam.exam.id,
           ),
         ),
@@ -1984,7 +1986,11 @@ describe('exams in the timetable', () => {
       );
       const other = await lessonOf(LATER_MONDAY, s.otherClass);
       const later = examOf(s, { date: LATER_MONDAY, classIds: [s.otherClass], first: 2 });
+      // The one path that restores and writes up to the commit's checks
+      // writes nothing either (spec review of the code, must-fix 4).
+      const before = await all();
       const restored = checked(await check(s.branch, asCheck(later, exam.exam.id)));
+      expect(await all()).toEqual(before);
       expect(restored.givenBack?.map((one) => [one.lesson.id, one.state])).toEqual([
         [other.id, 'restored'],
       ]);
@@ -2043,6 +2049,31 @@ describe('exams in the timetable', () => {
         409,
         'exam_slots',
       );
+    });
+
+    it('answers a day off of one grade of the exam with its line, as the save refuses it (plan review correction 2)', async () => {
+      const s = await scene({ art: true });
+      const art = s.art;
+      if (art === null) throw new Error('No art.');
+      await t.database.migrator
+        .insertInto('calendar_entries')
+        .values({
+          branch_id: s.branch,
+          kind: 'day_off',
+          name: 'Grade 8 trip',
+          first_date: THURSDAY,
+          last_date: THURSDAY,
+          grade_from: 8,
+          grade_to: 8,
+        })
+        .execute();
+      const body = examOf(s, { date: THURSDAY, classIds: [s.classId, art.eighth] });
+      const answer = checked(await check(s.branch, asCheck(body)));
+      expect(answer.blocked?.map((one) => one.code)).toEqual(['day_off']);
+      expect(answer).toMatchObject({ choices: [], cancels: [], canSave: false });
+      const refused = await create(s.branch, body);
+      refusedWith(refused, 409, 'exam_blocked');
+      expect(detailsOf(refused).map((one) => one.code)).toEqual(['day_off']);
     });
 
     it('refuses a tick, and lessons kept cancelled without an exam to change (plan test 10)', async () => {
