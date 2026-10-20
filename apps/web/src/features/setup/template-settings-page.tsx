@@ -11,6 +11,7 @@ import {
   WEEKDAYS,
   type Assignment,
   type AssignmentRecord,
+  type AssignmentSave,
   type DayTemplateSummary,
   type TemplateLevelName,
 } from '@sodiq/shared';
@@ -173,7 +174,7 @@ export function TemplateSettingsPage() {
   }, [templates.data]);
 
   const set = useMutation({
-    mutationFn: (record: AssignmentRecord) =>
+    mutationFn: (record: AssignmentSave) =>
       answerOf(
         api.POST('/api/setup/day-template-assignments', {
           params: { header: branchHeader() },
@@ -313,8 +314,8 @@ export function TemplateSettingsPage() {
               templates={activeTemplates}
               tomorrow={tomorrow}
               onSave={async (record) => {
-                await preview.confirm({ kind: 'assignment_set', change: record });
-                await set.mutateAsync(record);
+                const days = await preview.confirm({ kind: 'assignment_set', change: record });
+                await set.mutateAsync({ ...record, days });
               }}
             />
           )}

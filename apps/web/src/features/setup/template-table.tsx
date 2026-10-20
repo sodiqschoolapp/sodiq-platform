@@ -1,12 +1,16 @@
 import {
   GRADES,
+  type DayChangeChoice,
+  type SlotInUse,
   type TemplateChange,
+  type TemplateDaysBody,
   type TemplatePreview,
   type TemplateTable,
 } from '@sodiq/shared';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EditIcon } from '@/components/icons';
+import { FailureAlert } from '@/components/failure-alert';
 import { SaveCancelled } from '@/components/form/save-cancelled';
 import { Button } from '@/components/ui/button';
 import {
@@ -25,6 +29,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { SECTION_TITLE } from '@/components/ui/control';
+import { dayDecisionsBodyOf, PublishDayChanges } from '@/features/timetable/publish-day-changes';
+import { CalendarExamsPreview, examBlocksOf, examsRefuseSave } from './calendar-exams-preview';
+import { CalendarLessonsPreview, refusesSave } from './calendar-lessons-preview';
+import { datesText } from './calendar-preview';
+import { CalendarShortened, dayKeepsOf } from './calendar-shortened';
 import { previewOf, rangeText } from './templates-api';
 import { schoolDateText, weekdayName } from '@/lib/dates';
 
@@ -127,9 +137,56 @@ export function TemplateTableView({
   );
 }
 
+/** The used lesson slots a change removes or reorders, one line per run of dates (task 5.6b-4b). */
+function TemplateSlotsInUse({ slots }: { slots: readonly SlotInUse[] }): React.JSX.Element | null {
+  const { t, i18n } = useTranslation();
+  if (slots.length === 0) return null;
+  return (
+    <section className="space-y-1" data-testid="template-slots-in-use">
+      <h3 className={SECTION_TITLE}>{t('setup.templateTable.slotsInUse.title')}</h3>
+      <ul className="list-disc space-y-0.5 ps-5 text-sm">
+        {slots.map((one) => (
+          <li
+            key={`${one.firstDate}-${String(one.grade)}-${String(one.lessonNumber)}-${one.problem}`}
+          >
+            {t('setup.templateTable.slotsInUse.line', {
+              dates: datesText(one.firstDate, one.lastDate, i18n.language),
+              grade: one.grade,
+              weekday: weekdayName(i18n.language, one.weekday),
+              number: one.lessonNumber,
+              problem: t(`setup.templateTable.slotsInUse.problems.${one.problem}`),
+            })}
+          </li>
+        ))}
+      </ul>
+      <p className="text-sm font-medium text-destructive" role="alert">
+        {t('setup.templateTable.slotsInUse.refused')}
+      </p>
+    </section>
+  );
+}
+
+/** The change with the shortened days' choices, as the preview takes them again. */
+function withKeeps(change: TemplateChange, dayKeeps: TemplateDaysBody['dayKeeps']): TemplateChange {
+  const days = { dayKeeps };
+  switch (change.kind) {
+    case 'slot_length':
+      return { ...change, change: { ...change.change, days } };
+    case 'template_version':
+      return { ...change, change: { ...change.change, days } };
+    case 'assignment_set':
+      return { ...change, change: { ...change.change, days } };
+    case 'assignment_end':
+      return { ...change, change: { ...change.change, days } };
+  }
+}
+
 interface Question {
+  /** The change previewed, sent again with the ticks. */
+  change: TemplateChange;
   preview: TemplatePreview;
-  answer: (save: boolean) => void;
+  /** The choices the save sends, or `null` when the person does not save. */
+  answer: (days: TemplateDaysBody | null) => void;
 }
 
 /**
@@ -138,32 +195,83 @@ interface Question {
  * writes nothing; the dialog shows the table on the change's date with the
  * changed cells marked, and the save goes on only when the person says so.
  *
+ * Task 5.6b-4b: under the table, what the change does to the published
+ * timetable (`06`, How surprises are prevented, Impact preview;
+ * `edge/time-dates-calendar`, "A slot type's length or a day template is
+ * changed mid-year"), with the calendar dialog's parts: the lessons removed,
+ * created, cancelled, needing a teacher and the teachers told, and the
+ * blocked conflicts by date; the used lesson slots it removes or reorders;
+ * the exams; the shortened special dates with their ticks, which ask the
+ * preview again; and the stored one-day changes and bulk cancels sorted,
+ * each "needs a decision" with its choice. Save is off while the server
+ * would refuse. `confirm` resolves with the key of the sorting shown and the
+ * choices, which the save sends as `days`.
+ *
  *     const preview = usePreview();
- *     save: async (values) => { await preview.confirm(change); await save(values); }
+ *     save: async (values) => { const days = await preview.confirm(change); await save({ ...values, days }); }
  *     …
  *     {preview.dialog}
  */
 export function usePreview(): {
-  /** Resolves when the person saves; throws `SaveCancelled` when they do not, or the refusal of the preview. */
-  confirm: (change: TemplateChange) => Promise<void>;
+  /** Resolves with the choices when the person saves; throws `SaveCancelled` when they do not, or the refusal of the preview. */
+  confirm: (change: TemplateChange) => Promise<TemplateDaysBody>;
   dialog: ReactNode;
 } {
   const { t } = useTranslation();
   const [question, setQuestion] = useState<Question | null>(null);
+  const [choices, setChoices] = useState<Record<string, DayChangeChoice>>({});
+  const [ticks, setTicks] = useState<Record<string, number[]>>({});
+  const [examChoices, setExamChoices] = useState<Record<string, 'cancel' | 'keep'>>({});
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState<unknown>(null);
 
-  const confirm = async (change: TemplateChange): Promise<void> => {
+  const confirm = async (change: TemplateChange): Promise<TemplateDaysBody> => {
     const preview = await previewOf(change);
-    const save = await new Promise<boolean>((resolve) => {
-      setQuestion({ preview, answer: resolve });
+    const days = await new Promise<TemplateDaysBody | null>((resolve) => {
+      setChoices({});
+      setTicks({});
+      setExamChoices({});
+      setRefreshError(null);
+      setQuestion({ change, preview, answer: resolve });
     });
-    if (!save) {
+    if (days === null) {
       throw new SaveCancelled();
     }
+    return days;
   };
 
-  const answer = (save: boolean) => {
-    question?.answer(save);
+  const answer = (days: TemplateDaysBody | null) => {
+    question?.answer(days);
     setQuestion(null);
+  };
+  const decided =
+    question === null ? null : dayDecisionsBodyOf(question.preview.lessons.dayChanges, choices);
+  const dayKeeps = dayKeepsOf(ticks);
+  const examBlocks = examBlocksOf(examChoices);
+  const days: TemplateDaysBody | null =
+    decided === null
+      ? null
+      : {
+          ...decided,
+          ...(dayKeeps.length === 0 ? {} : { dayKeeps }),
+          ...(examBlocks.length === 0 ? {} : { examBlocks }),
+        };
+
+  /** The ticks of a date and class changed: the preview again with every tick. */
+  const tick = async (key: string, positions: number[]) => {
+    if (question === null) return;
+    const next = { ...ticks, [key]: positions };
+    setTicks(next);
+    setRefreshing(true);
+    setRefreshError(null);
+    try {
+      const preview = await previewOf(withKeeps(question.change, dayKeepsOf(next)));
+      setQuestion((current) => (current === null ? null : { ...current, preview }));
+    } catch (error) {
+      setRefreshError(error);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const dialog =
@@ -172,7 +280,7 @@ export function usePreview(): {
         open
         onOpenChange={(open) => {
           if (!open) {
-            answer(false);
+            answer(null);
           }
         }}
       >
@@ -193,18 +301,54 @@ export function usePreview(): {
             caption={t('setup.templateTable.previewTitle')}
             showDate
           />
+          <TemplateSlotsInUse slots={question.preview.slotsInUse} />
+          <CalendarLessonsPreview lessons={question.preview.lessons} />
+          <CalendarExamsPreview
+            lessons={question.preview.lessons}
+            choices={examChoices}
+            onChoose={(key, choice) => {
+              setExamChoices({ ...examChoices, [key]: choice });
+            }}
+          />
+          <CalendarShortened
+            lessons={question.preview.lessons}
+            ticks={ticks}
+            disabled={refreshing}
+            onTicks={(key, positions) => {
+              void tick(key, positions);
+            }}
+          />
+          {refreshing && <p className="text-sm">{t('setup.calendar.lessons.refreshing')}</p>}
+          {refreshError !== null && <FailureAlert error={refreshError} />}
+          <PublishDayChanges
+            impact={question.preview.lessons}
+            choices={choices}
+            canEdit
+            onChoose={(key, choice) => {
+              setChoices({ ...choices, [key]: choice });
+            }}
+          />
           <DialogFooter>
             <Button
               variant="ghost"
               onClick={() => {
-                answer(false);
+                answer(null);
               }}
             >
               {t('setup.templateTable.cancel')}
             </Button>
             <Button
+              disabled={
+                question.preview.slotsInUse.length > 0 ||
+                refusesSave(question.preview.lessons) ||
+                examsRefuseSave(question.preview.lessons, examChoices) ||
+                days === null ||
+                refreshing ||
+                refreshError !== null ||
+                question.preview.lessons.keepRefusals.length > 0
+              }
               onClick={() => {
-                answer(true);
+                if (days !== null) answer(days);
               }}
             >
               {t('setup.templateTable.save')}

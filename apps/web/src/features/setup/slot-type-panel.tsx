@@ -4,7 +4,7 @@ import {
   SLOT_LENGTH_MIN_MINUTES,
   slotLengthChangeSchema,
   slotTypeRenameSchema,
-  type SlotLengthChange,
+  type SlotLengthSave,
   type SlotType,
   type SlotTypeRename,
 } from '@sodiq/shared';
@@ -65,7 +65,7 @@ export function SlotTypePanel({ slotType, today, canEdit, canArchive }: SlotType
     onSuccess: refresh,
   });
   const changeLength = useMutation({
-    mutationFn: (change: SlotLengthChange) =>
+    mutationFn: (change: SlotLengthSave) =>
       answerOf(api.POST('/api/setup/slot-types/{id}/lengths', { ...path, body: change })),
     onSuccess: refresh,
   });
@@ -92,8 +92,8 @@ export function SlotTypePanel({ slotType, today, canEdit, canArchive }: SlotType
     initial: { lengthMinutes: String(slotType.lengthMinutes), from: nextDay(today) },
     read: (typed) => ({ lengthMinutes: wholeNumber(typed.lengthMinutes), from: typed.from }),
     save: async (change) => {
-      await preview.confirm({ kind: 'slot_length', slotTypeId: slotType.id, change });
-      await changeLength.mutateAsync(change);
+      const days = await preview.confirm({ kind: 'slot_length', slotTypeId: slotType.id, change });
+      await changeLength.mutateAsync({ ...change, days });
       panel.stop({ saved: true, key: 'length' });
     },
   });

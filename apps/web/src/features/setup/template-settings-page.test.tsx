@@ -267,7 +267,10 @@ describe('the page of where day templates apply', () => {
     await waitFor(() => {
       expect(
         calls.find((call) => call.route === 'POST /api/setup/day-template-assignments')?.body,
-      ).toEqual(record);
+      ).toEqual({
+        ...record,
+        days: { dayChangesKey: NO_LESSONS.dayChanges.key, dayDecisions: [] },
+      });
     });
   });
 
@@ -320,6 +323,7 @@ describe('the page of where day templates apply', () => {
         )?.body,
       ).toEqual({
         from: '2026-11-02',
+        days: { dayChangesKey: NO_LESSONS.dayChanges.key, dayDecisions: [] },
       });
     });
     await savedInPanel(panel);
@@ -375,5 +379,283 @@ describe('the page of where day templates apply', () => {
       name: `${en.setup.templateSettings.levels.weekday}: Friday`,
     });
     expect(within(panel).queryByRole('form')).toBeNull();
+  });
+});
+
+// Task 5.6b-4b: what a template change does to the published timetable, in
+// the preview before its save (`06`, How surprises are prevented, Impact
+// preview; `edge/time-dates-calendar`, "A slot type's length or a day template
+// is changed mid-year"), with the calendar dialog's parts, and the choices
+// sent with the save.
+describe('the preview of a template change over a published timetable', () => {
+  const OXFORD = uid(20);
+  const MATHS = uid(21);
+  const names = {
+    units: [{ id: OXFORD, kind: 'class' as const, name: 'Oxford', grades: [7] }],
+    subjects: [{ id: MATHS, names: { uz: 'Matematika', ru: 'Математика', en: 'Mathematics' } }],
+    teachers: [],
+    rooms: [],
+  };
+  const lesson = {
+    date: '2026-10-19',
+    start: 480,
+    end: 525,
+    unitId: OXFORD,
+    subjectId: MATHS,
+    teacherIds: [],
+    roomId: null,
+  };
+  const record = {
+    level: 'weekday',
+    weekday: 5,
+    gradeFrom: null,
+    gradeTo: null,
+    dayTemplateId: FRIDAY.id,
+    from: TOMORROW,
+  };
+
+  /** Sets Friday's template for Fridays and opens its preview. */
+  async function previewFriday(answer: (body: unknown) => TemplatePreview) {
+    const calls = await openPage('academic_vice_principal', {
+      'POST /api/setup/day-template-table/preview': (body) => json(answer(body)),
+      'POST /api/setup/day-template-assignments': () => json(FRIDAYS, 201),
+    });
+    const form = screen.getByRole('form', { name: en.setup.templateSettings.setTitle });
+    type(within(form).getByLabelText(en.setup.templateSettings.level), 'weekday');
+    type(within(form).getByLabelText(en.setup.templateSettings.weekday), '5');
+    type(within(form).getByLabelText(en.setup.templateSettings.template), FRIDAY.id);
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    const dialog = await screen.findByRole('dialog', {
+      name: en.setup.templateTable.previewTitle,
+    });
+    const save = within(dialog).getByRole('button', { name: en.setup.templateTable.save });
+    return { calls, dialog, save };
+  }
+
+  const saved = (calls: { route: string; body: unknown }[]) =>
+    calls.find((call) => call.route === 'POST /api/setup/day-template-assignments')?.body;
+
+  it('lists the lessons it removes, creates, cancels and leaves without a teacher, and the teachers told; Save goes on', async () => {
+    const { dialog, save } = await previewFriday(() => ({
+      ...PREVIEW,
+      lessons: {
+        ...NO_LESSONS,
+        removed: [lesson],
+        created: [{ ...lesson, start: 470, end: 510 }],
+        cancelled: [{ ...lesson, date: '2026-10-23', cause: 'not_in_template' }],
+        needsTeacher: [
+          { date: '2026-10-26', unitId: OXFORD, subjectId: MATHS, reason: 'teacher_out' },
+        ],
+        notified: [uid(22)],
+        names,
+      },
+    }));
+    const section = within(dialog).getByTestId('calendar-lessons');
+    for (const text of [
+      en.setup.calendar.lessons.removed_one.replace('{{count}}', '1'),
+      '19 October 2026 · 08:00–08:45 · 7 Oxford · Mathematics',
+      en.setup.calendar.lessons.created_one.replace('{{count}}', '1'),
+      '19 October 2026 · 07:50–08:30 · 7 Oxford · Mathematics',
+      en.setup.calendar.lessons.cancelled_one.replace('{{count}}', '1'),
+      `23 October 2026 · 08:00–08:45 · 7 Oxford · Mathematics · ${en.setup.calendar.lessons.causes.not_in_template}`,
+      en.setup.calendar.lessons.needsTeacher_one.replace('{{count}}', '1'),
+      `26 October 2026 · 7 Oxford · Mathematics · ${en.timetable.publish.needsTeacher.teacher_out}`,
+      en.setup.calendar.lessons.notified_one.replace('{{count}}', '1'),
+    ]) {
+      expect(within(section).getByText(text)).not.toBeNull();
+    }
+    expect(save).toHaveProperty('disabled', false);
+  });
+
+  it.each(['blocked', 'slotsInUse'] as const)(
+    'keeps Save off while the server would refuse it: %s, listed as a line',
+    async (refusal) => {
+      const { calls, dialog, save } = await previewFriday(() => ({
+        ...PREVIEW,
+        lessons: {
+          ...NO_LESSONS,
+          blocked:
+            refusal === 'blocked'
+              ? [
+                  {
+                    date: '2026-10-19',
+                    rule: 'teacher_double',
+                    lessons: [{ unitId: OXFORD, subjectId: MATHS }],
+                  },
+                ]
+              : [],
+          names,
+        },
+        slotsInUse:
+          refusal === 'slotsInUse'
+            ? [
+                {
+                  firstDate: '2026-10-16',
+                  lastDate: '2026-10-23',
+                  grade: 7,
+                  weekday: 5,
+                  lessonNumber: 3,
+                  problem: 'removed',
+                },
+              ]
+            : [],
+      }));
+      if (refusal === 'blocked') {
+        const section = within(dialog).getByTestId('calendar-lessons');
+        expect(within(section).getByRole('alert').textContent).toBe(
+          en.setup.calendar.lessons.refused,
+        );
+      } else {
+        const section = within(dialog).getByTestId('template-slots-in-use');
+        expect(
+          within(section).getByText(
+            `16 October – 23 October 2026 · grade 7 · Friday · lesson 3: ${en.setup.templateTable.slotsInUse.problems.removed}`,
+          ),
+        ).not.toBeNull();
+        expect(within(section).getByRole('alert').textContent).toBe(
+          en.setup.templateTable.slotsInUse.refused,
+        );
+      }
+      expect(save).toHaveProperty('disabled', true);
+      fireEvent.click(save);
+      expect(saved(calls)).toBeUndefined();
+    },
+  );
+
+  it('keeps Save off until a stored one-day change has a choice, then sends the key shown and the choice', async () => {
+    const MOVE = uid(31);
+    const { calls, dialog, save } = await previewFriday(() => ({
+      ...PREVIEW,
+      lessons: {
+        ...NO_LESSONS,
+        dayChanges: {
+          key: 'd'.repeat(64),
+          kept: [],
+          decide: [
+            {
+              key: MOVE,
+              kind: 'move',
+              unitId: OXFORD,
+              subjectId: MATHS,
+              from: { date: '2026-10-23', start: 480, end: 525, roomId: null },
+              to: { date: '2026-10-23', start: 590, end: 635, roomId: null },
+              reason: 'Excursion to the museum',
+              carriedVersionId: null,
+              blocked: [],
+            },
+          ],
+          dropped: [],
+          bulk: [],
+        },
+        names,
+      },
+    }));
+    expect(save).toHaveProperty('disabled', true);
+    fireEvent.click(
+      within(dialog).getByRole('radio', { name: en.timetable.publish.dayChanges.choice_cancel }),
+    );
+    expect(save).toHaveProperty('disabled', false);
+    fireEvent.click(save);
+    await waitFor(() => {
+      expect(saved(calls)).toEqual({
+        ...record,
+        days: { dayChangesKey: 'd'.repeat(64), dayDecisions: [{ key: MOVE, choice: 'cancel' }] },
+      });
+    });
+  });
+
+  it('asks the preview again with the ticks of a shortened date and sends them, with the choice for an exam block', async () => {
+    const subjects = [uid(42), uid(43), uid(44)];
+    const EXAM = uid(45);
+    const day = (kept: number[], chosen: boolean) => ({
+      date: '2026-10-23',
+      classId: OXFORD,
+      lessonSlots: 2,
+      lessons: [1, 3, 5].map((slotPosition, index) => ({
+        slotPosition,
+        entryIds: [uid(50 + index)],
+        subjects: [{ unitId: OXFORD, subjectId: subjects[index] ?? '' }],
+      })),
+      kept,
+      chosen,
+      missingPositions: [],
+    });
+    const { calls, dialog, save } = await previewFriday((body) => {
+      const keeps = (body as { change: { days?: { dayKeeps?: { slotPositions: number[] }[] } } })
+        .change.days?.dayKeeps;
+      const ticked = keeps?.[0]?.slotPositions;
+      return {
+        ...PREVIEW,
+        lessons: {
+          ...NO_LESSONS,
+          shortenedDays: [ticked === undefined ? day([1, 3], false) : day(ticked, true)],
+          exams: [
+            {
+              id: EXAM,
+              title: 'Quarter exam',
+              date: '2026-10-23',
+              outcome: 'kept',
+              before: { start: 480, end: 525 },
+              after: null,
+              code: null,
+              blockedRules: [],
+              blocks: [
+                {
+                  classId: OXFORD,
+                  start: 590,
+                  lessons: [{ unitId: OXFORD, subjectId: MATHS }],
+                  choice: null,
+                },
+              ],
+            },
+          ],
+          names: {
+            ...names,
+            subjects: ['Mathematics', 'Art', 'Music'].map((name, index) => ({
+              id: subjects[index] ?? '',
+              names: { uz: name, ru: name, en: name },
+            })),
+          },
+        },
+      };
+    });
+    const box = (name: string) =>
+      within(dialog).getByRole<HTMLInputElement>('checkbox', { name: new RegExp(name) });
+    // The exam's shared block has no choice yet.
+    expect(save).toHaveProperty('disabled', true);
+    const block = dialog.querySelector<HTMLElement>(`[data-block="${EXAM}|${OXFORD}|590"]`);
+    const keep = within(block ?? dialog).getAllByRole<HTMLInputElement>('radio')[1];
+    if (keep === undefined) throw new Error('No choice to keep.');
+    fireEvent.click(keep);
+
+    fireEvent.click(box('Art'));
+    await waitFor(() => {
+      expect(box('Art').checked).toBe(false);
+    });
+    await waitFor(() => {
+      expect(save).toHaveProperty('disabled', false);
+    });
+    const previews = calls.filter(
+      (call) => call.route === 'POST /api/setup/day-template-table/preview',
+    );
+    expect(previews.at(-1)?.body).toEqual({
+      kind: 'assignment_set',
+      change: {
+        ...record,
+        days: { dayKeeps: [{ date: '2026-10-23', classId: OXFORD, slotPositions: [1] }] },
+      },
+    });
+    fireEvent.click(save);
+    await waitFor(() => {
+      expect(saved(calls)).toEqual({
+        ...record,
+        days: {
+          dayChangesKey: NO_LESSONS.dayChanges.key,
+          dayDecisions: [],
+          dayKeeps: [{ date: '2026-10-23', classId: OXFORD, slotPositions: [1] }],
+          examBlocks: [{ examId: EXAM, classId: OXFORD, start: 590, choice: 'keep' }],
+        },
+      });
+    });
   });
 });

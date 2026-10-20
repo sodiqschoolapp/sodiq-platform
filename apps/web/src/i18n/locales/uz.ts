@@ -1071,6 +1071,16 @@ export const uz: Texts<'one' | 'other'> = {
       changedCount_other: '{{count}} ta katak oʻzgaradi.',
       cancel: 'Saqlamaslik',
       save: 'Oʻzgarishni saqlash',
+      slotsInUse: {
+        title: 'Eʼlon qilingan dars jadvali foydalanadigan dars slotlari',
+        line: '{{dates}} · {{grade}}-sinf · {{weekday}} · {{number}}-dars: {{problem}}',
+        problems: {
+          removed: 'bu oʻzgarish bilan olib tashlanadi',
+          reordered: 'bu oʻzgarish bilan boshqa dars turini oladi',
+        },
+        refused:
+          'Oʻzgarishni saqlab boʻlmaydi: bu dars slotlarini qoldiring yoki avval ularni ishlatmaydigan dars jadvali versiyasini eʼlon qiling.',
+      },
     },
     settings: {
       title: 'Sozlamalar',

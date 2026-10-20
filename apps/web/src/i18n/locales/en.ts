@@ -1057,6 +1057,16 @@ export const en = {
       changedCount_other: '{{count}} cells change.',
       cancel: 'Do not save',
       save: 'Save the change',
+      slotsInUse: {
+        title: 'Lesson slots the published timetable uses',
+        line: '{{dates}} · grade {{grade}} · {{weekday}} · lesson {{number}}: {{problem}}',
+        problems: {
+          removed: 'removed by this change',
+          reordered: 'given another lesson type by this change',
+        },
+        refused:
+          'The change cannot be saved: keep these lesson slots, or first publish a timetable version that no longer uses them.',
+      },
     },
     settings: {
       title: 'Settings',

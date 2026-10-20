@@ -1,4 +1,4 @@
-import { assignmentEndSchema, type Assignment, type AssignmentEnd } from '@sodiq/shared';
+import { assignmentEndSchema, type Assignment, type AssignmentEndSave } from '@sodiq/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
@@ -38,7 +38,7 @@ export function TemplateAssignmentPanel({
   const preview = usePreview();
   const panel = usePanelEditing();
   const end = useMutation({
-    mutationFn: (change: AssignmentEnd) =>
+    mutationFn: (change: AssignmentEndSave) =>
       answerOf(
         api.POST('/api/setup/day-template-assignments/{id}/end', {
           params: { path: { id: assignment.id }, header: branchHeader() },
@@ -51,8 +51,12 @@ export function TemplateAssignmentPanel({
     schema: assignmentEndSchema,
     initial: { from: tomorrow },
     save: async (change) => {
-      await preview.confirm({ kind: 'assignment_end', assignmentId: assignment.id, change });
-      await end.mutateAsync(change);
+      const days = await preview.confirm({
+        kind: 'assignment_end',
+        assignmentId: assignment.id,
+        change,
+      });
+      await end.mutateAsync({ ...change, days });
       panel.stop({ saved: true, key: 'end' });
     },
   });
