@@ -2002,11 +2002,13 @@ describe('exams in the timetable', () => {
       if (ownBlock === undefined || theirBlock === undefined) throw new Error('No blocks.');
       const before = await everything();
       // Rows of both branches in every table the routes write.
-      const branchesOf = (rows: readonly { branch_id: string }[]) =>
-        new Set(rows.map((one) => one.branch_id));
+      // (`everything` reads every branch of the file: both of these are among them.)
+      const branchesOf = (rows: readonly { branch_id: string }[]) => [
+        ...new Set(rows.map((one) => one.branch_id)),
+      ];
       for (const index of [0, 4, 5, 6, 7]) {
         expect(branchesOf(before[index] as { branch_id: string }[])).toEqual(
-          new Set([s.branch, theirs.s.branch]),
+          expect.arrayContaining([s.branch, theirs.s.branch]),
         );
       }
       const wrong = [
