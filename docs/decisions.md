@@ -285,6 +285,20 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 20 October 2026: quarter and year dates after lessons exist, the preview dialog (task 5.6b-5b)
+
+Plan approved on pull request #180 with corrections 1 to 3; decisions 1 to 8 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| The quarters dialog is a hook of its own (`useQuartersPreview`, `quarters-preview.tsx`) that reuses the calendar dialog's parts unchanged | Decision 1; `QuartersPreview` differs from the calendar and template answers |
+| `year_leaves_exam` names its exams in its details (`quarterItem` of kind `exam`, at most 50 ordered by date, start and id, then `more`), a cancelled one marked (`cancelled`) | Decisions 2 and 7, correction 1; `edge/time-dates-calendar`, "refused, with the list of what is in the way" |
+| No dialog when the preview has nothing to show or decide; the save goes on with the answer's key | Decision 3; a quarter save without a published timetable changes no lesson |
+| One component draws the refusal lines in the dialog and under the quarters and year forms | Decision 4 |
+| The dates whose lessons go to another quarter are one line each with the count of lesson times (blocks) | Decision 5; `movedBlocks` carries counts only |
+| The handbook section is in `docs/handbook/02-school-setup.md` | Decision 6 |
+| `past_lesson` and `split_move` items carry the subject's names (`subject: { id, names }`) in place of `subjectId` | Decision 8; a refused save's details carry no lookup |
+
 ## 20 October 2026: quarter and year dates after lessons exist (task 5.6b-5a)
 
 Plan approved on pull request #179 with corrections 1 and 2; decisions 1 to 12 confirmed there. Flagged on issue #42.
