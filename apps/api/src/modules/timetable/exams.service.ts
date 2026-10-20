@@ -98,6 +98,12 @@ export const EXAM_REFUSALS: Readonly<Record<string, ErrorCode>> = {
 
 const MINUTE = 60_000;
 
+/** What a save stores with its request key: ids only. */
+interface ExamSaved {
+  readonly examId: string;
+  readonly warnings: string[];
+}
+
 /** An exam as stored, with what it seats and who invigilates where. */
 interface StoredExam {
   readonly id: string;
@@ -244,7 +250,7 @@ export class TimetableExams {
     input: Partial<ExamInput> & { keepCancelled?: string[] | undefined },
     key: string,
     scope: string,
-    work: (transaction: Transaction) => Promise<ExamSaveAnswer>,
+    work: (transaction: Transaction) => Promise<ExamSaved>,
   ): Promise<ExamSaveAnswer> {
     const branchId = branchOf(access);
     return refusingPublish(
@@ -262,7 +268,12 @@ export class TimetableExams {
             },
             async () => (await work(transaction)) as unknown as JsonValue,
           );
-          return examSaveAnswerSchema.parse(once.result);
+          // The stored answer holds ids only (`request-keys.ts`); the exam
+          // with its names is read on every request, a repeat included.
+          const stored = once.result as unknown as ExamSaved;
+          const [exam] = await examsOf(transaction, branchId, [stored.examId]);
+          if (exam === undefined) throw notFound();
+          return examSaveAnswerSchema.parse({ exam, warnings: stored.warnings });
         }),
       EXAM_REFUSALS,
     );
@@ -275,7 +286,7 @@ export class TimetableExams {
     id: string | null,
     input: ExamInput,
     requestId: string,
-  ): Promise<ExamSaveAnswer> {
+  ): Promise<ExamSaved> {
     const branchId = branchOf(access);
     const yearId = await yearOfDate(transaction, branchId, input.date);
     if (yearId === null) throw new ApiException('exam_year', 409);
@@ -378,9 +389,7 @@ export class TimetableExams {
       },
       requestId,
     });
-    const [answer] = await examsOf(transaction, branchId, [examId]);
-    if (answer === undefined) throw notFound();
-    return { exam: answer, warnings: planned.warnings.map((one) => one.rule) };
+    return { examId, warnings: planned.warnings.map((one) => one.rule) };
   }
 
   /**
@@ -510,7 +519,7 @@ export class TimetableExams {
     id: string,
     input: ExamCancelBody,
     requestId: string,
-  ): Promise<ExamSaveAnswer> {
+  ): Promise<ExamSaved> {
     const branchId = branchOf(access);
     const before = await readExam(transaction, branchId, id);
     await lockPublishChain(transaction, branchId, before.yearId);
@@ -568,9 +577,7 @@ export class TimetableExams {
       },
       requestId,
     });
-    const [answer] = await examsOf(transaction, branchId, [id]);
-    if (answer === undefined) throw notFound();
-    return { exam: answer, warnings: [] };
+    return { examId: id, warnings: [] };
   }
 
   /**
@@ -606,6 +613,9 @@ export class TimetableExams {
       lessonsKeptCancelled: [] as string[],
       lessonsUnderOtherExams: [] as string[],
     };
+    // A lesson named to stay cancelled is one this save gives back
+    // (permission review should-fix 4): another is refused, never dropped.
+    for (const id of input.keepCancelled) if (!unlinked.includes(id)) throw notFound();
     if (unlinked.length === 0) return empty;
     const still = new Set(
       (
@@ -1233,7 +1243,10 @@ export async function examsOf(
   ).time_zone;
   const answers: Exam[] = [];
   for (const id of ids) {
-    const exam = await readExam(transaction, branchId, id).catch(() => null);
+    const exam = await readExam(transaction, branchId, id).catch((error: unknown) => {
+      if (error instanceof ApiException && error.code === 'not_found') return null;
+      throw error;
+    });
     if (exam === null) continue;
     const { rows } = await sql<{ start: number; end: number }>`
       select (extract(epoch from (${exam.startsAt}::timestamptz at time zone ${timeZone})

@@ -71,72 +71,95 @@ const keptMessage = { path: ['keepReason'], message: 'Lessons kept cancelled nee
  * invigilator twice, a room twice, a room with nothing in it, a group with
  * no subject (`exam_group_subject`: a group sits only with its subject).
  */
+const examFields = {
+  date: schoolDateSchema,
+  firstLesson: z.int().min(1).max(30),
+  lastLesson: z.int().min(1).max(30),
+  title: z.string().trim().min(1).max(EXAM_TITLE_MAX),
+  subjectId: z.uuid().nullable(),
+  rooms: z.array(examRoomBodySchema).min(1).max(EXAM_ROOMS_MAX),
+  blockChoices: z.array(examBlockChoiceSchema).max(200).default([]),
+  /** The tick of the warnings a save answered with `exam_warnings` (decision 8). */
+  confirm: z.boolean().default(false),
+};
+
+type ExamChecked = {
+  firstLesson: number;
+  lastLesson: number;
+  subjectId: string | null;
+  rooms: { roomId: string; classIds: string[]; groupIds: string[]; invigilatorIds: string[] }[];
+  blockChoices: { classId: string; blockId: string }[];
+  keepCancelled?: string[] | undefined;
+  keepReason?: string | undefined;
+};
+
+const checkExam = (body: ExamChecked, context: z.RefinementCtx): void => {
+  if (body.lastLesson < body.firstLesson) {
+    context.addIssue({
+      code: 'custom',
+      path: ['lastLesson'],
+      message: 'The last lesson comes before the first.',
+    });
+  }
+  const twice = (values: string[]) => values.length !== new Set(values).size;
+  if (twice(body.rooms.map((room) => room.roomId))) {
+    context.addIssue({ code: 'custom', path: ['rooms'], message: 'A room is named twice.' });
+  }
+  for (const [index, room] of body.rooms.entries()) {
+    if (room.classIds.length + room.groupIds.length === 0) {
+      context.addIssue({
+        code: 'custom',
+        path: ['rooms', index, 'classIds'],
+        message: 'A room holds a class or a group.',
+      });
+    }
+    if (room.groupIds.length > 0 && body.subjectId === null) {
+      context.addIssue({
+        code: 'custom',
+        path: ['rooms', index, 'groupIds'],
+        message: 'A group sits only an exam of its subject.',
+      });
+    }
+  }
+  if (twice(body.rooms.flatMap((room) => [...room.classIds, ...room.groupIds]))) {
+    context.addIssue({
+      code: 'custom',
+      path: ['rooms'],
+      message: 'A class or group sits in one room.',
+    });
+  }
+  if (twice(body.rooms.flatMap((room) => room.invigilatorIds))) {
+    context.addIssue({
+      code: 'custom',
+      path: ['rooms'],
+      message: 'An invigilator is named twice.',
+    });
+  }
+  if (twice(body.blockChoices.map((one) => `${one.classId}|${one.blockId}`))) {
+    context.addIssue({
+      code: 'custom',
+      path: ['blockChoices'],
+      message: 'A block is chosen twice.',
+    });
+  }
+  if (!keptWithReason(body)) context.addIssue({ code: 'custom', ...keptMessage });
+};
+
+/** A change of an exam: the lessons it gives back may be kept cancelled with a reason (decision 3). */
 export const examBodySchema = z
-  .strictObject({
-    date: schoolDateSchema,
-    firstLesson: z.int().min(1).max(30),
-    lastLesson: z.int().min(1).max(30),
-    title: z.string().trim().min(1).max(EXAM_TITLE_MAX),
-    subjectId: z.uuid().nullable(),
-    rooms: z.array(examRoomBodySchema).min(1).max(EXAM_ROOMS_MAX),
-    blockChoices: z.array(examBlockChoiceSchema).max(200).default([]),
-    /** The tick of the warnings a save answered with `exam_warnings` (decision 8). */
-    confirm: z.boolean().default(false),
-    ...keepCancelled,
-  })
-  .superRefine((body, context) => {
-    if (body.lastLesson < body.firstLesson) {
-      context.addIssue({
-        code: 'custom',
-        path: ['lastLesson'],
-        message: 'The last lesson comes before the first.',
-      });
-    }
-    const twice = (values: string[]) => values.length !== new Set(values).size;
-    if (twice(body.rooms.map((room) => room.roomId))) {
-      context.addIssue({ code: 'custom', path: ['rooms'], message: 'A room is named twice.' });
-    }
-    for (const [index, room] of body.rooms.entries()) {
-      if (room.classIds.length + room.groupIds.length === 0) {
-        context.addIssue({
-          code: 'custom',
-          path: ['rooms', index, 'classIds'],
-          message: 'A room holds a class or a group.',
-        });
-      }
-      if (room.groupIds.length > 0 && body.subjectId === null) {
-        context.addIssue({
-          code: 'custom',
-          path: ['rooms', index, 'groupIds'],
-          message: 'A group sits only an exam of its subject.',
-        });
-      }
-    }
-    if (twice(body.rooms.flatMap((room) => [...room.classIds, ...room.groupIds]))) {
-      context.addIssue({
-        code: 'custom',
-        path: ['rooms'],
-        message: 'A class or group sits in one room.',
-      });
-    }
-    if (twice(body.rooms.flatMap((room) => room.invigilatorIds))) {
-      context.addIssue({
-        code: 'custom',
-        path: ['rooms'],
-        message: 'An invigilator is named twice.',
-      });
-    }
-    if (twice(body.blockChoices.map((one) => `${one.classId}|${one.blockId}`))) {
-      context.addIssue({
-        code: 'custom',
-        path: ['blockChoices'],
-        message: 'A block is chosen twice.',
-      });
-    }
-    if (!keptWithReason(body)) context.addIssue({ code: 'custom', ...keptMessage });
-  });
+  .strictObject({ ...examFields, ...keepCancelled })
+  .superRefine((body, context) => checkExam(body, context));
+
+/**
+ * A new exam: it gives no lesson back, so it takes no `keepCancelled`
+ * (`.claude/rules/api.md`: a field a path has no use for is refused).
+ */
+export const examCreateBodySchema = z
+  .strictObject(examFields)
+  .superRefine((body, context) => checkExam(body, context));
 
 export type ExamBody = z.input<typeof examBodySchema>;
+export type ExamCreateBody = z.input<typeof examCreateBodySchema>;
 export type ExamInput = z.output<typeof examBodySchema>;
 
 /** The cancel of an exam: the lessons kept cancelled when a restore is refused (decision 3). */

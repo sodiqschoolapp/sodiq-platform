@@ -35273,8 +35273,6 @@ export interface operations {
                     }[];
                     /** @default false */
                     confirm?: boolean;
-                    keepCancelled?: string[];
-                    keepReason?: string;
                 };
             };
         };

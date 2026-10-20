@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 20 October 2026: task 5.6c-1 Exams in the timetable: the exam save
+
+- Exams are created, changed and cancelled through `GET`, `POST timetable/exams`, `GET`, `PUT timetable/exams/:id` and `POST timetable/exams/:id/cancel` (`exams.service.ts`, `exam-check.ts`): the rule engine checks the exam against the date's lessons, other exams and other branches' claims; warnings need `confirm`; shared blocks need a choice; the classes' lessons are cancelled "exam" with a link per exam (`lesson_exam_cancels`, 0094); a cancel or change gives back only the linked lessons, each checked as a restored lesson, or keeps them cancelled with a reason.
+- The calendar path writes and reads the links; a publish or withdraw that would change a lesson on a standing exam's date is refused `publish_over_exam` (`exam-guard.ts`) until 5.6c-3.
+- Notice `timetable.exam_changed`, one per person (teachers whose week changed, invigilators added, removed or moved); audit `exam.create`, `exam.change`, `exam.cancel`.
+- Left out: the screens and the check route (5.6c-2); the exam kept after a publish, the calendar path's invigilator notices and the rating-exam link (5.6c-3); exams on the other views and prints (5.9); "needs a room" and "needs an invigilator" (5.7a); a browser test (no screen).
+
+The next sessions must know:
+
+- A lesson is cancelled "exam" exactly while it has a row in `lesson_exam_cancels` (`lessons_exam_link`, checked at the commit); a test that writes such a lesson writes the link too (`cancelForExam` of the claims harness).
+- `examPlacementOf` takes the subject and each room's students as an optional argument; the calendar path passes none.
+- The next task is 5.6c-2.
+
 ## 20 October 2026: task 5.6b-5b Quarter and year dates after lessons exist: the preview dialog
 
 - The quarters form asks `POST setup/academic-years/:id/quarters/preview` before its save (`useQuartersPreview`, `apps/web/src/features/setup/quarters-preview.tsx`): the refusal lists, the dates whose lessons change quarter and the calendar dialog's parts; Save is off while the server would refuse; the save sends `days`. With nothing to show, no dialog opens.

@@ -1198,6 +1198,9 @@ describe('exams in the timetable', () => {
         await create(s.branch, examOf(s, { date: LATER_MONDAY, classIds: [s.classId] })),
       );
       saved(await cancel(s.branch, gone.exam.id), 200);
+      // An exam of another branch in the same range stays out of the list.
+      const elsewhere = await scene();
+      const theirs = saved(await create(elsewhere.branch, examOf(elsewhere)));
       const list = await t.get(
         `/api/timetable/exams?from=${NEXT_MONDAY}&to=${LATER_MONDAY}`,
         s.branch,
@@ -1205,6 +1208,7 @@ describe('exams in the timetable', () => {
       );
       expect(list.status, JSON.stringify(list.body)).toBe(200);
       const answer = examsAnswerSchema.parse(list.body);
+      expect(answer.exams.map((one) => one.id)).not.toContain(theirs.exam.id);
       expect(answer.exams.map((one) => [one.id, one.cancelled])).toEqual([
         [standing.exam.id, false],
         [gone.exam.id, true],
@@ -1274,7 +1278,6 @@ describe('exams in the timetable', () => {
           ...base,
           blockChoices: [{ classId: foreign.class, blockId: ownBlock, choice: 'cancel' }],
         },
-        { ...base, keepCancelled: [foreign.lesson], keepReason: 'Kept' },
         { ...base, subjectId: foreign.subject },
       ];
       const foreign = {
@@ -1299,6 +1302,25 @@ describe('exams in the timetable', () => {
       for (const body of [...bodies(foreign), ...bodies(unknown)]) {
         refusedWith(await create(s.branch, body), 404, 'not_found');
         refusedWith(await change(s.branch, exam.exam.id, body), 404, 'not_found');
+      }
+      // A lesson kept cancelled, on a change and a cancel: another branch's, an
+      // unknown one, and one of the branch the exam does not give back.
+      const ownLesson = (await lessonOf(LATER_MONDAY, s.classId)).id;
+      for (const lesson of [theirLesson, UNKNOWN, ownLesson]) {
+        refusedWith(
+          await change(s.branch, exam.exam.id, {
+            ...examOf(s, { date: LATER_MONDAY, classIds: [s.otherClass] }),
+            keepCancelled: [lesson],
+            keepReason: 'Kept',
+          }),
+          404,
+          'not_found',
+        );
+        refusedWith(
+          await cancel(s.branch, exam.exam.id, { keepCancelled: [lesson], keepReason: 'Kept' }),
+          404,
+          'not_found',
+        );
       }
       for (const id of [theirs.exam.id, UNKNOWN]) {
         refusedWith(await change(s.branch, id, examOf(s)), 404, 'not_found');
@@ -1342,14 +1364,50 @@ describe('exams in the timetable', () => {
       const teacherAccount = await t.kit.fullSession('Sardor', 'Karimov');
       await t.kit.giveRole(teacherAccount.account.id, { role: 'teacher', branchId: s.branch });
       refusedWith(
-        await create(s.branch, examOf(s), teacherAccount.cookie, key),
+        await create(s.branch, body, teacherAccount.cookie, key),
         403,
         'permission_denied',
       );
+      // POST: a repeat with another branch's room is 404, never the stored answer.
       refusedWith(
-        await cancel(s.branch, first.exam.id, {}, teacherAccount.cookie),
+        await create(
+          s.branch,
+          { ...body, rooms: [{ ...body.rooms[0], roomId: other.hall }] },
+          t.admin,
+          key,
+        ),
+        404,
+        'not_found',
+      );
+      // PUT and cancel: a used key repeated with another branch's exam, an
+      // unknown one, and from a refused role is 404 or 403, never the stored answer.
+      const theirs = saved(await create(other.branch, examOf(other, { date: '2026-11-16' })));
+      const changeKey = randomUUID();
+      const changeBody = { ...body, title: 'Quarter exam in algebra' };
+      saved(await change(s.branch, first.exam.id, changeBody, t.admin, changeKey), 200);
+      for (const id of [theirs.exam.id, UNKNOWN]) {
+        refusedWith(await change(s.branch, id, changeBody, t.admin, changeKey), 404, 'not_found');
+      }
+      refusedWith(
+        await change(s.branch, first.exam.id, changeBody, teacherAccount.cookie, changeKey),
         403,
         'permission_denied',
+      );
+      const cancelKey = randomUUID();
+      saved(await cancel(s.branch, first.exam.id, {}, t.admin, cancelKey), 200);
+      for (const id of [theirs.exam.id, UNKNOWN]) {
+        refusedWith(await cancel(s.branch, id, {}, t.admin, cancelKey), 404, 'not_found');
+      }
+      refusedWith(
+        await cancel(s.branch, first.exam.id, {}, teacherAccount.cookie, cancelKey),
+        403,
+        'permission_denied',
+      );
+      // A create takes no lessons to keep cancelled.
+      refusedWith(
+        await create(s.branch, { ...body, keepCancelled: [UNKNOWN], keepReason: 'Kept' }),
+        400,
+        'validation_failed',
       );
     });
   });

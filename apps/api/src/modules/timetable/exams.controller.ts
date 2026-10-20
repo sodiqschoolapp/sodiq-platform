@@ -2,6 +2,7 @@ import { Controller, Get, HttpCode, Post, Put } from '@nestjs/common';
 import {
   examBodySchema,
   examCancelBodySchema,
+  examCreateBodySchema,
   examParamsSchema,
   examSaveAnswerSchema,
   examSchema,
@@ -61,7 +62,7 @@ export class ExamsController {
   create(
     @CurrentAccess() access: Access,
     @RequestKey() key: string,
-    @ValidBody(examBodySchema) input: ExamInput,
+    @ValidBody(examCreateBodySchema) input: ExamInput,
     @RequestId() requestId: string,
   ): Promise<ExamSaveAnswer> {
     return this.exams.create(access, input, key, requestId);
