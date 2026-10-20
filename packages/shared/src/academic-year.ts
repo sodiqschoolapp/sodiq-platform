@@ -145,26 +145,69 @@ const QUARTER_PROBLEM_MESSAGES: Record<QuarterProblem['reason'], string> = {
   order: 'A quarter starts after the previous one ends.',
 };
 
-const quarterDatesSchema = z.object({
+/** The dates of one quarter as the routes take them. */
+export const quarterDatesSchema = z.object({
   startDate: schoolDateSchema.nullable(),
   endDate: schoolDateSchema.nullable(),
 });
 
+/** The four quarters' dates, quarter 1 first. */
+export const quarterListSchema = z.array(quarterDatesSchema).length(QUARTER_NUMBERS.length);
+
+/** Adds an issue per problem of `quarterProblems`; shared with the save of task 5.6b-5a. */
+export function refineQuarters(
+  record: { readonly quarters: readonly QuarterDates[] },
+  context: z.RefinementCtx,
+): void {
+  for (const problem of quarterProblems(record.quarters)) {
+    context.addIssue({
+      code: 'custom',
+      path: ['quarters', problem.index, problem.field],
+      message: QUARTER_PROBLEM_MESSAGES[problem.reason],
+      params: { reason: problem.reason },
+    });
+  }
+}
+
 /** The four quarters of a year as the route takes them, quarter 1 first. */
 export const quartersRecordSchema = z
-  .object({ quarters: z.array(quarterDatesSchema).length(QUARTER_NUMBERS.length) })
-  .superRefine((record, context) => {
-    for (const problem of quarterProblems(record.quarters)) {
-      context.addIssue({
-        code: 'custom',
-        path: ['quarters', problem.index, problem.field],
-        message: QUARTER_PROBLEM_MESSAGES[problem.reason],
-        params: { reason: problem.reason },
-      });
-    }
-  });
+  .object({ quarters: quarterListSchema })
+  .superRefine(refineQuarters);
 
 export type QuartersRecord = z.infer<typeof quartersRecordSchema>;
+
+/** A class (with its grade) or a group (whose name carries its grade), as a line names it. */
+const lineUnitSchema = z.object({
+  kind: z.enum(['class', 'group']),
+  name: z.string(),
+  grade: z.int().nullable(),
+});
+
+/**
+ * What stands in the way of a save of the quarters (decisions 3, 5 and 6):
+ * a lesson of today or earlier on a date whose quarter would change
+ * (`quarter_past_lessons`); a standing exam on a date that would leave every
+ * quarter (`quarter_leaves_exam`); a stored one-day move whose two dates
+ * would lie in two quarters (`quarter_splits_move`).
+ */
+export const quarterItemSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('past_lesson'),
+    date: schoolDateSchema,
+    unit: lineUnitSchema,
+    subjectId: z.uuid(),
+  }),
+  z.object({ kind: z.literal('exam'), date: schoolDateSchema, title: z.string() }),
+  z.object({
+    kind: z.literal('split_move'),
+    fromDate: schoolDateSchema,
+    toDate: schoolDateSchema,
+    unit: lineUnitSchema,
+    subjectId: z.uuid(),
+  }),
+]);
+
+export type QuarterItem = z.infer<typeof quarterItemSchema>;
 
 /** The two fields of each quarter in the quarters form, quarter 1 first. */
 const QUARTER_FIELD_PAIRS = [

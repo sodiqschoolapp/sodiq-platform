@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { quarterItemSchema } from './academic-year.js';
 
 /**
  * What an error answer can say. The web app translates the code; a new kind of
@@ -145,6 +146,16 @@ export const ERROR_CODES = [
   'calendar_group_block_choice',
   /** Task 5.6b-4a: a template change removes or reorders a lesson slot the published timetable uses (`edge/time-dates-calendar`, mid-year row). */
   'template_slot_in_use',
+  /** Task 5.6b-5a: a quarter change would move a lesson of today or earlier to another quarter, or out of every quarter (`edge/time-dates-calendar`, "A boundary can move only over future dates"). */
+  'quarter_past_lessons',
+  /** Task 5.6b-5a (decision 5): a standing exam lies on a date a quarter change would take out of every quarter. */
+  'quarter_leaves_exam',
+  /** Task 5.6b-5a (decision 6): a stored one-day move would have its two dates in two quarters ("A one-day move stays inside the same quarter"). */
+  'quarter_splits_move',
+  /** Task 5.6b-5a: a lesson would lie outside its quarter's dates (`quarters_lessons`, 0093). */
+  'quarter_leaves_lesson',
+  /** Task 5.6b-5a: an exam of the year would lie outside the year's new dates (the From line of 5.1b). */
+  'year_leaves_exam',
   /** The go-live date must be a school day: some grade has lessons on it (`edge/academic-year`; task 1.4). */
   'go_live_not_school_day',
   /** Travel time is set between two different branches (task 1.6). */
@@ -789,6 +800,8 @@ export const errorDetailSchema = z.object({
     .optional(),
   /** A room free at the time of a refused restore, room change or move, on a `restore_blocked` or `day_change_blocked` (tasks 5.6a-1 and 5.6a-2). */
   room: z.object({ id: z.uuid(), name: z.string() }).optional(),
+  /** What stands in the way of a save of the quarters, on a `quarter_past_lessons`, `quarter_leaves_exam` or `quarter_splits_move` (task 5.6b-5a). */
+  quarterItem: quarterItemSchema.optional(),
   /** The number of items a list of details leaves out, on its detail `more` (`year_cut_holds`, task 3.6b-2). */
   more: z.int().min(1).optional(),
 });

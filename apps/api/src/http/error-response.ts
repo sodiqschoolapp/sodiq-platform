@@ -88,6 +88,12 @@ const MESSAGE: Record<ErrorCode, string> = {
     'A lesson of a two-grade group left with one grade at school needs a choice: cancel it or keep it for that grade.',
   template_slot_in_use:
     'The change removes or reorders a lesson slot the published timetable uses; each is listed.',
+  quarter_past_lessons:
+    'The new quarter dates would move lessons of today or earlier to another quarter; each is listed.',
+  quarter_leaves_exam: 'An exam lies on a date the new quarter dates take out of every quarter.',
+  quarter_splits_move: 'A one-day move would have its two dates in two quarters.',
+  quarter_leaves_lesson: 'A lesson would lie outside the dates of its quarter.',
+  year_leaves_exam: 'An exam of the year would lie outside the new dates.',
   travel_time_same_branch: 'Travel time is set between two different branches.',
   subject_archived: 'The subject is archived. Restore it first.',
   department_not_academic: 'A subject belongs to a department of the Academic division.',

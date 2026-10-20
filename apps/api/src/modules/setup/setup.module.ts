@@ -20,6 +20,7 @@ import { TravelTimes } from './travel-times.service.js';
 import { Rooms } from './rooms.service.js';
 import { SubjectsController } from './subjects.controller.js';
 import { Subjects } from './subjects.service.js';
+import { QuarterLessons } from './quarter-lessons.js';
 import { TemplateLessons } from './template-lessons.js';
 
 /**
@@ -49,6 +50,7 @@ import { TemplateLessons } from './template-lessons.js';
     Rooms,
     Divisions,
     AcademicYears,
+    QuarterLessons,
     DayTemplates,
     TemplateLessons,
     Calendar,

@@ -331,7 +331,12 @@ export async function sendWeekChanges(
         readonly firstDate: string;
         readonly lastDate: string;
       }
-    | { readonly kind: 'timetable.template_changed'; readonly from: string },
+    | { readonly kind: 'timetable.template_changed'; readonly from: string }
+    | {
+        readonly kind: 'timetable.quarters_changed';
+        readonly firstDate: string;
+        readonly lastDate: string;
+      },
 ): Promise<WeekNotices> {
   const after =
     snapshot.dates === undefined
@@ -374,11 +379,12 @@ export async function sendWeekChanges(
     beforeDiffers: changes.beforeDiffers,
     afterDiffers: changes.afterDiffers,
     // Only a one-day change shows a second week (task 5.6a-2, decision 11),
-    // and a calendar or template change, whose dates can span weeks (tasks
-    // 5.6b-1 and 5.6b-4a).
+    // and a calendar, template or quarter change, whose dates can span weeks
+    // (tasks 5.6b-1, 5.6b-4a and 5.6b-5a).
     ...(event.kind === 'timetable.day_changed' ||
     event.kind === 'timetable.calendar_changed' ||
-    event.kind === 'timetable.template_changed'
+    event.kind === 'timetable.template_changed' ||
+    event.kind === 'timetable.quarters_changed'
       ? { laterWeeks: changes.laterWeeks }
       : {}),
     send: (accountId, week) => {
@@ -408,6 +414,13 @@ export async function sendWeekChanges(
             branchId: snapshot.branchId,
             accountIds: [accountId],
             data: { from: event.from, ...week },
+          });
+        case 'timetable.quarters_changed':
+          return notifications.send(transaction, {
+            kind: event.kind,
+            branchId: snapshot.branchId,
+            accountIds: [accountId],
+            data: { firstDate: event.firstDate, lastDate: event.lastDate, ...week },
           });
         default:
           return notifications.send(transaction, {
