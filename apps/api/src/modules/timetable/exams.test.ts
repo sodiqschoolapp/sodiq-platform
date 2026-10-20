@@ -1602,6 +1602,72 @@ describe('exams in the timetable', () => {
       });
     });
 
+    it('leaves the exam, its links, notices and audit as they were when the publish is refused at the commit after the exam’s write ran (.claude/rules/api.md, a refusal after the write)', async () => {
+      const { s, exam, version } = await clashScene();
+      // Another branch where the first class's teacher works too, with a lesson at the exam's time.
+      const other = await scene();
+      await t.database.migrator
+        .insertInto('staff_branches')
+        .values({ staff_id: s.teacher.staffId, branch_id: other.branch, is_main: false })
+        .execute();
+      const theirs = await lessonOf(NEXT_MONDAY, other.classId);
+      const days = await check(s.branch, version);
+      const before = await everything();
+      // A transaction holds the exam's links: the publish's drop waits inside
+      // the exam's write, after it has cancelled the exam.
+      let release: () => void = () => undefined;
+      const released = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let ready: () => void = () => undefined;
+      const isReady = new Promise<void>((resolve) => {
+        ready = resolve;
+      });
+      const held = t.database.migrator
+        .transaction()
+        .execute(async (transaction) => {
+          await transaction
+            .selectFrom('lesson_exam_cancels')
+            .select('lesson_id')
+            .where('exam_id', '=', exam.id)
+            .forUpdate()
+            .execute();
+          ready();
+          await released;
+        })
+        .catch((error: unknown) => error);
+      await isReady;
+      const pending = publishWith(s.branch, version, {
+        dayChangesKey: days.key,
+        dayDecisions: [{ key: exam.id, choice: 'drop' }],
+      }).then((response) => response);
+      try {
+        await expect.poll(() => waiting(), { timeout: 20_000, interval: 25 }).toBe(1);
+        // Meanwhile the teacher, free while the exam stands, takes the other
+        // branch's lesson at its time: the drop's give-back now clashes.
+        await t.database.migrator
+          .updateTable('lessons')
+          .set({ teacher_id: s.teacher.staffId })
+          .where('id', '=', theirs.id)
+          .execute();
+      } finally {
+        release();
+      }
+      expect(await held).toBeUndefined();
+      const refused = await pending;
+      refusedWith(refused, 409, 'timetable_busy');
+      expect(await examRow(exam.id)).toEqual({ cancel_cause: null });
+      const after = await everything();
+      // Every table but the other branch's lesson and its claim, which the test changed.
+      for (const index of [0, 1, 2, 3, 4, 5, 8, 9, 10, 11]) {
+        expect(after[index]).toEqual(before[index]);
+      }
+      const own = await lessonsOf(NEXT_MONDAY, { classId: s.classId });
+      // The stored lesson of the old version, still under the exam.
+      expect(own.map((one) => one.cancel_cause)).toEqual(['exam']);
+      for (const one of own) expect(await linksOf(one.id)).toEqual([exam.id]);
+    });
+
     it('drops the exam with "drop": its classes’ lessons held, its links gone, its invigilator told once in the publish’s own notice (decisions 5 and 7)', async () => {
       const { s, exam, version } = await clashScene();
       const days = await check(s.branch, version);
