@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 20 October 2026: task 5.6b-3 A calendar entry that leaves school to one grade of a two-grade group
+
+- A day off for a range of grades that leaves one grade of a two-grade group at school lists each block of the group in the calendar preview (`lessons.groupBlocks`); the Academic Vice Principal chooses once per block: cancel "day off", or keep it for the grade at school. Kept lessons take that grade's template; the off grade's students (members on the date) are exempt in the engine (`exemptStudentIds`, `gradesOff` of the placement). A block with no choice refuses the save (`calendar_group_block_choice`, a detail of `calendar_blocked`).
+- The choice is stored per date after today in `calendar_group_blocks` and `calendar_group_block_groups` (migration 0090; past rows refused by the database) and read by the dated expansion (`groupChoiceOn` of `datedPattern`), so a later publish, a withdraw and a calendar save apply it again. An edit that only changes a choice writes the entry's dates after today and marks the drafts out of date. A one-day change of a kept lesson reads its excused grade from the expansion of the date (`stored-day.ts`).
+- Dialog: `calendar-groups-preview.tsx`. Audit: `groupBlocks` on the entry's own entry.
+- Left out: the journal exemption of the off grade's students (8.5, From line added); a browser test (no published version under a calendar entry in the browser scene).
+
+The next sessions must know:
+
+- The choice is keyed by entry, date, weekly start and group set (`groupChoiceKey` of `dated-check.ts`, `groupBlockKeyOf` of `packages/shared`); a later version's block at another time has none and is cancelled "day off" until the entry is edited.
+- The preview of an edit or a restore of a day off for a range of grades writes its dates after today, so it lists the blocks with their stored choices.
+- The next task is 5.6b-4.
+
 ## 20 October 2026: task 5.6b-2c-2 Calendar changes: a move between two stretches
 
 - A stored one-day move whose two places lie in two stretches of one calendar save is sorted once (`across` of `sortDayChanges`, `apps/api/src/modules/timetable/day-changes-kept.ts`): kept when its new place takes it among the lessons the save writes there; otherwise "needs a decision" in both halves, the old place's half holding the lesson there, so "drop" holds it and "cancel" cancels it with the change's reason, and the stored lesson at the new place is removed. Never dropped. Settled and audited once, in the stretch of its old place (`SortedDayChange.half`).
