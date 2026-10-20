@@ -44,6 +44,7 @@ import { loadCalendarSettings } from '../setup/calendar-state.js';
 import { dayOf, loadStore } from '../setup/day-template-state.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { OUT_STATUSES, dayBeginnings } from './dated-check.js';
+import { examsOf } from './exams.service.js';
 import { TimetablePattern } from './pattern.service.js';
 import {
   PUBLISH_LOCK,
@@ -215,6 +216,7 @@ export class TimetableDayChanges {
         longestDay: await longestDayOn(transaction, branchId, query.date),
         today: schoolDateOf(moment, branch.time_zone),
         lessons: await dayLessonsOf(transaction, lessons, moment),
+        exams: await dayExamsOf(transaction, branchId, query.date, query.classId, groupIds),
       });
     });
   }
@@ -1224,6 +1226,56 @@ function valuesOf(lesson: StoredDayLesson) {
     teacherId: lesson.teacherId,
     roomId: lesson.roomId,
   };
+}
+
+/**
+ * The standing exams the class sits on the date (task 5.6c-2, decision 7 of
+ * its plan): named in a room, or through a group fed by the class; each with
+ * the room that holds the class or its group and that room's invigilators.
+ */
+async function dayExamsOf(
+  transaction: Transaction,
+  branchId: string,
+  date: string,
+  classId: string,
+  groupIds: ReadonlySet<string>,
+) {
+  const rows = await transaction
+    .selectFrom('exam_room_classes')
+    .innerJoin('exams', 'exams.id', 'exam_room_classes.exam_id')
+    .select('exams.id')
+    .where('exams.branch_id', '=', branchId)
+    .where('exams.exam_date', '=', date)
+    .where('exams.cancel_cause', 'is', null)
+    .where((where) =>
+      where.or([
+        where('exam_room_classes.class_id', '=', classId),
+        ...(groupIds.size === 0 ? [] : [where('exam_room_classes.group_id', 'in', [...groupIds])]),
+      ]),
+    )
+    .orderBy('exams.starts_at')
+    .orderBy('exams.id')
+    .execute();
+  const exams = await examsOf(transaction, branchId, [...new Set(rows.map((one) => one.id))]);
+  return exams.flatMap((exam) => {
+    const room = exam.rooms.find(
+      (one) =>
+        one.classes.some((unit) => unit.id === classId) ||
+        one.groups.some((unit) => groupIds.has(unit.id)),
+    );
+    if (room === undefined) return [];
+    return [
+      {
+        id: exam.id,
+        title: exam.title,
+        subject: exam.subject,
+        start: exam.start,
+        end: exam.end,
+        room: room.room,
+        invigilators: room.invigilators.map((one) => one.name),
+      },
+    ];
+  });
 }
 
 /** The lessons as the day page shows them, with their names and the "changed" mark. */
