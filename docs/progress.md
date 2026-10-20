@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 20 October 2026: task 5.6b-5a Quarter and year dates after lessons exist: the API and the database
+
+- A save of a year's quarters over a published timetable follows its lessons (`apps/api/src/modules/setup/quarter-lessons.ts`): blocks of dates after today that change quarter take the new one in place; dates after today that leave or join every quarter are written again by the calendar save's rewrite (lessons removed, or created from the version in force and checked). Refused, listed: a date of today or earlier with a lesson (`quarter_past_lessons`), a standing exam on a date leaving the quarters (`quarter_leaves_exam`), a stored move split across quarters (`quarter_splits_move`). Preview route `POST setup/academic-years/:id/quarters/preview`; notice `timetable.quarters_changed`.
+- The year edit refuses dates past an exam (`year_leaves_exam`) and writes no lesson: lessons follow the last quarter's dates (decision 2).
+- Migration 0093: `quarters_lessons`, `academic_years_exams` and the writer-side commit checks `lesson_blocks_quarter_commit`, `exams_year_commit` (each locks the quarter or year row `for share` at its commit).
+- Left out: the preview dialog, the choices sent from the quarters form, the refusal lines and the handbook (5.6b-5b); a closed quarter's frozen dates (9.2b); a browser test (no published version in the browser scene).
+
+The next sessions must know:
+
+- The quarter save holds the branch row `for no key update`, then people and classes `for key share` and the year `for no key update` (`QuarterLessons.lock`); it takes `days` like a template change.
+- A database test that writes exams as the application cannot (no grant before 5.6c): it writes them through the migrator; a standing exam needs its rooms and classes at the commit (`exam_incomplete`).
+- The next task is 5.6b-5b.
+
 ## 20 October 2026: task 5.6b-4b Day template and slot length changes after publishing: the preview dialog
 
 - The template preview dialog (`usePreview` of `template-table.tsx`) shows what a change does to the published lessons with the calendar dialog's parts (lessons, blocked dates, exams, shortened dates with ticks, stored changes sorted) and the used lesson slots it removes or reorders; Save is off while the server would refuse; the four saves send the key shown and the choices in `days`.

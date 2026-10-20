@@ -167,6 +167,7 @@ describe('OpenAPI document', () => {
         '/api/setup/academic-years',
         '/api/setup/academic-years/{id}',
         '/api/setup/academic-years/{id}/quarters',
+        '/api/setup/academic-years/{id}/quarters/preview',
         '/api/setup/academic-years/{id}/start',
         '/api/setup/attendance-values',
         '/api/setup/branch',

@@ -163,6 +163,18 @@ export const NOTIFICATION_KINDS = {
     also: z.strictObject(teacherWeek).optional(),
   }),
   /**
+   * A save of a year's quarters added or removed this teacher's lessons in
+   * the branch (task 5.6b-5a, decision 9): the first and last lesson date it
+   * wrote again, and the week, with a second, later week as a calendar
+   * change shows one.
+   */
+  'timetable.quarters_changed': z.strictObject({
+    firstDate: schoolDateSchema,
+    lastDate: schoolDateSchema,
+    ...teacherWeek,
+    also: z.strictObject(teacherWeek).optional(),
+  }),
+  /**
    * A calendar entry made the date of an exam a day off, and the exam is
    * cancelled (`edge/timetable`, Exams: "a day off removes the exam and tells
    * the Academic Vice Principal"; task 5.6b-2c-1, decision 4): the entry's
@@ -186,8 +198,9 @@ export type WeekChangeKind = (typeof WEEK_CHANGE_KINDS)[number];
 /**
  * Every kind that carries a teacher's week before and after, which the web
  * shows under the text (task 5.5c-3b, spec review should-fix 5): the version
- * kinds, the Tutor change, a one-day change (task 5.6a-1) and a calendar
- * change (task 5.6b-1).
+ * kinds, the Tutor change, a one-day change (task 5.6a-1), a calendar
+ * change (task 5.6b-1), a template change (task 5.6b-4a) and a quarter change
+ * (task 5.6b-5a).
  */
 export const WEEK_KINDS = [
   ...WEEK_CHANGE_KINDS,
@@ -195,6 +208,7 @@ export const WEEK_KINDS = [
   'timetable.day_changed',
   'timetable.calendar_changed',
   'timetable.template_changed',
+  'timetable.quarters_changed',
 ] as const;
 
 export const NOTIFICATION_KIND_NAMES = Object.keys(NOTIFICATION_KINDS) as [

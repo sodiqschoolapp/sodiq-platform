@@ -204,6 +204,11 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     branch: 'request',
     roles: ['super_admin', 'academic_vice_principal'],
   },
+  // Task 5.6b-5a: the preview of the quarters' save, the same permission.
+  'POST /api/setup/academic-years/:id/quarters/preview': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
   'PUT /api/setup/branch/go-live': { branch: 'request', roles: ['super_admin'] },
   'GET /api/setup/current-period': { branch: 'request', roles: ROLES },
   // Slot types, day templates and where they apply (task 1.5; the owner's

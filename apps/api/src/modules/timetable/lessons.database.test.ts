@@ -880,6 +880,293 @@ describe('dated lessons and their time claims in the database', () => {
     });
   });
 
+  // Task 5.6b-5a (0093; the From lines of 5.1a and 5.1b, spec review of the
+  // plan must-fix 1): the quarter's and the year's dates keep the blocks and
+  // the exams inside them at the commit, also against a write at the same
+  // moment. edge/time-dates-calendar, "Quarter dates are edited after lessons
+  // exist": "A boundary can move only over future dates, so a held lesson
+  // never changes quarter"; edge/00-definitions, Quarter of a lesson.
+  describe('the dates of a quarter and of a year over lessons and exams', () => {
+    /** A branch of its own with a year of four dated quarters: each test leaves blocks behind. */
+    async function fresh() {
+      const branch = await insertBranch(database.migrator, `East ${String(years.size)}`);
+      const year = await kit.year(branch);
+      years.set(branch, year);
+      return {
+        branch,
+        year: year.year,
+        q1: year.quarters[0] ?? '',
+        q2: year.quarters[1] ?? '',
+      };
+    }
+
+    type Fresh = Awaited<ReturnType<typeof fresh>>;
+
+    /** Quarter 1 ends on 25 October and quarter 2 starts on 26 October. */
+    const moveBoundary = (f: Fresh) => async (transaction: Transaction) => {
+      await sql`update quarters set end_date = '2026-10-25' where id = ${f.q1}::uuid`.execute(
+        transaction,
+      );
+      await sql`update quarters set start_date = '2026-10-26' where id = ${f.q2}::uuid`.execute(
+        transaction,
+      );
+    };
+
+    /** An exam of the year on `date`, at 08:00, written as the application writes it. */
+    const examOn = (f: Fresh, transaction: Transaction, date: string, cancelled = false) =>
+      transaction
+        .insertInto('exams')
+        .values({
+          branch_id: f.branch,
+          academic_year_id: f.year,
+          exam_date: date,
+          starts_at: at(date, '08:00'),
+          ends_at: at(date, '08:45'),
+          first_slot: 1,
+          last_slot: 1,
+          title: 'Quarter exam',
+          cancel_cause: cancelled ? 'cancelled' : null,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+
+    const setYearEnd = (f: Fresh, end: string) => (transaction: Transaction) =>
+      sql`update academic_years set end_date = ${end}::date where id = ${f.year}::uuid`.execute(
+        transaction,
+      );
+
+    it('refuses a quarter moved over a block of today or earlier (quarters_lessons)', async () => {
+      const f = await fresh();
+      await place(f.branch, { date: '2026-10-14', start: '09:00', end: '09:45' }, []);
+      expect(
+        await refusal(
+          database.migrator.transaction().execute(async (transaction) => {
+            await sql`update quarters set end_date = '2026-10-13' where id = ${f.q1}::uuid`.execute(
+              transaction,
+            );
+            await sql`update quarters set start_date = '2026-10-14' where id = ${f.q2}::uuid`.execute(
+              transaction,
+            );
+          }),
+        ),
+      ).toMatchObject({ code: CHECK_VIOLATION, constraint: 'quarter_leaves_lesson' });
+    });
+
+    it('refuses a quarter moved past a future block left in it, and passes one moved with it', async () => {
+      const f = await fresh();
+      const future = await place(
+        f.branch,
+        { date: '2026-10-29', start: '09:00', end: '09:45' },
+        [],
+      );
+      expect(await refusal(database.migrator.transaction().execute(moveBoundary(f)))).toMatchObject(
+        { code: CHECK_VIOLATION, constraint: 'quarter_leaves_lesson' },
+      );
+      await inBranch(f.branch, async (transaction) => {
+        await moveBoundary(f)(transaction);
+        await transaction
+          .updateTable('lesson_blocks')
+          .set({ quarter_id: f.q2 })
+          .where('id', '=', future.block)
+          .execute();
+      });
+    });
+
+    it('refuses a quarter left undated over a block (spec review of the plan, should-fix 5)', async () => {
+      const f = await fresh();
+      await place(f.branch, { date: '2026-10-29', start: '09:00', end: '09:45' }, []);
+      expect(
+        await refusal(
+          sql`update quarters set start_date = null, end_date = null where id = ${f.q1}::uuid`.execute(
+            database.migrator,
+          ),
+        ),
+      ).toMatchObject({ code: CHECK_VIOLATION, constraint: 'quarter_leaves_lesson' });
+    });
+
+    it('refuses a year edit past an exam, a cancelled one too (academic_years_exams)', async () => {
+      const f = await fresh();
+      // After the last quarter, inside the year: no quarter refuses first.
+      await database.migrator.transaction().execute(setYearEnd(f, '2027-06-30'));
+      // The application gets no grant on exams before 5.6c: written by the migrator.
+      await database.migrator
+        .transaction()
+        .execute((transaction) => examOn(f, transaction, '2027-06-07', true));
+      expect(await refusal(inBranch(f.branch, setYearEnd(f, '2027-06-04')))).toMatchObject({
+        code: CHECK_VIOLATION,
+        constraint: 'year_leaves_exam',
+      });
+      await inBranch(f.branch, setYearEnd(f, '2027-06-10'));
+
+      // Spec review of the code, must-fix 2: a standing exam, with its room,
+      // class and invigilator, keeps the year too.
+      const room = await kit.room(f.branch);
+      const classId = await schoolClass(f.branch);
+      const invigilator = await teacher(f.branch);
+      await database.migrator.transaction().execute(async (transaction) => {
+        await sql`set constraints all deferred`.execute(transaction);
+        const standing = await examOn(f, transaction, '2027-06-09');
+        const examRoom = await transaction
+          .insertInto('exam_rooms')
+          .values({ branch_id: f.branch, exam_id: standing.id, room_id: room })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('exam_room_classes')
+          .values({
+            branch_id: f.branch,
+            exam_id: standing.id,
+            exam_room_id: examRoom.id,
+            class_id: classId,
+          })
+          .execute();
+        await transaction
+          .insertInto('exam_invigilators')
+          .values({
+            branch_id: f.branch,
+            exam_id: standing.id,
+            exam_room_id: examRoom.id,
+            staff_id: invigilator,
+          })
+          .execute();
+      });
+      expect(await refusal(inBranch(f.branch, setYearEnd(f, '2027-06-08')))).toMatchObject({
+        code: CHECK_VIOLATION,
+        constraint: 'year_leaves_exam',
+      });
+
+      // Spec review of the code, should-fix 4: the start side.
+      const g = await fresh();
+      await database.migrator.transaction().execute(async (transaction) => {
+        await sql`update quarters set start_date = '2026-09-14' where id = ${g.q1}::uuid`.execute(
+          transaction,
+        );
+        await examOn(g, transaction, '2026-09-07', true);
+      });
+      expect(
+        await refusal(
+          sql`update academic_years set start_date = '2026-09-10' where id = ${g.year}::uuid`.execute(
+            database.migrator,
+          ),
+        ),
+      ).toMatchObject({ code: CHECK_VIOLATION, constraint: 'year_leaves_exam' });
+    });
+
+    // Spec review of the code, should-fix 4: the start side of a quarter.
+    it('refuses a quarter whose start moves after a block left in it', async () => {
+      const f = await fresh();
+      await place(f.branch, { date: '2026-11-10', start: '09:00', end: '09:45' }, []);
+      expect(
+        await refusal(
+          sql`update quarters set start_date = '2026-11-16' where id = ${f.q2}::uuid`.execute(
+            database.migrator,
+          ),
+        ),
+      ).toMatchObject({ code: CHECK_VIOLATION, constraint: 'quarter_leaves_lesson' });
+    });
+
+    it('a block written while its quarter moves: the later of the two refuses, in either order', async () => {
+      // The quarter first: the block's commit check waits for the quarter row
+      // and then reads its new dates.
+      const f = await fresh();
+      const quarterFirst = holding(
+        (work) => inBranch(f.branch, work),
+        async (transaction) => {
+          await moveBoundary(f)(transaction);
+          await sql`set constraints quarters_lessons immediate`.execute(transaction);
+        },
+      );
+      await quarterFirst.ready;
+      const block = place(f.branch, { date: '2026-10-28', start: '09:00', end: '09:45' }, []).then(
+        () => 'written',
+        (error: unknown) => (error as { constraint?: string }).constraint,
+      );
+      await untilWaiting(1);
+      quarterFirst.release();
+      await quarterFirst.done;
+      expect(await block).toBe('lesson_block_quarter');
+
+      // The block first: the quarter's update waits for its lock and then sees it.
+      const g = await fresh();
+      const source = await kit.source(g.branch, g.year, [
+        { classId: await schoolClass(g.branch), groupId: null, subjectId: subject },
+      ]);
+      const blockFirst = holding(
+        (work) => inBranch(g.branch, work),
+        async (transaction) => {
+          await write(
+            transaction,
+            g.branch,
+            {
+              date: '2026-10-28',
+              start: '09:00',
+              end: '09:45',
+              versionId: source.versionId,
+              patternBlockId: source.patternBlockId,
+            },
+            [],
+          );
+          await sql`set constraints lesson_blocks_quarter_commit immediate`.execute(transaction);
+        },
+      );
+      await blockFirst.ready;
+      const quarter = inBranch(g.branch, moveBoundary(g)).then(
+        () => 'saved',
+        (error: unknown) => (error as { constraint?: string }).constraint,
+      );
+      await untilWaiting(1);
+      blockFirst.release();
+      await blockFirst.done;
+      expect(await quarter).toBe('quarter_leaves_lesson');
+    });
+
+    // A cancelled exam: a standing one needs its rooms and classes (`exam_incomplete`).
+    it('an exam written while its year is edited: the later of the two refuses, in either order', async () => {
+      // The year first.
+      const f = await fresh();
+      await database.migrator.transaction().execute(setYearEnd(f, '2027-06-30'));
+      const yearFirst = holding(
+        (work) => inBranch(f.branch, work),
+        async (transaction) => {
+          await setYearEnd(f, '2027-06-04')(transaction);
+          await sql`set constraints academic_years_exams immediate`.execute(transaction);
+        },
+      );
+      await yearFirst.ready;
+      const exam = database.migrator
+        .transaction()
+        .execute((transaction) => examOn(f, transaction, '2027-06-07', true))
+        .then(
+          () => 'written',
+          (error: unknown) => (error as { constraint?: string }).constraint,
+        );
+      await untilWaiting(1);
+      yearFirst.release();
+      await yearFirst.done;
+      expect(await exam).toBe('exam_year');
+
+      // The exam first.
+      const g = await fresh();
+      await database.migrator.transaction().execute(setYearEnd(g, '2027-06-30'));
+      const examFirst = holding(
+        (work) => database.migrator.transaction().execute(work),
+        async (transaction) => {
+          await examOn(g, transaction, '2027-06-07', true);
+          await sql`set constraints exams_year_commit immediate`.execute(transaction);
+        },
+      );
+      await examFirst.ready;
+      const edit = inBranch(g.branch, setYearEnd(g, '2027-06-04')).then(
+        () => 'saved',
+        (error: unknown) => (error as { constraint?: string }).constraint,
+      );
+      await untilWaiting(1);
+      examFirst.release();
+      await examFirst.done;
+      expect(await edit).toBe('year_leaves_exam');
+    });
+  });
+
   describe('the source of a lesson', () => {
     it('refuses a regular block of a draft version', async () => {
       const version = await kit.load.version(north, years.get(north)?.year ?? '');

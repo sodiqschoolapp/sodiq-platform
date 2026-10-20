@@ -12,15 +12,21 @@ import {
   type ErrorCode,
   type ErrorDetail,
   type Quarter,
-  type QuartersRecord,
+  type QuartersPreview,
+  type QuartersSave,
 } from '@sodiq/shared';
+import { sql } from 'kysely';
 import { CLOCK } from '../../clock/clock.module.js';
-import { Transactions, type Transaction } from '../../database/transactions.js';
+import { transactionMoment, Transactions, type Transaction } from '../../database/transactions.js';
+import type { JsonValue } from '../../database/types.generated.js';
 import { ApiException } from '../../http/api-exception.js';
 import { Audit } from '../audit/audit.service.js';
 import type { Access } from '../access/permission.guard.js';
+import { lessonsAuditOf, NO_LESSONS, refuseForeignChoices } from '../timetable/calendar-lessons.js';
+import { refusingPublish } from '../timetable/publish.service.js';
 import { loadEntries } from './calendar-state.js';
 import { endsOf, lockFollowingRows, refuseCutHolds } from './academic-year-dates.js';
+import { QuarterLessons } from './quarter-lessons.js';
 import { notFound, refusingConstraints } from './setup-refusals.js';
 
 interface YearRow {
@@ -47,6 +53,13 @@ const overlaps = (
 const inside = (date: string, range: { startDate: string; endDate: string }): boolean =>
   range.startDate <= date && date <= range.endDate;
 
+/** Carries the answer of a preview of the quarters out of the transaction it rolls back. */
+class PreviewDone extends Error {
+  constructor(readonly preview: QuartersPreview) {
+    super('preview');
+  }
+}
+
 /**
  * Academic years and their quarters (docs/spec/03-school-setup.md, Academic
  * year and Quarters; task 1.3), and the year and quarter of the top bar.
@@ -60,10 +73,16 @@ const inside = (date: string, range: { startDate: string; endDate: string }): bo
  * (an edit first locks the class and group rows that run to the year's last
  * day, task 3.6b-2);
  * the go-live save (`Branches.setGoLive`) takes the branch row `for update`
- * and reads the years without a lock; a save of the quarters takes the year
- * row `for update`. So every change of the years of a branch waits for the
- * one before it, a go-live save and a year edit read what the other committed,
- * and a quarter save and a year edit never pass on old dates.
+ * and reads the years without a lock; a save of the quarters (task 5.6b-5a,
+ * decision 7; `.claude/rules/timetable.md`, a setup write that writes dated
+ * lessons) takes the branch row `for no key update`, then the people of the
+ * branch and the classes of the year `for key share` and the year `for no
+ * key update` (`QuarterLessons.lock`). So every change of the years of a
+ * branch waits for the one before it at the branch row, a go-live save and a
+ * year edit read what the other committed, and a quarter save and a year
+ * edit never pass on old dates; a lesson writer (a publish, a withdraw, a
+ * one-day change, a bulk cancel) takes the year `for share`, so it never
+ * reads quarter dates a save is changing.
  */
 @Injectable()
 export class AcademicYears {
@@ -71,6 +90,7 @@ export class AcademicYears {
     private readonly transactions: Transactions,
     private readonly audit: Audit,
     @Inject(CLOCK) private readonly clock: Clock,
+    private readonly quarterLessons: QuarterLessons,
   ) {}
 
   /** Every year of the branch of the transaction, newest first, each with its quarters in number order. */
@@ -276,6 +296,23 @@ export class AcademicYears {
             ...(leftOut.some((entry) => entry.lastDate > record.endDate) ? ['endDate'] : []),
           ]);
         }
+        // Task 5.6b-5a (the From line of 5.1b, decision 8): every exam of the
+        // year, cancelled ones too, stays inside its dates; the database keeps
+        // the same rule (`academic_years_exams`, 0093).
+        const examsOut = await transaction
+          .selectFrom('exams')
+          .select(sql<string>`exam_date::text`.as('exam_date'))
+          .where('academic_year_id', '=', id)
+          .where((eb) =>
+            eb.or([eb('exam_date', '<', record.startDate), eb('exam_date', '>', record.endDate)]),
+          )
+          .execute();
+        if (examsOut.length > 0) {
+          throw refused('year_leaves_exam', [
+            ...(examsOut.some((exam) => exam.exam_date < record.startDate) ? ['startDate'] : []),
+            ...(examsOut.some((exam) => exam.exam_date > record.endDate) ? ['endDate'] : []),
+          ]);
+        }
         // L128: made longer at any time, shorter only when no stay stands in
         // the days cut off; the database keeps the same rule (0064).
         await refuseCutHolds(transaction, id, record.startDate, record.endDate);
@@ -370,19 +407,71 @@ export class AcademicYears {
    * The four quarters' dates in one save (`03`, Quarters, owner: Academic Vice
    * Principal). The order rules are the schema's; here every dated quarter
    * must lie inside the year (answer 5), and a closed year changes nothing.
-   * The audit entry carries the quarters that changed, old and new, in number
-   * order; nothing is written when nothing changed.
+   * Task 5.6b-5a: the published timetable's lessons follow the new dates
+   * (`QuarterLessons.follow`). The audit entry carries the quarters that
+   * changed, old and new, in number order, the blocks moved to another
+   * quarter and what the save did to the lessons; nothing is written when
+   * nothing changed.
    */
-  saveQuarters(
+  async saveQuarters(
     access: Access,
     branchId: string,
     id: string,
-    record: QuartersRecord,
+    record: QuartersSave,
     requestId: string,
   ): Promise<AcademicYear> {
-    return refusingConstraints(() =>
+    return this.writeQuarters(access, branchId, id, record, requestId, false);
+  }
+
+  /**
+   * What a save of the quarters does to the published timetable, and what
+   * refuses it, as lines (task 5.6b-5a, decision 10): the save's own code in
+   * a transaction that is rolled back, so nothing is written, no audit entry
+   * and no notice either.
+   */
+  async previewQuarters(
+    access: Access,
+    branchId: string,
+    id: string,
+    record: QuartersSave,
+    requestId: string,
+  ): Promise<QuartersPreview> {
+    try {
+      await this.writeQuarters(access, branchId, id, record, requestId, true);
+    } catch (error) {
+      if (error instanceof PreviewDone) return error.preview;
+      throw error;
+    }
+    // The work above always throws, the preview or a refusal; TypeScript cannot see that.
+    throw new ApiException('internal_error', 500);
+  }
+
+  private writeQuarters(
+    access: Access,
+    branchId: string,
+    id: string,
+    record: QuartersSave,
+    requestId: string,
+    preview: boolean,
+  ): Promise<AcademicYear> {
+    // The dated lessons a save writes are refused by the database as a
+    // publish's are (the claims, `timetable_busy`).
+    return refusingPublish(() =>
       this.transactions.run(access.branchIds, async (transaction) => {
-        const year = await this.lockedYear(transaction, id);
+        // Every id of the choices is the branch's, and the year too, before any lock.
+        await refuseForeignChoices(transaction, branchId, record.days ?? {});
+        await this.readYear(transaction, id);
+        const branch = await transaction
+          .selectFrom('branches')
+          .select('time_zone')
+          .where('id', '=', branchId)
+          .forNoKeyUpdate()
+          .executeTakeFirst();
+        if (branch === undefined) {
+          throw notFound();
+        }
+        await this.quarterLessons.lock(transaction, branchId, id);
+        const year = await this.readYear(transaction, id);
         if (year.status === 'closed') {
           throw refused('year_closed');
         }
@@ -404,7 +493,7 @@ export class AcademicYears {
             ? [{ before, after: { number: before.number, ...after } }]
             : [];
         });
-        if (changed.length === 0) {
+        if (changed.length === 0 && !preview) {
           return year;
         }
         for (const { after } of changed) {
@@ -415,6 +504,30 @@ export class AcademicYears {
             .where('number', '=', after.number)
             .execute();
         }
+        // Today at the moment of the transaction, as `lesson_block_quarter_fixed` reads it.
+        const today = schoolDateOf(await transactionMoment(transaction), branch.time_zone);
+        const followed = await this.quarterLessons.follow(transaction, {
+          branchId,
+          accountId: access.accountId,
+          yearId: id,
+          year,
+          today,
+          before: year.quarters,
+          after: record.quarters,
+          preview,
+          days: record.days ?? {},
+        });
+        if (preview) {
+          // A refusal answered as a line leaves the deferred checks to refuse
+          // what the save would refuse first; otherwise they run now.
+          if (!followed.refused) {
+            await sql`set constraints all immediate`.execute(transaction);
+          }
+          throw new PreviewDone({
+            lessons: followed.rewrite.lessons ?? NO_LESSONS,
+            ...followed.preview,
+          });
+        }
         await this.audit.record(transaction, {
           branchId,
           actorId: access.accountId,
@@ -422,7 +535,13 @@ export class AcademicYears {
           action: 'quarters.edit',
           record: { type: 'academic_year', id },
           oldValue: { quarters: changed.map(({ before }) => before) },
-          newValue: { quarters: changed.map(({ after }) => after) },
+          newValue: {
+            quarters: changed.map(({ after }) => after),
+            ...(followed.moved.length === 0
+              ? {}
+              : { movedBlocks: followed.moved.map((one): JsonValue => ({ ...one })) }),
+            ...lessonsAuditOf(followed.rewrite),
+          },
           requestId,
         });
         return this.readYear(transaction, id);

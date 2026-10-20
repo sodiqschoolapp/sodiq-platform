@@ -285,6 +285,28 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 20 October 2026: quarter and year dates after lessons exist (task 5.6b-5a)
+
+Plan approved on pull request #179 with corrections 1 and 2; decisions 1 to 12 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a task split). 5.6b-5 is split into 5.6b-5a (the database guards, the quarter save's lessons, refusals, locks, preview answer, notice, audit, the year edit's exam refusal) and 5.6b-5b (the preview dialog of the quarters form, the choices sent with its save, the refusal lines, the handbook) | Decision 1; the API alone is a full session, as 5.6b-4 (#176) |
+| **Look first** (a reading of a spec line). The lessons of a longer or shorter year follow the quarter dates: a year edit writes no lesson; a dated quarter stays inside its year (`outside_year`) and a block inside its quarter (0093), so the days a year edit cuts off hold no lesson; `year_cut_holds` keeps listing stays only | Decision 2; `edge/time-dates-calendar`, "Every school day lies in exactly one quarter", "Vacations between quarters" |
+| **Look first** (a reading that narrows a spec line). A date of today or earlier changes quarter only when it holds no lesson block (held, cancelled or needing a teacher); past dates without a block move freely. Proposed `/spec-change` for "Quarter dates are edited after lessons exist": "A boundary can move only over future dates, or over past dates that hold no lesson, so a held lesson never changes quarter." | Decision 3; refusing every past date would stop the setup of a year before go-live; data on a lesson exists only from its start |
+| **Look first** (a lock changed, no rule weakened). The quarter save holds the branch row `for no key update`, people and classes `for key share`, the year `for no key update` (it took the year `for update` only) | Decision 7; `.claude/rules/timetable.md`, a setup write that writes dated lessons |
+| **Look first** (a pinned list widened). Notice kind `timetable.quarters_changed` with the first and last date written, in `NOTIFICATION_KINDS` and `WEEK_KINDS`; the test of `WEEK_KINDS` lists it | Decision 9; `06`, Everyone is told |
+| A date after today that changes from one quarter to another moves its blocks' `quarter_id` in place, no notice; dates that leave or join every quarter are written again by the calendar rewrite | Decision 4 |
+| A standing exam on a date that leaves every quarter refuses the save (`quarter_leaves_exam`); a cancelled one does not | Decision 5 |
+| A stored one-day move whose two dates the save puts in two quarters refuses it (`quarter_splits_move`) | Decision 6; "A one-day move stays inside the same quarter" |
+| `year_leaves_exam` counts every exam of the year, cancelled ones too | Decision 8; `exam_year` (0060) keeps every exam row |
+| The preview answers the refusals as lines; the year edit has no preview | Decision 10 |
+| A closed quarter's frozen dates are left to 9.2b (From line) | Decision 11 |
+| From lines on 5.6c (exams and quarters, the exam save's year lock) and 9.2b; the 5.6b-5b entry | Decision 12 |
+| Writer-side commit checks (`lesson_blocks_quarter_commit`, `exams_year_commit`) lock the quarter or the year row `for share` and read its dates again, so a write at the same moment as a date change is refused by the later one | Spec review of the plan, must-fix 1 |
+| **Build decision.** The notice `timetable.quarters_changed` names the first and last date the save writes again (a day of the week without lessons included), not only lesson dates | The notices are sent inside the rewrite before its lines exist; "changed your lessons from … to …" stays true |
+| **Spec review of the code.** A stored move onto a date of today or earlier, from a later date the save puts in another quarter, refuses `quarter_splits_move` too | Should-fix 5; "A one-day move stays inside the same quarter" |
+
 ## 20 October 2026: day template and slot length changes after publishing, the preview dialog (task 5.6b-4b)
 
 Plan approved on pull request #178 with corrections 1 and 2; decisions 1 to 7 confirmed there. Flagged on issue #42.

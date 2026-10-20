@@ -85,6 +85,9 @@ export const CONSTRAINT_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   // Four quarters are written with their year; a fault answers the general refusal.
   academic_year_quarters_count: 'request_refused',
   quarters_outside_year: 'outside_year',
+  // Task 5.6b-5a (0093): a quarter's dates left a lesson outside, or a year's an exam.
+  quarter_leaves_lesson: 'quarter_leaves_lesson',
+  year_leaves_exam: 'year_leaves_exam',
   // Day templates (task 1.5). The other constraints of 0017 guard against a
   // fault of the service, which checks first; they stay unmapped (500).
   // Two settings of one key on one date: the general refusal, because the

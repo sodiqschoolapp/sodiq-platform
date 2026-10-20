@@ -261,8 +261,13 @@ export interface TemplateEvent {
   readonly templateFrom: string;
 }
 
-/** What wrote the dates again: a calendar entry or a template change. */
-export type RewriteEvent = CalendarEvent | TemplateEvent;
+/** Task 5.6b-5a (decision 9): a save of a year's quarters, named in the notices by the dates it writes. */
+export interface QuartersEvent {
+  readonly quarterDates: { readonly firstDate: string; readonly lastDate: string };
+}
+
+/** What wrote the dates again: a calendar entry, a template change or a quarter change. */
+export type RewriteEvent = CalendarEvent | TemplateEvent | QuartersEvent;
 
 const EMPTY_NAMES: CalendarLessons['names'] = { units: [], subjects: [], teachers: [], rooms: [] };
 
@@ -1218,7 +1223,15 @@ export class TimetableCalendarLessons {
         notified: teacherIds.filter((id) => withAccount.has(id)).sort(),
       };
       const { event } = input;
-      if ('templateFrom' in event) {
+      if ('quarterDates' in event) {
+        // A quarter change gives no day off; an exam on a date it takes out
+        // of every quarter refuses it first (decision 5).
+        notices = await sendWeekChanges(transaction, this.notifications, snapshot, {
+          kind: 'timetable.quarters_changed',
+          firstDate: event.quarterDates.firstDate,
+          lastDate: event.quarterDates.lastDate,
+        });
+      } else if ('templateFrom' in event) {
         // A template change gives no day off, so it cancels no exam "day off".
         notices = await sendWeekChanges(transaction, this.notifications, snapshot, {
           kind: 'timetable.template_changed',

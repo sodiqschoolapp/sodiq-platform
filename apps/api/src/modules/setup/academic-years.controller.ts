@@ -4,13 +4,15 @@ import {
   academicYearRecordSchema,
   academicYearSchema,
   currentPeriodSchema,
-  quartersRecordSchema,
+  quartersPreviewSchema,
+  quartersSaveSchema,
   setupIdParamsSchema,
   type AcademicYear,
   type AcademicYearList,
   type AcademicYearRecord,
   type CurrentPeriod,
-  type QuartersRecord,
+  type QuartersPreview,
+  type QuartersSave,
   type SetupIdParams,
 } from '@sodiq/shared';
 import { RequestId } from '../../http/request-id.js';
@@ -79,10 +81,27 @@ export class AcademicYearsController {
   saveQuarters(
     @CurrentAccess() access: Access,
     @ValidParams(setupIdParamsSchema) params: SetupIdParams,
-    @ValidBody(quartersRecordSchema) record: QuartersRecord,
+    @ValidBody(quartersSaveSchema) record: QuartersSave,
     @RequestId() requestId: string,
   ): Promise<AcademicYear> {
     return this.years.saveQuarters(access, branchOf(access), params.id, record, requestId);
+  }
+
+  /**
+   * Task 5.6b-5a (decision 10): what the save of the same body does to the
+   * published timetable, and what refuses it, as lines; nothing is written.
+   */
+  @Post('academic-years/:id/quarters/preview')
+  @HttpCode(200)
+  @Requires('quarters', 'edit')
+  @Returns(quartersPreviewSchema)
+  previewQuarters(
+    @CurrentAccess() access: Access,
+    @ValidParams(setupIdParamsSchema) params: SetupIdParams,
+    @ValidBody(quartersSaveSchema) record: QuartersSave,
+    @RequestId() requestId: string,
+  ): Promise<QuartersPreview> {
+    return this.years.previewQuarters(access, branchOf(access), params.id, record, requestId);
   }
 
   /** The top bar of every role (`03`; `12`, Context; decision 8 of pull request #44). */

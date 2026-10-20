@@ -170,6 +170,16 @@ export const en = {
       'A lesson of a group of two grades now has only one of its grades at school. Open the preview again and choose for it: cancel it as a day off, or keep it for the grade that has school.',
     template_slot_in_use:
       'This change removes or reorders a lesson slot that the published timetable uses. Keep the slot, or first publish a timetable version that no longer uses it.',
+    quarter_past_lessons:
+      'These quarter dates would move lessons of today or earlier to another quarter, or out of every quarter. Only future dates can change quarter: keep the dates of the lessons listed.',
+    quarter_leaves_exam:
+      'An exam stands on a date these quarter dates take out of every quarter. Cancel or move the exam first, or keep that date in a quarter.',
+    quarter_splits_move:
+      'A lesson moved for one day would end up with its old and new date in two quarters. Move that lesson back to its own date first, or keep both dates in one quarter.',
+    quarter_leaves_lesson:
+      'A lesson would lie outside the dates of its quarter. Reload the page and try again.',
+    year_leaves_exam:
+      'An exam of this year would lie outside the new dates. Keep the year around the exam, or change the exam first.',
     own_account: 'You cannot lock, unlock or reset your own account. Ask another administrator.',
     account_already_locked: 'This account is already locked. Reload the page to see who locked it.',
     account_not_locked:
@@ -3147,6 +3157,8 @@ export const en = {
           'The calendar entry "{{name}}" changed your lessons. Your week before and after:',
         template_changed:
           'A change of the day templates from {{from}} changed your lessons. Your week before and after:',
+        quarters_changed:
+          'A change of the quarter dates changed your lessons from {{firstDate}} to {{lastDate}}. Your week before and after:',
         exam_day_off:
           'The calendar entry "{{name}}" made {{date}} a day off: the exam "{{title}}" is cancelled.',
       },

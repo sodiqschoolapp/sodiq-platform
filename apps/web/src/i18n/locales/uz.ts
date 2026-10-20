@@ -175,6 +175,16 @@ export const uz: Texts<'one' | 'other'> = {
       'Ikki parallel guruhining darsida endi maktabda faqat bitta parallel bor. Oldindan koʻrishni qayta oching va tanlang: dam olish kuni sifatida bekor qilish yoki maktabda boʻlgan parallel uchun qoldirish.',
     template_slot_in_use:
       'Bu oʻzgarish eʼlon qilingan dars jadvali foydalanadigan dars slotini olib tashlaydi yoki tartibini oʻzgartiradi. Slotni qoldiring yoki avval uni ishlatmaydigan dars jadvali versiyasini eʼlon qiling.',
+    quarter_past_lessons:
+      'Bu chorak sanalari bilan bugungi yoki oʻtgan kunlardagi darslar boshqa chorakka yoki barcha choraklardan tashqariga oʻtib qoladi. Chorakni faqat kelgusi sanalar oʻzgartira oladi: koʻrsatilgan darslarning sanalarini qoldiring.',
+    quarter_leaves_exam:
+      'Imtihon bu chorak sanalari barcha choraklardan chiqaradigan sanada turibdi. Avval imtihonni bekor qiling yoki koʻchiring, yoki bu sanani chorak ichida qoldiring.',
+    quarter_splits_move:
+      'Bir kunga koʻchirilgan darsning eski va yangi sanasi ikki xil chorakka tushib qoladi. Avval bu darsni oʻz sanasiga qaytaring yoki ikkala sanani bitta chorakda qoldiring.',
+    quarter_leaves_lesson:
+      'Dars oʻz choragi sanalaridan tashqarida qolib ketadi. Sahifani yangilab, qaytadan urinib koʻring.',
+    year_leaves_exam:
+      'Bu yilning imtihoni yangi sanalardan tashqarida qolib ketadi. Yilni imtihon atrofida qoldiring yoki avval imtihonni oʻzgartiring.',
     own_account:
       'Oʻz hisobingizni bloklay, blokdan chiqara yoki tiklay olmaysiz. Boshqa administratorga murojaat qiling.',
     account_already_locked:
@@ -3178,6 +3188,8 @@ export const uz: Texts<'one' | 'other'> = {
           '«{{name}}» taqvim yozuvi darslaringizni oʻzgartirdi. Haftangiz oldin va keyin:',
         template_changed:
           '{{from}} sanasidan kun shablonlarining oʻzgarishi darslaringizni oʻzgartirdi. Haftangiz oldin va keyin:',
+        quarters_changed:
+          'Chorak sanalarining oʻzgarishi {{firstDate}} dan {{lastDate}} gacha darslaringizni oʻzgartirdi. Haftangiz oldin va keyin:',
         exam_day_off:
           '«{{name}}» taqvim yozuvi {{date}} sanasini dam olish kuni qildi: «{{title}}» imtihoni bekor qilindi.',
       },

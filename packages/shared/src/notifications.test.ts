@@ -87,14 +87,31 @@ describe('the notices of a timetable change', () => {
     );
     // Task 5.6a-1 (decision 10, Look first: a pinned list widened by a new kind),
     // task 5.6b-1 (decision 8, Look first: the calendar change's kind) and
-    // task 5.6b-4a (decision 6, Look first: the template change's kind).
+    // task 5.6b-4a (decision 6, Look first: the template change's kind) and
+    // task 5.6b-5a (decision 9, Look first: the quarter change's kind).
     expect(WEEK_KINDS).toEqual([
       ...WEEK_CHANGE_KINDS,
       'timetable.tutor_changed',
       'timetable.day_changed',
       'timetable.calendar_changed',
       'timetable.template_changed',
+      'timetable.quarters_changed',
     ]);
+  });
+
+  // Task 5.6b-5a, decision 9: a quarter change carries the dates it wrote and the week, no name or number.
+  it('carry the dates and the week of a quarter change', () => {
+    const schema = NOTIFICATION_KINDS['timetable.quarters_changed'];
+    const quartersWeek = {
+      firstDate: '2026-11-01',
+      lastDate: '2026-11-08',
+      weekStart: week.weekStart,
+      before: week.before,
+      after: week.after,
+    };
+    expect(schema.parse(quartersWeek)).toEqual(quartersWeek);
+    expect(schema.safeParse({ ...quartersWeek, name: 'Navruz' }).success).toBe(false);
+    expect(schema.safeParse({ ...quartersWeek, firstDate: '01.11.2026' }).success).toBe(false);
   });
 
   // Task 5.6b-4a, decision 6: a template change carries its date and the week, no name or number.

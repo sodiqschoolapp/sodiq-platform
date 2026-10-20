@@ -231,6 +231,7 @@ describe('the routes that work without sign-in', () => {
       'POST /api/people/vacancies/:id/reopen',
       'POST /api/people/vacancies/export',
       'POST /api/setup/academic-years',
+      'POST /api/setup/academic-years/:id/quarters/preview',
       'POST /api/setup/academic-years/:id/start',
       'POST /api/setup/branches',
       'POST /api/setup/buildings',
