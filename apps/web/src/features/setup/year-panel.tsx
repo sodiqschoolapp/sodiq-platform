@@ -9,6 +9,7 @@ import {
   type AcademicYearRecord,
   type QuarterFormField,
   type QuartersForm,
+  type TemplateDaysBody,
 } from '@sodiq/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -31,6 +32,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { invalidateYears } from './setup-api';
+import { QuarterRefusalLines, useQuartersPreview } from './quarters-preview';
 import { monthsText, schoolDateText } from '@/lib/dates';
 import { SECTION_TITLE } from '@/components/ui/control';
 
@@ -104,6 +106,7 @@ export function YearForm({ year, label, onSave, onCancel }: YearFormProps) {
       <DateField label={t('setup.years.startDate')} {...form.bind('startDate')} />
       <DateField label={t('setup.years.endDate')} {...form.bind('endDate')} />
       <CutHoldsList failure={form.failure} />
+      <QuarterRefusalLines failure={form.failure} />
     </RecordForm>
   );
 }
@@ -203,6 +206,7 @@ function QuartersFormView({
           </fieldset>
         );
       })}
+      <QuarterRefusalLines failure={form.failure} />
     </RecordForm>
   );
 }
@@ -284,12 +288,15 @@ export function YearPanel({ year, years, canEditYear, canEditQuarters }: YearPan
     onSuccess: refresh,
   });
 
+  // Task 5.6b-5b: the preview of what the new dates do to the published
+  // timetable comes first; the save sends the choices made there.
+  const preview = useQuartersPreview();
   const saveQuarters = useMutation({
-    mutationFn: (form: QuartersForm) =>
+    mutationFn: ({ form, days }: { form: QuartersForm; days: TemplateDaysBody }) =>
       answerOf(
         api.PUT('/api/setup/academic-years/{id}/quarters', {
           params: { path: { id: year.id }, header: branchHeader() },
-          body: quartersOfForm(form),
+          body: { ...quartersOfForm(form), days },
         }),
       ),
     onSuccess: refresh,
@@ -363,7 +370,8 @@ export function YearPanel({ year, years, canEditYear, canEditQuarters }: YearPan
             <QuartersFormView
               year={year}
               onSave={async (form) => {
-                await saveQuarters.mutateAsync(form);
+                const days = await preview.confirm(year.id, quartersOfForm(form));
+                await saveQuarters.mutateAsync({ form, days });
                 panel.stop({ saved: true, key: 'quarters' });
               }}
               onCancel={() => {
@@ -427,6 +435,7 @@ export function YearPanel({ year, years, canEditYear, canEditQuarters }: YearPan
           saved={panel.saved}
         />
       )}
+      {preview.dialog}
     </div>
   );
 }

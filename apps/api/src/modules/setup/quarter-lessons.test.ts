@@ -6,6 +6,7 @@ import {
   timetableVersionSchema,
   type QuartersPreview,
 } from '@sodiq/shared';
+import { addDays } from '@sodiq/timetable-rules';
 import { sql } from 'kysely';
 import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -263,7 +264,15 @@ describe('quarter and year dates after lessons exist', () => {
   const detailsOf = (response: Response) =>
     (
       response.body as {
-        error: { details: { path: string; code: string; day?: string; quarterItem?: unknown }[] };
+        error: {
+          details: {
+            path: string;
+            code: string;
+            day?: string;
+            quarterItem?: unknown;
+            more?: number;
+          }[];
+        };
       }
     ).error.details;
 
@@ -347,6 +356,16 @@ describe('quarter and year dates after lessons exist', () => {
       await sql`set constraints all immediate`.execute(transaction);
       return written.id;
     });
+  }
+
+  /** A subject as a refusal line names it, in the three languages (task 5.6b-5b, decision 8). */
+  async function subjectLine(id: string) {
+    const row = await t.database.migrator
+      .selectFrom('subjects')
+      .select(['name_uz', 'name_ru', 'name_en'])
+      .where('id', '=', id)
+      .executeTakeFirstOrThrow();
+    return { id, names: { uz: row.name_uz, ru: row.name_ru, en: row.name_en } };
   }
 
   /** Every row a quarter save writes in a branch: what a refused one leaves as it was. */
@@ -478,13 +497,13 @@ describe('quarter and year dates after lessons exist', () => {
           kind: 'past_lesson',
           date: MONDAY,
           unit: { kind: 'class', name: expect.any(String) as string, grade: 7 },
-          subjectId: s.maths,
+          subject: await subjectLine(s.maths),
         },
         {
           kind: 'past_lesson',
           date: MONDAY,
           unit: { kind: 'class', name: expect.any(String) as string, grade: 10 },
-          subjectId: s.history,
+          subject: await subjectLine(s.history),
         },
       ]);
       expect(await storedRowsOf(s.branch)).toEqual(rows);
@@ -596,12 +615,12 @@ describe('quarter and year dates after lessons exist', () => {
     const refused = await saveQuarters(s, dates);
     refusedWith(refused, 409, 'quarter_leaves_exam');
     expect(detailsOf(refused).map((one) => one.quarterItem)).toEqual([
-      { kind: 'exam', date: NOV09, title: 'Quarter exam' },
+      { kind: 'exam', date: NOV09, title: 'Quarter exam', cancelled: false },
     ]);
     expect(await storedRowsOf(s.branch)).toEqual(rows);
     const shown = await shownFor(s, dates);
     expect(shown.exams).toEqual({
-      items: [{ kind: 'exam', date: NOV09, title: 'Quarter exam' }],
+      items: [{ kind: 'exam', date: NOV09, title: 'Quarter exam', cancelled: false }],
       more: 0,
     });
 
@@ -634,7 +653,7 @@ describe('quarter and year dates after lessons exist', () => {
         fromDate: OCT26,
         toDate: OCT19,
         unit: { kind: 'class', name: expect.any(String) as string, grade: 7 },
-        subjectId: s.maths,
+        subject: await subjectLine(s.maths),
       },
     ]);
     expect(await storedRowsOf(s.branch)).toEqual(rows);
@@ -685,7 +704,7 @@ describe('quarter and year dates after lessons exist', () => {
           fromDate: OCT26,
           toDate: MONDAY,
           unit: { kind: 'class', name: expect.any(String) as string, grade: 7 },
-          subjectId: s.maths,
+          subject: await subjectLine(s.maths),
         },
       ]);
       expect(await storedRowsOf(s.branch)).toEqual(rows);
@@ -730,6 +749,10 @@ describe('quarter and year dates after lessons exist', () => {
     const refused = await editYear(s, '2026-09-01', '2027-06-04');
     refusedWith(refused, 409, 'year_leaves_exam');
     expect(detailsOf(refused).map((one) => one.path)).toEqual(['endDate']);
+    // Task 5.6b-5b (decisions 2 and 7): the exam is named, marked cancelled.
+    expect(detailsOf(refused).map((one) => one.quarterItem)).toEqual([
+      { kind: 'exam', date: JUN07, title: 'Quarter exam', cancelled: true },
+    ]);
     okay(await editYear(s, '2026-09-01', '2027-06-10'));
     // Permission review nit 5: the start side. The first two weeks of
     // September hold no lesson: quarter 1 then starts on 14 September, and an
@@ -739,6 +762,9 @@ describe('quarter and year dates after lessons exist', () => {
     const early = await editYear(s, '2026-09-10', '2027-06-10');
     refusedWith(early, 409, 'year_leaves_exam');
     expect(detailsOf(early).map((one) => one.path)).toEqual(['startDate']);
+    expect(detailsOf(early).map((one) => one.quarterItem)).toEqual([
+      { kind: 'exam', date: '2026-09-07', title: 'Quarter exam', cancelled: true },
+    ]);
     expect(
       await t.database.migrator
         .selectFrom('lessons')
@@ -747,6 +773,35 @@ describe('quarter and year dates after lessons exist', () => {
         .orderBy('id')
         .execute(),
     ).toEqual(lessons);
+  });
+
+  // Task 5.6b-5b, plan test 1 (decisions 2 and 7; `edge/time-dates-calendar`,
+  // "refused, with the list of what is in the way"): a standing exam is named
+  // unmarked; at most `QUARTER_ITEMS_LISTED` are named, by date, then the count.
+  it('the year edit names the exams it would leave out, a standing one unmarked, at most 50 and the count of the rest', async () => {
+    const s = await scene();
+    okay(await editYear(s, '2026-09-01', '2027-08-31'));
+    await insertExam(s, JUN07, s.seniorTeacher);
+    const one = await editYear(s, '2026-09-01', '2027-06-04');
+    refusedWith(one, 409, 'year_leaves_exam');
+    expect(detailsOf(one).map((detail) => [detail.path, detail.quarterItem])).toEqual([
+      ['endDate', { kind: 'exam', date: JUN07, title: 'Quarter exam', cancelled: false }],
+    ]);
+
+    const dates: string[] = [];
+    for (let date = '2027-06-08'; dates.length < 50; date = addDays(date, 1)) dates.push(date);
+    for (const date of dates) await insertExam(s, date, s.seniorTeacher, 'cancelled');
+    const many = await editYear(s, '2026-09-01', '2027-06-04');
+    refusedWith(many, 409, 'year_leaves_exam');
+    const details = detailsOf(many);
+    expect(details.map((detail) => detail.path)).toEqual([
+      ...Array.from({ length: 50 }, () => 'endDate'),
+      'more',
+    ]);
+    expect(
+      details.slice(0, 50).map((detail) => (detail.quarterItem as { date: string }).date),
+    ).toEqual([JUN07, ...dates.slice(0, 49)]);
+    expect(details.at(-1)).toMatchObject({ path: 'more', more: 1 });
   });
 
   // Plan test 13 (decision 9).
@@ -831,7 +886,9 @@ describe('quarter and year dates after lessons exist', () => {
     expect(shown.pastLessons).toEqual({ items: [], more: 0 });
 
     const leaving = await shownFor(s, withQuarters({ 2: [NOV16, '2026-12-28'] }));
-    expect(leaving.exams.items).toEqual([{ kind: 'exam', date: NOV09, title: 'Quarter exam' }]);
+    expect(leaving.exams.items).toEqual([
+      { kind: 'exam', date: NOV09, title: 'Quarter exam', cancelled: false },
+    ]);
     expect(leaving.lessons.removed.filter((one) => one.date === NOV09).length).toBe(2);
     expect(await storedRowsOf(s.branch)).toEqual(rows);
   });
