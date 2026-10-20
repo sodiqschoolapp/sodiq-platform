@@ -713,6 +713,26 @@ describe('calendar entries after publishing', () => {
         const [entry] = await t.entries('calendar_entry.restore', saved.id);
         expect(entry?.new_value).not.toHaveProperty('groupBlocks');
       });
+
+      // Permission review must-fix 1: an archive leaves no grade off and takes no choice.
+      it('refuses a choice sent with an archive, writing nothing', async () => {
+        const s = await scene({ group: true });
+        const saved = okay(
+          await create(s.branch, { ...nineOff(), groupBlocks: groupBlocks(s, 'keep') }),
+          201,
+        );
+        const lessons = await lessonsOf(s.branch);
+        const before = await t.auditCount();
+        refusedWith(
+          await post(`/api/setup/calendar-entries/${saved.id}/archive`, s.branch, {
+            groupBlocks: groupBlocks(s, 'cancel'),
+          }),
+          400,
+          'validation_failed',
+        );
+        expect(await lessonsOf(s.branch)).toEqual(lessons);
+        expect(await t.auditCount()).toBe(before);
+      });
     });
 
     it('lists a group\'s lesson in a slot whose times differ between its grades as "not in the day\'s template", under the group', async () => {
@@ -3120,8 +3140,13 @@ describe('calendar entries after publishing', () => {
       // unknown one, on every save and preview that takes it.
       const northNine = nineEntryOf[north.branch] ?? '';
       const nineOff = dayOff('2026-12-07', '2026-12-07', { gradeFrom: 9, gradeTo: 9 });
-      for (const groupId of [south.groupId ?? '', UNKNOWN]) {
-        const groupBlocks = [{ weekday: 1, start: 590, groupIds: [groupId], choice: 'cancel' }];
+      // Permission review should-fix 3: a block of one own group and one of another branch too.
+      for (const groupIds of [
+        [south.groupId ?? ''],
+        [UNKNOWN],
+        [north.groupId ?? '', south.groupId ?? ''],
+      ]) {
+        const groupBlocks = [{ weekday: 1, start: 590, groupIds, choice: 'cancel' }];
         for (const attempt of [
           () =>
             create(north.branch, {
@@ -3274,7 +3299,29 @@ describe('calendar entries after publishing', () => {
             },
             cookie,
           ),
-        // Task 5.6b-3: a body with a split group's choice.
+        // Task 5.6b-3: a body with a split group's choice, on every write
+        // and preview that takes it (permission review should-fix 2).
+        () =>
+          post(
+            `/api/setup/calendar-entries/${archived.id}/restore`,
+            s.branch,
+            { groupBlocks: [{ weekday: 1, start: 590, groupIds: [UNKNOWN], choice: 'keep' }] },
+            cookie,
+          ),
+        ...(['edit', 'restore'] as const).map(
+          (action) => () =>
+            post(
+              '/api/setup/calendar-entries/preview',
+              s.branch,
+              {
+                action,
+                id: action === 'edit' ? saved.id : archived.id,
+                ...(action === 'edit' ? { record: dayOff(OCT19) } : {}),
+                groupBlocks: [{ weekday: 1, start: 590, groupIds: [UNKNOWN], choice: 'keep' }],
+              },
+              cookie,
+            ),
+        ),
         () =>
           create(
             s.branch,

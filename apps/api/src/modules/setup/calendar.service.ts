@@ -698,7 +698,9 @@ export class Calendar {
           ...(change.dayKeeps === undefined ? {} : { dayKeeps: change.dayKeeps }),
           ...(change.examBlocks === undefined ? {} : { examBlocks: change.examBlocks }),
           // Task 5.6b-3: the choices for split groups' blocks.
-          ...(change.groupBlocks === undefined ? {} : { groupBlocks: change.groupBlocks }),
+          ...('groupBlocks' in change && change.groupBlocks !== undefined
+            ? { groupBlocks: change.groupBlocks }
+            : {}),
         },
       );
     } catch (error) {

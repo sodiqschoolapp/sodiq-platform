@@ -781,6 +781,7 @@ describe('the calendar page', () => {
   it("lists the split groups' blocks, keeps Save off until each has a choice, and sends the choice made", async () => {
     const GROUP = uid(71);
     const OTHER = uid(72);
+    const NINE = { ...HOLIDAY, gradeFrom: 9, gradeTo: 9 };
     const line = (groupId: string, start: number, choice: 'keep' | 'cancel' | null) => ({
       weekday: 1 as const,
       start,
@@ -808,11 +809,16 @@ describe('the calendar page', () => {
             },
           },
         }),
-      [`POST /api/setup/calendar-entries/${HOLIDAY.id}/archive`]: () =>
-        json({ ...HOLIDAY, archivedAt: '2026-10-10T10:00:00.000Z' }),
+      // A day off for grade 9 only.
+      'GET /api/setup/calendar-entries': () =>
+        json({ today: TODAY, entries: [PAST, SENIORS, NINE, SATURDAY] }),
+      [`PATCH /api/setup/calendar-entries/${HOLIDAY.id}`]: (body) =>
+        json({ ...NINE, ...(body as object) }),
     });
     const panel = await openEntry('Teachers day');
-    fireEvent.click(within(panel).getByRole('button', { name: en.setup.calendar.archive }));
+    // The entry unchanged: its preview lists the choices to change (task 5.6b-3).
+    const form = await edit(panel, 'Teachers day');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
     const dialog = await screen.findByRole('dialog', { name: en.setup.calendar.previewTitle });
     const block = (groupId: string, start: number) =>
       dialog.querySelector<HTMLElement>(`[data-block="1|${String(start)}|${groupId}"]`);
@@ -836,10 +842,18 @@ describe('the calendar page', () => {
     fireEvent.click(save);
     await waitFor(() => {
       expect(
-        calls.find(
-          (call) => call.route === `POST /api/setup/calendar-entries/${HOLIDAY.id}/archive`,
-        )?.body,
+        calls.find((call) => call.route === `PATCH /api/setup/calendar-entries/${HOLIDAY.id}`)
+          ?.body,
       ).toEqual({
+        kind: 'day_off',
+        name: 'Teachers day',
+        firstDate: '2026-10-14',
+        lastDate: '2026-10-14',
+        gradeFrom: 9,
+        gradeTo: 9,
+        dayTemplateId: null,
+        followsWeekday: null,
+        examWeek: null,
         dayChangesKey: 'e'.repeat(64),
         dayDecisions: [],
         groupBlocks: [{ weekday: 1, start: 590, groupIds: [GROUP], choice: 'cancel' }],

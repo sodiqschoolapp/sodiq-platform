@@ -376,6 +376,7 @@ export {
   groupBlockKeyOf,
   CALENDAR_EXAM_BLOCK_CHOICES,
   CALENDAR_GROUP_BLOCK_CHOICES,
+  calendarArchiveBodySchema,
   calendarDaysBodySchema,
   calendarEntrySchema,
   calendarLessonSchema,

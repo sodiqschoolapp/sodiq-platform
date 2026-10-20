@@ -244,12 +244,22 @@ export const calendarDaysBodySchema = z
     dayDecisions: dayDecisionsSchema.optional(),
     dayKeeps: calendarDayKeepsSchema.optional(),
     examBlocks: calendarExamBlocksSchema.optional(),
-    /** Task 5.6b-3: used by a restore; an archive leaves nothing off. */
+    /** Task 5.6b-3: a restore's choices; an archive leaves no grade off and takes none. */
     groupBlocks: calendarGroupBlocksSchema.optional(),
   })
   .default({});
 
 export type CalendarDaysBody = z.infer<typeof calendarDaysBodySchema>;
+
+/** An archive (task 5.6b-3, permission review must-fix 1): the body of a restore without `groupBlocks`, refused when sent. */
+export const calendarArchiveBodySchema = z
+  .strictObject({
+    dayChangesKey: transitionKeySchema.optional(),
+    dayDecisions: dayDecisionsSchema.optional(),
+    dayKeeps: calendarDayKeepsSchema.optional(),
+    examBlocks: calendarExamBlocksSchema.optional(),
+  })
+  .default({});
 
 export type CalendarSave = z.infer<typeof calendarSaveSchema>;
 
@@ -278,7 +288,6 @@ export const calendarChangeSchema = z.discriminatedUnion('action', [
     id: z.uuid(),
     dayKeeps: calendarDayKeepsSchema.optional(),
     examBlocks: calendarExamBlocksSchema.optional(),
-    groupBlocks: calendarGroupBlocksSchema.optional(),
   }),
   z.object({
     action: z.literal('restore'),
