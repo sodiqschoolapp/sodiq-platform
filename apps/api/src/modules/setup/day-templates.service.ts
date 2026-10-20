@@ -270,7 +270,13 @@ export class DayTemplates {
       days: days ?? {},
     });
     context.followed.value = followed;
-    return lessonsAuditOf(followed.rewrite);
+    return {
+      ...lessonsAuditOf(followed.rewrite),
+      // Task 5.6b-4b (decision 1): the stored changes moved to the new times.
+      ...(followed.storedTimes.length === 0
+        ? {}
+        : { storedTimes: followed.storedTimes.map((one) => structuredClone(one)) }),
+    };
   }
 
   /** A change takes effect from tomorrow at the earliest in branch time (`03`). */

@@ -4,6 +4,7 @@ import { dayDecisionKeyOf, type BulkItemAnswer, type DayChangeChoice } from '@so
 import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
 import { patternDateOf, placeKeyOf } from './dated-lessons.js';
+import { retimed, type StoredRetime } from './day-changes-kept.js';
 
 /**
  * The stored bulk cancels of the dates a publish writes, applied again (task
@@ -303,6 +304,7 @@ export async function bulkRecordsOf(
   branchId: string,
   firstDate: string,
   lastDate: string,
+  retime?: StoredRetime,
 ): Promise<BulkRecord[]> {
   const records = await transaction
     .selectFrom('bulk_cancels')
@@ -337,6 +339,7 @@ export async function bulkRecordsOf(
         'bulk_cancel_blocks.bulk_cancel_id',
         'bulk_cancel_blocks.block_id',
         'bulk_cancel_blocks.choice',
+        sql<string>`lessons.lesson_date::text`.as('lesson_date'),
         'lessons.class_id',
         'lessons.group_id',
         'lessons.subject_id',
@@ -351,7 +354,10 @@ export async function bulkRecordsOf(
   ]);
   return records.map((record) => {
     const storedBy = new Map<string, BulkRecord['stored'][number]>();
-    for (const row of blocks) {
+    for (const read of blocks) {
+      // Task 5.6b-4b (spec review of the plan, must-fix 1): a stored block
+      // at the new times of a template change, as its spans already are.
+      const row = retimed(read, retime);
       if (row.bulk_cancel_id !== record.id || row.block_id === null) continue;
       const known = storedBy.get(row.block_id);
       const lesson = {

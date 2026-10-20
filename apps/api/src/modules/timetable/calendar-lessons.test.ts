@@ -1529,15 +1529,26 @@ describe('calendar entries after publishing', () => {
         okay(await moveTo(s, moving.id, OCT19, 2));
         const [change] = await changesOf(moving.id);
         if (change === undefined) throw new Error('The move was not recorded.');
-        await t.database.migrator
-          .updateTable('lesson_day_changes')
-          .set({
-            from_date: PAST,
-            from_starts_at: sql<Date>`from_starts_at - interval '21 days'`,
-            from_ends_at: sql<Date>`from_ends_at - interval '21 days'`,
-          })
-          .where('id', '=', change.id)
-          .execute();
+        // Task 5.6b-4b: 0092 keeps the times of a stored change to its own
+        // date; the forged past record goes past that guard in a transaction
+        // of its own.
+        await t.database.migrator.transaction().execute(async (forged) => {
+          await sql`alter table lesson_day_changes disable trigger lesson_day_changes_times`.execute(
+            forged,
+          );
+          await forged
+            .updateTable('lesson_day_changes')
+            .set({
+              from_date: PAST,
+              from_starts_at: sql<Date>`from_starts_at - interval '21 days'`,
+              from_ends_at: sql<Date>`from_ends_at - interval '21 days'`,
+            })
+            .where('id', '=', change.id)
+            .execute();
+          await sql`alter table lesson_day_changes enable trigger lesson_day_changes_times`.execute(
+            forged,
+          );
+        });
         // The day's template in force on 5 October too, with the same slots,
         // so that its old place has room for the lesson and only the date
         // decides the removal.

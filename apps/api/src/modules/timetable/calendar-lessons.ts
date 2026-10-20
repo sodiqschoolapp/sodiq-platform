@@ -46,10 +46,12 @@ import { writeDatedLessons, type DatedWrite } from './dated-lessons.js';
 import {
   dayChangesKeyOf,
   settleDayChanges,
+  retimed,
   sortDayChanges,
   type DaySorting,
   type DayWritePlan,
   type SortedDayChange,
+  type StoredRetime,
 } from './day-changes-kept.js';
 import { dayChangeIdsOf, namesOf } from './impact.js';
 import { runsOf } from './journals.js';
@@ -480,6 +482,8 @@ export class TimetableCalendarLessons {
       readonly days: CalendarDaysBody;
       /** Task 5.6b-3: the entry whose split groups' choices are stored; `null` for an archive. */
       readonly entryId: string | null;
+      /** Task 5.6b-4b: a template change's new times of the stored lessons of its dates. */
+      readonly retime?: StoredRetime;
     },
   ): Promise<CalendarRewrite> {
     const { branchId, today } = input;
@@ -724,6 +728,7 @@ export class TimetableCalendarLessons {
         firstDate: part.first,
         lastDate: part.last,
         carriedVersionId: null,
+        ...(input.retime === undefined ? {} : { retime: input.retime }),
         across: {
           written: (date: string) =>
             writtenAll.has(date) && (date < part.first || part.last < date),
@@ -792,7 +797,7 @@ export class TimetableCalendarLessons {
         lessons: sorting.findings.dated.lessons,
         movedAt: sorting.movedAt,
         begins: sorting.findings.begins,
-        records: await bulkRecordsOf(transaction, branchId, part.first, part.last),
+        records: await bulkRecordsOf(transaction, branchId, part.first, part.last, input.retime),
         carriedVersionId: null,
       });
       return {
@@ -831,32 +836,6 @@ export class TimetableCalendarLessons {
     const key = calendarDaysKeyOf(stretches);
     const items = stretches.flatMap((one) => one.sorting.items);
     const bulkAll = stretches.flatMap((one) => one.bulk);
-    // Task 5.6b-4a (spec review of the code, must-fix 3): a stored one-day
-    // change or bulk cancel is matched to its lesson by its times, which a
-    // template change shifts; until its changes follow their lessons
-    // (5.6b-4b), a template change is refused on a date that holds one, so
-    // no cancel or room change is lost. The preview lists them.
-    if (
-      !input.preview &&
-      'templateFrom' in input.event &&
-      (items.length > 0 || bulkAll.length > 0)
-    ) {
-      throw new ApiException('template_day_changes', 409, undefined, [
-        ...items.map((one): ErrorDetail => ({
-          path: `dayChanges.${one.answer.key}`,
-          code: 'template_day_changes',
-          message: 'A stored one-day change on a date the change writes.',
-          day: one.answer.from.date,
-        })),
-        ...bulkAll.map((one): ErrorDetail => ({
-          path: `bulkCancels.${one.answer.key}`,
-          code: 'template_day_changes',
-          message: 'A stored bulk cancel on a date the change writes.',
-          day: one.date,
-        })),
-      ]);
-    }
-
     // Task 5.6b-2a: the sorting as shown and a choice for each "needs a
     // decision" item, refused with the blocked dates in one answer
     // (decision 9). The preview takes no decisions (decision 7).
@@ -989,11 +968,13 @@ export class TimetableCalendarLessons {
     const examAudit: ExamAudit[] = [];
     const doWrite = async () => {
       const moment = await transactionMoment(transaction);
+      const keptStored = new Set<string>();
       for (const one of stretches) {
         const plan = withMovesBack(
           planOfRun(one.sorting, one.bulk, decisions, bulkDecisions),
           backs,
         );
+        for (const id of plan.keepStored) keptStored.add(id);
         writes.push(
           await writeDatedLessons(
             transaction,
@@ -1017,6 +998,9 @@ export class TimetableCalendarLessons {
         );
       }
       await writeMovesBack(transaction, backs);
+      if (input.retime !== undefined) {
+        await writeStoredTimes(transaction, branchId, [...keptStored], input.retime);
+      }
       if (input.preview) return;
       for (const one of stretches) {
         // The changes not applied ended in the name of the stretch's version
@@ -1494,6 +1478,51 @@ function withMovesBack(plan: DayWritePlan, backs: readonly MoveBack[]): DayWrite
     }
   }
   return { ...plan, keepStored, cancelStored };
+}
+
+/**
+ * Task 5.6b-4b: a stored block the write keeps where it is (a move from a
+ * date the template change does not write) takes the new times of its lesson
+ * number on the date it stands on, at which the sorting checked it.
+ */
+async function writeStoredTimes(
+  transaction: Transaction,
+  branchId: string,
+  lessonIds: readonly string[],
+  retime: StoredRetime,
+): Promise<void> {
+  if (lessonIds.length === 0) return;
+  const rows = await transaction
+    .selectFrom('lessons')
+    .select([
+      'block_id',
+      sql<string>`lesson_date::text`.as('lesson_date'),
+      'class_id',
+      'group_id',
+      'starts_at',
+      'ends_at',
+    ])
+    .where('branch_id', '=', branchId)
+    .where('id', 'in', lessonIds)
+    .orderBy('block_id')
+    .execute();
+  const moved = new Map<string, { starts_at: Date; ends_at: Date }>();
+  for (const row of rows) {
+    const times = retimed(row, retime);
+    if (times !== row && !moved.has(row.block_id)) moved.set(row.block_id, times);
+  }
+  if (moved.size === 0) return;
+  // Two kept blocks may pass each other: the exclusions are checked on the end state.
+  await sql`set constraints time_claims_teacher_excl, time_claims_room_excl, time_claims_class_excl deferred`.execute(
+    transaction,
+  );
+  for (const [blockId, times] of moved) {
+    await transaction
+      .updateTable('lesson_blocks')
+      .set({ starts_at: times.starts_at, ends_at: times.ends_at })
+      .where('id', '=', blockId)
+      .execute();
+  }
 }
 
 /** Puts each stored block back at its old place (see `movesBack`). */
