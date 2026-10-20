@@ -405,6 +405,14 @@ describe('quarter and year dates after lessons exist', () => {
       .where('branch_id', '=', branch)
       .orderBy('lesson_id')
       .execute();
+    // Permission review must-fix 1: the notices' delivery jobs.
+    rows.jobs = (
+      await sql<{ id: string }>`
+        select id::text from pgboss.job
+        where data->'branchIds' ? ${branch}
+        order by id
+      `.execute(t.database.migrator)
+    ).rows;
     rows.audit = await t.database.migrator
       .selectFrom('audit_log')
       .select('id')
@@ -666,6 +674,14 @@ describe('quarter and year dates after lessons exist', () => {
     refusedWith(refused, 409, 'year_leaves_exam');
     expect(detailsOf(refused).map((one) => one.path)).toEqual(['endDate']);
     okay(await editYear(s, '2026-09-01', '2027-06-10'));
+    // Permission review nit 5: the start side. The first two weeks of
+    // September hold no lesson: quarter 1 then starts on 14 September, and an
+    // exam of 7 September keeps the year's start.
+    okay(await saveQuarters(s, withQuarters({ 1: ['2026-09-14', '2026-10-31'] })));
+    await insertExam(s, '2026-09-07', s.seniorTeacher, 'cancelled');
+    const early = await editYear(s, '2026-09-10', '2027-06-10');
+    refusedWith(early, 409, 'year_leaves_exam');
+    expect(detailsOf(early).map((one) => one.path)).toEqual(['startDate']);
     expect(
       await t.database.migrator
         .selectFrom('lessons')
@@ -796,6 +812,17 @@ describe('quarter and year dates after lessons exist', () => {
         reason: 'Excursion to the museum',
       }),
     );
+    // Permission review nit 4: a bulk cancel of the south as a key.
+    const southBulk = okay(
+      await keyed('/api/timetable/bulk-cancels', south.branch, {
+        date: NOV16,
+        classIds: [south.classId],
+        lessonNumbers: [1],
+        reason: 'Excursion to the museum',
+        blocks: [],
+        lessonIds: [(await lessonOf(south, NOV16, south.classId)).id],
+      }),
+    );
     const rows = [await storedRowsOf(north.branch), await storedRowsOf(south.branch)];
     const dates = withQuarters({ 2: [NOV16, '2026-12-28'] });
 
@@ -803,6 +830,7 @@ describe('quarter and year dates after lessons exist', () => {
       { dayDecisions: [{ key: southChangeId, choice: 'drop' }] },
       { dayDecisions: [{ key: southLesson.id, choice: 'drop' }] },
       { dayDecisions: [{ key: UNKNOWN, choice: 'drop' }] },
+      { dayDecisions: [{ key: southBulk.id, choice: 'drop' }] },
       ...[southBlock.id, UNKNOWN].map((blockId) => ({
         dayDecisions: [{ key: northLesson.id, blockId, blockDate: NOV09, choice: 'cancel' }],
       })),
@@ -836,8 +864,13 @@ describe('quarter and year dates after lessons exist', () => {
     expect(await storedRowsOf(south.branch)).toEqual(rows[1]);
   });
 
-  it('refuses the Principal and a Teacher assigned in the branch on the save and the preview, with nothing written', async () => {
+  it('refuses the Principal, a Teacher, a Head Teacher assigned in the branch and the Senior Head Teacher on the save and the preview, with nothing written', async () => {
     const s = await scene();
+    // Permission review should-fix 3: the roles nearest to those allowed.
+    const head = await t.kit.completeSession('Dilnoza', 'Yusupova');
+    await t.kit.giveRole(head.account.id, { role: 'head_teacher', branchId: s.branch });
+    const senior = await t.kit.completeSession('Bekzod', 'Rahimov');
+    await t.kit.giveRole(senior.account.id, { role: 'senior_head_teacher' });
     for (const role of ['principal', 'teacher'] as const) {
       const holder = await t.database.migrator
         .selectFrom('assignments')
@@ -849,11 +882,39 @@ describe('quarter and year dates after lessons exist', () => {
     }
     const rows = await storedRowsOf(s.branch);
     const dates = withQuarters({ 2: [NOV16, '2026-12-28'] });
-    for (const cookie of [t.principal, t.teacher]) {
+    for (const cookie of [t.principal, t.teacher, head.cookie, senior.cookie]) {
       refusedWith(await saveQuarters(s, dates, undefined, cookie), 403, 'permission_denied');
       refusedWith(await previewQuarters(s, dates, undefined, cookie), 403, 'permission_denied');
     }
     expect(await storedRowsOf(s.branch)).toEqual(rows);
+  });
+
+  // Permission review should-fix 2: the Academic Vice Principal assigned in
+  // the branch previews and saves, and the audit entry names that assignment.
+  it('lets the Academic Vice Principal assigned in the branch preview and save, named in the audit entry', async () => {
+    const s = await scene();
+    const holder = await t.database.migrator
+      .selectFrom('assignments')
+      .select('account_id')
+      .where('role', '=', 'academic_vice_principal')
+      .where('branch_id', '=', t.north)
+      .executeTakeFirstOrThrow();
+    const assignment = await load.classes.role(
+      holder.account_id,
+      s.branch,
+      'academic_vice_principal',
+    );
+    const dates = withQuarters({ 2: [NOV02, '2026-12-28'] });
+    okay(await previewQuarters(s, dates, undefined, t.vicePrincipal));
+    okay(await saveQuarters(s, dates, undefined, t.vicePrincipal));
+    expect((await lessonsOn(s.branch, NOV02)).length).toBe(2);
+    const entry = await t.database.migrator
+      .selectFrom('audit_log')
+      .select(['action', 'assignment_id'])
+      .where('branch_id', '=', s.branch)
+      .orderBy('id', 'desc')
+      .executeTakeFirstOrThrow();
+    expect(entry).toEqual({ action: 'quarters.edit', assignment_id: assignment });
   });
 
   // Plan test 15 (.claude/rules/timetable.md, .claude/rules/database.md,
