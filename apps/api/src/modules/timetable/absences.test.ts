@@ -1091,6 +1091,35 @@ describe('teacher absences', () => {
         .set(REQUEST_KEY_HEADER, randomUUID())
         .send({ kind: 'teacher', teacherId, reason: 'Came after all', confirm: true });
 
+    /** An exam of the class in its second lesson on `date`, saved by the route with its tick. */
+    const examOn = async (
+      branch: string,
+      classId: string,
+      date: string,
+      invigilators: string[],
+    ) => {
+      const room = await load.classes.room(branch);
+      const created = await request(t.kit.server)
+        .post('/api/timetable/exams')
+        .set('Cookie', t.admin)
+        .set(BRANCH_HEADER, branch)
+        .set(REQUEST_KEY_HEADER, randomUUID())
+        .send({
+          date,
+          firstLesson: 2,
+          lastLesson: 2,
+          title: 'Quarter exam',
+          subjectId: null,
+          rooms: [
+            { roomId: room, classIds: [classId], groupIds: [], invigilatorIds: invigilators },
+          ],
+          blockChoices: [],
+          confirm: true,
+        });
+      expect(created.status, JSON.stringify(created.body)).toBe(201);
+      return (created.body as { exam: { id: string } }).exam.id;
+    };
+
     it('puts the lessons of a person inactive from Monday under "needs a teacher", cause inactive, and gives them back when the status is taken back', async () => {
       const s = await scene();
       ok(
@@ -1212,26 +1241,31 @@ describe('teacher absences', () => {
       expect(spans).toEqual([{ locked_at: at(MONDAY, '08:30'), unlocked_at: at(MONDAY, '09:30') }]);
     });
 
-    it('keeps the correction of the same person refused on a lesson of an inactive teacher (decision 7)', async () => {
-      const s = await scene();
-      await statusFrom(s.teacher.staffId, 'inactive', MONDAY);
-      await asViceAt(s.branch, at(MONDAY, '10:00'), async (cookie) => {
-        expect(await awayOn(s, MONDAY, cookie)).toEqual([
-          { state: 'unresolved', away: 'inactive' },
-        ]);
-        const [lesson] = await lessonsOn(s, MONDAY);
-        if (lesson === undefined) throw new Error('No lesson.');
-        refusedWith(
-          await correct(s.branch, lesson.id, s.teacher.staffId, cookie),
-          409,
-          'teacher_unchanged',
-        );
-        const offered = ok(
-          await t.get(`/api/timetable/lessons/${lesson.id}/correction-teachers`, s.branch, cookie),
-        ).body as { teachers: { id: string }[] };
-        expect(offered.teachers.map((one) => one.id)).not.toContain(s.teacher.staffId);
-      });
-    });
+    it.each(['inactive', 'left'] as const)(
+      'keeps the correction of the same person refused on a lesson of a teacher %s (decision 7)',
+      async (status) => {
+        const s = await scene();
+        await statusFrom(s.teacher.staffId, status, MONDAY);
+        await asViceAt(s.branch, at(MONDAY, '10:00'), async (cookie) => {
+          expect(await awayOn(s, MONDAY, cookie)).toEqual([{ state: 'unresolved', away: status }]);
+          const [lesson] = await lessonsOn(s, MONDAY);
+          if (lesson === undefined) throw new Error('No lesson.');
+          refusedWith(
+            await correct(s.branch, lesson.id, s.teacher.staffId, cookie),
+            409,
+            'teacher_unchanged',
+          );
+          const offered = ok(
+            await t.get(
+              `/api/timetable/lessons/${lesson.id}/correction-teachers`,
+              s.branch,
+              cookie,
+            ),
+          ).body as { teachers: { id: string }[] };
+          expect(offered.teachers.map((one) => one.id)).not.toContain(s.teacher.staffId);
+        });
+      },
+    );
 
     it('gives one cause per lesson, the most lasting first (decision 6)', async () => {
       const left = await scene();
@@ -1241,12 +1275,24 @@ describe('teacher absences', () => {
         { from: at(MONDAY, '00:00'), until: null },
       );
       await statusFrom(left.teacher.staffId, 'left', NEXT_MONDAY);
+      // Every lesson of the class from the leaving date, counted once.
+      const fromNextMonday = (
+        await t.database.migrator
+          .selectFrom('lessons')
+          .select('id')
+          .where('branch_id', '=', left.branch)
+          .where('teacher_id', '=', left.teacher.staffId)
+          .where('cancel_cause', 'is', null)
+          .where('lesson_date', '>=', NEXT_MONDAY)
+          .execute()
+      ).length;
+      expect(fromNextMonday).toBeGreaterThan(1);
       const fromLeft = await attention(left.branch);
       expect(
         fromLeft.needsTeacher.map((one) => [one.cause, one.lessons, one.firstDate]).sort(),
       ).toEqual([
         ['absence', 1, MONDAY],
-        ['left', fromLeft.needsTeacher.find((one) => one.cause === 'left')?.lessons, NEXT_MONDAY],
+        ['left', fromNextMonday, NEXT_MONDAY],
       ]);
       expect(await awayOn(left, NEXT_MONDAY)).toEqual([{ state: 'needs_teacher', away: 'left' }]);
       const locked = await scene();
@@ -1291,33 +1337,6 @@ describe('teacher absences', () => {
         present: await load.teacher(s.branch),
       };
       for (const one of Object.values(people)) await hours(s.branch, one.staffId);
-      const examOn = async (
-        branch: string,
-        classId: string,
-        date: string,
-        invigilators: string[],
-      ) => {
-        const room = await load.classes.room(branch);
-        const created = await request(t.kit.server)
-          .post('/api/timetable/exams')
-          .set('Cookie', t.admin)
-          .set(BRANCH_HEADER, branch)
-          .set(REQUEST_KEY_HEADER, randomUUID())
-          .send({
-            date,
-            firstLesson: 2,
-            lastLesson: 2,
-            title: 'Quarter exam',
-            subjectId: null,
-            rooms: [
-              { roomId: room, classIds: [classId], groupIds: [], invigilatorIds: invigilators },
-            ],
-            blockChoices: [],
-            confirm: true,
-          });
-        expect(created.status, JSON.stringify(created.body)).toBe(201);
-        return (created.body as { exam: { id: string } }).exam.id;
-      };
       const all = Object.values(people).map((one) => one.staffId);
       const listedExam = await examOn(s.branch, s.classId, NEXT_MONDAY, all);
       const cancelled = await examOn(s.branch, s.classId, '2026-10-26', all);
@@ -1364,6 +1383,116 @@ describe('teacher absences', () => {
         expect(listed.needsInvigilator.map((one) => one.examId)).not.toContain(started);
         expect(listed.needsInvigilator.map((one) => one.examId)).not.toContain(elsewhere);
       });
+    });
+
+    // Permission review should-fix 2: a person the branch no longer sees is
+    // named by nothing under every new cause, the cause still shown.
+    it('names nobody the branch no longer sees, in a locked group and as an invigilator', async () => {
+      const person = await load.teacher(t.north);
+      const away = await t.newBranch();
+      await t.database.migrator
+        .insertInto('staff_branches')
+        .values({ staff_id: person.staffId, branch_id: away, is_main: false })
+        .execute();
+      const awayScene = await scene({ branch: away, teacher: person, weekday: 2 });
+      const exam = await examOn(away, awayScene.classId, NEXT_MONDAY, [person.staffId]);
+      await lockedAt(person.accountId, new Date(START));
+      await t.database.migrator
+        .deleteFrom('staff_branches')
+        .where('staff_id', '=', person.staffId)
+        .where('branch_id', '=', away)
+        .execute();
+      const awayVice = await t.kit.completeSession('Nodira', 'Qosimova');
+      await t.kit.giveRole(awayVice.account.id, {
+        role: 'academic_vice_principal',
+        branchId: away,
+      });
+      const listed = await attention(away, awayVice.cookie);
+      expect(listed.needsTeacher).toEqual([
+        expect.objectContaining({
+          cause: 'locked',
+          teacher: { id: person.staffId, kind: 'person', name: '' },
+        }),
+      ]);
+      expect(listed.needsInvigilator).toEqual([
+        expect.objectContaining({
+          examId: exam,
+          invigilators: [{ id: person.staffId, name: '', cause: 'locked' }],
+        }),
+      ]);
+    });
+
+    // Permission review should-fix 3: every reader and role of the cause.
+    it('shows the Principal the cause on the home lists and the day page', async () => {
+      const s = await scene();
+      await statusFrom(s.teacher.staffId, 'inactive', NEXT_MONDAY);
+      const principal = await t.kit.completeSession('Jasur', 'Ergashev');
+      await t.kit.giveRole(principal.account.id, { role: 'principal', branchId: s.branch });
+      const listed = await attention(s.branch, principal.cookie);
+      expect(listed.needsTeacher.map((one) => one.cause)).toEqual(['inactive']);
+      expect(await awayOn(s, NEXT_MONDAY, principal.cookie)).toEqual([
+        { state: 'needs_teacher', away: 'inactive' },
+      ]);
+    });
+
+    it('keeps a lesson recorded as taught during an absence "needs a teacher" in the absence’s lessons while the person is also inactive', async () => {
+      const s = await scene();
+      const absence = await stored(
+        s.teacher.staffId,
+        { startsOn: MONDAY, endsOn: null },
+        { from: at(MONDAY, '00:00'), until: null },
+      );
+      await statusFrom(s.teacher.staffId, 'inactive', NEXT_MONDAY);
+      const [lesson] = await lessonsOn(s, NEXT_MONDAY);
+      if (lesson === undefined) throw new Error('No lesson.');
+      await t.database.migrator
+        .insertInto('lesson_absence_taught')
+        .values({
+          branch_id: s.branch,
+          lesson_id: lesson.id,
+          recorded_by: await viceAccount(),
+          recorded_at: new Date(START),
+        })
+        .execute();
+      const listed = absenceLessonsSchema.parse(ok(await lessonsOf(s.branch, absence)).body);
+      expect(listed.lessons.find((one) => one.id === lesson.id)?.state).toBe('needs_teacher');
+      expect(await awayOn(s, NEXT_MONDAY)).toEqual([{ state: 'needs_teacher', away: 'inactive' }]);
+    });
+
+    // Spec review must-fix 3: `06`, "Leaving or going inactive. The system
+    // lists the future lessons in every branch".
+    it('lists the lessons of a person inactive from a date in the person’s other branch too', async () => {
+      const home = await scene();
+      const person = await load.teacher(home.branch);
+      await hours(home.branch, person.staffId, [1]);
+      const away = await t.newBranch();
+      await t.database.migrator
+        .insertInto('staff_branches')
+        .values({ staff_id: person.staffId, branch_id: away, is_main: false })
+        .execute();
+      const awayScene = await scene({ branch: away, teacher: person, weekday: 2 });
+      const awayVice = await t.kit.completeSession('Gulnora', 'Karimova');
+      await t.kit.giveRole(awayVice.account.id, {
+        role: 'academic_vice_principal',
+        branchId: away,
+      });
+      ok(
+        await t.post(`/api/people/staff/${person.staffId}/status`, home.branch, {
+          status: 'inactive',
+          from: NEXT_MONDAY,
+        }),
+      );
+      const listed = await attention(away, awayVice.cookie);
+      expect(listed.needsTeacher).toEqual([
+        expect.objectContaining({
+          cause: 'inactive',
+          teacher: expect.objectContaining({ id: person.staffId }) as unknown,
+          firstDate: '2026-10-20',
+        }),
+      ]);
+      expect(await awayOn(awayScene, TUESDAY, awayVice.cookie)).toEqual([
+        { state: 'upcoming', away: null },
+      ]);
     });
 
     it('lists a locked teacher’s future lessons in every branch of the person (the done-when of 5.7a-2a)', async () => {

@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions, type Transaction } from '../../database/transactions.js';
@@ -291,10 +293,14 @@ describe('teachers away in the database', () => {
         .where('id', '=', person.accountId)
         .execute();
       const [span] = await spansOf(person.accountId);
-      expect(span?.unlocked_at).not.toBeNull();
-      expect((span?.unlocked_at ?? new Date(0)).getTime()).toBeGreaterThanOrEqual(
-        new Date('2026-10-01T09:00:00+05:00').getTime(),
+      // The start of the day of the database's own clock in Tashkent (spec
+      // review should-fix 1), never before the lock.
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tashkent' }).format(
+        new Date(),
       );
+      const dayStart = at(today, '00:00').getTime();
+      const lockedAtMoment = new Date('2026-10-01T09:00:00+05:00').getTime();
+      expect(span?.unlocked_at?.getTime()).toBe(Math.max(dayStart, lockedAtMoment));
     });
 
     it('refuses an unlock of the application without a moment', async () => {
@@ -346,6 +352,108 @@ describe('teachers away in the database', () => {
           ),
         ),
       ).toMatch(/permission denied/);
+    });
+  });
+
+  // Spec review must-fix 2: the backfill of 0097, run again on the rows as
+  // the earlier code wrote them (no moments, no spans), in a transaction
+  // that is rolled back.
+  describe('the backfill of 0097', () => {
+    class Rollback extends Error {
+      constructor(readonly rows: unknown) {
+        super('rollback');
+      }
+    }
+
+    const statementOf = async (pattern: RegExp): Promise<string> => {
+      const text = await readFile(
+        fileURLToPath(
+          new URL('../../../../../db/migrations/0097_teachers_away.sql', import.meta.url),
+        ),
+        'utf8',
+      );
+      const statement = pattern.exec(text)?.[0] ?? '';
+      expect(statement).not.toBe('');
+      return statement;
+    };
+
+    const rolledBack = async (work: (transaction: Transaction) => Promise<unknown>) => {
+      try {
+        await database.migrator.transaction().execute(async (transaction) => {
+          throw new Rollback(await work(transaction));
+        });
+      } catch (error) {
+        if (error instanceof Rollback) return error.rows;
+        throw error;
+      }
+      throw new Error('Not rolled back.');
+    };
+
+    it('gives every status row its days’ starts, a cut and a taken-back row included', async () => {
+      const person = await kit.teacher(north);
+      const cutRow = await status(person.staffId, 'inactive', '2026-10-20');
+      await cut(cutRow, '2026-10-27');
+      const takenBack = await status(person.staffId, 'left', '2026-11-02');
+      await cut(takenBack, '2026-11-02');
+      const statement = await statementOf(
+        /insert into staff_status_moments \(status_id, staff_id, applies_from, applies_until\)\nselect[\s\S]*?;\n/,
+      );
+      const rows = await rolledBack(async (transaction) => {
+        await sql`delete from staff_status_moments`.execute(transaction);
+        await sql.raw(statement).execute(transaction);
+        return await transaction
+          .selectFrom('staff_status_moments')
+          .innerJoin('staff_statuses', 'staff_statuses.id', 'staff_status_moments.status_id')
+          .select([
+            'staff_statuses.status',
+            'staff_status_moments.applies_from',
+            'staff_status_moments.applies_until',
+          ])
+          .where('staff_status_moments.staff_id', '=', person.staffId)
+          .orderBy('staff_status_moments.applies_from')
+          .orderBy('staff_statuses.status')
+          .execute();
+      });
+      expect(rows).toEqual([
+        {
+          status: 'active',
+          applies_from: at('2026-09-01', '00:00'),
+          applies_until: at('2026-10-20', '00:00'),
+        },
+        {
+          status: 'inactive',
+          applies_from: at('2026-10-20', '00:00'),
+          applies_until: at('2026-10-27', '00:00'),
+        },
+        {
+          status: 'left',
+          applies_from: at('2026-11-02', '00:00'),
+          applies_until: at('2026-11-02', '00:00'),
+        },
+      ]);
+    });
+
+    it('opens a span for each account locked now, and none for one unlocked', async () => {
+      const locked = await kit.teacher(north);
+      const unlocked = await kit.teacher(north);
+      await lock(locked.accountId);
+      await lock(unlocked.accountId);
+      await unlock(unlocked.accountId, '2026-10-15T12:00:00+05:00');
+      const statement = await statementOf(
+        /insert into account_lock_spans \(account_id, locked_at\)\nselect[\s\S]*?;\n/,
+      );
+      const rows = await rolledBack(async (transaction) => {
+        await sql`delete from account_lock_spans`.execute(transaction);
+        await sql.raw(statement).execute(transaction);
+        return transaction
+          .selectFrom('account_lock_spans')
+          .select(['account_id', 'locked_at', 'unlocked_at'])
+          .where('account_id', 'in', [locked.accountId, unlocked.accountId])
+          .execute();
+      });
+      expect(rows).toEqual([
+        { account_id: locked.accountId, locked_at: new Date(NOW), unlocked_at: null },
+      ]);
     });
   });
 
