@@ -778,6 +778,93 @@ describe('the teacher, the subject and the room', () => {
     ]);
   });
 
+  // Task 5.7a-2b (decisions 5 and 7, review correction 3): a room closed over
+  // a span of a dated call blocks a lesson or an exam meeting it, half-open;
+  // a pattern call never reads the spans and keeps the status rules.
+  describe('a room closed for a span (task 5.7a-2b)', () => {
+    const DAY = '2026-11-10';
+    const closedFacts = (mode: 'pattern' | 'dated', status: EngineRoom['status'] = 'in_use') =>
+      facts({
+        mode,
+        rooms: new Map([
+          ['lab', room('lab', { status, closed: [{ day: DAY, start: L2.start, end: 1440 }] })],
+          ['r1', room('r1')],
+          ['r2', room('r2')],
+        ]),
+      });
+
+    it('blocks a dated lesson in the room inside the span', () => {
+      expect(
+        codes(checkTimetable([place({ day: DAY, ...L2, roomId: 'lab' })], closedFacts('dated'))),
+      ).toEqual(['room_closed']);
+      expect(
+        only(
+          checkTimetable([place({ day: DAY, ...L3, roomId: 'lab' })], closedFacts('dated')),
+          'room_closed',
+        ).map((one) => one.detail),
+      ).toEqual([{ roomId: 'lab' }]);
+    });
+
+    it('allows a lesson ending at the span’s start, on another day, or in another room of the call', () => {
+      const f = closedFacts('dated');
+      expect(codes(checkTimetable([place({ day: DAY, ...L1, roomId: 'lab' })], f))).toEqual([]);
+      expect(
+        codes(checkTimetable([place({ day: '2026-11-13', ...L3, roomId: 'lab' })], f)),
+      ).toEqual([]);
+      const results = checkTimetable(
+        [
+          place({ id: 'in-lab', day: DAY, ...L3, roomId: 'lab', classId: '7a' }),
+          place({
+            id: 'elsewhere',
+            day: DAY,
+            ...L3,
+            roomId: 'r2',
+            classId: '7b',
+            teacherIds: ['t2'],
+          }),
+        ],
+        f,
+      );
+      expect(results.map((one) => [one.rule, one.lessonIds])).toEqual([
+        ['room_closed', ['in-lab']],
+      ]);
+    });
+
+    it('blocks an exam whose room meets the span', () => {
+      expect(
+        codes(
+          checkTimetable(
+            [exam({ day: DAY, examRooms: [{ roomId: 'lab', students: 4 }] })],
+            closedFacts('dated'),
+          ),
+        ),
+      ).toContain('room_closed');
+    });
+
+    it('never reads the spans in a pattern call, where under repair stays a warning', () => {
+      expect(
+        codes(checkTimetable([place({ day: '2', ...L3, roomId: 'lab' })], closedFacts('pattern'))),
+      ).toEqual([]);
+      expect(
+        checkTimetable(
+          [place({ day: '2', ...L3, roomId: 'lab' })],
+          closedFacts('pattern', 'under_repair'),
+        ),
+      ).toEqual([expect.objectContaining({ rule: 'room_under_repair', severity: 'warning' })]);
+    });
+
+    it('gives room_closed alone, no warning beside it, for a room under repair in a dated call', () => {
+      expect(
+        codes(
+          checkTimetable(
+            [place({ day: DAY, ...L3, roomId: 'lab' })],
+            closedFacts('dated', 'under_repair'),
+          ),
+        ),
+      ).toEqual(['room_closed']);
+    });
+  });
+
   it('warns on a room under repair, never blocks (review correction 4)', () => {
     const results = checkTimetable([place({ roomId: 'repair' })], facts());
     expect(results).toEqual([

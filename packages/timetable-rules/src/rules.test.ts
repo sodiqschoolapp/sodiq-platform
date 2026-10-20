@@ -41,7 +41,7 @@ describe('FIXED_RULES', () => {
       RULE_ORDER.filter(
         (code) =>
           !WARNINGS.includes(code) &&
-          !['outside_year', 'vacation', 'substitute_vacancy'].includes(code) &&
+          !['outside_year', 'vacation', 'substitute_vacancy', 'room_closed'].includes(code) &&
           !code.startsWith('invigilator_'),
       ),
     );

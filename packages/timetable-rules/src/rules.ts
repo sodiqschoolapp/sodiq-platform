@@ -47,6 +47,8 @@ export const RULE_ORDER = [
   'subject_inactive',
   'room_inactive',
   'room_under_repair',
+  // Task 5.7a-2b: a room closed for a span of a dated call (decision 5).
+  'room_closed',
   'travel_time',
   'travel_time_not_set',
   // Invigilators (06, Exam; review correction 2).
