@@ -276,6 +276,7 @@ describe('the routes that work without sign-in', () => {
       'POST /api/timetable/bulk-cancels/check',
       'POST /api/timetable/exams',
       'POST /api/timetable/exams/:id/cancel',
+      'POST /api/timetable/exams/check',
       'POST /api/timetable/lessons/:id/cancel',
       'POST /api/timetable/lessons/:id/correction',
       'POST /api/timetable/lessons/:id/move',
