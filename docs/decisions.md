@@ -281,6 +281,25 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 20 October 2026: day template and slot length changes after publishing (task 5.6b-4a)
+
+Plan approved on pull request #176 with corrections 1 to 3; decisions 1 to 10 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a task split). 5.6b-4 is split into 5.6b-4a (the API: lesson dates, rewrite, slot-in-use refusal, locks, preview answer, bodies, notices, audit) and 5.6b-4b (the preview dialog, the choices sent with the save, the handbook) | Decision 1; the API alone is a full session |
+| **Look first** (a new table, a reading that changes every rewrite). A published version's weekly days are those its publish checked, stored in `timetable_version_days` (0091, slots with breaks); the dated expansion and the pattern facts of a version no longer a draft read them, facts stay on the stretch's first date; a version published before 0091 is read from the templates on its start | Decision 3, spec review of the plan must-fix 1 and 2; a block keeps its weekly times (`weeklyNumber`), which a later template no longer has; the breaks are stored so a withdraw's check of the version that runs again reads the day its blocks were placed in (build) |
+| **Look first** (a pinned list widened). Notice kind `timetable.template_changed` with the change's date, in `NOTIFICATION_KINDS` and `WEEK_KINDS` | Decision 6; `06`, Everyone is told |
+| **Look first** (a lock changed, no rule weakened). Every write of `day_templates` holds the branch row `for no key update` (1.5 decision 12 said `for update`); the four changes lock people, classes and years before writing; the test of 1.5 that held the row `for update` holds it as the route does | Decision 7, review correction 1; `.claude/rules/timetable.md` |
+| The lesson dates of a change are the dates after today, from its date to the end of the branch's last year not closed, where some grade's slots (kind, type, times), weekday followed or exam week differ | Decision 2 |
+| A used lesson slot is a lesson number a published block takes for a grade on the weekday; removed (the number gone) or reordered (another slot type at it) refuses `template_slot_in_use`; breaks, start, lengths and later lesson slots change freely; special dates follow the shortened-day row | Decision 4, corrections 2 and 3 |
+| Overlaps refuse `calendar_blocked`; exams keep their calendar codes; a two-grade group pulled apart is cancelled "not in the day's template" | Decision 5 |
+| The four bodies and the preview take an optional strict `days` without `groupBlocks`; every id of it is checked against the branch before any lock (`refuseForeignChoices`, shared with the calendar) | Decision 8 |
+| No new audit action: the change's own entry carries the rewrite's lists, written after the rewrite | Decision 9 |
+| Creating, renaming, archiving and restoring a slot type or a template rewrites nothing | Decision 10 |
+| **Build decision.** A stored one-day change is sorted at its stored times, as after a special template that shifts the times (5.6b-2a): a move whose place the change shifts needs a decision; none follows its slot | The stored change names times, not a lesson number; following it would rewrite a stored record the person made |
+| **Build decision.** No student-overlap test: the only unit with students of two grades is a two-grade group, whose lessons are cancelled when its grades' times come apart (decision 5), so a template change cannot put a student in two places | Plan test 5's student case has no path |
+
 ## 20 October 2026: a day off for one grade of a two-grade group (task 5.6b-3)
 
 Plan approved on pull request #175 with corrections 1 and 2; decisions 1 to 7 confirmed there. Flagged on issue #42.
