@@ -185,9 +185,15 @@ export function CorrectionDialog({
                 options={[
                   { value: '', label: t('timetable.day.teacherChoose') },
                   // Task 5.7a-1 (decision 12): the absent teacher may be recorded
-                  // as having taught it after all.
+                  // as having taught it after all; so may a locked one (5.7a-2a,
+                  // decision 7). An inactive or left one is not offered by the server.
                   ...teachers.data.teachers
-                    .filter((one) => lesson.absent || one.id !== lesson.teacher?.id)
+                    .filter(
+                      (one) =>
+                        lesson.away === 'absence' ||
+                        lesson.away === 'locked' ||
+                        one.id !== lesson.teacher?.id,
+                    )
                     .map((one) => ({ value: one.id, label: one.name })),
                 ]}
                 {...untick('teacherId')}

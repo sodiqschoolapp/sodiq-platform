@@ -199,11 +199,15 @@ export function DayPage(): React.JSX.Element {
     }
     // A started lesson is held or unresolved (task 5.6a-4, `lessonStateOf`).
     if (lesson.state === 'held') return t('timetable.day.held');
-    // Task 5.7a-1: a lesson of an absent teacher keeps its teacher and needs one.
+    // Tasks 5.7a-1 and 5.7a-2a: a lesson of a teacher away keeps its teacher and needs one.
     if (lesson.state === 'unresolved') {
-      return lesson.absent ? t('timetable.day.unresolvedAbsent') : t('timetable.day.unresolved');
+      if (lesson.away === 'absence') return t('timetable.day.unresolvedAbsent');
+      return lesson.away === null
+        ? t('timetable.day.unresolved')
+        : t(`timetable.day.unresolved_${lesson.away}`);
     }
-    if (lesson.absent) return t('timetable.day.needsTeacherAbsent');
+    if (lesson.away === 'absence') return t('timetable.day.needsTeacherAbsent');
+    if (lesson.away !== null) return t(`timetable.day.needsTeacher_${lesson.away}`);
     return t('timetable.day.asPlanned');
   };
 
@@ -324,7 +328,10 @@ export function DayPage(): React.JSX.Element {
                         <TableCell>{lesson.subject.names[language]}</TableCell>
                         <TableCell>
                           {lesson.teacher?.name ?? t('timetable.day.needsTeacher')}
-                          {lesson.absent && <> · {t('timetable.day.absent')}</>}
+                          {lesson.away === 'absence' && <> · {t('timetable.day.absent')}</>}
+                          {lesson.away !== null && lesson.away !== 'absence' && (
+                            <> · {t(`timetable.day.away_${lesson.away}`)}</>
+                          )}
                         </TableCell>
                         <TableCell>{lesson.room?.name ?? t('timetable.day.needsRoom')}</TableCell>
                         <TableCell>
