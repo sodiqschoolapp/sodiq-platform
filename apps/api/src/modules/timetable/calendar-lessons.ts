@@ -27,6 +27,7 @@ import {
   examBlocked,
   examLessonsOf,
   examPlacementOf,
+  examWeekLessonsOn,
   examWriteOf,
   findingsLessonsOn,
   sortExams,
@@ -35,6 +36,7 @@ import {
   storedExamLessonsOn,
   type ExamAudit,
   type ExamBlockChoice,
+  type ExamChoiceOf,
   type SortedExam,
 } from './calendar-exams.js';
 import { runningUntil } from './chain.js';
@@ -140,6 +142,8 @@ interface ExamNeed {
   readonly examId: string;
   readonly date: string;
   readonly classId: string;
+  /** The block's first minute after the save, which names it in the save's choices. */
+  readonly start: number;
   /** The dated lessons of the block, by placement id. */
   readonly lessonIds: readonly string[];
 }
@@ -418,20 +422,34 @@ export class TimetableCalendarLessons {
     const keepAudit: KeepAudit[] = [];
 
     // Task 5.6b-2c-1: the exams standing on the dates written, locked, and
-    // the choices for shared blocks: the stored one of an exam and class
-    // first (decision 5), else the save's.
+    // the choices for shared blocks, per block (spec review of the code,
+    // must-fix 6): the stored one of an exam, class and pattern block first
+    // (decision 5), else the save's, named by the block's first minute.
     const standing = await standingExamsOn(transaction, branchId, written);
+    const sentKeyOf = (examId: string, classId: string, start: number) =>
+      `${examId.toLowerCase()}|${classId.toLowerCase()}|${String(start)}`;
     const sentChoices = new Map(
       (input.days.examBlocks ?? []).map((one) => [
-        `${one.examId.toLowerCase()}|${one.classId.toLowerCase()}`,
+        sentKeyOf(one.examId, one.classId, one.start),
         one.choice,
       ]),
     );
     const storedChoices = new Map<string, ExamBlockChoice>();
-    const storedChoiceOf = (examId: string, classId: string) =>
-      storedChoices.get(`${examId}|${classId}`) ?? null;
-    const choiceOf = (examId: string, classId: string): ExamBlockChoice | null =>
-      storedChoiceOf(examId, classId) ?? sentChoices.get(`${examId}|${classId}`) ?? null;
+    const storedChoiceOf =
+      (examId: string): ExamChoiceOf =>
+      (classId, block) => {
+        for (const pattern of block.patternBlockIds) {
+          const found = storedChoices.get(`${examId}|${classId}|${pattern}`);
+          if (found !== undefined) return found;
+        }
+        return null;
+      };
+    const choiceOf =
+      (examId: string): ExamChoiceOf =>
+      (classId, block) =>
+        storedChoiceOf(examId)(classId, block) ??
+        sentChoices.get(sentKeyOf(examId, classId, block.start)) ??
+        null;
 
     // Each stretch of each version, read as if it started on its first date.
     const stretches: Stretch[] = [];
@@ -496,6 +514,8 @@ export class TimetableCalendarLessons {
           (exam) => part.first <= exam.date && exam.date <= part.last,
         );
         const examsSorted = sortExams(ownExams, findings, branchId);
+        const groupOfRow = (loadRowId: string) =>
+          state.rows.find((row) => row.id === loadRowId)?.group_id ?? null;
         for (const one of examsSorted) {
           const lessonsThere = await storedExamLessonsOn(
             transaction,
@@ -503,8 +523,8 @@ export class TimetableCalendarLessons {
             one.exam.date,
             findings.begins(one.exam.date),
           );
-          for (const [classId, choice] of storedChoicesOf(one.exam, one.before, lessonsThere)) {
-            storedChoices.set(`${one.exam.id}|${classId}`, choice);
+          for (const [key, choice] of storedChoicesOf(one.exam, one.before, lessonsThere)) {
+            storedChoices.set(`${one.exam.id}|${key}`, choice);
           }
         }
         const coveredOf = (on: DatedFindings) => {
@@ -515,7 +535,7 @@ export class TimetableCalendarLessons {
               one.exam,
               one.after,
               findingsLessonsOn(on, one.exam.date),
-              (classId) => choiceOf(one.exam.id, classId) ?? 'cancel',
+              (classId, block) => choiceOf(one.exam.id)(classId, block) ?? 'cancel',
             );
             for (const id of found.covered) covered.add(id);
           }
@@ -547,10 +567,11 @@ export class TimetableCalendarLessons {
         const examNeeds: ExamNeed[] = [];
         for (const one of examsSorted) {
           if (one.after === null) continue;
-          const there = findingsLessonsOn(sorting.findings, one.exam.date);
-          const fresh = examLessonsOf(one.exam, one.after, there, (classId) =>
-            storedChoiceOf(one.exam.id, classId),
-          );
+          const there = [
+            ...findingsLessonsOn(sorting.findings, one.exam.date),
+            ...examWeekLessonsOn(sorting.findings, state.blocks, groupOfRow, one.exam.date),
+          ];
+          const fresh = examLessonsOf(one.exam, one.after, there, storedChoiceOf(one.exam.id));
           if (fresh.groupMisses) {
             one.outcome = 'refused';
             one.code = 'calendar_exam_slots';
@@ -562,22 +583,29 @@ export class TimetableCalendarLessons {
               examId: one.exam.id,
               date: one.exam.date,
               classId: need.classId,
+              start: need.start,
               lessonIds: need.lessons.map((lesson) => lesson.id),
             });
           }
-          const skipped = new Set(
-            there
-              .filter(
-                (lesson) =>
-                  lesson.classIds.some((id) => one.exam.classIds.includes(id)) ||
-                  (lesson.groupId !== null && one.exam.groups.has(lesson.groupId)),
-              )
-              .map((lesson) => lesson.id),
-          );
+          // The recheck reads the choices sent: a block kept for the other
+          // classes stays in it without the class (must-fix 4); one cancelled,
+          // or still without a choice (refused below), is left out.
+          const decided = examLessonsOf(one.exam, one.after, there, choiceOf(one.exam.id));
+          const skipped = new Set([
+            ...decided.covered,
+            ...decided.needs.flatMap((need) => need.lessons.map((lesson) => lesson.id)),
+          ]);
           const others = examPlacementsOn(examsSorted, branchId, one.exam.date).filter(
             (placement) => placement.id !== `exam:${one.exam.id}`,
           );
-          for (const result of examBlocked(one, branchId, sorting.findings, others, skipped)) {
+          for (const result of examBlocked(
+            one,
+            branchId,
+            sorting.findings,
+            others,
+            skipped,
+            decided.outs,
+          )) {
             examBlockedHere.push({ examId: one.exam.id, result });
           }
         }
@@ -681,9 +709,9 @@ export class TimetableCalendarLessons {
           day: one.exam.date,
         })),
         ...examNeedsAll
-          .filter((need) => choiceOf(need.examId, need.classId) === null)
+          .filter((need) => !sentChoices.has(sentKeyOf(need.examId, need.classId, need.start)))
           .map((need): ErrorDetail => ({
-            path: `exams.${need.examId}.${need.classId}`,
+            path: `exams.${need.examId}.${need.classId}.${String(need.start)}`,
             code: 'calendar_exam_block_choice',
             message: 'A shared block newly under an exam needs a choice.',
             day: need.date,
@@ -781,8 +809,8 @@ export class TimetableCalendarLessons {
                   sorted: one.exams,
                   begins: one.sorting.findings.begins,
                   // The preview takes no choice it was not sent: "cancel" in its place.
-                  choiceOf: (examId, classId) =>
-                    choiceOf(examId, classId) ?? (input.preview ? 'cancel' : null),
+                  choiceOf: (examId) => (classId, block) =>
+                    choiceOf(examId)(classId, block) ?? (input.preview ? 'cancel' : null),
                   audit: examAudit,
                 }),
           ),
@@ -890,11 +918,12 @@ export class TimetableCalendarLessons {
         .filter((need) => need.examId === one.exam.id)
         .map((need) => ({
           classId: need.classId,
+          start: need.start,
           lessons: need.lessonIds.flatMap((id) => {
             const found = unitOfDated(id);
             return found === undefined ? [] : [found];
           }),
-          choice: sentChoices.get(`${need.examId}|${need.classId}`) ?? null,
+          choice: sentChoices.get(sentKeyOf(need.examId, need.classId, need.start)) ?? null,
         })),
     }));
     let lessons: CalendarLessons = {

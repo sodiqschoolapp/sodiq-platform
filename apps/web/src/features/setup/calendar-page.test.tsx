@@ -690,6 +690,7 @@ describe('the calendar page', () => {
             ? [
                 {
                   classId: BROWN,
+                  start: 590,
                   lessons: [{ unitId: GROUP, subjectId: SPORT }],
                   choice: null,
                 },
@@ -743,7 +744,7 @@ describe('the calendar page', () => {
         en.setup.calendar.lessons.exams.outcomes.cancelled_day_off,
       );
       expect(line(uid(66))?.dataset.outcome).toBe('moved');
-      const block = dialog.querySelector<HTMLElement>(`[data-block="${uid(67)}|${BROWN}"]`);
+      const block = dialog.querySelector<HTMLElement>(`[data-block="${uid(67)}|${BROWN}|590"]`);
       expect(block?.textContent).toContain('PE 9-10 Sport');
       const save = within(dialog).getByRole('button', { name: en.setup.calendar.save });
       expect(save).toHaveProperty('disabled', true);
@@ -762,7 +763,7 @@ describe('the calendar page', () => {
         ).toEqual({
           dayChangesKey: 'e'.repeat(64),
           dayDecisions: [],
-          examBlocks: [{ examId: uid(67), classId: BROWN, choice: 'keep' }],
+          examBlocks: [{ examId: uid(67), classId: BROWN, start: 590, choice: 'keep' }],
         });
       });
     },

@@ -1,7 +1,9 @@
 import {
   checkCandidates,
+  patternIdOf,
   type EngineDay,
   type EngineUnit,
+  type PatternBlock,
   type Placement,
   type RuleResult,
 } from '@sodiq/timetable-rules';
@@ -261,7 +263,13 @@ export function sortExams(
       after: null,
     });
     if (days.some((day) => !day.lessons && day.reason !== 'no_template')) {
-      return { exam, outcome: 'cancelled_day_off', code: null, before, after: null };
+      return {
+        exam,
+        outcome: 'cancelled_day_off',
+        code: null,
+        before,
+        after: null,
+      };
     }
     if (new Set(days.map(dayKeyOf)).size > 1) return refused('calendar_exam_templates');
     const [day] = days;
@@ -273,7 +281,13 @@ export function sortExams(
     if (first === undefined || last === undefined) return refused('calendar_exam_slots');
     const after = { start: first.start, end: last.end };
     const moved = after.start !== before.start || after.end !== before.end;
-    return { exam, outcome: moved ? 'moved' : 'kept', code: null, before, after };
+    return {
+      exam,
+      outcome: moved ? 'moved' : 'kept',
+      code: null,
+      before,
+      after,
+    };
   });
 }
 
@@ -281,6 +295,8 @@ export function sortExams(
 export interface ExamDayLesson {
   readonly id: string;
   readonly blockId: string;
+  /** The pattern block it comes from: the same over the rewrite of its date. */
+  readonly patternBlockId: string;
   readonly doublePairId: string | null;
   readonly start: number;
   readonly end: number;
@@ -291,59 +307,112 @@ export interface ExamDayLesson {
   readonly cancelCause: string | null;
 }
 
+/**
+ * A shared block of a sitting class under an exam, with its double partner
+ * (both halves of a double lesson together, `06`, Exam): its pattern blocks,
+ * which a stored choice is read by, and its first minute after the save,
+ * which a choice sent with the save names.
+ */
+export interface ExamSharedBlock {
+  readonly patternBlockIds: readonly string[];
+  readonly start: number;
+}
+
+/** The choice for a sitting class and a shared block under an exam, `null` when none. */
+export type ExamChoiceOf = (classId: string, block: ExamSharedBlock) => ExamBlockChoice | null;
+
 /** What a standing exam does to the lessons of its date. */
 export interface ExamLessons {
   /** The lessons under the exam: cancelled "exam" by it (those not cancelled are written so). */
   readonly covered: ReadonlySet<string>;
   /** The classes kept out of a shared block for the exam, by block. */
   readonly outs: readonly { readonly blockId: string; readonly classId: string }[];
-  /** The sitting classes with a shared block and no choice, with the lessons of those blocks. */
+  /** The shared blocks of a sitting class with no choice, with their lessons. */
   readonly needs: readonly {
     readonly classId: string;
+    readonly start: number;
     readonly lessons: readonly ExamDayLesson[];
   }[];
-  /** A sitting group whose own lessons are not one block (or a double pair) at the exam's time. */
+  /** The choices taken, per sitting class and shared block. */
+  readonly chosen: readonly {
+    readonly classId: string;
+    readonly start: number;
+    readonly choice: ExamBlockChoice;
+  }[];
+  /**
+   * A sitting group whose own lessons are not one block (or a double pair)
+   * at the exam's time, or whose double has a half outside it.
+   */
   readonly groupMisses: boolean;
 }
 
 const overlaps = (lesson: ExamDayLesson, time: { start: number; end: number }) =>
   lesson.start < time.end && time.start < lesson.end;
 
+/** The blocks of `blockIds` with their double partners, as groups of blocks. */
+function withPartners(blockIds: readonly string[], lessons: readonly ExamDayLesson[]): string[][] {
+  const units: string[][] = [];
+  const seen = new Set<string>();
+  for (const blockId of [...blockIds].sort()) {
+    if (seen.has(blockId)) continue;
+    const pair = lessons.find((one) => one.blockId === blockId)?.doublePairId ?? null;
+    const unit =
+      pair === null
+        ? [blockId]
+        : [
+            ...new Set(
+              lessons.filter((one) => one.doublePairId === pair).map((one) => one.blockId),
+            ),
+          ].sort();
+    for (const id of unit) seen.add(id);
+    units.push(unit);
+  }
+  return units;
+}
+
 /**
  * The lessons a standing exam covers on its date (`06`, Exam; `edge/timetable`,
  * Exams, "10 Brown sits the exam, but its lesson in slot 3 is a block shared
  * with classes that do not sit" and "A group sits an exam"): a sitting group's
  * own lessons at its time, which must be one block or the two of a double pair
- * at exactly its time (review correction 1), the other groups of that block
- * kept (correction 2); each block of a sitting class at its time, whole when
- * every class of the block sits, else by `choiceOf` for the exam and class:
- * `cancel` the whole block, `keep` it with the class out, `null` none yet.
- * The lessons of a sitting group are left to the group's rule.
+ * at exactly its time, with no half of a double outside it (review correction
+ * 1), the other groups of that block kept (correction 2); each block of a
+ * sitting class at its time with its double partner (both halves together),
+ * whole when every class of it sits, else by `choiceOf` for the class and
+ * that block: `cancel` the whole block, `keep` it with the class out, `null`
+ * none yet. The lessons of a sitting group are left to the group's rule.
  */
 export function examLessonsOf(
   exam: StandingExam,
   time: { readonly start: number; readonly end: number },
   lessons: readonly ExamDayLesson[],
-  choiceOf: (classId: string) => ExamBlockChoice | null,
+  choiceOf: ExamChoiceOf,
 ): ExamLessons {
   const covered = new Set<string>();
   const outs: { blockId: string; classId: string }[] = [];
-  const needs: { classId: string; lessons: ExamDayLesson[] }[] = [];
+  const needs: { classId: string; start: number; lessons: ExamDayLesson[] }[] = [];
+  const chosen: { classId: string; start: number; choice: ExamBlockChoice }[] = [];
   let groupMisses = false;
   const byBlock = new Map<string, ExamDayLesson[]>();
   for (const lesson of lessons) {
     byBlock.set(lesson.blockId, [...(byBlock.get(lesson.blockId) ?? []), lesson]);
   }
   for (const groupId of exam.groups.keys()) {
-    const own = lessons.filter(
-      (one) => one.groupId === groupId && one.cancelCause !== 'exam_week' && overlaps(one, time),
-    );
+    // A lesson cancelled "exam week" is the group's lesson all the same
+    // (0060, `exam_group_problem`); it stays so (spec review of the code, must-fix 5).
+    const ownAll = lessons.filter((one) => one.groupId === groupId);
+    const own = ownAll.filter((one) => overlaps(one, time));
     const blocks = [...new Set(own.map((one) => one.blockId))];
     const pairs = new Set(own.map((one) => one.doublePairId));
     const start = Math.min(...own.map((one) => one.start));
     const end = Math.max(...own.map((one) => one.end));
+    // A half of a double of the group outside the exam (0060, `exam_group_problem`).
+    const halfOutside = ownAll.some(
+      (one) => one.doublePairId !== null && pairs.has(one.doublePairId) && !overlaps(one, time),
+    );
     const fits =
       own.length > 0 &&
+      !halfOutside &&
       start === time.start &&
       end === time.end &&
       (blocks.length === 1 || (blocks.length === 2 && pairs.size === 1 && !pairs.has(null)));
@@ -352,41 +421,49 @@ export function examLessonsOf(
   }
   const sitting = new Set(exam.classIds);
   for (const classId of exam.classIds) {
+    const holds = (one: ExamDayLesson) =>
+      one.classIds.includes(classId) && (one.groupId === null || !exam.groups.has(one.groupId));
     const blockIds = [
       ...new Set(
-        lessons
-          .filter(
-            (one) =>
-              one.classIds.includes(classId) &&
-              (one.groupId === null || !exam.groups.has(one.groupId)) &&
-              overlaps(one, time),
-          )
-          .map((one) => one.blockId),
+        lessons.filter((one) => holds(one) && overlaps(one, time)).map((one) => one.blockId),
       ),
-    ].sort();
-    let missing: ExamDayLesson[] | null = null;
-    for (const blockId of blockIds) {
-      const block = byBlock.get(blockId) ?? [];
+    ];
+    for (const unit of withPartners(blockIds, lessons)) {
+      const block = unit.flatMap((id) => byBlock.get(id) ?? []);
       const shared = block.some((one) => one.classIds.some((id) => !sitting.has(id)));
       if (!shared) {
         for (const one of block) covered.add(one.id);
         continue;
       }
-      const choice = choiceOf(classId);
-      if (choice === 'keep') outs.push({ blockId, classId });
-      else if (choice === 'cancel') for (const one of block) covered.add(one.id);
-      else missing = [...(missing ?? []), ...block];
+      const start = Math.min(...block.map((one) => one.start));
+      const choice = choiceOf(classId, {
+        patternBlockIds: [...new Set(block.map((one) => one.patternBlockId))].sort(),
+        start,
+      });
+      if (choice === null) {
+        needs.push({ classId, start, lessons: block });
+        continue;
+      }
+      chosen.push({ classId, start, choice });
+      if (choice === 'keep') {
+        for (const blockId of unit) {
+          if ((byBlock.get(blockId) ?? []).some(holds)) outs.push({ blockId, classId });
+        }
+      } else {
+        for (const one of block) covered.add(one.id);
+      }
     }
-    if (missing !== null) needs.push({ classId, lessons: missing });
   }
-  return { covered, outs, needs, groupMisses };
+  return { covered, outs, needs, chosen, groupMisses };
 }
 
 /**
- * The stored choice for each sitting class of an exam whose blocks at its
- * stored time are shared, by class (decisions 5 and 11): `keep` when the class
- * is kept out of a block, `cancel` when a shared block of the class is
- * cancelled "exam"; none when the class has no shared block there.
+ * The stored choices of an exam's sitting classes for the shared blocks at
+ * its stored time, by class and pattern block (decisions 5 and 11; spec
+ * review of the code, must-fix 6: "For each [block], the Academic Vice
+ * Principal chooses"): `keep` for a block the class is kept out of, `cancel`
+ * for a shared block cancelled "exam"; none for a block not under it before.
+ * Keyed `<class>|<pattern block>`.
  */
 export function storedChoicesOf(
   exam: StandingExam,
@@ -394,20 +471,27 @@ export function storedChoicesOf(
   lessons: readonly ExamDayLesson[],
 ): Map<string, ExamBlockChoice> {
   const choices = new Map<string, ExamBlockChoice>();
-  for (const out of exam.outs) choices.set(out.classId, 'keep');
+  const patternOf = new Map(lessons.map((one) => [one.blockId, one.patternBlockId]));
+  for (const out of exam.outs) {
+    const pattern = patternOf.get(out.blockId);
+    if (pattern !== undefined) choices.set(`${out.classId}|${pattern}`, 'keep');
+  }
   const sitting = new Set(exam.classIds);
   for (const classId of exam.classIds) {
-    if (choices.has(classId)) continue;
-    const blockIds = new Set(
-      lessons
-        .filter((one) => one.classIds.includes(classId) && overlaps(one, before))
-        .map((one) => one.blockId),
-    );
-    for (const blockId of blockIds) {
-      const block = lessons.filter((one) => one.blockId === blockId);
+    const blockIds = [
+      ...new Set(
+        lessons
+          .filter((one) => one.classIds.includes(classId) && overlaps(one, before))
+          .map((one) => one.blockId),
+      ),
+    ];
+    for (const unit of withPartners(blockIds, lessons)) {
+      const block = lessons.filter((one) => unit.includes(one.blockId));
       const shared = block.some((one) => one.classIds.some((id) => !sitting.has(id)));
-      if (shared && block.some((one) => one.cancelCause === 'exam')) {
-        choices.set(classId, 'cancel');
+      if (!shared || !block.some((one) => one.cancelCause === 'exam')) continue;
+      for (const one of block) {
+        const key = `${classId}|${one.patternBlockId}`;
+        if (!choices.has(key)) choices.set(key, 'cancel');
       }
     }
   }
@@ -418,17 +502,62 @@ export function storedChoicesOf(
 export function findingsLessonsOn(findings: DatedFindings, date: string): ExamDayLesson[] {
   return findings.dated.lessons
     .filter((one) => one.date === date)
-    .map((one) => ({
-      id: one.placement.id,
-      blockId: one.placement.blockId ?? one.placement.id,
-      doublePairId: one.placement.doublePairId,
-      start: one.placement.start,
-      end: one.placement.end,
-      classId: one.placement.classId,
-      groupId: one.placement.groupId,
-      classIds: one.placement.classIds,
-      cancelCause: null,
-    }));
+    .map((one) => {
+      const blockId = one.placement.blockId ?? one.placement.id;
+      return {
+        id: one.placement.id,
+        blockId,
+        patternBlockId: patternIdOf(blockId)?.id ?? blockId,
+        doublePairId: one.placement.doublePairId,
+        start: one.placement.start,
+        end: one.placement.end,
+        classId: one.placement.classId,
+        groupId: one.placement.groupId,
+        classIds: one.placement.classIds,
+        cancelCause: null,
+      };
+    });
+}
+
+/**
+ * The group lessons of a date that the write creates cancelled "exam week"
+ * (an exam week with "no regular lessons"), at their pattern block's times as
+ * the write creates them (`dated-lessons.ts`, decision 6 of 5.5b-1): the
+ * findings leave them out, and a sitting group's rule reads them (spec review
+ * of the code, must-fix 5). No classes: they take no part in a class's rule.
+ */
+export function examWeekLessonsOn(
+  findings: DatedFindings,
+  blocks: readonly PatternBlock[],
+  groupOf: (loadRowId: string) => string | null,
+  date: string,
+): ExamDayLesson[] {
+  const byId = new Map(blocks.map((one) => [one.id, one]));
+  return findings.dated.cancelled
+    .filter((one) => one.date === date && one.reason === 'exam_week')
+    .flatMap((one) => {
+      const block = byId.get(one.blockId);
+      if (block === undefined) return [];
+      return block.lessons.flatMap((lesson): ExamDayLesson[] => {
+        const groupId = groupOf(lesson.loadRowId);
+        return groupId === null
+          ? []
+          : [
+              {
+                id: `${lesson.id}@${date}`,
+                blockId: `${block.id}@${date}`,
+                patternBlockId: block.id,
+                doublePairId: block.doublePairId === null ? null : `${block.doublePairId}@${date}`,
+                start: block.start,
+                end: block.end,
+                classId: null,
+                groupId,
+                classIds: [],
+                cancelCause: 'exam_week',
+              },
+            ];
+      });
+    });
 }
 
 /** The stored lessons of a date, their minutes from `begins`, with the classes of their groups. */
@@ -444,6 +573,7 @@ export async function storedExamLessonsOn(
     .select([
       'lessons.id',
       'lessons.block_id',
+      'lesson_blocks.pattern_block_id',
       'lesson_blocks.double_pair_id',
       'lessons.starts_at',
       'lessons.ends_at',
@@ -470,6 +600,7 @@ export async function storedExamLessonsOn(
   return rows.map((row) => ({
     id: row.id,
     blockId: row.block_id,
+    patternBlockId: row.pattern_block_id,
     doublePairId: row.double_pair_id,
     start: minutesOf(row.starts_at),
     end: minutesOf(row.ends_at),
@@ -523,8 +654,12 @@ export function examPlacementOf(
 /**
  * The blocked results of a moved or kept exam on its date (decision 9): the
  * engine's check of the exam against the lessons of the date after the save
- * but those it covers or keeps its classes out of, the other branches' claims
- * and the branch's other exams; warnings move nothing.
+ * but those it covers (`skipped`: cancelled "exam" by it, or a block still
+ * waiting for its choice), with a class kept out of a block taken out of it
+ * (`outs`): the block stays held for the other classes, so its teacher and
+ * room are checked against the exam's invigilators and rooms (spec review of
+ * the code, must-fix 4); the other branches' claims and the branch's other
+ * exams; warnings move nothing.
  */
 export function examBlocked(
   sorted: SortedExam,
@@ -532,12 +667,20 @@ export function examBlocked(
   findings: DatedFindings,
   others: readonly Placement[],
   skipped: ReadonlySet<string>,
+  outs: readonly { readonly blockId: string; readonly classId: string }[],
 ): RuleResult[] {
   if (sorted.after === null) return [];
   const candidate = examPlacementOf(sorted.exam, branchId, sorted.after);
   const own = findings.dated.lessons
     .filter((one) => one.date === sorted.exam.date && !skipped.has(one.placement.id))
-    .map((one) => (one.tutorFollowed ? { ...one.placement, teacherIds: [] } : one.placement));
+    .map((one) => (one.tutorFollowed ? { ...one.placement, teacherIds: [] } : one.placement))
+    .map((placement) => {
+      const blockId = placement.blockId ?? placement.id;
+      const out = new Set(outs.filter((one) => one.blockId === blockId).map((one) => one.classId));
+      return out.size === 0
+        ? placement
+        : { ...placement, classIds: placement.classIds.filter((id) => !out.has(id)) };
+    });
   // A class that sits only in a group has no row of the version, so the
   // facts may not name it.
   const facts = findings.factsOn(sorted.exam.date);
@@ -574,7 +717,7 @@ export interface ExamAudit {
   readonly restored: string[];
   readonly outsAdded: { blockId: string; classId: string }[];
   readonly outsRemoved: { blockId: string; classId: string }[];
-  readonly choices: { classId: string; choice: ExamBlockChoice }[];
+  readonly choices: { classId: string; start: number; choice: ExamBlockChoice }[];
 }
 
 /**
@@ -588,8 +731,8 @@ export function examWriteOf(input: {
   readonly branchId: string;
   readonly sorted: readonly SortedExam[];
   readonly begins: (date: string) => Date;
-  /** The stored choice for an exam and class, else the save's (`null`: none, a fault by then). */
-  readonly choiceOf: (examId: string, classId: string) => ExamBlockChoice | null;
+  /** The stored choice for an exam, class and block, else the save's (`null`: none, a fault by then). */
+  readonly choiceOf: (examId: string) => ExamChoiceOf;
   readonly audit: ExamAudit[];
 }): ExamWrite {
   const { branchId, sorted, begins } = input;
@@ -650,9 +793,7 @@ export function examWriteOf(input: {
         const perExam = new Map<string, ExamLessons>();
         for (const one of own) {
           if (one.after === null) continue;
-          const found = examLessonsOf(one.exam, one.after, lessons, (classId) =>
-            input.choiceOf(one.exam.id, classId),
-          );
+          const found = examLessonsOf(one.exam, one.after, lessons, input.choiceOf(one.exam.id));
           perExam.set(one.exam.id, found);
           for (const id of found.covered) coveredAll.add(id);
         }
@@ -669,18 +810,23 @@ export function examWriteOf(input: {
             .execute();
         }
         // Decision 2 (spec review must-fix 2): a lesson cancelled "exam" of
-        // an exam's classes at its time before the save that no standing exam
-        // covers after it is held again.
+        // an exam's classes at its time before the save (or the other half of
+        // its double) that no standing exam covers after it is held again.
+        const wasUnder = (exam: SortedExam) => {
+          const under = lessons.filter((one) => overlaps(one, exam.before));
+          const pairs = new Set(under.flatMap((one) => one.doublePairId ?? []));
+          return (one: ExamDayLesson) =>
+            (overlaps(one, exam.before) ||
+              (one.doublePairId !== null && pairs.has(one.doublePairId))) &&
+            (one.classIds.some((id) => exam.exam.classIds.includes(id)) ||
+              (one.groupId !== null && exam.exam.groups.has(one.groupId)));
+        };
+        const under = new Map(own.map((exam) => [exam.exam.id, wasUnder(exam)]));
         const restore = lessons.filter(
           (one) =>
             one.cancelCause === 'exam' &&
             !coveredAll.has(one.id) &&
-            own.some(
-              (exam) =>
-                overlaps(one, exam.before) &&
-                (one.classIds.some((id) => exam.exam.classIds.includes(id)) ||
-                  (one.groupId !== null && exam.exam.groups.has(one.groupId))),
-            ),
+            own.some((exam) => under.get(exam.exam.id)?.(one) === true),
         );
         if (restore.length > 0) {
           await transaction
@@ -761,22 +907,14 @@ export function examWriteOf(input: {
                   },
             cancelled: cancel.filter((lesson) => ownCovered.has(lesson.id)).map((l) => l.id),
             restored: restore
-              .filter(
-                (lesson) =>
-                  overlaps(lesson, one.before) &&
-                  (lesson.classIds.some((id) => one.exam.classIds.includes(id)) ||
-                    (lesson.groupId !== null && one.exam.groups.has(lesson.groupId))),
-              )
+              .filter((lesson) => under.get(one.exam.id)?.(lesson) === true)
               .map((lesson) => lesson.id),
             outsAdded: add,
             outsRemoved: [
               ...removed,
               ...drop.filter((out) => !removed.some((gone) => keyOf(gone) === keyOf(out))),
             ],
-            choices: one.exam.classIds.flatMap((classId) => {
-              const choice = input.choiceOf(one.exam.id, classId);
-              return choice === null ? [] : [{ classId, choice }];
-            }),
+            choices: [...(found?.chosen ?? [])],
           });
         }
       }

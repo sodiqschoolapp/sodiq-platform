@@ -2526,10 +2526,24 @@ describe('calendar entries after publishing', () => {
       // Task 5.6b-2c-1: a block's choice naming another branch's exam or
       // class, or an unknown one, on every save and preview that takes it.
       for (const examBlocks of [
-        [{ examId: examOf[south.branch] ?? '', classId: north.seniorId, choice: 'keep' }],
-        [{ examId: UNKNOWN, classId: north.seniorId, choice: 'keep' }],
-        [{ examId: examOf[north.branch] ?? '', classId: south.seniorId, choice: 'cancel' }],
-        [{ examId: examOf[north.branch] ?? '', classId: UNKNOWN, choice: 'cancel' }],
+        [
+          {
+            examId: examOf[south.branch] ?? '',
+            classId: north.seniorId,
+            start: 480,
+            choice: 'keep',
+          },
+        ],
+        [{ examId: UNKNOWN, classId: north.seniorId, start: 480, choice: 'keep' }],
+        [
+          {
+            examId: examOf[north.branch] ?? '',
+            classId: south.seniorId,
+            start: 480,
+            choice: 'cancel',
+          },
+        ],
+        [{ examId: examOf[north.branch] ?? '', classId: UNKNOWN, start: 480, choice: 'cancel' }],
       ]) {
         for (const attempt of [
           () => create(north.branch, { ...dayOff('2026-11-16'), examBlocks }),
@@ -2675,7 +2689,7 @@ describe('calendar entries after publishing', () => {
             s.branch,
             {
               ...dayOff('2026-11-16'),
-              examBlocks: [{ examId: UNKNOWN, classId: s.seniorId, choice: 'keep' }],
+              examBlocks: [{ examId: UNKNOWN, classId: s.seniorId, start: 480, choice: 'keep' }],
             },
             cookie,
           ),
@@ -2686,7 +2700,7 @@ describe('calendar entries after publishing', () => {
             {
               action: 'create',
               record: dayOff('2026-11-16'),
-              examBlocks: [{ examId: UNKNOWN, classId: s.seniorId, choice: 'cancel' }],
+              examBlocks: [{ examId: UNKNOWN, classId: s.seniorId, start: 480, choice: 'cancel' }],
             },
             cookie,
           ),

@@ -12092,6 +12092,7 @@ export interface operations {
                         examId: string;
                         /** Format: uuid */
                         classId: string;
+                        start: number;
                         /** @enum {string} */
                         choice: "cancel" | "keep";
                     }[];
@@ -12260,6 +12261,7 @@ export interface operations {
                         examId: string;
                         /** Format: uuid */
                         classId: string;
+                        start: number;
                         /** @enum {string} */
                         choice: "cancel" | "keep";
                     }[];
@@ -12296,6 +12298,7 @@ export interface operations {
                         examId: string;
                         /** Format: uuid */
                         classId: string;
+                        start: number;
                         /** @enum {string} */
                         choice: "cancel" | "keep";
                     }[];
@@ -12316,6 +12319,7 @@ export interface operations {
                         examId: string;
                         /** Format: uuid */
                         classId: string;
+                        start: number;
                         /** @enum {string} */
                         choice: "cancel" | "keep";
                     }[];
@@ -12336,6 +12340,7 @@ export interface operations {
                         examId: string;
                         /** Format: uuid */
                         classId: string;
+                        start: number;
                         /** @enum {string} */
                         choice: "cancel" | "keep";
                     }[];
@@ -12680,6 +12685,7 @@ export interface operations {
                                 blocks: {
                                     /** Format: uuid */
                                     classId: string;
+                                    start: number;
                                     lessons: {
                                         /** Format: uuid */
                                         unitId: string;
@@ -12865,6 +12871,7 @@ export interface operations {
                         examId: string;
                         /** Format: uuid */
                         classId: string;
+                        start: number;
                         /** @enum {string} */
                         choice: "cancel" | "keep";
                     }[];
@@ -13028,6 +13035,7 @@ export interface operations {
                         examId: string;
                         /** Format: uuid */
                         classId: string;
+                        start: number;
                         /** @enum {string} */
                         choice: "cancel" | "keep";
                     }[];
@@ -13191,6 +13199,7 @@ export interface operations {
                         examId: string;
                         /** Format: uuid */
                         classId: string;
+                        start: number;
                         /** @enum {string} */
                         choice: "cancel" | "keep";
                     }[];

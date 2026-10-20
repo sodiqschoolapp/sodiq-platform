@@ -347,7 +347,8 @@ export class Calendar {
           // Task 5.6b-2c-1: so is every exam and class of a block's choice.
           const classIds = [
             ...new Set([
-              ...(days.dayKeeps ?? []).map((one) => one.classId),
+              // One spelling for both (spec review of the code, should-fix 6).
+              ...(days.dayKeeps ?? []).map((one) => one.classId.toLowerCase()),
               ...(days.examBlocks ?? []).map((one) => one.classId.toLowerCase()),
             ]),
           ];

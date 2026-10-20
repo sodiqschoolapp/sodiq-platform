@@ -136,21 +136,29 @@ export const CALENDAR_EXAM_BLOCK_CHOICES = ['cancel', 'keep'] as const;
  * exam's time a calendar save newly puts in a block shared with classes that
  * do not sit, the choice of the Exams row: `cancel` the whole block with the
  * reason "exam", or `keep` it for the other classes and take the sitting
- * class out of it. Once per exam and class.
+ * class out of it. Once per exam, class and block ("For each [block], the
+ * Academic Vice Principal chooses"), the block named by its first minute of
+ * the day after the save, as the preview lists it (`blocks[].start`).
  */
 export const calendarExamBlocksSchema = z
   .array(
     z.strictObject({
       examId: z.uuid(),
       classId: z.uuid(),
+      start: z.int().min(0).max(1440),
       choice: z.enum(CALENDAR_EXAM_BLOCK_CHOICES),
     }),
   )
   .max(500)
   .refine(
-    (list) => new Set(list.map((one) => `${one.examId}|${one.classId}`)).size === list.length,
+    (list) =>
+      new Set(
+        list.map(
+          (one) => `${one.examId.toLowerCase()}|${one.classId.toLowerCase()}|${String(one.start)}`,
+        ),
+      ).size === list.length,
     {
-      message: 'Each exam and class once.',
+      message: 'Each exam, class and block once.',
     },
   );
 
@@ -416,6 +424,8 @@ export const calendarLessonsSchema = z.object({
       blocks: z.array(
         z.object({
           classId: z.uuid(),
+          /** The block's first minute after the save: names it in `examBlocks`. */
+          start: z.int().min(0).max(1440),
           lessons: z.array(z.object({ unitId: z.uuid(), subjectId: z.uuid() })),
           choice: z.enum(CALENDAR_EXAM_BLOCK_CHOICES).nullable(),
         }),

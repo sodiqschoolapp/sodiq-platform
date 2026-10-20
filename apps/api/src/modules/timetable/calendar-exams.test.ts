@@ -135,11 +135,18 @@ describe('exams under a calendar change', () => {
     }
   }
 
-  const placeAt = async (branch: string, version: string, loadRowId: string, slot: number) => {
+  const placeAt = async (
+    branch: string,
+    version: string,
+    loadRowId: string,
+    slot: number,
+    extra: { weekday?: number; double?: boolean } = {},
+  ) => {
     const placed = await post(`/api/timetable/versions/${version}/pattern`, branch, {
       loadRowId,
-      weekday: 1,
+      weekday: extra.weekday ?? 1,
       slotPosition: slot,
+      ...(extra.double === true ? { double: true } : {}),
     });
     expect(placed.status, JSON.stringify(placed.body)).toBe(201);
   };
@@ -151,9 +158,11 @@ describe('exams under a calendar change', () => {
    * Mondays maths of the grade-7 class in slot 1, history of the grade-10
    * class in slot 3, and physical education in slot 5 of a group of the
    * grade-9 and grade-10 classes, or with `twoGroups` two parallel groups of
-   * both, each with its own teacher.
+   * both, each with its own teacher. With `double` the maths is a double
+   * lesson in slots 1 and 3; with `tuesday` the grade-10 class has art on
+   * Tuesdays in slot 5.
    */
-  async function scene(input: { twoGroups?: boolean } = {}) {
+  async function scene(input: { twoGroups?: boolean; double?: boolean; tuesday?: boolean } = {}) {
     const branch = await t.newBranch();
     const year = await load.classes.year(branch);
     for (const [index, [start, end]] of QUARTERS.entries()) {
@@ -207,12 +216,20 @@ describe('exams under a calendar change', () => {
       group_id?: string;
       subject_id: string;
       teacher_id: string;
+      lessons_per_week?: number;
+      double_lessons?: boolean;
     }) => load.row({ branch_id: branch, version_id: version, lessons_per_week: 1, ...values });
     await placeAt(
       branch,
       version,
-      await row({ class_id: classId, subject_id: maths, teacher_id: teacherId }),
+      await row({
+        class_id: classId,
+        subject_id: maths,
+        teacher_id: teacherId,
+        ...(input.double === true ? { lessons_per_week: 2, double_lessons: true } : {}),
+      }),
       1,
+      { double: input.double === true },
     );
     await placeAt(
       branch,
@@ -220,17 +237,30 @@ describe('exams under a calendar change', () => {
       await row({ class_id: seniorId, subject_id: history, teacher_id: seniorTeacher }),
       3,
     );
+    if (input.tuesday === true) {
+      const art = await load.classes.subject({ grades: [10], journalType: 'attendance_only' });
+      await placeAt(
+        branch,
+        version,
+        await row({ class_id: seniorId, subject_id: art, teacher_id: await teacher(art, [10]) }),
+        5,
+        { weekday: 2 },
+      );
+    }
     const groups: string[] = [];
     for (let index = 0; index < (input.twoGroups === true ? 2 : 1); index += 1) {
       groups.push(await load.classes.group(branch, year, sport, [nineId, seniorId]));
     }
     const groupRows: string[] = [];
+    const groupTeachers: string[] = [];
     for (const groupId of groups) {
+      const groupTeacher = await teacher(sport, [9, 10]);
+      groupTeachers.push(groupTeacher);
       groupRows.push(
         await row({
           group_id: groupId,
           subject_id: sport,
-          teacher_id: await teacher(sport, [9, 10]),
+          teacher_id: groupTeacher,
         }),
       );
     }
@@ -252,6 +282,7 @@ describe('exams under a calendar change', () => {
       teacherId,
       seniorTeacher,
       groups,
+      groupTeachers,
       regular,
       later,
       short,
@@ -544,11 +575,17 @@ describe('exams under a calendar change', () => {
         cancel: [maths?.id ?? ''],
       });
       const record = specialDay(OCT19, s.later);
+      const lessons = await lessonsOn(s.branch, OCT19);
+      const claimsBefore = await examClaims(sat.id);
 
       const shown = await preview(s.branch, { action: 'create', record });
       expect(shown.lessons.exams.map((one) => [one.outcome, one.after])).toEqual([
         ['moved', { start: 540, end: 585 }],
       ]);
+      // The preview writes nothing (plan test 12).
+      expect(await lessonsOn(s.branch, OCT19)).toEqual(lessons);
+      expect((await examRow(sat.id)).starts_at).toEqual(at(OCT19, '08:00'));
+      expect(await examClaims(sat.id)).toEqual(claimsBefore);
 
       const saved = okay(await create(s.branch, record), 201);
 
@@ -687,6 +724,67 @@ describe('exams under a calendar change', () => {
       expect(kept?.id).toBe(maths?.id);
       expect(kept?.cancel_cause).toBe('exam');
     });
+
+    it('that follows another weekday keeps the exam; the lesson it creates in its time is cancelled "exam"; the preview writes nothing (plan tests 8 and 12)', async () => {
+      const s = await scene();
+      // A working Saturday by Tuesday's timetable, which has no lessons.
+      const record = specialDay(OCT24, s.regular, { followsWeekday: 2 });
+      const saved = okay(await create(s.branch, record), 201);
+      const sat = await exam(s, {
+        date: OCT24,
+        from: '08:55',
+        until: '09:40',
+        slots: [3, 3],
+        classIds: [s.seniorId],
+        invigilator: s.teacherId,
+      });
+      const byMonday = { ...record, followsWeekday: 1 };
+
+      const shown = await preview(s.branch, { action: 'edit', id: saved.id, record: byMonday });
+      expect(shown.lessons.exams.map((one) => [one.outcome, one.code])).toEqual([['kept', null]]);
+      expect(await lessonsOn(s.branch, OCT24)).toEqual([]);
+      expect(await examNotices(s.branch)).toEqual([]);
+
+      okay(await edit(s.branch, saved.id, byMonday));
+
+      expect((await examRow(sat.id)).starts_at).toEqual(at(OCT24, '08:55'));
+      expect(
+        (await lessonOf(s.branch, OCT24, s.seniorId)).map((one) => [
+          one.starts_at,
+          one.cancel_cause,
+        ]),
+      ).toEqual([[at(OCT24, '08:55'), 'exam']]);
+      expect((await lessonOf(s.branch, OCT24, s.classId)).map((one) => one.cancel_cause)).toEqual([
+        null,
+      ]);
+    });
+
+    it('that puts a double lesson under the exam cancels both halves "exam" together', async () => {
+      const s = await scene({ double: true });
+      const record = specialDay(OCT24, s.regular, { followsWeekday: 2 });
+      const saved = okay(await create(s.branch, record), 201);
+      await exam(s, {
+        date: OCT24,
+        from: '08:00',
+        until: '08:45',
+        slots: [1, 1],
+        classIds: [s.classId],
+        invigilator: s.seniorTeacher,
+      });
+
+      okay(await edit(s.branch, saved.id, { ...record, followsWeekday: 1 }));
+
+      // 06, Exam: "both halves of a double lesson together".
+      expect(
+        (await lessonOf(s.branch, OCT24, s.classId)).map((one) => [
+          one.starts_at,
+          one.cancel_cause,
+        ]),
+      ).toEqual([
+        [at(OCT24, '08:00'), 'exam'],
+        [at(OCT24, '08:55'), 'exam'],
+      ]);
+    });
   });
 
   describe('an exam week', () => {
@@ -776,6 +874,87 @@ describe('exams under a calendar change', () => {
       expect(await outsOf(sat.id)).toEqual([{ block_id: moved?.block_id, class_id: s.seniorId }]);
     });
 
+    it('no longer shared after the save: the class\'s own lesson is cancelled "exam" and its out row goes (plan test 9d)', async () => {
+      const s = await scene({ tuesday: true });
+      const record = specialDay(OCT24, s.regular, { followsWeekday: 1 });
+      const saved = okay(await create(s.branch, record), 201);
+      const [sport] = await lessonOf(s.branch, OCT24, s.groups[0] ?? '');
+      const sat = await senior(
+        s,
+        { outs: [{ blockId: sport?.block_id ?? '', classId: s.seniorId }] },
+        OCT24,
+      );
+
+      // By Tuesday: grade 9 has no lesson, grade 10 its own art in slot 5.
+      okay(await edit(s.branch, saved.id, { ...record, followsWeekday: 2 }));
+
+      expect((await examRow(sat.id)).starts_at).toEqual(at(OCT24, '09:50'));
+      expect(
+        (await lessonOf(s.branch, OCT24, s.seniorId)).map((one) => [
+          one.starts_at,
+          one.cancel_cause,
+        ]),
+      ).toEqual([[at(OCT24, '09:50'), 'exam']]);
+      expect(await outsOf(sat.id)).toEqual([]);
+    });
+
+    it('kept for the other classes is checked against the exam: its teacher invigilating refuses the save by date; cancelled whole, the save goes through', async () => {
+      for (const choice of ['keep', 'cancel'] as const) {
+        const s = await scene();
+        const record = specialDay(OCT24, s.regular, { followsWeekday: 2 });
+        const saved = okay(await create(s.branch, record), 201);
+        // The physical education teacher invigilates the grade-10 exam.
+        const sat = await exam(s, {
+          date: OCT24,
+          from: '09:50',
+          until: '10:35',
+          slots: [5, 5],
+          classIds: [s.seniorId],
+          invigilator: s.groupTeachers[0] ?? '',
+        });
+        const examBlocks = [{ examId: sat.id, classId: s.seniorId, start: 590, choice }];
+        const byMonday = { ...record, followsWeekday: 1 };
+
+        const shown = await preview(s.branch, {
+          action: 'edit',
+          id: saved.id,
+          record: byMonday,
+          examBlocks,
+        });
+        const before = await t.auditCount();
+        const saving = await edit(s.branch, saved.id, { ...byMonday, examBlocks });
+
+        if (choice === 'keep') {
+          // The block is held for grade 9 only: no class meets the exam there.
+          expect(shown.lessons.exams[0]?.blockedRules).toEqual(['teacher_double']);
+          refusedWith(saving, 409, 'calendar_blocked');
+          expect(detailsOf(saving).some((one) => one.day === OCT24)).toBe(true);
+          expect(await lessonsOn(s.branch, OCT24)).toEqual([]);
+          expect(await t.auditCount()).toBe(before);
+        } else {
+          expect(shown.lessons.exams[0]?.blockedRules).toEqual([]);
+          okay(saving);
+          expect(
+            (await lessonOf(s.branch, OCT24, s.groups[0] ?? '')).map((one) => one.cancel_cause),
+          ).toEqual(['exam']);
+        }
+      }
+    });
+
+    it('under a day off: the exam is cancelled and its out row goes with the block (plan test 1)', async () => {
+      const s = await scene();
+      const [sport] = await lessonOf(s.branch, OCT19, s.groups[0] ?? '');
+      const sat = await senior(s, {
+        outs: [{ blockId: sport?.block_id ?? '', classId: s.seniorId }],
+      });
+
+      okay(await create(s.branch, dayOff(OCT19)), 201);
+
+      expect((await examRow(sat.id)).cancel_cause).toBe('day_off');
+      expect(await outsOf(sat.id)).toEqual([]);
+      expect(await lessonsOn(s.branch, OCT19)).toEqual([]);
+    });
+
     it('cancelled whole: the block the special day writes again is cancelled "exam"', async () => {
       const s = await scene();
       const [sport] = await lessonOf(s.branch, OCT19, s.groups[0] ?? '');
@@ -806,9 +985,9 @@ describe('exams under a calendar change', () => {
         const byMonday = { ...record, followsWeekday: 1 };
 
         const shown = await preview(s.branch, { action: 'edit', id: saved.id, record: byMonday });
-        expect(shown.lessons.exams[0]?.blocks.map((one) => [one.classId, one.choice])).toEqual([
-          [s.seniorId, null],
-        ]);
+        expect(
+          shown.lessons.exams[0]?.blocks.map((one) => [one.classId, one.start, one.choice]),
+        ).toEqual([[s.seniorId, 590, null]]);
         expect(shown.lessons.exams[0]?.blocks[0]?.lessons.map((one) => one.unitId)).toContain(
           s.groups[0],
         );
@@ -818,12 +997,12 @@ describe('exams under a calendar change', () => {
           detailsOf(refused)
             .filter((one) => one.code === 'calendar_exam_block_choice')
             .map((one) => one.path),
-        ).toEqual([`exams.${sat.id}.${s.seniorId}`]);
+        ).toEqual([`exams.${sat.id}.${s.seniorId}.590`]);
 
         okay(
           await edit(s.branch, saved.id, {
             ...byMonday,
-            examBlocks: [{ examId: sat.id, classId: s.seniorId, choice }],
+            examBlocks: [{ examId: sat.id, classId: s.seniorId, start: 590, choice }],
           }),
         );
 
@@ -873,6 +1052,8 @@ describe('exams under a calendar change', () => {
       ).toEqual([null]);
 
       const byTuesday = { ...record, dayTemplateId: s.later, followsWeekday: 2 };
+      const lessons = await lessonsOn(s.branch, OCT24);
+      const before = await t.auditCount();
       const shown = await preview(s.branch, { action: 'edit', id: saved.id, record: byTuesday });
       expect(shown.lessons.exams.map((one) => [one.outcome, one.code])).toEqual([
         ['refused', 'calendar_exam_slots'],
@@ -884,6 +1065,54 @@ describe('exams under a calendar change', () => {
           .filter((one) => one.code === 'calendar_exam_slots')
           .map((one) => one.path),
       ).toEqual([`exams.${sat.id}`]);
+      // Nothing written (review correction 1).
+      expect(await lessonsOn(s.branch, OCT24)).toEqual(lessons);
+      expect((await examRow(sat.id)).starts_at).toEqual(at(OCT24, '10:50'));
+      expect(await t.auditCount()).toBe(before);
+    });
+
+    it('in an exam week with "no regular lessons" stands over a save that writes its date, the lessons still cancelled "exam week"; a new template that moves it off them is refused', async () => {
+      const s = await scene({ twoGroups: true });
+      const [first, second] = s.groups;
+      const record = specialDay(OCT24, s.regular, {
+        followsWeekday: 1,
+        examWeek: 'no_regular_lessons',
+      });
+      const saved = okay(await create(s.branch, record), 201);
+      const sat = await exam(s, {
+        date: OCT24,
+        from: '09:50',
+        until: '10:35',
+        slots: [5, 5],
+        groupIds: [first ?? ''],
+        invigilator: s.teacherId,
+        subjectId: s.sport,
+      });
+
+      // edge/timetable, Exams: "In an exam week with 'no regular lessons' the
+      // lessons are already cancelled and stay so whatever happens to the
+      // exam". Grade 7 leaves the entry: its Saturday is written again.
+      okay(await edit(s.branch, saved.id, { ...record, gradeFrom: 9, gradeTo: 10 }));
+
+      expect((await examRow(sat.id)).starts_at).toEqual(at(OCT24, '09:50'));
+      for (const group of [first, second]) {
+        expect(
+          (await lessonOf(s.branch, OCT24, group ?? '')).map((one) => one.cancel_cause),
+        ).toEqual(['exam_week']);
+      }
+
+      // A lesson cancelled "exam week" keeps its pattern block's time, so the
+      // later template would leave the group no lesson at the exam's time.
+      const later = { ...record, gradeFrom: 9, gradeTo: 10, dayTemplateId: s.later };
+      const lessons = await lessonsOn(s.branch, OCT24);
+      const refused = await edit(s.branch, saved.id, later);
+      refusedWith(refused, 409, 'calendar_blocked');
+      expect(
+        detailsOf(refused)
+          .filter((one) => one.code === 'calendar_exam_slots')
+          .map((one) => one.path),
+      ).toEqual([`exams.${sat.id}`]);
+      expect(await lessonsOn(s.branch, OCT24)).toEqual(lessons);
     });
   });
 });

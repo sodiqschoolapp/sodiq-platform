@@ -4,22 +4,25 @@ import { CHECKBOX, CHECKBOX_TARGET, SUBSECTION_TITLE } from '@/components/ui/con
 import { ruleText } from '@/features/timetable/rule-text';
 import { schoolDateText } from '@/lib/dates';
 import { nameOf } from './setup-api';
-import { rangeText } from './templates-api';
+import { rangeText, slotTimeText } from './templates-api';
 
 type Choice = CalendarExamBlocks[number]['choice'];
 
-/** The key of an exam and a sitting class in the choices. */
-export const examBlockKeyOf = (examId: string, classId: string): string => `${examId}|${classId}`;
+/** The key of an exam, a sitting class and a shared block (its first minute) in the choices. */
+export const examBlockKeyOf = (examId: string, classId: string, start: number): string =>
+  `${examId}|${classId}|${String(start)}`;
 
 /** The choices to send, in the shape of the API. */
 export function examBlocksOf(choices: Readonly<Record<string, Choice>>): CalendarExamBlocks {
   return Object.entries(choices)
     .map(([key, choice]) => {
-      const [examId = '', classId = ''] = key.split('|');
-      return { examId, classId, choice };
+      const [examId = '', classId = '', start = '0'] = key.split('|');
+      return { examId, classId, start: Number(start), choice };
     })
     .sort((a, b) =>
-      examBlockKeyOf(a.examId, a.classId).localeCompare(examBlockKeyOf(b.examId, b.classId)),
+      examBlockKeyOf(a.examId, a.classId, a.start).localeCompare(
+        examBlockKeyOf(b.examId, b.classId, b.start),
+      ),
     );
 }
 
@@ -34,7 +37,9 @@ export function examsRefuseSave(
   return lessons.exams.some(
     (exam) =>
       exam.outcome === 'refused' ||
-      exam.blocks.some((block) => choices[examBlockKeyOf(exam.id, block.classId)] === undefined),
+      exam.blocks.some(
+        (block) => choices[examBlockKeyOf(exam.id, block.classId, block.start)] === undefined,
+      ),
   );
 }
 
@@ -101,18 +106,20 @@ export function CalendarExamsPreview({
               </p>
             )}
             {exam.blocks.map((block) => {
-              const key = examBlockKeyOf(exam.id, block.classId);
+              const key = examBlockKeyOf(exam.id, block.classId, block.start);
               const unit = unitName(block.classId);
               return (
                 <fieldset key={key} className="mt-1 grid gap-1" data-block={key}>
                   <legend>
                     {t('setup.calendar.lessons.exams.block', {
                       unit,
-                      lessons: block.lessons
+                      // A class can have two shared blocks under one exam: each
+                      // is named by its time.
+                      lessons: `${slotTimeText(t, block.start)} ${block.lessons
                         .map(
                           (lesson) => `${unitName(lesson.unitId)} ${subjectName(lesson.subjectId)}`,
                         )
-                        .join(', '),
+                        .join(', ')}`,
                     })}
                   </legend>
                   {(['cancel', 'keep'] as const).map((choice) => (
