@@ -713,6 +713,14 @@ export const ERROR_CODES = [
   'vacancy_has_load',
   /** A load row of any version names the vacancy: it cannot be deleted, only closed and kept (04, Vacancy; task 5.5c-2b). */
   'vacancy_in_load',
+  /** Task 5.7a-1: the absence would overlap another live absence of the person; `details` names it (`recordId`, `day` its first day). */
+  'absence_overlap',
+  /** Task 5.7a-1 (decision 5): the change would act on a day before today, on a lesson that has started, or on an absence that has started or ended (set the end instead). */
+  'absence_past',
+  /** Task 5.7a-1: the absence is withdrawn; a withdraw is final. */
+  'absence_withdrawn',
+  /** Task 5.7a-1 (decision 11): a vacancy cannot be absent; its lessons need a teacher already. */
+  'absence_person',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

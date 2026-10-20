@@ -204,6 +204,15 @@ export const staffReportSchema = z.strictObject({
         ),
       }),
     ),
+    /** The person's absences (task 5.7a-1), withdrawn ones marked; `until` `null` while open-ended. */
+    absences: z.array(
+      z.strictObject({
+        from: schoolDateSchema,
+        until: schoolDateSchema.nullable(),
+        reason: z.string(),
+        withdrawn: z.boolean(),
+      }),
+    ),
   }),
   /** The relative record marked as the same person (task 2.5b-2). */
   sameAsRelative: z.strictObject({ id: z.uuid(), fullName: z.string() }).nullable(),

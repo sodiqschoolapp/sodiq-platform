@@ -43,6 +43,7 @@ import { Notifications } from '../notifications/notifications.service.js';
 import { loadCalendarSettings } from '../setup/calendar-state.js';
 import { dayOf, loadStore } from '../setup/day-template-state.js';
 import { notFound } from '../setup/setup-refusals.js';
+import { absentLessons } from './absences-read.js';
 import { OUT_STATUSES, dayBeginnings } from './dated-check.js';
 import { examsOf } from './exams.service.js';
 import { TimetablePattern } from './pattern.service.js';
@@ -922,6 +923,7 @@ export class TimetableDayChanges {
     let roomId = lesson.roomId;
     let cancelCause = lesson.cancelCause;
     let warnings: readonly RuleResult[] = [];
+    let taught = false;
     if (input.kind === 'cancel') {
       if (lesson.cancelCause !== null) {
         throw new ApiException('lesson_cancelled', 409);
@@ -935,7 +937,10 @@ export class TimetableDayChanges {
         throw new ApiException('lesson_cancelled', 409);
       }
       if (input.kind === 'teacher' && input.teacherId === lesson.teacherId) {
-        throw new ApiException('teacher_unchanged', 409);
+        // Task 5.7a-1 (decision 12): the absent person taught it after all;
+        // the lesson keeps its teacher and is held from now on.
+        taught = (await absentLessons(transaction, [lesson])).has(id);
+        if (!taught) throw new ApiException('teacher_unchanged', 409);
       }
       const newRoom = input.kind === 'teacher' ? undefined : input.roomId;
       if (newRoom !== undefined && newRoom === lesson.roomId) {
@@ -1008,6 +1013,17 @@ export class TimetableDayChanges {
       })
       .where('id', '=', id)
       .execute();
+    if (taught) {
+      await transaction
+        .insertInto('lesson_absence_taught')
+        .values({
+          branch_id: branchId,
+          lesson_id: id,
+          recorded_by: access.accountId,
+          recorded_at: moment,
+        })
+        .execute();
+    }
     // The commit checks of 0058 now, so that a race meets the refusals here.
     await sql`set constraints all immediate`.execute(transaction);
     const notices = await sendWeekChanges(transaction, this.notifications, week, {
@@ -1029,6 +1045,7 @@ export class TimetableDayChanges {
         kind: input.kind,
         cancelCause,
         reason: input.reason,
+        ...(taught ? { taughtWhileAbsent: true } : {}),
         ...(input.kind !== 'cancel' && input.confirm === true ? { confirmed: true } : {}),
         warnings: warnings.map((one) => one.rule),
         notices: { ...notices },
@@ -1384,6 +1401,8 @@ export async function dayLessonsOf(
   }
   const roomOf = new Map(rooms.map((one) => [one.id, one.name]));
   const markOf = new Map(marks.map((one) => [one.lesson_id, one.changed_at]));
+  // Task 5.7a-1: a lesson of an absent person keeps its teacher and needs one.
+  const absent = await absentLessons(transaction, lessons);
   const dates = lessons.map((one) => one.date).sort();
   const begins = await dayBeginnings(
     transaction,
@@ -1423,9 +1442,11 @@ export async function dayLessonsOf(
           startsAt: one.startsAt,
           cancelled: one.cancelCause !== null,
           teacher: teacher?.kind ?? null,
+          absent: absent.has(one.id),
         },
         moment,
       ),
+      absent: absent.has(one.id),
       canCorrect: started && !closedBlocks.has(one.blockId),
     };
   });

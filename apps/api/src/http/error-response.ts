@@ -115,6 +115,11 @@ const MESSAGE: Record<ErrorCode, string> = {
   exam_rating_taken:
     'A journal is already linked to another rating exam of the same quarter; each is listed.',
   exam_rating_journal: 'A journal of the rating exam is of another subject or year than the exam.',
+  absence_overlap: 'The absence overlaps another absence of the person.',
+  absence_past:
+    'The change would act on a day before today or on a lesson that has started; set the end instead.',
+  absence_withdrawn: 'The absence is withdrawn.',
+  absence_person: 'A vacancy cannot be absent.',
   travel_time_same_branch: 'Travel time is set between two different branches.',
   subject_archived: 'The subject is archived. Restore it first.',
   department_not_academic: 'A subject belongs to a department of the Academic division.',

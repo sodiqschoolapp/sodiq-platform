@@ -17,6 +17,7 @@ import {
   type ImpactLesson,
 } from '@sodiq/timetable-rules';
 import type { Transaction } from '../../database/transactions.js';
+import { runAbsences } from './absences-read.js';
 import { datedLessonsOf, type DatedFindings } from './dated-check.js';
 import { needKeyOf, patternDateOf, vacanciesOf, writtenTeacherOf } from './dated-lessons.js';
 import type { SortedBulk } from './bulk-cancels-kept.js';
@@ -179,17 +180,20 @@ export async function impactOf(
   const own = publishImpact({ before, after });
   // Spec review must-fix 1: each carried version over its own run.
   const carriedImpacts: { one: CarriedImpact; impact: ReturnType<typeof publishImpact> }[] = [];
+  const carriedAfter: ImpactLesson[] = [];
   for (const one of carried) {
+    const oneAfter = [
+      ...(await writtenLessonsOf(transaction, one.after)),
+      ...(await keptStoredOf(one.versionId, one.firstDate, one.lastDate)),
+    ];
+    carriedAfter.push(...oneAfter);
     carriedImpacts.push({
       one,
       impact: publishImpact({
         before: (await isStored(one.versionId))
           ? await storedLessons(one.firstDate, one.lastDate, 'one_day')
           : one.before.lessons.map(impactLessonOf),
-        after: [
-          ...(await writtenLessonsOf(transaction, one.after)),
-          ...(await keptStoredOf(one.versionId, one.firstDate, one.lastDate)),
-        ],
+        after: oneAfter,
       }),
     });
   }
@@ -319,6 +323,10 @@ export async function impactOf(
         dropped: days.items.filter((one) => one.category === 'dropped').map((one) => one.answer),
         bulk: days.bulk.map((one) => one.answer),
         exams: days.exams.map((one) => one.answer),
+        absences: await runAbsences(transaction, draft.version.branch_id, [
+          ...after,
+          ...carriedAfter,
+        ]),
       },
       names,
     },

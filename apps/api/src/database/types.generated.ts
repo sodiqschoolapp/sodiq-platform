@@ -23,6 +23,19 @@ export type JsonValue = JsonArray | JsonObject | JsonPrimitive;
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
+export interface Absences {
+  applies_from: Timestamp;
+  applies_until: Timestamp | null;
+  created_at: Generated<Timestamp>;
+  created_by: string;
+  ends_on: string | null;
+  id: Generated<string>;
+  reason: string;
+  staff_id: string;
+  starts_on: string;
+  withdrawn_at: Timestamp | null;
+}
+
 export interface AcademicYears {
   branch_id: string;
   created_at: Generated<Timestamp>;
@@ -458,6 +471,13 @@ export interface KnownDevices {
   account_id: string;
   first_signed_in_at: Timestamp;
   token_hash: string;
+}
+
+export interface LessonAbsenceTaught {
+  branch_id: string;
+  lesson_id: string;
+  recorded_at: Timestamp;
+  recorded_by: string;
 }
 
 export interface LessonBlockClassOuts {
@@ -1110,6 +1130,7 @@ export interface TravelTimes {
 }
 
 export interface DB {
+  absences: Absences;
   academic_years: AcademicYears;
   account_second_steps: AccountSecondSteps;
   accounts: Accounts;
@@ -1148,6 +1169,7 @@ export interface DB {
   groups: Groups;
   journals: Journals;
   known_devices: KnownDevices;
+  lesson_absence_taught: LessonAbsenceTaught;
   lesson_block_class_outs: LessonBlockClassOuts;
   lesson_blocks: LessonBlocks;
   lesson_changes: LessonChanges;

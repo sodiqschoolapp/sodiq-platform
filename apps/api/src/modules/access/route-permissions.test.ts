@@ -643,6 +643,33 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     branch: 'request',
     roles: ['super_admin', 'academic_vice_principal'],
   },
+  // Task 5.7a-1: absences and the home page's lists, read by every reader of
+  // the timetable, entered under timetable create, changed and withdrawn
+  // under timetable edit.
+  'GET /api/timetable/absences': {
+    branch: 'request',
+    roles: ['super_admin', 'principal', 'academic_vice_principal'],
+  },
+  'GET /api/timetable/absences/:id/lessons': {
+    branch: 'request',
+    roles: ['super_admin', 'principal', 'academic_vice_principal'],
+  },
+  'GET /api/timetable/attention': {
+    branch: 'request',
+    roles: ['super_admin', 'principal', 'academic_vice_principal'],
+  },
+  'POST /api/timetable/absences': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'PATCH /api/timetable/absences/:id': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'POST /api/timetable/absences/:id/withdraw': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
   // Task 5.5a-3b-1: the causes of a draft's mark, read by every reader of the
   // timetable, and bringing it up to date, under timetable edit.
   'GET /api/timetable/versions/:id/out-of-date': {

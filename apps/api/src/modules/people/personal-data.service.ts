@@ -364,6 +364,15 @@ export class PersonalData {
         .orderBy('valid_from')
         .orderBy('created_at')
         .execute();
+      // Task 5.7a-1 (spec review should-fix 6): the absences held about the
+      // person, withdrawn ones too.
+      const absences = await transaction
+        .selectFrom('absences')
+        .select(['starts_on', 'ends_on', 'reason', 'withdrawn_at'])
+        .where('staff_id', '=', id)
+        .orderBy('starts_on')
+        .orderBy('id')
+        .execute();
       const availability = await transaction
         .selectFrom('staff_availability as a')
         .innerJoin('branches as b', 'b.id', 'a.branch_id')
@@ -531,6 +540,12 @@ export class PersonalData {
                 startMinutes: range.start_minutes,
                 endMinutes: range.end_minutes,
               })),
+          })),
+          absences: absences.map((row) => ({
+            from: row.starts_on,
+            until: row.ends_on,
+            reason: row.reason,
+            withdrawn: row.withdrawn_at !== null,
           })),
         },
         sameAsRelative: sameAs === undefined ? null : { id: sameAs.id, fullName: sameAs.full_name },

@@ -241,8 +241,12 @@ describe('the changed mark', () => {
 describe('the state of a lesson', () => {
   const startsAt = new Date('2026-10-12T04:00:00Z');
   const before = new Date(startsAt.getTime() - 1);
-  const state = (teacher: 'person' | 'vacancy' | null, cancelled: boolean, now: Date) =>
-    lessonStateOf({ startsAt, cancelled, teacher }, now);
+  const state = (
+    teacher: 'person' | 'vacancy' | null,
+    cancelled: boolean,
+    now: Date,
+    absent = false,
+  ) => lessonStateOf({ startsAt, cancelled, teacher, absent }, now);
 
   it('is upcoming or needs a teacher before its start', () => {
     expect(state('person', false, before)).toBe('upcoming');
@@ -259,8 +263,18 @@ describe('the state of a lesson', () => {
     expect(state('vacancy', false, startsAt)).toBe('unresolved');
   });
 
+  // Task 5.7a-1: a lesson of an absent person keeps its teacher and is "needs
+  // a teacher", then "unresolved" (edge/timetable, After publishing).
+  it('needs a teacher, then is unresolved, never held, while its person is absent', () => {
+    expect(state('person', false, before, true)).toBe('needs_teacher');
+    expect(state('person', false, startsAt, true)).toBe('unresolved');
+    expect(state('vacancy', false, before, true)).toBe('needs_teacher');
+    expect(state('vacancy', false, startsAt, true)).toBe('unresolved');
+  });
+
   it('is cancelled, never held, whoever its teacher is', () => {
     for (const now of [before, startsAt]) {
+      expect(state('person', true, now, true)).toBe('cancelled');
       expect(state('person', true, now)).toBe('cancelled');
       expect(state(null, true, now)).toBe('cancelled');
       expect(state('vacancy', true, now)).toBe('cancelled');

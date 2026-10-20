@@ -124,6 +124,12 @@ const MEMBERSHIP_FILTERED_TABLES: Record<
     policy: 'staff_membership',
     column: 'staff_id',
   },
+  absences: {
+    reason:
+      'The absences of a staff record, one for every branch the person works in (docs/spec/06, Teachers who work in several branches: "An absence is entered once for the person and covers every branch"; task 5.7a-1, decision 2 of pull request #185, Look first).',
+    policy: 'staff_membership',
+    column: 'staff_id',
+  },
   staff_status_role_ends: {
     reason:
       'The ends a "left" status wrote on the assignments of the account of a staff record, kept to put them back.',
@@ -180,6 +186,10 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
     "The Tutor rows of one assignment in every branch, ids and end moments only, for the audit entry of a role end or a `left` that the mirror carries to the rows of another branch than the request's (task 3.1a, correction 1 of the code review of pull request #88, Look first).",
   'assignments_subjects_end()':
     'Writes the end of an assignment on its subject rows, which the application cannot update, so the exclusion constraints of one Head Teacher per subject see every end (task 2.3b-1, decision 2 of pull request #63).',
+  'absences_of_teachers(uuid[],timestamp with time zone,timestamp with time zone)':
+    "The live absences of the persons named that meet a range, ids and moments only, for every reader of a lesson's state (task 5.7a-1, decision 3 of pull request #185, Look first): a branch whose link to the person was removed while it still holds the person's lessons reads the same state.",
+  'absence_notice_accounts(uuid,timestamp with time zone,timestamp with time zone)':
+    "The accounts of the current Academic Vice Principals of every branch linked to a person the transaction sees or holding the person's lessons in a range, ids only, for the notice of an absence (task 5.7a-1, decision 3 of pull request #185, Look first; as relative_notice_accounts).",
   'branch_moves_incoming(uuid)':
     "The open releases of students to one branch of the request, with the UID, name and grade of each student and nothing else of the record, for that branch's incoming list (task 3.3c, decision 2 of pull request #97, Look first): the student is still of the sending branch.",
   'branch_move_sending(uuid,uuid)':

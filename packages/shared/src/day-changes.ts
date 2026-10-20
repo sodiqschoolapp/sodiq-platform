@@ -113,6 +113,8 @@ export const dayLessonSchema = z.object({
   canRestore: z.boolean(),
   /** Held, unresolved, cancelled and so on, at the moment of the request (`lessonStateOf`, task 5.6a-4). */
   state: lessonStateSchema,
+  /** Its teacher is absent at its start (task 5.7a-1): "needs a teacher" or "unresolved". */
+  absent: z.boolean(),
   /**
    * Started, or the earlier half of its double started, in a year not closed:
    * the lesson is corrected, not changed for the day (task 5.6a-4, decision 5

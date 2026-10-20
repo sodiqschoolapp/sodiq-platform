@@ -33,6 +33,7 @@ import {
   sortBulkOf,
   type SortedBulk,
 } from './bulk-cancels-kept.js';
+import { runAbsences } from './absences-read.js';
 import { datedCheck, type DatedFindings } from './dated-check.js';
 import { removeDatedLessons, writeDatedLessons } from './dated-lessons.js';
 import {
@@ -181,6 +182,17 @@ export class TimetableWithdraw {
             .map((one) => one.answer),
           bulk: found.bulk.map((one) => one.answer),
           exams: found.exams.map((one) => one.answer),
+          // Task 5.7a-1 (decision 7): the absences over the lessons the
+          // earlier version writes again.
+          absences: await runAbsences(
+            transaction,
+            branchId,
+            found.dated.dated.lessons.map((one) => ({
+              date: one.date,
+              start: one.placement.start,
+              teacherIds: one.placement.teacherIds,
+            })),
+          ),
         },
         names,
       };
