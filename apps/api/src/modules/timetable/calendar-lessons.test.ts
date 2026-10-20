@@ -2329,30 +2329,32 @@ describe('calendar entries after publishing', () => {
       ).toHaveLength(1);
     }
     // Task 5.6b-2c-1: in each branch an exam of the grade-10 class on 16
-    // November in slot 3, its lesson cancelled "exam", which a save of that
-    // date would sort (`.claude/rules/api.md`: a route that writes more
-    // tables widens the rows of its 404 tests).
+    // November in slot 5, the class kept out of the group's block
+    // (`lesson_block_class_outs`), which a save of that date would cancel
+    // and remove (`.claude/rules/api.md`: a route that writes more tables
+    // widens the rows of its 404 tests, with rows the save would change;
+    // permission review must-fix 1).
     const examOf: Record<string, string> = {};
     for (const one of [north, south]) {
-      const history = await lessonOf(one, '2026-11-16', one.seniorId);
+      const sport = await t.database.migrator
+        .selectFrom('lessons')
+        .select('block_id')
+        .where('group_id', '=', one.groupId ?? '')
+        .where('lesson_date', '=', '2026-11-16')
+        .executeTakeFirstOrThrow();
       const examRoom = await load.classes.room(one.branch);
       examOf[one.branch] = await t.database.migrator.transaction().execute(async (transaction) => {
         await sql`set constraints all deferred`.execute(transaction);
-        await transaction
-          .updateTable('lessons')
-          .set({ cancel_cause: 'exam' })
-          .where('id', '=', history.id)
-          .execute();
         const written = await transaction
           .insertInto('exams')
           .values({
             branch_id: one.branch,
             academic_year_id: one.year,
             exam_date: '2026-11-16',
-            starts_at: new Date('2026-11-16T08:55:00+05:00'),
-            ends_at: new Date('2026-11-16T09:40:00+05:00'),
-            first_slot: 3,
-            last_slot: 3,
+            starts_at: new Date('2026-11-16T09:50:00+05:00'),
+            ends_at: new Date('2026-11-16T10:35:00+05:00'),
+            first_slot: 5,
+            last_slot: 5,
             title: 'Quarter exam',
           })
           .returning('id')
@@ -2380,9 +2382,24 @@ describe('calendar entries after publishing', () => {
             staff_id: one.teacherId,
           })
           .execute();
+        await transaction
+          .insertInto('lesson_block_class_outs')
+          .values({
+            branch_id: one.branch,
+            block_id: sport.block_id,
+            class_id: one.seniorId,
+            exam_id: written.id,
+          })
+          .execute();
         await sql`set constraints all immediate`.execute(transaction);
         return written.id;
       });
+      const outs = await t.database.migrator
+        .selectFrom('lesson_block_class_outs')
+        .select('exam_id')
+        .where('branch_id', '=', one.branch)
+        .execute();
+      expect(outs).toEqual([{ exam_id: examOf[one.branch] }]);
     }
     const southLesson = await lessonOf(south, '2026-11-16', south.classId);
     const southBlock = await t.database.migrator
@@ -2543,6 +2560,20 @@ describe('calendar entries after publishing', () => {
               id: northEntry.id,
               examBlocks,
             }),
+          // Permission review should-fix 1: the edit and the restore previews.
+          () =>
+            post('/api/setup/calendar-entries/preview', north.branch, {
+              action: 'edit',
+              id: northEntry.id,
+              record: specialDay(OCT19, '2026-11-16', north.short),
+              examBlocks,
+            }),
+          () =>
+            post('/api/setup/calendar-entries/preview', north.branch, {
+              action: 'restore',
+              id: northEntry.id,
+              examBlocks,
+            }),
         ]) {
           refusedWith(await attempt(), 404, 'not_found');
         }
@@ -2635,6 +2666,27 @@ describe('calendar entries after publishing', () => {
             {
               ...specialDay('2026-11-16', '2026-11-16', s.short),
               dayKeeps: [{ classId: s.seniorId, date: '2026-11-16', slotPositions: [3] }],
+            },
+            cookie,
+          ),
+        // Task 5.6b-2c-1 (permission review should-fix 2): a body with a block's choice.
+        () =>
+          create(
+            s.branch,
+            {
+              ...dayOff('2026-11-16'),
+              examBlocks: [{ examId: UNKNOWN, classId: s.seniorId, choice: 'keep' }],
+            },
+            cookie,
+          ),
+        () =>
+          post(
+            '/api/setup/calendar-entries/preview',
+            s.branch,
+            {
+              action: 'create',
+              record: dayOff('2026-11-16'),
+              examBlocks: [{ examId: UNKNOWN, classId: s.seniorId, choice: 'cancel' }],
             },
             cookie,
           ),

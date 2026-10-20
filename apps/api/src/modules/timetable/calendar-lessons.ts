@@ -422,7 +422,10 @@ export class TimetableCalendarLessons {
     // first (decision 5), else the save's.
     const standing = await standingExamsOn(transaction, branchId, written);
     const sentChoices = new Map(
-      (input.days.examBlocks ?? []).map((one) => [`${one.examId}|${one.classId}`, one.choice]),
+      (input.days.examBlocks ?? []).map((one) => [
+        `${one.examId.toLowerCase()}|${one.classId.toLowerCase()}`,
+        one.choice,
+      ]),
     );
     const storedChoices = new Map<string, ExamBlockChoice>();
     const storedChoiceOf = (examId: string, classId: string) =>

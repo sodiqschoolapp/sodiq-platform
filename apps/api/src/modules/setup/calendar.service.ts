@@ -348,10 +348,12 @@ export class Calendar {
           const classIds = [
             ...new Set([
               ...(days.dayKeeps ?? []).map((one) => one.classId),
-              ...(days.examBlocks ?? []).map((one) => one.classId),
+              ...(days.examBlocks ?? []).map((one) => one.classId.toLowerCase()),
             ]),
           ];
-          const examIds = [...new Set((days.examBlocks ?? []).map((one) => one.examId))];
+          const examIds = [
+            ...new Set((days.examBlocks ?? []).map((one) => one.examId.toLowerCase())),
+          ];
           if (examIds.length > 0) {
             const known = await transaction
               .selectFrom('exams')

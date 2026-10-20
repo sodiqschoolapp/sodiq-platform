@@ -425,6 +425,20 @@ describe('exams under a calendar change', () => {
       // An Academic Vice Principal of another branch only.
       const elsewhere = await load.classes.account();
       await load.classes.role(elsewhere, t.north, 'academic_vice_principal');
+      // One whose assignment in the branch ended, one whose begins after the save.
+      await load.classes.role(
+        await load.classes.account(),
+        s.branch,
+        'academic_vice_principal',
+        new Date('2026-09-01T00:00:00+05:00'),
+        new Date('2026-10-01T00:00:00+05:00'),
+      );
+      await load.classes.role(
+        await load.classes.account(),
+        s.branch,
+        'academic_vice_principal',
+        new Date('2026-11-01T00:00:00+05:00'),
+      );
       const [maths] = await lessonOf(s.branch, OCT19, s.classId);
       const sat = await exam(s, {
         date: OCT19,
