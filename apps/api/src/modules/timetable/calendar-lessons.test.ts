@@ -335,9 +335,15 @@ describe('calendar entries after publishing', () => {
   /**
    * A copy of the scene's version with its rows placed again on Mondays,
    * maths in `mathsSlot` and history in the other lesson slot of 1 and 3,
-   * published from `startsOn`.
+   * published from `startsOn` (task 5.6b-2c-2: with `withKey`, with the key of
+   * its stored one-day changes from the publish check).
    */
-  async function nextVersion(s: Scene, startsOn: string, mathsSlot = 1): Promise<string> {
+  async function nextVersion(
+    s: Scene,
+    startsOn: string,
+    mathsSlot = 1,
+    withKey = false,
+  ): Promise<string> {
     const next = await draft(s.branch, s.year, s.version);
     await t.database.migrator.deleteFrom('pattern_blocks').where('version_id', '=', next).execute();
     const rows = await t.database.migrator
@@ -356,7 +362,23 @@ describe('calendar entries after publishing', () => {
     }
     await confirmTemplates(s.branch, next);
     await load.freeEditLock(next);
-    const published = await publish(s.branch, next, startsOn);
+    let published: Response;
+    if (withKey) {
+      const checked = await t.get(
+        `/api/timetable/versions/${next}/publish-check?startsOn=${startsOn}`,
+        s.branch,
+      );
+      expect(checked.status, JSON.stringify(checked.body)).toBe(200);
+      const days = (checked.body as { impact: { dayChanges: { key: string } } }).impact.dayChanges;
+      published = await request(t.kit.server)
+        .post(`/api/timetable/versions/${next}/publish`)
+        .set('Cookie', t.admin)
+        .set(BRANCH_HEADER, s.branch)
+        .set(REQUEST_KEY_HEADER, randomUUID())
+        .send({ startsOn, dayChangesKey: days.key });
+    } else {
+      published = await publish(s.branch, next, startsOn);
+    }
     expect(published.status, JSON.stringify(published.body)).toBe(200);
     return next;
   }
@@ -1797,8 +1819,7 @@ describe('calendar entries after publishing', () => {
 
         expect(sortedOf(shown)).toEqual({ kept: [], decide: [change.id], dropped: [] });
         const [item] = shown.lessons.dayChanges.decide;
-        expect(item?.blocked.map((one) => one.date)).toContain(FRIDAY);
-        expect(item?.blocked.length).toBeGreaterThan(0);
+        expect(item?.blocked.map((one) => [one.date, one.rule])).toEqual([[FRIDAY, 'not_a_slot']]);
         expect(await storedRowsOf(s.branch)).toEqual(rows[0]);
         expect(await storedRowsOf(other.branch)).toEqual(rows[1]);
         expect(await t.auditCount()).toBe(before);
@@ -1892,6 +1913,46 @@ describe('calendar entries after publishing', () => {
       expect((await endsOf(s.branch)).map((one) => one.change_id)).toEqual(
         [xChange.id, yChange.id].sort(),
       );
+      // Decision 4 (code review, should-fix 2): each move audited once, in
+      // the stretch of its own old place.
+      expect(await daysOf(saved.id)).toEqual([
+        [s.version, OCT19, [{ key: xChange.id, choice: 'cancel' }], [xChange.id]],
+        [s.version, OCT26, [{ key: yChange.id, choice: 'drop' }], [yChange.id]],
+      ]);
+    });
+
+    // Decision 4 (code review, must-fix 1): a move recorded while one version
+    // was in force, kept by a publish of a second version from a date
+    // between its two places, lies in two stretches of two versions.
+    it('between the stretches of two versions is ended in the name of the version of its old place, with one audit line there', async () => {
+      const s = await scene();
+      const saved = okay(await create(s.branch, dayOff('2026-10-20', '2026-10-25')), 201);
+      const moving = await lessonOf(s, OCT19, s.classId);
+      okay(await moveTo(s, moving.id, OCT26, 2));
+      const [change] = await changesOf(moving.id);
+      if (change === undefined) throw new Error('The move was not recorded.');
+      // Version 2 from Monday 26 October keeps the move at its new place.
+      const next = await nextVersion(s, OCT26, 1, true);
+      expect((await lessonById(moving.id))?.date).toBe(OCT26);
+      const record = dayOff(OCT19, OCT26);
+      const shown = await preview(s.branch, { action: 'edit', id: saved.id, record });
+      expect(sortedOf(shown)).toEqual({ kept: [], decide: [change.id], dropped: [] });
+
+      okay(
+        await t.patch(
+          `/api/setup/calendar-entries/${saved.id}`,
+          s.branch,
+          withDays(record, shown, [{ key: change.id, choice: 'drop' }]),
+        ),
+      );
+
+      expect(await lessonsOn(s.branch, OCT19)).toEqual([]);
+      expect(await lessonsOn(s.branch, OCT26)).toEqual([]);
+      expect(next).not.toBe(s.version);
+      expect(await endsOf(s.branch)).toEqual([{ change_id: change.id, version_id: s.version }]);
+      expect(await daysOf(saved.id)).toEqual([
+        [s.version, OCT19, [{ key: change.id, choice: 'drop' }], [change.id]],
+      ]);
     });
   });
 

@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 20 October 2026: task 5.6b-2c-2 Calendar changes: a move between two stretches
+
+- A stored one-day move whose two places lie in two stretches of one calendar save is sorted once (`across` of `sortDayChanges`, `apps/api/src/modules/timetable/day-changes-kept.ts`): kept when its new place takes it among the lessons the save writes there; otherwise "needs a decision" in both halves, the old place's half holding the lesson there, so "drop" holds it and "cancel" cancels it with the change's reason, and the stored lesson at the new place is removed. Never dropped. Settled and audited once, in the stretch of its old place (`SortedDayChange.half`).
+- `calendar-lessons.ts` reads each stretch once (state, shortened-day choices, findings) and runs the sorting, the exams and the bulk cancels again while a joined move turns "needs a decision" (a move put back can take another's new place); a key in `decided` stays there, so the loop ends. The key and the lists come from the last pass.
+- The refusal `calendar_stored_changes` is gone: the error code, `lessons.stored`, `CALENDAR_STORED_KINDS`, the dialog's list and its texts. No migration, route or new text.
+- Also: a flaky test of `day-changes.test.ts` ("tells a lesson moved onto the same weekday a week later") picked either of two lessons on one date; it now picks the entry's own by id.
+- Left out: a browser test (no published version under a calendar entry in the browser scene).
+
+The next sessions must know:
+
+- A move lies across two versions only when it was recorded before the second version was published (a new move onto another version's date is refused `move_other_version`); the test "between the stretches of two versions" builds it that way.
+- `nextVersion` of `calendar-lessons.test.ts` takes `withKey` to publish with the key of the stored one-day changes.
+- The next task is 5.6b-3.
+
 ## 20 October 2026: task 5.6b-2c-1 Calendar changes: exams
 
 - 5.6b-2c split in two (5.6b-2c-1 exams, 5.6b-2c-2 the move between two stretches, `docs/build-plan.md`). A calendar save over published dates sorts the exams standing on the dates it writes (`apps/api/src/modules/timetable/calendar-exams.ts`): a grade of the exam off (`day_off`, `not_working_day`) cancels the whole exam `day_off` and tells every Academic Vice Principal of the branch (notice kind `timetable.exam_day_off`); two templates refuse it `calendar_exam_templates`; a day without its slots (or a sitting group without its own lesson at the exam's time) refuses it `calendar_exam_slots`; else it moves with its slots or is kept, and is checked again by the rule engine (`calendar_blocked` by date).

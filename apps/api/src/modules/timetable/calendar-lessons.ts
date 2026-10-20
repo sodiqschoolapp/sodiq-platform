@@ -616,10 +616,10 @@ export class TimetableCalendarLessons {
         // The recheck reads the choices sent: a block kept for the other
         // classes stays in it without the class (must-fix 4); one cancelled,
         // or still without a choice (refused below), is left out.
-        const decided = examLessonsOf(one.exam, one.after, there, choiceOf(one.exam.id));
+        const chosen = examLessonsOf(one.exam, one.after, there, choiceOf(one.exam.id));
         const skipped = new Set([
-          ...decided.covered,
-          ...decided.needs.flatMap((need) => need.lessons.map((lesson) => lesson.id)),
+          ...chosen.covered,
+          ...chosen.needs.flatMap((need) => need.lessons.map((lesson) => lesson.id)),
         ]);
         const others = examPlacementsOn(examsSorted, branchId, one.exam.date).filter(
           (placement) => placement.id !== `exam:${one.exam.id}`,
@@ -630,7 +630,7 @@ export class TimetableCalendarLessons {
           sorting.findings,
           others,
           skipped,
-          decided.outs,
+          chosen.outs,
         )) {
           examBlockedHere.push({ examId: one.exam.id, result });
         }
@@ -682,7 +682,6 @@ export class TimetableCalendarLessons {
     // Task 5.6b-2a: the sorting as shown and a choice for each "needs a
     // decision" item, refused with the blocked dates in one answer
     // (decision 9). The preview takes no decisions (decision 7).
-    const writtenSet = new Set(written);
     const { decisions, bulkDecisions } = dayDecisionsOf(
       input.preview ? undefined : input.days.dayDecisions,
     );
@@ -692,7 +691,7 @@ export class TimetableCalendarLessons {
           accountId: input.accountId,
           branchId,
           today,
-          written: writtenSet,
+          written: writtenAll,
           items,
           decisions,
         });
