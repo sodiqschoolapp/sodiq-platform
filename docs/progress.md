@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 20 October 2026: task 5.6c-3a Exams in the timetable: the exam kept after a publish and a withdraw
+
+- A publish (its run and each carried run written) and a withdraw keep every standing exam of their dates (`exams-kept.ts`): its classes' new lessons in its slots are cancelled "exam" with the link; the preview and the withdraw check list each exam (`dayChanges.exams`), kept or "needs a decision" for a clash with its invigilators or rooms (`cancel` with a typed reason, or `drop`), a block newly shared (`cancel` / `keep` per block; a stored choice carries to a block of the same lessons), a group whose lesson moved or a date left with no timetable (`drop` only). A `drop` gives lessons back by the rule for a restored lesson; one that cannot come back stays cancelled with the reason.
+- `exam-guard.ts` and `publish_over_exam` are gone; a removed block takes its out row with it. Dropped exams ride in the event's own notice (`examsCancelled`); audit `exams` on the publish, carry and withdraw entries.
+- Screens: the exam part of the publish preview and the withdraw dialog (`publish-day-changes.tsx`); the notice line. Handbook: `05-teaching-load-and-timetable.md`.
+- Left out: the invigilators' notices on the calendar path and the rating-exam link (5.6c-3b); exams on other views and prints (5.9); "needs a room" / "needs an invigilator" (5.7a).
+
+The next sessions must know:
+
+- A run's facts take the standing exams' invigilators as extra teachers (`invigilatorsOf`); exams as context of a check are `fixed` placements, as the stored claims read them.
+- A `dayDecisions` entry may carry `reason`, only for an exam's `cancel` or a `drop` that leaves lessons cancelled; `dayDecisionsBodyOf` takes the reasons.
+- A block kept for other classes beside an exam whose invigilator teaches it is caught by the claims (`timetable_busy`), not by the preview.
+- The next task is 5.6c-3b.
+
 ## 20 October 2026: task 5.6c-2 Exams in the timetable: the screens
 
 - Exams page `/timetable/exams?date=` (a `ListPage`, the exam in the side panel), the exam form with "Check" (`POST timetable/exams/check`: the save run with its choices and rolled back, listing the lessons cancelled, the shared blocks with their choice, the blocked rules, the warnings and on a change the lessons given back), Save only on a fresh check that can save; the cancel keeps lessons that cannot come back cancelled with a reason.
