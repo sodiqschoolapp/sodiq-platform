@@ -208,8 +208,6 @@ export const uz: Texts<'one' | 'other'> = {
     exam_warnings: 'Quyidagi ogohlantirishlarni tekshiring va imtihonni saqlash uchun belgilang.',
     exam_restore_blocked:
       'Imtihon bekor qilgan baʼzi darslarni qaytarib boʻlmaydi (quyidagi roʻyxat). Ularni sabab bilan bekor holida qoldiring yoki avval vaqtini boʻshating.',
-    publish_over_exam:
-      'Bu oʻzgarish qayta yozadigan sanada imtihon turibdi. Avval imtihonni bekor qiling yoki koʻchiring.',
     own_account:
       'Oʻz hisobingizni bloklay, blokdan chiqara yoki tiklay olmaysiz. Boshqa administratorga murojaat qiling.',
     account_already_locked:
@@ -3252,6 +3250,7 @@ export const uz: Texts<'one' | 'other'> = {
       changed: 'Imtihon oʻzgartirildi.',
       cancelled: 'Imtihon bekor qilindi.',
       invigilation: 'Siz {{start}}–{{end}} da {{room}} xonasida nazoratchisiz.',
+      cancelledBy: 'Bu oʻzgarish imtihonni bekor qildi: {{title}}, {{date}}.',
     },
     // The week before and after of a notice of a timetable change (task 5.5c-3a).
     week: {
@@ -3807,6 +3806,24 @@ export const uz: Texts<'one' | 'other'> = {
         bulkChoice_keep: 'Qoldirish va tanlangan sinflarni ozod qilish',
         bulkKept_keep: 'qoladi, tanlangan sinflar ozod',
         bulkKept_cancel: 'butunlay bekor qilinadi',
+        exams: {
+          line: '«{{title}}» imtihoni, {{date}} {{time}}',
+          cancelled_one: 'Imtihon uchun {{count}} ta dars bekor qilindi',
+          cancelled_other: 'Imtihon uchun {{count}} ta dars bekor qilindi',
+          clashes: 'Uning vaqtida: {{rules}}. Darslar: {{lessons}}',
+          groupMisses: 'Yangi versiya imtihon topshiradigan guruhning darsini koʻchiradi.',
+          noTimetable: 'Qaytarib olingandan keyin uning sanasida dars jadvali amal qilmaydi.',
+          dropBlocked:
+            'Imtihon bekor qilinsa, bu darslarni qaytarib boʻlmaydi va ular bekor holida qoladi: {{lessons}}',
+          choice_cancel: 'Toʻqnashgan darslarni bekor qilish',
+          choice_drop: 'Imtihonni bekor qilish',
+          reason: 'Sabab',
+          block: '{{lessons}}, {{time}}. {{classes}} bilan birga',
+          blockChoice_cancel: 'Butun blokni bekor qilish',
+          blockChoice_keep: 'Boshqa sinflar uchun qoldirish',
+          kept_keep: 'boshqa sinflar uchun qoldirildi',
+          kept_cancel: 'butunlay bekor qilindi',
+        },
         decisionNeeded: 'Qaror kerak boʻlgan har bir bir kunlik oʻzgarish uchun tanlang.',
       },
       chain: {

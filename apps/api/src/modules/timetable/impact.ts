@@ -21,6 +21,7 @@ import { datedLessonsOf, type DatedFindings } from './dated-check.js';
 import { needKeyOf, patternDateOf, vacanciesOf, writtenTeacherOf } from './dated-lessons.js';
 import type { SortedBulk } from './bulk-cancels-kept.js';
 import type { SortedDayChange } from './day-changes-kept.js';
+import type { KeptExam } from './exams-kept.js';
 import type { PatternState } from './pattern.service.js';
 import { hasStoredLessons, storedImpactLessons, storedLessonRows } from './stored-lessons.js';
 import type { VersionRow } from './timetable.service.js';
@@ -43,6 +44,8 @@ export interface ImpactDays {
   /** Task 5.6a-5b-1: the bulk cancels of the runs, sorted. */
   readonly bulk: readonly SortedBulk[];
   readonly keptStored: ReadonlyMap<string | null, ReadonlySet<string>>;
+  /** Task 5.6c-3a: the standing exams of the runs, sorted. */
+  readonly exams: readonly KeptExam[];
 }
 
 /** The impact preview and the key of its transition week, as the publish compares it. */
@@ -244,7 +247,7 @@ export async function impactOf(
 
   // The names of what the preview names (decision 12): records of the branch only.
   // A class reached only through a group lesson is in `classIds` alone (review of #142).
-  const named = dayChangeIdsOf(days.items, days.bulk);
+  const named = dayChangeIdsOf(days.items, days.bulk, days.exams);
   const unitIds = new Set<string>([
     ...named.unitIds,
     ...impact.classIds,
@@ -315,6 +318,7 @@ export async function impactOf(
         decide: days.items.filter((one) => one.category === 'decide').map((one) => one.answer),
         dropped: days.items.filter((one) => one.category === 'dropped').map((one) => one.answer),
         bulk: days.bulk.map((one) => one.answer),
+        exams: days.exams.map((one) => one.answer),
       },
       names,
     },
@@ -326,7 +330,15 @@ export async function impactOf(
 export function dayChangeIdsOf(
   items: readonly SortedDayChange[],
   bulk: readonly SortedBulk[],
+  /** Task 5.6c-3a: the exams of the sorting. */
+  exams: readonly KeptExam[] = [],
 ): { unitIds: string[]; subjectIds: string[]; roomIds: string[] } {
+  const examLessons = exams.flatMap((one) => [
+    ...one.answer.cancelled,
+    ...one.answer.clashes,
+    ...one.answer.dropBlocked,
+    ...one.answer.blocks.flatMap((block) => block.lessons),
+  ]);
   return {
     // A class reached only through a group lesson is in `classIds` alone (review of #142).
     unitIds: [
@@ -339,12 +351,17 @@ export function dayChangeIdsOf(
           ...block.otherClassIds,
         ]),
       ]),
+      ...examLessons.map((lesson) => lesson.unitId),
+      ...exams.flatMap((one) =>
+        one.answer.blocks.flatMap((block) => [...block.sittingClassIds, ...block.otherClassIds]),
+      ),
     ],
     subjectIds: [
       ...items.map((one) => one.answer.subjectId),
       ...bulk.flatMap((one) =>
         one.answer.blocks.flatMap((block) => block.lessons.map((lesson) => lesson.subjectId)),
       ),
+      ...examLessons.map((lesson) => lesson.subjectId),
     ],
     roomIds: items
       .flatMap((one) => [one.answer.from.roomId, one.answer.to.roomId])

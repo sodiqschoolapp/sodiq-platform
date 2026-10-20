@@ -395,7 +395,7 @@ async function cancelsOf(
 }
 
 /** A result of the engine as the preview names it: its own lessons by entry. */
-function answerOf(result: RuleResult): RuleResultAnswer {
+export function answerOf(result: RuleResult): RuleResultAnswer {
   const own = [
     ...new Set(
       result.lessonIds.flatMap((id) => {
@@ -967,6 +967,8 @@ export function dayChangesKeyOf(
   items: readonly SortedDayChange[],
   /** Task 5.6a-5b-1: the key of the bulk cancels sorted (`bulkKeyPartOf`), none when there are none. */
   bulk: string | null = null,
+  /** Task 5.6c-3a: the key of the exams sorted (`examKeyPartOf`), none when there are none. */
+  exams: string | null = null,
 ): string {
   const shown = items
     .map((one) => [
@@ -977,7 +979,15 @@ export function dayChangesKeyOf(
     ])
     .sort((a, b) => compare(a.join('|'), b.join('|')));
   return createHash('sha256')
-    .update(JSON.stringify({ versionId, startsOn, shown, ...(bulk === null ? {} : { bulk }) }))
+    .update(
+      JSON.stringify({
+        versionId,
+        startsOn,
+        shown,
+        ...(bulk === null ? {} : { bulk }),
+        ...(exams === null ? {} : { exams }),
+      }),
+    )
     .digest('hex');
 }
 

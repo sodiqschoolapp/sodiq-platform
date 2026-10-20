@@ -202,8 +202,6 @@ export const en = {
     exam_warnings: 'Check the warnings below and tick them to save the exam.',
     exam_restore_blocked:
       'Some lessons the exam cancelled cannot be brought back, listed below. Keep them cancelled with a reason, or free their time first.',
-    publish_over_exam:
-      'An exam stands on a date this change would rewrite. Cancel or move the exam first.',
     own_account: 'You cannot lock, unlock or reset your own account. Ask another administrator.',
     account_already_locked: 'This account is already locked. Reload the page to see who locked it.',
     account_not_locked:
@@ -3219,6 +3217,7 @@ export const en = {
       changed: 'The exam was changed.',
       cancelled: 'The exam was cancelled.',
       invigilation: 'You invigilate {{start}}–{{end}} in {{room}}.',
+      cancelledBy: 'Exam cancelled by this change: {{title}}, {{date}}.',
     },
     // The week before and after of a notice of a timetable change (task 5.5c-3a).
     week: {
@@ -3772,6 +3771,24 @@ export const en = {
         bulkChoice_keep: 'Keep it and exempt the chosen classes',
         bulkKept_keep: 'kept, the chosen classes exempt',
         bulkKept_cancel: 'cancelled whole',
+        exams: {
+          line: 'Exam “{{title}}”, {{date}} {{time}}',
+          cancelled_one: '{{count}} lesson cancelled for the exam',
+          cancelled_other: '{{count}} lessons cancelled for the exam',
+          clashes: 'At its time: {{rules}}. Lessons: {{lessons}}',
+          groupMisses: 'The new version moves the lesson of the group that sits it.',
+          noTimetable: 'No timetable runs on its date after the withdraw.',
+          dropBlocked:
+            'If the exam is cancelled, these lessons cannot come back and stay cancelled: {{lessons}}',
+          choice_cancel: 'Cancel the clashing lessons',
+          choice_drop: 'Cancel the exam',
+          reason: 'Reason',
+          block: '{{lessons}}, {{time}}. Shared with {{classes}}',
+          blockChoice_cancel: 'Cancel the whole block',
+          blockChoice_keep: 'Keep it for the other classes',
+          kept_keep: 'kept for the other classes',
+          kept_cancel: 'cancelled whole',
+        },
         decisionNeeded: 'Choose what happens to each one-day change that needs a decision.',
       },
       chain: {

@@ -182,8 +182,6 @@ export const ERROR_CODES = [
   'exam_warnings',
   /** Task 5.6c-1 (decision 3): a lesson the exam no longer covers cannot be restored; `details` lists each with the free rooms of its time, and the save is sent again with the lesson in `keepCancelled`. */
   'exam_restore_blocked',
-  /** Task 5.6c-1 (decision 5): a publish or withdraw would create, remove or change a lesson under a standing exam; `details` lists each exam (until 5.6c-3). */
-  'publish_over_exam',
   /** The go-live date must be a school day: some grade has lessons on it (`edge/academic-year`; task 1.4). */
   'go_live_not_school_day',
   /** Travel time is set between two different branches (task 1.6). */

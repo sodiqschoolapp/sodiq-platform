@@ -4,6 +4,7 @@ import {
   REQUEST_KEY_HEADER,
   outOfDateAnswerSchema,
   timetableVersionSchema,
+  withdrawCheckSchema,
   type TimetableVersion,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
@@ -20,6 +21,7 @@ import {
 } from '../../testing/day-templates-kit.js';
 import { LessonsKit, at } from '../../testing/lessons-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
+import { standingExamOver } from '../../testing/exams-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 
 const refusedWith = (response: Response, status: number, code: string) => {
@@ -376,6 +378,29 @@ describe('withdraw', () => {
         .orderBy('bulk_cancel_id')
         .orderBy('block_id')
         .execute(),
+      // Task 5.6c-3a (permission review, must-fix 1): the standing exams a
+      // publish or withdraw keeps, drops or writes again.
+      t.database.migrator
+        .selectFrom('exams')
+        .selectAll()
+        .where('branch_id', 'in', branches)
+        .orderBy('id')
+        .execute(),
+      t.database.migrator
+        .selectFrom('lesson_exam_cancels')
+        .selectAll()
+        .where('branch_id', 'in', branches)
+        .orderBy('lesson_id')
+        .orderBy('exam_id')
+        .execute(),
+      t.database.migrator
+        .selectFrom('lesson_block_class_outs')
+        .selectAll()
+        .where('branch_id', 'in', branches)
+        .orderBy('block_id')
+        .orderBy('class_id')
+        .execute(),
+      t.database.migrator.selectFrom('notifications').selectAll().orderBy('id').execute(),
     ]);
   };
 
@@ -980,6 +1005,50 @@ describe('withdraw', () => {
     });
   });
 
+  // Task 5.6c-3a (edge/timetable, Exams: "An exam is stored on its own like a
+  // one-day change and kept after a later publish"; Versions and drafts).
+  describe('a standing exam', () => {
+    it('keeps a standing exam over the version that runs again: its lessons there cancelled "exam" with the link, listed by the check', async () => {
+      const s = await twoVersions();
+      const lesson = (await lessonsOf(s.branch)).find(
+        (row) => row.version_id === s.b && row.cancel_cause === null,
+      );
+      if (lesson === undefined) throw new Error('No lesson of the withdrawn dates.');
+      const examId = await standingExamOver(t.database.migrator, {
+        lessonId: lesson.id,
+        roomId: await load.classes.room(s.branch),
+        staffId: lesson.teacher_id ?? '',
+      });
+      const shown = await check(s.branch, s.b);
+      expect(shown.status, JSON.stringify(shown.body)).toBe(200);
+      const days = withdrawCheckSchema.parse(shown.body).dayChanges;
+      expect(days.exams.map((one) => [one.key, one.category, one.noTimetable])).toEqual([
+        [examId, 'kept', false],
+      ]);
+      // Without the key of the sorting shown, the withdraw is refused.
+      refusedWith(await withdraw(s.branch, s.b), 409, 'withdraw_blocked');
+      const done = await request(t.kit.server)
+        .post(`/api/timetable/versions/${s.b}/withdraw`)
+        .set('Cookie', t.admin)
+        .set(BRANCH_HEADER, s.branch)
+        .set(REQUEST_KEY_HEADER, randomUUID())
+        .send({ dayChangesKey: days.key });
+      versionOf(done);
+      const again = (await lessonsOf(s.branch)).filter(
+        (row) => row.date === lesson.date && row.subject_id === lesson.subject_id,
+      );
+      expect(again.map((row) => [row.version_id, row.cancel_cause])).toEqual([[s.a, 'exam']]);
+      const links = await t.database.migrator
+        .selectFrom('lesson_exam_cancels')
+        .select('exam_id')
+        .where('lesson_id', '=', again[0]?.id ?? '')
+        .execute();
+      expect(links).toEqual([{ exam_id: examId }]);
+      const [entry] = await t.entries('timetable_version.withdraw', s.b);
+      expect(entry?.new_value).toMatchObject({ exams: { kept: [examId], decided: [] } });
+    });
+  });
+
   describe('another branch', () => {
     it("answers 404 for another branch's version and an unknown one, and changes nothing (should-fix 6)", async () => {
       const s = await twoVersions();
@@ -990,6 +1059,19 @@ describe('withdraw', () => {
       await draft(theirs.branch, theirs.year);
       await storedChanges(s);
       await storedChanges(theirs);
+      // Task 5.6c-3a (permission review, must-fix 1): a standing exam in each
+      // branch over a lesson of the withdrawn dates, which a withdraw drops.
+      for (const one of [s, theirs]) {
+        const lesson = (await lessonsOf(one.branch)).find(
+          (row) => row.version_id === one.b && row.cancel_cause === null,
+        );
+        if (lesson === undefined) throw new Error('No lesson of the withdrawn dates.');
+        await standingExamOver(t.database.migrator, {
+          lessonId: lesson.id,
+          roomId: await load.classes.room(one.branch),
+          staffId: lesson.teacher_id ?? '',
+        });
+      }
       const vice = await t.database.migrator
         .selectFrom('assignments')
         .select('account_id')
@@ -1001,6 +1083,9 @@ describe('withdraw', () => {
       expect(new Set(before[5].map((one) => one.branch_id)).size).toBe(2);
       expect(new Set(before[8].map((one) => one.branch_id)).size).toBe(2);
       expect(new Set(before[10].map((one) => one.branch_id)).size).toBe(2);
+      // The exams and their links in both branches.
+      expect(new Set(before[11].map((one) => one.branch_id)).size).toBe(2);
+      expect(new Set(before[12].map((one) => one.branch_id)).size).toBe(2);
       for (const cookie of [t.admin, t.vicePrincipal]) {
         for (const id of [theirs.b, UNKNOWN]) {
           refusedWith(await withdraw(s.branch, id, cookie), 404, 'not_found');

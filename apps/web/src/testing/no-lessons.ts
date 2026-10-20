@@ -12,7 +12,7 @@ export const NO_LESSONS: CalendarLessons = {
   needsTeacher: [],
   notified: [],
   blocked: [],
-  dayChanges: { key: 'e'.repeat(64), kept: [], decide: [], dropped: [], bulk: [] },
+  dayChanges: { key: 'e'.repeat(64), kept: [], decide: [], dropped: [], bulk: [], exams: [] },
   shortenedDays: [],
   keepRefusals: [],
   exams: [],

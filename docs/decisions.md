@@ -285,6 +285,26 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 20 October 2026: exams in the timetable, the exam kept after a publish (task 5.6c-3a)
+
+Plan approved on pull request #183 with correction 1; decisions 1 to 11 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a task split). 5.6c-3 is split into 5.6c-3a (the exam kept after a publish, a carry and a withdraw) and 5.6c-3b (the calendar path's invigilator notices, the rating-exam link) | Decision 1 |
+| **Look first** (a reading of the spec). A clash of a kept exam (a lesson of an invigilator, or in an exam room, at its time) is settled by `cancel` (those lessons cancelled with a typed reason, both halves of a double) or `drop` (the exam cancelled, its lessons given back by the rule for a restored lesson). Proposed `/spec-change` of `edge/timetable`, Exams, fifth row: "… is a 'needs a decision' item in the preview: cancel those lessons with a reason, or cancel the exam, which gives back its lessons by the rule for a restored lesson." | Decision 2, correction 1 |
+| **Look first** (a reading of the spec). A sitting group whose own lesson the new version moves, and a withdraw that leaves the exam's date with no timetable, offer `drop` only | Decisions 4 and 6; 5.6c-1 decision 16 |
+| **Look first** (a test and a refusal removed). `publish_over_exam` and `exam-guard.ts` are gone, each of their tests rewritten to its kept-exam successor | Decision 8; From line of 5.6c-1 |
+| A block newly shared under an exam is decided once per block; a stored choice carries to a block of exactly the same lessons (units, subjects, teachers, minutes), as a bulk cancel's | Decision 3 |
+| A dropped exam takes the cause `cancelled`; no migration | Decision 5 |
+| Dropped exams ride in the publish's or the withdraw's own notice (`examsCancelled`); an invigilator with no week change gets that notice with them alone | Decision 7 |
+| The sorting never drops an exam; another branch's exam is a blocked conflict of the publish, not an item; the exam items are part of the sorting's key | Decisions 9 to 11 |
+| A `drop` that leaves a lesson cancelled (a kept one-day change took its room or teacher) needs the decision's reason | Correction 1 |
+| **Build decision.** The run's facts take the standing exams' invigilators as extra teachers, as the exam's own check does; without it the engine fails on an invigilator who teaches no row | Found by the build |
+| **Build decision.** An open shared block is checked kept for the other classes too; `keep` is offered only when none of its lessons then meets the exam (`keepOffered`) | Spec review of the code, must-fix 4; `edge/timetable`, Exams |
+| **Build decision.** The exam guards a publish or a withdraw can meet at the commit (`exam_group_slots`, `exam_incomplete`, `lesson_block_class_out_exam`) answer `timetable_busy`, never a 500 | Spec review of the code, must-fix 1 |
+| **Build decision.** The handbook page is `05-teaching-load-and-timetable.md`, the name the handbook's list gives, not `04-timetable.md` of the plan | `docs/handbook/README.md` |
+
 ## 20 October 2026: exams in the timetable, the screens (task 5.6c-2)
 
 Plan approved on pull request #182 with corrections 1 and 2; decisions 1 to 13 confirmed there. Flagged on issue #42.

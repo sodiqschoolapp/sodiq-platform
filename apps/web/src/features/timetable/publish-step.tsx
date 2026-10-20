@@ -1,7 +1,6 @@
 import {
   classDisplayName,
   type CarryChangeAnswer,
-  dayDecisionKeyOf,
   type DayChangeChoice,
   type LoadRow,
   type PublishChain,
@@ -24,7 +23,7 @@ import { nameOf } from '@/features/setup/setup-api';
 import { schoolDateText, weekdayName } from '@/lib/dates';
 import { numbersText } from './grid-conflicts';
 import { PublishChainQuestion } from './publish-chain';
-import { PublishDayChanges } from './publish-day-changes';
+import { dayDecisionsBodyOf, PublishDayChanges } from './publish-day-changes';
 import { PublishImpact } from './publish-impact';
 import { classNameFrom, PublishShortened } from './publish-shortened';
 import { ruleText } from './rule-text';
@@ -79,7 +78,9 @@ export function PublishStep({
   const [dayChosen, setDayChosen] = useState<{
     key: string | null;
     choices: Record<string, DayChangeChoice>;
-  }>({ key: null, choices: {} });
+    /** Task 5.6c-3a: the reasons typed for exams' choices. */
+    reasons: Record<string, string>;
+  }>({ key: null, choices: {}, reasons: {} });
   const check = useQuery(
     publishCheckQuery(branchId, version.id, startsOn === '' ? null : startsOn, chain),
   );
@@ -103,6 +104,7 @@ export function PublishStep({
           blockId?: string;
           blockDate?: string;
           choice: DayChangeChoice;
+          reason?: string;
         }[];
       } | null;
     }) => {
@@ -270,31 +272,23 @@ export function PublishStep({
     };
     const ticked = transitionKey === null || tickedKey === transitionKey;
     // Task 5.6a-5a: a choice counts only for an item shown now.
-    const decide = answer.impact?.dayChanges.decide ?? [];
     const daysKey = answer.impact?.dayChanges.key ?? null;
     const dayChoices = dayChosen.key === daysKey ? dayChosen.choices : {};
-    const dayDecisions: {
-      key: string;
-      blockId?: string;
-      blockDate?: string;
-      choice: DayChangeChoice;
-    }[] = decide.flatMap((item) => {
-      const choice = dayChoices[item.key];
-      return choice === undefined ? [] : [{ key: item.key, choice }];
-    });
-    // Task 5.6a-5b-1: a choice for each block of a bulk cancel that needs one.
-    const bulkOpen = (answer.impact?.dayChanges.bulk ?? []).flatMap((item) =>
-      item.blocks
-        .filter((block) => block.choice === null)
-        .map((block) => ({ key: item.key, blockId: block.blockId, blockDate: block.blockDate })),
-    );
-    for (const block of bulkOpen) {
-      const choice = dayChoices[dayDecisionKeyOf(block)];
-      if (choice !== undefined) dayDecisions.push({ ...block, choice });
-    }
-    const decided = dayDecisions.length === decide.length + bulkOpen.length;
+    const dayReasons = dayChosen.key === daysKey ? dayChosen.reasons : {};
+    // Task 5.6c-3a: the one-day changes, bulk cancels and exams settled
+    // together; `null` while one still needs a choice or a reason.
+    const settled =
+      answer.impact === null
+        ? null
+        : dayDecisionsBodyOf(answer.impact.dayChanges, dayChoices, dayReasons);
+    const decided = answer.impact === null || settled !== null;
     const days =
-      answer.impact === null ? null : { dayChangesKey: answer.impact.dayChanges.key, dayDecisions };
+      answer.impact === null
+        ? null
+        : {
+            dayChangesKey: answer.impact.dayChanges.key,
+            dayDecisions: settled?.dayDecisions ?? [],
+          };
     const blocked = answer.refusals.some(
       (one) => one.code === 'pattern_blocked' || one.code === 'date_blocked',
     );
@@ -417,9 +411,21 @@ export function PublishStep({
           <PublishDayChanges
             impact={answer.impact}
             choices={dayChoices}
+            reasons={dayReasons}
             canEdit={canEdit}
             onChoose={(itemKey, choice) => {
-              setDayChosen({ key: daysKey, choices: { ...dayChoices, [itemKey]: choice } });
+              setDayChosen({
+                key: daysKey,
+                choices: { ...dayChoices, [itemKey]: choice },
+                reasons: dayReasons,
+              });
+            }}
+            onReason={(itemKey, reason) => {
+              setDayChosen({
+                key: daysKey,
+                choices: dayChoices,
+                reasons: { ...dayReasons, [itemKey]: reason },
+              });
             }}
           />
         )}

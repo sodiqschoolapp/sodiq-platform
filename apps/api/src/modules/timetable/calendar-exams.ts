@@ -67,7 +67,11 @@ export interface StandingExam {
   readonly outs: readonly { readonly blockId: string; readonly classId: string }[];
 }
 
-export type ExamOutcome = 'cancelled_day_off' | 'moved' | 'kept' | 'refused';
+/**
+ * Task 5.6c-3a: `dropped`, an exam a publish or a withdraw cancels by a
+ * "needs a decision" choice (decision 5: the cause `cancelled`).
+ */
+export type ExamOutcome = 'cancelled_day_off' | 'dropped' | 'moved' | 'kept' | 'refused';
 export type ExamRefusal = 'calendar_exam_slots' | 'calendar_exam_templates';
 export type ExamBlockChoice = 'cancel' | 'keep';
 
@@ -308,7 +312,18 @@ export interface ExamDayLesson {
   /** The classes it occupies: the class, or the group's classes. */
   readonly classIds: readonly string[];
   readonly cancelCause: string | null;
+  /** Task 5.6c-3a: its pattern entry, by which a publish's cancel names it (`examLessonKeyOf`). */
+  readonly entryId?: string | null;
 }
+
+/**
+ * Task 5.6c-3a: a lesson of a date named by its pattern entry, date and first
+ * minute: the same before and after a publish writes it, and never two
+ * lessons (a class or group is in one place at a time; `.claude/rules/timetable.md`,
+ * a lesson moved onto a date of its own entry).
+ */
+export const examLessonKeyOf = (entryId: string, date: string, start: number): string =>
+  `${entryId}@${date}@${String(start)}`;
 
 /**
  * A shared block of a sitting class under an exam, with its double partner
@@ -518,6 +533,7 @@ export function findingsLessonsOn(findings: DatedFindings, date: string): ExamDa
         groupId: one.placement.groupId,
         classIds: one.placement.classIds,
         cancelCause: null,
+        entryId: one.entryId,
       };
     });
 }
@@ -583,6 +599,7 @@ export async function storedExamLessonsOn(
       'lessons.class_id',
       'lessons.group_id',
       'lessons.cancel_cause',
+      'lessons.pattern_entry_id',
     ])
     .where('lessons.branch_id', '=', branchId)
     .where('lessons.lesson_date', '=', date)
@@ -614,6 +631,7 @@ export async function storedExamLessonsOn(
         ? [row.class_id]
         : groupClasses.filter((one) => one.group_id === row.group_id).map((one) => one.class_id),
     cancelCause: row.cancel_cause,
+    entryId: row.pattern_entry_id,
   }));
 }
 
@@ -665,6 +683,24 @@ export function examPlacementOf(
     })),
     fixed: false,
   };
+}
+
+/**
+ * Task 5.6b-2c-1: the branch's exams of a date as a save leaves them: a moved
+ * or kept one at its time after the save, a refused one at its stored time,
+ * none for one cancelled (task 5.6c-3a: or dropped).
+ */
+export function examPlacementsOn(
+  sorted: readonly SortedExam[],
+  branchId: string,
+  date: string,
+): Placement[] {
+  return sorted
+    .filter(
+      (one) =>
+        one.exam.date === date && one.outcome !== 'cancelled_day_off' && one.outcome !== 'dropped',
+    )
+    .map((one) => examPlacementOf(one.exam, branchId, one.after ?? one.before));
 }
 
 /**
@@ -731,6 +767,8 @@ export interface ExamAudit {
   readonly after: { readonly startsAt: string; readonly endsAt: string } | null;
   readonly cancelled: string[];
   readonly restored: string[];
+  /** Task 5.6c-3a: the lessons of its date cancelled with a typed reason by the write. */
+  readonly cancelledWithReason: string[];
   readonly outsAdded: { blockId: string; classId: string }[];
   readonly outsRemoved: { blockId: string; classId: string }[];
   readonly choices: { classId: string; start: number; choice: ExamBlockChoice }[];
@@ -750,6 +788,13 @@ export function examWriteOf(input: {
   /** The stored choice for an exam, class and block, else the save's (`null`: none, a fault by then). */
   readonly choiceOf: (examId: string) => ExamChoiceOf;
   readonly audit: ExamAudit[];
+  /**
+   * Task 5.6c-3a: the lessons of the dates written that end the write
+   * cancelled with cause `reason`, by `examLessonKeyOf`: the reason. A clash
+   * a publish's `cancel` settles, and a lesson a `drop` cannot give back
+   * (plan review correction 1), which is never held again.
+   */
+  readonly cancelWith?: ReadonlyMap<string, { readonly reason: string; readonly examId: string }>;
 }): ExamWrite {
   const { branchId, sorted, begins } = input;
   const moment = (date: string, minutes: number) =>
@@ -761,12 +806,12 @@ export function examWriteOf(input: {
   return {
     async start(transaction) {
       for (const one of sorted) {
-        if (one.outcome === 'cancelled_day_off') {
+        if (one.outcome === 'cancelled_day_off' || one.outcome === 'dropped') {
           // Cancelled first: its claims go and its blocks take their classes
           // back; then its out rows, before the blocks of the day are deleted.
           await transaction
             .updateTable('exams')
-            .set({ cancel_cause: 'day_off' })
+            .set({ cancel_cause: one.outcome === 'dropped' ? 'cancelled' : 'day_off' })
             .where('id', '=', one.exam.id)
             .execute();
           // Its links go: a lesson no other standing exam keeps is held again
@@ -888,9 +933,38 @@ export function examWriteOf(input: {
               .execute()
           ).map((row) => row.lesson_id),
         );
+        const cancelWith =
+          input.cancelWith ??
+          new Map<string, { readonly reason: string; readonly examId: string }>();
+        const cancelOf = (lesson: ExamDayLesson) =>
+          lesson.entryId == null
+            ? undefined
+            : cancelWith.get(examLessonKeyOf(lesson.entryId, date, lesson.start));
+        const reasonOf = (lesson: ExamDayLesson) => cancelOf(lesson)?.reason;
         const restore = lessons.filter(
-          (one) => one.cancelCause === 'exam' && !coveredAll.has(one.id) && !keptIds.has(one.id),
+          (one) =>
+            one.cancelCause === 'exam' &&
+            !coveredAll.has(one.id) &&
+            !keptIds.has(one.id) &&
+            reasonOf(one) === undefined,
         );
+        // Task 5.6c-3a: a clash settled by `cancel`, and a lesson a `drop`
+        // cannot give back, cancelled with the typed reason; one under a
+        // standing exam stays so.
+        const withReason = lessons.filter(
+          (one) =>
+            reasonOf(one) !== undefined &&
+            !coveredAll.has(one.id) &&
+            !keptIds.has(one.id) &&
+            (one.cancelCause === null || one.cancelCause === 'exam'),
+        );
+        for (const one of withReason) {
+          await transaction
+            .updateTable('lessons')
+            .set({ cancel_cause: 'reason', cancel_reason: reasonOf(one) ?? null })
+            .where('id', '=', one.id)
+            .execute();
+        }
         if (restore.length > 0) {
           await transaction
             .updateTable('lessons')
@@ -971,6 +1045,10 @@ export function examWriteOf(input: {
             cancelled: cancel.filter((lesson) => ownCovered.has(lesson.id)).map((l) => l.id),
             restored: restore
               .filter((lesson) => unlinkedOf.get(one.exam.id)?.has(lesson.id) === true)
+              .map((lesson) => lesson.id),
+            // Review of the code, should-fix 3: only the lessons of its own decision.
+            cancelledWithReason: withReason
+              .filter((lesson) => cancelOf(lesson)?.examId === one.exam.id)
               .map((lesson) => lesson.id),
             outsAdded: add,
             outsRemoved: [

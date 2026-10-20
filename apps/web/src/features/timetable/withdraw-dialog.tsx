@@ -52,18 +52,21 @@ export function WithdrawDialog({
   const [chosen, setChosen] = useState<{
     key: string | null;
     choices: Record<string, DayChangeChoice>;
-  }>({ key: null, choices: {} });
+    /** Task 5.6c-3a: the reasons typed for exams' choices. */
+    reasons: Record<string, string>;
+  }>({ key: null, choices: {}, reasons: {} });
 
   const answer = check.data;
   // A choice counts only for the sorting shown now.
-  const choices =
-    answer !== undefined && chosen.key === answer.dayChanges.key ? chosen.choices : {};
+  const shown = answer !== undefined && chosen.key === answer.dayChanges.key;
+  const choices = shown ? chosen.choices : {};
+  const reasons = shown ? chosen.reasons : {};
   // A check read again (after a refusal of an older key) is waited for:
   // the key sent is the one of the sorting shown now.
   const body: WithdrawBody | null =
     answer === undefined || check.isFetching
       ? null
-      : dayDecisionsBodyOf(answer.dayChanges, choices);
+      : dayDecisionsBodyOf(answer.dayChanges, choices, reasons);
 
   return (
     <AlertDialog
@@ -97,11 +100,20 @@ export function WithdrawDialog({
             <PublishDayChanges
               impact={answer}
               choices={choices}
+              reasons={reasons}
               canEdit
               onChoose={(key, choice) => {
                 setChosen({
                   key: answer.dayChanges.key,
                   choices: { ...choices, [key]: choice },
+                  reasons,
+                });
+              }}
+              onReason={(key, reason) => {
+                setChosen({
+                  key: answer.dayChanges.key,
+                  choices,
+                  reasons: { ...reasons, [key]: reason },
                 });
               }}
             />

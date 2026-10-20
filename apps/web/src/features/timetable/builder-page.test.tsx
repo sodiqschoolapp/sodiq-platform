@@ -1037,7 +1037,14 @@ describe('pinSlots', () => {
               impact: {
                 beforeVersion: { id: uid(950), number: 1 },
                 carried: [],
-                dayChanges: { key: 'd'.repeat(64), kept: [], decide: [], dropped: [], bulk: [] },
+                dayChanges: {
+                  key: 'd'.repeat(64),
+                  kept: [],
+                  decide: [],
+                  dropped: [],
+                  bulk: [],
+                  exams: [],
+                },
                 counts: { created: 0, moved: 0, removed: 0, changed: 12, unchanged: 40 },
                 changes: [
                   {
@@ -1172,6 +1179,7 @@ describe('pinSlots', () => {
                   decide: [item(uid(622), 'move', ['teacher_double'])],
                   dropped: [item(uid(623), 'cancel')],
                   bulk: [],
+                  exams: [],
                 },
                 counts: { created: 0, moved: 0, removed: 0, changed: 0, unchanged: 40 },
                 changes: [],
@@ -1237,6 +1245,132 @@ describe('pinSlots', () => {
       });
     });
 
+    // Task 5.6c-3a (edge/timetable, Exams: "An exam is stored on its own like
+    // a one-day change and kept after a later publish"): a standing exam that
+    // needs a decision keeps Publish off until settled; a "drop" that leaves
+    // lessons cancelled needs a reason; a block whose "keep" would meet the
+    // exam offers only "cancel".
+    it('keeps Publish off until a standing exam is settled, asks a reason for a drop that leaves a lesson cancelled, and offers no "keep" where it would meet the exam', async () => {
+      const exam = uid(631);
+      const block = uid(632);
+      const daysKey = 'f'.repeat(64);
+      const lesson = { unitId: ROW.unit.id, subjectId: ROW.subject.id, start: 480, end: 525 };
+      const calls = await openPage({
+        path: `/timetable/builder?version=${VERSION.id}&step=publish`,
+        extra: {
+          [checkRoute]: () =>
+            json({
+              ...CHECK,
+              impact: {
+                beforeVersion: { id: uid(950), number: 1 },
+                carried: [],
+                dayChanges: {
+                  key: daysKey,
+                  kept: [],
+                  decide: [],
+                  dropped: [],
+                  bulk: [],
+                  exams: [
+                    {
+                      key: exam,
+                      category: 'decide',
+                      date: '2026-10-19',
+                      title: 'Quarter exam',
+                      start: 480,
+                      end: 525,
+                      carriedVersionId: null,
+                      cancelled: [lesson],
+                      blocks: [
+                        {
+                          blockId: block,
+                          blockDate: '2026-10-19',
+                          pairBlockId: null,
+                          start: 480,
+                          end: 525,
+                          lessons: [lesson],
+                          sittingClassIds: [ROW.unit.id],
+                          otherClassIds: [ROW.unit.id],
+                          choice: null,
+                          keepOffered: false,
+                        },
+                      ],
+                      blocked: [
+                        {
+                          rule: 'teacher_double',
+                          severity: 'blocked',
+                          weekday: 1,
+                          lessonIds: [uid(633)],
+                          date: '2026-10-19',
+                        },
+                      ],
+                      clashes: [lesson],
+                      groupMisses: false,
+                      noTimetable: false,
+                      dropBlocked: [lesson],
+                    },
+                  ],
+                },
+                counts: { created: 0, moved: 0, removed: 0, changed: 0, unchanged: 40 },
+                changes: [],
+                teachers: [],
+                classIds: [],
+                roomIds: [],
+                vacancies: [],
+                transition: null,
+                names: {
+                  units: [{ id: ROW.unit.id, kind: 'class', name: 'Oxford', grades: [7] }],
+                  subjects: [{ id: ROW.subject.id, names: ROW.subject.names }],
+                  teachers: [],
+                  rooms: [],
+                },
+              },
+            }),
+          [publishRoute]: () => json({ ...VERSION, status: 'published' }),
+        },
+      });
+      const item = await waitFor(() => {
+        const found = document.querySelector<HTMLElement>(
+          `[data-day-changes="decide"] [data-kind="exam"][data-key="${exam}"]`,
+        );
+        if (found === null) throw new Error('No exam yet.');
+        return found;
+      });
+      const action = screen.getByRole('button', { name: en.timetable.publish.action });
+      expect(action).toHaveProperty('disabled', true);
+      // The block offers only "cancel the whole block".
+      expect(
+        within(item).queryByRole('radio', {
+          name: en.timetable.publish.dayChanges.exams.blockChoice_keep,
+        }),
+      ).toBeNull();
+      expect(
+        within(item).getByRole('radio', {
+          name: en.timetable.publish.dayChanges.exams.blockChoice_cancel,
+        }),
+      ).toBeDefined();
+      fireEvent.click(
+        within(item).getByRole('radio', {
+          name: en.timetable.publish.dayChanges.exams.choice_drop,
+        }),
+      );
+      // The drop leaves a lesson cancelled: it needs a reason.
+      expect(action).toHaveProperty('disabled', true);
+      fireEvent.change(within(item).getByLabelText(en.timetable.publish.dayChanges.exams.reason), {
+        target: { value: 'Room taken' },
+      });
+      expect(action).toHaveProperty('disabled', false);
+      fireEvent.click(action);
+      const dialog = await screen.findByRole('alertdialog');
+      fireEvent.click(within(dialog).getByRole('button', { name: en.timetable.publish.action }));
+      await waitFor(() => {
+        expect(calls.find((call) => call.route === publishRoute)?.body).toEqual({
+          startsOn: '2026-10-19',
+          dayChangesKey: daysKey,
+          dayDecisions: [{ key: exam, choice: 'drop', reason: 'Room taken' }],
+        });
+      });
+    });
+
     // Task 5.6a-5b-1, pull request #165: the bulk cancels applied again, each
     // once; a shared block that needs a decision offers the bulk cancel's own
     // two choices (edge/timetable, After publishing, the 7 Oxford row).
@@ -1273,6 +1407,7 @@ describe('pinSlots', () => {
                   kept: [],
                   decide: [],
                   dropped: [],
+                  exams: [],
                   bulk: [
                     {
                       key: bulkKept,
@@ -1375,7 +1510,14 @@ describe('pinSlots', () => {
               impact: {
                 beforeVersion: { id: uid(950), number: 1 },
                 carried: [],
-                dayChanges: { key: 'd'.repeat(64), kept: [], decide: [], dropped: [], bulk: [] },
+                dayChanges: {
+                  key: 'd'.repeat(64),
+                  kept: [],
+                  decide: [],
+                  dropped: [],
+                  bulk: [],
+                  exams: [],
+                },
                 counts: { created: 0, moved: 0, removed: 0, changed: 0, unchanged: 40 },
                 changes: [],
                 teachers: [],

@@ -41,6 +41,17 @@ import {
   sortDayChanges,
   type DaySorting,
 } from './day-changes-kept.js';
+import type { ExamAudit } from './calendar-exams.js';
+import {
+  examAuditOf,
+  examKeyPartOf,
+  examsBeforeOf,
+  examsCancelledOf,
+  examsWriteOf,
+  invigilatorsOf,
+  sortExamsKept,
+  type KeptExam,
+} from './exams-kept.js';
 import { dayChangeIdsOf, namesOf } from './impact.js';
 import { runsOf, syncJournals } from './journals.js';
 import { markWithdrawn, outOfDateColumn } from './out-of-date.js';
@@ -107,6 +118,8 @@ interface WithdrawFindings {
   readonly blocked: ErrorDetail[];
   readonly sorting: DaySorting;
   readonly bulk: readonly SortedBulk[];
+  /** Task 5.6c-3a: the standing exams of the withdrawn dates, sorted. */
+  readonly exams: readonly KeptExam[];
   readonly key: string;
 }
 
@@ -146,7 +159,7 @@ export class TimetableWithdraw {
     return this.transactions.run(access.branchIds, async (transaction) => {
       await this.timetable.findVersion(transaction, branchId, id);
       const found = await this.findingsOf(transaction, access, id);
-      const named = dayChangeIdsOf(found.sorting.items, found.bulk);
+      const named = dayChangeIdsOf(found.sorting.items, found.bulk, found.exams);
       const { names } = await namesOf(
         transaction,
         { ...named, teacherIds: [] },
@@ -167,6 +180,7 @@ export class TimetableWithdraw {
             .filter((one) => one.category === 'dropped')
             .map((one) => one.answer),
           bulk: found.bulk.map((one) => one.answer),
+          exams: found.exams.map((one) => one.answer),
         },
         names,
       };
@@ -216,6 +230,7 @@ export class TimetableWithdraw {
                       ? {}
                       : { blockId: one.blockId, blockDate: one.blockDate ?? null }),
                     choice: one.choice,
+                    ...(one.reason === undefined ? {} : { reason: one.reason }),
                   })),
               },
             },
@@ -252,9 +267,10 @@ export class TimetableWithdraw {
     // "needs a decision" item, refused with the blocked results in one answer.
     const details = [
       ...found.blocked,
-      ...dayRefusalsOf({ key: found.key, items: found.sorting.items, bulk: found.bulk }, input).map(
-        detailOf,
-      ),
+      ...dayRefusalsOf(
+        { key: found.key, items: found.sorting.items, bulk: found.bulk, exams: found.exams },
+        input,
+      ).map(detailOf),
     ];
     if (details.length > 0) {
       throw new ApiException('withdraw_blocked', 409, undefined, details);
@@ -270,9 +286,25 @@ export class TimetableWithdraw {
       .where('id', '=', id)
       .execute();
 
+    // Task 5.6c-3a: the standing exams of the dates, kept or as decided.
+    const examAudit: ExamAudit[] = [];
+    const examWrite = examsWriteOf({
+      branchId,
+      items: found.exams,
+      begins: found.sorting.findings.begins,
+      sent: input.dayDecisions,
+      audit: examAudit,
+    });
     const lessons =
       earlier === null
-        ? await removeDatedLessons(transaction, branchId, version.starts_on, runEnd, plan)
+        ? await removeDatedLessons(
+            transaction,
+            branchId,
+            version.starts_on,
+            runEnd,
+            plan,
+            examWrite,
+          )
         : await writeDatedLessons(
             transaction,
             found.state,
@@ -280,6 +312,7 @@ export class TimetableWithdraw {
             version.starts_on,
             runEnd,
             plan,
+            examWrite,
           );
     // Task 5.6a-5b-2: the changes not applied ended in the withdrawn
     // version's name (decision 5), those kept on a lesson created again
@@ -312,6 +345,7 @@ export class TimetableWithdraw {
     const notices = await sendWeekChanges(transaction, this.notifications, week, {
       kind: 'timetable.withdrawn',
       number: version.number,
+      examsCancelled: await examsCancelledOf(transaction, found.exams, input.dayDecisions),
     });
     const journals = await syncJournals(transaction, this.audit, version, actor);
     const drafts = await transaction
@@ -340,6 +374,9 @@ export class TimetableWithdraw {
           settled,
           bulkAuditOf(found.bulk, bulkRecorded),
         ),
+        ...(found.exams.length === 0
+          ? {}
+          : { exams: examAuditOf(found.exams, input.dayDecisions, examAudit) }),
         journals: { ...journals },
         notices: { ...notices },
         markedOutOfDate: drafts.map((one) => one.id),
@@ -385,6 +422,8 @@ export class TimetableWithdraw {
       .sort()[0];
     const runEnd = next === undefined ? version.end_date : addDays(next, -1);
 
+    // Task 5.6c-3a: the standing exams' invigilators are teachers of the facts.
+    const invigilators = await invigilatorsOf(transaction, branchId, version.starts_on, runEnd);
     let earlier: WithdrawFindings['earlier'] = null;
     let state: PatternState;
     let dated: DatedFindings;
@@ -395,7 +434,7 @@ export class TimetableWithdraw {
       // withdrawn version's own facts, the other branches' claims and the
       // exams of each date.
       state = runningUntil(
-        await this.pattern.stateOf(transaction, version, access.accountId),
+        await this.pattern.stateOf(transaction, version, access.accountId, undefined, invigilators),
         runEnd,
       );
       const own = await datedCheck(transaction, state, version.starts_on, [], {
@@ -432,7 +471,7 @@ export class TimetableWithdraw {
         await this.timetable.rowsOf(transaction, before.id),
       );
       state = runningUntil(
-        await this.pattern.stateOf(transaction, row, access.accountId, rows),
+        await this.pattern.stateOf(transaction, row, access.accountId, rows, invigilators),
         runEnd,
       );
       // Decision 5: the full rule set. A teacher out is "needs a teacher" on
@@ -483,12 +522,30 @@ export class TimetableWithdraw {
     // Task 5.6a-5b-2 (decision 1): the stored one-day changes and bulk
     // cancels of the withdrawn dates, sorted as a publish sorts them, the
     // bulk cancels on the findings with the kept changes applied.
+    // Task 5.6c-3a: the standing exams of the dates, read before the
+    // one-day changes are sorted and sorted after; with no version running
+    // again, each has no timetable (decision 6).
+    const examsBefore = await examsBeforeOf(transaction, {
+      branchId,
+      findings: dated,
+      firstDate: version.starts_on,
+      lastDate: runEnd,
+    });
     const sorting = await sortDayChanges(transaction, {
       state,
       findings: dated,
       firstDate: version.starts_on,
       lastDate: runEnd,
       carriedVersionId: null,
+      ...(examsBefore.forSorting === undefined ? {} : { exams: examsBefore.forSorting }),
+    });
+    const exams = sortExamsKept({
+      branchId,
+      state,
+      findings: sorting.findings,
+      before: examsBefore,
+      carriedVersionId: null,
+      noTimetable: before === null,
     });
     const bulk = sortBulkOf({
       lessons: sorting.findings.dated.lessons,
@@ -502,7 +559,8 @@ export class TimetableWithdraw {
       version.starts_on,
       sorting.items,
       bulk.length === 0 ? null : bulkKeyPartOf(bulk),
+      examKeyPartOf(exams),
     );
-    return { version, earlier, runEnd, state, dated, blocked, sorting, bulk, key };
+    return { version, earlier, runEnd, state, dated, blocked, sorting, bulk, exams, key };
   }
 }

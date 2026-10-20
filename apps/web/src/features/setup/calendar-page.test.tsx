@@ -97,7 +97,7 @@ const NO_LESSONS: CalendarPreview['lessons'] = {
   needsTeacher: [],
   notified: [],
   blocked: [],
-  dayChanges: { key: 'e'.repeat(64), kept: [], decide: [], dropped: [], bulk: [] },
+  dayChanges: { key: 'e'.repeat(64), kept: [], decide: [], dropped: [], bulk: [], exams: [] },
   shortenedDays: [],
   keepRefusals: [],
   exams: [],
@@ -537,6 +537,7 @@ describe('the calendar page', () => {
           ],
           dropped: [],
           bulk: [],
+          exams: [],
         },
         names: {
           units: [{ id: OXFORD, kind: 'class', name: 'Oxford', grades: [7] }],

@@ -2885,6 +2885,7 @@ describe('calendar entries after publishing', () => {
         decide: [],
         dropped: [],
         bulk: [],
+        exams: [],
       });
       expect(await storedRowsOf(s.branch)).toEqual(rows[0]);
       expect(await storedRowsOf(other.branch)).toEqual(rows[1]);
