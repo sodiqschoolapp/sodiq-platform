@@ -16,8 +16,8 @@
  * but one date is not", first exception; decisions 4 and 7):
  * - `not_in_template`: no slot of that number on the date, or, for a group of
  *   two grades, slots whose times differ between its grades;
- * - `day_off`: a group of two grades on a date off for one of them, until the
- *   choice of the calendar entry is stored (5.6b);
+ * - `day_off`: a group of two grades on a date off for one of them, unless the
+ *   day-off entry's stored choice keeps the block (see below);
  * - `exam_week`: an exam week with "no regular lessons", a bulk cancel with
  *   that reason (edge/time-dates-calendar, "The last week of a quarter").
  * A vacation date (in no quarter), a day off and a weekday off give nothing.
@@ -36,6 +36,18 @@
  * shortened, or none of whose positions holds a lesson, is unused (decision 3).
  * A lesson of several classes takes the time each class gives it, and is
  * cancelled `not_in_template` when they differ (decision 4).
+ *
+ * A group of two grades on a date one grade has off by a day-off entry (task
+ * 5.6b-3, edge/time-dates-calendar, "A day off for grade 9 only, and a group
+ * joins 9 Edinburgh and 10 Brown"): the entry's stored choice for the block
+ * (`groupChoiceOn`, by its groups and weekly start) decides, in this order:
+ * the day off first (no choice or `cancel`: cancelled `day_off`), then the
+ * choice (`keep`), then the template of the grades that have school: an exam
+ * week there cancels it `exam_week`, a slot their template lacks or times it
+ * differently cancels it `not_in_template`, else the lesson takes their time
+ * and the students of the grade that is off, by their membership on the date,
+ * are exempt for it; a lesson of that grade alone (a group of its classes
+ * only) is cancelled `day_off` on the date (code review round 1). Every such block and date is listed in `splitGroups`.
  */
 import type { Day } from './day.js';
 import type { Placement } from './placement.js';
@@ -73,7 +85,11 @@ export interface DatedBlock {
 
 /** What a grade has on a date, as the calendar gives it (`dayOn` with the template's times). */
 export type DatedDay =
-  | { readonly lessons: false }
+  | {
+      readonly lessons: false;
+      /** The day-off calendar entry that leaves the grade off (task 5.6b-3); absent for a weekday off or no template. */
+      readonly dayOffEntryId?: string;
+    }
   | {
       readonly lessons: true;
       readonly day: Day;
@@ -102,6 +118,35 @@ export interface DatedPatternInput {
   readonly gradeOf: (classId: string) => number;
   /** The slot positions a class keeps on a shortened date (task 5.5a-2b-2); `null` with no choice. */
   readonly keptOn: (classId: string, date: string) => readonly number[] | null;
+  /**
+   * The stored choice of a day-off entry for a block of two-grade groups on a
+   * date (task 5.6b-3), the block named by its groups (sorted) and its weekly
+   * start minute; `null` with none.
+   */
+  readonly groupChoiceOn: (
+    entryId: string,
+    date: string,
+    groupIds: readonly string[],
+    start: number,
+  ) => DatedGroupChoice | null;
+}
+
+/** Task 5.6b-3: cancel a split group's block "day off", or keep it for the grade that has school. */
+export type DatedGroupChoice = 'keep' | 'cancel';
+
+/** A block of two-grade groups on a date a day-off entry leaves one of its grades off (task 5.6b-3). */
+export interface DatedSplitGroup {
+  readonly date: string;
+  readonly blockId: string;
+  readonly entryId: string;
+  /** The groups of the block, sorted. */
+  readonly groupIds: readonly string[];
+  readonly weekday: number;
+  readonly start: number;
+  readonly end: number;
+  /** The grades that have school on the date. */
+  readonly gradesAtSchool: readonly number[];
+  readonly choice: DatedGroupChoice | null;
 }
 
 /** A lesson of a date: the engine's placement and where it comes from. */
@@ -167,6 +212,7 @@ export interface DatedPattern {
   readonly noTutor: readonly DatedNoTutor[];
   readonly shortened: readonly DatedShortened[];
   readonly unusedKeeps: readonly DatedUnusedKeep[];
+  readonly splitGroups: readonly DatedSplitGroup[];
 }
 
 /** The date `days` after `date`. */
@@ -188,7 +234,20 @@ export function patternIdOf(id: string): { id: string; date: string } | null {
 type BlockOnDate =
   | { readonly kind: 'none' }
   | { readonly kind: 'cancelled'; readonly reason: DatedCancelReason }
-  | { readonly kind: 'lessons'; readonly start: number; readonly end: number };
+  | {
+      readonly kind: 'lessons';
+      readonly start: number;
+      readonly end: number;
+      /** Kept for the grades at school (task 5.6b-3): the classes and grades that are off. */
+      readonly offClassIds: readonly string[];
+      readonly offGrades: readonly number[];
+    };
+
+/** The groups of a block, sorted. */
+const groupsOf = (block: DatedBlock): string[] =>
+  [
+    ...new Set(block.entries.flatMap((entry) => (entry.groupId === null ? [] : [entry.groupId]))),
+  ].sort();
 
 /** The lesson number of a block in the weekly day of a grade; `null` when its times are not there. */
 function weeklyNumber(block: DatedBlock, grade: number, input: DatedPatternInput): number | null {
@@ -298,18 +357,45 @@ function blockOn(
   date: string,
   input: DatedPatternInput,
   chosenOf: (classId: string) => ReadonlyMap<string, number | null> | null,
+  splits: DatedSplitGroup[],
 ): BlockOnDate {
   const days = block.grades.map((grade) => ({ grade, day: input.dayOn(grade, date) }));
   const holding = days.filter((one) => one.day.lessons && one.day.followsWeekday === block.weekday);
   if (holding.length === 0) {
     return { kind: 'none' };
   }
+  let offGrades: readonly number[] = [];
   if (holding.length < days.length) {
     // A group of two grades: one grade is off, or follows another weekday.
-    return {
-      kind: 'cancelled',
-      reason: days.some((one) => !one.day.lessons) ? 'day_off' : 'not_in_template',
-    };
+    const off = days.filter((one) => !holding.includes(one));
+    const entryIds = new Set(
+      off.map((one) => (one.day.lessons ? undefined : one.day.dayOffEntryId)),
+    );
+    const [entryId] = [...entryIds];
+    const groupIds = groupsOf(block);
+    if (entryIds.size !== 1 || entryId === undefined || groupIds.length === 0) {
+      return {
+        kind: 'cancelled',
+        reason: days.some((one) => !one.day.lessons) ? 'day_off' : 'not_in_template',
+      };
+    }
+    // Task 5.6b-3: the day off first, then the entry's choice.
+    const choice = input.groupChoiceOn(entryId, date, groupIds, block.start);
+    splits.push({
+      date,
+      blockId: block.id,
+      entryId,
+      groupIds,
+      weekday: block.weekday,
+      start: block.start,
+      end: block.end,
+      gradesAtSchool: holding.map((one) => one.grade),
+      choice,
+    });
+    if (choice !== 'keep') {
+      return { kind: 'cancelled', reason: 'day_off' };
+    }
+    offGrades = off.map((one) => one.grade);
   }
   if (holding.some((one) => one.day.lessons && one.day.noRegularLessons)) {
     return { kind: 'cancelled', reason: 'exam_week' };
@@ -317,7 +403,8 @@ function blockOn(
   // Each class of the block gives it a slot: a stored choice's, or the
   // block's own lesson number in its grade's day (decision 4).
   const times = new Set<string>();
-  const classes = classesOf(block);
+  const allClasses = classesOf(block);
+  const classes = allClasses.filter((classId) => !offGrades.includes(input.gradeOf(classId)));
   const sources =
     classes.length === 0
       ? holding.map((one) => ({ grade: one.grade, classId: null }))
@@ -344,7 +431,13 @@ function blockOn(
     return { kind: 'cancelled', reason: 'not_in_template' };
   }
   const [start, end] = only.split('-').map(Number);
-  return { kind: 'lessons', start: start ?? 0, end: end ?? 0 };
+  return {
+    kind: 'lessons',
+    start: start ?? 0,
+    end: end ?? 0,
+    offClassIds: allClasses.filter((classId) => !classes.includes(classId)),
+    offGrades,
+  };
 }
 
 /** Every lesson of the pattern from the first to the last date (see the file's comment). */
@@ -354,6 +447,7 @@ export function datedPattern(input: DatedPatternInput): DatedPattern {
   const noTutor: DatedNoTutor[] = [];
   const shortened: DatedShortened[] = [];
   const unusedKeeps: DatedUnusedKeep[] = [];
+  const splitGroups: DatedSplitGroup[] = [];
   const blocksOfClass = new Map<string, DatedBlock[]>();
   for (const block of input.blocks) {
     for (const classId of classesOf(block)) {
@@ -373,7 +467,13 @@ export function datedPattern(input: DatedPatternInput): DatedPattern {
       if (found.chosen !== null) chosenByClass.set(classId, found.chosen);
     }
     for (const block of input.blocks) {
-      const found = blockOn(block, date, input, (classId) => chosenByClass.get(classId) ?? null);
+      const found = blockOn(
+        block,
+        date,
+        input,
+        (classId) => chosenByClass.get(classId) ?? null,
+        splitGroups,
+      );
       if (found.kind === 'none') continue;
       if (found.kind === 'cancelled') {
         cancelled.push({
@@ -384,7 +484,23 @@ export function datedPattern(input: DatedPatternInput): DatedPattern {
         });
         continue;
       }
+      // Code review round 1: under "keep", a lesson of the grade that is off
+      // alone has nobody at school: it is cancelled "day off"; the rest is held.
+      const offOnly = block.entries.filter(
+        (entry) =>
+          found.offClassIds.length > 0 &&
+          entry.classIds.every((classId) => found.offClassIds.includes(classId)),
+      );
+      if (offOnly.length > 0) {
+        cancelled.push({
+          date,
+          reason: 'day_off',
+          blockId: block.id,
+          entryIds: offOnly.map((entry) => entry.id),
+        });
+      }
       for (const entry of block.entries) {
+        if (offOnly.includes(entry)) continue;
         let teacherId: string | null = entry.teacherId;
         if (entry.tutorRow && entry.classId !== null) {
           teacherId = input.tutorOn(entry.classId, date, found.start);
@@ -393,6 +509,11 @@ export function datedPattern(input: DatedPatternInput): DatedPattern {
           }
         }
         const unitId = entry.classId ?? entry.groupId ?? '';
+        const studentIds = input.studentsOn(unitId, date);
+        // Task 5.6b-3 (correction 1): the members of the off grade's classes on the date.
+        const offStudents = new Set(
+          found.offClassIds.flatMap((classId) => input.studentsOn(classId, date)),
+        );
         lessons.push({
           entryId: entry.id,
           date,
@@ -410,8 +531,8 @@ export function datedPattern(input: DatedPatternInput): DatedPattern {
             classId: entry.classId,
             groupId: entry.groupId,
             classIds: entry.classIds,
-            studentIds: input.studentsOn(unitId, date),
-            exemptStudentIds: [],
+            studentIds,
+            exemptStudentIds: studentIds.filter((student) => offStudents.has(student)),
             subjectId: entry.subjectId,
             loadRowId: entry.loadRowId,
             teacherIds: teacherId === null ? [] : [teacherId],
@@ -419,10 +540,11 @@ export function datedPattern(input: DatedPatternInput): DatedPattern {
             roomId: entry.roomId,
             examRooms: [],
             fixed: false,
+            ...(found.offGrades.length === 0 ? {} : { gradesOff: found.offGrades }),
           },
         });
       }
     }
   }
-  return { lessons, cancelled, noTutor, shortened, unusedKeeps };
+  return { lessons, cancelled, noTutor, shortened, unusedKeeps, splitGroups };
 }

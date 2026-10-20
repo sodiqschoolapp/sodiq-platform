@@ -5,6 +5,7 @@ import {
   calendarDayQuerySchema,
   calendarEntryListSchema,
   calendarSaveSchema,
+  calendarArchiveBodySchema,
   calendarDaysBodySchema,
   calendarEntrySchema,
   calendarPreviewSchema,
@@ -85,7 +86,7 @@ export class CalendarController {
   archive(
     @CurrentAccess() access: Access,
     @ValidParams(setupIdParamsSchema) params: SetupIdParams,
-    @ValidBody(calendarDaysBodySchema) days: CalendarDaysBody,
+    @ValidBody(calendarArchiveBodySchema) days: CalendarDaysBody,
     @RequestId() requestId: string,
   ): Promise<CalendarEntry> {
     return this.calendar.archive(access, branchOf(access), params.id, days, requestId);

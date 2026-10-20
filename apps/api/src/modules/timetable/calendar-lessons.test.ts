@@ -198,7 +198,7 @@ describe('calendar entries after publishing', () => {
    * the grade-7 class in slot 1 and history of the grade-10 class in slot 3,
    * both on Mondays, each with its own teacher.
    */
-  async function scene(input: { group?: boolean; three?: boolean } = {}) {
+  async function scene(input: { group?: boolean; three?: boolean; nineGroup?: boolean } = {}) {
     const branch = await t.newBranch();
     const year = await load.classes.year(branch);
     for (const [index, [start, end]] of QUARTERS.entries()) {
@@ -260,7 +260,8 @@ describe('calendar entries after publishing', () => {
     // grade-10 class (`edge/timetable`, Structure, "Physical education joins a
     // grade-9 and a grade-10 class"), in slot 5 on Mondays.
     let groupId: string | null = null;
-    if (input.group === true) {
+    let nineGroupId: string | null = null;
+    if (input.group === true || input.nineGroup === true) {
       const nineId = await load.classes.schoolClass(branch, year, {
         grade: 9,
         room: await load.classes.room(branch),
@@ -279,6 +280,23 @@ describe('calendar entries after publishing', () => {
         teacher_id: coach,
         lessons_per_week: 1,
       });
+      // Task 5.6b-3 (code review round 1), with `nineGroup`: a group of the
+      // grade-9 class alone, linked to the first by that class: one block with it.
+      if (input.nineGroup === true) {
+        nineGroupId = await load.classes.group(branch, year, sport, [nineId]);
+        const nineCoach = (
+          await load.teacher(branch, { subjects: [{ subject: sport, grades: [9] }] })
+        ).staffId;
+        await hours(branch, nineCoach);
+        await load.row({
+          branch_id: branch,
+          version_id: version,
+          group_id: nineGroupId,
+          subject_id: sport,
+          teacher_id: nineCoach,
+          lessons_per_week: 1,
+        });
+      }
       await placeAt(branch, version, groupRow, 1, 5);
     }
     // Task 5.6b-2b, with `three`: art and music of the grade-7 class in
@@ -324,7 +342,9 @@ describe('calendar entries after publishing', () => {
       seniorRow,
       regular,
       short,
+      lessonType: lesson,
       groupId,
+      nineGroupId,
       art,
       music,
     };
@@ -507,24 +527,442 @@ describe('calendar entries after publishing', () => {
       ]);
     });
 
-    // Interim until 5.6b-3 (decision 11): the choice per block is not asked
-    // yet, the block is written as the expansion writes it (`blockOn`). This
-    // is not the rule of `edge/time-dates-calendar`, "A day off for grade 9
-    // only, and a group joins 9 Edinburgh and 10 Brown"; 5.6b-3 replaces it.
-    it('for grade 9 only writes a group of grades 9 and 10 cancelled "day off" (interim, until 5.6b-3)', async () => {
+    // Task 5.6b-3 (replaces the interim test of 5.6b-1 decision 11): a group
+    // joins the grade-9 class and the grade-10 class in slot 5 (09:50 to
+    // 10:35) on Mondays; a day off for grade 9 only leaves grade 10 at school.
+    describe('for grade 9 only, over a group of grades 9 and 10 (task 5.6b-3)', () => {
+      const nineOff = (first = OCT19, last = first) =>
+        dayOff(first, last, { gradeFrom: 9, gradeTo: 9 });
+      const groupBlocks = (s: Scene, choice: 'keep' | 'cancel') => [
+        { weekday: 1, start: 590, groupIds: [s.groupId ?? ''], choice },
+      ];
+      const groupOn = async (s: Scene, date: string) =>
+        (await lessonsOn(s.branch, date)).filter((one) => one.group_id === s.groupId);
+      const choicesOf = (branch: string) =>
+        t.database.migrator
+          .selectFrom('calendar_group_blocks as b')
+          .innerJoin('calendar_group_block_groups as g', 'g.block_id', 'b.id')
+          .select([
+            sql<string>`b.lesson_date::text`.as('date'),
+            'b.start_minutes',
+            'b.choice',
+            'g.group_id',
+          ])
+          .where('b.branch_id', '=', branch)
+          .orderBy('b.lesson_date')
+          .execute();
+
+      it("lists the group's block in the preview and refuses a save with no choice, writing nothing", async () => {
+        const s = await scene({ group: true });
+        const shown = await preview(s.branch, { action: 'create', record: nineOff(OCT19, OCT26) });
+        expect(shown.lessons.groupBlocks).toEqual([
+          {
+            weekday: 1,
+            start: 590,
+            end: 635,
+            groupIds: [s.groupId],
+            gradesAtSchool: [10],
+            dates: [OCT19, OCT26],
+            choice: null,
+          },
+        ]);
+        expect(shown.lessons.names.units.map((one) => one.id)).toContain(s.groupId);
+        const lessons = await lessonsOf(s.branch);
+        const before = await t.auditCount();
+
+        const refused = await create(s.branch, nineOff(OCT19, OCT26));
+
+        refusedWith(refused, 409, 'calendar_blocked');
+        expect(detailsOf(refused).map((one) => [one.code, one.day])).toEqual([
+          ['calendar_group_block_choice', OCT19],
+          ['calendar_group_block_choice', OCT26],
+        ]);
+        expect(await lessonsOf(s.branch)).toEqual(lessons);
+        expect(await choicesOf(s.branch)).toEqual([]);
+        expect(await t.auditCount()).toBe(before);
+      });
+
+      it('with "cancel" creates the group\'s lessons cancelled "day off"', async () => {
+        const s = await scene({ group: true });
+        okay(await create(s.branch, { ...nineOff(), groupBlocks: groupBlocks(s, 'cancel') }), 201);
+        expect((await groupOn(s, OCT19)).map((one) => one.cancel_cause)).toEqual(['day_off']);
+        expect(await choicesOf(s.branch)).toEqual([
+          { date: OCT19, start_minutes: 590, choice: 'cancel', group_id: s.groupId },
+        ]);
+      });
+
+      it('with "keep" keeps the group\'s lesson for grade 10 at its time, stores and audits the choice', async () => {
+        const s = await scene({ group: true });
+        const before = await groupOn(s, OCT19);
+        const senior = (await lessonsOn(s.branch, OCT19)).filter(
+          (one) => one.class_id === s.seniorId,
+        );
+        const shown = await preview(s.branch, {
+          action: 'create',
+          record: nineOff(),
+          groupBlocks: groupBlocks(s, 'keep'),
+        });
+        // The preview shows the choice sent (spec review 10).
+        expect(shown.lessons.groupBlocks.map((one) => one.choice)).toEqual(['keep']);
+        expect(shown.lessons.groupBlocksUnused).toEqual([]);
+
+        const saved = okay(
+          await create(s.branch, { ...nineOff(), groupBlocks: groupBlocks(s, 'keep') }),
+          201,
+        );
+
+        const after = await groupOn(s, OCT19);
+        expect(after.map((one) => [one.cancel_cause, one.starts_at])).toEqual(
+          before.map((one) => [null, one.starts_at]),
+        );
+        expect(
+          (await lessonsOn(s.branch, OCT19)).filter((one) => one.class_id === s.seniorId),
+        ).toEqual(senior);
+        expect(await choicesOf(s.branch)).toEqual([
+          { date: OCT19, start_minutes: 590, choice: 'keep', group_id: s.groupId },
+        ]);
+        const [entry] = await t.entries('calendar_entry.create', saved.id);
+        expect((entry?.new_value as { groupBlocks: unknown }).groupBlocks).toEqual([
+          {
+            date: OCT19,
+            weekday: 1,
+            start: 590,
+            groupIds: [s.groupId],
+            before: null,
+            after: 'keep',
+          },
+        ]);
+      });
+
+      it('an edit of the unchanged entry with a new choice writes its dates again and marks the drafts (spec review 1)', async () => {
+        const s = await scene({ group: true });
+        const saved = okay(
+          await create(s.branch, { ...nineOff(), groupBlocks: groupBlocks(s, 'keep') }),
+          201,
+        );
+        const draftId = await copyUnpublished(s);
+        const causes = async () =>
+          (
+            await t.database.migrator
+              .selectFrom('timetable_version_out_of_date_causes')
+              .select('id')
+              .where('version_id', '=', draftId)
+              .execute()
+          ).length;
+        const causesBefore = await causes();
+        // The stored choice is shown in the edit's preview.
+        const shown = await preview(s.branch, { action: 'edit', id: saved.id, record: nineOff() });
+        expect(shown.lessons.groupBlocks.map((one) => one.choice)).toEqual(['keep']);
+
+        okay(
+          await t.patch(`/api/setup/calendar-entries/${saved.id}`, s.branch, {
+            ...nineOff(),
+            groupBlocks: groupBlocks(s, 'cancel'),
+          }),
+        );
+
+        expect((await groupOn(s, OCT19)).map((one) => one.cancel_cause)).toEqual(['day_off']);
+        expect((await choicesOf(s.branch)).map((one) => one.choice)).toEqual(['cancel']);
+        expect(await causes()).toBeGreaterThan(causesBefore);
+        const [entry] = await t.entries('calendar_entry.edit', saved.id);
+        expect((entry?.new_value as { groupBlocks: unknown }).groupBlocks).toEqual([
+          {
+            date: OCT19,
+            weekday: 1,
+            start: 590,
+            groupIds: [s.groupId],
+            before: 'keep',
+            after: 'cancel',
+          },
+        ]);
+      });
+
+      it('is applied again by a later publish and by a withdraw of that version', async () => {
+        const s = await scene({ group: true });
+        okay(
+          await create(s.branch, { ...nineOff(OCT26), groupBlocks: groupBlocks(s, 'keep') }),
+          201,
+        );
+        expect((await groupOn(s, OCT26)).map((one) => one.cancel_cause)).toEqual([null]);
+
+        // A version from 19 October places the group in slot 5 again.
+        const next = await copyUnpublished(s);
+        okay(await publish(s.branch, next, OCT19));
+        const onNext = await groupOn(s, OCT26);
+        expect(onNext.map((one) => [one.cancel_cause, one.version_id])).toEqual([[null, next]]);
+
+        okay(await keyed(`/api/timetable/versions/${next}/withdraw`, s.branch, {}));
+        expect((await groupOn(s, OCT26)).map((one) => [one.cancel_cause, one.version_id])).toEqual([
+          [null, s.version],
+        ]);
+      });
+
+      it('leaves a kept block "not in the day\'s template" where grade 10\'s day lacks its slot (correction 2)', async () => {
+        const s = await scene({ group: true });
+        // Grade 10 on the one-slot template that day: no third lesson.
+        okay(
+          await create(s.branch, {
+            ...specialDay(OCT19, OCT19, s.short),
+            gradeFrom: 10,
+            gradeTo: 10,
+            dayKeeps: [{ classId: s.seniorId, date: OCT19, slotPositions: [3] }],
+          }),
+          201,
+        );
+        okay(await create(s.branch, { ...nineOff(), groupBlocks: groupBlocks(s, 'keep') }), 201);
+        expect((await groupOn(s, OCT19)).map((one) => one.cancel_cause)).toEqual([
+          'not_in_template',
+        ]);
+      });
+
+      it('archived and restored, takes its stored choice again with no body', async () => {
+        const s = await scene({ group: true });
+        const saved = okay(
+          await create(s.branch, { ...nineOff(), groupBlocks: groupBlocks(s, 'keep') }),
+          201,
+        );
+        okay(await post(`/api/setup/calendar-entries/${saved.id}/archive`, s.branch));
+        expect((await groupOn(s, OCT19)).map((one) => one.cancel_cause)).toEqual([null]);
+        // The rows stay for the restore (decision 6).
+        expect(await choicesOf(s.branch)).toHaveLength(1);
+
+        okay(await post(`/api/setup/calendar-entries/${saved.id}/restore`, s.branch));
+
+        expect((await groupOn(s, OCT19)).map((one) => one.cancel_cause)).toEqual([null]);
+        const [entry] = await t.entries('calendar_entry.restore', saved.id);
+        expect(entry?.new_value).not.toHaveProperty('groupBlocks');
+      });
+
+      // Code review must-fix 3: a line shows a choice only when every date has it.
+      it('an edit that adds a date shows the block unchosen and is refused without a choice for it', async () => {
+        const s = await scene({ group: true });
+        const saved = okay(
+          await create(s.branch, { ...nineOff(), groupBlocks: groupBlocks(s, 'keep') }),
+          201,
+        );
+        const shown = await preview(s.branch, {
+          action: 'edit',
+          id: saved.id,
+          record: nineOff(OCT19, OCT26),
+        });
+        expect(shown.lessons.groupBlocks.map((one) => [one.dates, one.choice])).toEqual([
+          [[OCT19, OCT26], null],
+        ]);
+        const refused = await t.patch(
+          `/api/setup/calendar-entries/${saved.id}`,
+          s.branch,
+          nineOff(OCT19, OCT26),
+        );
+        refusedWith(refused, 409, 'calendar_blocked');
+        expect(detailsOf(refused).map((one) => [one.code, one.day])).toEqual([
+          ['calendar_group_block_choice', OCT26],
+        ]);
+      });
+
+      // Code review must-fix 2 (plan test 8): the rows of today and the past stay.
+      it('an edit of a started entry changes the choice of the dates after today only', async () => {
+        const s = await scene({ group: true });
+        // An entry from Monday 5 October, with a choice stored on 1 October for that date.
+        const PAST_MONDAY = '2026-10-05';
+        const saved = await t.database.migrator
+          .insertInto('calendar_entries')
+          .values({
+            branch_id: s.branch,
+            kind: 'day_off',
+            name: 'Grade 9 trip',
+            first_date: PAST_MONDAY,
+            last_date: OCT26,
+            grade_from: 9,
+            grade_to: 9,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await t.database.migrator.transaction().execute(async (transaction) => {
+          await sql`select set_config('app.now', '2026-10-01T10:00:00+05:00', true)`.execute(
+            transaction,
+          );
+          const row = await transaction
+            .insertInto('calendar_group_blocks')
+            .values({
+              branch_id: s.branch,
+              calendar_entry_id: saved.id,
+              lesson_date: PAST_MONDAY,
+              weekday: 1,
+              start_minutes: 590,
+              end_minutes: 635,
+              choice: 'keep',
+            })
+            .returning('id')
+            .executeTakeFirstOrThrow();
+          await transaction
+            .insertInto('calendar_group_block_groups')
+            .values({
+              branch_id: s.branch,
+              block_id: row.id,
+              group_id: s.groupId ?? '',
+              calendar_entry_id: saved.id,
+              lesson_date: PAST_MONDAY,
+              start_minutes: 590,
+            })
+            .execute();
+        });
+
+        okay(
+          await t.patch(`/api/setup/calendar-entries/${saved.id}`, s.branch, {
+            ...nineOff(PAST_MONDAY, OCT26),
+            groupBlocks: groupBlocks(s, 'cancel'),
+          }),
+        );
+
+        expect((await choicesOf(s.branch)).map((one) => [one.date, one.choice])).toEqual([
+          [PAST_MONDAY, 'keep'],
+          // Monday 12 October, the first date after today (10 October).
+          ['2026-10-12', 'cancel'],
+          [OCT19, 'cancel'],
+          [OCT26, 'cancel'],
+        ]);
+        expect((await groupOn(s, OCT19)).map((one) => one.cancel_cause)).toEqual(['day_off']);
+        expect((await groupOn(s, OCT26)).map((one) => one.cancel_cause)).toEqual(['day_off']);
+      });
+
+      // Code review must-fix 1 (plan test 9b, decision 2).
+      it('a later version\'s block of the group at another time is cancelled "day off" and offered unchosen', async () => {
+        const s = await scene({ group: true });
+        const saved = okay(
+          await create(s.branch, { ...nineOff(OCT26), groupBlocks: groupBlocks(s, 'keep') }),
+          201,
+        );
+        // A version from 19 October with the group in slot 1.
+        const next = await draft(s.branch, s.year, s.version);
+        await t.database.migrator
+          .deleteFrom('pattern_blocks')
+          .where('version_id', '=', next)
+          .execute();
+        const rows = await t.database.migrator
+          .selectFrom('teaching_load_rows')
+          .select(['id', 'subject_id', 'group_id'])
+          .where('version_id', '=', next)
+          .execute();
+        for (const row of rows) {
+          await placeAt(
+            s.branch,
+            next,
+            row.id,
+            1,
+            row.subject_id === s.history ? 3 : row.group_id === null ? 5 : 1,
+          );
+        }
+        await confirmTemplates(s.branch, next);
+        await load.freeEditLock(next);
+        okay(await publish(s.branch, next, OCT19));
+
+        const group = await groupOn(s, OCT26);
+        expect(group.map((one) => [one.cancel_cause, one.version_id])).toEqual([['day_off', next]]);
+        const shown = await preview(s.branch, {
+          action: 'edit',
+          id: saved.id,
+          record: nineOff(OCT26),
+        });
+        expect(shown.lessons.groupBlocks.map((one) => [one.start, one.choice])).toEqual([
+          [480, null],
+        ]);
+      });
+
+      // Code review should-fix 1: a one-day change of a kept lesson is not refused for the grade off.
+      it('lets a one-day room change of a kept lesson through', async () => {
+        const s = await scene({ group: true });
+        okay(await create(s.branch, { ...nineOff(), groupBlocks: groupBlocks(s, 'keep') }), 201);
+        const [kept] = await groupOn(s, OCT19);
+        const room = await load.classes.room(s.branch);
+        okay(
+          await keyed(`/api/timetable/lessons/${kept?.id ?? ''}/room`, s.branch, {
+            roomId: room,
+            reason: 'The hall is painted',
+          }),
+        );
+        const [after] = await groupOn(s, OCT19);
+        expect(after?.cancel_cause).toBeNull();
+      });
+
+      // Code review round 1: a group of grade 9 alone in a kept block.
+      it('with "keep" over a block with a group of grade 9 alone holds the two-grade group and cancels that one "day off"', async () => {
+        const s = await scene({ nineGroup: true });
+        const before = await lessonsOn(s.branch, OCT19);
+        const nine = before.find((one) => one.group_id === s.nineGroupId);
+        expect(nine?.block_id).toBe(before.find((one) => one.group_id === s.groupId)?.block_id);
+        const groupIds = [s.groupId ?? '', s.nineGroupId ?? ''];
+        const shown = await preview(s.branch, { action: 'create', record: nineOff() });
+        expect(shown.lessons.groupBlocks.map((one) => one.groupIds.toSorted())).toEqual([
+          groupIds.toSorted(),
+        ]);
+
+        okay(
+          await create(s.branch, {
+            ...nineOff(),
+            groupBlocks: [{ weekday: 1, start: 590, groupIds, choice: 'keep' }],
+          }),
+          201,
+        );
+
+        const after = await lessonsOn(s.branch, OCT19);
+        expect(after.find((one) => one.group_id === s.groupId)?.cancel_cause).toBeNull();
+        expect(after.find((one) => one.group_id === s.nineGroupId)?.cancel_cause).toBe('day_off');
+        // A one-day room change of the kept lesson: the part cancelled "day off" goes alongside.
+        const kept = after.find((one) => one.group_id === s.groupId);
+        okay(
+          await keyed(`/api/timetable/lessons/${kept?.id ?? ''}/room`, s.branch, {
+            roomId: await load.classes.room(s.branch),
+            reason: 'The hall is painted',
+          }),
+        );
+      });
+
+      // Permission review must-fix 1: an archive leaves no grade off and takes no choice.
+      it('refuses a choice sent with an archive, writing nothing', async () => {
+        const s = await scene({ group: true });
+        const saved = okay(
+          await create(s.branch, { ...nineOff(), groupBlocks: groupBlocks(s, 'keep') }),
+          201,
+        );
+        const lessons = await lessonsOf(s.branch);
+        const before = await t.auditCount();
+        refusedWith(
+          await post(`/api/setup/calendar-entries/${saved.id}/archive`, s.branch, {
+            groupBlocks: groupBlocks(s, 'cancel'),
+          }),
+          400,
+          'validation_failed',
+        );
+        expect(await lessonsOf(s.branch)).toEqual(lessons);
+        expect(await t.auditCount()).toBe(before);
+      });
+    });
+
+    it('lists a group\'s lesson in a slot whose times differ between its grades as "not in the day\'s template", under the group', async () => {
       const s = await scene({ group: true });
-      const before = (await lessonsOn(s.branch, OCT19)).find((one) => one.group_id === s.groupId);
-      expect(before?.cancel_cause).toBeNull();
+      const pause = await t.createSlotType(s.branch, 'Long break', 'break', 30);
+      // Grade 9 only: the third lesson starts at 10:10, not 09:50.
+      const late = await t.createTemplate(s.branch, 'Late', [
+        s.lessonType,
+        pause,
+        s.lessonType,
+        pause,
+        s.lessonType,
+      ]);
+      const record = { ...specialDay(OCT19, OCT19, late), gradeFrom: 9, gradeTo: 9 };
+      const shown = await preview(s.branch, { action: 'create', record });
+      expect(shown.lessons.cancelled.map((one) => [one.unitId, one.cause])).toEqual([
+        [s.groupId, 'not_in_template'],
+      ]);
+      expect(shown.lessons.groupBlocks).toEqual([]);
 
-      okay(await create(s.branch, dayOff(OCT19, OCT19, { gradeFrom: 9, gradeTo: 9 })), 201);
+      okay(await create(s.branch, record), 201);
 
-      const after = await lessonsOn(s.branch, OCT19);
       expect(
-        after.filter((one) => one.group_id === s.groupId).map((one) => one.cancel_cause),
-      ).toEqual(['day_off']);
-      expect(
-        after.filter((one) => one.class_id === s.seniorId).map((one) => one.cancel_cause),
-      ).toEqual([null]);
+        (await lessonsOn(s.branch, OCT19))
+          .filter((one) => one.group_id === s.groupId)
+          .map((one) => one.cancel_cause),
+      ).toEqual(['not_in_template']);
     });
 
     it('taken back creates the lessons again from the version in force, checked like a publish', async () => {
@@ -2608,6 +3046,25 @@ describe('calendar entries after publishing', () => {
           .execute(),
       ).toHaveLength(1);
     }
+    // Task 5.6b-3: a split group's choice stored in each branch, on 30
+    // November (a day off for grade 9 only, the group kept for grade 10).
+    const nineEntryOf: Record<string, string> = {};
+    for (const one of [north, south]) {
+      nineEntryOf[one.branch] = okay(
+        await create(one.branch, {
+          ...dayOff('2026-12-07', '2026-12-07', { gradeFrom: 9, gradeTo: 9 }),
+          groupBlocks: [{ weekday: 1, start: 590, groupIds: [one.groupId ?? ''], choice: 'keep' }],
+        }),
+        201,
+      ).id;
+      expect(
+        await t.database.migrator
+          .selectFrom('calendar_group_blocks')
+          .select('id')
+          .where('branch_id', '=', one.branch)
+          .execute(),
+      ).toHaveLength(1);
+    }
     for (const one of [north, south]) {
       expect(await endsOf(one.branch)).toHaveLength(1);
       expect(
@@ -2882,6 +3339,57 @@ describe('calendar entries after publishing', () => {
           refusedWith(await attempt(), 404, 'not_found');
         }
       }
+      // Task 5.6b-3: a block's choice naming another branch's group, or an
+      // unknown one, on every save and preview that takes it.
+      const northNine = nineEntryOf[north.branch] ?? '';
+      const nineOff = dayOff('2026-12-07', '2026-12-07', { gradeFrom: 9, gradeTo: 9 });
+      // Permission review should-fix 3: a block of one own group and one of another branch too.
+      for (const groupIds of [
+        [south.groupId ?? ''],
+        [UNKNOWN],
+        [north.groupId ?? '', south.groupId ?? ''],
+      ]) {
+        const groupBlocks = [{ weekday: 1, start: 590, groupIds, choice: 'cancel' }];
+        for (const attempt of [
+          () =>
+            create(north.branch, {
+              ...dayOff('2026-12-14', '2026-12-14', { gradeFrom: 9, gradeTo: 9 }),
+              groupBlocks,
+            }),
+          () =>
+            t.patch(
+              `/api/setup/calendar-entries/${northNine}`,
+              north.branch,
+              { ...nineOff, groupBlocks },
+              cookie,
+            ),
+          () =>
+            post(`/api/setup/calendar-entries/${northNine}/restore`, north.branch, {
+              groupBlocks,
+            }),
+          () =>
+            post('/api/setup/calendar-entries/preview', north.branch, {
+              action: 'create',
+              record: dayOff('2026-12-14', '2026-12-14', { gradeFrom: 9, gradeTo: 9 }),
+              groupBlocks,
+            }),
+          () =>
+            post('/api/setup/calendar-entries/preview', north.branch, {
+              action: 'edit',
+              id: northNine,
+              record: nineOff,
+              groupBlocks,
+            }),
+          () =>
+            post('/api/setup/calendar-entries/preview', north.branch, {
+              action: 'restore',
+              id: northNine,
+              groupBlocks,
+            }),
+        ]) {
+          refusedWith(await attempt(), 404, 'not_found');
+        }
+      }
       for (const template of [south.short, UNKNOWN]) {
         for (const attempt of [
           () => create(north.branch, specialDay(OCT26, OCT26, template)),
@@ -2991,6 +3499,59 @@ describe('calendar entries after publishing', () => {
               action: 'create',
               record: dayOff('2026-11-16'),
               examBlocks: [{ examId: UNKNOWN, classId: s.seniorId, start: 480, choice: 'cancel' }],
+            },
+            cookie,
+          ),
+        // Task 5.6b-3: a body with a split group's choice, on every write
+        // and preview that takes it (permission review should-fix 2).
+        () =>
+          post(
+            `/api/setup/calendar-entries/${archived.id}/restore`,
+            s.branch,
+            { groupBlocks: [{ weekday: 1, start: 590, groupIds: [UNKNOWN], choice: 'keep' }] },
+            cookie,
+          ),
+        ...(['edit', 'restore'] as const).map(
+          (action) => () =>
+            post(
+              '/api/setup/calendar-entries/preview',
+              s.branch,
+              {
+                action,
+                id: action === 'edit' ? saved.id : archived.id,
+                ...(action === 'edit' ? { record: dayOff(OCT19) } : {}),
+                groupBlocks: [{ weekday: 1, start: 590, groupIds: [UNKNOWN], choice: 'keep' }],
+              },
+              cookie,
+            ),
+        ),
+        () =>
+          create(
+            s.branch,
+            {
+              ...dayOff('2026-11-16', '2026-11-16', { gradeFrom: 9, gradeTo: 9 }),
+              groupBlocks: [{ weekday: 1, start: 590, groupIds: [UNKNOWN], choice: 'keep' }],
+            },
+            cookie,
+          ),
+        () =>
+          t.patch(
+            `/api/setup/calendar-entries/${saved.id}`,
+            s.branch,
+            {
+              ...dayOff(OCT19),
+              groupBlocks: [{ weekday: 1, start: 590, groupIds: [UNKNOWN], choice: 'keep' }],
+            },
+            cookie,
+          ),
+        () =>
+          post(
+            '/api/setup/calendar-entries/preview',
+            s.branch,
+            {
+              action: 'create',
+              record: dayOff('2026-11-16', '2026-11-16', { gradeFrom: 9, gradeTo: 9 }),
+              groupBlocks: [{ weekday: 1, start: 590, groupIds: [UNKNOWN], choice: 'cancel' }],
             },
             cookie,
           ),
@@ -3276,6 +3837,8 @@ describe('calendar entries after publishing', () => {
       'timetable_version_out_of_date_causes',
       // Task 5.6b-2b: the shortened days' choices the save now writes.
       'timetable_day_keeps',
+      // Task 5.6b-3: the split groups' choices the save now writes.
+      'calendar_group_blocks',
     ] as const) {
       rows[table] = await t.database.migrator
         .selectFrom(table)
@@ -3292,6 +3855,13 @@ describe('calendar entries after publishing', () => {
       .selectAll()
       .where('branch_id', '=', branch)
       .orderBy('change_id')
+      .execute();
+    rows.calendar_group_block_groups = await t.database.migrator
+      .selectFrom('calendar_group_block_groups')
+      .selectAll()
+      .where('branch_id', '=', branch)
+      .orderBy('block_id')
+      .orderBy('group_id')
       .execute();
     rows.bulk_cancel_blocks = await t.database.migrator
       .selectFrom('bulk_cancel_blocks')

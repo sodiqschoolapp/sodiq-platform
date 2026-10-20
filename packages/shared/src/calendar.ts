@@ -165,6 +165,54 @@ export const calendarExamBlocksSchema = z
 export type CalendarExamBlocks = z.infer<typeof calendarExamBlocksSchema>;
 
 /**
+ * Task 5.6b-3: the two choices for a block of two-grade groups on a day off
+ * of one of its grades (`edge/time-dates-calendar`, "A day off for grade 9
+ * only, and a group joins 9 Edinburgh and 10 Brown"): `cancel` its lessons
+ * "day off", or `keep` them for the grade that has school.
+ */
+export const CALENDAR_GROUP_BLOCK_CHOICES = ['cancel', 'keep'] as const;
+
+export const calendarGroupChoiceSchema = z.enum(CALENDAR_GROUP_BLOCK_CHOICES);
+
+/**
+ * Task 5.6b-3: a choice per block, once for every date of the entry. The block
+ * is named as the preview lists it (`lessons.groupBlocks`): the weekday it
+ * follows, its weekly first minute and its groups.
+ */
+export const calendarGroupBlocksSchema = z
+  .array(
+    z.strictObject({
+      weekday: weekdaySchema,
+      start: z.int().min(0).max(1439),
+      groupIds: z.array(z.uuid()).min(1).max(20),
+      choice: calendarGroupChoiceSchema,
+    }),
+  )
+  .max(500)
+  .refine(
+    (list) =>
+      new Set(list.map((one) => groupBlockKeyOf(one))).size === list.length &&
+      list.every(
+        (one) => new Set(one.groupIds.map((id) => id.toLowerCase())).size === one.groupIds.length,
+      ),
+    { message: 'Each block once, each group once in it.' },
+  );
+
+export type CalendarGroupBlocks = z.infer<typeof calendarGroupBlocksSchema>;
+
+/** The name of a split group's block (task 5.6b-3): weekday, start and its groups sorted. */
+export const groupBlockKeyOf = (block: {
+  readonly weekday: number;
+  readonly start: number;
+  readonly groupIds: readonly string[];
+}): string =>
+  [
+    String(block.weekday),
+    String(block.start),
+    ...block.groupIds.map((id) => id.toLowerCase()).sort(),
+  ].join('|');
+
+/**
  * A create or an edit (task 5.6b-2a): the entry, with the key of the sorting
  * of the stored one-day changes and bulk cancels the preview showed
  * (`CalendarLessons.dayChanges.key`) and a choice for each "needs a
@@ -181,6 +229,8 @@ export const calendarSaveSchema = z
     dayKeeps: calendarDayKeepsSchema.optional(),
     /** Task 5.6b-2c-1: the choices for shared blocks newly under an exam. */
     examBlocks: calendarExamBlocksSchema.optional(),
+    /** Task 5.6b-3: the choices for blocks of two-grade groups split by a day off. */
+    groupBlocks: calendarGroupBlocksSchema.optional(),
   })
   .superRefine(refineEntry);
 
@@ -194,10 +244,22 @@ export const calendarDaysBodySchema = z
     dayDecisions: dayDecisionsSchema.optional(),
     dayKeeps: calendarDayKeepsSchema.optional(),
     examBlocks: calendarExamBlocksSchema.optional(),
+    /** Task 5.6b-3: a restore's choices; an archive leaves no grade off and takes none. */
+    groupBlocks: calendarGroupBlocksSchema.optional(),
   })
   .default({});
 
 export type CalendarDaysBody = z.infer<typeof calendarDaysBodySchema>;
+
+/** An archive (task 5.6b-3, permission review must-fix 1): the body of a restore without `groupBlocks`, refused when sent. */
+export const calendarArchiveBodySchema = z
+  .strictObject({
+    dayChangesKey: transitionKeySchema.optional(),
+    dayDecisions: dayDecisionsSchema.optional(),
+    dayKeeps: calendarDayKeepsSchema.optional(),
+    examBlocks: calendarExamBlocksSchema.optional(),
+  })
+  .default({});
 
 export type CalendarSave = z.infer<typeof calendarSaveSchema>;
 
@@ -211,6 +273,7 @@ export const calendarChangeSchema = z.discriminatedUnion('action', [
     record: calendarEntryRecordSchema,
     dayKeeps: calendarDayKeepsSchema.optional(),
     examBlocks: calendarExamBlocksSchema.optional(),
+    groupBlocks: calendarGroupBlocksSchema.optional(),
   }),
   z.object({
     action: z.literal('edit'),
@@ -218,6 +281,7 @@ export const calendarChangeSchema = z.discriminatedUnion('action', [
     record: calendarEntryRecordSchema,
     dayKeeps: calendarDayKeepsSchema.optional(),
     examBlocks: calendarExamBlocksSchema.optional(),
+    groupBlocks: calendarGroupBlocksSchema.optional(),
   }),
   z.object({
     action: z.literal('archive'),
@@ -230,6 +294,7 @@ export const calendarChangeSchema = z.discriminatedUnion('action', [
     id: z.uuid(),
     dayKeeps: calendarDayKeepsSchema.optional(),
     examBlocks: calendarExamBlocksSchema.optional(),
+    groupBlocks: calendarGroupBlocksSchema.optional(),
   }),
 ]);
 
@@ -419,6 +484,27 @@ export const calendarLessonsSchema = z.object({
         }),
       ),
     }),
+  ),
+  /**
+   * Task 5.6b-3: each block of two-grade groups that a day-off entry leaves
+   * with one grade at school on the dates written, with the dates and the
+   * choice shown: the one sent, else the stored one (`null`: none, which
+   * the save refuses as the detail `calendar_group_block_choice`).
+   */
+  groupBlocks: z.array(
+    z.object({
+      weekday: weekdaySchema,
+      start: z.int().min(0).max(1439),
+      end: z.int().min(1).max(1440),
+      groupIds: z.array(z.uuid()),
+      gradesAtSchool: z.array(z.int()),
+      dates: z.array(schoolDateSchema),
+      choice: calendarGroupChoiceSchema.nullable(),
+    }),
+  ),
+  /** Task 5.6b-3: choices sent for blocks the preview does not list, ignored. */
+  groupBlocksUnused: z.array(
+    z.object({ weekday: weekdaySchema, start: z.int(), groupIds: z.array(z.uuid()) }),
   ),
   names: previewNamesSchema,
 });

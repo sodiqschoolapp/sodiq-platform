@@ -91,6 +91,7 @@ function input(extra: Partial<DatedPatternInput> = {}): DatedPatternInput {
     tutorOn: () => 'tutor-1',
     gradeOf: (classId) => Number.parseInt(classId, 10),
     keptOn: () => null,
+    groupChoiceOn: () => null,
     ...extra,
   };
 }
@@ -283,6 +284,182 @@ describe('datedPattern', () => {
       expect(found.cancelled).toEqual([
         { date: '2026-11-16', reason: 'day_off', blockId: 'pe', entryIds: ['e-pe'] },
       ]);
+      // A weekday off by no entry asks no choice.
+      expect(found.splitGroups).toEqual([]);
+    });
+
+    // Task 5.6b-3: edge/time-dates-calendar, "A day off for grade 9 only, and
+    // a group joins 9 Edinburgh and 10 Brown".
+    describe('on a day off of an entry for one grade (task 5.6b-3)', () => {
+      const offFor9 =
+        (day: (grade: number, date: string) => DatedDay = input().dayOn) =>
+        (grade: number, date: string): DatedDay =>
+          grade === 9 && date === '2026-11-16'
+            ? { lessons: false, dayOffEntryId: 'navruz-9' }
+            : day(grade, date);
+      const asked: unknown[][] = [];
+      const run = (choice: 'keep' | 'cancel' | null, extra: Partial<DatedPatternInput> = {}) =>
+        datedPattern(
+          input({
+            firstDate: '2026-11-16',
+            lastDate: '2026-11-16',
+            blocks: [group()],
+            dayOn: offFor9(),
+            groupChoiceOn: (...args) => {
+              asked.push(args);
+              return choice;
+            },
+            ...extra,
+          }),
+        );
+
+      it('cancels the block "day off" with no choice, and lists it with its entry, groups and times', () => {
+        asked.length = 0;
+        const found = run(null);
+        expect(found.lessons).toEqual([]);
+        expect(found.cancelled).toEqual([
+          { date: '2026-11-16', reason: 'day_off', blockId: 'pe', entryIds: ['e-pe'] },
+        ]);
+        expect(found.splitGroups).toEqual([
+          {
+            date: '2026-11-16',
+            blockId: 'pe',
+            entryId: 'navruz-9',
+            groupIds: ['pe910'],
+            weekday: 1,
+            ...L1,
+            gradesAtSchool: [10],
+            choice: null,
+          },
+        ]);
+        expect(asked).toEqual([['navruz-9', '2026-11-16', ['pe910'], 480]]);
+      });
+
+      // Code review round 1: a group of the off grade alone in a kept block.
+      it('keeps a block of three groups for grade 10 and cancels "day off" the group of grade 9 alone', () => {
+        const entry = (id: string, classIds: string[]) => ({
+          id: `e-${id}`,
+          loadRowId: `row-${id}`,
+          classId: null,
+          groupId: id,
+          classIds,
+          subjectId: 'english',
+          teacherId: `t-${id}`,
+          roomId: `r-${id}`,
+          tutorRow: false,
+        });
+        const found = run('keep', {
+          blocks: [
+            group({
+              entries: [entry('a9', ['9a']), entry('b910', ['9a', '10a']), entry('c10', ['10a'])],
+            }),
+          ],
+          studentsOn: (unitId) =>
+            ({
+              a9: ['s9a'],
+              b910: ['s9b', 's10b'],
+              c10: ['s10c'],
+              '9a': ['s9a', 's9b'],
+              '10a': ['s10b', 's10c'],
+            })[unitId] ?? [],
+        });
+        expect(found.cancelled).toEqual([
+          { date: '2026-11-16', reason: 'day_off', blockId: 'pe', entryIds: ['e-a9'] },
+        ]);
+        expect(
+          found.lessons.map((one) => [
+            one.entryId,
+            one.placement.start,
+            one.placement.exemptStudentIds,
+          ]),
+        ).toEqual([
+          ['e-b910', 480, ['s9b']],
+          ['e-c10', 480, []],
+        ]);
+        expect(found.splitGroups.map((one) => one.groupIds)).toEqual([['a9', 'b910', 'c10']]);
+      });
+
+      it('cancels it "day off" when the choice is cancel', () => {
+        const found = run('cancel');
+        expect(found.lessons).toEqual([]);
+        expect(found.cancelled.map((one) => one.reason)).toEqual(['day_off']);
+        expect(found.splitGroups.map((one) => one.choice)).toEqual(['cancel']);
+      });
+
+      it('keeps it on the time of the grade at school and exempts the off grade by its members on the date (correction 1)', () => {
+        const found = run('keep', {
+          studentsOn: (unitId, date) => {
+            if (unitId === 'pe910') return ['s9-old', 's9-new', 's10'];
+            if (unitId === '9a') return date >= '2026-11-16' ? ['s9-new'] : ['s9-old'];
+            if (unitId === '10a') return ['s10', 's9-old'];
+            return [];
+          },
+        });
+        expect(found.cancelled).toEqual([]);
+        expect(found.lessons.map((one) => one.placement)).toMatchObject([
+          {
+            start: 480,
+            end: 525,
+            studentIds: ['s9-old', 's9-new', 's10'],
+            exemptStudentIds: ['s9-new'],
+            gradesOff: [9],
+          },
+        ]);
+        expect(found.splitGroups.map((one) => one.choice)).toEqual(['keep']);
+      });
+
+      it("takes the time of the grade at school's template on the date, never the weekly time (code review should-fix 2)", () => {
+        // Grade 10's day starts at 08:20 on the date: its first lesson is 08:20 to 09:05.
+        const late = dayTimes(500, [lesson(45), pause(5), lesson(45)]);
+        const found = run('keep', {
+          dayOn: offFor9((grade, date) =>
+            grade === 10
+              ? { lessons: true, day: late, followsWeekday: 1, noRegularLessons: false }
+              : input().dayOn(grade, date),
+          ),
+        });
+        expect(found.lessons.map((one) => [one.placement.start, one.placement.end])).toEqual([
+          [500, 545],
+        ]);
+        // The block keeps its weekly start as its name.
+        expect(found.splitGroups.map((one) => one.start)).toEqual([480]);
+      });
+
+      it("cancels a kept block 'not in the day's template' where the grade at school lacks its slot (correction 2)", () => {
+        const found = run('keep', {
+          blocks: [group(L4)],
+          dayOn: offFor9((grade) => ({
+            lessons: true,
+            day: grade === 10 ? SHORT : WEEKLY,
+            followsWeekday: 1,
+            noRegularLessons: false,
+          })),
+        });
+        expect(found.lessons).toEqual([]);
+        expect(found.cancelled.map((one) => one.reason)).toEqual(['not_in_template']);
+      });
+
+      it('cancels a kept block "exam week" when the grade at school has no regular lessons', () => {
+        const found = run('keep', {
+          dayOn: offFor9((grade, date) => ({
+            ...(input().dayOn(grade, date) as Extract<DatedDay, { lessons: true }>),
+            noRegularLessons: true,
+          })),
+        });
+        expect(found.lessons).toEqual([]);
+        expect(found.cancelled.map((one) => one.reason)).toEqual(['exam_week']);
+      });
+
+      it('asks no choice when the grade off follows another weekday on a special day', () => {
+        const found = run('keep', {
+          dayOn: (grade, date) =>
+            grade === 9
+              ? { lessons: true, day: WEEKLY, followsWeekday: 3, noRegularLessons: false }
+              : input().dayOn(grade, date),
+        });
+        expect(found.cancelled.map((one) => one.reason)).toEqual(['not_in_template']);
+        expect(found.splitGroups).toEqual([]);
+      });
     });
   });
 

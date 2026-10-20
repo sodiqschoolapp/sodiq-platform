@@ -890,15 +890,18 @@ async function wantedOf(
     const pattern = patternBlocks.get(cancelled.blockId);
     if (pattern === undefined) throw new Error(`No pattern block ${cancelled.blockId}.`);
     const block = blockOf(pattern.id, cancelled.date, cancelled.date, pattern.start, pattern.end);
-    for (const entry of pattern.lessons) {
+    // Task 5.6b-3 (code review round 1): only the entries cancelled, at the
+    // time of the block: a kept block's part of the grade that is off alone
+    // goes into the block its held lessons are written in.
+    for (const entry of pattern.lessons.filter((one) => cancelled.entryIds.includes(one.id))) {
       const row = model.rowOf(entry.loadRowId);
       block.lessons.push({
         patternBlockId: pattern.id,
         entryId: entry.id,
         loadRowId: row.id,
         date: cancelled.date,
-        start: pattern.start,
-        end: pattern.end,
+        start: block.start,
+        end: block.end,
         classId: row.classId,
         groupId: row.groupId,
         unitId: row.classId ?? row.groupId ?? '',

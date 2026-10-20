@@ -598,6 +598,35 @@ describe('the day', () => {
     expect(codes(checkTimetable([pe({ ...L2 })], facts()))).toEqual(['two_grade_slot']);
   });
 
+  // Task 5.6b-3: a two-grade group's lesson kept for grade 10 on a day off of grade 9.
+  it('lets a kept two-grade lesson through the day off of its grade off only, never a day off of all', () => {
+    const base = facts({ mode: 'dated' });
+    const nineOff = dated({
+      dayOf: (branch, grade, day) =>
+        grade === 9 && day === '2026-11-10'
+          ? { lessons: false, reason: 'day_off' }
+          : base.dayOf(branch, grade, day),
+    });
+    const pe = (extra: Partial<Placement>) =>
+      place({
+        day: '2026-11-10',
+        classId: null,
+        groupId: 'pe910',
+        classIds: ['9a', '10a'],
+        studentIds: ['n1', 'n2', 'm1', 'm2'],
+        subjectId: 'english',
+        ...L1,
+        ...extra,
+      });
+    expect(codes(checkTimetable([pe({})], nineOff))).toEqual(['day_off']);
+    expect(codes(checkTimetable([pe({ gradesOff: [9] })], nineOff))).toEqual([]);
+    // Grade 10 is not excused by a grade-9 mark, and nothing excuses a day off of both.
+    expect(codes(checkTimetable([pe({ gradesOff: [10] })], nineOff))).toEqual(['day_off']);
+    expect(codes(checkTimetable([pe({ day: '2026-11-11', gradesOff: [9, 10] })], dated()))).toEqual(
+      ['day_off'],
+    );
+  });
+
   it('refuses a double pair not in consecutive slots or not with one teacher and room', () => {
     const pair = (second: Partial<Placement>) => [
       place({ id: 'a', doublePairId: 'dp', blockId: 'b1' }),

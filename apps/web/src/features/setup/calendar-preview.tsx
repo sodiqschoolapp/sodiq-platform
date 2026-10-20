@@ -35,6 +35,7 @@ import { dayDecisionsBodyOf, PublishDayChanges } from '@/features/timetable/publ
 import { calendarPreviewOf } from './calendar-api';
 import { CalendarLessonsPreview, refusesSave } from './calendar-lessons-preview';
 import { CalendarExamsPreview, examBlocksOf, examsRefuseSave } from './calendar-exams-preview';
+import { CalendarGroupsPreview, groupBlocksOf, groupsRefuseSave } from './calendar-groups-preview';
 import { CalendarShortened, dayKeepsOf } from './calendar-shortened';
 import { schoolDateText, weekdayName } from '@/lib/dates';
 
@@ -145,6 +146,8 @@ export function useCalendarPreview(): {
   const [ticks, setTicks] = useState<Record<string, number[]>>({});
   // Task 5.6b-2c-1: the choices for shared blocks newly under an exam.
   const [examChoices, setExamChoices] = useState<Record<string, 'cancel' | 'keep'>>({});
+  // Task 5.6b-3: the choices for blocks of two-grade groups split by a day off.
+  const [groupChoices, setGroupChoices] = useState<Record<string, 'cancel' | 'keep'>>({});
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState<unknown>(null);
 
@@ -154,6 +157,7 @@ export function useCalendarPreview(): {
       setChoices({});
       setTicks({});
       setExamChoices({});
+      setGroupChoices({});
       setRefreshError(null);
       setQuestion({ change, preview, answer: resolve });
     });
@@ -171,6 +175,8 @@ export function useCalendarPreview(): {
     question === null ? null : dayDecisionsBodyOf(question.preview.lessons.dayChanges, choices);
   const dayKeeps = dayKeepsOf(ticks);
   const examBlocks = examBlocksOf(examChoices);
+  const groupBlocks =
+    question === null ? [] : groupBlocksOf(question.preview.lessons, groupChoices);
   const days: CalendarDaysBody | null =
     decided === null
       ? null
@@ -178,6 +184,7 @@ export function useCalendarPreview(): {
           ...decided,
           ...(dayKeeps.length === 0 ? {} : { dayKeeps }),
           ...(examBlocks.length === 0 ? {} : { examBlocks }),
+          ...(groupBlocks.length === 0 ? {} : { groupBlocks }),
         };
 
   /** The ticks of a date and class changed: the preview again with every tick. */
@@ -225,6 +232,13 @@ export function useCalendarPreview(): {
               setExamChoices({ ...examChoices, [key]: choice });
             }}
           />
+          <CalendarGroupsPreview
+            lessons={question.preview.lessons}
+            choices={groupChoices}
+            onChoose={(key, choice) => {
+              setGroupChoices({ ...groupChoices, [key]: choice });
+            }}
+          />
           <CalendarShortened
             lessons={question.preview.lessons}
             ticks={ticks}
@@ -256,6 +270,7 @@ export function useCalendarPreview(): {
               disabled={
                 refusesSave(question.preview.lessons) ||
                 examsRefuseSave(question.preview.lessons, examChoices) ||
+                groupsRefuseSave(question.preview.lessons, groupChoices) ||
                 days === null ||
                 refreshing ||
                 refreshError !== null ||

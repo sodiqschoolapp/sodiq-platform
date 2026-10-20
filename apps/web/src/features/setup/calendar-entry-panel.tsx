@@ -73,8 +73,11 @@ export function CalendarEntryPanel({
   });
 
   const save = async (record: CalendarEntryRecord) => {
-    // A new name alone changes no date: it is saved without the preview (decision 11).
+    // A new name alone changes no date: it is saved without the preview
+    // (decision 11), except a day off of a range of grades, whose preview
+    // lists the choices of its two-grade groups to change (task 5.6b-3).
     const nameOnly =
+      !(entry.kind === 'day_off' && entry.gradeFrom !== null) &&
       record.firstDate === entry.firstDate &&
       record.lastDate === entry.lastDate &&
       record.gradeFrom === entry.gradeFrom &&

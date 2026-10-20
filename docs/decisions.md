@@ -281,6 +281,27 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 20 October 2026: a day off for one grade of a two-grade group (task 5.6b-3)
+
+Plan approved on pull request #175 with corrections 1 and 2; decisions 1 to 7 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a reading that touches the journal). A kept lesson's students of the off grade are exempt for the rule engine now (members on the lesson's date); the journal exemption is 8.5's, which reads `calendar_group_blocks` per date | Decision 1; correction 1; 5.6a-3 decision 1 |
+| The choice is keyed by date, the block's group set and weekly start, not by a pattern block; a later version's block at another time has none, is cancelled "day off" and listed with `choice: null` in the entry's next preview | Decision 2 |
+| One row per block and date, its groups in a child table; no mixed state | Decision 3 |
+| A listed block with no choice sent or stored refuses the save, a detail of `calendar_blocked`; a choice for a block not listed is ignored and named in `groupBlocksUnused` | Decision 4 |
+| Only a day-off entry splits a group; a special day following another weekday, a weekday off and an exam week keep today's outcome; the exam week of the grade at school cancels a kept block | Decision 5; correction 2 (day off, then the choice, then the template of the grade at school) |
+| Rows of an archived entry stay for the restore; a save writes and removes rows only for dates after today; the database refuses the rest (`calendar_group_blocks_future`) | Decision 6 |
+| A kept block keeps its class claims | Decision 7; 5.6a-3 decision 6 |
+| **Build decision.** A placement carries `gradesOff`: the engine's day rule does not refuse a kept lesson for its grade off by a day off while another grade has school; a one-day change of the kept lesson reads it from the expansion of its date | Found in the build: the kept lesson names the off grade's class, which the day rule refused `day_off` |
+| **Build decision.** The preview of an edit or a restore of a day off for a range of grades writes the entry's dates after today, so the dialog lists the blocks and their stored choices | Found in the build: an unchanged entry wrote no date, so an edit could not show a choice to change |
+| **Build decision.** The web app previews every edit of a day off for a range of grades, a new name alone too, so the choices can be changed | Same reason; 1.4 decision 11 (a name alone saves without a preview) keeps for every other entry |
+| **Build decision.** An archive refuses `groupBlocks` (400); its preview leaves it out | Permission review of the code, must-fix 1: an archive leaves no grade off |
+| **Build decision.** A preview line shows a choice only when every date of the block has it, else none | Spec review of the code, must-fix 3: a line chosen on its first date hid a new date the save refused |
+| **Code review round 1.** Under "keep", a lesson of the grade that is off alone (a group of its classes only, in the kept block) is cancelled "day off"; the dated check and the one-day-change check place it alongside the block's held lessons (no teacher, room, grade or student), and the writer writes only a block's cancelled entries, at the block's time | `edge/time-dates-calendar`, the two-grade row ("kept lessons take the template of the grade that has school"); `06`, Rules (no lesson on a day off) |
+| **Look first** (a test changed by a new requirement). The test "for grade 9 only cancels a whole exam of a grade-9 and a grade-10 class" of `calendar-exams.test.ts` now sends a choice ("cancel") for the scene's two-grade group; its asserts are unchanged | This task makes the choice required for such a block |
+
 ## 20 October 2026: calendar changes, a move between two stretches (task 5.6b-2c-2)
 
 Plan approved on pull request #174 with corrections 1 and 2; decisions 1 to 8 confirmed there. Flagged on issue #42.

@@ -84,6 +84,8 @@ const MESSAGE: Record<ErrorCode, string> = {
     'The classes of an exam are on two day templates after the change; each is listed.',
   calendar_exam_block_choice:
     'A shared lesson newly under an exam needs a choice: cancel it or keep it for the other classes.',
+  calendar_group_block_choice:
+    'A lesson of a two-grade group left with one grade at school needs a choice: cancel it or keep it for that grade.',
   travel_time_same_branch: 'Travel time is set between two different branches.',
   subject_archived: 'The subject is archived. Restore it first.',
   department_not_academic: 'A subject belongs to a department of the Academic division.',

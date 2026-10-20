@@ -389,8 +389,27 @@ export async function storedDayCheck(
     const key = `${one.doublePairId}|${unitOf(one)}`;
     halves.set(key, (halves.get(key) ?? 0) + 1);
   }
+  // Task 5.6b-3: a two-grade group's lesson kept for the grade at school on
+  // a day off of the other, as the expansion of the date keeps it: its grade
+  // off is no refusal of a one-day change of it.
+  const keptOff = new Map(
+    dated.dated.lessons.flatMap((one) =>
+      one.placement.gradesOff === undefined || one.placement.groupId === null
+        ? []
+        : [
+            [
+              `${one.placement.groupId}|${String(one.placement.start)}`,
+              { grades: one.placement.gradesOff, exempt: one.placement.exemptStudentIds },
+            ] as const,
+          ],
+    ),
+  );
   const placementOf = (one: StoredDayLesson, teacherId: string | null, roomId: string | null) => {
     const unitId = unitOf(one);
+    const off =
+      one.groupId === null || one.date !== date
+        ? undefined
+        : keptOff.get(`${one.groupId}|${String(minutesOf(one.startsAt))}`);
     // A correction takes one half of a double alone, whose teacher and room
     // may differ from the other's (task 5.6a-4, decision 1; spec review of
     // the code, must-fix 1): it is no half of a pair in the check.
@@ -412,7 +431,8 @@ export async function storedDayCheck(
       groupId: one.groupId,
       classIds: units.get(unitId)?.classIds ?? (one.classId === null ? [] : [one.classId]),
       studentIds: studentsOn(unitId, date),
-      exemptStudentIds: [],
+      // Task 5.6b-3: the off grade's students of a kept lesson are exempt.
+      exemptStudentIds: off === undefined ? [] : [...off.exempt],
       subjectId: one.subjectId,
       loadRowId: one.loadRowId,
       teacherIds: teacherId === null ? [] : [teacherId],
@@ -420,6 +440,7 @@ export async function storedDayCheck(
       roomId,
       examRooms: [],
       fixed: false,
+      ...(off === undefined ? {} : { gradesOff: off.grades }),
     } satisfies Placement;
   };
 
@@ -470,7 +491,34 @@ export async function storedDayCheck(
     begins(addDays(date, 1)),
   );
   const fixed = [...(elsewhere.get(date) ?? []), ...exams];
-  const others = [...held.map((one) => placementOf(one, one.teacherId, one.roomId)), ...fixed];
+  // A cancelled part: placed with no teacher, room or student, its students
+  // exempt, so its block is still whole. Task 5.6b-3 (code review round 1): a
+  // part cancelled "day off" in a kept block is of the grade that is off alone,
+  // so no grade or class of it is checked.
+  const alongsideOf = (one: StoredDayLesson): Placement => ({
+    ...placementOf(one, null, null),
+    studentIds: [],
+    exemptStudentIds: studentsOn(unitOf(one), date),
+    ...(one.cancelCause === 'day_off'
+      ? { classId: null, groupId: null, classIds: [], subjectId: null }
+      : {}),
+  });
+  // Task 5.6b-3 (code review round 1): the parts cancelled "day off" of the
+  // blocks held on the date go with them, as in `datedCheck`.
+  const sent = new Set((input.alongside ?? []).map((one) => one.id));
+  const heldBlocks = new Set([...held, ...input.lessons].map((one) => one.blockId));
+  const offParts = stored.filter(
+    (one) =>
+      one.cancelCause === 'day_off' &&
+      !ids.has(one.id) &&
+      !sent.has(one.id) &&
+      heldBlocks.has(one.blockId),
+  );
+  const others = [
+    ...held.map((one) => placementOf(one, one.teacherId, one.roomId)),
+    ...offParts.map(alongsideOf),
+    ...fixed,
+  ];
   const facts: Facts = {
     ...model.facts,
     mode: 'dated',
@@ -490,11 +538,7 @@ export async function storedDayCheck(
           roomId === undefined ? one.roomId : roomId,
         ),
       ),
-      ...(input.alongside ?? []).map((one) => ({
-        ...placementOf(one, null, null),
-        studentIds: [],
-        exemptStudentIds: studentsOn(unitOf(one), date),
-      })),
+      ...(input.alongside ?? []).map(alongsideOf),
     ];
     const results = checkCandidates(others, facts, candidates, {
       availabilityFrom: date,

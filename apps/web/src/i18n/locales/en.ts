@@ -166,6 +166,8 @@ export const en = {
       'After this change the classes of an exam are on two day templates. Change the exam first, then save again.',
     calendar_exam_block_choice:
       'A shared lesson newly falls under an exam. Open the preview again and choose for it: cancel the lesson, or keep it for the other classes.',
+    calendar_group_block_choice:
+      'A lesson of a group of two grades now has only one of its grades at school. Open the preview again and choose for it: cancel it as a day off, or keep it for the grade that has school.',
     own_account: 'You cannot lock, unlock or reset your own account. Ask another administrator.',
     account_already_locked: 'This account is already locked. Reload the page to see who locked it.',
     account_not_locked:
@@ -1330,6 +1332,13 @@ export const en = {
             '{{unit}} sits the exam, but its lesson is shared with classes that do not sit: {{lessons}}',
           choice_cancel: 'Cancel the whole lesson for the exam',
           choice_keep: 'Keep it for the other classes; {{unit}} is taken out of it',
+        },
+        groups: {
+          title: 'Groups of two grades on these dates',
+          block: '{{groups}} · {{weekday}} {{time}} · {{dates}}',
+          choice_cancel: 'Cancel it on these dates: day off',
+          choice_keep:
+            'Keep it for grade {{grades}}; the students of the grade that is off are exempt',
         },
       },
     },

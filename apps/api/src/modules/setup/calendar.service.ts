@@ -177,6 +177,10 @@ const lessonsAuditOf = (rewrite: CalendarRewrite) =>
         ...(rewrite.audit.exams.length === 0
           ? {}
           : { exams: rewrite.audit.exams.map((one) => structuredClone(one)) }),
+        // Task 5.6b-3: each choice of a split group's block written or removed.
+        ...(rewrite.audit.groupBlocks.length === 0
+          ? {}
+          : { groupBlocks: rewrite.audit.groupBlocks.map((one) => structuredClone(one)) }),
       };
 
 /** The dates whose stored choice a save changed (task 5.6b-2b, decision 7). */
@@ -184,6 +188,20 @@ const keepDatesChanged = (rewrite: CalendarRewrite): string[] =>
   (rewrite.audit?.dayKeeps ?? [])
     .filter((one) => one.before.join(',') !== one.after.join(','))
     .map((one) => one.date);
+
+/** The dates whose stored choice for a split group's block a save changed (task 5.6b-3, spec review 1). */
+const groupDatesChanged = (rewrite: CalendarRewrite): string[] =>
+  (rewrite.audit?.groupBlocks ?? [])
+    .filter((one) => one.before !== one.after)
+    .map((one) => one.date);
+
+/**
+ * Task 5.6b-3: an entry that can leave one grade of a two-grade group at
+ * school, a day off of a range of grades; the preview of its edit and restore
+ * writes its dates after today, so it lists the blocks and their stored choices.
+ */
+const splitsGroups = (entry: { kind: string; gradeFrom: number | null }): boolean =>
+  entry.kind === 'day_off' && entry.gradeFrom !== null;
 
 /** Carries the answer of a preview out of the transaction it rolls back. */
 class PreviewDone extends Error {
@@ -352,6 +370,23 @@ export class Calendar {
               ...(days.examBlocks ?? []).map((one) => one.classId.toLowerCase()),
             ]),
           ];
+          // Task 5.6b-3: every group of a block's choice is the branch's.
+          const groupIds = [
+            ...new Set(
+              (days.groupBlocks ?? []).flatMap((one) => one.groupIds.map((id) => id.toLowerCase())),
+            ),
+          ];
+          if (groupIds.length > 0) {
+            const known = await transaction
+              .selectFrom('groups')
+              .select('id')
+              .where('id', 'in', groupIds)
+              .where('branch_id', '=', branchId)
+              .execute();
+            if (known.length !== groupIds.length) {
+              throw notFound();
+            }
+          }
           const examIds = [
             ...new Set((days.examBlocks ?? []).map((one) => one.examId.toLowerCase())),
           ];
@@ -413,8 +448,15 @@ export class Calendar {
    */
   private async rewriteLessons(
     context: Context,
-    entries: readonly { firstDate: string; lastDate: string }[],
+    entries: readonly {
+      firstDate: string;
+      lastDate: string;
+      kind: string;
+      gradeFrom: number | null;
+    }[],
     event: CalendarEvent,
+    /** Task 5.6b-3: the entry whose split groups' choices the save stores; none for an archive. */
+    entryId: string | null,
   ): Promise<CalendarRewrite> {
     const before = calendarSettings(context.store, context.workingWeekdays, context.entries);
     const after = calendarSettings(
@@ -443,10 +485,20 @@ export class Calendar {
               date > context.today &&
               entries.some((one) => one.firstDate <= date && date <= one.lastDate),
           ),
+        // Task 5.6b-3 (spec review 1): with a choice for a split group, every
+        // date of the entry after today, so a choice can be made or changed on
+        // an entry the save does not otherwise change.
+        ...((context.days.groupBlocks ?? []).length === 0 &&
+        !(context.preview && entryId !== null && entries.some(splitsGroups))
+          ? []
+          : entries
+              .flatMap((one) => datesFrom(one.firstDate, one.lastDate))
+              .filter((date) => date > context.today)),
       ],
       event,
       preview: context.preview,
       days: context.days,
+      entryId,
     });
     context.rewrite.result = result;
     return result;
@@ -645,6 +697,10 @@ export class Calendar {
         {
           ...(change.dayKeeps === undefined ? {} : { dayKeeps: change.dayKeeps }),
           ...(change.examBlocks === undefined ? {} : { examBlocks: change.examBlocks }),
+          // Task 5.6b-3: the choices for split groups' blocks.
+          ...('groupBlocks' in change && change.groupBlocks !== undefined
+            ? { groupBlocks: change.groupBlocks }
+            : {}),
         },
       );
     } catch (error) {
@@ -681,7 +737,7 @@ export class Calendar {
       .returning('id')
       .executeTakeFirstOrThrow();
     await this.refuseGoLive(context);
-    const lessons = await this.rewriteLessons(context, [record], record);
+    const lessons = await this.rewriteLessons(context, [record], record, row.id);
     await this.record(context, 'calendar_entry.create', row.id, {
       newValue: { ...fieldsOf(record), ...lessonsAuditOf(lessons) },
     });
@@ -714,7 +770,12 @@ export class Calendar {
     );
     // Task 5.6b-2b (decision 3): an unchanged entry with a choice still
     // writes the choice's dates.
-    if (changed.length === 0 && (context.days.dayKeeps ?? []).length === 0) {
+    if (
+      changed.length === 0 &&
+      (context.days.dayKeeps ?? []).length === 0 &&
+      (context.days.groupBlocks ?? []).length === 0 &&
+      !(context.preview && splitsGroups(record))
+    ) {
       return this.answer(context, id);
     }
     if (before.lastDate < context.today) {
@@ -770,7 +831,7 @@ export class Calendar {
       .where('id', '=', id)
       .execute();
     await this.refuseGoLive(context);
-    const lessons = await this.rewriteLessons(context, [before, record], record);
+    const lessons = await this.rewriteLessons(context, [before, record], record, id);
     await this.record(context, 'calendar_entry.edit', id, {
       oldValue: Object.fromEntries(changed.map((key) => [key, old[key]])),
       newValue: {
@@ -783,7 +844,10 @@ export class Calendar {
     if (changed.some((key) => key !== 'name')) {
       await this.markDrafts(context, 'calendar_entry.edit', id, [before, record]);
     } else {
-      const keepDates = keepDatesChanged(lessons);
+      // Task 5.6b-3 (spec review 1): so does a split group's choice.
+      const keepDates = [
+        ...new Set([...keepDatesChanged(lessons), ...groupDatesChanged(lessons)]),
+      ].sort();
       if (keepDates.length > 0) {
         await this.markDrafts(
           context,
@@ -815,7 +879,7 @@ export class Calendar {
       .where('id', '=', id)
       .execute();
     await this.refuseGoLive(context);
-    const lessons = await this.rewriteLessons(context, [entry], entry);
+    const lessons = await this.rewriteLessons(context, [entry], entry, null);
     await this.record(context, 'calendar_entry.archive', id, {
       oldValue: { archivedAt: null },
       newValue: { archivedAt: now.toISOString(), ...lessonsAuditOf(lessons) },
@@ -842,7 +906,7 @@ export class Calendar {
       .where('id', '=', id)
       .execute();
     await this.refuseGoLive(context);
-    const lessons = await this.rewriteLessons(context, [entry], entry);
+    const lessons = await this.rewriteLessons(context, [entry], entry, id);
     await this.record(context, 'calendar_entry.restore', id, {
       oldValue: { archivedAt: entry.archivedAt.toISOString() },
       newValue: { archivedAt: null, ...lessonsAuditOf(lessons) },
@@ -878,7 +942,7 @@ export class Calendar {
 
 /** A create or an edit: the entry, and the key and choices of the sorting (task 5.6b-2a). */
 function splitSave(save: CalendarSave): { record: CalendarEntryRecord; days: CalendarDaysBody } {
-  const { dayChangesKey, dayDecisions, dayKeeps, examBlocks, ...record } = save;
+  const { dayChangesKey, dayDecisions, dayKeeps, examBlocks, groupBlocks, ...record } = save;
   return {
     record,
     days: {
@@ -886,6 +950,7 @@ function splitSave(save: CalendarSave): { record: CalendarEntryRecord; days: Cal
       ...(dayDecisions === undefined ? {} : { dayDecisions }),
       ...(dayKeeps === undefined ? {} : { dayKeeps }),
       ...(examBlocks === undefined ? {} : { examBlocks }),
+      ...(groupBlocks === undefined ? {} : { groupBlocks }),
     },
   };
 }
