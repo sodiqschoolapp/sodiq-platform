@@ -26,7 +26,7 @@ import {
 import {
   examBlocked,
   examLessonsOf,
-  examPlacementOf,
+  examPlacementsOn,
   examWeekLessonsOn,
   examWriteOf,
   findingsLessonsOn,
@@ -37,6 +37,7 @@ import {
   type ExamAudit,
   type ExamBlockChoice,
   type ExamChoiceOf,
+  type ExamOutcome,
   type SortedExam,
 } from './calendar-exams.js';
 import { groupBlockLines, storeGroupChoices, type GroupBlockAudit } from './calendar-groups.js';
@@ -278,7 +279,14 @@ export const NO_LESSONS: CalendarLessons = {
   needsTeacher: [],
   notified: [],
   blocked: [],
-  dayChanges: { key: calendarDaysKeyOf([]), kept: [], decide: [], dropped: [], bulk: [] },
+  dayChanges: {
+    key: calendarDaysKeyOf([]),
+    kept: [],
+    decide: [],
+    dropped: [],
+    bulk: [],
+    exams: [],
+  },
   shortenedDays: [],
   keepRefusals: [],
   exams: [],
@@ -1081,6 +1089,8 @@ export class TimetableCalendarLessons {
       decide: uniqueItems(items.filter((one) => one.category === 'decide')),
       dropped: uniqueItems(items.filter((one) => one.category === 'dropped')),
       bulk: bulkAll.map((one) => one.answer),
+      // The calendar's exams are its own list (`exams` below), not items of the sorting.
+      exams: [],
     };
     const named = dayChangeIdsOf(items, bulkAll);
     // Task 5.6b-2b: the dates written that are shortened for a class.
@@ -1110,7 +1120,7 @@ export class TimetableCalendarLessons {
       id: one.exam.id,
       title: one.exam.title,
       date: one.exam.date,
-      outcome: one.outcome,
+      outcome: calendarOutcomeOf(one.outcome),
       before: { start: one.before.start, end: one.before.end },
       after: one.after === null ? null : { start: one.after.start, end: one.after.end },
       code: one.code,
@@ -1444,17 +1454,6 @@ export class TimetableCalendarLessons {
   }
 }
 
-/**
- * Task 5.6b-2c-1: the branch's exams of a date as a save leaves them: a moved
- * or kept one at its time after the save, a refused one at its stored time,
- * none for one cancelled.
- */
-function examPlacementsOn(sorted: readonly SortedExam[], branchId: string, date: string) {
-  return sorted
-    .filter((one) => one.exam.date === date && one.outcome !== 'cancelled_day_off')
-    .map((one) => examPlacementOf(one.exam, branchId, one.after ?? one.before));
-}
-
 /** A result of a date as a dated check names it (task 5.6b-2a: a move put back). */
 const datedAnswerOf = (result: RuleResult): RuleResultAnswer => ({
   rule: result.rule,
@@ -1653,4 +1652,10 @@ function keepRefusalOf(
   }
   if (keep.slotPositions.length > day.lessonSlots) return 'day_keep_over_slots';
   return null;
+}
+
+/** A calendar save never drops an exam: that is a publish's or a withdraw's choice (task 5.6c-3a). */
+function calendarOutcomeOf(outcome: ExamOutcome): Exclude<ExamOutcome, 'dropped'> {
+  if (outcome === 'dropped') throw new Error('A calendar save drops no exam.');
+  return outcome;
 }

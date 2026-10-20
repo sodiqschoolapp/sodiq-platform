@@ -74,6 +74,20 @@ import {
   type DaySorting,
   type SortedDayChange,
 } from './day-changes-kept.js';
+import {
+  examAuditOf,
+  examDecisionsOf,
+  examKeyPartOf,
+  examRefusalsOf,
+  examsBeforeOf,
+  examsCancelledOf,
+  examsWriteOf,
+  invigilatorsOf,
+  sortExamsKept,
+  type ExamsAudit,
+  type KeptExam,
+} from './exams-kept.js';
+import type { ExamAudit } from './calendar-exams.js';
 import { impactOf, type Impact } from './impact.js';
 import { syncJournals } from './journals.js';
 import { markPublished, outOfDateColumn } from './out-of-date.js';
@@ -127,6 +141,8 @@ interface Findings {
     readonly sortings: ReadonlyMap<string | null, DaySorting>;
     /** Task 5.6a-5b-1: the bulk cancels of each run, sorted. */
     readonly bulk: ReadonlyMap<string | null, readonly SortedBulk[]>;
+    /** Task 5.6c-3a: the standing exams of each run, sorted. */
+    readonly exams: ReadonlyMap<string | null, readonly KeptExam[]>;
   } | null;
 }
 
@@ -173,7 +189,7 @@ export async function refuseUnknownKeys(
     if (blocks.length !== new Set(blockIds).size) throw new ApiException('not_found', 404);
   }
   if (keys.length === 0) return;
-  const [changes, lessons, bulks] = await Promise.all([
+  const [changes, lessons, bulks, exams] = await Promise.all([
     transaction
       .selectFrom('lesson_day_changes')
       .select('id')
@@ -193,8 +209,15 @@ export async function refuseUnknownKeys(
       .where('branch_id', '=', branchId)
       .where('id', 'in', keys)
       .execute(),
+    // Task 5.6c-3a: or an exam of the branch.
+    transaction
+      .selectFrom('exams')
+      .select('id')
+      .where('branch_id', '=', branchId)
+      .where('id', 'in', keys)
+      .execute(),
   ]);
-  const known = new Set([...changes, ...lessons, ...bulks].map((one) => one.id));
+  const known = new Set([...changes, ...lessons, ...bulks, ...exams].map((one) => one.id));
   if (keys.some((key) => !known.has(key))) {
     throw new ApiException('not_found', 404);
   }
@@ -244,6 +267,8 @@ export function dayRefusalsOf(
     readonly key: string;
     readonly items: readonly SortedDayChange[];
     readonly bulk: readonly SortedBulk[];
+    /** Task 5.6c-3a: the exams of the sorting. */
+    readonly exams?: readonly KeptExam[];
   },
   input: {
     readonly dayChangesKey?: string | undefined;
@@ -251,15 +276,32 @@ export function dayRefusalsOf(
   },
 ): PublishRefusal[] {
   const refusals: PublishRefusal[] = [];
-  const { decisions } = dayDecisionsOf(input.dayDecisions);
-  const bulkSent = (input.dayDecisions ?? []).filter((one) => one.blockId !== undefined);
+  const exams = days.exams ?? [];
+  // Task 5.6c-3a: a decision that names an exam of the sorting is the exams'.
+  const { named } = examDecisionsOf(exams, input.dayDecisions);
+  const others = (input.dayDecisions ?? []).filter((one) => !named.has(one));
+  const { decisions } = dayDecisionsOf(others);
+  const bulkSent = others.filter((one) => one.blockId !== undefined);
   const bulkDecisions = new Set(bulkSent.map((one) => dayDecisionKeyOf(one)));
   const { key, items, bulk } = days;
   if (
-    (items.length > 0 || bulk.length > 0 || input.dayChangesKey !== undefined) &&
+    (items.length > 0 ||
+      bulk.length > 0 ||
+      exams.length > 0 ||
+      input.dayChangesKey !== undefined) &&
     input.dayChangesKey !== key
   ) {
     refusals.push({ code: 'day_changes_changed' });
+  }
+  // A reason is only an exam's (decision 2, correction 1).
+  for (const one of others) {
+    if (one.reason !== undefined) {
+      refusals.push({
+        code: 'day_choice_not_offered',
+        key: one.key,
+        ...(one.blockId === undefined ? {} : { blockId: one.blockId, blockDate: one.blockDate }),
+      });
+    }
   }
   const open = new Set(
     items.filter((one) => one.category === 'decide').map((one) => one.answer.key),
@@ -296,7 +338,15 @@ export function dayRefusalsOf(
       refusals.push({ code: 'day_choice_not_offered', ...at });
     }
   }
+  refusals.push(...examRefusalsOf(exams, input.dayDecisions));
   return refusals;
+}
+
+/** Task 5.6c-3a: the exams of a carried version for its audit entry, none when it has none. */
+function examsOfCarry(exams: ExamsAudit | undefined): {
+  exams?: ExamsAudit;
+} {
+  return exams === undefined ? {} : { exams };
 }
 
 /** The one-day changes of a carried version for its audit entry, none when it wrote nothing. */
@@ -584,6 +634,7 @@ export class TimetablePublish {
                     ? {}
                     : { blockId: one.blockId, blockDate: one.blockDate ?? null }),
                   choice: one.choice,
+                  ...(one.reason === undefined ? {} : { reason: one.reason }),
                 })),
             },
           },
@@ -671,6 +722,7 @@ export class TimetablePublish {
             key: findings.days.key,
             items: findings.days.items,
             bulk: [...findings.days.bulk.values()].flat(),
+            exams: [...findings.days.exams.values()].flat(),
           },
           input,
         ),
@@ -739,6 +791,8 @@ export class TimetablePublish {
     const week = await snapshotWeek(transaction, branchId, startsOn, version.end_date);
     const ownSorting = findings.days?.sortings.get(null) ?? null;
     const ownBulk = findings.days?.bulk.get(null) ?? [];
+    const ownExams = findings.days?.exams.get(null) ?? [];
+    const ownExamAudit: ExamAudit[] = [];
     const lessons = await writeDatedLessons(
       transaction,
       findings.written.state,
@@ -746,6 +800,13 @@ export class TimetablePublish {
       startsOn,
       findings.written.state.pattern.model.data.versionEnd,
       ownSorting === null ? null : planOfRun(ownSorting, ownBulk, decisions, bulkDecisions),
+      examsWriteOf({
+        branchId,
+        items: ownExams,
+        begins: findings.written.findings.begins,
+        sent: input.dayDecisions,
+        audit: ownExamAudit,
+      }),
     );
     const moment = await transactionMoment(transaction);
     const settled =
@@ -771,6 +832,7 @@ export class TimetablePublish {
     const carryLeft: CarryResult[] = [];
     const carriedLessons = new Map<string, DatedWrite>();
     const carriedDays = new Map<string, DayAudit>();
+    const carriedExams = new Map<string, ExamsAudit>();
     for (const result of input.chain === 'carry' ? findings.carried : []) {
       if (result.into.applied.length === 0) continue;
       const sorting = findings.days?.sortings.get(result.version.id) ?? null;
@@ -779,6 +841,8 @@ export class TimetablePublish {
         : await this.carryWrite(transaction, result, {
             sorting,
             bulk: findings.days?.bulk.get(result.version.id) ?? [],
+            exams: findings.days?.exams.get(result.version.id) ?? [],
+            sent: input.dayDecisions,
             decisions,
             bulkDecisions,
             branchId,
@@ -792,12 +856,21 @@ export class TimetablePublish {
         carried.push(result);
         if (write.lessons !== true) carriedLessons.set(result.version.id, write.lessons);
         if (write.days !== null) carriedDays.set(result.version.id, write.days);
+        if (write.exams !== null) carriedExams.set(result.version.id, write.exams);
       }
     }
+    // Task 5.6c-3a: who is told of an exam the publish dropped, in its own
+    // run and in each carried run written (decision 7).
+    const examsCancelled = await examsCancelledOf(
+      transaction,
+      [...ownExams, ...carried.flatMap((one) => findings.days?.exams.get(one.version.id) ?? [])],
+      input.dayDecisions,
+    );
     // Task 5.5c-3a: one notice per affected teacher, and the changed lessons marked.
     const notices = await sendWeekChanges(transaction, this.notifications, week, {
       kind: 'timetable.published',
       number: version.number,
+      examsCancelled,
     });
     // Task 5.5c-1: the journals of the year follow the chain as it now stands.
     const journals = await syncJournals(transaction, this.audit, version, {
@@ -837,6 +910,10 @@ export class TimetablePublish {
                 bulkAuditOf(ownBulk, bulkRecorded),
               ),
             }),
+        // Task 5.6c-3a: each standing exam of the run, kept or decided.
+        ...(ownExams.length === 0
+          ? {}
+          : { exams: examAuditOf(ownExams, input.dayDecisions, ownExamAudit) }),
         journals: { ...journals },
         notices: { ...notices },
         ...(transitionKey === null || findings.impact === null
@@ -886,6 +963,7 @@ export class TimetablePublish {
           entries: result.into.entries.map((one) => ({ ...one })),
           ...datedOfCarry(carriedLessons.get(result.version.id)),
           ...dayOfCarry(carriedDays.get(result.version.id)),
+          ...examsOfCarry(carriedExams.get(result.version.id)),
         },
         requestId,
       });
@@ -909,6 +987,9 @@ export class TimetablePublish {
     days: {
       readonly sorting: DaySorting | null;
       readonly bulk: readonly SortedBulk[];
+      /** Task 5.6c-3a: the run's exams and the decisions sent. */
+      readonly exams: readonly KeptExam[];
+      readonly sent: DayDecisions | undefined;
       readonly decisions: ReadonlyMap<string, DayChangeChoice>;
       readonly bulkDecisions: ReadonlyMap<string, DayChangeChoice>;
       readonly branchId: string;
@@ -916,8 +997,13 @@ export class TimetablePublish {
       readonly moment: Date;
       readonly accountId: string;
     },
-  ): Promise<{ lessons: DatedWrite | true; days: DayAudit | null } | null> {
+  ): Promise<{
+    lessons: DatedWrite | true;
+    days: DayAudit | null;
+    exams: ExamsAudit | null;
+  } | null> {
     const { sorting } = days;
+    const examAudit: ExamAudit[] = [];
     await sql`savepoint carry_write`.execute(transaction);
     try {
       for (const row of result.into.rows) {
@@ -948,6 +1034,13 @@ export class TimetablePublish {
               sorting === null
                 ? null
                 : planOfRun(sorting, days.bulk, days.decisions, days.bulkDecisions),
+              examsWriteOf({
+                branchId: days.branchId,
+                items: days.exams,
+                begins: result.written.findings.begins,
+                sent: days.sent,
+                audit: examAudit,
+              }),
             );
       const settled =
         sorting === null
@@ -977,6 +1070,7 @@ export class TimetablePublish {
       await sql`release savepoint carry_write`.execute(transaction);
       return {
         lessons: written,
+        exams: days.exams.length === 0 ? null : examAuditOf(days.exams, days.sent, examAudit),
         days:
           sorting === null || settled === null
             ? null
@@ -1085,8 +1179,16 @@ export class TimetablePublish {
       }
     }
 
+    // Task 5.6c-3a: the invigilators of the standing exams to the year's
+    // end are teachers of the facts, so the exams' check knows them.
+    const invigilators = await invigilatorsOf(
+      transaction,
+      version.branch_id,
+      startsOn,
+      version.end_date,
+    );
     const state = runningUntil(
-      await this.pattern.stateOf(transaction, version, accountId, rows),
+      await this.pattern.stateOf(transaction, version, accountId, rows, invigilators),
       runEnd,
     );
     const sorted = publishRefusals(
@@ -1138,7 +1240,7 @@ export class TimetablePublish {
       if (chain === 'carry' && offer.offered) {
         const reader: CarryReader = {
           stateOf: (other, otherRows) =>
-            this.pattern.stateOf(transaction, other, accountId, otherRows),
+            this.pattern.stateOf(transaction, other, accountId, otherRows, invigilators),
           versionRow: (versionId) => this.timetable.versionRow(transaction, versionId),
           loadProblems: async (other, otherRows) =>
             (
@@ -1189,14 +1291,35 @@ export class TimetablePublish {
     // a carried version left as it is writes nothing, so its changes stay as
     // they are and are not sorted (review correction 1).
     const sortings = new Map<string | null, DaySorting>();
-    sortings.set(
+    // Task 5.6c-3a: the standing exams of each run, read before its one-day
+    // changes are sorted (which leave out the lessons they cover), and
+    // sorted after on the findings with the kept changes applied.
+    const examSortings = new Map<string | null, KeptExam[]>();
+    const branchId = version.branch_id;
+    const ownExamsBefore = await examsBeforeOf(transaction, {
+      branchId,
+      findings: dated,
+      firstDate: startsOn,
+      lastDate: state.pattern.model.data.versionEnd,
+    });
+    const ownDays = await sortDayChanges(transaction, {
+      state,
+      findings: dated,
+      firstDate: startsOn,
+      lastDate: state.pattern.model.data.versionEnd,
+      carriedVersionId: null,
+      ...(ownExamsBefore.forSorting === undefined ? {} : { exams: ownExamsBefore.forSorting }),
+    });
+    sortings.set(null, ownDays);
+    examSortings.set(
       null,
-      await sortDayChanges(transaction, {
+      sortExamsKept({
+        branchId,
         state,
-        findings: dated,
-        firstDate: startsOn,
-        lastDate: state.pattern.model.data.versionEnd,
+        findings: ownDays.findings,
+        before: ownExamsBefore,
         carriedVersionId: null,
+        noTimetable: false,
       }),
     );
     const carriedSorted: CarryResult[] = [];
@@ -1205,14 +1328,32 @@ export class TimetablePublish {
         carriedSorted.push(one);
         continue;
       }
+      const examsBefore = await examsBeforeOf(transaction, {
+        branchId,
+        findings: one.written.findings,
+        firstDate: one.version.starts_on,
+        lastDate: one.written.lastDate,
+      });
       const sorting = await sortDayChanges(transaction, {
         state: one.written.state,
         findings: one.written.findings,
         firstDate: one.version.starts_on,
         lastDate: one.written.lastDate,
         carriedVersionId: one.version.id,
+        ...(examsBefore.forSorting === undefined ? {} : { exams: examsBefore.forSorting }),
       });
       sortings.set(one.version.id, sorting);
+      examSortings.set(
+        one.version.id,
+        sortExamsKept({
+          branchId,
+          state: one.written.state,
+          findings: sorting.findings,
+          before: examsBefore,
+          carriedVersionId: one.version.id,
+          noTimetable: false,
+        }),
+      );
       carriedSorted.push({ ...one, written: { ...one.written, findings: sorting.findings } });
     }
     const items = [...sortings.values()].flatMap((one) => one.items);
@@ -1242,11 +1383,13 @@ export class TimetablePublish {
       );
     }
     const bulkItems = [...bulk.values()].flat();
+    const examItems = [...examSortings.values()].flat();
     const daysKey = dayChangesKeyOf(
       version.id,
       startsOn,
       items,
       bulkItems.length === 0 ? null : bulkKeyPartOf(bulkItems),
+      examKeyPartOf(examItems),
     );
     const ownSorting = sortings.get(null);
     if (ownSorting === undefined) throw new Error('The run is always sorted.');
@@ -1265,6 +1408,7 @@ export class TimetablePublish {
         key: daysKey,
         items,
         bulk: bulkItems,
+        exams: examItems,
         keptStored: new Map([...sortings].map(([id, one]) => [id, one.keptStoredIds])),
       },
       carriedSorted.flatMap((one) =>
@@ -1312,7 +1456,7 @@ export class TimetablePublish {
       later,
       carried: carriedSorted,
       written: { state, findings: ownSorting.findings },
-      days: { key: daysKey, items, sortings, bulk },
+      days: { key: daysKey, items, sortings, bulk, exams: examSortings },
     };
   }
 

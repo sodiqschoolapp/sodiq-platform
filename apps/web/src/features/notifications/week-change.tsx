@@ -35,8 +35,12 @@ export function WeekChange({ item }: { item: Notification }) {
   // (task 5.5c-3b, spec review should-fix 5).
   const week = NOTIFICATION_KINDS[item.kind].safeParse(item.data);
   if (!week.success) return null;
-  const { before, after, weekStart } = week.data;
-  // An exam's notice carries a week only when the person's lessons changed (task 5.6c-1).
+  // An exam's notice carries a week only when the person's lessons changed
+  // (task 5.6c-1); so does a publish's or a withdraw's that only names an
+  // exam it cancelled (task 5.6c-3a).
+  if (!('weekStart' in week.data)) return null;
+  const shown = week.data;
+  const { before, after, weekStart } = shown;
   if (before === undefined || after === undefined || weekStart === undefined) return null;
   const also =
     item.kind === 'timetable.day_changed'

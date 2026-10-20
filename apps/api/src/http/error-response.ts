@@ -109,7 +109,6 @@ const MESSAGE: Record<ErrorCode, string> = {
     'The exam meets a blocked rule: a clash, an invigilator who cannot invigilate, or a date without lessons.',
   exam_warnings: 'The exam meets warnings that need a tick.',
   exam_restore_blocked: 'A lesson the exam no longer covers cannot be restored.',
-  publish_over_exam: 'A standing exam lies on a date the change rewrites.',
   travel_time_same_branch: 'Travel time is set between two different branches.',
   subject_archived: 'The subject is archived. Restore it first.',
   department_not_academic: 'A subject belongs to a department of the Academic division.',

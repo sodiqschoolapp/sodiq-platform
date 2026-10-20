@@ -323,7 +323,12 @@ export async function sendWeekChanges(
   notifications: Notifications,
   snapshot: WeekSnapshot,
   event:
-    | { readonly kind: WeekChangeKind; readonly number: number }
+    | {
+        readonly kind: WeekChangeKind;
+        readonly number: number;
+        /** Task 5.6c-3a (decision 7): the exams the event dropped, by the account told. */
+        readonly examsCancelled?: ReadonlyMap<string, readonly { title: string; date: string }[]>;
+      }
     | { readonly kind: 'timetable.day_changed' }
     | {
         readonly kind: 'timetable.calendar_changed';
@@ -439,16 +444,45 @@ export async function sendWeekChanges(
             accountIds: [accountId],
             data: { firstDate: event.firstDate, lastDate: event.lastDate, ...week },
           });
-        default:
+        default: {
+          const exams = event.examsCancelled?.get(accountId);
           return notifications.send(transaction, {
             kind: event.kind,
             branchId: snapshot.branchId,
             accountIds: [accountId],
-            data: { number: String(event.number), ...week },
+            data: {
+              number: String(event.number),
+              ...week,
+              ...(exams === undefined || exams.length === 0
+                ? {}
+                : { examsCancelled: exams.map((one) => ({ ...one })) }),
+            },
           });
+        }
       }
     },
   });
+  // Task 5.6c-3a (decision 7): a person told of a dropped exam whose week
+  // did not change gets the event's notice with the exams alone.
+  let dropped = 0;
+  if (event.kind === 'timetable.published' || event.kind === 'timetable.withdrawn') {
+    const told = [
+      ...(event.examsCancelled ?? new Map<string, readonly { title: string; date: string }[]>()),
+    ];
+    for (const [accountId, exams] of told.sort(([a], [b]) => a.localeCompare(b))) {
+      if (sentTo.has(accountId) || exams.length === 0) continue;
+      await notifications.send(transaction, {
+        kind: event.kind,
+        branchId: snapshot.branchId,
+        accountIds: [accountId],
+        data: {
+          number: String(event.number),
+          examsCancelled: exams.map((one) => ({ ...one })),
+        },
+      });
+      dropped += 1;
+    }
+  }
   // Task 5.6c-1 (spec review of the plan, should-fix 2): an invigilator whose
   // week did not change is told of the exam alone; one notice per person.
   let invigilators = 0;
@@ -466,7 +500,7 @@ export async function sendWeekChanges(
       invigilators += 1;
     }
   }
-  return { notified: notified + invigilators, marked: changes.marked.length };
+  return { notified: notified + invigilators + dropped, marked: changes.marked.length };
 }
 
 /** One person's invigilation after an exam save: its clock times and room. */

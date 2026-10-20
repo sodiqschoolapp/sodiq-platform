@@ -302,6 +302,35 @@ describe('the notifications of the top bar', () => {
         .getAllByTestId(side)
         .map((list) => [...list.querySelectorAll('li')].map((one) => one.textContent));
 
+    // Task 5.6c-3a (decision 7): an exam a publish or a withdraw cancelled
+    // rides in the event's own notice, with the week or alone.
+    it('names the exams a publish or a withdraw cancelled, with the week or without one', async () => {
+      const withExam: Notification = {
+        ...PUBLISHED,
+        data: {
+          ...PUBLISHED.data,
+          examsCancelled: [{ title: 'Quarter exam', date: '2026-10-19' }],
+        },
+      };
+      const examOnly: Notification = {
+        ...WITHDRAWN,
+        data: { number: '4', examsCancelled: [{ title: 'Spring exam', date: '2026-11-10' }] },
+      };
+      open({ [LIST]: () => json({ unreadCount: 2, items: [withExam, examOnly] }) });
+      const dialog = await openDialog('en', 2);
+      const parts = [...dialog.querySelectorAll<HTMLElement>('[data-exams-cancelled]')];
+      expect(parts.map((one) => one.textContent)).toEqual([
+        en.notifications.exam.cancelledBy
+          .replace('{{title}}', 'Quarter exam')
+          .replace('{{date}}', '19 October 2026'),
+        en.notifications.exam.cancelledBy
+          .replace('{{title}}', 'Spring exam')
+          .replace('{{date}}', '10 November 2026'),
+      ]);
+      // The withdrawn notice without a week draws none.
+      expect(within(dialog).getAllByTestId('week-before')).toHaveLength(1);
+    });
+
     it('shows the text and the week before and after, the changed and cancelled lines marked', async () => {
       open({ [LIST]: () => json({ unreadCount: 1, items: [PUBLISHED, WITHDRAWN] }) });
       const dialog = await openDialog('en', 1);

@@ -201,8 +201,6 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     exam_warnings: 'Проверьте предупреждения ниже и отметьте их, чтобы сохранить экзамен.',
     exam_restore_blocked:
       'Некоторые уроки, отменённые экзаменом, нельзя вернуть (список ниже). Оставьте их отменёнными с причиной или сначала освободите их время.',
-    publish_over_exam:
-      'На дате, которую перепишет это изменение, стоит экзамен. Сначала отмените или перенесите экзамен.',
     own_account:
       'Нельзя заблокировать, разблокировать или сбросить свою учётную запись. Обратитесь к другому администратору.',
     account_already_locked:
@@ -3394,6 +3392,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       changed: 'Экзамен изменён.',
       cancelled: 'Экзамен отменён.',
       invigilation: 'Вы наблюдаете {{start}}–{{end}} в кабинете {{room}}.',
+      cancelledBy: 'Экзамен отменён этим изменением: {{title}}, {{date}}.',
     },
     // The week before and after of a notice of a timetable change (task 5.5c-3a).
     week: {
@@ -4002,6 +4001,26 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         bulkChoice_keep: 'Оставить и освободить выбранные классы',
         bulkKept_keep: 'остаётся, выбранные классы освобождены',
         bulkKept_cancel: 'отменяется целиком',
+        exams: {
+          line: 'Экзамен «{{title}}», {{date}} {{time}}',
+          cancelled_one: '{{count}} урок отменён из-за экзамена',
+          cancelled_few: '{{count}} урока отменены из-за экзамена',
+          cancelled_many: '{{count}} уроков отменены из-за экзамена',
+          cancelled_other: '{{count}} урока отменены из-за экзамена',
+          clashes: 'В его время: {{rules}}. Уроки: {{lessons}}',
+          groupMisses: 'Новая версия переносит урок группы, которая сдаёт экзамен.',
+          noTimetable: 'После отзыва на его дату не действует расписание.',
+          dropBlocked:
+            'Если отменить экзамен, эти уроки нельзя вернуть, и они останутся отменёнными: {{lessons}}',
+          choice_cancel: 'Отменить пересекающиеся уроки',
+          choice_drop: 'Отменить экзамен',
+          reason: 'Причина',
+          block: '{{lessons}}, {{time}}. Вместе с {{classes}}',
+          blockChoice_cancel: 'Отменить весь блок',
+          blockChoice_keep: 'Оставить его для других классов',
+          kept_keep: 'оставлен для других классов',
+          kept_cancel: 'отменён целиком',
+        },
         decisionNeeded:
           'Выберите, что будет с каждым изменением на один день, которому нужно решение.',
       },

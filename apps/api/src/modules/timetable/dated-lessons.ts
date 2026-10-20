@@ -4,7 +4,6 @@ import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
 import type { BulkHold } from './bulk-cancels-kept.js';
 import type { ExamWrite } from './calendar-exams.js';
-import { examDaysBefore, refuseOutBlocks, refuseOverExams } from './exam-guard.js';
 import type { DatedFindings } from './dated-check.js';
 import type { DayWritePlan } from './day-changes-kept.js';
 import type { PatternState } from './pattern.service.js';
@@ -390,7 +389,9 @@ export async function writeDatedLessons(
   plan: DayWritePlan | null = null,
   /**
    * Task 5.6b-2c-1: the exams of a calendar save on these dates, written in
-   * the deferred span (spec review of the plan, must-fix 1).
+   * the deferred span (spec review of the plan, must-fix 1). Task 5.6c-3a:
+   * a publish's and a withdraw's too (`exams-kept.ts`); `null` only for a
+   * write with no standing exam on its dates.
    */
   exams: ExamWrite | null = null,
 ): Promise<DatedWrite> {
@@ -400,9 +401,6 @@ export async function writeDatedLessons(
   const begins = findings.begins;
 
   await sql`set constraints all deferred`.execute(transaction);
-  // Task 5.6c-1 (decision 5): a publish or withdraw over a standing exam.
-  const examDays =
-    exams === null ? await examDaysBefore(transaction, branchId, firstDate, lastDate) : null;
   await exams?.start(transaction);
 
   // The stored blocks and lessons of the run, locked in the order of their id.
@@ -723,8 +721,6 @@ export async function writeDatedLessons(
   // Task 5.6b-2c-1: a class kept out of a block for an exam goes first
   // (`lesson_block_class_outs_block_fkey` is not deferrable).
   await exams?.beforeBlocksDeleted(transaction, emptied);
-  // Task 5.6c-1: without the calendar's exam write, a block kept for an exam stays.
-  if (exams === null) await refuseOutBlocks(transaction, emptied);
   for (let index = 0; index < emptied.length; index += BATCH) {
     await transaction
       .deleteFrom('lesson_blocks')
@@ -733,7 +729,6 @@ export async function writeDatedLessons(
   }
 
   await exams?.end(transaction);
-  if (examDays !== null) await refuseOverExams(transaction, branchId, examDays);
 
   await sql`set constraints all immediate`.execute(transaction);
 
@@ -946,10 +941,14 @@ export async function removeDatedLessons(
   firstDate: string,
   lastDate: string,
   plan: Pick<DayWritePlan, 'keepStored' | 'cancelStored'> | null = null,
+  /**
+   * Task 5.6c-3a: the standing exams of the dates (each dropped, decision 6):
+   * cancelled first, their out rows gone before the blocks.
+   */
+  exams: ExamWrite | null = null,
 ): Promise<DatedWrite> {
   await sql`set constraints all deferred`.execute(transaction);
-  // Task 5.6c-1 (decision 5): a withdraw over a standing exam.
-  const examDays = await examDaysBefore(transaction, branchId, firstDate, lastDate);
+  await exams?.start(transaction);
   const allBlocks = await transaction
     .selectFrom('lesson_blocks')
     .select('id')
@@ -1002,8 +1001,9 @@ export async function removeDatedLessons(
       .where('id', '=', id)
       .execute();
   }
-  // Task 5.6c-1 (spec review of the code, must-fix 2): a block a standing exam keeps a class out of.
-  await refuseOutBlocks(
+  // Task 5.6c-3a: a class kept out of a block for an exam goes first
+  // (`lesson_block_class_outs_block_fkey` is not deferrable).
+  await exams?.beforeBlocksDeleted(
     transaction,
     blocks.map((one) => one.id),
   );
@@ -1027,7 +1027,7 @@ export async function removeDatedLessons(
       )
       .execute();
   }
-  await refuseOverExams(transaction, branchId, examDays);
+  await exams?.end(transaction);
   await sql`set constraints all immediate`.execute(transaction);
   return {
     firstDate,

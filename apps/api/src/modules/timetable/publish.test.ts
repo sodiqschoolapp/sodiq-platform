@@ -1689,7 +1689,7 @@ describe('publish', () => {
       // An exam of another class that the second teacher invigilates at that time.
       const examClass = await load.classes.schoolClass(s.branch, s.year, { grade: 7 });
       const examRoom = await load.classes.room(s.branch);
-      await t.database.migrator.transaction().execute(async (transaction) => {
+      const examId = await t.database.migrator.transaction().execute(async (transaction) => {
         const exam = await transaction
           .insertInto('exams')
           .values({
@@ -1728,6 +1728,7 @@ describe('publish', () => {
             staff_id: s.second,
           })
           .execute();
+        return exam.id;
       });
       const [change] = await t.database.migrator
         .selectFrom('lesson_day_changes')
@@ -1740,6 +1741,11 @@ describe('publish', () => {
         [change?.id, s.b],
       ]);
       expect(days?.decide[0]?.blocked.map((one) => one.rule)).toContain('teacher_double');
+      // Task 5.6c-3a: the exam of the carried run is an item of its own, kept
+      // (its class has no lesson at its time), in the carried version's run.
+      expect(days?.exams.map((one) => [one.key, one.category, one.carriedVersionId])).toEqual([
+        [examId, 'kept', s.b],
+      ]);
       // Without a choice the publish waits.
       expect(
         blockedBy(
@@ -1794,7 +1800,15 @@ describe('publish', () => {
       const [carry] = await t.entries('timetable_version.carry', s.b);
       expect(carry?.new_value).toMatchObject({
         dayChanges: { decided: [{ key: change?.id, choice: 'cancel' }], ended: [change?.id] },
+        exams: { kept: [examId], decided: [] },
       });
+      expect(
+        await t.database.migrator
+          .selectFrom('exams')
+          .select('cancel_cause')
+          .where('id', '=', examId)
+          .executeTakeFirstOrThrow(),
+      ).toEqual({ cancel_cause: null });
     });
 
     it('refuses without an answer, and a refused publish changes nothing', async () => {

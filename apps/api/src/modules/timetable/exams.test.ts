@@ -8,6 +8,8 @@ import {
   examSaveAnswerSchema,
   examSchema,
   examsAnswerSchema,
+  publishCheckSchema,
+  withdrawCheckSchema,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
 import request, { type Response } from 'supertest';
@@ -188,6 +190,8 @@ describe('exams in the timetable', () => {
       artTwice?: boolean;
       artPair?: boolean;
       eighthTemplate?: boolean;
+      /** Task 5.6c-3a: grade 8's lesson 1 lasts an hour (08:00–09:00), over grade 7's lesson 2 by clock time. */
+      eighthLong?: boolean;
       branch?: string;
     } = {},
   ) {
@@ -220,6 +224,17 @@ describe('exams in the timetable', () => {
         short,
         lesson,
         short,
+        lesson,
+      ]);
+      await t.assign(branch, senior, { level: 'grades', gradeFrom: 8, gradeTo: 8 });
+    }
+    if (input.eighthLong === true) {
+      const long = await t.createSlotType(branch, 'Long lesson', 'lesson', 60);
+      const senior = await t.createTemplate(branch, 'Grade 8 long', [
+        long,
+        pause,
+        lesson,
+        pause,
         lesson,
       ]);
       await t.assign(branch, senior, { level: 'grades', gradeFrom: 8, gradeTo: 8 });
@@ -1357,31 +1372,28 @@ describe('exams in the timetable', () => {
     });
   });
 
-  describe('a publish and a withdraw over an exam (decision 5, until 5.6c-3)', () => {
-    it('refuses a withdraw whose dates hold a standing exam, and withdraws once it is cancelled', async () => {
-      const s = await scene();
-      const exam = saved(await create(s.branch, examOf(s)));
-      const withdraw = () =>
-        request(t.kit.server)
-          .post(`/api/timetable/versions/${s.version}/withdraw`)
-          .set('Cookie', t.admin)
-          .set(BRANCH_HEADER, s.branch)
-          .set(REQUEST_KEY_HEADER, randomUUID())
-          .send({});
-      const refused = await withdraw();
-      refusedWith(refused, 409, 'publish_over_exam');
-      expect(detailsOf(refused)).toEqual([expect.objectContaining({ recordId: exam.exam.id })]);
-      saved(await cancel(s.branch, exam.exam.id), 200);
-      const done = await withdraw();
-      expect(done.status, JSON.stringify(done.body)).toBe(200);
-    });
+  describe('a publish and a withdraw over a standing exam (task 5.6c-3a; edge/timetable, Exams: "An exam is stored on its own like a one-day change and kept after a later publish")', () => {
+    /** The rows of a version. */
+    const rowsOfVersion = (version: string) =>
+      t.database.migrator
+        .selectFrom('teaching_load_rows')
+        .select(['id', 'class_id', 'group_id', 'subject_id', 'teacher_id'])
+        .where('version_id', '=', version)
+        .orderBy('id')
+        .execute();
 
-    it('refuses a publish that adds a lesson of its class under a standing exam', async () => {
-      const s = await scene();
-      // The exam over lessons 1 and 2 of the first class; the new version adds its lesson 2.
-      const exam = saved(
-        await create(s.branch, examOf(s, { classIds: [s.classId], first: 1, last: 2 })),
-      );
+    /**
+     * A draft copied from the scene's version from Monday 19 October, its
+     * lessons placed again by `place` (the copy's own pattern removed first),
+     * as the bulk cancel tests do; `adjust` changes the copy's rows first.
+     */
+    async function draftOf(
+      s: Scene,
+      place: (version: string, rows: Awaited<ReturnType<typeof rowsOfVersion>>) => Promise<void> = (
+        version,
+        rows,
+      ) => placeAsScene(s, version, rows),
+    ) {
       const draft = await t.post('/api/timetable/versions', s.branch, {
         academicYearId: s.year,
         startsOn: NEXT_MONDAY,
@@ -1389,46 +1401,275 @@ describe('exams in the timetable', () => {
       });
       expect(draft.status, JSON.stringify(draft.body)).toBe(201);
       const version = (draft.body as { id: string }).id;
-      // The copy's lessons placed again as in the version, as the bulk cancel tests do.
       await t.database.migrator
         .deleteFrom('pattern_blocks')
         .where('version_id', '=', version)
         .execute();
-      for (const row of await t.database.migrator
-        .selectFrom('teaching_load_rows')
-        .select('id')
-        .where('version_id', '=', version)
-        .execute()) {
-        await placeAt(s.branch, version, row.id, 1);
-      }
-      const music = await load.classes.subject({ grades: [7], journalType: 'attendance_only' });
-      const singer = await person(s.branch, [music]);
-      const extra = await load.row({
-        branch_id: s.branch,
-        version_id: version,
-        class_id: s.classId,
-        subject_id: music,
-        teacher_id: singer.staffId,
-        lessons_per_week: 1,
-      });
-      await placeAt(s.branch, version, extra, 1, 3);
+      await place(version, await rowsOfVersion(version));
       const confirmed = await t.post(
         `/api/timetable/versions/${version}/templates/confirm`,
         s.branch,
       );
       expect(confirmed.status, JSON.stringify(confirmed.body)).toBe(200);
       await load.freeEditLock(version);
-      const refused = await publish(s.branch, version, NEXT_MONDAY);
-      refusedWith(refused, 409, 'publish_over_exam');
-      expect(detailsOf(refused)).toEqual([expect.objectContaining({ recordId: exam.exam.id })]);
-      // With the exam cancelled, the same version publishes.
-      saved(await cancel(s.branch, exam.exam.id), 200);
+      return version;
+    }
+
+    /** The rows placed as the scene places them: maths on Monday in lesson 1, art on Thursday in lesson 1. */
+    async function placeAsScene(
+      s: Scene,
+      version: string,
+      rows: Awaited<ReturnType<typeof rowsOfVersion>>,
+      artSlot = 1,
+    ) {
+      for (const row of rows) {
+        if (row.group_id !== null) await placeAt(s.branch, version, row.id, 4, artSlot);
+        else await placeAt(s.branch, version, row.id, 1);
+      }
+    }
+
+    const check = async (branch: string, version: string) => {
+      const response = await t.get(
+        `/api/timetable/versions/${version}/publish-check?startsOn=${NEXT_MONDAY}`,
+        branch,
+      );
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      const days = publishCheckSchema.parse(response.body).impact?.dayChanges;
+      if (days === undefined) throw new Error('No preview.');
+      return days;
+    };
+
+    const publishWith = (branch: string, version: string, body: object) =>
+      request(t.kit.server)
+        .post(`/api/timetable/versions/${version}/publish`)
+        .set('Cookie', t.admin)
+        .set(BRANCH_HEADER, branch)
+        .set(REQUEST_KEY_HEADER, randomUUID())
+        .send({ startsOn: NEXT_MONDAY, ...body });
+
+    const withdrawCheck = async (branch: string, version: string) => {
+      const response = await t.get(`/api/timetable/versions/${version}/withdraw-check`, branch);
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      return withdrawCheckSchema.parse(response.body).dayChanges;
+    };
+
+    const withdrawWith = (branch: string, version: string, body: object) =>
+      request(t.kit.server)
+        .post(`/api/timetable/versions/${version}/withdraw`)
+        .set('Cookie', t.admin)
+        .set(BRANCH_HEADER, branch)
+        .set(REQUEST_KEY_HEADER, randomUUID())
+        .send(body);
+
+    const examRow = (id: string) =>
+      t.database.migrator
+        .selectFrom('exams')
+        .select(['cancel_cause'])
+        .where('id', '=', id)
+        .executeTakeFirstOrThrow();
+
+    const publishedNotices = (accountId: string) =>
+      t.database.migrator
+        .selectFrom('notifications')
+        .select(['kind', 'data'])
+        .where('account_id', '=', accountId)
+        .where('kind', '=', 'timetable.published')
+        .orderBy('id')
+        .execute();
+
+    /**
+     * The exam over lessons 1 and 2 of the first class on Monday 19 October,
+     * and a new version from that day that adds the class's music in lesson
+     * 2 and gives the other class's maths in lesson 1 to the invigilator: the
+     * class's two lessons are covered, the invigilator's lesson clashes.
+     */
+    async function clashScene() {
+      const s = await scene();
+      const exam = saved(
+        await create(s.branch, examOf(s, { classIds: [s.classId], first: 1, last: 2 })),
+      );
+      const music = await load.classes.subject({ grades: [7], journalType: 'attendance_only' });
+      const singer = await person(s.branch, [music]);
+      const version = await draftOf(s, async (draft, rows) => {
+        for (const row of rows) {
+          if (row.class_id === s.otherClass) {
+            await t.database.migrator
+              .updateTable('teaching_load_rows')
+              .set({ teacher_id: s.invigilator.staffId })
+              .where('id', '=', row.id)
+              .execute();
+          }
+          await placeAt(s.branch, draft, row.id, 1);
+        }
+        const extra = await load.row({
+          branch_id: s.branch,
+          version_id: draft,
+          class_id: s.classId,
+          subject_id: music,
+          teacher_id: singer.staffId,
+          lessons_per_week: 1,
+        });
+        await placeAt(s.branch, draft, extra, 1, 3);
+      });
+      return { s, exam: exam.exam, music, singer, version };
+    }
+
+    it('keeps the exam over a publish: its classes’ new lessons cancelled "exam" with the link, the invigilator’s lesson "needs a decision" until settled (Done when)', async () => {
+      const { s, exam, music, version } = await clashScene();
+      const days = await check(s.branch, version);
+      expect(days.exams).toHaveLength(1);
+      const [item] = days.exams;
+      expect(item).toMatchObject({
+        key: exam.id,
+        category: 'decide',
+        date: NEXT_MONDAY,
+        start: 480,
+        end: 580,
+        carriedVersionId: null,
+        groupMisses: false,
+        noTimetable: false,
+        dropBlocked: [],
+        blocks: [],
+      });
+      expect(item?.cancelled).toEqual([
+        { unitId: s.classId, subjectId: s.maths, start: 480, end: 525 },
+        { unitId: s.classId, subjectId: music, start: 535, end: 580 },
+      ]);
+      expect(item?.clashes).toEqual([
+        { unitId: s.otherClass, subjectId: s.maths, start: 480, end: 525 },
+      ]);
+      expect(item?.blocked.length).toBeGreaterThan(0);
+      const before = await everything();
+      // Publish waits until the item is settled.
+      const undecided = await publishWith(s.branch, version, { dayChangesKey: days.key });
+      refusedWith(undecided, 409, 'publish_blocked');
+      expect(detailsOf(undecided)).toContainEqual(
+        expect.objectContaining({ code: 'day_change_undecided', path: `dayChanges.${exam.id}` }),
+      );
+      for (const decision of [
+        { key: exam.id, choice: 'keep' },
+        { key: exam.id, choice: 'cancel' },
+        { key: exam.id, choice: 'drop', reason: 'Nothing stays cancelled' },
+      ]) {
+        await load.freeEditLock(version);
+        const refused = await publishWith(s.branch, version, {
+          dayChangesKey: days.key,
+          dayDecisions: [decision],
+        });
+        refusedWith(refused, 409, 'publish_blocked');
+        expect(detailsOf(refused)).toContainEqual(
+          expect.objectContaining({
+            code: 'day_choice_not_offered',
+            path: `dayChanges.${exam.id}`,
+          }),
+        );
+      }
+      // Nothing was written by the refusals, after the exam's write ran.
+      expect(await everything()).toEqual(before);
       await load.freeEditLock(version);
-      const done = await publish(s.branch, version, NEXT_MONDAY);
-      expect(done.status, JSON.stringify(done.body)).toBe(200);
+      const published = await publishWith(s.branch, version, {
+        dayChangesKey: days.key,
+        dayDecisions: [{ key: exam.id, choice: 'cancel', reason: 'The class sits elsewhere' }],
+      });
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      expect(await examRow(exam.id)).toEqual({ cancel_cause: null });
+      const own = await lessonsOf(NEXT_MONDAY, { classId: s.classId });
+      expect(own.map((one) => [one.subject_id, one.cancel_cause])).toEqual([
+        [s.maths, 'exam'],
+        [music, 'exam'],
+      ]);
+      for (const one of own) expect(await linksOf(one.id)).toEqual([exam.id]);
+      const theirs = await lessonOf(NEXT_MONDAY, s.otherClass);
+      expect(theirs).toMatchObject({
+        teacher_id: s.invigilator.staffId,
+        cancel_cause: 'reason',
+        cancel_reason: 'The class sits elsewhere',
+      });
+      expect(await linksOf(theirs.id)).toEqual([]);
+      const [entry] = await t.entries('timetable_version.publish', version);
+      expect(entry?.new_value).toMatchObject({
+        exams: {
+          kept: [],
+          decided: [{ key: exam.id, choice: 'cancel', reason: 'The class sits elsewhere' }],
+          written: [
+            expect.objectContaining({
+              id: exam.id,
+              outcome: 'kept',
+              cancelledWithReason: [theirs.id],
+            }),
+          ],
+        },
+      });
     });
 
-    it('refuses a withdraw and a publish that would remove a block a standing exam keeps a class out of, with no 500 (spec review of the code, must-fix 2)', async () => {
+    it('drops the exam with "drop": its classes’ lessons held, its links gone, its invigilator told once in the publish’s own notice (decisions 5 and 7)', async () => {
+      const { s, exam, version } = await clashScene();
+      const days = await check(s.branch, version);
+      const toldBefore = (await publishedNotices(s.invigilator.accountId)).length;
+      const teacherBefore = (await publishedNotices(s.teacher.accountId)).length;
+      const published = await publishWith(s.branch, version, {
+        dayChangesKey: days.key,
+        dayDecisions: [{ key: exam.id, choice: 'drop' }],
+      });
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      expect(await examRow(exam.id)).toEqual({ cancel_cause: 'cancelled' });
+      const own = await lessonsOf(NEXT_MONDAY, { classId: s.classId });
+      expect(own.map((one) => one.cancel_cause)).toEqual([null, null]);
+      for (const one of own) expect(await linksOf(one.id)).toEqual([]);
+      expect(await lessonOf(NEXT_MONDAY, s.otherClass)).toMatchObject({
+        teacher_id: s.invigilator.staffId,
+        cancel_cause: null,
+      });
+      // The invigilator's week changed too: one notice, with the week and the exam.
+      const told = (await publishedNotices(s.invigilator.accountId)).slice(toldBefore);
+      expect(told).toHaveLength(1);
+      const data = NOTIFICATION_KINDS['timetable.published'].parse(told[0]?.data);
+      expect(data).toMatchObject({
+        examsCancelled: [{ title: 'Quarter exam in maths', date: NEXT_MONDAY }],
+      });
+      expect('weekStart' in data).toBe(true);
+      // The teacher whose lesson the drop gives back is told of the exam too.
+      const teacher = (await publishedNotices(s.teacher.accountId)).slice(teacherBefore);
+      expect(teacher).toHaveLength(1);
+      expect(NOTIFICATION_KINDS['timetable.published'].parse(teacher[0]?.data)).toMatchObject({
+        examsCancelled: [{ title: 'Quarter exam in maths', date: NEXT_MONDAY }],
+      });
+      expect(await noticesOf(s.invigilator.accountId)).toHaveLength(1); // the create's only
+    });
+
+    it('keeps an exam a publish leaves as it is: no decision, its lessons kept cancelled "exam" with their links', async () => {
+      const s = await scene();
+      const exam = saved(await create(s.branch, examOf(s))).exam;
+      const version = await draftOf(s);
+      const days = await check(s.branch, version);
+      expect(days.exams).toEqual([
+        expect.objectContaining({ key: exam.id, category: 'kept', blocked: [], clashes: [] }),
+      ]);
+      expect(days.exams[0]?.cancelled).toHaveLength(2);
+      // A decision for a kept exam names no item.
+      const unknown = await publishWith(s.branch, version, {
+        dayChangesKey: days.key,
+        dayDecisions: [{ key: exam.id, choice: 'drop' }],
+      });
+      refusedWith(unknown, 409, 'publish_blocked');
+      expect(detailsOf(unknown)).toContainEqual(
+        expect.objectContaining({ code: 'day_decision_unknown' }),
+      );
+      await load.freeEditLock(version);
+      const published = await publishWith(s.branch, version, { dayChangesKey: days.key });
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      const lessons = [
+        ...(await lessonsOf(NEXT_MONDAY, { classId: s.classId })),
+        ...(await lessonsOf(NEXT_MONDAY, { classId: s.otherClass })),
+      ];
+      expect(lessons).toHaveLength(2);
+      for (const one of lessons) {
+        expect(one.cancel_cause).toBe('exam');
+        expect(await linksOf(one.id)).toEqual([exam.id]);
+      }
+    });
+
+    it('carries a stored "keep" to the new version’s block of the same lessons, and asks again for a block whose lesson changed, deciding against the stored choice (decision 3)', async () => {
       const s = await scene({ art: true });
       const art = s.art;
       if (art === null) throw new Error('No art.');
@@ -1443,47 +1684,454 @@ describe('exams in the timetable', () => {
             blockChoices: [{ classId: s.classId, blockId: block.block_id, choice: 'keep' }],
           }),
         ),
-      );
-      // A new version without the art lessons, from Monday 19 October.
-      const draft = await t.post('/api/timetable/versions', s.branch, {
-        academicYearId: s.year,
-        startsOn: NEXT_MONDAY,
-        copyFrom: s.version,
+      ).exam;
+      const same = await draftOf(s);
+      const days = await check(s.branch, same);
+      expect(days.exams).toEqual([
+        expect.objectContaining({
+          key: exam.id,
+          category: 'kept',
+          blocks: [
+            expect.objectContaining({
+              blockDate: THURSDAY,
+              sittingClassIds: [s.classId],
+              otherClassIds: [art.eighth],
+              choice: 'keep',
+            }),
+          ],
+        }),
+      ]);
+      expect(days.exams[0]?.cancelled).toEqual([]);
+      // The same version with another art teacher: the block is asked again.
+      const otherArt = await person(s.branch, [art.subject], [7, 8]);
+      const changed = await draftOf(s, async (draft, rows) => {
+        for (const row of rows) {
+          if (row.group_id === art.group) {
+            await t.database.migrator
+              .updateTable('teaching_load_rows')
+              .set({ teacher_id: otherArt.staffId })
+              .where('id', '=', row.id)
+              .execute();
+          }
+        }
+        await placeAsScene(s, draft, rows);
       });
-      expect(draft.status, JSON.stringify(draft.body)).toBe(201);
-      const version = (draft.body as { id: string }).id;
-      await t.database.migrator
-        .deleteFrom('pattern_blocks')
-        .where('version_id', '=', version)
-        .execute();
-      await t.database.migrator
-        .deleteFrom('teaching_load_rows')
-        .where('version_id', '=', version)
-        .where('group_id', '=', art.group)
-        .execute();
-      for (const row of await t.database.migrator
-        .selectFrom('teaching_load_rows')
-        .select('id')
-        .where('version_id', '=', version)
-        .execute()) {
-        await placeAt(s.branch, version, row.id, 1);
-      }
-      const confirmed = await t.post(
-        `/api/timetable/versions/${version}/templates/confirm`,
-        s.branch,
+      const asked = await check(s.branch, changed);
+      const [item] = asked.exams;
+      expect(item).toMatchObject({ category: 'decide', blocked: [] });
+      const [open] = item?.blocks ?? [];
+      expect(open).toMatchObject({ choice: null, otherClassIds: [art.eighth] });
+      if (open === undefined) throw new Error('No block.');
+      const undecided = await publishWith(s.branch, changed, { dayChangesKey: asked.key });
+      refusedWith(undecided, 409, 'publish_blocked');
+      expect(detailsOf(undecided)).toContainEqual(
+        expect.objectContaining({
+          code: 'day_change_undecided',
+          path: `dayChanges.${exam.id}.blocks.${open.blockId}.${THURSDAY}`,
+        }),
       );
-      expect(confirmed.status, JSON.stringify(confirmed.body)).toBe(200);
+      // A drop on a block is not offered.
+      await load.freeEditLock(changed);
+      const wrong = await publishWith(s.branch, changed, {
+        dayChangesKey: asked.key,
+        dayDecisions: [
+          { key: exam.id, blockId: open.blockId, blockDate: THURSDAY, choice: 'drop' },
+        ],
+      });
+      refusedWith(wrong, 409, 'publish_blocked');
+      expect(detailsOf(wrong)).toContainEqual(
+        expect.objectContaining({ code: 'day_choice_not_offered' }),
+      );
+      await load.freeEditLock(changed);
+      const published = await publishWith(s.branch, changed, {
+        dayChangesKey: asked.key,
+        dayDecisions: [
+          { key: exam.id, blockId: open.blockId, blockDate: THURSDAY, choice: 'cancel' },
+        ],
+      });
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      // Against the stored "keep": the whole block cancelled "exam", the out row gone.
+      const artLessons = await lessonsOf(THURSDAY, { groupId: art.group });
+      expect(artLessons.map((one) => [one.teacher_id, one.cancel_cause])).toEqual([
+        [otherArt.staffId, 'exam'],
+      ]);
+      expect(await linksOf(artLessons[0]?.id ?? '')).toEqual([exam.id]);
+      const outs = await t.database.migrator
+        .selectFrom('lesson_block_class_outs')
+        .select('block_id')
+        .where('exam_id', '=', exam.id)
+        .execute();
+      expect(outs).toEqual([]);
+    });
+
+    it('removes with its block the out row of a block the new version takes away, with no 500, and keeps the exam (the former publish_over_exam)', async () => {
+      const s = await scene({ art: true });
+      const art = s.art;
+      if (art === null) throw new Error('No art.');
+      const [block] = await lessonsOf(THURSDAY, { groupId: art.group });
+      if (block === undefined) throw new Error('No art lesson.');
+      const exam = saved(
+        await create(
+          s.branch,
+          examOf(s, {
+            date: THURSDAY,
+            classIds: [s.classId],
+            blockChoices: [{ classId: s.classId, blockId: block.block_id, choice: 'keep' }],
+          }),
+        ),
+      ).exam;
+      const version = await draftOf(s, async (draft, rows) => {
+        await t.database.migrator
+          .deleteFrom('teaching_load_rows')
+          .where('version_id', '=', draft)
+          .where('group_id', '=', art.group)
+          .execute();
+        for (const row of rows) {
+          if (row.group_id === null) await placeAt(s.branch, draft, row.id, 1);
+        }
+      });
+      const days = await check(s.branch, version);
+      expect(days.exams).toEqual([
+        expect.objectContaining({ key: exam.id, category: 'kept', blocks: [], cancelled: [] }),
+      ]);
+      const published = await publishWith(s.branch, version, { dayChangesKey: days.key });
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      expect(await examRow(exam.id)).toEqual({ cancel_cause: null });
+      expect(await lessonsOf(THURSDAY, { groupId: art.group })).toEqual([]);
+      const outs = await t.database.migrator
+        .selectFrom('lesson_block_class_outs')
+        .select('block_id')
+        .where('exam_id', '=', exam.id)
+        .execute();
+      expect(outs).toEqual([]);
+      const [entry] = await t.entries('timetable_version.publish', version);
+      expect(entry?.new_value).toMatchObject({
+        exams: {
+          kept: [exam.id],
+          written: [
+            expect.objectContaining({
+              outsRemoved: [{ blockId: block.block_id, classId: s.classId }],
+            }),
+          ],
+        },
+      });
+    });
+
+    it('drops only an exam whose sitting group’s own lesson the new version moves (decision 4)', async () => {
+      const s = await scene({ art: true });
+      const art = s.art;
+      if (art === null) throw new Error('No art.');
+      const exam = saved(
+        await create(
+          s.branch,
+          examOf(s, {
+            date: THURSDAY,
+            classIds: [],
+            groupIds: [art.group],
+            subjectId: art.subject,
+            confirm: true,
+          }),
+        ),
+      ).exam;
+      const version = await draftOf(s, (draft, rows) => placeAsScene(s, draft, rows, 3));
+      const days = await check(s.branch, version);
+      expect(days.exams).toEqual([
+        expect.objectContaining({ key: exam.id, category: 'decide', groupMisses: true }),
+      ]);
+      const cancelled = await publishWith(s.branch, version, {
+        dayChangesKey: days.key,
+        dayDecisions: [{ key: exam.id, choice: 'cancel', reason: 'Moved' }],
+      });
+      refusedWith(cancelled, 409, 'publish_blocked');
+      expect(detailsOf(cancelled)).toContainEqual(
+        expect.objectContaining({ code: 'day_choice_not_offered' }),
+      );
       await load.freeEditLock(version);
-      const published = await publish(s.branch, version, NEXT_MONDAY);
-      refusedWith(published, 409, 'publish_over_exam');
-      expect(detailsOf(published)).toEqual([expect.objectContaining({ recordId: exam.exam.id })]);
-      const withdrawn = await request(t.kit.server)
-        .post(`/api/timetable/versions/${s.version}/withdraw`)
+      const published = await publishWith(s.branch, version, {
+        dayChangesKey: days.key,
+        dayDecisions: [{ key: exam.id, choice: 'drop' }],
+      });
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      expect(await examRow(exam.id)).toEqual({ cancel_cause: 'cancelled' });
+      const moved = await lessonsOf(THURSDAY, { groupId: art.group });
+      expect(moved.map((one) => one.cancel_cause)).toEqual([null]);
+    });
+
+    it('keeps cancelled with the drop’s reason a lesson the drop cannot give back: a kept room change took its room (plan review correction 1)', async () => {
+      const s = await scene();
+      const exam = saved(
+        await create(s.branch, examOf(s, { classIds: [s.classId], first: 1, last: 2 })),
+      ).exam;
+      // The other class's Monday lesson moves into the first class's room,
+      // free while the exam cancels the first class's lesson.
+      const theirs = await lessonOf(NEXT_MONDAY, s.otherClass);
+      const moved = await request(t.kit.server)
+        .post(`/api/timetable/lessons/${theirs.id}/room`)
         .set('Cookie', t.admin)
         .set(BRANCH_HEADER, s.branch)
         .set(REQUEST_KEY_HEADER, randomUUID())
-        .send({});
-      refusedWith(withdrawn, 409, 'publish_over_exam');
+        .send({ roomId: s.room, reason: 'Projector' });
+      expect(moved.status, JSON.stringify(moved.body)).toBe(200);
+      // The new version gives the invigilator a lesson of a third class at the exam's time.
+      const third = await load.classes.schoolClass(s.branch, s.year, { grade: 7 });
+      const version = await draftOf(s, async (draft, rows) => {
+        await placeAsScene(s, draft, rows);
+        const extra = await load.row({
+          branch_id: s.branch,
+          version_id: draft,
+          class_id: third,
+          subject_id: s.maths,
+          teacher_id: s.invigilator.staffId,
+          lessons_per_week: 1,
+        });
+        await placeAt(s.branch, draft, extra, 1);
+      });
+      const days = await check(s.branch, version);
+      expect(days, JSON.stringify(days)).toMatchObject({ kept: [expect.anything()] });
+      const [item] = days.exams;
+      expect(item?.dropBlocked).toEqual([
+        { unitId: s.classId, subjectId: s.maths, start: 480, end: 525 },
+      ]);
+      const bare = await publishWith(s.branch, version, {
+        dayChangesKey: days.key,
+        dayDecisions: [{ key: exam.id, choice: 'drop' }],
+      });
+      refusedWith(bare, 409, 'publish_blocked');
+      expect(detailsOf(bare)).toContainEqual(
+        expect.objectContaining({ code: 'day_choice_not_offered' }),
+      );
+      await load.freeEditLock(version);
+      const published = await publishWith(s.branch, version, {
+        dayChangesKey: days.key,
+        dayDecisions: [{ key: exam.id, choice: 'drop', reason: 'Room taken' }],
+      });
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      expect(await examRow(exam.id)).toEqual({ cancel_cause: 'cancelled' });
+      expect(await lessonOf(NEXT_MONDAY, s.classId)).toMatchObject({
+        cancel_cause: 'reason',
+        cancel_reason: 'Room taken',
+      });
+      expect(await lessonOf(NEXT_MONDAY, s.otherClass)).toMatchObject({
+        room_id: s.room,
+        cancel_cause: null,
+      });
+      expect(await lessonOf(NEXT_MONDAY, third)).toMatchObject({
+        teacher_id: s.invigilator.staffId,
+        cancel_cause: null,
+      });
+    });
+
+    it('lists the exams of a withdraw that leaves their dates with no timetable, settled only by "drop" (decision 6)', async () => {
+      const s = await scene();
+      const exam = saved(await create(s.branch, examOf(s))).exam;
+      const days = await withdrawCheck(s.branch, s.version);
+      expect(days.exams).toEqual([
+        expect.objectContaining({ key: exam.id, category: 'decide', noTimetable: true }),
+      ]);
+      const before = await everything();
+      const undecided = await withdrawWith(s.branch, s.version, { dayChangesKey: days.key });
+      refusedWith(undecided, 409, 'withdraw_blocked');
+      expect(detailsOf(undecided)).toContainEqual(
+        expect.objectContaining({ code: 'day_change_undecided' }),
+      );
+      const wrong = await withdrawWith(s.branch, s.version, {
+        dayChangesKey: days.key,
+        dayDecisions: [{ key: exam.id, choice: 'cancel', reason: 'No timetable' }],
+      });
+      refusedWith(wrong, 409, 'withdraw_blocked');
+      expect(await everything()).toEqual(before);
+      const done = await withdrawWith(s.branch, s.version, {
+        dayChangesKey: days.key,
+        dayDecisions: [{ key: exam.id, choice: 'drop' }],
+      });
+      expect(done.status, JSON.stringify(done.body)).toBe(200);
+      expect(await examRow(exam.id)).toEqual({ cancel_cause: 'cancelled' });
+      expect(await lessonsOf(NEXT_MONDAY, { classId: s.classId })).toEqual([]);
+      const told = await t.database.migrator
+        .selectFrom('notifications')
+        .select('data')
+        .where('account_id', '=', s.invigilator.accountId)
+        .where('kind', '=', 'timetable.withdrawn')
+        .execute();
+      expect(told).toHaveLength(1);
+      const data = NOTIFICATION_KINDS['timetable.withdrawn'].parse(told[0]?.data);
+      // The invigilator's week did not change: the exam alone, no week.
+      expect('weekStart' in data).toBe(false);
+      expect(data).toMatchObject({
+        examsCancelled: [{ title: 'Quarter exam in maths', date: NEXT_MONDAY }],
+      });
+    });
+
+    it('answers 404 for a decision naming another branch’s exam or an unknown one, with the rows of both branches unchanged', async () => {
+      const { s, exam, version } = await clashScene();
+      const other = await scene();
+      const theirs = saved(await create(other.branch, examOf(other))).exam;
+      const days = await check(s.branch, version);
+      const before = await everything();
+      for (const key of [theirs.id, UNKNOWN]) {
+        await load.freeEditLock(version);
+        const refused = await publishWith(s.branch, version, {
+          dayChangesKey: days.key,
+          dayDecisions: [{ key, choice: 'drop' }],
+        });
+        refusedWith(refused, 404, 'not_found');
+        const withdrawn = await withdrawWith(other.branch, other.version, {
+          dayDecisions: [{ key: key === theirs.id ? exam.id : UNKNOWN, choice: 'drop' }],
+        });
+        refusedWith(withdrawn, 404, 'not_found');
+      }
+      // An unknown block of the branch's exam.
+      await load.freeEditLock(version);
+      const block = await publishWith(s.branch, version, {
+        dayChangesKey: days.key,
+        dayDecisions: [
+          { key: exam.id, blockId: UNKNOWN, blockDate: NEXT_MONDAY, choice: 'cancel' },
+        ],
+      });
+      refusedWith(block, 404, 'not_found');
+      expect(await everything()).toEqual(before);
+    });
+
+    it('meets an invigilator’s lesson by clock time: grade 8’s lesson 1 over grade 7’s lesson 2 (.claude/rules/timetable.md, real clock time, never slot numbers)', async () => {
+      const s = await scene({ eighthLong: true });
+      const eighth = await load.classes.schoolClass(s.branch, s.year, { grade: 8 });
+      const physics = await load.classes.subject({ grades: [8], journalType: 'attendance_only' });
+      const watcher = await person(s.branch, [physics], [8]);
+      // The exam in grade 7's lesson 2 (08:55–09:40), invigilated by a teacher of grade 8.
+      const exam = saved(
+        await create(
+          s.branch,
+          examOf(s, {
+            classIds: [s.classId],
+            first: 2,
+            invigilatorIds: [watcher.staffId],
+            confirm: true,
+          }),
+        ),
+      ).exam;
+      expect(exam).toMatchObject({ start: 535, end: 580 });
+      const version = await draftOf(s, async (draft, rows) => {
+        await placeAsScene(s, draft, rows);
+        const extra = await load.row({
+          branch_id: s.branch,
+          version_id: draft,
+          class_id: eighth,
+          subject_id: physics,
+          teacher_id: watcher.staffId,
+          lessons_per_week: 1,
+        });
+        // Grade 8's lesson 1: 08:00–09:00.
+        await placeAt(s.branch, draft, extra, 1);
+      });
+      const days = await check(s.branch, version);
+      const [item] = days.exams;
+      expect(item).toMatchObject({ key: exam.id, category: 'decide' });
+      expect(item?.blocked.map((one) => one.rule)).toContain('teacher_double');
+      expect(item?.clashes).toEqual([{ unitId: eighth, subjectId: physics, start: 480, end: 540 }]);
+    });
+
+    it('serialises a publish and an exam save on the publish lock: the exam saved first refuses the publish shown before it, the publish first lets the exam save over the new lessons', async () => {
+      const s = await scene();
+      const version = await draftOf(s);
+      const days = await check(s.branch, version);
+      expect(days.exams).toEqual([]);
+      const [published, created] = await inOrder(
+        s.branch,
+        () => publishWith(s.branch, version, { dayChangesKey: days.key }),
+        () => create(s.branch, examOf(s, { date: LATER_MONDAY })),
+      );
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      const exam = saved(created).exam;
+      for (const one of await lessonsOf(LATER_MONDAY, { classId: s.classId })) {
+        expect(one.cancel_cause).toBe('exam');
+        expect(await linksOf(one.id)).toEqual([exam.id]);
+      }
+      // The other order: the exam first, then a publish with the key shown before it.
+      const t2 = await scene();
+      const later = await draftOf(t2);
+      const shown = await check(t2.branch, later);
+      const [made, refused] = await inOrder(
+        t2.branch,
+        () => create(t2.branch, examOf(t2)),
+        () => publishWith(t2.branch, later, { dayChangesKey: shown.key }),
+      );
+      saved(made);
+      refusedWith(refused, 409, 'publish_blocked');
+      expect(detailsOf(refused)).toContainEqual(
+        expect.objectContaining({ code: 'day_changes_changed' }),
+      );
+    });
+
+    it('serialises a withdraw and an exam save: the exam saved first refuses the withdraw shown before it, the withdraw first refuses the exam with no timetable', async () => {
+      const s = await scene();
+      const shown = await withdrawCheck(s.branch, s.version);
+      const [made, refused] = await inOrder(
+        s.branch,
+        () => create(s.branch, examOf(s)),
+        () => withdrawWith(s.branch, s.version, { dayChangesKey: shown.key }),
+      );
+      saved(made);
+      refusedWith(refused, 409, 'withdraw_blocked');
+      expect(detailsOf(refused)).toContainEqual(
+        expect.objectContaining({ code: 'day_changes_changed' }),
+      );
+      const s2 = await scene();
+      const shown2 = await withdrawCheck(s2.branch, s2.version);
+      const [withdrawn, late] = await inOrder(
+        s2.branch,
+        () => withdrawWith(s2.branch, s2.version, { dayChangesKey: shown2.key }),
+        () => create(s2.branch, examOf(s2)),
+      );
+      expect(withdrawn.status, JSON.stringify(withdrawn.body)).toBe(200);
+      refusedWith(late, 409, 'exam_no_timetable');
+    });
+
+    it('leaves everything as it was when the database refuses the write after the exam’s write ran: a block kept beside an exam whose invigilator teaches it is timetable_busy, never a 500', async () => {
+      const s = await scene({ art: true });
+      const art = s.art;
+      if (art === null) throw new Error('No art.');
+      const [block] = await lessonsOf(THURSDAY, { groupId: art.group });
+      if (block === undefined) throw new Error('No art lesson.');
+      // Another art teacher invigilates; the art block is cancelled whole for the exam.
+      const otherArt = await person(s.branch, [art.subject], [7, 8]);
+      const exam = saved(
+        await create(
+          s.branch,
+          examOf(s, {
+            date: THURSDAY,
+            classIds: [s.classId],
+            invigilatorIds: [otherArt.staffId],
+            confirm: true,
+            blockChoices: [{ classId: s.classId, blockId: block.block_id, choice: 'cancel' }],
+          }),
+        ),
+      ).exam;
+      // The new version gives the art group to the invigilator: the block is asked again.
+      const version = await draftOf(s, async (draft, rows) => {
+        for (const row of rows) {
+          if (row.group_id === art.group) {
+            await t.database.migrator
+              .updateTable('teaching_load_rows')
+              .set({ teacher_id: otherArt.staffId })
+              .where('id', '=', row.id)
+              .execute();
+          }
+        }
+        await placeAsScene(s, draft, rows);
+      });
+      const days = await check(s.branch, version);
+      const open = days.exams[0]?.blocks[0];
+      if (open === undefined) throw new Error('No block.');
+      expect(open.choice).toBeNull();
+      const before = await everything();
+      const refused = await publishWith(s.branch, version, {
+        dayChangesKey: days.key,
+        dayDecisions: [
+          { key: exam.id, blockId: open.blockId, blockDate: THURSDAY, choice: 'keep' },
+        ],
+      });
+      refusedWith(refused, 409, 'timetable_busy');
+      expect(await everything()).toEqual(before);
     });
   });
 

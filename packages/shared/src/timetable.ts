@@ -1252,6 +1252,74 @@ export const bulkItemSchema = z.object({
 
 export type BulkItemAnswer = z.infer<typeof bulkItemSchema>;
 
+/** A lesson of the new version that an exam kept after a publish names: its class or group, subject and minutes. */
+export const examLessonSchema = z.object({
+  unitId: z.uuid(),
+  subjectId: z.uuid(),
+  start: z.int().min(0).max(1440),
+  end: z.int().min(0).max(1440),
+});
+
+export type ExamLessonAnswer = z.infer<typeof examLessonSchema>;
+
+/**
+ * A block of the new version newly shared under an exam kept after a publish
+ * (task 5.6c-3a, decision 3; `edge/timetable`, Exams, "10 Brown sits the
+ * exam, but its lesson in slot 3 is a block shared with classes that do not
+ * sit"): its pattern block (the earlier half of a double) and date, the other
+ * half's pattern block, its minutes, its lessons, the sitting classes in it
+ * and the others, and the choice carried from the stored block of the same
+ * lessons (`null`: it needs a decision). One choice for the block, for every
+ * sitting class in it.
+ */
+export const examBlockSchema = z.object({
+  blockId: z.uuid(),
+  blockDate: schoolDateSchema,
+  pairBlockId: z.uuid().nullable(),
+  start: z.int().min(0).max(1440),
+  end: z.int().min(0).max(1440),
+  lessons: z.array(examLessonSchema),
+  sittingClassIds: z.array(z.uuid()),
+  otherClassIds: z.array(z.uuid()),
+  choice: z.enum(['keep', 'cancel']).nullable(),
+});
+
+export type ExamBlockAnswer = z.infer<typeof examBlockSchema>;
+
+/**
+ * A standing exam on a date a publish or a withdraw writes (task 5.6c-3a;
+ * `edge/timetable`, Exams: "An exam is stored on its own like a one-day
+ * change and kept after a later publish: the new version's lessons of its
+ * classes in its slots are cancelled with the reason 'exam' as at creation,
+ * and a lesson of an invigilator or in an exam room at that time is a 'needs
+ * a decision' item in the preview"): kept, or needs a decision (never
+ * dropped, decision 9); the lessons it cancels "exam"; its shared blocks;
+ * the blocked results at its time (`blocked`, settled by `cancel` with a
+ * reason, which cancels `clashes`); a sitting group whose own lesson the new
+ * version moves (`groupMisses`) and a date left without a timetable
+ * (`noTimetable`), settled only by `drop`; the lessons a `drop` cannot give
+ * back by the rule for a restored lesson (`dropBlocked`: a `drop` then needs
+ * a reason, plan review correction 1).
+ */
+export const examItemSchema = z.object({
+  key: z.uuid(),
+  category: z.enum(['kept', 'decide']),
+  date: schoolDateSchema,
+  title: z.string(),
+  start: z.int().min(0).max(1440),
+  end: z.int().min(0).max(1440),
+  carriedVersionId: z.uuid().nullable(),
+  cancelled: z.array(examLessonSchema),
+  blocks: z.array(examBlockSchema),
+  blocked: z.array(ruleResultSchema),
+  clashes: z.array(examLessonSchema),
+  groupMisses: z.boolean(),
+  noTimetable: z.boolean(),
+  dropBlocked: z.array(examLessonSchema),
+});
+
+export type ExamItemAnswer = z.infer<typeof examItemSchema>;
+
 /**
  * The stored one-day changes of the dates written, sorted into kept, needs a
  * decision and dropped (task 5.6a-5a; `edge/timetable`, Versions and drafts,
@@ -1266,6 +1334,8 @@ export const dayChangesAnswerSchema = z.object({
   dropped: z.array(dayChangeItemSchema),
   /** Task 5.6a-5b-1: the bulk cancels of the dates, once each. */
   bulk: z.array(bulkItemSchema),
+  /** Task 5.6c-3a: the standing exams of the dates, once each. */
+  exams: z.array(examItemSchema),
 });
 
 export type DayChangesAnswer = z.infer<typeof dayChangesAnswerSchema>;
@@ -1430,9 +1500,19 @@ export const dayDecisionsSchema = z
         blockId: z.uuid().optional(),
         blockDate: schoolDateSchema.optional(),
         choice: dayChangeChoiceSchema,
+        /**
+         * Task 5.6c-3a (decision 2, plan review correction 1): the typed
+         * reason of an exam's `cancel` (its clashing lessons) or of a `drop`
+         * that leaves lessons cancelled; the server refuses it on any other
+         * item (`day_choice_not_offered`).
+         */
+        reason: z.string().trim().min(1).max(500).optional(),
       })
       .refine((one) => (one.blockId === undefined) === (one.blockDate === undefined), {
         message: 'block_incomplete',
+      })
+      .refine((one) => one.reason === undefined || one.blockId === undefined, {
+        message: 'reason_on_block',
       }),
   )
   .max(2000)

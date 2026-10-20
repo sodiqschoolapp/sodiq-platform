@@ -78,7 +78,26 @@ const teacherWeek = {
   after: z.array(weekLessonSchema).max(WEEK_LESSONS_MAX),
 };
 
-const weekChange = z.strictObject({ number: versionNumber, ...teacherWeek });
+/**
+ * Task 5.6c-3a (decision 7): the exams a publish or a withdraw cancelled by a
+ * "needs a decision" choice that this person invigilated or whose lessons
+ * they gave back, in the event's own notice (one notice per person per
+ * event). A person whose week did not change gets the notice with these
+ * alone, and no week.
+ */
+const examsCancelled = z
+  .array(z.strictObject({ title: z.string().min(1).max(200), date: schoolDateSchema }))
+  .min(1)
+  .max(50);
+
+const weekChange = z.union([
+  z.strictObject({
+    number: versionNumber,
+    ...teacherWeek,
+    examsCancelled: examsCancelled.optional(),
+  }),
+  z.strictObject({ number: versionNumber, examsCancelled }),
+]);
 
 export const NOTIFICATION_KINDS = {
   'sample.message': z.strictObject({ text: z.string().min(1).max(500) }),

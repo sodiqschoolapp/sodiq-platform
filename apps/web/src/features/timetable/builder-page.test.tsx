@@ -1037,7 +1037,14 @@ describe('pinSlots', () => {
               impact: {
                 beforeVersion: { id: uid(950), number: 1 },
                 carried: [],
-                dayChanges: { key: 'd'.repeat(64), kept: [], decide: [], dropped: [], bulk: [] },
+                dayChanges: {
+                  key: 'd'.repeat(64),
+                  kept: [],
+                  decide: [],
+                  dropped: [],
+                  bulk: [],
+                  exams: [],
+                },
                 counts: { created: 0, moved: 0, removed: 0, changed: 12, unchanged: 40 },
                 changes: [
                   {
@@ -1172,6 +1179,7 @@ describe('pinSlots', () => {
                   decide: [item(uid(622), 'move', ['teacher_double'])],
                   dropped: [item(uid(623), 'cancel')],
                   bulk: [],
+                  exams: [],
                 },
                 counts: { created: 0, moved: 0, removed: 0, changed: 0, unchanged: 40 },
                 changes: [],
@@ -1375,7 +1383,14 @@ describe('pinSlots', () => {
               impact: {
                 beforeVersion: { id: uid(950), number: 1 },
                 carried: [],
-                dayChanges: { key: 'd'.repeat(64), kept: [], decide: [], dropped: [], bulk: [] },
+                dayChanges: {
+                  key: 'd'.repeat(64),
+                  kept: [],
+                  decide: [],
+                  dropped: [],
+                  bulk: [],
+                  exams: [],
+                },
                 counts: { created: 0, moved: 0, removed: 0, changed: 0, unchanged: 40 },
                 changes: [],
                 teachers: [],

@@ -631,7 +631,15 @@ describe('the teaching load page: withdraw', () => {
     json({
       runsAgain: { id: earlier.id, number: 1 },
       runsAgainUntil: '2027-05-31',
-      dayChanges: { key: KEY, kept: [], decide: [], dropped: [], bulk: [], ...dayChanges },
+      dayChanges: {
+        key: KEY,
+        kept: [],
+        decide: [],
+        dropped: [],
+        bulk: [],
+        exams: [],
+        ...dayChanges,
+      },
       names: {
         units: [{ id: OXFORD.id, kind: 'class', name: 'Oxford', grades: [7] }],
         subjects: [{ id: MATHS.id, names: MATHS.names }],
@@ -732,6 +740,199 @@ describe('the teaching load page: withdraw', () => {
         calls.find((call) => call.route === `POST /api/timetable/versions/${later.id}/withdraw`)
           ?.body,
       ).toEqual({ dayChangesKey: KEY, dayDecisions: [{ key: open, choice: 'cancel' }] });
+    });
+  });
+
+  // Task 5.6c-3a (edge/timetable, Exams: "An exam is stored on its own like
+  // a one-day change and kept after a later publish ... a lesson of an
+  // invigilator or in an exam room at that time is a 'needs a decision' item").
+  it('shows a standing exam of the withdrawn dates with its choices, a reason for "cancel" and its open block, and sends them; "drop" settles the whole exam', async () => {
+    const exam = uid(911);
+    const block = uid(912);
+    const calls = await openPage({
+      versions: [later, earlier],
+      extra: {
+        ...checkRoute({
+          exams: [
+            {
+              key: exam,
+              category: 'decide',
+              date: '2026-11-16',
+              title: 'Quarter exam',
+              start: 480,
+              end: 525,
+              carriedVersionId: null,
+              cancelled: [{ unitId: OXFORD.id, subjectId: MATHS.id, start: 480, end: 525 }],
+              blocks: [
+                {
+                  blockId: block,
+                  blockDate: '2026-11-16',
+                  pairBlockId: null,
+                  start: 480,
+                  end: 525,
+                  lessons: [{ unitId: OXFORD.id, subjectId: MATHS.id, start: 480, end: 525 }],
+                  sittingClassIds: [OXFORD.id],
+                  otherClassIds: [OXFORD.id],
+                  choice: null,
+                },
+              ],
+              blocked: [
+                {
+                  rule: 'teacher_double',
+                  severity: 'blocked',
+                  weekday: 1,
+                  lessonIds: [uid(913)],
+                  date: '2026-11-16',
+                },
+              ],
+              clashes: [{ unitId: OXFORD.id, subjectId: MATHS.id, start: 480, end: 525 }],
+              groupMisses: false,
+              noTimetable: false,
+              dropBlocked: [],
+            },
+          ],
+        }),
+        [`POST /api/timetable/versions/${later.id}/withdraw`]: () =>
+          json({ ...later, status: 'archived' }),
+      },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: en.timetable.load.withdraw }));
+    const dialog = await screen.findByRole('alertdialog');
+    const item = await waitFor(() => {
+      const found = dialog.querySelector<HTMLElement>(
+        `[data-day-changes="decide"] [data-kind="exam"][data-key="${exam}"]`,
+      );
+      expect(found).not.toBeNull();
+      return found as HTMLElement;
+    });
+    const send = within(dialog).getByRole('button', { name: en.timetable.load.withdraw });
+    expect((send as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(
+      within(item).getByRole('radio', {
+        name: en.timetable.publish.dayChanges.exams.choice_cancel,
+      }),
+    );
+    // "Cancel" needs a typed reason and the open block a choice.
+    const reason = within(item).getByLabelText(en.timetable.publish.dayChanges.exams.reason);
+    expect((send as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(reason, { target: { value: 'The class sits elsewhere' } });
+    expect((send as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(
+      within(item).getByRole('radio', {
+        name: en.timetable.publish.dayChanges.exams.blockChoice_keep,
+      }),
+    );
+    await waitFor(() => {
+      expect((send as HTMLButtonElement).disabled).toBe(false);
+    });
+    // "Cancel the exam" settles it whole: no reason, no block.
+    fireEvent.click(
+      within(item).getByRole('radio', {
+        name: en.timetable.publish.dayChanges.exams.choice_drop,
+      }),
+    );
+    expect(within(item).queryByLabelText(en.timetable.publish.dayChanges.exams.reason)).toBeNull();
+    expect(
+      within(item).queryByRole('radio', {
+        name: en.timetable.publish.dayChanges.exams.blockChoice_keep,
+      }),
+    ).toBeNull();
+    expect((send as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(send);
+    await waitFor(() => {
+      expect(
+        calls.find((call) => call.route === `POST /api/timetable/versions/${later.id}/withdraw`)
+          ?.body,
+      ).toEqual({ dayChangesKey: KEY, dayDecisions: [{ key: exam, choice: 'drop' }] });
+    });
+  });
+
+  it('sends an exam’s "cancel" with its reason and its block’s choice', async () => {
+    const exam = uid(921);
+    const block = uid(922);
+    const calls = await openPage({
+      versions: [later, earlier],
+      extra: {
+        ...checkRoute({
+          exams: [
+            {
+              key: exam,
+              category: 'decide',
+              date: '2026-11-16',
+              title: 'Quarter exam',
+              start: 480,
+              end: 525,
+              carriedVersionId: null,
+              cancelled: [],
+              blocks: [
+                {
+                  blockId: block,
+                  blockDate: '2026-11-16',
+                  pairBlockId: null,
+                  start: 480,
+                  end: 525,
+                  lessons: [{ unitId: OXFORD.id, subjectId: MATHS.id, start: 480, end: 525 }],
+                  sittingClassIds: [OXFORD.id],
+                  otherClassIds: [OXFORD.id],
+                  choice: null,
+                },
+              ],
+              blocked: [
+                {
+                  rule: 'teacher_double',
+                  severity: 'blocked',
+                  weekday: 1,
+                  lessonIds: [uid(923)],
+                  date: '2026-11-16',
+                },
+              ],
+              clashes: [{ unitId: OXFORD.id, subjectId: MATHS.id, start: 480, end: 525 }],
+              groupMisses: false,
+              noTimetable: false,
+              dropBlocked: [],
+            },
+          ],
+        }),
+        [`POST /api/timetable/versions/${later.id}/withdraw`]: () =>
+          json({ ...later, status: 'archived' }),
+      },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: en.timetable.load.withdraw }));
+    const dialog = await screen.findByRole('alertdialog');
+    const item = await waitFor(() => {
+      const found = dialog.querySelector<HTMLElement>(`[data-kind="exam"][data-key="${exam}"]`);
+      expect(found).not.toBeNull();
+      return found as HTMLElement;
+    });
+    fireEvent.click(
+      within(item).getByRole('radio', {
+        name: en.timetable.publish.dayChanges.exams.choice_cancel,
+      }),
+    );
+    fireEvent.change(within(item).getByLabelText(en.timetable.publish.dayChanges.exams.reason), {
+      target: { value: 'The class sits elsewhere' },
+    });
+    fireEvent.click(
+      within(item).getByRole('radio', {
+        name: en.timetable.publish.dayChanges.exams.blockChoice_keep,
+      }),
+    );
+    const send = within(dialog).getByRole('button', { name: en.timetable.load.withdraw });
+    await waitFor(() => {
+      expect((send as HTMLButtonElement).disabled).toBe(false);
+    });
+    fireEvent.click(send);
+    await waitFor(() => {
+      expect(
+        calls.find((call) => call.route === `POST /api/timetable/versions/${later.id}/withdraw`)
+          ?.body,
+      ).toEqual({
+        dayChangesKey: KEY,
+        dayDecisions: [
+          { key: exam, choice: 'cancel', reason: 'The class sits elsewhere' },
+          { key: exam, blockId: block, blockDate: '2026-11-16', choice: 'keep' },
+        ],
+      });
     });
   });
 
