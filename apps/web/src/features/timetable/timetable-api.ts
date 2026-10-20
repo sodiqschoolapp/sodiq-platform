@@ -47,6 +47,12 @@ import {
   type ExamCancelBody,
   type ExamCheckBody,
   type ExamCreateBody,
+  absenceLessonsSchema,
+  absenceListSchema,
+  absenceSchema,
+  attentionSchema,
+  type AbsenceEdit,
+  type AbsenceRecord,
 } from '@sodiq/shared';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { api, branchHeader } from '@/api/client';
@@ -627,3 +633,64 @@ export const cancelExam = (id: string, body: ExamCancelBody, key: string) =>
       body,
     }),
   ).then((answer) => examSaveAnswerSchema.parse(answer));
+
+/** The absences of the persons of the branch (task 5.7a-1), every state. */
+export const absencesQuery = (branchId: string | null) =>
+  queryOptions({
+    queryKey: [...timetableKey(branchId), 'absences'],
+    queryFn: async () =>
+      absenceListSchema.parse(
+        await answerOf(
+          api.GET('/api/timetable/absences', {
+            params: { header: branchHeader(), query: { state: 'all' } },
+          }),
+        ),
+      ),
+    enabled: branchId !== null,
+  });
+
+/** The branch's own lessons inside an absence (task 5.7a-1). */
+export const absenceLessonsQuery = (branchId: string | null, id: string) =>
+  queryOptions({
+    queryKey: [...timetableKey(branchId), 'absences', id, 'lessons'],
+    queryFn: async () =>
+      absenceLessonsSchema.parse(
+        await answerOf(
+          api.GET('/api/timetable/absences/{id}/lessons', {
+            params: { header: branchHeader(), path: { id } },
+          }),
+        ),
+      ),
+    enabled: branchId !== null,
+  });
+
+/** The home page's "needs a teacher" and "unresolved" lists (task 5.7a-1). */
+export const attentionQuery = (branchId: string | null) =>
+  queryOptions({
+    queryKey: [...timetableKey(branchId), 'attention'],
+    queryFn: async () =>
+      attentionSchema.parse(
+        await answerOf(api.GET('/api/timetable/attention', { params: { header: branchHeader() } })),
+      ),
+    enabled: branchId !== null,
+  });
+
+export const createAbsence = (body: AbsenceRecord) =>
+  answerOf(api.POST('/api/timetable/absences', { params: { header: branchHeader() }, body })).then(
+    (answer) => absenceSchema.parse(answer),
+  );
+
+export const editAbsence = (id: string, body: AbsenceEdit) =>
+  answerOf(
+    api.PATCH('/api/timetable/absences/{id}', {
+      params: { header: branchHeader(), path: { id } },
+      body,
+    }),
+  ).then((answer) => absenceSchema.parse(answer));
+
+export const withdrawAbsence = (id: string) =>
+  answerOf(
+    api.POST('/api/timetable/absences/{id}/withdraw', {
+      params: { header: branchHeader(), path: { id } },
+    }),
+  ).then((answer) => absenceSchema.parse(answer));

@@ -1,4 +1,4 @@
-import type { Role } from '@sodiq/shared';
+import type { Attention, AttentionGroup, Role } from '@sodiq/shared';
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
@@ -6,6 +6,8 @@ import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/r
 
 const sessionAs = (role: Role) =>
   sessionOf({ assignments: [{ role, branchId: role === 'super_admin' ? null : NORTH.id }] });
+
+const NOTHING: Attention = { needsTeacher: [], unresolved: [] };
 
 const emptyPage = () => screen.queryByRole('heading', { name: en.home.emptyTitle });
 
@@ -43,6 +45,7 @@ describe('the home page', () => {
       'GET /api/auth/session': () => json(sessionAs('academic_vice_principal')),
       'GET /api/people/students/no-class': () => json({ count: 0 }),
       'GET /api/people/relatives/no-valid-phone': () => json({ count: 0 }),
+      'GET /api/timetable/attention': () => json(NOTHING),
     });
     renderApp('/');
     await bothAsked(calls);
@@ -57,6 +60,7 @@ describe('the home page', () => {
       'GET /api/auth/session': () => json(sessionAs('academic_vice_principal')),
       'GET /api/people/students/no-class': () => json({ count: 0 }),
       'GET /api/people/relatives/no-valid-phone': () => json({ count: 4 }),
+      'GET /api/timetable/attention': () => json(NOTHING),
     });
     renderApp('/');
     await bothAsked(calls);
@@ -72,6 +76,7 @@ describe('the home page', () => {
       'GET /api/auth/session': () => json(sessionAs('academic_vice_principal')),
       'GET /api/people/students/no-class': () => json({ count: 0 }),
       'GET /api/people/relatives/no-valid-phone': () => refusal('internal_error', 500),
+      'GET /api/timetable/attention': () => json(NOTHING),
     });
     renderApp('/');
     await bothAsked(calls);
@@ -87,6 +92,7 @@ describe('the home page', () => {
       'GET /api/people/students/no-class': () =>
         failing ? refusal('internal_error', 500) : json({ count: 0 }),
       'GET /api/people/relatives/no-valid-phone': () => json({ count: 0 }),
+      'GET /api/timetable/attention': () => json(NOTHING),
     });
     const { queryClient } = renderApp('/');
     await bothAsked(calls);
@@ -96,6 +102,90 @@ describe('the home page', () => {
     // The tile says it failed, with a retry, and the page is not called empty under it.
     expect(await screen.findByRole('button', { name: en.problems.retry })).toBeDefined();
     expect(emptyPage()).toBeNull();
+  });
+
+  // Task 5.7a-1 (decisions 9 and 10): the lessons that need a teacher and
+  // the unresolved ones, each hidden when empty.
+  describe('the lessons that need a teacher', () => {
+    const uid = (n: number): string => `0199a000-0000-7000-8000-${String(n).padStart(12, '0')}`;
+    const absence: AttentionGroup = {
+      cause: 'absence',
+      teacher: { id: uid(1), kind: 'person', name: 'Karimova Aziza' },
+      absence: { id: uid(2), startsOn: '2026-10-19', endsOn: null },
+      lessons: 12,
+      firstDate: '2026-10-19',
+      lastDate: '2026-11-13',
+      suggestPermanent: true,
+    };
+    const vacancy: AttentionGroup = {
+      cause: 'vacancy',
+      teacher: { id: uid(3), kind: 'vacancy', name: 'English vacancy 2' },
+      absence: null,
+      lessons: 1,
+      firstDate: '2026-10-12',
+      lastDate: '2026-10-12',
+      suggestPermanent: false,
+    };
+
+    it('lists each cause with its count, its dates and a link to the day, and the suggestion of a permanent change', async () => {
+      const calls = fakeApi({
+        'GET /api/auth/session': () => json(sessionAs('academic_vice_principal')),
+        'GET /api/people/students/no-class': () => json({ count: 0 }),
+        'GET /api/people/relatives/no-valid-phone': () => json({ count: 0 }),
+        'GET /api/timetable/attention': () =>
+          json({ needsTeacher: [absence], unresolved: [vacancy] } satisfies Attention),
+      });
+      renderApp('/');
+      await bothAsked(calls);
+      const needs = await screen.findByRole('region', { name: en.home.needsTeacher.title });
+      const row = needs.querySelector('[data-group="absence"]') as HTMLElement;
+      expect(within(row).getByText('Karimova Aziza, absent')).toBeDefined();
+      expect(within(row).getByText(/12 lessons/)).toBeDefined();
+      expect(within(row).getByText(en.home.attention.permanent)).toBeDefined();
+      expect(
+        within(row).getByRole('link', { name: en.home.attention.open }).getAttribute('href'),
+      ).toBe('/timetable/day?date=2026-10-19');
+      const unresolved = screen.getByRole('region', { name: en.home.unresolved.title });
+      const other = unresolved.querySelector('[data-group="vacancy"]') as HTMLElement;
+      expect(within(other).getByText('English vacancy 2 (vacancy)')).toBeDefined();
+      expect(within(other).getByText(/1 lesson/)).toBeDefined();
+      expect(within(other).queryByText(en.home.attention.permanent)).toBeNull();
+      expect(emptyPage()).toBeNull();
+    });
+
+    it('hides an empty list and keeps the page empty when all four are 0', async () => {
+      const calls = fakeApi({
+        'GET /api/auth/session': () => json(sessionAs('academic_vice_principal')),
+        'GET /api/people/students/no-class': () => json({ count: 0 }),
+        'GET /api/people/relatives/no-valid-phone': () => json({ count: 0 }),
+        'GET /api/timetable/attention': () => json(NOTHING),
+      });
+      renderApp('/');
+      await bothAsked(calls);
+      expect(await screen.findByRole('heading', { name: en.home.emptyTitle })).toBeDefined();
+      expect(screen.queryByRole('region', { name: en.home.needsTeacher.title })).toBeNull();
+      expect(screen.queryByRole('region', { name: en.home.unresolved.title })).toBeNull();
+    });
+
+    it('shows a failed list with its retry, not the empty page', async () => {
+      const calls = fakeApi({
+        'GET /api/auth/session': () => json(sessionAs('academic_vice_principal')),
+        'GET /api/people/students/no-class': () => json({ count: 0 }),
+        'GET /api/people/relatives/no-valid-phone': () => json({ count: 0 }),
+        'GET /api/timetable/attention': () => refusal('internal_error', 500),
+      });
+      renderApp('/');
+      await bothAsked(calls);
+      expect(await screen.findByRole('button', { name: en.problems.retry })).toBeDefined();
+      expect(emptyPage()).toBeNull();
+    });
+
+    it('asks nothing of the timetable for a Teacher', async () => {
+      const calls = fakeApi({ 'GET /api/auth/session': () => json(sessionAs('teacher')) });
+      renderApp('/');
+      expect(await screen.findByRole('heading', { name: en.home.emptyTitle })).toBeDefined();
+      expect(calls.some((call) => call.route === 'GET /api/timetable/attention')).toBe(false);
+    });
   });
 
   it('says so when the account holds no role', async () => {

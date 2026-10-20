@@ -216,6 +216,14 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu imtihon jurnalining shu chorakda boshqa imtihonda reyting imtihoni bor. Belgini olib tashlang yoki avval oʻsha imtihonni oʻzgartiring.',
     exam_rating_journal:
       'Bu reyting imtihoni jurnali boshqa fan yoki oʻquv yiliga tegishli. Imtihonni qayta tekshiring va yana saqlang.',
+    absence_overlap:
+      'Bu xodimning ushbu kunlarning ayrimlarida boshqa kelmaslik qaydi bor. Oʻsha qaydni oʻzgartiring.',
+    absence_past:
+      'Bu oʻzgarish bugungi kundan oldingi kunga yoki boshlangan darsga taʼsir qiladi. Oxirgi kunni belgilang yoki yangi kelmaslik qaydini kiriting.',
+    absence_withdrawn:
+      'Bu kelmaslik qaydi bekor qilingan, uni oʻzgartirib boʻlmaydi. Yangisini kiriting.',
+    absence_person:
+      'Vakansiya kelmaslik qaydiga ega boʻlolmaydi: uning darslariga baribir oʻqituvchi kerak.',
     own_account:
       'Oʻz hisobingizni bloklay, blokdan chiqara yoki tiklay olmaysiz. Boshqa administratorga murojaat qiling.',
     account_already_locked:
@@ -2446,6 +2454,19 @@ export const uz: Texts<'one' | 'other'> = {
     title: 'Bosh sahifa',
     noClass: { title: 'Sinfsiz oʻquvchilar', link: 'Roʻyxatni ochish' },
     noValidPhone: { title: 'Amaldagi telefoni yoʻq ota-onalar', link: 'Roʻyxatni ochish' },
+    needsTeacher: { title: 'Oʻqituvchi kerak boʻlgan darslar' },
+    unresolved: { title: 'Hal qilinmagan darslar' },
+    attention: {
+      absence: '{{name}}, ishda emas',
+      vacancy: '{{name}} (vakansiya)',
+      nobody: 'Hech kim koʻrsatilmagan',
+      lessons_one: '{{n}} ta dars',
+      lessons_other: '{{n}} ta dars',
+      range: '{{from}} – {{to}}',
+      open: 'Kunni ochish',
+      permanent:
+        '10 va undan ortiq oʻquv kuni ishda emas: dars jadvalining yangi versiyasini tayyorlash kerak.',
+    },
     emptyTitle: 'Hozircha bu yerda ish yoʻq',
     noRole: 'Hisobingizda hozircha rol yoʻq.',
     teaching: 'Darslaringiz va jurnallaringiz shu yerda boʻladi.',
@@ -2860,6 +2881,11 @@ export const uz: Texts<'one' | 'other'> = {
         open: 'Nashrda jurnal ochildi',
         runs: 'Nashr jurnal kunlarini oʻzgartirdi',
       },
+      absence: {
+        create: 'Kelmaslik qaydi kiritildi',
+        edit: 'Kelmaslik sanalari oʻzgartirildi',
+        withdraw: 'Kelmaslik qaydi bekor qilindi',
+      },
       exam: {
         create: 'Imtihon yaratildi',
         change: 'Imtihon oʻzgartirildi',
@@ -3248,6 +3274,15 @@ export const uz: Texts<'one' | 'other'> = {
           '{{from}} sanasidan kun shablonlarining oʻzgarishi darslaringizni oʻzgartirdi. Haftangiz oldin va keyin:',
         quarters_changed:
           'Chorak sanalarining oʻzgarishi {{firstDate}} dan {{lastDate}} gacha darslaringizni oʻzgartirdi. Haftangiz oldin va keyin:',
+        absence_entered:
+          '{{name}} {{startsOn}} dan {{endsOn}} gacha ishda boʻlmaydi. Darslariga oʻqituvchi kerak.',
+        absence_entered_open:
+          '{{name}} {{startsOn}} dan ishda boʻlmaydi, qaytish sanasi hali nomaʼlum. Darslariga oʻqituvchi kerak.',
+        absence_changed: '{{name}} kelmasligi endi {{startsOn}} dan {{endsOn}} gacha.',
+        absence_changed_open:
+          '{{name}} kelmasligi endi {{startsOn}} dan, qaytish sanasi hali nomaʼlum.',
+        absence_withdrawn:
+          '{{name}} ning {{startsOn}} dan boshlangan kelmaslik qaydi bekor qilindi.',
         exam_day_off:
           '«{{name}}» taqvim yozuvi {{date}} sanasini dam olish kuni qildi: «{{title}}» imtihoni bekor qilindi.',
         exam_changed:
@@ -3281,6 +3316,48 @@ export const uz: Texts<'one' | 'other'> = {
     builderLink: 'Qoralama yigʻuvchi',
     dayLink: 'Bir kunlik oʻzgarishlar',
     examsLink: 'Imtihonlar',
+    absencesLink: 'Kelmasliklar',
+    absences: {
+      title: 'Kelmasliklar',
+      caption: 'Filial xodimlarining kelmasliklari',
+      add: 'Kelmaslik qaydini qoʻshish',
+      newTitle: 'Yangi kelmaslik qaydi',
+      person: 'Xodim',
+      personChoose: 'Xodimni tanlang',
+      firstDay: 'Birinchi kun',
+      lastDay: 'Oxirgi kun',
+      openEnded: 'Qaytish sanasi hali nomaʼlum',
+      open: 'Muddatsiz',
+      reason: 'Sabab',
+      state: 'Holat',
+      state_planned: 'Rejalashtirilgan',
+      state_current: 'Hozir',
+      state_ended: 'Tugagan',
+      state_withdrawn: 'Bekor qilingan',
+      changeDates: 'Sanalarni oʻzgartirish',
+      withdraw: 'Bekor qilish',
+      withdrawTitle: 'Kelmaslik qaydi bekor qilinsinmi?',
+      withdrawText:
+        'Darslar oʻqituvchiga qaytadi. Bekor qilingan qaydni qayta oʻzgartirib boʻlmaydi.',
+      cancel: 'Bekor',
+      emptyTitle: 'Kelmasliklar yoʻq',
+      empty:
+        'Oʻqituvchi kela olmasa, kelmaslik qaydini kiriting. U xodimning barcha filiallarida amal qiladi.',
+      lessons: 'Shu filial darslari',
+      lessonsEmpty: 'Bu filialning birorta darsi kelmaslik davriga toʻgʻri kelmaydi.',
+      date: 'Sana',
+      time: 'Vaqt',
+      unit: 'Sinf yoki guruh',
+      subject: 'Fan',
+      room: 'Xona',
+      noRoom: 'Xonasiz',
+      lessonState: 'Holat',
+      state_needs_teacher: 'Oʻqituvchi kerak',
+      state_unresolved: 'Hal qilinmagan',
+      state_held: 'Oʻtilgan',
+      state_upcoming: 'Kutilmoqda',
+      state_cancelled: 'Bekor qilingan',
+    },
     // The exams of a date (task 5.6c-2).
     exams: {
       title: 'Imtihonlar',
@@ -3427,6 +3504,9 @@ export const uz: Texts<'one' | 'other'> = {
       restoreSend: 'Darsni tiklash',
       held: 'Oʻtilgan',
       unresolved: 'Hal qilinmagan: hech kim koʻrsatilmagan',
+      needsTeacherAbsent: 'Oʻqituvchi kerak: oʻqituvchi ishda emas',
+      unresolvedAbsent: 'Hal qilinmagan: oʻqituvchi ishda boʻlmagan',
+      absent: 'ishda emas',
       correct: 'Tuzatish',
       correctTitle: '{{subject}}, {{time}} darsini tuzatish',
       correctKind: 'Nima boʻldi',

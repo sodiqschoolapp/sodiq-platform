@@ -100,6 +100,7 @@ const lesson = (n: number, fields: Partial<DayLesson> = {}): DayLesson => ({
   teacher: { id: uid(610), kind: 'person', name: 'Karimova Aziza' },
   room: { id: uid(402), name: 'Room 12' },
   cancelCause: null,
+  absent: false,
   cancelReason: null,
   changed: false,
   canCancel: true,

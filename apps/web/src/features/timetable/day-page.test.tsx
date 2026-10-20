@@ -58,6 +58,7 @@ const lesson = (n: number, fields: Partial<DayLesson> = {}): DayLesson => ({
   teacher: { id: uid(600), kind: 'person', name: 'Karimova Aziza' },
   room: { id: uid(400), name: 'Room 12' },
   cancelCause: null,
+  absent: false,
   cancelReason: null,
   changed: false,
   canCancel: true,
@@ -153,6 +154,26 @@ describe('the day page', () => {
       en.timetable.day.needsRoom,
       `Cancelled: Excursion · ${en.timetable.day.changed}`,
     ]);
+  });
+
+  // Task 5.7a-1: a lesson of an absent teacher keeps its teacher and needs one.
+  it('marks the teacher of a lesson absent, "needs a teacher" before it starts and "unresolved" after', async () => {
+    await openPage({
+      lessons: [
+        lesson(1, { absent: true, state: 'needs_teacher' }),
+        lesson(2, { start: 535, end: 580, absent: true, state: 'unresolved', canCancel: false }),
+      ],
+    });
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(2);
+    });
+    const [first, second] = rowsDrawn();
+    expect(first?.slice(3, 6)).toEqual([
+      `Karimova Aziza · ${en.timetable.day.absent}`,
+      'Room 12',
+      en.timetable.day.needsTeacherAbsent,
+    ]);
+    expect(second?.[5]).toBe(en.timetable.day.unresolvedAbsent);
   });
 
   it('shows no actions to the Principal', async () => {

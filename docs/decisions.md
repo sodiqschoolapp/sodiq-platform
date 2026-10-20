@@ -285,6 +285,28 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 20 October 2026: teacher absences (task 5.7a-1)
+
+Plan approved on pull request #185 with corrections 1 to 4; decisions 1 to 13 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a task split). 5.7a is split into 5.7a-1 Absences, 5.7a-2 Status, lock and room closure, 5.7a-3 Vacancy fill and acting teacher, each with Read, Build, Done-when and From lines | Decision 1; five pieces in the Build line, each the size of a recent task |
+| **Look first** (personal data across branches; a table added to a classified list). `absences` (0096) is filtered by membership through `staff_branches`, as `staff_statuses`: the Academic Vice Principal of every branch of the person reads the absence and its reason | Decision 2; `06`, "An absence is entered once for the person and covers every branch ... the other is told" |
+| **Look first** (two security definer functions). `absences_of_teachers` (ids and moments) for every reader of a lesson's state, and `absence_notice_accounts` (account ids) for the notice | Decision 3; a branch unlinked from the person while it holds the person's lessons reads the same state |
+| **Look first** (a reading of "Held lesson"). The absence holds the lessons that start in `[applies_from, applies_until)`: an absence entered today starts at the save, an end set to the day before today ends it at the save (its last day kept at its first, correction 1), an absence that has ended is never changed (correction 2), no day before today changes | Decision 5; `06`, "The past is closed" |
+| **Look first** (a reading of "Held lesson"). A started lesson of an absent person who taught it after all is held once the correction of kind `teacher` records the same person (`lesson_absence_taught`, audited as `lesson.correct` with `taughtWhileAbsent`) | Decision 12; `edge/timetable`, "until it is cancelled with a reason or the person who taught it is recorded" |
+| The routes are in area `timetable`: `view` for the reads, `create` for a new absence, `edit` for a change and a withdraw; no role widened | Decision 4 |
+| One audit entry, in the request's branch | Decision 6 |
+| An absence writes no lesson; in the sorting of a publish and a withdraw it is always kept, with the number of the run's new lessons it puts under "needs a teacher", and is not in `dayChangesKeyOf` | Decision 7; a calendar save lists none |
+| One notice to the current Academic Vice Principals of every branch linked to the person or holding their lessons in the range, the author left out, labelled with the request's branch; five kinds (`timetable.absence_entered`, `_entered_open`, `_changed`, `_changed_open`, `_withdrawn`), since a text is not chosen by the data | Decision 8 |
+| The home page lists: "unresolved" the started lessons of the current year, "needs a teacher" those not started, one row per cause (an absence, a vacancy, nobody) | Decision 9 |
+| "Consider a permanent change" once the absence has covered 10 school days of the branch up to and including today | Decision 10 |
+| A vacancy cannot be absent (422 `absence_person`), no trigger | Decision 11 |
+| `reason` required, 1 to 500 characters | Decision 13 |
+| **Build decision.** The staff personal-data report lists the person's absences, withdrawn ones marked | Spec review of the plan, should-fix 6 |
+| **Build decision.** The new list page is not added to `e2e/pages.spec.ts`, as the exams and day pages before it; its own browser test opens a record | Task 5.6c-2 precedent |
+
 ## 20 October 2026: exams in the timetable, the calendar notices and the rating-exam link (task 5.6c-3b)
 
 Plan approved on pull request #184 with corrections 1 and 2; decisions 1 to 9 confirmed there. Flagged on issue #42.

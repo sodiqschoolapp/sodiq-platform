@@ -35,6 +35,7 @@ import { builderSearch } from '@/features/timetable/builder-search';
 import { TimetablePage } from '@/features/timetable/timetable-page';
 import { DayPage } from '@/features/timetable/day-page';
 import { daySearch } from '@/features/timetable/day-search';
+import { AbsencesPage } from '@/features/timetable/absences-page';
 import { ExamsPage } from '@/features/timetable/exams-page';
 import { examsSearch } from '@/features/timetable/exams-search';
 import { HeadTeachersPage } from '@/features/people/head-teachers-page';
@@ -318,6 +319,14 @@ const examsRoute = createRoute({
   component: guarded('timetable', ExamsPage),
 });
 
+/** Teacher absences (task 5.7a-1). */
+const absencesRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/timetable/absences',
+  validateSearch: listSearch,
+  component: guarded('timetable', AbsencesPage),
+});
+
 /** People (task 2.2a): the entry of the menu item and the staff list. */
 const peopleRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -498,6 +507,7 @@ const routeTree = rootRoute.addChildren([
     builderRoute,
     dayRoute,
     examsRoute,
+    absencesRoute,
     loadRoute,
     peopleRoute,
     staffRoute,

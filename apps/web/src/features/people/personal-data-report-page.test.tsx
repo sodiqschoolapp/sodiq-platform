@@ -266,6 +266,7 @@ describe('the personal data report of a staff member', () => {
         subjects: [],
         languages: ['uz'],
         statuses: [{ status: 'active', from: '2026-09-01', until: null }],
+        absences: [],
         availability: [
           {
             branch: 'South',

@@ -210,6 +210,12 @@ export const en = {
       'A journal of this exam already has its rating exam in this quarter, on another exam. Take the tick off, or change that exam first.',
     exam_rating_journal:
       'A journal of this rating exam is of another subject or year. Check the exam again and save it once more.',
+    absence_overlap:
+      'This person already has an absence on some of these days. Change that absence instead.',
+    absence_past:
+      'This change would touch a day before today or a lesson that has already started. Set the last day instead, or enter a new absence.',
+    absence_withdrawn: 'This absence was withdrawn and cannot be changed. Enter a new one.',
+    absence_person: 'A vacancy cannot be absent: its lessons already need a teacher.',
     own_account: 'You cannot lock, unlock or reset your own account. Ask another administrator.',
     account_already_locked: 'This account is already locked. Reload the page to see who locked it.',
     account_not_locked:
@@ -2420,6 +2426,18 @@ export const en = {
     title: 'Home',
     noClass: { title: 'Students with no class', link: 'Open the list' },
     noValidPhone: { title: 'Parents with no valid phone', link: 'Open the list' },
+    needsTeacher: { title: 'Lessons that need a teacher' },
+    unresolved: { title: 'Unresolved lessons' },
+    attention: {
+      absence: '{{name}}, absent',
+      vacancy: '{{name}} (vacancy)',
+      nobody: 'Nobody recorded',
+      lessons_one: '{{n}} lesson',
+      lessons_other: '{{n}} lessons',
+      range: '{{from}} – {{to}}',
+      open: 'Open the day',
+      permanent: 'Absent for 10 school days or more: consider a new timetable version.',
+    },
     emptyTitle: 'Nothing to do here yet',
     noRole: 'Your account has no role yet.',
     teaching: 'Your lessons and journals will be here.',
@@ -2835,6 +2853,11 @@ export const en = {
         open: 'Journal opened at a publish',
         runs: 'Days of a journal changed by a publish',
       },
+      absence: {
+        create: 'Absence entered',
+        edit: 'Dates of an absence changed',
+        withdraw: 'Absence withdrawn',
+      },
       exam: {
         create: 'Exam created',
         change: 'Exam changed',
@@ -3216,6 +3239,14 @@ export const en = {
           'A change of the day templates from {{from}} changed your lessons. Your week before and after:',
         quarters_changed:
           'A change of the quarter dates changed your lessons from {{firstDate}} to {{lastDate}}. Your week before and after:',
+        absence_entered:
+          '{{name}} is absent from {{startsOn}} to {{endsOn}}. Their lessons need a teacher.',
+        absence_entered_open:
+          '{{name}} is absent from {{startsOn}}, with no return date yet. Their lessons need a teacher.',
+        absence_changed: 'The absence of {{name}} now runs from {{startsOn}} to {{endsOn}}.',
+        absence_changed_open:
+          'The absence of {{name}} now runs from {{startsOn}}, with no return date yet.',
+        absence_withdrawn: 'The absence of {{name}} from {{startsOn}} was withdrawn.',
         exam_day_off:
           'The calendar entry "{{name}}" made {{date}} a day off: the exam "{{title}}" is cancelled.',
         exam_changed: 'Exam "{{title}}" on {{date}}: your lessons or invigilation changed.',
@@ -3248,6 +3279,48 @@ export const en = {
     builderLink: 'Draft builder',
     dayLink: 'Day changes',
     examsLink: 'Exams',
+    absencesLink: 'Absences',
+    // Teacher absences (task 5.7a-1).
+    absences: {
+      title: 'Absences',
+      caption: 'Absences of the staff of the branch',
+      add: 'Add an absence',
+      newTitle: 'New absence',
+      person: 'Person',
+      personChoose: 'Choose a person',
+      firstDay: 'First day',
+      lastDay: 'Last day',
+      openEnded: 'No return date yet',
+      open: 'Open-ended',
+      reason: 'Reason',
+      state: 'State',
+      state_planned: 'Planned',
+      state_current: 'Now',
+      state_ended: 'Ended',
+      state_withdrawn: 'Withdrawn',
+      changeDates: 'Change the dates',
+      withdraw: 'Withdraw',
+      withdrawTitle: 'Withdraw the absence?',
+      withdrawText:
+        'Its lessons go back to the teacher. A withdrawn absence cannot be changed again.',
+      cancel: 'Cancel',
+      emptyTitle: 'No absences',
+      empty: 'Enter an absence when a teacher cannot come. It covers every branch they work in.',
+      lessons: 'Lessons of this branch',
+      lessonsEmpty: 'No lesson of this branch falls in the absence.',
+      date: 'Date',
+      time: 'Time',
+      unit: 'Class or group',
+      subject: 'Subject',
+      room: 'Room',
+      noRoom: 'No room',
+      lessonState: 'State',
+      state_needs_teacher: 'Needs a teacher',
+      state_unresolved: 'Unresolved',
+      state_held: 'Held',
+      state_upcoming: 'Upcoming',
+      state_cancelled: 'Cancelled',
+    },
     // The exams of a date (task 5.6c-2).
     exams: {
       title: 'Exams',
@@ -3391,6 +3464,9 @@ export const en = {
       restoreSend: 'Restore the lesson',
       held: 'Held',
       unresolved: 'Unresolved: nobody recorded',
+      needsTeacherAbsent: 'Needs a teacher: the teacher is absent',
+      unresolvedAbsent: 'Unresolved: the teacher was absent',
+      absent: 'absent',
       correct: 'Correct',
       correctTitle: 'Correct {{subject}} at {{time}}',
       correctKind: 'What happened',

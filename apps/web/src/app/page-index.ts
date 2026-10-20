@@ -69,6 +69,8 @@ export const CLASS_PAGES: readonly (IndexedPage & { area: string; action?: Actio
 /** The pages under "Timetable" (task 3.4a), indexed when the menu of the role has the item. */
 export const TIMETABLE_PAGES: readonly IndexedPage[] = [
   { titleKey: 'timetable.load.title', to: '/timetable/load' },
+  // Task 5.7a-1.
+  { titleKey: 'timetable.absences.title', to: '/timetable/absences' },
 ];
 
 /** Everything the search of a role lists: its menu pages, the pages under them, the common ones. */
