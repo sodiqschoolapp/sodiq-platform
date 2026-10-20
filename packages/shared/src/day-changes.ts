@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { schoolDateSchema } from './academic-year.js';
-import { lessonStateSchema, ruleResultSchema } from './timetable.js';
+import { awayCauseSchema, lessonStateSchema, ruleResultSchema } from './timetable.js';
 
 /**
  * One-day changes of a published timetable (task 5.6a-1, pull request #160;
@@ -113,8 +113,11 @@ export const dayLessonSchema = z.object({
   canRestore: z.boolean(),
   /** Held, unresolved, cancelled and so on, at the moment of the request (`lessonStateOf`, task 5.6a-4). */
   state: lessonStateSchema,
-  /** Its teacher is absent at its start (task 5.7a-1): "needs a teacher" or "unresolved". */
-  absent: z.boolean(),
+  /**
+   * Why its teacher cannot teach at its start (tasks 5.7a-1 and 5.7a-2a):
+   * "needs a teacher" or "unresolved"; `null` when the teacher can.
+   */
+  away: awayCauseSchema.nullable(),
   /**
    * Started, or the earlier half of its double started, in a year not closed:
    * the lesson is corrected, not changed for the day (task 5.6a-4, decision 5

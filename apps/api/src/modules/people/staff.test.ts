@@ -103,6 +103,8 @@ describe('staff records', () => {
       'staff_subjects',
       'staff_languages',
       'staff_statuses',
+      // Task 5.7a-2a: the moments its trigger writes (0097).
+      'staff_status_moments',
       'assignments',
       'staff_status_role_ends',
       'staff_id_counters',

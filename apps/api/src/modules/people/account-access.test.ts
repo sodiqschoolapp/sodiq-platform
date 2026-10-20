@@ -159,6 +159,8 @@ describe('the sign-in access of an account', () => {
     const rows: Record<string, unknown> = {};
     for (const table of [
       'accounts',
+      // Task 5.7a-2a: the lock spans its trigger writes (0097).
+      'account_lock_spans',
       'sessions',
       'account_second_steps',
       'second_step_recovery_codes',

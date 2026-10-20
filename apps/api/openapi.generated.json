@@ -172566,8 +172566,15 @@
                               "cancelled"
                             ]
                           },
-                          "absent": {
-                            "type": "boolean"
+                          "away": {
+                            "nullable": true,
+                            "type": "string",
+                            "enum": [
+                              "left",
+                              "inactive",
+                              "locked",
+                              "absence"
+                            ]
                           },
                           "canCorrect": {
                             "type": "boolean"
@@ -172588,7 +172595,7 @@
                           "canCancel",
                           "canRestore",
                           "state",
-                          "absent",
+                          "away",
                           "canCorrect"
                         ],
                         "additionalProperties": false
@@ -173925,8 +173932,15 @@
                             "cancelled"
                           ]
                         },
-                        "absent": {
-                          "type": "boolean"
+                        "away": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "left",
+                            "inactive",
+                            "locked",
+                            "absence"
+                          ]
                         },
                         "canCorrect": {
                           "type": "boolean"
@@ -173947,7 +173961,7 @@
                         "canCancel",
                         "canRestore",
                         "state",
-                        "absent",
+                        "away",
                         "canCorrect"
                       ],
                       "additionalProperties": false
@@ -175281,8 +175295,15 @@
                             "cancelled"
                           ]
                         },
-                        "absent": {
-                          "type": "boolean"
+                        "away": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "left",
+                            "inactive",
+                            "locked",
+                            "absence"
+                          ]
                         },
                         "canCorrect": {
                           "type": "boolean"
@@ -175303,7 +175324,7 @@
                         "canCancel",
                         "canRestore",
                         "state",
-                        "absent",
+                        "away",
                         "canCorrect"
                       ],
                       "additionalProperties": false
@@ -176641,8 +176662,15 @@
                             "cancelled"
                           ]
                         },
-                        "absent": {
-                          "type": "boolean"
+                        "away": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "left",
+                            "inactive",
+                            "locked",
+                            "absence"
+                          ]
                         },
                         "canCorrect": {
                           "type": "boolean"
@@ -176663,7 +176691,7 @@
                         "canCancel",
                         "canRestore",
                         "state",
-                        "absent",
+                        "away",
                         "canCorrect"
                       ],
                       "additionalProperties": false
@@ -178012,8 +178040,15 @@
                             "cancelled"
                           ]
                         },
-                        "absent": {
-                          "type": "boolean"
+                        "away": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "left",
+                            "inactive",
+                            "locked",
+                            "absence"
+                          ]
                         },
                         "canCorrect": {
                           "type": "boolean"
@@ -178034,7 +178069,7 @@
                         "canCancel",
                         "canRestore",
                         "state",
-                        "absent",
+                        "away",
                         "canCorrect"
                       ],
                       "additionalProperties": false
@@ -179466,8 +179501,15 @@
                             "cancelled"
                           ]
                         },
-                        "absent": {
-                          "type": "boolean"
+                        "away": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "left",
+                            "inactive",
+                            "locked",
+                            "absence"
+                          ]
                         },
                         "canCorrect": {
                           "type": "boolean"
@@ -179488,7 +179530,7 @@
                         "canCancel",
                         "canRestore",
                         "state",
-                        "absent",
+                        "away",
                         "canCorrect"
                       ],
                       "additionalProperties": false
@@ -181887,8 +181929,15 @@
                                   "cancelled"
                                 ]
                               },
-                              "absent": {
-                                "type": "boolean"
+                              "away": {
+                                "nullable": true,
+                                "type": "string",
+                                "enum": [
+                                  "left",
+                                  "inactive",
+                                  "locked",
+                                  "absence"
+                                ]
                               },
                               "canCorrect": {
                                 "type": "boolean"
@@ -181909,7 +181958,7 @@
                               "canCancel",
                               "canRestore",
                               "state",
-                              "absent",
+                              "away",
                               "canCorrect"
                             ],
                             "additionalProperties": false
@@ -182107,8 +182156,15 @@
                                     "cancelled"
                                   ]
                                 },
-                                "absent": {
-                                  "type": "boolean"
+                                "away": {
+                                  "nullable": true,
+                                  "type": "string",
+                                  "enum": [
+                                    "left",
+                                    "inactive",
+                                    "locked",
+                                    "absence"
+                                  ]
                                 },
                                 "canCorrect": {
                                   "type": "boolean"
@@ -182129,7 +182185,7 @@
                                 "canCancel",
                                 "canRestore",
                                 "state",
-                                "absent",
+                                "away",
                                 "canCorrect"
                               ],
                               "additionalProperties": false
@@ -182363,8 +182419,15 @@
                               "cancelled"
                             ]
                           },
-                          "absent": {
-                            "type": "boolean"
+                          "away": {
+                            "nullable": true,
+                            "type": "string",
+                            "enum": [
+                              "left",
+                              "inactive",
+                              "locked",
+                              "absence"
+                            ]
                           },
                           "canCorrect": {
                             "type": "boolean"
@@ -182385,7 +182448,7 @@
                           "canCancel",
                           "canRestore",
                           "state",
-                          "absent",
+                          "away",
                           "canCorrect"
                         ],
                         "additionalProperties": false
@@ -182557,8 +182620,15 @@
                               "cancelled"
                             ]
                           },
-                          "absent": {
-                            "type": "boolean"
+                          "away": {
+                            "nullable": true,
+                            "type": "string",
+                            "enum": [
+                              "left",
+                              "inactive",
+                              "locked",
+                              "absence"
+                            ]
                           },
                           "canCorrect": {
                             "type": "boolean"
@@ -182579,7 +182649,7 @@
                           "canCancel",
                           "canRestore",
                           "state",
-                          "absent",
+                          "away",
                           "canCorrect"
                         ],
                         "additionalProperties": false
@@ -190729,8 +190799,15 @@
                               "cancelled"
                             ]
                           },
-                          "absent": {
-                            "type": "boolean"
+                          "away": {
+                            "nullable": true,
+                            "type": "string",
+                            "enum": [
+                              "left",
+                              "inactive",
+                              "locked",
+                              "absence"
+                            ]
                           },
                           "canCorrect": {
                             "type": "boolean"
@@ -190751,7 +190828,7 @@
                           "canCancel",
                           "canRestore",
                           "state",
-                          "absent",
+                          "away",
                           "canCorrect"
                         ],
                         "additionalProperties": false
@@ -190941,8 +191018,15 @@
                                     "cancelled"
                                   ]
                                 },
-                                "absent": {
-                                  "type": "boolean"
+                                "away": {
+                                  "nullable": true,
+                                  "type": "string",
+                                  "enum": [
+                                    "left",
+                                    "inactive",
+                                    "locked",
+                                    "absence"
+                                  ]
                                 },
                                 "canCorrect": {
                                   "type": "boolean"
@@ -190963,7 +191047,7 @@
                                 "canCancel",
                                 "canRestore",
                                 "state",
-                                "absent",
+                                "away",
                                 "canCorrect"
                               ],
                               "additionalProperties": false
@@ -192346,8 +192430,15 @@
                                   "cancelled"
                                 ]
                               },
-                              "absent": {
-                                "type": "boolean"
+                              "away": {
+                                "nullable": true,
+                                "type": "string",
+                                "enum": [
+                                  "left",
+                                  "inactive",
+                                  "locked",
+                                  "absence"
+                                ]
                               },
                               "canCorrect": {
                                 "type": "boolean"
@@ -192368,7 +192459,7 @@
                               "canCancel",
                               "canRestore",
                               "state",
-                              "absent",
+                              "away",
                               "canCorrect"
                             ],
                             "additionalProperties": false
@@ -201072,6 +201163,9 @@
                             "type": "string",
                             "enum": [
                               "absence",
+                              "inactive",
+                              "left",
+                              "locked",
                               "vacancy",
                               "nobody"
                             ]
@@ -201171,6 +201265,9 @@
                             "type": "string",
                             "enum": [
                               "absence",
+                              "inactive",
+                              "left",
+                              "locked",
                               "vacancy",
                               "nobody"
                             ]
@@ -201260,11 +201357,83 @@
                         ],
                         "additionalProperties": false
                       }
+                    },
+                    "needsInvigilator": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "examId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "date": {
+                            "type": "string",
+                            "format": "date",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                          },
+                          "start": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "end": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 9007199254740991
+                          },
+                          "invigilators": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string",
+                                  "enum": [
+                                    "left",
+                                    "inactive",
+                                    "locked",
+                                    "absence"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "name",
+                                "cause"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": [
+                          "examId",
+                          "title",
+                          "date",
+                          "start",
+                          "end",
+                          "invigilators"
+                        ],
+                        "additionalProperties": false
+                      }
                     }
                   },
                   "required": [
                     "needsTeacher",
-                    "unresolved"
+                    "unresolved",
+                    "needsInvigilator"
                   ],
                   "additionalProperties": false
                 }

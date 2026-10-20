@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { schoolDateSchema } from './academic-year.js';
-import { lessonStateSchema } from './timetable.js';
+import { awayCauseSchema, lessonStateSchema } from './timetable.js';
 
 /**
  * Teacher absences (task 5.7a-1, pull request #185; docs/spec/06-timetable.md,
@@ -119,11 +119,11 @@ export type AbsenceLessons = z.infer<typeof absenceLessonsSchema>;
 
 /**
  * One row of the home page's "needs a teacher" or "unresolved" list
- * (decision 9): the lessons of one cause, an absence of a person, a vacancy
- * or nobody recorded.
+ * (decision 9): the lessons of one cause, a person away (absent, inactive,
+ * left or locked; task 5.7a-2a), a vacancy or nobody recorded.
  */
 export const attentionGroupSchema = z.object({
-  cause: z.enum(['absence', 'vacancy', 'nobody']),
+  cause: z.enum(['absence', 'inactive', 'left', 'locked', 'vacancy', 'nobody']),
   /** The person or the vacancy; `null` for nobody recorded. */
   teacher: z
     .object({ id: z.uuid(), kind: z.enum(['person', 'vacancy']), name: z.string() })
@@ -140,9 +140,26 @@ export const attentionGroupSchema = z.object({
 
 export type AttentionGroup = z.infer<typeof attentionGroupSchema>;
 
+/**
+ * An exam of the branch not started and not cancelled with an invigilator
+ * away at its start (task 5.7a-2a, decision 9): "needs an invigilator".
+ */
+export const attentionExamSchema = z.object({
+  examId: z.uuid(),
+  title: z.string(),
+  date: schoolDateSchema,
+  /** Clock minutes of the day in branch time, half-open. */
+  start: z.int().min(0),
+  end: z.int().min(1),
+  invigilators: z.array(z.object({ id: z.uuid(), name: z.string(), cause: awayCauseSchema })),
+});
+
+export type AttentionExam = z.infer<typeof attentionExamSchema>;
+
 export const attentionSchema = z.object({
   needsTeacher: z.array(attentionGroupSchema),
   unresolved: z.array(attentionGroupSchema),
+  needsInvigilator: z.array(attentionExamSchema),
 });
 
 export type Attention = z.infer<typeof attentionSchema>;

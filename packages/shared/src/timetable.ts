@@ -102,6 +102,17 @@ export const lessonStateSchema = z.enum(LESSON_STATES);
 export type LessonState = z.infer<typeof lessonStateSchema>;
 
 /**
+ * Why the person recorded on a lesson cannot teach at its start (task
+ * 5.7a-2a, decision 6), in the order of precedence when several hold: the
+ * most lasting first.
+ */
+export const AWAY_CAUSES = ['left', 'inactive', 'locked', 'absence'] as const;
+
+export const awayCauseSchema = z.enum(AWAY_CAUSES);
+
+export type AwayCause = z.infer<typeof awayCauseSchema>;
+
+/**
  * The state of a lesson at `now` (the injected clock's moment); it has
  * started at its exact start moment. Every reader of "held" uses this one.
  */
@@ -112,18 +123,18 @@ export function lessonStateOf(
     /** The kind of the teacher recorded; `null` for nobody. */
     readonly teacher: 'person' | 'vacancy' | null;
     /**
-     * The person recorded is absent at the lesson's start and was not
-     * recorded as having taught it after all (task 5.7a-1, decisions 5 and
-     * 12): the lesson keeps its teacher and is "needs a teacher", then
-     * "unresolved".
+     * The person recorded cannot teach at the lesson's start (absent,
+     * inactive, left or locked; tasks 5.7a-1 and 5.7a-2a) and was not
+     * recorded as having taught it after all: the lesson keeps its teacher
+     * and is "needs a teacher", then "unresolved".
      */
-    readonly absent: boolean;
+    readonly away: boolean;
   },
   now: Date,
 ): LessonState {
   if (lesson.cancelled) return 'cancelled';
   const started = lesson.startsAt.getTime() <= now.getTime();
-  if (lesson.teacher === 'person' && !lesson.absent) return started ? 'held' : 'upcoming';
+  if (lesson.teacher === 'person' && !lesson.away) return started ? 'held' : 'upcoming';
   return started ? 'unresolved' : 'needs_teacher';
 }
 

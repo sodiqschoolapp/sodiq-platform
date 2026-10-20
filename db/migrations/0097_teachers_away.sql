@@ -21,7 +21,9 @@
 -- `staff_out_on`, 0024), so that a save never changes the state of a lesson
 -- that has started. A taken-back row has an empty range.
 create table staff_status_moments (
-  status_id uuid primary key references staff_statuses (id),
+  -- A vacancy deleted with every row of it (`vacancy_delete`, 0025) takes its
+  -- moments with its statuses.
+  status_id uuid primary key references staff_statuses (id) on delete cascade,
   staff_id uuid not null references staff (id),
   applies_from timestamptz not null,
   -- Null: open.
