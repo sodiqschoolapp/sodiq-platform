@@ -302,6 +302,8 @@ Plan approved on pull request #178 with corrections 1 and 2; decisions 1 to 7 co
 | A bulk cancel's span moves to the times of its own stored lesson number | Correction 2 |
 | **Build decision.** The sorters read the stored lessons' times through the same map as the stored rows (`StoredRetime`): the chains' lessons, the one-lesson cancels and the bulk cancels' stored blocks | Spec review of the plan, must-fix 1 and 2: they are matched by the lessons' own times, which the write moves only afterwards |
 | **Build decision.** A kept one-lesson cancel is written on the lesson it is matched to (`writePlanOf`), and a stored block kept where it is (a move from a date the change does not write) takes the new times of its lesson number after the write (`writeStoredTimes`) | Found in the build: the writer pairs stored and new lessons by their times, so a lesson at new times was created held, and a kept move stayed at its old times |
+| **Spec review of the code.** A kept stored block moved to its new times is in the change's audit entry (`storedBlocks`, before and after); a bulk cancel's block choice is updated by its own row, as a choice whose block a publish removed has no key of its own | Should-fix 4 (every change is audited) and 5 (two rows of one cancel could meet on a moved time) |
+| **Build decision.** The stored times move before the sorting, in the save and in the preview, whose transaction is rolled back; the plan said "after the rewrite" | The sorting itself then reads them at the new times, so the preview and the save sort alike; a test shows the preview writes nothing |
 
 ## 20 October 2026: day template and slot length changes after publishing (task 5.6b-4a)
 
