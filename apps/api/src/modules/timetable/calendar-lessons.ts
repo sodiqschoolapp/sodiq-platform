@@ -289,6 +289,7 @@ export const NO_LESSONS: CalendarLessons = {
     bulk: [],
     exams: [],
     absences: [],
+    closures: [],
   },
   shortenedDays: [],
   keepRefusals: [],
@@ -1101,6 +1102,8 @@ export class TimetableCalendarLessons {
       // Task 5.7a-1 (decision 7): the absences are listed by a publish and a
       // withdraw; a calendar save leaves them as they are and lists none.
       absences: [],
+      // Task 5.7a-2b (decision 9): the room closures likewise.
+      closures: [],
     };
     const named = dayChangeIdsOf(items, bulkAll);
     // Task 5.6b-2b: the dates written that are shortened for a class.

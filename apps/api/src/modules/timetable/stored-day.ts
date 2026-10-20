@@ -10,6 +10,7 @@ import {
 import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
 import { claimsElsewhere, datedLessonsOf, teacherStatesOf } from './dated-check.js';
+import { closedSpansOn } from './rooms-out-read.js';
 import type { TimetablePattern } from './pattern.service.js';
 import type { Timetable } from './timetable.service.js';
 
@@ -336,6 +337,13 @@ export async function storedDayCheck(
      * one lesson only, the relaxation never reaching another lesson of the call.
      */
     readonly relaxed?: boolean;
+    /**
+     * Task 5.7a-2b (decision 5): the rooms closed on the date (a closure, a
+     * room under repair) are refused by `room_closed`. The one-day room
+     * change, move and restore and "move all" pass it; the correction of a
+     * past lesson and the calendar's move back do not.
+     */
+    readonly closures?: boolean;
   },
 ): Promise<StoredDayResult> {
   const [lesson] = input.lessons;
@@ -537,9 +545,26 @@ export async function storedDayCheck(
     ...offParts.map(alongsideOf),
     ...fixed,
   ];
+  const closed =
+    input.closures === true
+      ? await closedSpansOn(transaction, {
+          timeZone: branch.time_zone,
+          date,
+          rooms: [...model.facts.rooms.values()],
+        })
+      : new Map<string, { day: string; start: number; end: number }[]>();
   const facts: Facts = {
     ...model.facts,
     mode: 'dated',
+    rooms:
+      closed.size === 0
+        ? model.facts.rooms
+        : new Map(
+            [...model.facts.rooms].map(([id, room]) => [
+              id,
+              closed.has(id) ? { ...room, closed: closed.get(id) ?? [] } : room,
+            ]),
+          ),
     teachers: teachersOn(date),
     classStudents: (classId) => classOn(classId, date),
     dayOf: (_branch, grade) => dayOfDate(grade, date).engine,

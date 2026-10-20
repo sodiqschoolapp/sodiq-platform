@@ -6,6 +6,7 @@ import {
   dayLessonSchema,
   isMarkedChanged,
   lessonStateOf,
+  needsRoomOf,
   listName,
   schoolDateOf,
   weekdaySchema,
@@ -44,6 +45,7 @@ import { loadCalendarSettings } from '../setup/calendar-state.js';
 import { dayOf, loadStore } from '../setup/day-template-state.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { awayLessons, settledByTaught } from './away-read.js';
+import { roomsOutLessons } from './rooms-out-read.js';
 import { OUT_STATUSES, dayBeginnings } from './dated-check.js';
 import { examsOf } from './exams.service.js';
 import { TimetablePattern } from './pattern.service.js';
@@ -120,7 +122,7 @@ export const CORRECTION_REFUSALS: Readonly<Record<string, ErrorCode>> = {
 const TICKED: readonly RuleCode[] = [...RELAXED_WHEN_NO_TEACHER_FREE, 'substitute_language'];
 
 /** A blocked result of the stored-day check as a detail of `restore_blocked` or `day_change_blocked`. */
-function blockedDetail(
+export function blockedDetail(
   result: RuleResult,
   message = 'A blocked rule of the changed lesson on its date.',
 ): ErrorDetail {
@@ -571,7 +573,13 @@ export class TimetableDayChanges {
     const checked = await storedDayCheck(
       transaction,
       { timetable: this.timetable, pattern: this.pattern },
-      { accountId: access.accountId, lessons, ...(roomId === undefined ? {} : { roomId }) },
+      // Task 5.7a-2b (decision 5): a closed room is refused.
+      {
+        accountId: access.accountId,
+        lessons,
+        closures: true,
+        ...(roomId === undefined ? {} : { roomId }),
+      },
     );
     await refuseBlocked(transaction, branchId, 'restore_blocked', checked);
     for (const one of lessons) {
@@ -651,7 +659,7 @@ export class TimetableDayChanges {
     const checked = await storedDayCheck(
       transaction,
       { timetable: this.timetable, pattern: this.pattern },
-      { accountId: access.accountId, lessons, roomId: input.roomId },
+      { accountId: access.accountId, lessons, roomId: input.roomId, closures: true },
     );
     // The lesson's own room is no other room to offer.
     const own = new Set(lessons.map((one) => one.roomId));
@@ -818,6 +826,7 @@ export class TimetableDayChanges {
       accountId: access.accountId,
       lessons: held.map(placed),
       alongside: parts.filter((one) => one.cancelCause !== null).map(placed),
+      closures: true,
       ...(input.roomId === undefined ? {} : { roomId: input.roomId }),
     });
     await refuseBlocked(
@@ -1087,7 +1096,7 @@ export class TimetableDayChanges {
  * Refuses a one-day change whose check found a blocked rule, with the
  * results and the free rooms of its time, by name.
  */
-async function refuseBlocked(
+export async function refuseBlocked(
   transaction: Transaction,
   branchId: string,
   code: 'restore_blocked' | 'day_change_blocked' | 'correction_blocked',
@@ -1120,7 +1129,7 @@ async function refuseBlocked(
  * (decision 8), at the transaction's moment, so that a publish can apply it
  * again (5.6a-5).
  */
-async function recordChanges(
+export async function recordChanges(
   transaction: Transaction,
   access: Access,
   kind: 'room' | 'move',
@@ -1237,7 +1246,7 @@ async function gradeSlotsOn(
 }
 
 /** What an audit entry keeps of a lesson. */
-function valuesOf(lesson: StoredDayLesson) {
+export function valuesOf(lesson: StoredDayLesson) {
   return {
     date: lesson.date,
     startsAt: lesson.startsAt.toISOString(),
@@ -1408,6 +1417,8 @@ export async function dayLessonsOf(
   const markOf = new Map(marks.map((one) => [one.lesson_id, one.changed_at]));
   // Tasks 5.7a-1 and 5.7a-2a: a lesson of a person away keeps its teacher and needs one.
   const away = await awayLessons(transaction, lessons);
+  // Task 5.7a-2b (decision 2): a lesson not started whose room is out needs a room.
+  const roomOut = await roomsOutLessons(transaction, lessons);
   const dates = lessons.map((one) => one.date).sort();
   const begins = await dayBeginnings(
     transaction,
@@ -1452,6 +1463,16 @@ export async function dayLessonsOf(
         moment,
       ),
       away: away.get(one.id)?.cause ?? null,
+      roomOut: needsRoomOf(
+        {
+          startsAt: one.startsAt,
+          cancelled: one.cancelCause !== null,
+          roomOut: roomOut.get(one.id)?.cause ?? null,
+        },
+        moment,
+      )
+        ? (roomOut.get(one.id)?.cause ?? null)
+        : null,
       canCorrect: started && !closedBlocks.has(one.blockId),
     };
   });

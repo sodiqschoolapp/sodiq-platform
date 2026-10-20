@@ -721,6 +721,20 @@ export const ERROR_CODES = [
   'absence_withdrawn',
   /** Task 5.7a-1 (decision 11): a vacancy cannot be absent; its lessons need a teacher already. */
   'absence_person',
+  /** Task 5.7a-2b: the closure would overlap another live closure of the room; `details` names it (`recordId`, `day` its first day). */
+  'room_closure_overlap',
+  /** Task 5.7a-2b (decision 4): the change would act on a day before today or on a closure that has started (set the end instead). */
+  'room_closure_past',
+  /** Task 5.7a-2b: the closure has ended; a new one is entered. */
+  'room_closure_ended',
+  /** Task 5.7a-2b: the closure is withdrawn; a withdraw is final. */
+  'room_closure_withdrawn',
+  /** Task 5.7a-2b: a room whose status is `closed` is not closed again, and "move all" goes to another room. */
+  'room_closure_room',
+  /** Task 5.7a-2b: no lesson of the closure is left to move. */
+  'room_closure_nothing',
+  /** Task 5.7a-2b (decision 6): a lesson of "move all" meets a blocked rule in the room; `details` lists each, nothing is moved. */
+  'room_move_blocked',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

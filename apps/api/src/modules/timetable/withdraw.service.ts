@@ -34,6 +34,7 @@ import {
   type SortedBulk,
 } from './bulk-cancels-kept.js';
 import { runAbsences } from './absences-read.js';
+import { runClosures } from './rooms-out-read.js';
 import { datedCheck, type DatedFindings } from './dated-check.js';
 import { removeDatedLessons, writeDatedLessons } from './dated-lessons.js';
 import {
@@ -191,6 +192,16 @@ export class TimetableWithdraw {
               date: one.date,
               start: one.placement.start,
               teacherIds: one.placement.teacherIds,
+            })),
+          ),
+          // Task 5.7a-2b (decision 9): the room closures over the same lessons.
+          closures: await runClosures(
+            transaction,
+            branchId,
+            found.dated.dated.lessons.map((one) => ({
+              date: one.date,
+              start: one.placement.start,
+              roomId: one.placement.roomId,
             })),
           ),
         },
