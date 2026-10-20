@@ -535,7 +535,15 @@ describe('exams under a calendar change', () => {
         cancel: [history?.id ?? ''],
       });
 
-      okay(await create(s.branch, dayOff(OCT19, { gradeFrom: 9, gradeTo: 9 })), 201);
+      // Task 5.6b-3: the scene's group of grades 9 and 10 in slot 5 needs a
+      // choice on a day off for grade 9; cancelling it leaves the exam's outcome alone.
+      okay(
+        await create(s.branch, {
+          ...dayOff(OCT19, { gradeFrom: 9, gradeTo: 9 }),
+          groupBlocks: [{ weekday: 1, start: 590, groupIds: s.groups, choice: 'cancel' }],
+        }),
+        201,
+      );
 
       expect((await examRow(sat.id)).cancel_cause).toBe('day_off');
       const [after] = await lessonOf(s.branch, OCT19, s.seniorId);

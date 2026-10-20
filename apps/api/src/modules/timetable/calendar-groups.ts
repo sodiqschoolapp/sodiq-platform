@@ -191,8 +191,8 @@ type GroupBlockLine = CalendarLessons['groupBlocks'][number];
 
 /**
  * The preview's lines (spec review 10): each split block of the entry once,
- * with its dates and the choice of its first date (the one sent, now stored,
- * or the stored one); the sent choices that name no listed block.
+ * with its dates and its choice (the one sent, now stored, or the stored one)
+ * when every date has the same, else none (code review must-fix 3); the sent choices that name no listed block.
  */
 export function groupBlockLines(
   entryId: string | null,
@@ -212,6 +212,8 @@ export function groupBlockLines(
     const known = byKey.get(key);
     if (known !== undefined) {
       if (!known.dates.includes(split.date)) known.dates.push(split.date);
+      // Code review must-fix 3: chosen only when every date has that choice.
+      if (known.choice !== split.choice) known.choice = null;
       continue;
     }
     byKey.set(key, {

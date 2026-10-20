@@ -714,6 +714,157 @@ describe('calendar entries after publishing', () => {
         expect(entry?.new_value).not.toHaveProperty('groupBlocks');
       });
 
+      // Code review must-fix 3: a line shows a choice only when every date has it.
+      it('an edit that adds a date shows the block unchosen and is refused without a choice for it', async () => {
+        const s = await scene({ group: true });
+        const saved = okay(
+          await create(s.branch, { ...nineOff(), groupBlocks: groupBlocks(s, 'keep') }),
+          201,
+        );
+        const shown = await preview(s.branch, {
+          action: 'edit',
+          id: saved.id,
+          record: nineOff(OCT19, OCT26),
+        });
+        expect(shown.lessons.groupBlocks.map((one) => [one.dates, one.choice])).toEqual([
+          [[OCT19, OCT26], null],
+        ]);
+        const refused = await t.patch(
+          `/api/setup/calendar-entries/${saved.id}`,
+          s.branch,
+          nineOff(OCT19, OCT26),
+        );
+        refusedWith(refused, 409, 'calendar_blocked');
+        expect(detailsOf(refused).map((one) => [one.code, one.day])).toEqual([
+          ['calendar_group_block_choice', OCT26],
+        ]);
+      });
+
+      // Code review must-fix 2 (plan test 8): the rows of today and the past stay.
+      it('an edit of a started entry changes the choice of the dates after today only', async () => {
+        const s = await scene({ group: true });
+        // An entry from Monday 5 October, with a choice stored on 1 October for that date.
+        const PAST_MONDAY = '2026-10-05';
+        const saved = await t.database.migrator
+          .insertInto('calendar_entries')
+          .values({
+            branch_id: s.branch,
+            kind: 'day_off',
+            name: 'Grade 9 trip',
+            first_date: PAST_MONDAY,
+            last_date: OCT26,
+            grade_from: 9,
+            grade_to: 9,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await t.database.migrator.transaction().execute(async (transaction) => {
+          await sql`select set_config('app.now', '2026-10-01T10:00:00+05:00', true)`.execute(
+            transaction,
+          );
+          const row = await transaction
+            .insertInto('calendar_group_blocks')
+            .values({
+              branch_id: s.branch,
+              calendar_entry_id: saved.id,
+              lesson_date: PAST_MONDAY,
+              weekday: 1,
+              start_minutes: 590,
+              end_minutes: 635,
+              choice: 'keep',
+            })
+            .returning('id')
+            .executeTakeFirstOrThrow();
+          await transaction
+            .insertInto('calendar_group_block_groups')
+            .values({
+              branch_id: s.branch,
+              block_id: row.id,
+              group_id: s.groupId ?? '',
+              calendar_entry_id: saved.id,
+              lesson_date: PAST_MONDAY,
+              start_minutes: 590,
+            })
+            .execute();
+        });
+
+        okay(
+          await t.patch(`/api/setup/calendar-entries/${saved.id}`, s.branch, {
+            ...nineOff(PAST_MONDAY, OCT26),
+            groupBlocks: groupBlocks(s, 'cancel'),
+          }),
+        );
+
+        expect((await choicesOf(s.branch)).map((one) => [one.date, one.choice])).toEqual([
+          [PAST_MONDAY, 'keep'],
+          // Monday 12 October, the first date after today (10 October).
+          ['2026-10-12', 'cancel'],
+          [OCT19, 'cancel'],
+          [OCT26, 'cancel'],
+        ]);
+        expect((await groupOn(s, OCT19)).map((one) => one.cancel_cause)).toEqual(['day_off']);
+        expect((await groupOn(s, OCT26)).map((one) => one.cancel_cause)).toEqual(['day_off']);
+      });
+
+      // Code review must-fix 1 (plan test 9b, decision 2).
+      it('a later version\'s block of the group at another time is cancelled "day off" and offered unchosen', async () => {
+        const s = await scene({ group: true });
+        const saved = okay(
+          await create(s.branch, { ...nineOff(OCT26), groupBlocks: groupBlocks(s, 'keep') }),
+          201,
+        );
+        // A version from 19 October with the group in slot 1.
+        const next = await draft(s.branch, s.year, s.version);
+        await t.database.migrator
+          .deleteFrom('pattern_blocks')
+          .where('version_id', '=', next)
+          .execute();
+        const rows = await t.database.migrator
+          .selectFrom('teaching_load_rows')
+          .select(['id', 'subject_id', 'group_id'])
+          .where('version_id', '=', next)
+          .execute();
+        for (const row of rows) {
+          await placeAt(
+            s.branch,
+            next,
+            row.id,
+            1,
+            row.subject_id === s.history ? 3 : row.group_id === null ? 5 : 1,
+          );
+        }
+        await confirmTemplates(s.branch, next);
+        await load.freeEditLock(next);
+        okay(await publish(s.branch, next, OCT19));
+
+        const group = await groupOn(s, OCT26);
+        expect(group.map((one) => [one.cancel_cause, one.version_id])).toEqual([['day_off', next]]);
+        const shown = await preview(s.branch, {
+          action: 'edit',
+          id: saved.id,
+          record: nineOff(OCT26),
+        });
+        expect(shown.lessons.groupBlocks.map((one) => [one.start, one.choice])).toEqual([
+          [480, null],
+        ]);
+      });
+
+      // Code review should-fix 1: a one-day change of a kept lesson is not refused for the grade off.
+      it('lets a one-day room change of a kept lesson through', async () => {
+        const s = await scene({ group: true });
+        okay(await create(s.branch, { ...nineOff(), groupBlocks: groupBlocks(s, 'keep') }), 201);
+        const [kept] = await groupOn(s, OCT19);
+        const room = await load.classes.room(s.branch);
+        okay(
+          await keyed(`/api/timetable/lessons/${kept?.id ?? ''}/room`, s.branch, {
+            roomId: room,
+            reason: 'The hall is painted',
+          }),
+        );
+        const [after] = await groupOn(s, OCT19);
+        expect(after?.cancel_cause).toBeNull();
+      });
+
       // Permission review must-fix 1: an archive leaves no grade off and takes no choice.
       it('refuses a choice sent with an archive, writing nothing', async () => {
         const s = await scene({ group: true });

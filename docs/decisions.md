@@ -296,6 +296,10 @@ Plan approved on pull request #175 with corrections 1 and 2; decisions 1 to 7 co
 | A kept block keeps its class claims | Decision 7; 5.6a-3 decision 6 |
 | **Build decision.** A placement carries `gradesOff`: the engine's day rule does not refuse a kept lesson for its grade off by a day off while another grade has school; a one-day change of the kept lesson reads it from the expansion of its date | Found in the build: the kept lesson names the off grade's class, which the day rule refused `day_off` |
 | **Build decision.** The preview of an edit or a restore of a day off for a range of grades writes the entry's dates after today, so the dialog lists the blocks and their stored choices | Found in the build: an unchanged entry wrote no date, so an edit could not show a choice to change |
+| **Build decision.** The web app previews every edit of a day off for a range of grades, a new name alone too, so the choices can be changed | Same reason; 1.4 decision 11 (a name alone saves without a preview) keeps for every other entry |
+| **Build decision.** An archive refuses `groupBlocks` (400); its preview leaves it out | Permission review of the code, must-fix 1: an archive leaves no grade off |
+| **Build decision.** A preview line shows a choice only when every date of the block has it, else none | Spec review of the code, must-fix 3: a line chosen on its first date hid a new date the save refused |
+| **Look first** (a test changed by a new requirement). The test "for grade 9 only cancels a whole exam of a grade-9 and a grade-10 class" of `calendar-exams.test.ts` now sends a choice ("cancel") for the scene's two-grade group; its asserts are unchanged | This task makes the choice required for such a block |
 
 ## 20 October 2026: calendar changes, a move between two stretches (task 5.6b-2c-2)
 

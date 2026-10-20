@@ -364,22 +364,21 @@ describe('datedPattern', () => {
         expect(found.splitGroups.map((one) => one.choice)).toEqual(['keep']);
       });
 
-      it("takes the template of the grade at school, never the off grade's weekly time", () => {
-        // L2 in grade 10's weekly day (TENTH) starts at 09:00; grade 10 has MOVED on the date.
+      it("takes the time of the grade at school's template on the date, never the weekly time (code review should-fix 2)", () => {
+        // Grade 10's day starts at 08:20 on the date: its first lesson is 08:20 to 09:05.
+        const late = dayTimes(500, [lesson(45), pause(5), lesson(45)]);
         const found = run('keep', {
-          blocks: [group({ start: 540, end: 585, slotPosition: 3 })],
-          weeklyDay: (grade): Day => (grade === 10 ? TENTH : WEEKLY),
-          dayOn: offFor9((grade) => ({
-            lessons: true,
-            day: grade === 10 ? MOVED : WEEKLY,
-            followsWeekday: 1,
-            noRegularLessons: false,
-          })),
+          dayOn: offFor9((grade, date) =>
+            grade === 10
+              ? { lessons: true, day: late, followsWeekday: 1, noRegularLessons: false }
+              : input().dayOn(grade, date),
+          ),
         });
         expect(found.lessons.map((one) => [one.placement.start, one.placement.end])).toEqual([
-          [540, 585],
+          [500, 545],
         ]);
-        expect(found.splitGroups.map((one) => one.start)).toEqual([540]);
+        // The block keeps its weekly start as its name.
+        expect(found.splitGroups.map((one) => one.start)).toEqual([480]);
       });
 
       it("cancels a kept block 'not in the day's template' where the grade at school lacks its slot (correction 2)", () => {
