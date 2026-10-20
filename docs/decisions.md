@@ -304,6 +304,8 @@ Plan approved on pull request #179 with corrections 1 and 2; decisions 1 to 12 c
 | A closed quarter's frozen dates are left to 9.2b (From line) | Decision 11 |
 | From lines on 5.6c (exams and quarters, the exam save's year lock) and 9.2b; the 5.6b-5b entry | Decision 12 |
 | Writer-side commit checks (`lesson_blocks_quarter_commit`, `exams_year_commit`) lock the quarter or the year row `for share` and read its dates again, so a write at the same moment as a date change is refused by the later one | Spec review of the plan, must-fix 1 |
+| **Build decision.** The notice `timetable.quarters_changed` names the first and last date the save writes again (a day of the week without lessons included), not only lesson dates | The notices are sent inside the rewrite before its lines exist; "changed your lessons from … to …" stays true |
+| **Spec review of the code.** A stored move onto a date of today or earlier, from a later date the save puts in another quarter, refuses `quarter_splits_move` too | Should-fix 5; "A one-day move stays inside the same quarter" |
 
 ## 20 October 2026: day template and slot length changes after publishing, the preview dialog (task 5.6b-4b)
 
