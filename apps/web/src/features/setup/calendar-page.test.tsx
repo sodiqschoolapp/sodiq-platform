@@ -97,7 +97,6 @@ const NO_LESSONS: CalendarPreview['lessons'] = {
   needsTeacher: [],
   notified: [],
   blocked: [],
-  stored: [],
   dayChanges: { key: 'e'.repeat(64), kept: [], decide: [], dropped: [], bulk: [] },
   shortenedDays: [],
   keepRefusals: [],
@@ -297,7 +296,7 @@ describe('the calendar page', () => {
 
   // Task 5.6b-1: what the save does to the published timetable, and Save off
   // while the server would refuse it.
-  it('lists the lessons a save removes, creates and cancels, and keeps Save off while a stored change stops it', async () => {
+  it('lists the lessons a save removes, creates and cancels, and keeps Save off while a blocked conflict stops it', async () => {
     const OXFORD = uid(20);
     const MATHS = uid(21);
     const names = {
@@ -320,7 +319,13 @@ describe('the calendar page', () => {
       {
         ...NO_LESSONS,
         cancelled: [{ ...lesson, cause: 'not_in_template' as const }],
-        stored: [{ kind: 'day_change' as const, id: uid(23), date: '2026-10-19' }],
+        blocked: [
+          {
+            date: '2026-10-19',
+            rule: 'teacher_double',
+            lessons: [{ unitId: OXFORD, subjectId: MATHS }],
+          },
+        ],
         names,
       },
     ];
@@ -343,7 +348,7 @@ describe('the calendar page', () => {
         en.setup.calendar.lessons.notified_one.replace('{{count}}', '1'),
       ],
       [
-        en.setup.calendar.lessons.stored_one.replace('{{count}}', '1'),
+        en.setup.calendar.lessons.blocked_one.replace('{{count}}', '1'),
         en.setup.calendar.lessons.cancelled_one.replace('{{count}}', '1'),
       ],
     ].entries()) {

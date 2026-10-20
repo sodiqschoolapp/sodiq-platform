@@ -58,6 +58,12 @@ import { examsOn } from './stored-day.js';
  *   entry is a warning (`availabilityFrom` the start); warnings move nothing.
  *   The oldest change is checked first, each against the older ones kept
  *   (decision 6).
+ *
+ * Task 5.6b-2c-2: a calendar save writes each stretch of its dates on its
+ * own (`across`). A move between two of its stretches is sorted once, as its
+ * two halves: kept when its new place takes it (the check of a move from a
+ * date outside the run); otherwise needs a decision in both halves, and the
+ * half of the old place holds the lesson there, so the choice acts on it.
  */
 
 const MINUTE = 60_000;
@@ -77,6 +83,11 @@ export interface SortedDayChange {
   /** A move from outside the run: the stored lessons it keeps. */
   readonly storedIds: readonly string[];
   readonly chains: readonly Chain[];
+  /**
+   * Task 5.6b-2c-2: the half of a move between two stretches of one calendar
+   * save this stretch holds (its old place or its new place), `null` otherwise.
+   */
+  readonly half: 'old_place' | 'new_place' | null;
 }
 
 /** What the write of a publish does with the sorted changes and their decisions. */
@@ -381,12 +392,22 @@ export async function sortDayChanges(
       readonly on: (date: string) => readonly Placement[];
       readonly covered: ReadonlySet<string>;
     };
+    /**
+     * Task 5.6b-2c-2: the dates another stretch of the same calendar save
+     * writes, and the moves between two stretches already found "needs a
+     * decision" by their key, with the blocked rules of their new place.
+     */
+    readonly across?: {
+      readonly written: (date: string) => boolean;
+      readonly decided: ReadonlyMap<string, readonly RuleResultAnswer[]>;
+    };
   },
 ): Promise<DaySorting> {
   const { state, findings, firstDate, lastDate } = input;
   const { model } = state.pattern;
   const branchId = model.data.branchId;
   const inRun = (date: string) => firstDate <= date && date <= lastDate;
+  const elsewhere = (date: string) => input.across?.written(date) === true;
   const unitClasses = new Map(model.data.units.map((unit) => [unit.id, unit.classIds]));
 
   const chains = await chainsOf(transaction, branchId, firstDate, lastDate);
@@ -451,8 +472,14 @@ export async function sortDayChanges(
     category: DayCategory;
     blocked: RuleResultAnswer[];
     readonly matched: Map<string, DatedLesson>;
-    readonly mode: 'inside' | 'to_outside' | 'from_outside';
+    readonly mode: 'inside' | 'to_outside' | 'from_outside' | 'to_other' | 'from_other';
   }
+  // Task 5.6b-2c-2: a move between two stretches already found "needs a
+  // decision" stays so in both halves (decision 5).
+  const decidedOf = (group: readonly Chain[]) => {
+    const [head] = [...group].sort((a, b) => byAge(a.first, b.first));
+    return head === undefined ? undefined : input.across?.decided.get(head.first.id);
+  };
   const drafts: Draft[] = [];
   for (const group of groups.values()) {
     const kind = group[0]?.kind ?? 'room';
@@ -483,13 +510,14 @@ export async function sortDayChanges(
     }
     if (!inRun(from) && !inRun(to)) continue;
     if (!inRun(from)) {
+      const decided = elsewhere(from) ? decidedOf(group) : undefined;
       drafts.push({
         chains: group,
         kind,
-        category: 'kept',
-        blocked: [],
+        category: decided === undefined ? 'kept' : 'decide',
+        blocked: decided === undefined ? [] : [...decided],
         matched,
-        mode: 'from_outside',
+        mode: elsewhere(from) ? 'from_other' : 'from_outside',
       });
       continue;
     }
@@ -512,13 +540,14 @@ export async function sortDayChanges(
         );
         if (found !== undefined) matched.set(chain.lessonId, found);
       }
+      const decided = elsewhere(to) ? decidedOf(group) : undefined;
       drafts.push({
         chains: group,
         kind,
-        category: 'kept',
-        blocked: [],
+        category: decided === undefined ? 'kept' : 'decide',
+        blocked: decided === undefined ? [] : [...decided],
         matched,
-        mode: 'to_outside',
+        mode: elsewhere(to) ? 'to_other' : 'to_outside',
       });
       continue;
     }
@@ -557,7 +586,11 @@ export async function sortDayChanges(
   const skippedCancelled = new Set<string>();
   const patternBlocks = new Map(state.blocks.map((one) => [one.id, one]));
   for (const draft of drafts) {
-    if (draft.mode !== 'to_outside') continue;
+    // Task 5.6b-2c-2: the old place of a move between two stretches is left
+    // out only while the move is kept; otherwise the choice acts on it there.
+    const leftOut =
+      draft.mode === 'to_outside' || (draft.mode === 'to_other' && draft.category === 'kept');
+    if (!leftOut) continue;
     for (const one of draft.matched.values()) skipped.add(one);
     for (const cancelled of findings.dated.cancelled) {
       const pattern = patternBlocks.get(cancelled.blockId);
@@ -625,8 +658,10 @@ export async function sortDayChanges(
     }).filter((one) => one.severity === 'blocked');
 
   for (const draft of drafts) {
-    if (draft.category !== 'kept' || draft.mode === 'to_outside') continue;
-    if (draft.mode === 'from_outside') {
+    if (draft.category !== 'kept' || draft.mode === 'to_outside' || draft.mode === 'to_other') {
+      continue;
+    }
+    if (draft.mode === 'from_outside' || draft.mode === 'from_other') {
       const date = draft.chains[0]?.last.to_date ?? firstDate;
       const facts = findings.factsOn(date);
       const candidates: Placement[] = [];
@@ -817,8 +852,16 @@ export async function sortDayChanges(
       changeIds: draft.chains.flatMap((chain) => chain.rows.map((row) => row.id)).sort(),
       matched: draft.matched,
       cancelledParts,
-      storedIds: draft.mode === 'from_outside' ? draft.chains.map((chain) => chain.lessonId) : [],
+      // Task 5.6b-2c-2: the new place of a move between two stretches keeps
+      // its stored lesson only while the move is kept; otherwise the rewrite
+      // of that date removes it and the choice acts at the old place.
+      storedIds:
+        draft.mode === 'from_outside' || (draft.mode === 'from_other' && draft.category === 'kept')
+          ? draft.chains.map((chain) => chain.lessonId)
+          : [],
       chains: draft.chains,
+      half:
+        draft.mode === 'to_other' ? 'old_place' : draft.mode === 'from_other' ? 'new_place' : null,
     });
   }
   for (const cancel of plainCancels) {
@@ -844,6 +887,7 @@ export async function sortDayChanges(
       cancelledParts: new Map(),
       storedIds: [],
       chains: [],
+      half: null,
     });
   }
   return { items, findings: applied, keptStoredIds, movedAt };

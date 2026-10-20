@@ -572,7 +572,6 @@ describe('calendar entries after publishing', () => {
       ]);
       expect(shown.lessons.removed.map((one) => one.unitId)).toEqual([s.seniorId]);
       expect(shown.lessons.blocked).toEqual([]);
-      expect(shown.lessons.stored).toEqual([]);
 
       okay(await create(s.branch, specialDay(OCT19, OCT19, s.short)), 201);
 
@@ -896,7 +895,6 @@ describe('calendar entries after publishing', () => {
 
         // Test 9: the preview lists the sorting and its key and writes nothing.
         const shown = await preview(s.branch, { action: 'create', record: dayOff(OCT19) });
-        expect(shown.lessons.stored).toEqual([]);
         expect(shown.lessons.dayChanges.kept).toEqual([]);
         expect(shown.lessons.dayChanges.dropped).toEqual([]);
         expect(
@@ -1638,31 +1636,262 @@ describe('calendar entries after publishing', () => {
     });
   });
 
-  describe('stored records that still refuse a save', () => {
-    // Task 5.6b-2c-1 (decision 3): an exam is sorted since, in calendar-exams.test.ts.
-    it('a move between two stretches of one save (decision 3, until 5.6b-2c-2), listed, with nothing written', async () => {
-      const s = await scene();
-      // A day off of Tuesday 20 to Sunday 25 October, edited to 19 to 26
-      // October: the dates written are 19 and 26 October, two stretches.
-      const saved = okay(await create(s.branch, dayOff('2026-10-20', '2026-10-25')), 201);
-      const moving = await lessonOf(s, OCT19, s.classId);
-      okay(await moveTo(s, moving.id, OCT26, 2));
-      const [change] = await changesOf(moving.id);
-      const rows = await storedRowsOf(s.branch);
-      const before = await t.auditCount();
+  // Task 5.6b-2c-2: a stored move whose two places lie in two stretches of
+  // one save (consecutive dates written; a weekend or an unchanged date
+  // between them parts two), sorted once over both (decision 1): kept when
+  // its new place takes it among the lessons the save writes there, else
+  // needs a decision in both halves; settled and audited once, in the
+  // stretch of its old place (decision 4). `edge/timetable`, Versions and
+  // drafts: "One-day changes ... are stored on their own and applied again
+  // ... The preview sorts them into kept, needs a decision and dropped."
+  describe('a move between two stretches of one save', () => {
+    const FRIDAY = '2026-10-23';
 
-      const refused = await t.patch(
-        `/api/setup/calendar-entries/${saved.id}`,
-        s.branch,
-        dayOff(OCT19, OCT26),
+    /** A template of two lesson slots at the times of the scene's first two (lesson, break, lesson). */
+    const twoTemplate = async (s: Scene) => {
+      const lesson = await t.createSlotType(s.branch, 'Lesson 2', 'lesson', 45);
+      const pause = await t.createSlotType(s.branch, 'Break 2', 'break', 10);
+      return t.createTemplate(s.branch, 'Two', [lesson, pause, lesson]);
+    };
+
+    /** The grade-7 class's lessons of a date: start, cancel cause and reason. */
+    const classDayOf = async (s: Scene, date: string) =>
+      (
+        await Promise.all(
+          (await lessonsOn(s.branch, date))
+            .filter((one) => one.class_id === s.classId)
+            .map((one) => lessonById(one.id)),
+        )
+      ).map((one) => [
+        one?.starts_at.toISOString(),
+        one?.cancel_cause ?? null,
+        one?.cancel_reason ?? null,
+      ]);
+
+    /** The moves of the sorting shown, by category: their keys. */
+    const sortedOf = (shown: CalendarPreview) => ({
+      kept: shown.lessons.dayChanges.kept.map((one) => one.key),
+      decide: shown.lessons.dayChanges.decide.map((one) => one.key),
+      dropped: shown.lessons.dayChanges.dropped.map((one) => one.key),
+    });
+
+    /** The days of the audit entry of an edit: version, first date, decided and ended keys. */
+    const daysOf = async (entryId: string) => {
+      const [entry] = await t.entries('calendar_entry.edit', entryId);
+      return (
+        entry?.new_value as {
+          dayChanges: {
+            versionId: string;
+            firstDate: string;
+            decided: unknown[];
+            ended: string[];
+          }[];
+        }
+      ).dayChanges.map((one) => [one.versionId, one.firstDate, one.decided, one.ended]);
+    };
+
+    it('a day off edited over both places needs a decision once, either way forward or back; with either choice neither date keeps the lesson and the change is ended once', async () => {
+      for (const [from, to] of [
+        [OCT19, OCT26],
+        [OCT26, OCT19],
+      ] as const) {
+        for (const choice of ['drop', 'cancel'] as const) {
+          const s = await scene();
+          // A day off of Tuesday 20 to Sunday 25 October, edited to 19 to 26
+          // October: the dates written are 19 and 26 October, two stretches.
+          const saved = okay(await create(s.branch, dayOff('2026-10-20', '2026-10-25')), 201);
+          const moving = await lessonOf(s, from, s.classId);
+          okay(await moveTo(s, moving.id, to, 2));
+          const [change] = await changesOf(moving.id);
+          if (change === undefined) throw new Error('The move was not recorded.');
+          const record = dayOff(OCT19, OCT26);
+          const shown = await preview(s.branch, { action: 'edit', id: saved.id, record });
+          expect(sortedOf(shown)).toEqual({ kept: [], decide: [change.id], dropped: [] });
+          const rows = await storedRowsOf(s.branch);
+          const before = await t.auditCount();
+
+          const refused = await t.patch(
+            `/api/setup/calendar-entries/${saved.id}`,
+            s.branch,
+            withDays(record, shown),
+          );
+          refusedWith(refused, 409, 'calendar_blocked');
+          expect(detailsOf(refused).map((one) => one.code)).toEqual(['day_change_undecided']);
+          expect(await storedRowsOf(s.branch)).toEqual(rows);
+          expect(await t.auditCount()).toBe(before);
+
+          // Review correction 2: one choice for the key, taken once.
+          okay(
+            await t.patch(
+              `/api/setup/calendar-entries/${saved.id}`,
+              s.branch,
+              withDays(record, shown, [{ key: change.id, choice }]),
+            ),
+          );
+          expect(await lessonsOn(s.branch, OCT19)).toEqual([]);
+          expect(await lessonsOn(s.branch, OCT26)).toEqual([]);
+          expect(await lessonById(moving.id)).toBeUndefined();
+          expect(await endsOf(s.branch)).toEqual([{ change_id: change.id, version_id: s.version }]);
+          // Decision 4: one line, in the stretch of the old place.
+          expect(await daysOf(saved.id)).toEqual([
+            [s.version, from, [{ key: change.id, choice }], [change.id]],
+          ]);
+        }
+      }
+    });
+
+    it('kept when its new place takes it: the lesson stays where it went with its id, none at the old place, the change in force', async () => {
+      const s = await scene();
+      const two = await twoTemplate(s);
+      // A special day on "Two" of Tuesday 20 to Thursday 22 October, edited
+      // to Monday 19 to Friday 23 October: 19 and 23 October written.
+      const saved = okay(await create(s.branch, specialDay('2026-10-20', '2026-10-22', two)), 201);
+      const moving = await lessonOf(s, OCT19, s.classId);
+      okay(await moveTo(s, moving.id, FRIDAY, 2));
+      const [change] = await changesOf(moving.id);
+      if (change === undefined) throw new Error('The move was not recorded.');
+      const record = specialDay(OCT19, FRIDAY, two);
+      const shown = await preview(s.branch, { action: 'edit', id: saved.id, record });
+      expect(sortedOf(shown)).toEqual({ kept: [change.id], decide: [], dropped: [] });
+
+      okay(
+        await t.patch(`/api/setup/calendar-entries/${saved.id}`, s.branch, withDays(record, shown)),
       );
 
-      refusedWith(refused, 409, 'calendar_stored_changes');
-      expect(detailsOf(refused).map((one) => [one.path, one.day])).toEqual([
-        [`stored.day_change.${change?.id ?? ''}`, OCT26],
+      const kept = await lessonById(moving.id);
+      expect([kept?.date, kept?.starts_at.toISOString(), kept?.cancel_cause ?? null]).toEqual([
+        FRIDAY,
+        new Date(`${FRIDAY}T08:55:00+05:00`).toISOString(),
+        null,
       ]);
-      expect(await storedRowsOf(s.branch)).toEqual(rows);
-      expect(await t.auditCount()).toBe(before);
+      // 19 October: no maths of the class; history held in slot 3 of "Two" at 08:55.
+      expect(
+        (await lessonsOn(s.branch, OCT19)).map((one) => [
+          one.class_id,
+          new Date(one.starts_at).toISOString(),
+          one.cancel_cause ?? null,
+        ]),
+      ).toEqual([[s.seniorId, new Date(`${OCT19}T08:55:00+05:00`).toISOString(), null]]);
+      expect(await endsOf(s.branch)).toEqual([]);
+      expect(await daysOf(saved.id)).toEqual([[s.version, OCT19, [], []]]);
+    });
+
+    it('needs a decision when its new place is gone, listed once with that place\'s rule; "drop" holds the lesson at its old place, "cancel" cancels it there; the preview writes nothing', async () => {
+      for (const choice of ['drop', 'cancel'] as const) {
+        const s = await scene();
+        const other = await scene();
+        // "Short" has one lesson slot: 23 October no longer has lesson 2.
+        const saved = okay(
+          await create(s.branch, specialDay('2026-10-20', '2026-10-22', s.short)),
+          201,
+        );
+        const moving = await lessonOf(s, OCT19, s.classId);
+        okay(await moveTo(s, moving.id, FRIDAY, 2));
+        const [change] = await changesOf(moving.id);
+        if (change === undefined) throw new Error('The move was not recorded.');
+        const record = specialDay(OCT19, FRIDAY, s.short);
+        const rows = [await storedRowsOf(s.branch), await storedRowsOf(other.branch)];
+        const before = await t.auditCount();
+
+        const shown = await preview(s.branch, { action: 'edit', id: saved.id, record });
+
+        expect(sortedOf(shown)).toEqual({ kept: [], decide: [change.id], dropped: [] });
+        const [item] = shown.lessons.dayChanges.decide;
+        expect(item?.blocked.map((one) => one.date)).toContain(FRIDAY);
+        expect(item?.blocked.length).toBeGreaterThan(0);
+        expect(await storedRowsOf(s.branch)).toEqual(rows[0]);
+        expect(await storedRowsOf(other.branch)).toEqual(rows[1]);
+        expect(await t.auditCount()).toBe(before);
+
+        okay(
+          await t.patch(
+            `/api/setup/calendar-entries/${saved.id}`,
+            s.branch,
+            withDays(record, shown, [{ key: change.id, choice }]),
+          ),
+        );
+
+        expect(await lessonsOn(s.branch, FRIDAY)).toEqual([]);
+        expect(await classDayOf(s, OCT19)).toEqual([
+          [
+            new Date(`${OCT19}T08:00:00+05:00`).toISOString(),
+            ...(choice === 'drop' ? [null, null] : ['reason', 'Excursion to the museum']),
+          ],
+        ]);
+        expect(await endsOf(s.branch)).toEqual([{ change_id: change.id, version_id: s.version }]);
+        expect(await daysOf(saved.id)).toEqual([
+          [s.version, OCT19, [{ key: change.id, choice }], [change.id]],
+        ]);
+        expect(await storedRowsOf(other.branch)).toEqual(rows[1]);
+      }
+    });
+
+    // Decision 5 (spec review of the plan, must-fix 1): a move put back at
+    // its old place takes the new place of another move, which a second pass
+    // of the sorting then finds; also a move onto the same weekday a week
+    // later, where the entry has a lesson of its own (`.claude/rules/timetable.md`).
+    it("sorts again when a move put back takes the new place of another: both need a decision, and the entry's own lesson of the later date stays held", async () => {
+      const s = await scene();
+      const two = await twoTemplate(s);
+      // "Two" from Tuesday 20 to Sunday 25 October, its weekend following
+      // Monday, edited to 19 to 26 October: the Mondays 19 and 26 written.
+      const saved = okay(
+        await create(s.branch, specialDay('2026-10-20', '2026-10-25', two, { followsWeekday: 1 })),
+        201,
+      );
+      // X: 19 October's maths to 26 October lesson 3, not a slot of "Two".
+      const x = await lessonOf(s, OCT19, s.classId);
+      okay(await moveTo(s, x.id, OCT26, 3));
+      // Y: 26 October's maths to 19 October lesson 1, the place X left.
+      const y = (await lessonsOn(s.branch, OCT26)).find(
+        (one) => one.class_id === s.classId && one.id !== x.id,
+      );
+      if (y === undefined) throw new Error('No maths on 26 October.');
+      // A second apart: the changes of one moment and person are one item.
+      try {
+        t.clock.advance(1000);
+        okay(await moveTo(s, y.id, OCT19, 1));
+      } finally {
+        t.clock.set(START);
+      }
+      const [xChange] = await changesOf(x.id);
+      const [yChange] = await changesOf(y.id);
+      if (xChange === undefined || yChange === undefined) throw new Error('No move.');
+      const record = specialDay(OCT19, OCT26, two, { followsWeekday: 1 });
+
+      const shown = await preview(s.branch, { action: 'edit', id: saved.id, record });
+
+      expect(sortedOf(shown)).toEqual({
+        kept: [],
+        decide: [xChange.id, yChange.id].sort(),
+        dropped: [],
+      });
+      expect(
+        shown.lessons.dayChanges.decide
+          .find((one) => one.key === yChange.id)
+          ?.blocked.map((one) => [one.date, one.rule]),
+      ).toContainEqual([OCT19, 'class_double']);
+
+      okay(
+        await t.patch(
+          `/api/setup/calendar-entries/${saved.id}`,
+          s.branch,
+          withDays(record, shown, [
+            { key: xChange.id, choice: 'cancel' },
+            { key: yChange.id, choice: 'drop' },
+          ]),
+        ),
+      );
+
+      expect(await classDayOf(s, OCT19)).toEqual([
+        [new Date(`${OCT19}T08:00:00+05:00`).toISOString(), 'reason', 'Excursion to the museum'],
+      ]);
+      expect(await classDayOf(s, OCT26)).toEqual([
+        [new Date(`${OCT26}T08:00:00+05:00`).toISOString(), null, null],
+      ]);
+      expect((await endsOf(s.branch)).map((one) => one.change_id)).toEqual(
+        [xChange.id, yChange.id].sort(),
+      );
     });
   });
 

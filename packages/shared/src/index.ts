@@ -378,7 +378,6 @@ export {
   calendarLessonsSchema,
   calendarPreviewSchema,
   CALENDAR_CANCEL_CAUSES,
-  CALENDAR_STORED_KINDS,
   EXAM_WEEKS,
   examWeekSchema,
   NO_LESSONS_REASONS,

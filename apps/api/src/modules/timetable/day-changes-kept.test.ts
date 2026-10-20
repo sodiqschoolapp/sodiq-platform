@@ -56,6 +56,7 @@ function itemOf(
     cancelledParts: new Map(input.withPart === true ? [[PART, 'Rain']] : []),
     storedIds: input.storedIds ?? [],
     chains,
+    half: null,
   };
 }
 
