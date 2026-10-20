@@ -13,7 +13,7 @@ The next sessions must know:
 
 - A run's facts take the standing exams' invigilators as extra teachers (`invigilatorsOf`); exams as context of a check are `fixed` placements, as the stored claims read them.
 - A `dayDecisions` entry may carry `reason`, only for an exam's `cancel` or a `drop` that leaves lessons cancelled; `dayDecisionsBodyOf` takes the reasons.
-- A block kept for other classes beside an exam whose invigilator teaches it is caught by the claims (`timetable_busy`), not by the preview.
+- An open shared block answers `keepOffered`: `keep` is offered only when the kept block does not meet the exam.
 - The next task is 5.6c-3b.
 
 ## 20 October 2026: task 5.6c-2 Exams in the timetable: the screens

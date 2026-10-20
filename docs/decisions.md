@@ -301,7 +301,8 @@ Plan approved on pull request #183 with correction 1; decisions 1 to 11 confirme
 | The sorting never drops an exam; another branch's exam is a blocked conflict of the publish, not an item; the exam items are part of the sorting's key | Decisions 9 to 11 |
 | A `drop` that leaves a lesson cancelled (a kept one-day change took its room or teacher) needs the decision's reason | Correction 1 |
 | **Build decision.** The run's facts take the standing exams' invigilators as extra teachers, as the exam's own check does; without it the engine fails on an invigilator who teaches no row | Found by the build |
-| **Build decision.** A shared block kept for the other classes whose teacher invigilates the exam is not shown by the preview; the claims refuse the publish `timetable_busy` | The preview asks the block's choice before it is made |
+| **Build decision.** An open shared block is checked kept for the other classes too; `keep` is offered only when none of its lessons then meets the exam (`keepOffered`) | Spec review of the code, must-fix 4; `edge/timetable`, Exams |
+| **Build decision.** The exam guards a publish or a withdraw can meet at the commit (`exam_group_slots`, `exam_incomplete`, `lesson_block_class_out_exam`) answer `timetable_busy`, never a 500 | Spec review of the code, must-fix 1 |
 | **Build decision.** The handbook page is `05-teaching-load-and-timetable.md`, the name the handbook's list gives, not `04-timetable.md` of the plan | `docs/handbook/README.md` |
 
 ## 20 October 2026: exams in the timetable, the screens (task 5.6c-2)
