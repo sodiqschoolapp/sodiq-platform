@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { inForceOn, templateFor, type TemplateAssignment } from './templates.js';
+import { inForceOn, templateFor, usedSlotProblems, type TemplateAssignment } from './templates.js';
 
 const open = (from: string) => ({ validFrom: from, validUntil: null });
 
@@ -188,5 +188,61 @@ describe('templateFor', () => {
     ];
     expect(templateFor(1, '2026-10-18', { assignments })).toBe('sunday');
     expect(templateFor(1, '2026-10-17', { assignments })).toBeNull();
+  });
+});
+
+// edge/time-dates-calendar, "A slot type's length or a day template is
+// changed mid-year": "A lesson slot used by the published timetable cannot be
+// removed or reordered without a new version" (task 5.6b-4a, decision 4 and
+// review correction 3).
+describe('usedSlotProblems', () => {
+  const L45 = 'lesson-45';
+  const L40 = 'lesson-40';
+  const day = [L45, L45, L45, L45, L45, L45, L45];
+
+  it('refuses a used lesson number the day before has and the day after has not', () => {
+    expect(usedSlotProblems(day, day.slice(0, 6), [1, 2, 7])).toEqual([
+      { lessonNumber: 7, problem: 'removed' },
+    ]);
+  });
+
+  it('lets a slot in the middle go while the last used number is still there', () => {
+    // Slot 3 of 7 removed, numbers 1 to 6 used: 3 to 6 take the next slots' times.
+    expect(usedSlotProblems(day, day.slice(0, 6), [1, 2, 3, 4, 5, 6])).toEqual([]);
+  });
+
+  it('refuses another slot type at a used number (a reorder)', () => {
+    const before = [L45, L40, L45];
+    const after = [L40, L45, L45];
+    expect(usedSlotProblems(before, after, [1, 2, 3])).toEqual([
+      { lessonNumber: 1, problem: 'reordered' },
+      { lessonNumber: 2, problem: 'reordered' },
+    ]);
+  });
+
+  it('lets unused numbers change, and lesson slots be added after the used ones', () => {
+    expect(usedSlotProblems([L45, L45, L45], [L45, L45, L40, L45], [1, 2])).toEqual([]);
+    expect(usedSlotProblems([L45, L45, L45], [L45, L45], [1, 2])).toEqual([]);
+  });
+
+  it('refuses another slot type at a used number only within one template', () => {
+    expect(usedSlotProblems([L45, L40], [L40, L45], [1, 2], { sameTemplate: false })).toEqual([]);
+    expect(usedSlotProblems([L45, L40], [L40], [1, 2], { sameTemplate: false })).toEqual([
+      { lessonNumber: 2, problem: 'removed' },
+    ]);
+  });
+
+  it('takes no number the day before already lacks (a shortened day)', () => {
+    expect(usedSlotProblems([L45, L45], [L45], [1, 2, 6])).toEqual([
+      { lessonNumber: 2, problem: 'removed' },
+    ]);
+  });
+
+  it('gives each number once, in order, whatever the order of the used list', () => {
+    expect(usedSlotProblems(day, day.slice(0, 4), [7, 5, 5, 6])).toEqual([
+      { lessonNumber: 5, problem: 'removed' },
+      { lessonNumber: 6, problem: 'removed' },
+      { lessonNumber: 7, problem: 'removed' },
+    ]);
   });
 });

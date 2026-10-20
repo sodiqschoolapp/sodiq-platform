@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 20 October 2026: task 5.6b-4a Day template and slot length changes after publishing: the lessons
+
+- A slot length, a template version, a setting or a setting ended from a date writes the published lessons of every date after today whose day differs (slots, slot types, times, weekday followed, exam week) again through the calendar save's rewrite (`apps/api/src/modules/setup/template-lessons.ts`): checked with the full rule set, refused `calendar_blocked` by date, exams following their slots, stored changes sorted; future lessons take the new times, earlier ones keep theirs.
+- A lesson number a published block uses that the change removes or gives another slot type refuses `template_slot_in_use` (`usedSlotProblems` of `packages/timetable-rules`); special dates follow the shortened-day row. Notice `timetable.template_changed`; the change's own audit entry carries the lesson lists.
+- Migration 0091: `timetable_version_days`, the weekly days the publish checked a version against; the expansion and the pattern facts of a published version read them, so its blocks keep their lesson numbers after a template change.
+- Left out: the preview dialog, the choices sent with the save and the handbook (5.6b-4b); a browser test (no published version in the browser scene).
+
+The next sessions must know:
+
+- The four saves take `days` like a calendar save; a change over a date with a stored one-day change or bulk cancel is refused `template_day_changes` until 5.6b-4b makes them follow their lessons.
+- `DayTemplates.write` holds the branch row `for no key update`; the four changes lock people, classes and years (`TemplateLessons.lock`) before writing.
+- The next task is 5.6b-4b.
+
 ## 20 October 2026: task 5.6b-3 A calendar entry that leaves school to one grade of a two-grade group
 
 - A day off for a range of grades that leaves one grade of a two-grade group at school lists each block of the group in the calendar preview (`lessons.groupBlocks`); the Academic Vice Principal chooses once per block: cancel "day off", or keep it for the grade at school. Kept lessons take that grade's template; the off grade's students (members on the date) are exempt in the engine (`exemptStudentIds`, `gradesOff` of the placement). A block with no choice refuses the save (`calendar_group_block_choice`, a detail of `calendar_blocked`).

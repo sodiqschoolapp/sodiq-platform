@@ -152,42 +152,48 @@ export type DayTemplateVersionRecord = z.infer<typeof dayTemplateVersionRecordSc
  * the two grade levels, and the range upwards. The database keeps the same
  * rule (`day_template_assignments_key_check`).
  */
-export const assignmentRecordSchema = z
-  .object({
-    level: templateLevelSchema,
-    weekday: weekdaySchema.nullable(),
-    gradeFrom: gradeSchema.nullable(),
-    gradeTo: gradeSchema.nullable(),
-    dayTemplateId: z.uuid(),
-    from: fromSchema,
-  })
-  .superRefine((record, context) => {
-    const needsWeekday = levelHasWeekday(record.level);
-    if (needsWeekday !== (record.weekday !== null)) {
+export const assignmentFieldsSchema = z.object({
+  level: templateLevelSchema,
+  weekday: weekdaySchema.nullable(),
+  gradeFrom: gradeSchema.nullable(),
+  gradeTo: gradeSchema.nullable(),
+  dayTemplateId: z.uuid(),
+  from: fromSchema,
+});
+
+/** The rules between the fields of a setting, for every schema that carries them. */
+export function refineAssignment(
+  record: z.infer<typeof assignmentFieldsSchema>,
+  context: z.RefinementCtx,
+): void {
+  const needsWeekday = levelHasWeekday(record.level);
+  if (needsWeekday !== (record.weekday !== null)) {
+    context.addIssue({
+      code: 'custom',
+      path: ['weekday'],
+      message: needsWeekday ? 'This level names a weekday.' : 'This level names no weekday.',
+    });
+  }
+  const needsGrades = levelHasGrades(record.level);
+  for (const field of ['gradeFrom', 'gradeTo'] as const) {
+    if (needsGrades !== (record[field] !== null)) {
       context.addIssue({
         code: 'custom',
-        path: ['weekday'],
-        message: needsWeekday ? 'This level names a weekday.' : 'This level names no weekday.',
+        path: [field],
+        message: needsGrades ? 'This level names grades.' : 'This level names no grades.',
       });
     }
-    const needsGrades = levelHasGrades(record.level);
-    for (const field of ['gradeFrom', 'gradeTo'] as const) {
-      if (needsGrades !== (record[field] !== null)) {
-        context.addIssue({
-          code: 'custom',
-          path: [field],
-          message: needsGrades ? 'This level names grades.' : 'This level names no grades.',
-        });
-      }
-    }
-    if (record.gradeFrom !== null && record.gradeTo !== null && record.gradeFrom > record.gradeTo) {
-      context.addIssue({
-        code: 'custom',
-        path: ['gradeTo'],
-        message: 'The last grade is not before the first.',
-      });
-    }
-  });
+  }
+  if (record.gradeFrom !== null && record.gradeTo !== null && record.gradeFrom > record.gradeTo) {
+    context.addIssue({
+      code: 'custom',
+      path: ['gradeTo'],
+      message: 'The last grade is not before the first.',
+    });
+  }
+}
+
+export const assignmentRecordSchema = assignmentFieldsSchema.superRefine(refineAssignment);
 
 export type AssignmentRecord = z.infer<typeof assignmentRecordSchema>;
 
@@ -195,32 +201,6 @@ export type AssignmentRecord = z.infer<typeof assignmentRecordSchema>;
 export const assignmentEndSchema = z.object({ from: fromSchema });
 
 export type AssignmentEnd = z.infer<typeof assignmentEndSchema>;
-
-/**
- * A save that can change the table of templates, as the preview takes it
- * (`03`: "saving a template at any level shows that table with the changes
- * marked, as the preview of the change"; decision 19 of the review).
- */
-export const templateChangeSchema = z.discriminatedUnion('kind', [
-  z.object({
-    kind: z.literal('slot_length'),
-    slotTypeId: z.uuid(),
-    change: slotLengthChangeSchema,
-  }),
-  z.object({
-    kind: z.literal('template_version'),
-    dayTemplateId: z.uuid(),
-    change: dayTemplateVersionRecordSchema,
-  }),
-  z.object({ kind: z.literal('assignment_set'), change: assignmentRecordSchema }),
-  z.object({
-    kind: z.literal('assignment_end'),
-    assignmentId: z.uuid(),
-    change: assignmentEndSchema,
-  }),
-]);
-
-export type TemplateChange = z.infer<typeof templateChangeSchema>;
 
 /** The date of the table: any school date. */
 export const templateTableQuerySchema = z.object({ date: schoolDateSchema });
@@ -380,12 +360,3 @@ export const templateTableSchema = z.object({
 });
 
 export type TemplateTable = z.infer<typeof templateTableSchema>;
-
-/** The table on the date of a change, before and after, with the cells that differ. */
-export const templatePreviewSchema = z.object({
-  before: templateTableSchema,
-  after: templateTableSchema,
-  changed: z.array(z.object({ weekday: weekdaySchema, grade: z.int() })),
-});
-
-export type TemplatePreview = z.infer<typeof templatePreviewSchema>;

@@ -11,6 +11,7 @@ import {
   savedInPanel,
 } from '@/testing/panel';
 import { fakeApi, json, NORTH, renderApp, sessionOf } from '@/testing/render-app';
+import { NO_LESSONS } from '@/testing/no-lessons';
 import { savedRecordPanel } from '@/testing/new-record';
 
 const PATH = '/setup/slot-types';
@@ -55,6 +56,8 @@ const PREVIEW: TemplatePreview = {
   before: table('2026-10-11', 610),
   after: table('2026-10-11', 600),
   changed: [{ weekday: 1, grade: 1 }],
+  lessons: NO_LESSONS,
+  slotsInUse: [],
 };
 
 const sessionAs = (

@@ -152,6 +152,17 @@ export const NOTIFICATION_KINDS = {
     also: z.strictObject(teacherWeek).optional(),
   }),
   /**
+   * A change of the day templates from a date (a slot length, a template's
+   * version, a template set or a setting ended) changed this teacher's
+   * lessons in the branch (task 5.6b-4a, decision 6): the change's date and
+   * the week, with a second, later week as a calendar change shows one.
+   */
+  'timetable.template_changed': z.strictObject({
+    from: schoolDateSchema,
+    ...teacherWeek,
+    also: z.strictObject(teacherWeek).optional(),
+  }),
+  /**
    * A calendar entry made the date of an exam a day off, and the exam is
    * cancelled (`edge/timetable`, Exams: "a day off removes the exam and tells
    * the Academic Vice Principal"; task 5.6b-2c-1, decision 4): the entry's
@@ -183,6 +194,7 @@ export const WEEK_KINDS = [
   'timetable.tutor_changed',
   'timetable.day_changed',
   'timetable.calendar_changed',
+  'timetable.template_changed',
 ] as const;
 
 export const NOTIFICATION_KIND_NAMES = Object.keys(NOTIFICATION_KINDS) as [

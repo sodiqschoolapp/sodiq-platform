@@ -20,6 +20,7 @@ import { TravelTimes } from './travel-times.service.js';
 import { Rooms } from './rooms.service.js';
 import { SubjectsController } from './subjects.controller.js';
 import { Subjects } from './subjects.service.js';
+import { TemplateLessons } from './template-lessons.js';
 
 /**
  * School setup (docs/spec/03-school-setup.md): the branch record, buildings,
@@ -49,6 +50,7 @@ import { Subjects } from './subjects.service.js';
     Divisions,
     AcademicYears,
     DayTemplates,
+    TemplateLessons,
     Calendar,
     Settings,
     TravelTimes,

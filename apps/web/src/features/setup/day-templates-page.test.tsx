@@ -11,6 +11,7 @@ import {
   savedInPanel,
 } from '@/testing/panel';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
+import { NO_LESSONS } from '@/testing/no-lessons';
 import { savedRecordPanel } from '@/testing/new-record';
 
 const PATH = '/setup/day-templates';
@@ -93,6 +94,8 @@ const EMPTY_PREVIEW: TemplatePreview = {
   before: { date: TOMORROW, weekdays: [1, 2, 3, 4, 5], cells: [] },
   after: { date: TOMORROW, weekdays: [1, 2, 3, 4, 5], cells: [] },
   changed: [],
+  lessons: NO_LESSONS,
+  slotsInUse: [],
 };
 
 const sessionAs = (

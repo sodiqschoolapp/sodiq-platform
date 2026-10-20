@@ -81,6 +81,7 @@ import { PATTERN_REFUSALS, TimetablePattern, type PatternState } from './pattern
 import { resultAnswerOf } from './rule-answers.js';
 import { lockSubjects, Timetable, type VersionRow } from './timetable.service.js';
 import { auditOf, followChanged, followVersion } from './tutor-lessons.js';
+import { storeVersionDays } from './version-days.js';
 import { sendWeekChanges, snapshotWeek } from './week-changes.js';
 
 /**
@@ -689,6 +690,11 @@ export class TimetablePublish {
       versions
         .filter((one) => one.status === 'published' && one.starts_on < startsOn)
         .sort((a, b) => b.starts_on.localeCompare(a.starts_on) || b.number - a.number)[0] ?? null;
+    // Task 5.6b-4a (decision 3): the weekly days the blocks were checked
+    // against, written while the version is still a draft (0091).
+    if (findings.written !== null) {
+      await storeVersionDays(transaction, findings.written.state);
+    }
     // The checks deferred to the commit (the pattern written by the Tutor
     // rows that followed, 0058) run now, while the version is still a draft.
     await sql`set constraints all immediate`.execute(transaction);

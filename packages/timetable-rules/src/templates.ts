@@ -122,3 +122,49 @@ export function templateFor(
     at('default')[0];
   return found?.dayTemplateId ?? null;
 }
+
+/** Why a change takes a lesson slot from the published timetable (task 5.6b-4a). */
+export interface UsedSlotProblem {
+  readonly lessonNumber: number;
+  readonly problem: 'removed' | 'reordered';
+}
+
+/**
+ * The lesson slots a change of a grade's day on a date takes from the
+ * published timetable (edge/time-dates-calendar, "A slot type's length or a
+ * day template is changed mid-year": "A lesson slot used by the published
+ * timetable cannot be removed or reordered without a new version"; task
+ * 5.6b-4a, decision 4).
+ *
+ * Lesson slots are matched by their number in the day (edge/time-dates-
+ * calendar, "A shortened day": "Lessons are matched by their order in the
+ * day"); a slot has no identity across template versions. `before` and
+ * `after` are the slot types of the day's lesson slots in their order (number
+ * 1 first), `used` the lesson numbers the published version's blocks take
+ * that day. A used number the day before has and the day after has not is
+ * `removed`. Within one template (`sameTemplate`: a new version of the
+ * template the grade already has), one the day after holds with another slot
+ * type is `reordered` (also a "Lesson 40" type put in place of a "Lesson 45"
+ * slot: its length is changed on the slot type instead); a slot type tells
+ * lesson slots apart only within one template, so a setting that gives the
+ * grade another template is refused only for a used number it lacks.
+ * Everything else (breaks added, moved or removed, the start, the lengths,
+ * lesson slots after the last used number) takes the new times. A number the
+ * day before already lacks (a shortened day) is no problem of the change.
+ */
+export function usedSlotProblems(
+  before: readonly string[],
+  after: readonly string[],
+  used: readonly number[],
+  options: { readonly sameTemplate: boolean } = { sameTemplate: true },
+): UsedSlotProblem[] {
+  return [...new Set(used)]
+    .sort((a, b) => a - b)
+    .flatMap((lessonNumber): UsedSlotProblem[] => {
+      const was = before[lessonNumber - 1];
+      if (was === undefined) return [];
+      const now = after[lessonNumber - 1];
+      if (now === undefined) return [{ lessonNumber, problem: 'removed' }];
+      return now === was || !options.sameTemplate ? [] : [{ lessonNumber, problem: 'reordered' }];
+    });
+}

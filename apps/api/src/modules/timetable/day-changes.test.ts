@@ -1092,10 +1092,25 @@ describe('one-day changes: cancel and restore', () => {
       const s = await scene();
       const lesson = await lessonOf(s, NEXT_MONDAY);
       changed(await cancel(s.branch, lesson.id));
-      // From 19 October Mondays start at 09:00.
+      // From 19 October Mondays start at 09:00. Task 5.6b-4a: the setting is
+      // written straight into the table, as the route wrote it before: the
+      // route now writes the lessons of those dates again on the new times
+      // (and refuses a change over the stored cancel), so the state this check guards comes
+      // only from a template row that the lessons were not written after.
       const slot = await t.createSlotType(s.branch, 'Late lesson', 'lesson', 45);
       const late = await t.createTemplate(s.branch, 'Late', [slot, slot, slot], '09:00');
-      await t.assign(s.branch, late, { level: 'weekday', weekday: 1 }, NEXT_MONDAY);
+      await t.database.migrator
+        .insertInto('day_template_assignments')
+        .values({
+          branch_id: s.branch,
+          level: 'weekday',
+          weekday: 1,
+          grade_from: null,
+          grade_to: null,
+          day_template_id: late,
+          valid_from: NEXT_MONDAY,
+        })
+        .execute();
       const blocked = blockedBy(await restore(s.branch, lesson.id));
       expect(blocked.rules).toEqual(['not_a_slot']);
       // No room helps when the time is the problem.

@@ -10,11 +10,16 @@ import {
   SLOT_TYPE_NAME_MAX_LENGTH,
   slotLengthChangeSchema,
   slotTypeRecordSchema,
-  templateChangeSchema,
   timeOfDaySchema,
   timeText,
 } from './day-templates.js';
 
+import {
+  templateChangeSchema,
+  templateDaysBodySchema,
+  assignmentSaveSchema,
+  slotLengthSaveSchema,
+} from './template-changes.js';
 const ID = '01928c3e-0000-7000-8000-000000000001';
 
 const paths = (result: { success: boolean; error?: { issues: { path: PropertyKey[] }[] } }) =>
@@ -251,5 +256,69 @@ describe('templateChangeSchema', () => {
       expect(templateChangeSchema.safeParse(change).success, change.kind).toBe(true);
     }
     expect(templateChangeSchema.safeParse({ kind: 'rename', change: {} }).success).toBe(false);
+  });
+});
+
+// Task 5.6b-4a (decision 8): a template change takes the calendar save's
+// choices for the dated lessons it writes again, but never `groupBlocks`: a
+// change leaves no grade off (.claude/rules/api.md, a field with no use on a
+// path is refused, not dropped).
+describe('templateDaysBodySchema', () => {
+  const KEY = 'a'.repeat(64);
+
+  it('takes the key, the decisions, the kept lessons and the exam blocks', () => {
+    const days = {
+      dayChangesKey: KEY,
+      dayDecisions: [{ key: ID, choice: 'drop' }],
+      dayKeeps: [{ date: '2026-10-19', classId: ID, slotPositions: [1, 2] }],
+      examBlocks: [],
+    };
+    expect(templateDaysBodySchema.safeParse(days).success).toBe(true);
+    expect(
+      slotLengthSaveSchema.safeParse({ lengthMinutes: 40, from: '2026-10-12', days }).success,
+    ).toBe(true);
+  });
+
+  it('refuses groupBlocks and any other field', () => {
+    expect(templateDaysBodySchema.safeParse({ groupBlocks: [] }).success).toBe(false);
+    expect(templateDaysBodySchema.safeParse({ entryId: ID }).success).toBe(false);
+    expect(
+      slotLengthSaveSchema.safeParse({
+        lengthMinutes: 40,
+        from: '2026-10-12',
+        days: { groupBlocks: [] },
+      }).success,
+    ).toBe(false);
+  });
+
+  it('keeps the rules of a setting with the choices', () => {
+    const setting = {
+      level: 'weekday',
+      weekday: null,
+      gradeFrom: null,
+      gradeTo: null,
+      dayTemplateId: ID,
+      from: '2026-10-12',
+      days: {},
+    };
+    expect(paths(assignmentSaveSchema.safeParse(setting))).toEqual(['weekday']);
+    expect(assignmentSaveSchema.safeParse({ ...setting, weekday: 5 }).success).toBe(true);
+  });
+
+  it('carries the choices in each kind of the preview', () => {
+    expect(
+      templateChangeSchema.safeParse({
+        kind: 'assignment_end',
+        assignmentId: ID,
+        change: { from: '2026-10-12', days: { dayChangesKey: KEY } },
+      }).success,
+    ).toBe(true);
+    expect(
+      templateChangeSchema.safeParse({
+        kind: 'assignment_end',
+        assignmentId: ID,
+        change: { from: '2026-10-12', days: { groupBlocks: [] } },
+      }).success,
+    ).toBe(false);
   });
 });

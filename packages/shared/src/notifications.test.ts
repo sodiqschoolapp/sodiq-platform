@@ -86,13 +86,29 @@ describe('the notices of a timetable change', () => {
       false,
     );
     // Task 5.6a-1 (decision 10, Look first: a pinned list widened by a new kind),
-    // and task 5.6b-1 (decision 8, Look first: the calendar change's kind).
+    // task 5.6b-1 (decision 8, Look first: the calendar change's kind) and
+    // task 5.6b-4a (decision 6, Look first: the template change's kind).
     expect(WEEK_KINDS).toEqual([
       ...WEEK_CHANGE_KINDS,
       'timetable.tutor_changed',
       'timetable.day_changed',
       'timetable.calendar_changed',
+      'timetable.template_changed',
     ]);
+  });
+
+  // Task 5.6b-4a, decision 6: a template change carries its date and the week, no name or number.
+  it('carry the date and the week of a template change', () => {
+    const schema = NOTIFICATION_KINDS['timetable.template_changed'];
+    const templateWeek = {
+      from: '2026-10-19',
+      weekStart: week.weekStart,
+      before: week.before,
+      after: week.after,
+    };
+    expect(schema.parse(templateWeek)).toEqual(templateWeek);
+    expect(schema.safeParse({ ...templateWeek, name: 'Navruz' }).success).toBe(false);
+    expect(schema.safeParse({ ...templateWeek, from: '19.10.2026' }).success).toBe(false);
   });
 
   // Task 5.6b-1, decision 8: a calendar change carries its entry's name and dates and the week, no number.

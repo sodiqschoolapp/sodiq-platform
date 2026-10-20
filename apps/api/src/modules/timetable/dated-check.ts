@@ -34,6 +34,7 @@ import { loadCalendarSettings } from '../setup/calendar-state.js';
 import { dayOf, loadStore } from '../setup/day-template-state.js';
 import { readTutorRows } from './load-facts.js';
 import type { PatternState } from './pattern.service.js';
+import { weeklyDaysOf, weeklyKey } from './version-days.js';
 
 /** What the dated check of a publish found (task 5.5a-2a), as the answer names it. */
 export interface DatedFindings {
@@ -383,7 +384,12 @@ export async function datedLessonsOf(
     return value;
   };
 
-  const weekly = new Map(data.days.map((one) => [`${one.grade}|${one.weekday}`, one.day]));
+  // Task 5.6b-4a (decision 3): a block's lesson number is found by its weekly
+  // times in the weekly days its version was published against, which the
+  // pattern facts of a version no longer a draft carry (`readVersionDays`);
+  // a draft, or a version published before 0091, has those of the templates
+  // on its start.
+  const weekly = weeklyDaysOf(state);
   const units = new Map(data.units.map((unit) => [unit.id, unit]));
   const subjects = new Map(data.subjects.map((subject) => [subject.id, subject]));
   const blocks: DatedBlock[] = state.blocks.map((block) => {
@@ -441,10 +447,7 @@ export async function datedLessonsOf(
     lastDate,
     blocks,
     quarters: data.year.quarters,
-    weeklyDay: (grade, weekday) => {
-      const day = weekly.get(`${grade}|${weekday}`);
-      return day?.lessons === true ? day.day : null;
-    },
+    weeklyDay: (grade, weekday) => weekly.get(weeklyKey(grade, weekday)) ?? null,
     dayOn: (grade, date) => dayOfDate(grade, date).dated,
     studentsOn,
     tutorOn,

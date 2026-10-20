@@ -35,12 +35,14 @@ export {
   isInForceOn,
   specialDateFor,
   templateFor,
+  usedSlotProblems,
   weekdayOf,
   type DatedRow,
   type SpecialDateTemplate,
   type TemplateAssignment,
   type TemplateLevel,
   type TemplateSettings,
+  type UsedSlotProblem,
 } from './templates.js';
 export {
   sharedLessonSlots,

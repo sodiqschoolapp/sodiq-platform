@@ -1,17 +1,17 @@
 import { Controller, Get, HttpCode, Patch, Post } from '@nestjs/common';
 import {
-  assignmentEndSchema,
+  assignmentEndSaveSchema,
   assignmentListSchema,
-  assignmentRecordSchema,
+  assignmentSaveSchema,
   assignmentSchema,
   dayTemplateListSchema,
   dayTemplateQuerySchema,
   dayTemplateRecordSchema,
   dayTemplateRenameSchema,
   dayTemplateSchema,
-  dayTemplateVersionRecordSchema,
+  dayTemplateVersionSaveSchema,
   setupIdParamsSchema,
-  slotLengthChangeSchema,
+  slotLengthSaveSchema,
   slotTypeListSchema,
   slotTypeRecordSchema,
   slotTypeRenameSchema,
@@ -21,17 +21,17 @@ import {
   templateTableQuerySchema,
   templateTableSchema,
   type Assignment,
-  type AssignmentEnd,
+  type AssignmentEndSave,
   type AssignmentList,
-  type AssignmentRecord,
+  type AssignmentSave,
   type DayTemplate,
   type DayTemplateList,
   type DayTemplateQuery,
   type DayTemplateRecord,
   type DayTemplateRename,
-  type DayTemplateVersionRecord,
+  type DayTemplateVersionSave,
   type SetupIdParams,
-  type SlotLengthChange,
+  type SlotLengthSave,
   type SlotType,
   type SlotTypeList,
   type SlotTypeRecord,
@@ -95,7 +95,7 @@ export class DayTemplatesController {
   changeSlotLength(
     @CurrentAccess() access: Access,
     @ValidParams(setupIdParamsSchema) params: SetupIdParams,
-    @ValidBody(slotLengthChangeSchema) change: SlotLengthChange,
+    @ValidBody(slotLengthSaveSchema) change: SlotLengthSave,
     @RequestId() requestId: string,
   ): Promise<SlotType> {
     return this.templates.changeSlotLength(access, branchOf(access), params.id, change, requestId);
@@ -173,7 +173,7 @@ export class DayTemplatesController {
   addTemplateVersion(
     @CurrentAccess() access: Access,
     @ValidParams(setupIdParamsSchema) params: SetupIdParams,
-    @ValidBody(dayTemplateVersionRecordSchema) record: DayTemplateVersionRecord,
+    @ValidBody(dayTemplateVersionSaveSchema) record: DayTemplateVersionSave,
     @RequestId() requestId: string,
   ): Promise<DayTemplate> {
     return this.templates.addTemplateVersion(
@@ -221,7 +221,7 @@ export class DayTemplatesController {
   @Returns(assignmentSchema, 201)
   assign(
     @CurrentAccess() access: Access,
-    @ValidBody(assignmentRecordSchema) record: AssignmentRecord,
+    @ValidBody(assignmentSaveSchema) record: AssignmentSave,
     @RequestId() requestId: string,
   ): Promise<Assignment> {
     return this.templates.assign(access, branchOf(access), record, requestId);
@@ -235,7 +235,7 @@ export class DayTemplatesController {
   end(
     @CurrentAccess() access: Access,
     @ValidParams(setupIdParamsSchema) params: SetupIdParams,
-    @ValidBody(assignmentEndSchema) change: AssignmentEnd,
+    @ValidBody(assignmentEndSaveSchema) change: AssignmentEndSave,
     @RequestId() requestId: string,
   ): Promise<Assignment> {
     return this.templates.end(access, branchOf(access), params.id, change, requestId);
