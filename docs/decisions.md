@@ -285,6 +285,24 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 20 October 2026: exams in the timetable, the screens (task 5.6c-2)
+
+Plan approved on pull request #182 with corrections 1 and 2; decisions 1 to 13 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a reading of the spec). The check (`POST timetable/exams/check`) answers what a person settles in the dialog as lists (shared-block choices, blocked rules, warnings, lessons given back) and the refusals of the exam's shape as the save's 409 codes | Decision 1; `06`, Exam; From line of 5.6c-2 |
+| The check runs the save in its transaction and rolls it back; `blocked`, `warnings` and `givenBack` are `null` while a choice is missing, `givenBack` also while a rule blocks; a date without lessons answers its line and no choice; a lesson named to stay cancelled that can come back is `restorable` | Decision 3, plan review must-fixes 1 and 2, should-fix 4, correction 2 |
+| The check is `timetable` `edit`, as the save; no role widened | Decision 4 |
+| The cancel names the rooms free at the blocked lessons' time and keeps those lessons cancelled with a reason; the day page then restores one into a free room | Decision 5 |
+| One page per date, `/timetable/exams?date=`, a `ListPage`; exams answer `started` by the server's moment | Decisions 6, 6a; plan review should-fix 7 |
+| The class day page shows the standing exams the class sits, named or through a group fed by it | Decision 7 |
+| The lesson numbers come from the first chosen class's day; invigilators are active people of the staff list; groups are offered once a subject is chosen; one tick for the warnings | Decisions 8 to 11 |
+| The notice key is unchanged; the screen shows the action and the invigilation | Decision 12 |
+| The browser test has a scene of its own (account `exams`) with a block shared by two classes | Decision 2 |
+| **Build decision.** The check takes the locks of the save (the publish lock, the chain, the exam row) for its short transaction and rolls back, so it sees exactly what the save would; a save or publish meanwhile waits for it as for a save | Permission review should-fix 4; the calendar preview does the same |
+| **Build decision.** A change of a choice or a keep tick runs the check again; Save is on only while the newest check was made for exactly what the form holds | Plan review must-fix 1 |
+
 ## 20 October 2026: exams in the timetable, the exam save (task 5.6c-1)
 
 Plan approved on pull request #181 with corrections 1 to 3; decisions 1 to 18 confirmed there. Flagged on issue #42.

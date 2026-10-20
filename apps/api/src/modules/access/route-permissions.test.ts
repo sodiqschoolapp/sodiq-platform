@@ -638,6 +638,11 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     branch: 'request',
     roles: ['super_admin', 'academic_vice_principal'],
   },
+  // Task 5.6c-2: the check of a save, under timetable edit as the save.
+  'POST /api/timetable/exams/check': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
   // Task 5.5a-3b-1: the causes of a draft's mark, read by every reader of the
   // timetable, and bringing it up to date, under timetable edit.
   'GET /api/timetable/versions/:id/out-of-date': {

@@ -2,8 +2,11 @@ import { randomUUID } from 'node:crypto';
 import {
   BRANCH_HEADER,
   NOTIFICATION_KINDS,
+  dayAnswerSchema,
   REQUEST_KEY_HEADER,
+  examCheckSchema,
   examSaveAnswerSchema,
+  examSchema,
   examsAnswerSchema,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
@@ -1520,6 +1523,25 @@ describe('exams in the timetable', () => {
       // would end as idle and stay ended for the tests that follow.
       const vice = await viceAt(s.branch);
       try {
+        // The list says which exams have started, by the server's moment
+        // (task 5.6c-2, plan test 10a); before the clock moved, none had.
+        expect([early.exam.started, later.exam.started]).toEqual([false, false]);
+        const listed = await t.get(
+          `/api/timetable/exams?from=${NEXT_MONDAY}&to=${NEXT_MONDAY}`,
+          s.branch,
+          vice,
+        );
+        expect(listed.status, JSON.stringify(listed.body)).toBe(200);
+        expect(
+          examsAnswerSchema.parse(listed.body).exams.map((one) => [one.id, one.started]),
+        ).toEqual([
+          [early.exam.id, true],
+          [later.exam.id, false],
+        ]);
+        // The single exam says the same (permission review should-fix 2).
+        const single = await t.get(`/api/timetable/exams/${early.exam.id}`, s.branch, vice);
+        expect(single.status, JSON.stringify(single.body)).toBe(200);
+        expect(examSchema.parse(single.body).started).toBe(true);
         const third = await person(s.branch, [s.maths]);
         refusedWith(
           await create(
@@ -1709,6 +1731,557 @@ describe('exams in the timetable', () => {
         'not_found',
       );
       expect(await everything()).toEqual(before);
+    });
+  });
+
+  // Task 5.6c-2, pull request #182: the check of a save (`POST
+  // timetable/exams/check`): what a save would do, nothing written; its lists
+  // are the items of the save's refusals (the From line of 5.6c-2).
+  describe('the check of a save (task 5.6c-2)', () => {
+    const check = (branch: string, body: object, cookie = t.admin) =>
+      request(t.kit.server)
+        .post('/api/timetable/exams/check')
+        .set('Cookie', cookie)
+        .set(BRANCH_HEADER, branch)
+        .send(body);
+
+    const checked = (response: Response) => {
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      return examCheckSchema.parse(response.body);
+    };
+
+    /** The body of a save without its tick, as the check takes it. */
+    const asCheck = (body: object, examId?: string) => ({
+      ...Object.fromEntries(Object.entries(body).filter(([key]) => key !== 'confirm')),
+      ...(examId === undefined ? {} : { examId }),
+    });
+
+    /** Rule lines by code and lessons, to compare a check with a save's refusal. */
+    const linesOf = (details: readonly { code: string; rule?: { lessonIds: string[] } }[]) =>
+      details
+        .map((one) => `${one.code}|${[...(one.rule?.lessonIds ?? [])].sort().join(',')}`)
+        .sort();
+
+    /** Every row a save writes, the request keys too. */
+    const all = async () => [
+      ...(await everything()),
+      await t.database.migrator.selectFrom('request_keys').selectAll().orderBy('key').execute(),
+    ];
+
+    it('lists the lessons a new exam cancels, both halves of a double, and writes nothing (06, Exam; plan tests 1 and 7)', async () => {
+      const s = await scene({ double: true });
+      await pairUp(s, NEXT_MONDAY);
+      const own = await lessonsOf(NEXT_MONDAY, { classId: s.classId });
+      const other = await lessonOf(NEXT_MONDAY, s.otherClass);
+      const before = await all();
+      const answer = checked(await check(s.branch, asCheck(examOf(s))));
+      expect(answer.cancels.map((one) => one.id).sort()).toEqual(
+        [...own.map((one) => one.id), other.id].sort(),
+      );
+      // The lessons as they stand, not cancelled by the check's own run.
+      expect(answer.cancels.every((one) => one.cancelCause === null)).toBe(true);
+      expect(answer).toMatchObject({
+        choices: [],
+        blocked: [],
+        warnings: [],
+        givenBack: [],
+        canSave: true,
+      });
+      expect(await all()).toEqual(before);
+    });
+
+    it('lists a shared block without a choice and works out nothing else; with a choice it does (edge/timetable, Exams, second row; plan test 2)', async () => {
+      const s = await scene({ art: true });
+      const art = s.art;
+      if (art === null) throw new Error('No art.');
+      const [block] = await lessonsOf(THURSDAY, { groupId: art.group });
+      if (block === undefined) throw new Error('No art lesson.');
+      const body = examOf(s, { date: THURSDAY, classIds: [s.classId] });
+      const asked = checked(await check(s.branch, asCheck(body)));
+      expect(asked.choices).toEqual([
+        expect.objectContaining({
+          classId: s.classId,
+          blockId: block.block_id,
+          choice: null,
+          stored: null,
+        }),
+      ]);
+      expect(asked.choices[0]?.lessons.map((one) => one.id)).toEqual([block.id]);
+      expect(asked.choices[0]?.otherClasses).toHaveLength(1);
+      expect(asked).toMatchObject({
+        blocked: null,
+        warnings: null,
+        givenBack: null,
+        canSave: false,
+      });
+      // The save names the same block.
+      const refused = await create(s.branch, body);
+      refusedWith(refused, 409, 'exam_block_choice');
+      expect(detailsOf(refused).map((one) => [one.classId, one.recordId])).toEqual(
+        asked.choices.map((one) => [one.classId, one.blockId]),
+      );
+      const chosen = checked(
+        await check(
+          s.branch,
+          asCheck({
+            ...body,
+            blockChoices: [{ classId: s.classId, blockId: block.block_id, choice: 'keep' }],
+          }),
+        ),
+      );
+      expect(chosen.choices[0]?.choice).toBe('keep');
+      expect(chosen).toMatchObject({ blocked: [], givenBack: [], canSave: true });
+    });
+
+    it('lists a blocked line that a "keep" brings in: the kept block’s teacher invigilating (plan review must-fix 1)', async () => {
+      const s = await scene({ art: true });
+      const art = s.art;
+      if (art === null) throw new Error('No art.');
+      const [block] = await lessonsOf(THURSDAY, { groupId: art.group });
+      if (block === undefined) throw new Error('No art lesson.');
+      const body = (choice: 'keep' | 'cancel') =>
+        asCheck(
+          examOf(s, {
+            date: THURSDAY,
+            classIds: [s.classId],
+            invigilatorIds: [art.teacher],
+            subjectId: art.subject,
+            blockChoices: [{ classId: s.classId, blockId: block.block_id, choice }],
+          }),
+        );
+      const kept = checked(await check(s.branch, body('keep')));
+      expect(kept.canSave).toBe(false);
+      expect(kept.blocked?.some((one) => one.rule?.lessonIds.includes(block.id))).toBe(true);
+      expect(kept.givenBack).toBeNull();
+      const cancelled = checked(await check(s.branch, body('cancel')));
+      expect(cancelled.blocked).toEqual([]);
+      expect(cancelled.canSave).toBe(true);
+    });
+
+    it('shows the stored choice of a change, and none for a block the change makes shared (.claude/rules/timetable.md; plan test 3)', async () => {
+      const s = await scene({ art: true });
+      const art = s.art;
+      if (art === null) throw new Error('No art.');
+      const [block] = await lessonsOf(THURSDAY, { groupId: art.group });
+      if (block === undefined) throw new Error('No art lesson.');
+      const keptBody = examOf(s, {
+        date: THURSDAY,
+        classIds: [s.classId],
+        blockChoices: [{ classId: s.classId, blockId: block.block_id, choice: 'keep' }],
+      });
+      const kept = saved(await create(s.branch, keptBody));
+      const again = checked(
+        await check(s.branch, asCheck({ ...keptBody, blockChoices: [] }, kept.exam.id)),
+      );
+      expect(again.choices).toEqual([
+        expect.objectContaining({ blockId: block.block_id, choice: 'keep', stored: 'keep' }),
+      ]);
+      expect(again.canSave).toBe(true);
+      // A block both classes sat under is not shared and stored no choice; a
+      // change that drops one class makes it shared and asks again.
+      const t2 = await scene({ art: true });
+      const art2 = t2.art;
+      if (art2 === null) throw new Error('No art.');
+      const [block2] = await lessonsOf(THURSDAY, { groupId: art2.group });
+      if (block2 === undefined) throw new Error('No art lesson.');
+      const whole = saved(
+        await create(
+          t2.branch,
+          examOf(t2, { date: THURSDAY, classIds: [t2.classId, art2.eighth], confirm: true }),
+        ),
+      );
+      const dropped = checked(
+        await check(
+          t2.branch,
+          asCheck(examOf(t2, { date: THURSDAY, classIds: [t2.classId] }), whole.exam.id),
+        ),
+      );
+      expect(dropped.choices).toEqual([
+        expect.objectContaining({ blockId: block2.block_id, choice: null, stored: null }),
+      ]);
+      expect(dropped.canSave).toBe(false);
+    });
+
+    it('lists the blocked lines and the warnings the save refuses with, the same items (From line of 5.6c-2; plan tests 4 and 5)', async () => {
+      const s = await scene();
+      const other = await lessonOf(NEXT_MONDAY, s.otherClass);
+      const blockedBody = examOf(s, {
+        classIds: [s.classId],
+        invigilatorIds: [s.otherTeacher.staffId],
+      });
+      const blocked = checked(await check(s.branch, asCheck(blockedBody)));
+      expect(blocked.canSave).toBe(false);
+      expect(blocked.blocked?.some((one) => one.rule?.lessonIds.includes(other.id))).toBe(true);
+      expect(blocked.givenBack).toBeNull();
+      const refused = await create(s.branch, blockedBody);
+      refusedWith(refused, 409, 'exam_blocked');
+      expect(linesOf(blocked.blocked ?? [])).toEqual(linesOf(detailsOf(refused)));
+
+      const stranger = await load.teacher(s.branch, {});
+      const warnedBody = examOf(s, { invigilatorIds: [stranger.staffId] });
+      const warned = checked(await check(s.branch, asCheck(warnedBody)));
+      expect(warned.blocked).toEqual([]);
+      expect(warned.canSave).toBe(true);
+      const asked = await create(s.branch, warnedBody);
+      refusedWith(asked, 409, 'exam_warnings');
+      expect(linesOf(warned.warnings ?? [])).toEqual(linesOf(detailsOf(asked)));
+      expect(new Set(warned.warnings?.map((one) => one.code))).toEqual(
+        new Set(['invigilator_unavailable', 'invigilator_subject']),
+      );
+    });
+
+    it('lists what a change gives back: blocked with the free rooms, then kept with a reason (decision 3 of 5.6c-1; plan test 6)', async () => {
+      const s = await scene();
+      const exam = saved(
+        await create(s.branch, examOf(s, { date: LATER_MONDAY, classIds: [s.otherClass] })),
+      );
+      // The first class's lesson takes the other class's room for that day.
+      const own = await lessonOf(LATER_MONDAY, s.classId);
+      const moved = await request(t.kit.server)
+        .post(`/api/timetable/lessons/${own.id}/room`)
+        .set('Cookie', t.admin)
+        .set(BRANCH_HEADER, s.branch)
+        .set(REQUEST_KEY_HEADER, randomUUID())
+        .send({ roomId: s.otherRoom, reason: 'The room is painted' });
+      expect(moved.status, JSON.stringify(moved.body)).toBe(200);
+      const other = await lessonOf(LATER_MONDAY, s.otherClass);
+      const body = examOf(s, { date: LATER_MONDAY, classIds: [s.otherClass], first: 2 });
+      const before = await all();
+      const blocked = checked(await check(s.branch, asCheck(body, exam.exam.id)));
+      expect(blocked.blocked).toEqual([]);
+      expect(blocked.givenBack?.map((one) => [one.lesson.id, one.state])).toEqual([
+        [other.id, 'blocked'],
+      ]);
+      expect(blocked.givenBack?.[0]?.lesson.cancelCause).toBe('exam');
+      expect(blocked.givenBack?.[0]?.rules.length).toBeGreaterThan(0);
+      expect(blocked.freeRooms.length).toBeGreaterThan(0);
+      expect(blocked.canSave).toBe(false);
+      expect(await all()).toEqual(before);
+      // The save refuses the same lesson.
+      const refused = await change(s.branch, exam.exam.id, body);
+      refusedWith(refused, 409, 'exam_restore_blocked');
+      expect(detailsOf(refused).some((one) => one.rule?.lessonIds.includes(other.id))).toBe(true);
+      const kept = checked(
+        await check(
+          s.branch,
+          asCheck(
+            // No reason yet: the dialog asks the check before it is typed
+            // (spec review of the code, must-fix 1).
+            { ...body, keepCancelled: [other.id] },
+            exam.exam.id,
+          ),
+        ),
+      );
+      expect(kept.givenBack?.map((one) => [one.lesson.id, one.state])).toEqual([
+        [other.id, 'kept'],
+      ]);
+      expect(kept.canSave).toBe(true);
+    });
+
+    it('lists a lesson given back as restored, as restorable when named to stay cancelled, and nothing while a rule blocks (plan review must-fix 2, should-fix 4)', async () => {
+      // Two separate maths lessons of the first class on Monday, lessons 1 and 2.
+      const s = await scene({ double: true });
+      const exam = saved(
+        await create(s.branch, examOf(s, { date: LATER_MONDAY, classIds: [s.otherClass] })),
+      );
+      const other = await lessonOf(LATER_MONDAY, s.otherClass);
+      const later = examOf(s, { date: LATER_MONDAY, classIds: [s.otherClass], first: 2 });
+      // The one path that restores and writes up to the commit's checks
+      // writes nothing either (spec review of the code, must-fix 4).
+      const before = await all();
+      const restored = checked(await check(s.branch, asCheck(later, exam.exam.id)));
+      expect(await all()).toEqual(before);
+      expect(restored.givenBack?.map((one) => [one.lesson.id, one.state])).toEqual([
+        [other.id, 'restored'],
+      ]);
+      expect(restored.canSave).toBe(true);
+      const restorable = checked(
+        await check(
+          s.branch,
+          asCheck({ ...later, keepCancelled: [other.id], keepReason: 'Kept' }, exam.exam.id),
+        ),
+      );
+      expect(restorable.givenBack?.map((one) => [one.lesson.id, one.state])).toEqual([
+        [other.id, 'restorable'],
+      ]);
+      expect(restorable.canSave).toBe(false);
+      // The save refuses a restorable lesson named to stay cancelled (as in 5.6c-1).
+      refusedWith(
+        await change(s.branch, exam.exam.id, {
+          ...later,
+          keepCancelled: [other.id],
+          keepReason: 'Kept',
+        }),
+        404,
+        'not_found',
+      );
+      // The first class's teacher invigilating in lesson 2, where they teach:
+      // a blocked line, and the lessons given back are not worked out.
+      const blockedBody = examOf(s, {
+        date: LATER_MONDAY,
+        classIds: [s.otherClass],
+        first: 2,
+        invigilatorIds: [s.teacher.staffId],
+      });
+      const blocked = checked(await check(s.branch, asCheck(blockedBody, exam.exam.id)));
+      expect(blocked.blocked?.length).toBeGreaterThan(0);
+      expect(blocked).toMatchObject({ givenBack: null, canSave: false });
+    });
+
+    it('answers a date without lessons with its line and no choice (plan review correction 2), and the refusals of the exam’s shape as the save (plan test 8)', async () => {
+      const s = await scene({ art: true });
+      // A vacation between quarters has no lessons.
+      const vacation = checked(await check(s.branch, asCheck(examOf(s, { date: '2026-11-02' }))));
+      expect(vacation.blocked?.map((one) => one.code)).toEqual(['vacation']);
+      expect(vacation).toMatchObject({ choices: [], cancels: [], canSave: false });
+      refusedWith(
+        await check(s.branch, asCheck(examOf(s, { date: '2026-10-11' }))),
+        409,
+        'exam_no_timetable',
+      );
+      refusedWith(
+        await check(s.branch, asCheck(examOf(s, { date: '2026-10-09' }))),
+        409,
+        'exam_started',
+      );
+      refusedWith(
+        await check(s.branch, asCheck(examOf(s, { first: 1, last: 4 }))),
+        409,
+        'exam_slots',
+      );
+    });
+
+    it('answers a day off of one grade of the exam with its line, as the save refuses it (plan review correction 2)', async () => {
+      const s = await scene({ art: true });
+      const art = s.art;
+      if (art === null) throw new Error('No art.');
+      await t.database.migrator
+        .insertInto('calendar_entries')
+        .values({
+          branch_id: s.branch,
+          kind: 'day_off',
+          name: 'Grade 8 trip',
+          first_date: THURSDAY,
+          last_date: THURSDAY,
+          grade_from: 8,
+          grade_to: 8,
+        })
+        .execute();
+      const body = examOf(s, { date: THURSDAY, classIds: [s.classId, art.eighth] });
+      const answer = checked(await check(s.branch, asCheck(body)));
+      expect(answer.blocked?.map((one) => one.code)).toEqual(['day_off']);
+      expect(answer).toMatchObject({ choices: [], cancels: [], canSave: false });
+      const refused = await create(s.branch, body);
+      refusedWith(refused, 409, 'exam_blocked');
+      expect(detailsOf(refused).map((one) => one.code)).toEqual(['day_off']);
+    });
+
+    it('refuses a tick, and lessons kept cancelled without an exam to change (plan test 10)', async () => {
+      const s = await northScene();
+      refusedWith(
+        await check(s.branch, { ...asCheck(examOf(s)), confirm: true }),
+        400,
+        'validation_failed',
+      );
+      const own = await lessonOf(NEXT_MONDAY, s.classId);
+      refusedWith(
+        await check(s.branch, { ...asCheck(examOf(s)), keepCancelled: [own.id] }),
+        400,
+        'validation_failed',
+      );
+      refusedWith(
+        await check(s.branch, { ...asCheck(examOf(s)), keepReason: 'Kept' }),
+        400,
+        'validation_failed',
+      );
+    });
+
+    it('is open to the Super Admin and the Academic Vice Principal, refused to the Principal, and writes nothing (plan review correction 1; plan test 9)', async () => {
+      const s = await northScene();
+      const before = await all();
+      checked(await check(s.branch, asCheck(examOf(s, { date: '2026-11-23' })), t.admin));
+      checked(await check(s.branch, asCheck(examOf(s, { date: '2026-11-23' })), t.vicePrincipal));
+      refusedWith(
+        await check(s.branch, asCheck(examOf(s, { date: '2026-11-23' })), t.principal),
+        403,
+        'permission_denied',
+      );
+      expect(await all()).toEqual(before);
+    });
+
+    it('answers 404 for every id of the body of another branch or unknown, and writes nothing (.claude/rules/api.md; plan test 9)', async () => {
+      const s = await scene({ art: true });
+      const o = await scene({ art: true });
+      const exam = saved(
+        await create(s.branch, examOf(s, { date: LATER_MONDAY, classIds: [s.otherClass] })),
+      );
+      const theirs = saved(
+        await create(o.branch, examOf(o, { date: LATER_MONDAY, classIds: [o.otherClass] })),
+      );
+      const ownBlock =
+        (await lessonsOf(THURSDAY, { groupId: s.art?.group ?? '' }))[0]?.block_id ?? '';
+      const theirBlock =
+        (await lessonsOf(THURSDAY, { groupId: o.art?.group ?? '' }))[0]?.block_id ?? '';
+      const theirLesson = (await lessonOf(LATER_MONDAY, o.otherClass)).id;
+      const base = asCheck(examOf(s));
+      const room = examOf(s).rooms[0];
+      if (room === undefined) throw new Error('No room.');
+      const bodies = (foreign: {
+        room: string;
+        class: string;
+        group: string;
+        staff: string;
+        block: string;
+        subject: string;
+        exam: string;
+        lesson: string;
+      }) => [
+        { ...base, rooms: [{ ...room, roomId: foreign.room }] },
+        { ...base, rooms: [{ ...room, classIds: [foreign.class] }] },
+        {
+          ...base,
+          subjectId: o.art?.subject ?? '',
+          rooms: [{ ...room, classIds: [], groupIds: [foreign.group] }],
+        },
+        { ...base, rooms: [{ ...room, invigilatorIds: [foreign.staff] }] },
+        {
+          ...base,
+          blockChoices: [{ classId: s.classId, blockId: foreign.block, choice: 'cancel' }],
+        },
+        {
+          ...base,
+          blockChoices: [{ classId: foreign.class, blockId: ownBlock, choice: 'cancel' }],
+        },
+        { ...base, subjectId: foreign.subject },
+        { ...base, examId: foreign.exam },
+        {
+          ...asCheck(
+            examOf(s, { date: LATER_MONDAY, classIds: [s.otherClass], first: 2 }),
+            exam.exam.id,
+          ),
+          keepCancelled: [foreign.lesson],
+          keepReason: 'Kept',
+        },
+      ];
+      const before = await all();
+      for (const body of [
+        ...bodies({
+          room: o.hall,
+          class: o.classId,
+          group: o.art?.group ?? '',
+          staff: o.invigilator.staffId,
+          block: theirBlock,
+          subject: UNKNOWN,
+          exam: theirs.exam.id,
+          lesson: theirLesson,
+        }),
+        ...bodies({
+          room: UNKNOWN,
+          class: UNKNOWN,
+          group: UNKNOWN,
+          staff: UNKNOWN,
+          block: UNKNOWN,
+          subject: UNKNOWN,
+          exam: UNKNOWN,
+          lesson: UNKNOWN,
+        }),
+      ]) {
+        refusedWith(await check(s.branch, body), 404, 'not_found');
+      }
+      expect(await all()).toEqual(before);
+    });
+  });
+
+  // Task 5.6c-2 (decision 7 of its plan): the class day page shows the
+  // standing exams the class sits (06, Exam: "It is shown on every timetable
+  // view ..., marked 'exam'").
+  describe('the exams of the class day page (task 5.6c-2)', () => {
+    const dayOf = async (branch: string, date: string, classId: string, cookie = t.admin) => {
+      const response = await t.get(
+        `/api/timetable/day?date=${date}&classId=${classId}`,
+        branch,
+        cookie,
+      );
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      return dayAnswerSchema.parse(response.body);
+    };
+
+    it('lists an exam that names the class and one of a group fed by it; not another class’s, nor a cancelled one (plan test 11)', async () => {
+      const s = await scene({ art: true });
+      const art = s.art;
+      if (art === null) throw new Error('No art.');
+      const named = saved(await create(s.branch, examOf(s, { classIds: [s.classId] })));
+      const others = saved(
+        await create(
+          s.branch,
+          examOf(s, {
+            classIds: [s.otherClass],
+            roomId: s.spareRoom,
+            invigilatorIds: [s.teacher.staffId],
+          }),
+        ),
+      );
+      const gone = saved(
+        await create(s.branch, examOf(s, { date: LATER_MONDAY, classIds: [s.classId] })),
+      );
+      saved(await cancel(s.branch, gone.exam.id), 200);
+      const group = saved(
+        await create(
+          s.branch,
+          examOf(s, {
+            date: THURSDAY,
+            classIds: [],
+            groupIds: [art.group],
+            subjectId: art.subject,
+            confirm: true,
+          }),
+        ),
+      );
+      const monday = await dayOf(s.branch, NEXT_MONDAY, s.classId);
+      expect(monday.exams.map((one) => one.id)).toEqual([named.exam.id]);
+      expect(monday.exams[0]).toMatchObject({
+        title: 'Quarter exam in maths',
+        start: 480,
+        end: 525,
+        room: { id: s.hall },
+        invigilators: [expect.any(String)],
+      });
+      expect(monday.exams.map((one) => one.id)).not.toContain(others.exam.id);
+      expect((await dayOf(s.branch, LATER_MONDAY, s.classId)).exams).toEqual([]);
+      expect((await dayOf(s.branch, THURSDAY, s.classId)).exams.map((one) => one.id)).toEqual([
+        group.exam.id,
+      ]);
+      // Another branch's standing exam of the same date stays out (permission
+      // review should-fix 1), as the Super Admin who holds every branch.
+      const elsewhere = await scene();
+      const theirs = saved(await create(elsewhere.branch, examOf(elsewhere)));
+      expect(theirs.exam.cancelled).toBe(false);
+      expect((await dayOf(s.branch, NEXT_MONDAY, s.classId)).exams.map((one) => one.id)).toEqual([
+        named.exam.id,
+      ]);
+      expect((await dayOf(s.branch, NEXT_MONDAY, s.otherClass)).exams.map((one) => one.id)).toEqual(
+        [others.exam.id],
+      );
+    });
+  });
+
+  describe('the exams of the class day page, read by the Principal (task 5.6c-2)', () => {
+    it('shows the Principal the exam of the class with its room and invigilator (permission review should-fix 3)', async () => {
+      const s = await northScene();
+      const date = '2026-12-07';
+      const exam = saved(await create(s.branch, examOf(s, { date, classIds: [s.classId] })));
+      const response = await t.get(
+        `/api/timetable/day?date=${date}&classId=${s.classId}`,
+        s.branch,
+        t.principal,
+      );
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      expect(dayAnswerSchema.parse(response.body).exams).toEqual([
+        expect.objectContaining({
+          id: exam.exam.id,
+          room: expect.objectContaining({ id: s.hall }) as unknown,
+        }),
+      ]);
     });
   });
 

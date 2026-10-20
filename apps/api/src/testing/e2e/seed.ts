@@ -3183,6 +3183,12 @@ try {
      * the branch.
      */
     publishable?: boolean;
+    /**
+     * Task 5.6c-2: a block shared by both classes (the group 7-Ecology of
+     * 7 Oxford and 7 Princeton, Monday slot 3, Aliyeva's) and a person with
+     * no lessons to invigilate (the staff id and phone given).
+     */
+    examShared?: { readonly staffId: string; readonly phone: string };
   }) => {
     const gridBranch = await insertBranch(migrator, scene.branch);
     const gridVice = await create(scene.vice[0], scene.vice[1]);
@@ -3491,6 +3497,136 @@ try {
           )
           .execute();
       }
+      if (scene.examShared !== undefined) {
+        const ecology = await transaction
+          .insertInto('subjects')
+          .values({
+            name_uz: 'Ekologiya',
+            name_ru: 'Экология',
+            name_en: 'Ecology',
+            department_id: steam.id,
+            grades: [7],
+            colour: 'violet',
+            journal_type: 'attendance_only',
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('staff_subjects')
+          .values({ staff_id: person.id, subject_id: ecology.id, grades: [7] })
+          .execute();
+        const group = await transaction
+          .insertInto('groups')
+          .values({
+            branch_id: gridBranch,
+            academic_year_id: year.id,
+            subject_id: ecology.id,
+            name: '7-Ecology',
+            language: 'uz',
+            max_size: 40,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('group_classes')
+          .values(
+            classes.map((one) => ({ group_id: group.id, class_id: one.id, branch_id: gridBranch })),
+          )
+          .execute();
+        const row = await transaction
+          .insertInto('teaching_load_rows')
+          .values({
+            branch_id: gridBranch,
+            version_id: draft.id,
+            group_id: group.id,
+            subject_id: ecology.id,
+            teacher_id: person.id,
+            lessons_per_week: 1,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        // Monday, slot 3 (09:30–10:15).
+        const block = await transaction
+          .insertInto('pattern_blocks')
+          .values({
+            branch_id: gridBranch,
+            version_id: draft.id,
+            weekday: 1,
+            slot_position: 3,
+            start_minutes: 570,
+            end_minutes: 615,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('pattern_entries')
+          .values({
+            branch_id: gridBranch,
+            version_id: draft.id,
+            block_id: block.id,
+            weekday: 1,
+            start_minutes: 570,
+            end_minutes: 615,
+            load_row_id: row.id,
+            teacher_id: person.id,
+          })
+          .execute();
+        const invigilator = await transaction
+          .insertInto('staff')
+          .values({
+            kind: 'person',
+            staff_id: scene.examShared.staffId,
+            first_name: 'Rustam',
+            last_name: 'Nazarov',
+            sex: 'male',
+            birth_date: '1984-02-14',
+            phone: scene.examShared.phone,
+            admission_date: '2026-09-01',
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('staff_branches')
+          .values({ staff_id: invigilator.id, branch_id: gridBranch, is_main: true })
+          .execute();
+        await transaction
+          .insertInto('staff_divisions')
+          .values({
+            staff_id: invigilator.id,
+            division_id: academic.id,
+            department_id: steam.id,
+            is_main: true,
+          })
+          .execute();
+        await transaction
+          .insertInto('staff_languages')
+          .values({ staff_id: invigilator.id, language: 'uz' })
+          .execute();
+        await transaction
+          .insertInto('staff_statuses')
+          .values({ staff_id: invigilator.id, status: 'active', valid_from: '2026-09-01' })
+          .execute();
+        const invigilatorHours = await transaction
+          .insertInto('staff_availability')
+          .values({ branch_id: gridBranch, staff_id: invigilator.id, valid_from: startDate })
+          .returning(['id', 'valid_until'])
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('staff_availability_ranges')
+          .values(
+            [1, 2, 3, 4, 5].map((weekday) => ({
+              entry_id: invigilatorHours.id,
+              branch_id: gridBranch,
+              staff_id: invigilator.id,
+              weekday,
+              start_minutes: 0,
+              end_minutes: 1440,
+              valid_from: startDate,
+              valid_until: invigilatorHours.valid_until,
+            })),
+          )
+          .execute();
+      }
       if (scene.mixed !== undefined) {
         const [pe, tech] = await Promise.all(
           (
@@ -3747,6 +3883,21 @@ try {
     publishable: true,
   });
   seeded.dayChanges = { login: dayVice.login, password: dayVice.firstPassword };
+
+  // Exams (task 5.6c-2): the publishable scene again, in a branch of its
+  // own, with a block shared by 7 Oxford and 7 Princeton and a person to
+  // invigilate; the browser test publishes, makes an exam of 7 Oxford over
+  // the shared block and cancels it.
+  const examVice = await gridScene({
+    branch: 'Exams browser test branch',
+    vice: ['Ozoda', 'Komilova'],
+    staffId: 'S-269341',
+    phone: '+998935557341',
+    rooms: ['Room 31'],
+    publishable: true,
+    examShared: { staffId: 'S-269342', phone: '+998935557342' },
+  });
+  seeded.exams = { login: examVice.login, password: examVice.firstPassword };
 
   // The department move (task 3.4c): a branch of its own with a year around
   // today, 7 Oxford, the attendance-only subject Cosmology of STEAM and a

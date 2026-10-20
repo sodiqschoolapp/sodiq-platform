@@ -401,6 +401,42 @@ describe('the notifications of the top bar', () => {
       ]);
     });
 
+    // Task 5.6c-2 (plan test 18; From line of 5.6c-2): an exam's notice shows
+    // the action and the person's invigilation, in the language of the tab.
+    it('shows the action of an exam and the invigilation under its text', async () => {
+      const EXAM: Notification = {
+        ...ROOM,
+        kind: 'timetable.exam_changed',
+        data: {
+          action: 'changed',
+          title: 'Quarter exam',
+          date: '2026-10-19',
+          invigilation: { start: '08:00', end: '09:30', room: 'Hall' },
+        },
+      };
+      const NONE: Notification = {
+        ...EXAM,
+        id: '0199c000-0000-7000-8000-000000000009',
+        data: {
+          action: 'cancelled',
+          title: 'Quarter exam',
+          date: '2026-10-19',
+          invigilation: null,
+        },
+      };
+      open({ [LIST]: () => json({ unreadCount: 1, items: [EXAM, NONE] }) }, 'ru');
+      const dialog = await openDialog('ru', 1);
+      const changed = dialog.querySelector('[data-exam-notice="changed"]');
+      expect([...(changed?.querySelectorAll('p') ?? [])].map((one) => one.textContent)).toEqual([
+        ru.notifications.exam.changed,
+        'Вы наблюдаете 08:00–09:30 в кабинете Hall.',
+      ]);
+      const cancelled = dialog.querySelector('[data-exam-notice="cancelled"]');
+      expect([...(cancelled?.querySelectorAll('p') ?? [])].map((one) => one.textContent)).toEqual([
+        ru.notifications.exam.cancelled,
+      ]);
+    });
+
     it('shows no week for data it cannot read', async () => {
       open({
         [LIST]: () =>

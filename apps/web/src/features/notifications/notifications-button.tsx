@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/dialog';
 import { NOTIFICATIONS_KEY, notificationsQuery } from './notifications-api';
 import { formatMoment } from '@/lib/dates';
+import { ExamNotice } from './exam-notice';
 import { WeekChange } from './week-change';
 
 /**
@@ -143,6 +144,7 @@ export function NotificationsButton() {
                       )}
                     </span>
                   </button>
+                  <ExamNotice item={item} />
                   <WeekChange item={item} />
                 </li>
               );

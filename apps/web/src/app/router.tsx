@@ -35,6 +35,8 @@ import { builderSearch } from '@/features/timetable/builder-search';
 import { TimetablePage } from '@/features/timetable/timetable-page';
 import { DayPage } from '@/features/timetable/day-page';
 import { daySearch } from '@/features/timetable/day-search';
+import { ExamsPage } from '@/features/timetable/exams-page';
+import { examsSearch } from '@/features/timetable/exams-search';
 import { HeadTeachersPage } from '@/features/people/head-teachers-page';
 import { NeverUsedPage } from '@/features/people/never-used-page';
 import { PeoplePage } from '@/features/people/people-page';
@@ -308,6 +310,14 @@ const dayRoute = createRoute({
   component: guarded('timetable', DayPage),
 });
 
+/** Exams of a date (task 5.6c-2). */
+const examsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/timetable/exams',
+  validateSearch: examsSearch,
+  component: guarded('timetable', ExamsPage),
+});
+
 /** People (task 2.2a): the entry of the menu item and the staff list. */
 const peopleRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -487,6 +497,7 @@ const routeTree = rootRoute.addChildren([
     timetableRoute,
     builderRoute,
     dayRoute,
+    examsRoute,
     loadRoute,
     peopleRoute,
     staffRoute,

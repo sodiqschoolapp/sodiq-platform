@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
   classDisplayName,
+  examCheckSchema,
   examSaveAnswerSchema,
   examsAnswerSchema,
   listName,
@@ -9,6 +10,8 @@ import {
   type ErrorDetail,
   type Exam,
   type ExamCancelBody,
+  type ExamCheck,
+  type ExamCheckInput,
   type ExamInput,
   type ExamSaveAnswer,
   type ExamsAnswer,
@@ -39,7 +42,7 @@ import {
   type ExamDayLesson,
   type StandingExam,
 } from './calendar-exams.js';
-import { classSlotsOn } from './day-changes.service.js';
+import { classSlotsOn, dayLessonsOf } from './day-changes.service.js';
 import { examCheck, examDayOf, versionOnDate } from './exam-check.js';
 import { TimetablePattern } from './pattern.service.js';
 import {
@@ -141,6 +144,46 @@ interface Planned {
   readonly warnings: readonly RuleResult[];
 }
 
+/**
+ * What a check (task 5.6c-2, decision 3 of its plan) collects in place of
+ * the refusals a person settles in the dialog: the lessons the exam covers,
+ * every shared block with the choice it took, the blocked rules and the
+ * warnings (`null` until worked out), and what a change gives back.
+ */
+interface CheckFound {
+  cancels: string[];
+  choices: {
+    readonly classId: string;
+    readonly blockId: string;
+    readonly lessonIds: readonly string[];
+    readonly otherClassIds: readonly string[];
+    readonly choice: ExamBlockChoice | null;
+    readonly stored: ExamBlockChoice | null;
+  }[];
+  blocked: ErrorDetail[] | null;
+  warnings: ErrorDetail[] | null;
+  givenBack:
+    | { readonly lessonId: string; readonly state: GivenBackState; readonly rules: ErrorDetail[] }[]
+    | null;
+  freeRooms: string[];
+}
+
+type GivenBackState = 'restored' | 'blocked' | 'kept' | 'restorable' | 'otherExam';
+
+/** Ends a check's run of the save at the point its answer is known. */
+class CheckDone extends Error {
+  constructor() {
+    super('check');
+  }
+}
+
+/** Carries the answer of a check out of the transaction it rolls back. */
+class PreviewDone extends Error {
+  constructor(readonly answer: ExamCheck) {
+    super('preview');
+  }
+}
+
 const ruleDetail = (result: RuleResult, message: string): ErrorDetail => ({
   path: `rules.${result.rule}`,
   code: result.rule,
@@ -240,6 +283,63 @@ export class TimetableExams {
   }
 
   /**
+   * What a save of the body would do (task 5.6c-2): the save itself run in
+   * its transaction with the person's choices, its refusals of the dialog
+   * collected (decision 3 of the plan), then rolled back (`PreviewDone`, the
+   * pattern of the calendar preview). No request key, no notice, no audit
+   * entry. The refusals of the exam's shape answer as the save's.
+   */
+  async check(access: Access, input: ExamCheckInput): Promise<ExamCheck> {
+    const branchId = branchOf(access);
+    try {
+      await refusingPublish(
+        () =>
+          this.transactions.run(access.branchIds, async (transaction) => {
+            await refuseForeignIds(transaction, branchId, input.examId ?? null, input);
+            await sql`select pg_advisory_xact_lock(${PUBLISH_LOCK})`.execute(transaction);
+            const stored =
+              input.examId === undefined
+                ? null
+                : await readExam(transaction, branchId, input.examId);
+            // The lessons as they stand, read before the save writes.
+            const dates = [...new Set([stored?.date ?? input.date, input.date])];
+            const before = (
+              await Promise.all(dates.map((date) => storedLessonsOn(transaction, branchId, date)))
+            ).flat();
+            const moment = await transactionMoment(transaction);
+            const found: CheckFound = {
+              cancels: [],
+              choices: [],
+              blocked: null,
+              warnings: null,
+              givenBack: null,
+              freeRooms: [],
+            };
+            try {
+              await this.save(
+                transaction,
+                access,
+                input.examId ?? null,
+                { ...input, confirm: true },
+                '',
+                found,
+              );
+            } catch (error) {
+              if (!(error instanceof CheckDone)) throw error;
+            }
+            throw new PreviewDone(await checkAnswer(transaction, before, moment, found));
+          }),
+        EXAM_REFUSALS,
+      );
+    } catch (error) {
+      if (error instanceof PreviewDone) return error.answer;
+      throw error;
+    }
+    // The work above always throws, the answer or a refusal; TypeScript cannot see that.
+    throw new ApiException('internal_error', 500);
+  }
+
+  /**
    * Every id of the path and the body against the branch before any lock
    * (`.claude/rules/api.md`), then the publish lock, then the work once.
    */
@@ -285,6 +385,7 @@ export class TimetableExams {
     id: string | null,
     input: ExamInput,
     requestId: string,
+    found: CheckFound | null = null,
   ): Promise<ExamSaved> {
     const branchId = branchOf(access);
     const yearId = await yearOfDate(transaction, branchId, input.date);
@@ -315,6 +416,7 @@ export class TimetableExams {
       stored,
       input,
       moment,
+      found,
     });
 
     // The write (must-fix 4): the exam and its rooms first, its claims
@@ -360,8 +462,17 @@ export class TimetableExams {
       keep: planned.covered,
       keepCancelled: input.keepCancelled ?? [],
       keepReason: input.keepReason ?? null,
+      found,
     });
+    // A lesson the save would refuse to give back keeps no link and no
+    // restore: the save stops here, and so does its check, before the
+    // constraints would refuse what the save never commits.
+    if (found?.givenBack?.some((one) => one.state === 'blocked' || one.state === 'restorable')) {
+      throw new CheckDone();
+    }
     await sql`set constraints all immediate`.execute(transaction);
+    // A check ends here, before the notices and the audit entry (task 5.6c-2).
+    if (found !== null) throw new CheckDone();
 
     const after = await readExam(transaction, branchId, examId);
     const notices = await this.tell(transaction, snapshot, {
@@ -406,6 +517,8 @@ export class TimetableExams {
       readonly stored: StoredExam | null;
       readonly input: ExamInput;
       readonly moment: Date;
+      /** A check's collector (task 5.6c-2): the refusals of the dialog collected, not thrown. */
+      readonly found: CheckFound | null;
     },
   ): Promise<Planned> {
     const { branchId, input: body, moment } = input;
@@ -419,13 +532,18 @@ export class TimetableExams {
     });
     const days = standing.grades.map((grade) => day.dayOf(grade));
     if (days.some((one) => !one.lessons)) {
-      throw new ApiException('exam_blocked', 409, undefined, [
-        {
-          path: 'date',
-          code: 'day_off',
-          message: 'The date has no lessons for a class of the exam.',
-        },
-      ]);
+      const dayOff: ErrorDetail = {
+        path: 'date',
+        code: 'day_off',
+        message: 'The date has no lessons for a class of the exam.',
+      };
+      // Before any choice (plan review correction 2): no block is read.
+      if (input.found !== null) {
+        input.found.blocked = [dayOff];
+        input.found.warnings = [];
+        throw new CheckDone();
+      }
+      throw new ApiException('exam_blocked', 409, undefined, [dayOff]);
     }
     if (new Set(days.map(dayKeyOf)).size > 1) throw new ApiException('exam_templates', 409);
     const [first] = days;
@@ -457,8 +575,42 @@ export class TimetableExams {
             ...body,
             rooms: input.stored.rooms.map((room) => ({ ...room })),
           });
-    const choiceOf = choicesOf(body, lessons, input.stored, storedStanding, day.begins);
+    const { choiceOf, storedOf } = choicesOf(
+      body,
+      lessons,
+      input.stored,
+      storedStanding,
+      day.begins,
+    );
     const found = examLessonsOf({ ...standing, date: body.date }, time, lessons, choiceOf);
+    const checking = input.found;
+    if (checking !== null) {
+      // Every shared block, chosen or not: the same walk with no choice
+      // lists them all as needs (task 5.6c-2).
+      const shared = examLessonsOf({ ...standing, date: body.date }, time, lessons, () => null);
+      const sitting = new Set(standing.classIds);
+      checking.cancels = [...found.covered].sort();
+      checking.choices = shared.needs.map((need) => {
+        const block = {
+          patternBlockIds: [...new Set(need.lessons.map((one) => one.patternBlockId))].sort(),
+          start: need.start,
+        };
+        return {
+          classId: need.classId,
+          blockId: need.lessons[0]?.blockId ?? NO_ID,
+          lessonIds: need.lessons.map((one) => one.id),
+          otherClassIds: [
+            ...new Set(
+              need.lessons.flatMap((one) => one.classIds.filter((id) => !sitting.has(id))),
+            ),
+          ].sort(),
+          choice: choiceOf(need.classId, block),
+          stored: storedOf(need.classId, block),
+        };
+      });
+      // With a choice missing the rule check cannot run (plan review must-fix 1).
+      if (found.needs.length > 0) throw new CheckDone();
+    }
     if (found.needs.length > 0) {
       throw new ApiException(
         'exam_block_choice',
@@ -503,6 +655,17 @@ export class TimetableExams {
       skipped: found.covered,
       outs: found.outs,
     });
+    if (checking !== null) {
+      checking.blocked = checked.blocked.map((one) =>
+        ruleDetail(one, 'A blocked rule of the exam on its date.'),
+      );
+      checking.warnings = checked.warnings.map((one) =>
+        ruleDetail(one, 'A warning of the exam that needs a tick.'),
+      );
+      // The lessons given back are checked only against an exam that can be
+      // written (plan review must-fix 2).
+      if (checked.blocked.length > 0) throw new CheckDone();
+    }
     if (checked.blocked.length > 0) {
       throw new ApiException(
         'exam_blocked',
@@ -573,6 +736,7 @@ export class TimetableExams {
       keep: new Set(),
       keepCancelled: input.keepCancelled ?? [],
       keepReason: input.keepReason ?? null,
+      found: null,
     });
     await sql`set constraints all immediate`.execute(transaction);
     const after = await readExam(transaction, branchId, id);
@@ -617,8 +781,18 @@ export class TimetableExams {
       readonly keep: ReadonlySet<string>;
       readonly keepCancelled: readonly string[];
       readonly keepReason: string | null;
+      /** A check's collector (task 5.6c-2): each lesson given back with what happens to it. */
+      readonly found: CheckFound | null;
     },
   ) {
+    const items: NonNullable<CheckFound['givenBack']> = [];
+    const note = (
+      lessons: readonly StoredDayLesson[],
+      state: GivenBackState,
+      rules: ErrorDetail[],
+    ) => {
+      for (const one of lessons) items.push({ lessonId: one.id, state, rules });
+    };
     const unlinked = (
       await transaction
         .deleteFrom('lesson_exam_cancels')
@@ -635,7 +809,10 @@ export class TimetableExams {
     // A lesson named to stay cancelled is one this save gives back
     // (permission review should-fix 4): another is refused, never dropped.
     for (const id of input.keepCancelled) if (!unlinked.includes(id)) throw notFound();
-    if (unlinked.length === 0) return empty;
+    if (unlinked.length === 0) {
+      if (input.found !== null) input.found.givenBack = [];
+      return empty;
+    }
     const still = new Set(
       (
         await transaction
@@ -651,6 +828,9 @@ export class TimetableExams {
       ...empty,
       lessonsUnderOtherExams: unlinked.filter((one) => still.has(one)).sort(),
     };
+    for (const lessonId of result.lessonsUnderOtherExams) {
+      items.push({ lessonId, state: 'otherExam', rules: [] });
+    }
     const blocked: ErrorDetail[] = [];
     const freeRooms = new Set<string>();
     for (const date of input.dates) {
@@ -671,7 +851,13 @@ export class TimetableExams {
         if (checked.blocked.length > 0 && lessons.some((one) => kept.has(one.id))) {
           await transaction
             .updateTable('lessons')
-            .set({ cancel_cause: 'reason', cancel_reason: input.keepReason })
+            // A check names lessons to keep before the reason is typed; its
+            // write is rolled back, so a placeholder meets `lessons_reason_check`
+            // (spec review of the code, must-fix 1).
+            .set({
+              cancel_cause: 'reason',
+              cancel_reason: input.keepReason ?? (input.found === null ? null : 'check'),
+            })
             .where(
               'id',
               'in',
@@ -680,14 +866,21 @@ export class TimetableExams {
             .execute();
           result.lessonsKeptCancelled.push(...lessons.map((one) => one.id));
           for (const one of lessons) kept.delete(one.id);
-          continue;
-        }
-        if (checked.blocked.length > 0) {
-          blocked.push(
-            ...checked.blocked.map((one) =>
+          note(
+            lessons,
+            'kept',
+            checked.blocked.map((one) =>
               ruleDetail(one, 'A lesson the exam no longer covers cannot be restored.'),
             ),
           );
+          continue;
+        }
+        if (checked.blocked.length > 0) {
+          const rules = checked.blocked.map((one) =>
+            ruleDetail(one, 'A lesson the exam no longer covers cannot be restored.'),
+          );
+          blocked.push(...rules);
+          note(lessons, 'blocked', rules);
           for (const room of checked.freeRooms) freeRooms.add(room);
           continue;
         }
@@ -703,7 +896,20 @@ export class TimetableExams {
             .execute();
           result.lessonsRestored.push(one.id);
         }
+        // Named to stay cancelled but restorable: the save refuses it, the
+        // check lists it (plan review should-fix 4).
+        const restorable = input.found !== null && lessons.some((one) => kept.has(one.id));
+        note(lessons, restorable ? 'restorable' : 'restored', []);
+        if (restorable) for (const one of lessons) kept.delete(one.id);
       }
+    }
+    if (input.found !== null) {
+      // A lesson named to stay cancelled that another exam still holds is
+      // refused as the save refuses it (spec review of the code, should-fix 6).
+      if (kept.size > 0) throw notFound();
+      input.found.givenBack = items;
+      input.found.freeRooms = [...freeRooms].sort();
+      return result;
     }
     // A lesson named to stay cancelled that can be restored is refused.
     if (kept.size > 0) throw notFound();
@@ -1085,7 +1291,7 @@ function choicesOf(
   stored: StoredExam | null,
   storedStanding: StandingExam | null,
   begins: Date,
-): ExamChoiceOf {
+): { readonly choiceOf: ExamChoiceOf; readonly storedOf: ExamChoiceOf } {
   const patternOf = new Map(lessons.map((one) => [one.blockId, one.patternBlockId]));
   const given = new Map<string, ExamBlockChoice>();
   for (const one of body.blockChoices) {
@@ -1111,15 +1317,18 @@ function choicesOf(
           },
           lessons,
         );
-  return (classId, block) => {
-    for (const map of [given, before]) {
-      for (const pattern of block.patternBlockIds) {
-        const choice = map.get(`${classId}|${pattern}`);
-        if (choice !== undefined) return choice;
+  const from =
+    (maps: readonly ReadonlyMap<string, ExamBlockChoice>[]): ExamChoiceOf =>
+    (classId, block) => {
+      for (const map of maps) {
+        for (const pattern of block.patternBlockIds) {
+          const choice = map.get(`${classId}|${pattern}`);
+          if (choice !== undefined) return choice;
+        }
       }
-    }
-    return null;
-  };
+      return null;
+    };
+  return { choiceOf: from([given, before]), storedOf: from([before]) };
 }
 
 /** The rooms of the body with their classes, groups and invigilators. */
@@ -1265,6 +1474,7 @@ export async function examsOf(
       .where('id', '=', branchId)
       .executeTakeFirstOrThrow()
   ).time_zone;
+  const moment = await transactionMoment(transaction);
   const answers: Exam[] = [];
   for (const id of ids) {
     const exam = await readExam(transaction, branchId, id).catch((error: unknown) => {
@@ -1372,8 +1582,78 @@ export async function examsOf(
         ),
       })),
       cancelled: exam.cancelCause !== null,
+      started: exam.startsAt.getTime() <= moment.getTime(),
       lessonIds: [...lessons].sort(),
     });
   }
   return answers;
+}
+
+/**
+ * The answer of a check (task 5.6c-2) from what it collected, the lessons
+ * named as they stood before the save wrote, with their names.
+ */
+async function checkAnswer(
+  transaction: Transaction,
+  before: readonly StoredDayLesson[],
+  moment: Date,
+  found: CheckFound,
+): Promise<ExamCheck> {
+  const all = await dayLessonsOf(transaction, before, moment);
+  const byId = new Map(all.map((one) => [one.id, one]));
+  const named = (ids: readonly string[]) =>
+    ids.flatMap((id) => {
+      const lesson = byId.get(id);
+      return lesson === undefined ? [] : [lesson];
+    });
+  const classIds = [
+    ...new Set(found.choices.flatMap((one) => [one.classId, ...one.otherClassIds])),
+  ];
+  const classes =
+    classIds.length === 0
+      ? []
+      : await transaction
+          .selectFrom('classes')
+          .select(['id', 'grade', 'name'])
+          .where('id', 'in', classIds)
+          .execute();
+  const classOf = new Map(classes.map((one) => [one.id, classDisplayName(one.grade, one.name)]));
+  const rooms =
+    found.freeRooms.length === 0
+      ? []
+      : await transaction
+          .selectFrom('rooms')
+          .select(['id', 'name'])
+          .where('id', 'in', found.freeRooms)
+          .orderBy('name')
+          .execute();
+  const givenBack =
+    found.givenBack === null
+      ? null
+      : found.givenBack.flatMap((item) => {
+          const lesson = byId.get(item.lessonId);
+          return lesson === undefined ? [] : [{ lesson, state: item.state, rules: item.rules }];
+        });
+  return examCheckSchema.parse({
+    cancels: named(found.cancels),
+    choices: found.choices.map((one) => ({
+      classId: one.classId,
+      className: classOf.get(one.classId) ?? '',
+      blockId: one.blockId,
+      lessons: named(one.lessonIds),
+      otherClasses: one.otherClassIds.map((id) => classOf.get(id) ?? ''),
+      choice: one.choice,
+      stored: one.stored,
+    })),
+    blocked: found.blocked,
+    warnings: found.warnings,
+    givenBack,
+    freeRooms: rooms.map((one) => ({ id: one.id, name: one.name })),
+    canSave:
+      found.choices.every((one) => one.choice !== null) &&
+      found.blocked !== null &&
+      found.blocked.length === 0 &&
+      found.givenBack !== null &&
+      found.givenBack.every((one) => one.state !== 'blocked' && one.state !== 'restorable'),
+  });
 }

@@ -76,6 +76,7 @@ export type AccountKey =
   | 'draftGridMixed'
   | 'draftPublish'
   | 'dayChanges'
+  | 'exams'
   | 'whoTeacher'
   | 'whoHeadTutor'
   | 'whoHeadTeacher';

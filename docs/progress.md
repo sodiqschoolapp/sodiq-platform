@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 20 October 2026: task 5.6c-2 Exams in the timetable: the screens
+
+- Exams page `/timetable/exams?date=` (a `ListPage`, the exam in the side panel), the exam form with "Check" (`POST timetable/exams/check`: the save run with its choices and rolled back, listing the lessons cancelled, the shared blocks with their choice, the blocked rules, the warnings and on a change the lessons given back), Save only on a fresh check that can save; the cancel keeps lessons that cannot come back cancelled with a reason.
+- The class day page lists the class's standing exams marked "Exam" (`exams` of the day answer); exams answer `started` by the server's moment; the notice `timetable.exam_changed` shows the action and the invigilation.
+- Browser test `e2e/exams.spec.ts` on a scene of its own (account `exams`): an exam over a shared block with "keep", then a cancel keeping a lesson cancelled.
+- Left out: the exam after a publish, the calendar path's invigilator notices and the rating-exam link (5.6c-3); exams on the other views and prints (5.9); "needs a room" and "needs an invigilator" (5.7a).
+
+The next sessions must know:
+
+- `TimetableExams.check` runs `save` with a `CheckFound` collector: `plan` and `release` fill it instead of throwing `exam_block_choice`, `exam_blocked`, `exam_warnings`, `exam_restore_blocked`, and `CheckDone` ends the run before notices and audit; a new refusal of the save that a person settles in the dialog is collected there too.
+- `DayAnswer` has `exams`; a test fixture of the day answer gives `exams: []`.
+- The next task is 5.6c-3.
+
 ## 20 October 2026: task 5.6c-1 Exams in the timetable: the exam save
 
 - Exams are created, changed and cancelled through `GET`, `POST timetable/exams`, `GET`, `PUT timetable/exams/:id` and `POST timetable/exams/:id/cancel` (`exams.service.ts`, `exam-check.ts`): the rule engine checks the exam against the date's lessons, other exams and other branches' claims; warnings need `confirm`; shared blocks need a choice; the classes' lessons are cancelled "exam" with a link per exam (`lesson_exam_cancels`, 0094); a cancel or change gives back only the linked lessons, each checked as a restored lesson, or keeps them cancelled with a reason.

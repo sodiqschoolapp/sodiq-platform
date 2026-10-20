@@ -133,6 +133,25 @@ export const daySlotSchema = z.object({
 
 export type DaySlot = z.infer<typeof daySlotSchema>;
 
+/**
+ * A standing exam the class sits on the date (task 5.6c-2; `06`, Exam: "It is
+ * shown on every timetable view ..., marked 'exam'"): named in a room, or
+ * through a group fed by the class; the room that holds the class or its
+ * group and that room's invigilators.
+ */
+export const dayExamSchema = z.object({
+  id: z.uuid(),
+  title: z.string(),
+  subject: z.object({ id: z.uuid(), names }).nullable(),
+  /** Clock minutes of the day in branch time, half-open. */
+  start: z.int().min(0),
+  end: z.int().min(1),
+  room: z.object({ id: z.uuid(), name: z.string() }),
+  invigilators: z.array(z.string()),
+});
+
+export type DayExam = z.infer<typeof dayExamSchema>;
+
 export const dayAnswerSchema = z.object({
   date: schoolDateSchema,
   classId: z.uuid(),
@@ -147,6 +166,8 @@ export const dayAnswerSchema = z.object({
   /** Today in the branch at the moment of the request, so the page never reads the device's clock. */
   today: schoolDateSchema,
   lessons: z.array(dayLessonSchema),
+  /** The standing exams the class sits on the date, by start (task 5.6c-2). */
+  exams: z.array(dayExamSchema),
 });
 
 export type DayAnswer = z.infer<typeof dayAnswerSchema>;

@@ -15,7 +15,7 @@ import {
   type LessonRoomBody,
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate, useSearch } from '@tanstack/react-router';
+import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiFailure } from '@/api/failure';
@@ -69,7 +69,8 @@ const languageOf = (language: string): Language =>
  * on a date, with the one-day cancel of a lesson and its restore (`06`,
  * Changes after publishing; edge/timetable, After publishing: "The restore can
  * be refused, with another room offered"), and the correction of a past lesson
- * (task 5.6a-4). Today comes from the server; the
+ * (task 5.6a-4), and the class's exams marked "Exam" (task 5.6c-2). Today
+ * comes from the server; the
  * buttons follow the answer and the role, the server decides.
  */
 export function DayPage(): React.JSX.Element {
@@ -186,6 +187,9 @@ export function DayPage(): React.JSX.Element {
     );
   }
 
+  const shown = active.find((one) => one.id === classId);
+  const className = shown === undefined ? '' : classDisplayName(shown.grade, shown.name);
+
   const stateOf = (lesson: DayLesson): string => {
     if (lesson.cancelCause === 'reason') {
       return t('timetable.day.cancelledReason', { reason: lesson.cancelReason ?? '' });
@@ -229,6 +233,11 @@ export function DayPage(): React.JSX.Element {
             }}
           />
         </div>
+        <p className="text-sm">
+          <Link to="/timetable/exams" search={{ date }} className="text-link">
+            {t('timetable.day.examsLink')}
+          </Link>
+        </p>
         {message !== null && (
           <p role="status" className="text-sm">
             {message}
@@ -256,7 +265,7 @@ export function DayPage(): React.JSX.Element {
             <ErrorState error={day.error} onRetry={() => void day.refetch()} />
           ) : day.data === undefined ? (
             <LoadingOutline />
-          ) : day.data.lessons.length === 0 ? (
+          ) : day.data.lessons.length === 0 && day.data.exams.length === 0 ? (
             <EmptyState text={t('timetable.day.empty')} />
           ) : (
             <Table>
@@ -272,90 +281,123 @@ export function DayPage(): React.JSX.Element {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {day.data.lessons.map((lesson) => (
-                  <TableRow key={lesson.id} data-lesson={lesson.id}>
-                    <TableCell>
-                      {timeText(lesson.start)}–{timeText(lesson.end)}
-                    </TableCell>
-                    <TableCell>{lesson.unit.name}</TableCell>
-                    <TableCell>{lesson.subject.names[language]}</TableCell>
-                    <TableCell>{lesson.teacher?.name ?? t('timetable.day.needsTeacher')}</TableCell>
-                    <TableCell>{lesson.room?.name ?? t('timetable.day.needsRoom')}</TableCell>
-                    <TableCell>
-                      {stateOf(lesson)}
-                      {lesson.changed && <> · {t('timetable.day.changed')}</>}
-                    </TableCell>
-                    {edits && (
-                      <TableCell>
-                        {lesson.canCancel && (
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => {
-                              setMessage(null);
-                              restore.reset();
-                              setCancelling(lesson);
-                            }}
-                          >
-                            {t('timetable.day.cancel')}
-                          </Button>
+                {/* The class's exams of the date among its lessons by time,
+                    marked "Exam" (task 5.6c-2; `06`, Exam: "It is shown on
+                    every timetable view ..., marked 'exam'"). */}
+                {[
+                  ...day.data.exams.map((exam) => ({ start: exam.start, exam, lesson: null })),
+                  ...day.data.lessons.map((lesson) => ({
+                    start: lesson.start,
+                    exam: null,
+                    lesson,
+                  })),
+                ]
+                  .sort((a, b) => a.start - b.start)
+                  .map(({ exam, lesson }) =>
+                    exam !== null ? (
+                      <TableRow key={exam.id} data-exam={exam.id}>
+                        <TableCell>
+                          {timeText(exam.start)}–{timeText(exam.end)}
+                        </TableCell>
+                        {/* The class under "Class or group", the exam's title and subject
+                            under "Subject", its invigilators under "Teacher". */}
+                        <TableCell>{className}</TableCell>
+                        <TableCell>
+                          {exam.title}
+                          {exam.subject !== null && <> · {exam.subject.names[language]}</>}
+                        </TableCell>
+                        <TableCell>{exam.invigilators.join(', ')}</TableCell>
+                        <TableCell>{exam.room.name}</TableCell>
+                        <TableCell className="font-semibold">{t('timetable.day.exam')}</TableCell>
+                        {edits && <TableCell />}
+                      </TableRow>
+                    ) : lesson === null ? null : (
+                      <TableRow key={lesson.id} data-lesson={lesson.id}>
+                        <TableCell>
+                          {timeText(lesson.start)}–{timeText(lesson.end)}
+                        </TableCell>
+                        <TableCell>{lesson.unit.name}</TableCell>
+                        <TableCell>{lesson.subject.names[language]}</TableCell>
+                        <TableCell>
+                          {lesson.teacher?.name ?? t('timetable.day.needsTeacher')}
+                        </TableCell>
+                        <TableCell>{lesson.room?.name ?? t('timetable.day.needsRoom')}</TableCell>
+                        <TableCell>
+                          {stateOf(lesson)}
+                          {lesson.changed && <> · {t('timetable.day.changed')}</>}
+                        </TableCell>
+                        {edits && (
+                          <TableCell>
+                            {lesson.canCancel && (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => {
+                                  setMessage(null);
+                                  restore.reset();
+                                  setCancelling(lesson);
+                                }}
+                              >
+                                {t('timetable.day.cancel')}
+                              </Button>
+                            )}
+                            {lesson.canCancel && (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => {
+                                  setMessage(null);
+                                  restore.reset();
+                                  setChanging({ kind: 'room', lesson });
+                                }}
+                              >
+                                {t('timetable.day.changeRoom')}
+                              </Button>
+                            )}
+                            {lesson.canCancel && (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => {
+                                  setMessage(null);
+                                  restore.reset();
+                                  setChanging({ kind: 'move', lesson });
+                                }}
+                              >
+                                {t('timetable.day.move')}
+                              </Button>
+                            )}
+                            {lesson.canRestore && (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                disabled={restore.isPending}
+                                onClick={() => {
+                                  setMessage(null);
+                                  restore.mutate(lesson);
+                                }}
+                              >
+                                {t('timetable.day.restore')}
+                              </Button>
+                            )}
+                            {correctionKinds(lesson).length > 0 && (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => {
+                                  setMessage(null);
+                                  restore.reset();
+                                  setCorrecting(lesson);
+                                }}
+                              >
+                                {t('timetable.day.correct')}
+                              </Button>
+                            )}
+                          </TableCell>
                         )}
-                        {lesson.canCancel && (
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => {
-                              setMessage(null);
-                              restore.reset();
-                              setChanging({ kind: 'room', lesson });
-                            }}
-                          >
-                            {t('timetable.day.changeRoom')}
-                          </Button>
-                        )}
-                        {lesson.canCancel && (
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => {
-                              setMessage(null);
-                              restore.reset();
-                              setChanging({ kind: 'move', lesson });
-                            }}
-                          >
-                            {t('timetable.day.move')}
-                          </Button>
-                        )}
-                        {lesson.canRestore && (
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            disabled={restore.isPending}
-                            onClick={() => {
-                              setMessage(null);
-                              restore.mutate(lesson);
-                            }}
-                          >
-                            {t('timetable.day.restore')}
-                          </Button>
-                        )}
-                        {correctionKinds(lesson).length > 0 && (
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => {
-                              setMessage(null);
-                              restore.reset();
-                              setCorrecting(lesson);
-                            }}
-                          >
-                            {t('timetable.day.correct')}
-                          </Button>
-                        )}
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))}
+                      </TableRow>
+                    ),
+                  )}
               </TableBody>
             </Table>
           )}

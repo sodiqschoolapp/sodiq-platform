@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { schoolDateSchema } from './academic-year.js';
-import { DAY_CHANGE_REASON_MAX } from './day-changes.js';
+import { DAY_CHANGE_REASON_MAX, dayLessonSchema } from './day-changes.js';
+import { errorDetailSchema } from './errors.js';
 
 /**
  * Exams in the timetable (task 5.6c-1, pull request #181; docs/spec/
@@ -71,7 +72,7 @@ const keptMessage = { path: ['keepReason'], message: 'Lessons kept cancelled nee
  * invigilator twice, a room twice, a room with nothing in it, a group with
  * no subject (`exam_group_subject`: a group sits only with its subject).
  */
-const examFields = {
+const placeFields = {
   date: schoolDateSchema,
   firstLesson: z.int().min(1).max(30),
   lastLesson: z.int().min(1).max(30),
@@ -79,6 +80,10 @@ const examFields = {
   subjectId: z.uuid().nullable(),
   rooms: z.array(examRoomBodySchema).min(1).max(EXAM_ROOMS_MAX),
   blockChoices: z.array(examBlockChoiceSchema).max(200).default([]),
+};
+
+const examFields = {
+  ...placeFields,
   /** The tick of the warnings a save answered with `exam_warnings` (decision 8). */
   confirm: z.boolean().default(false),
 };
@@ -93,7 +98,7 @@ type ExamChecked = {
   keepReason?: string | undefined;
 };
 
-const checkExam = (body: ExamChecked, context: z.RefinementCtx): void => {
+const checkExam = (body: ExamChecked, context: z.RefinementCtx, needsReason = true): void => {
   if (body.lastLesson < body.firstLesson) {
     context.addIssue({
       code: 'custom',
@@ -142,7 +147,7 @@ const checkExam = (body: ExamChecked, context: z.RefinementCtx): void => {
       message: 'A block is chosen twice.',
     });
   }
-  if (!keptWithReason(body)) context.addIssue({ code: 'custom', ...keptMessage });
+  if (needsReason && !keptWithReason(body)) context.addIssue({ code: 'custom', ...keptMessage });
 };
 
 /** A change of an exam: the lessons it gives back may be kept cancelled with a reason (decision 3). */
@@ -157,6 +162,38 @@ export const examBodySchema = z
 export const examCreateBodySchema = z
   .strictObject(examFields)
   .superRefine((body, context) => checkExam(body, context));
+
+/**
+ * The check of a save (task 5.6c-2, decision 3 of its plan): the exam as a
+ * save would send it, `examId` for a change, never `confirm` (the check
+ * lists the warnings), and lessons kept cancelled only on a change (a new
+ * exam gives no lesson back; `.claude/rules/api.md`: a field a path has no
+ * use for is refused).
+ */
+export const examCheckBodySchema = z
+  .strictObject({ examId: z.uuid().optional(), ...placeFields, ...keepCancelled })
+  .superRefine((body, context) => {
+    // The check answers nothing on the reason: lessons are named to stay
+    // cancelled before it is typed.
+    checkExam(body, context, false);
+    if (body.examId === undefined && body.keepCancelled !== undefined) {
+      context.addIssue({
+        code: 'custom',
+        path: ['keepCancelled'],
+        message: 'A new exam gives no lesson back.',
+      });
+    }
+    if (body.examId === undefined && body.keepReason !== undefined) {
+      context.addIssue({
+        code: 'custom',
+        path: ['keepReason'],
+        message: 'A new exam gives no lesson back.',
+      });
+    }
+  });
+
+export type ExamCheckBody = z.input<typeof examCheckBodySchema>;
+export type ExamCheckInput = z.output<typeof examCheckBodySchema>;
 
 export type ExamBody = z.input<typeof examBodySchema>;
 export type ExamCreateBody = z.input<typeof examCreateBodySchema>;
@@ -209,6 +246,12 @@ export const examSchema = z.object({
     }),
   ),
   cancelled: z.boolean(),
+  /**
+   * Its start is at or before the server's moment of the request (task
+   * 5.6c-2, plan review should-fix 7): it is no longer changed or cancelled,
+   * and the page never reads the device's clock to know it.
+   */
+  started: z.boolean(),
   /** The lessons it keeps cancelled (`lesson_exam_cancels`). */
   lessonIds: z.array(z.uuid()),
 });
@@ -226,3 +269,63 @@ export const examSaveAnswerSchema = z.object({
 });
 
 export type ExamSaveAnswer = z.infer<typeof examSaveAnswerSchema>;
+
+/**
+ * A shared block of a sitting class under the exam (edge/timetable, Exams:
+ * "The save lists such blocks. For each, the Academic Vice Principal
+ * chooses"): the block named by its dated id, its lessons, the classes that
+ * do not sit, the choice the check used (the body's, else the stored one)
+ * and the stored one of a change.
+ */
+export const examCheckChoiceSchema = z.object({
+  classId: z.uuid(),
+  className: z.string(),
+  blockId: z.uuid(),
+  lessons: z.array(dayLessonSchema),
+  otherClasses: z.array(z.string()),
+  choice: z.enum(['cancel', 'keep']).nullable(),
+  stored: z.enum(['cancel', 'keep']).nullable(),
+});
+
+export type ExamCheckChoice = z.infer<typeof examCheckChoiceSchema>;
+
+/**
+ * What a change does to a lesson it gives back (decision 3 of 5.6c-1):
+ * restored, blocked (with the rules; it is kept cancelled with a reason or
+ * the save is refused), kept cancelled as asked, `restorable` (named to stay
+ * cancelled but it can be restored: the save refuses that), or still under
+ * another exam.
+ */
+export const EXAM_GIVEN_BACK_STATES = [
+  'restored',
+  'blocked',
+  'kept',
+  'restorable',
+  'otherExam',
+] as const;
+
+export const examGivenBackSchema = z.object({
+  lesson: dayLessonSchema,
+  state: z.enum(EXAM_GIVEN_BACK_STATES),
+  rules: z.array(errorDetailSchema),
+});
+
+export type ExamGivenBack = z.infer<typeof examGivenBackSchema>;
+
+/**
+ * The answer of the check (task 5.6c-2): what a save of the body would do,
+ * nothing written. `blocked`, `warnings` and `givenBack` are `null` while
+ * they are not worked out: every list after a missing choice, and the
+ * lessons given back while a rule blocks the exam.
+ */
+export const examCheckSchema = z.object({
+  cancels: z.array(dayLessonSchema),
+  choices: z.array(examCheckChoiceSchema),
+  blocked: z.array(errorDetailSchema).nullable(),
+  warnings: z.array(errorDetailSchema).nullable(),
+  givenBack: z.array(examGivenBackSchema).nullable(),
+  freeRooms: z.array(named),
+  canSave: z.boolean(),
+});
+
+export type ExamCheck = z.infer<typeof examCheckSchema>;
