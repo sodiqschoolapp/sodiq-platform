@@ -43,6 +43,9 @@ const OCT26 = '2026-10-26';
 const NOV02 = '2026-11-02';
 const NOV09 = '2026-11-09';
 const NOV16 = '2026-11-16';
+const NOV23 = '2026-11-23';
+const DEC07 = '2026-12-07';
+const DEC14 = '2026-12-14';
 
 /** A moment of a school date at a clock time in Tashkent (UTC+5, the kit's branches). */
 const at = (date: string, time: string) => new Date(`${date}T${time}:00+05:00`);
@@ -291,6 +294,7 @@ describe('template changes after publishing', () => {
       .innerJoin('lesson_blocks', 'lesson_blocks.id', 'lessons.block_id')
       .select([
         'lessons.id',
+        'lessons.block_id',
         sql<string>`lessons.lesson_date::text`.as('date'),
         'lessons.class_id',
         'lessons.group_id',
@@ -408,6 +412,33 @@ describe('template changes after publishing', () => {
       startTime,
     );
 
+  /** The bulk cancel's check, then its save with what it listed and `choice` for every shared block. */
+  const bulkCancel = async (
+    s: Scene,
+    body: { date: string; classIds: string[]; lessonNumbers: number[] },
+    choice: 'keep' | 'cancel',
+  ) => {
+    const checked = await post('/api/timetable/bulk-cancels/check', s.branch, body);
+    expect(checked.status, JSON.stringify(checked.body)).toBe(200);
+    const answer = checked.body as {
+      cancel: { lesson: { id: string } }[];
+      shared: { blockId: string; lessons: { id: string }[]; chosenOnly: string[] }[];
+    };
+    return okay(
+      await keyed('/api/timetable/bulk-cancels', s.branch, {
+        ...body,
+        reason: 'Excursion to the museum',
+        blocks: answer.shared.map((one) => ({ blockId: one.blockId, choice })),
+        lessonIds: [
+          ...answer.cancel.map((one) => one.lesson.id),
+          ...answer.shared.flatMap((one) =>
+            choice === 'cancel' ? one.lessons.map((lesson) => lesson.id) : one.chosenOnly,
+          ),
+        ],
+      }),
+    );
+  };
+
   /** Every row a change now writes in a branch: what a refused one leaves as it was. */
   async function storedRowsOf(branch: string) {
     const rows: Record<string, unknown[]> = await t.rowsOf(branch);
@@ -421,6 +452,7 @@ describe('template changes after publishing', () => {
       'timetable_version_out_of_date_causes',
       'timetable_day_keeps',
       'exams',
+      'bulk_cancels',
     ] as const) {
       rows[table] = await t.database.migrator
         .selectFrom(table)
@@ -434,6 +466,21 @@ describe('template changes after publishing', () => {
       .selectAll()
       .where('branch_id', '=', branch)
       .orderBy('change_id')
+      .execute();
+    rows.lesson_block_class_outs = await t.database.migrator
+      .selectFrom('lesson_block_class_outs')
+      .selectAll()
+      .where('branch_id', '=', branch)
+      .orderBy('block_id')
+      .orderBy('class_id')
+      .execute();
+    rows.bulk_cancel_blocks = await t.database.migrator
+      .selectFrom('bulk_cancel_blocks')
+      .selectAll()
+      .where('branch_id', '=', branch)
+      .orderBy('bulk_cancel_id')
+      .orderBy('lesson_date')
+      .orderBy('starts_at')
       .execute();
     rows.lesson_changes = await t.database.migrator
       .selectFrom('lesson_changes')
@@ -468,6 +515,7 @@ describe('template changes after publishing', () => {
     from: string,
     until: string,
     invigilator: string,
+    outs: { blockId: string; classId: string }[] = [],
   ) {
     const history = await lessonOf(s, date, s.seniorId);
     return t.database.migrator.transaction().execute(async (transaction) => {
@@ -520,6 +568,17 @@ describe('template changes after publishing', () => {
           staff_id: invigilator,
         })
         .execute();
+      for (const out of outs) {
+        await transaction
+          .insertInto('lesson_block_class_outs')
+          .values({
+            branch_id: s.branch,
+            block_id: out.blockId,
+            class_id: out.classId,
+            exam_id: written.id,
+          })
+          .execute();
+      }
       await sql`set constraints all immediate`.execute(transaction);
       return written.id;
     });
@@ -1137,8 +1196,23 @@ describe('template changes after publishing', () => {
   // body is 404 on every route that takes it, with the rows of both branches
   // unchanged; a field with no use on the path is refused.
   it("answers 404 for another branch's or an unknown id among the choices, with both branches unchanged", async () => {
-    const north = await scene();
-    const south = await scene();
+    const north = await scene({ group: true });
+    const south = await scene({ group: true });
+    // In each branch, rows of every table the rewrite writes (permission
+    // review must-fix 3): a bulk cancel of 16 November keeping the group's
+    // block, and an exam of the grade-10 class in lesson 3 of 23 November
+    // with the class kept out of the group's block.
+    const examOf: Record<string, string> = {};
+    for (const one of [north, south]) {
+      await bulkCancel(one, { date: NOV16, classIds: [one.seniorId], lessonNumbers: [3] }, 'keep');
+      const group = (await lessonsOn(one.branch, NOV23)).find(
+        (lesson) => lesson.group_id === one.groupId,
+      );
+      if (group === undefined) throw new Error('No group lesson on 23 November.');
+      examOf[one.branch] = await insertExam(one, NOV23, [5, 5], '09:50', '10:35', one.teacherId, [
+        { blockId: group.block_id, classId: one.seniorId },
+      ]);
+    }
     const southLesson = await lessonOf(south, OCT26, south.classId);
     const southChange = (
       await keyed(`/api/timetable/lessons/${southLesson.id}/move`, south.branch, {
@@ -1160,13 +1234,13 @@ describe('template changes after publishing', () => {
       .select('id')
       .where('version_id', '=', south.version)
       .executeTakeFirstOrThrow();
-    const southExam = {
-      id: await insertExam(south, NOV16, [5, 5], '09:50', '10:35', south.teacherId),
-    };
+    const southExam = { id: examOf[south.branch] ?? '' };
+    const northExam = examOf[north.branch] ?? '';
+    const northLesson = await lessonOf(north, OCT26, north.classId);
     const set = okay(
       await assign(
         north,
-        setting(await templateAt(north, 'Late', '09:00'), NOV16, {
+        setting(await templateAt(north, 'Late', '09:00'), DEC07, {
           level: 'grades',
           gradeFrom: 10,
           gradeTo: 10,
@@ -1176,6 +1250,10 @@ describe('template changes after publishing', () => {
     );
     const late = await templateAt(north, 'Later', '09:30');
     const rows = [await storedRowsOf(north.branch), await storedRowsOf(south.branch)];
+    for (const one of rows) {
+      expect(one.bulk_cancel_blocks?.length).toBeGreaterThan(0);
+      expect(one.lesson_block_class_outs?.length).toBeGreaterThan(0);
+    }
     const audit = await t.auditCount();
 
     const choices: object[] = [
@@ -1187,12 +1265,20 @@ describe('template changes after publishing', () => {
           { key: southChangeId, blockId: southBlock.id, blockDate: OCT19, choice: 'cancel' },
         ],
       },
+      // A block of a decision with a key of the branch (permission review must-fix 1).
+      ...[southBlock.id, UNKNOWN].map((blockId) => ({
+        dayDecisions: [{ key: northLesson.id, blockId, blockDate: OCT19, choice: 'cancel' }],
+      })),
       { dayKeeps: [{ classId: south.classId, date: OCT19, slotPositions: [1] }] },
       { dayKeeps: [{ classId: UNKNOWN, date: OCT19, slotPositions: [1] }] },
       {
         examBlocks: [{ examId: southExam.id, classId: north.seniorId, start: 480, choice: 'keep' }],
       },
       { examBlocks: [{ examId: UNKNOWN, classId: north.seniorId, start: 480, choice: 'keep' }] },
+      // The class of a block's choice (permission review must-fix 2).
+      ...[south.seniorId, UNKNOWN].map((classId) => ({
+        examBlocks: [{ examId: northExam, classId, start: 480, choice: 'keep' }],
+      })),
     ];
     for (const days of choices) {
       const attempts = [
@@ -1202,7 +1288,7 @@ describe('template changes after publishing', () => {
           assign(north, setting(late, OCT19, { level: 'grades', gradeFrom: 7, gradeTo: 7 }), days),
         () =>
           post(`/api/setup/day-template-assignments/${set.id}/end`, north.branch, {
-            from: NOV09,
+            from: DEC14,
             days,
           }),
         () =>
@@ -1211,11 +1297,26 @@ describe('template changes after publishing', () => {
             slotTypeId: north.lessonType,
             change: { lengthMinutes: 40, from: OCT19, days },
           }),
+        // Permission review should-fix 4: every kind of the preview.
+        () =>
+          post('/api/setup/day-template-table/preview', north.branch, {
+            kind: 'template_version',
+            dayTemplateId: north.regular,
+            change: { from: OCT19, startTime: '08:00', slotTypeIds: [north.lessonType], days },
+          }),
+        () =>
+          post('/api/setup/day-template-table/preview', north.branch, {
+            kind: 'assignment_set',
+            change: {
+              ...setting(late, OCT19, { level: 'grades', gradeFrom: 7, gradeTo: 7 }),
+              days,
+            },
+          }),
         () =>
           post('/api/setup/day-template-table/preview', north.branch, {
             kind: 'assignment_end',
             assignmentId: set.id,
-            change: { from: NOV09, days },
+            change: { from: DEC14, days },
           }),
       ];
       for (const attempt of attempts) {
@@ -1230,6 +1331,76 @@ describe('template changes after publishing', () => {
     );
     expect(await storedRowsOf(north.branch)).toEqual(rows[0]);
     expect(await storedRowsOf(south.branch)).toEqual(rows[1]);
+    expect(await t.auditCount()).toBe(audit);
+  });
+
+  // Permission review should-fix 5: the Principal and a Teacher assigned in
+  // the branch are refused each change with choices, with nothing written.
+  it('refuses the Principal and a Teacher assigned in the branch on each change and the preview, with nothing written', async () => {
+    const s = await scene();
+    const late = await templateAt(s, 'Late', '09:00');
+    const set = okay(
+      await assign(s, setting(late, NOV16, { level: 'grades', gradeFrom: 10, gradeTo: 10 })),
+      201,
+    );
+    for (const role of ['principal', 'teacher'] as const) {
+      const holder = await t.database.migrator
+        .selectFrom('assignments')
+        .select('account_id')
+        .where('role', '=', role)
+        .where('branch_id', '=', t.north)
+        .executeTakeFirstOrThrow();
+      await load.classes.role(holder.account_id, s.branch, role);
+    }
+    const rows = await storedRowsOf(s.branch);
+    const audit = await t.auditCount();
+    const days = { dayChangesKey: 'a'.repeat(64) };
+    for (const cookie of [t.principal, t.teacher]) {
+      for (const attempt of [
+        () =>
+          post(
+            `/api/setup/slot-types/${s.lessonType}/lengths`,
+            s.branch,
+            { lengthMinutes: 40, from: OCT19, days },
+            cookie,
+          ),
+        () =>
+          post(
+            `/api/setup/day-templates/${s.regular}/versions`,
+            s.branch,
+            { from: OCT19, startTime: '08:00', slotTypeIds: [s.lessonType], days },
+            cookie,
+          ),
+        () =>
+          post(
+            '/api/setup/day-template-assignments',
+            s.branch,
+            { ...setting(late, OCT19, { level: 'grades', gradeFrom: 7, gradeTo: 7 }), days },
+            cookie,
+          ),
+        () =>
+          post(
+            `/api/setup/day-template-assignments/${set.id}/end`,
+            s.branch,
+            { from: OCT26, days },
+            cookie,
+          ),
+        () =>
+          post(
+            '/api/setup/day-template-table/preview',
+            s.branch,
+            {
+              kind: 'slot_length',
+              slotTypeId: s.lessonType,
+              change: { lengthMinutes: 40, from: OCT19, days },
+            },
+            cookie,
+          ),
+      ]) {
+        refusedWith(await attempt(), 403, 'permission_denied');
+      }
+    }
+    expect(await storedRowsOf(s.branch)).toEqual(rows);
     expect(await t.auditCount()).toBe(audit);
   });
 
