@@ -4923,7 +4923,17 @@ describe('one-day changes: cancel and restore', () => {
       const { s, b } = await chain();
       const moved = await lessonOf(s, WEEK4);
       changed(await move(s.branch, moved.id, { date: WEEK5, lessonNumber: 2 }));
-      const own = await lessonOf(s, WEEK5);
+      // The entry's own lesson of that date, not the one moved there (two
+      // lessons of the class and subject now share the date).
+      const own = await t.database.migrator
+        .selectFrom('lessons')
+        .selectAll()
+        .where('branch_id', '=', s.branch)
+        .where('class_id', '=', s.classId)
+        .where('subject_id', '=', s.subject)
+        .where('lesson_date', '=', WEEK5)
+        .where('id', '!=', moved.id)
+        .executeTakeFirstOrThrow();
       changed(await cancel(s.branch, own.id, 'Excursion to the zoo'));
       const checked = await checkOf(s, b);
       expect(checked.dayChanges.kept.map((one) => one.kind).sort()).toEqual(['cancel', 'move']);
