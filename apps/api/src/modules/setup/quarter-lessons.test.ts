@@ -631,7 +631,7 @@ describe('quarter and year dates after lessons exist', () => {
 
   // Task 5.6c-3b (decision 2; edge/calculation, "The rating exam": one
   // column per rating journal and quarter, with one exam date).
-  it('dates that bring two standing rating exams of one journal into one quarter refuse the save, listed, and the preview lists them; with one not a rating exam the save goes through', async () => {
+  it('dates that bring two standing rating exams of one journal into one quarter refuse the save, listed, and the preview lists them; with one cancelled or not a rating exam they do not', async () => {
     const s = await scene();
     const journal = (
       await t.database.migrator
@@ -677,12 +677,23 @@ describe('quarter and year dates after lessons exist', () => {
     const shown = await shownFor(s, dates);
     expect(shown.ratingExams).toEqual({ items: [item], more: 0 });
 
-    // The tick taken off the later exam: one rating exam in the quarter.
+    // The later exam cancelled: it no longer counts (decision 6).
+    await t.database.migrator
+      .updateTable('exams')
+      .set({ cancel_cause: 'cancelled' })
+      .where('id', '=', later)
+      .execute();
+    expect((await shownFor(s, dates)).ratingExams).toEqual({ items: [], more: 0 });
+    // Another one on that date with the tick taken off: one rating exam in
+    // the quarter (a cancel is final, so a third exam).
+    const third = await ratingExam('2027-01-11');
+    expect((await shownFor(s, dates)).ratingExams.items).toHaveLength(1);
     await t.database.migrator
       .updateTable('exams')
       .set({ rating_exam: false })
-      .where('id', '=', later)
+      .where('id', '=', third)
       .execute();
+    expect((await shownFor(s, dates)).ratingExams).toEqual({ items: [], more: 0 });
     okay(await saveQuarters(s, dates));
   });
 

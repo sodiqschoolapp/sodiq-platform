@@ -7,7 +7,7 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 - A calendar or template change that moves an exam or cancels it for a day off tells its invigilators in its own notice (`exams` of `timetable.calendar_changed` / `template_changed`, with the week or alone); the calendar path reads the standing exams' invigilators as teachers of the facts (an invigilator on no row no longer fails the engine).
 - An exam of a rating subject can be the quarter's rating exam (`ratingExam`; 0095 `exams.rating_exam`, `exam_rating_journals` linked or not): each save stores the journals reached on the exam's date; `exam_rating_subject`, `exam_rating_taken` (one per journal and quarter) and `quarter_rating_exams` in the quarter save and its preview.
 - Screens: the tick and the two journal lists in the exam form and panel; the exams line of the calendar and template notices; the quarter preview line. Handbook: `05-teaching-load-and-timetable.md`.
-- Left out: the rating exam date read by the journal and the per-quarter rating switch (8.2, From line); the browser test of the tick (the exam scene has no rating subject; API and page tests cover it).
+- Left out: the rating exam date read by the journal and the per-quarter rating switch (8.2, From line); the browser test of the tick: the exam scene would need a graded rating subject with its weights for the publish and students in its classes and group, and changing the scene risks the exam browser test of 5.6c-2; API and page tests cover it.
 
 The next sessions must know:
 

@@ -1389,6 +1389,12 @@ describe('exams under a calendar change', () => {
       });
       const record = specialDay(OCT19, s.later, { grades: { gradeFrom: 7, gradeTo: 7 } });
 
+      // The moved exam is the one blocked, by its invigilator's other exam.
+      const shown = await preview(s.branch, { action: 'create', record });
+      const line = shown.lessons.exams.find((one) => one.id === sat.id);
+      expect(line?.outcome).toBe('moved');
+      expect(line?.blockedRules).toEqual(['teacher_double']);
+
       const refused = await create(s.branch, record);
 
       refusedWith(refused, 409, 'calendar_blocked');

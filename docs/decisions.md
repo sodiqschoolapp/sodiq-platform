@@ -300,6 +300,7 @@ Plan approved on pull request #184 with corrections 1 and 2; decisions 1 to 9 co
 | A quarter change moves no exam and carries no `exams` | Decision 7 |
 | The not-linked list says the teacher sets the date by hand | Decision 8 |
 | A group that sits in its own lesson counts as one of the exam's units: its journal is linked | Decision 9, correction 2 |
+| **Build decision.** A cancelled exam answers `rating: null`: its rows stay as history, but it is no longer the rating exam | Spec review of the code, should-fix 1; decision 6 |
 | **Build decision.** `exam_rating_journal` (0095): a row's journal is of the exam's subject and year, checked on the row's insert and, at the commit, on a change of the exam's subject | `.claude/rules/database.md`, a rule between a child row and a column of its parent |
 
 ## 20 October 2026: exams in the timetable, the exam kept after a publish (task 5.6c-3a)

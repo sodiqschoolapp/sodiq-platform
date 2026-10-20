@@ -383,6 +383,72 @@ describe('exams in the timetable', () => {
     confirm: input.confirm ?? false,
   });
 
+  /**
+   * Task 5.6c-3b: a scene with art (a group of the first class and a grade-8 class) whose
+   * maths and art are rating subjects from after the publish, and a student
+   * in each class: `seventh` in the first class and the art group,
+   * `eighth` in the grade-8 class and the art group (from `eighthFrom`),
+   * `other` in the other grade-7 class.
+   */
+  async function ratingScene(input: { eighthFrom?: string } = {}) {
+    const s = await scene({ art: true });
+    const art = s.art;
+    if (art === null) throw new Error('The scene has art.');
+    await t.database.migrator
+      .updateTable('subjects')
+      .set({ journal_type: 'graded', rating_exam: true })
+      .where('id', 'in', [s.maths, art.subject])
+      .execute();
+    // A student of a class with a group subject is in one of its groups
+    // (`class_memberships_need_groups`): both rows in one transaction.
+    const eighthFrom = input.eighthFrom ?? '2026-09-01';
+    const student = async (classId: string, grade: number, group: string | null, from: string) => {
+      const id = await members.student(s.branch, { grade, startsOn: '2026-09-01' });
+      await t.database.migrator.transaction().execute(async (transaction) => {
+        await sql`set constraints all deferred`.execute(transaction);
+        await members.member({ branch: s.branch, classId, studentId: id, from }, transaction);
+        if (group !== null) {
+          await members.groupMember(
+            { branch: s.branch, groupId: group, subjectId: art.subject, studentId: id, from },
+            transaction,
+          );
+        }
+      });
+      return id;
+    };
+    const seventh = await student(s.classId, 7, art.group, '2026-09-01');
+    // With `eighthFrom` after the exam's date, the grade-8 student joins the
+    // class and the group only then.
+    const eighth = await student(art.eighth, 8, art.group, eighthFrom);
+    const other = await student(s.otherClass, 7, null, '2026-09-01');
+    const journalOf = async (unit: { classId?: string; groupId?: string }, subject: string) =>
+      (
+        await t.database.migrator
+          .selectFrom('journals')
+          .select('id')
+          .where('branch_id', '=', s.branch)
+          .where('subject_id', '=', subject)
+          .where(
+            unit.classId === undefined ? 'group_id' : 'class_id',
+            '=',
+            unit.classId ?? unit.groupId ?? '',
+          )
+          .executeTakeFirstOrThrow()
+      ).id;
+    return {
+      ...s,
+      art,
+      journals: {
+        maths: await journalOf({ classId: s.classId }, s.maths),
+        otherMaths: await journalOf({ classId: s.otherClass }, s.maths),
+        art: await journalOf({ groupId: art.group }, art.subject),
+      },
+      students: { seventh, eighth, other },
+    };
+  }
+
+  type RatingScene = Awaited<ReturnType<typeof ratingScene>>;
+
   /** The stored lessons of a class (or a group) on a date, by start. */
   const lessonsOf = (date: string, unit: { classId?: string; groupId?: string }) =>
     t.database.migrator
@@ -455,13 +521,6 @@ describe('exams in the timetable', () => {
         .orderBy('lesson_id')
         .orderBy('exam_id')
         .execute(),
-      // Task 5.6c-3b: the rating link the save writes.
-      t.database.migrator
-        .selectFrom('exam_rating_journals')
-        .selectAll()
-        .orderBy('exam_id')
-        .orderBy('journal_id')
-        .execute(),
       t.database.migrator.selectFrom('lessons').selectAll().orderBy('id').execute(),
       t.database.migrator.selectFrom('time_claims').selectAll().orderBy('id').execute(),
       t.database.migrator.selectFrom('lesson_changes').selectAll().orderBy('lesson_id').execute(),
@@ -470,6 +529,14 @@ describe('exams in the timetable', () => {
         .execute(t.database.migrator)
         .then((result) => result.rows),
       t.database.migrator.selectFrom('audit_log').select('id').orderBy('id').execute(),
+      // Task 5.6c-3b: the rating link the save writes (last, so the indexes
+      // the tests read stay).
+      t.database.migrator
+        .selectFrom('exam_rating_journals')
+        .selectAll()
+        .orderBy('exam_id')
+        .orderBy('journal_id')
+        .execute(),
     ]);
 
   async function waiting(): Promise<number> {
@@ -2641,20 +2708,31 @@ describe('exams in the timetable', () => {
 
   describe('ids of another branch and unknown ones (.claude/rules/api.md)', () => {
     it('answers 404 for every id of the path and the body, as the Super Admin, and changes nothing', async () => {
-      const s = await scene({ art: true });
-      const o = await scene({ art: true });
-      const exam = saved(
-        await create(s.branch, examOf(s, { date: LATER_MONDAY, classIds: [s.otherClass] })),
-      );
-      const theirs = saved(
-        await create(o.branch, examOf(o, { date: LATER_MONDAY, classIds: [o.otherClass] })),
-      );
+      // Task 5.6c-3b: rating exams in both branches, each with its journal's
+      // row, and every body a rating exam, so that a write of the link is seen
+      // (.claude/rules/api.md) and a 404 comes before the rating's 409s.
+      const s = await ratingScene();
+      const o = await ratingScene();
+      const rated = (scene: RatingScene) => ({
+        ...examOf(scene, { date: LATER_MONDAY, classIds: [scene.otherClass], confirm: true }),
+        ratingExam: true,
+      });
+      const exam = saved(await create(s.branch, rated(s)));
+      const theirs = saved(await create(o.branch, rated(o)));
+      expect(
+        await t.database.migrator
+          .selectFrom('exam_rating_journals')
+          .select('journal_id')
+          .where('exam_id', 'in', [exam.exam.id, theirs.exam.id])
+          .orderBy('journal_id')
+          .execute(),
+      ).toHaveLength(2);
       const ownBlock =
         (await lessonsOf(THURSDAY, { groupId: s.art?.group ?? '' }))[0]?.block_id ?? '';
       const theirBlock =
         (await lessonsOf(THURSDAY, { groupId: o.art?.group ?? '' }))[0]?.block_id ?? '';
       const theirLesson = (await lessonOf(LATER_MONDAY, o.classId)).id;
-      const base = examOf(s);
+      const base = { ...examOf(s), ratingExam: true };
       const room = base.rooms[0];
       if (room === undefined) throw new Error('No room.');
       const bodies = (foreign: {
@@ -2713,7 +2791,7 @@ describe('exams in the timetable', () => {
       for (const lesson of [theirLesson, UNKNOWN, ownLesson]) {
         refusedWith(
           await change(s.branch, exam.exam.id, {
-            ...examOf(s, { date: LATER_MONDAY, classIds: [s.otherClass] }),
+            ...rated(s),
             keepCancelled: [lesson],
             keepReason: 'Kept',
           }),
@@ -2727,7 +2805,7 @@ describe('exams in the timetable', () => {
         );
       }
       for (const id of [theirs.exam.id, UNKNOWN]) {
-        refusedWith(await change(s.branch, id, examOf(s)), 404, 'not_found');
+        refusedWith(await change(s.branch, id, base), 404, 'not_found');
         refusedWith(await cancel(s.branch, id), 404, 'not_found');
       }
       refusedWith(
@@ -3115,20 +3193,22 @@ describe('exams in the timetable', () => {
     });
 
     it('answers 404 for every id of the body of another branch or unknown, and writes nothing (.claude/rules/api.md; plan test 9)', async () => {
-      const s = await scene({ art: true });
-      const o = await scene({ art: true });
-      const exam = saved(
-        await create(s.branch, examOf(s, { date: LATER_MONDAY, classIds: [s.otherClass] })),
-      );
-      const theirs = saved(
-        await create(o.branch, examOf(o, { date: LATER_MONDAY, classIds: [o.otherClass] })),
-      );
+      // Task 5.6c-3b: rating exams in both branches with their rows, every
+      // body a rating exam (permission review must-fix 1).
+      const s = await ratingScene();
+      const o = await ratingScene();
+      const rated = (scene: RatingScene) => ({
+        ...examOf(scene, { date: LATER_MONDAY, classIds: [scene.otherClass], confirm: true }),
+        ratingExam: true,
+      });
+      const exam = saved(await create(s.branch, rated(s)));
+      const theirs = saved(await create(o.branch, rated(o)));
       const ownBlock =
         (await lessonsOf(THURSDAY, { groupId: s.art?.group ?? '' }))[0]?.block_id ?? '';
       const theirBlock =
         (await lessonsOf(THURSDAY, { groupId: o.art?.group ?? '' }))[0]?.block_id ?? '';
       const theirLesson = (await lessonOf(LATER_MONDAY, o.otherClass)).id;
-      const base = asCheck(examOf(s));
+      const base = { ...asCheck(examOf(s)), ratingExam: true };
       const room = examOf(s).rooms[0];
       if (room === undefined) throw new Error('No room.');
       const bodies = (foreign: {
@@ -3164,6 +3244,7 @@ describe('exams in the timetable', () => {
             examOf(s, { date: LATER_MONDAY, classIds: [s.otherClass], first: 2 }),
             exam.exam.id,
           ),
+          ratingExam: true,
           keepCancelled: [foreign.lesson],
           keepReason: 'Kept',
         },
@@ -3396,77 +3477,6 @@ describe('exams in the timetable', () => {
   // linked; its teacher sets the date by hand"; edge/calculation, "The rating
   // exam": one column per rating journal and quarter).
   describe('the rating-exam link', () => {
-    /**
-     * A scene with art (a group of the first class and a grade-8 class) whose
-     * maths and art are rating subjects from after the publish, and a student
-     * in each class: `seventh` in the first class and the art group,
-     * `eighth` in the grade-8 class and the art group (from `eighthFrom`),
-     * `other` in the other grade-7 class.
-     */
-    async function ratingScene(input: { eighthFrom?: string } = {}) {
-      const s = await scene({ art: true });
-      const art = s.art;
-      if (art === null) throw new Error('The scene has art.');
-      await t.database.migrator
-        .updateTable('subjects')
-        .set({ journal_type: 'graded', rating_exam: true })
-        .where('id', 'in', [s.maths, art.subject])
-        .execute();
-      // A student of a class with a group subject is in one of its groups
-      // (`class_memberships_need_groups`): both rows in one transaction.
-      const eighthFrom = input.eighthFrom ?? '2026-09-01';
-      const student = async (
-        classId: string,
-        grade: number,
-        group: string | null,
-        from: string,
-      ) => {
-        const id = await members.student(s.branch, { grade, startsOn: '2026-09-01' });
-        await t.database.migrator.transaction().execute(async (transaction) => {
-          await sql`set constraints all deferred`.execute(transaction);
-          await members.member({ branch: s.branch, classId, studentId: id, from }, transaction);
-          if (group !== null) {
-            await members.groupMember(
-              { branch: s.branch, groupId: group, subjectId: art.subject, studentId: id, from },
-              transaction,
-            );
-          }
-        });
-        return id;
-      };
-      const seventh = await student(s.classId, 7, art.group, '2026-09-01');
-      // With `eighthFrom` after the exam's date, the grade-8 student joins the
-      // class and the group only then.
-      const eighth = await student(art.eighth, 8, art.group, eighthFrom);
-      const other = await student(s.otherClass, 7, null, '2026-09-01');
-      const journalOf = async (unit: { classId?: string; groupId?: string }, subject: string) =>
-        (
-          await t.database.migrator
-            .selectFrom('journals')
-            .select('id')
-            .where('branch_id', '=', s.branch)
-            .where('subject_id', '=', subject)
-            .where(
-              unit.classId === undefined ? 'group_id' : 'class_id',
-              '=',
-              unit.classId ?? unit.groupId ?? '',
-            )
-            .executeTakeFirstOrThrow()
-        ).id;
-      return {
-        ...s,
-        art,
-        journals: {
-          maths: await journalOf({ classId: s.classId }, s.maths),
-          otherMaths: await journalOf({ classId: s.otherClass }, s.maths),
-          art: await journalOf({ groupId: art.group }, art.subject),
-        },
-        students: { seventh, eighth, other },
-      };
-    }
-
-    type RatingScene = Awaited<ReturnType<typeof ratingScene>>;
-
     /** A rating exam of the first class alone, in lesson 3 (free) of a Monday. */
     const ratingOf = (
       s: RatingScene,
@@ -3601,8 +3611,99 @@ describe('exams in the timetable', () => {
         ),
       );
       expect(ids(again.exam.rating)).toEqual({ linked: [s.journals.maths], notLinked: [] });
-      // The cancelled exam keeps its rows as history (decision 6).
+      // The cancelled exam keeps its rows as history (decision 6), and is no
+      // longer answered as the rating exam.
       expect(await rowsOf(first.exam.id)).toEqual([{ journal_id: s.journals.maths, linked: true }]);
+      const listed = examsAnswerSchema.parse(
+        (await t.get(`/api/timetable/exams?from=${NEXT_MONDAY}&to=${NEXT_MONDAY}`, s.branch)).body,
+      );
+      expect(listed.exams.find((one) => one.id === first.exam.id)?.rating).toBeNull();
+    });
+
+    it("leaves out a journal whose runs do not hold the exam's date (decision 4)", async () => {
+      const s = await ratingScene();
+      // A rating subject of the first class whose journal ran only in September.
+      const chemistry = await load.classes.subject({ grades: [7] });
+      await t.database.migrator
+        .updateTable('subjects')
+        .set({ rating_exam: true })
+        .where('id', '=', chemistry)
+        .execute();
+      const journal = await t.database.migrator
+        .insertInto('journals')
+        .values({
+          branch_id: s.branch,
+          academic_year_id: s.year,
+          class_id: s.classId,
+          subject_id: chemistry,
+          runs: sql<string>`'{[2026-09-01,2026-10-01)}'::datemultirange`,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      const ended = examSaveAnswerSchema.parse(
+        saved(await create(s.branch, ratingOf(s, { subjectId: chemistry }))),
+      );
+      expect(ids(ended.exam.rating)).toEqual({ linked: [], notLinked: [] });
+      // Running on the date, the same journal is linked.
+      await t.database.migrator
+        .updateTable('journals')
+        .set({ runs: sql<string>`'{[2026-09-01,)}'::datemultirange` })
+        .where('id', '=', journal.id)
+        .execute();
+      const running = examSaveAnswerSchema.parse(
+        saved(await change(s.branch, ended.exam.id, ratingOf(s, { subjectId: chemistry })), 200),
+      );
+      expect(ids(running.exam.rating)).toEqual({ linked: [journal.id], notLinked: [] });
+    });
+
+    it("keeps in the database a row to a journal of the exam's subject and year, also over a change of the subject, and a rating exam to a subject (0095)", async () => {
+      const s = await ratingScene();
+      const created = examSaveAnswerSchema.parse(saved(await create(s.branch, ratingOf(s))));
+      const failure = async (work: Promise<unknown>) => {
+        try {
+          await work;
+        } catch (error) {
+          return (error as { constraint?: string }).constraint;
+        }
+        return null;
+      };
+      // A journal of another subject.
+      expect(
+        await failure(
+          t.database.migrator
+            .insertInto('exam_rating_journals')
+            .values({
+              branch_id: s.branch,
+              exam_id: created.exam.id,
+              journal_id: s.journals.art,
+              linked: true,
+            })
+            .execute(),
+        ),
+      ).toBe('exam_rating_journal');
+      // The exam's subject changed under its rows, at the commit.
+      expect(
+        await failure(
+          t.database.migrator
+            .updateTable('exams')
+            .set({ subject_id: s.art.subject })
+            .where('id', '=', created.exam.id)
+            .execute(),
+        ),
+      ).toBe('exam_rating_journal');
+      // A rating exam with no subject.
+      expect(
+        await failure(
+          t.database.migrator
+            .updateTable('exams')
+            .set({ subject_id: null })
+            .where('id', '=', created.exam.id)
+            .execute(),
+        ),
+      ).toBe('exams_rating_subject_check');
+      expect(await rowsOf(created.exam.id)).toEqual([
+        { journal_id: s.journals.maths, linked: true },
+      ]);
     });
 
     it('writes the rows again on a change: the tick taken off removes them, a class added adds its journal; the check lists them and writes nothing; the audit entries carry them', async () => {
@@ -3647,6 +3748,15 @@ describe('exams in the timetable', () => {
       expect(
         new Set((changed?.new_value as { rating: { linked: string[] } }).rating.linked),
       ).toEqual(new Set([s.journals.maths, s.journals.otherMaths]));
+
+      // The other class taken out again: its journal drops out of the rows.
+      const narrower = examSaveAnswerSchema.parse(
+        saved(await change(s.branch, created.exam.id, ratingOf(s)), 200),
+      );
+      expect(ids(narrower.exam.rating)).toEqual({ linked: [s.journals.maths], notLinked: [] });
+      expect(await rowsOf(created.exam.id)).toEqual([
+        { journal_id: s.journals.maths, linked: true },
+      ]);
 
       const off = examSaveAnswerSchema.parse(
         saved(await change(s.branch, created.exam.id, { ...ratingOf(s), ratingExam: false }), 200),

@@ -1652,9 +1652,12 @@ export async function examsOf(
       cancelled: exam.cancelCause !== null,
       started: exam.startsAt.getTime() <= moment.getTime(),
       lessonIds: [...lessons].sort(),
-      rating: exam.ratingExam
-        ? await ratingNamesOf(transaction, await storedRating(transaction, exam.id))
-        : null,
+      // A cancelled exam keeps its rows as history but is no longer the
+      // rating exam (decision 6): no list.
+      rating:
+        exam.ratingExam && exam.cancelCause === null
+          ? await ratingNamesOf(transaction, await storedRating(transaction, exam.id))
+          : null,
     });
   }
   return answers;

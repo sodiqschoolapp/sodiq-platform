@@ -88,7 +88,7 @@ Not written yet for most of the teaching load and the timetable: task 3.7 descri
 - Students are read on the exam's date. A student who joins after it does not count. Each save of the exam reads them again.
 - A journal has one rating exam per quarter. Saving a second rating exam for the same journal in the same quarter is refused; cancel or change the first one, or take the tick off.
 - New quarter dates that would bring two rating exams of one journal into one quarter are refused, and the preview lists them.
-- A cancelled exam keeps its list as history but no longer counts as the rating exam.
+- A cancelled exam is no longer the rating exam: its panel shows no journals (the list is kept in the audit log).
 
 **What happens if…**
 

@@ -1100,10 +1100,11 @@ export async function examsChangedOf(
     .execute();
   for (const one of changed) {
     for (const row of rows.filter((invigilator) => invigilator.exam_id === one.exam.id)) {
-      if (row.account_id === null) continue;
+      // The query keeps only people with an account.
+      const accountId = row.account_id ?? '';
       const after = one.outcome === 'moved' ? one.after : null;
-      told.set(row.account_id, [
-        ...(told.get(row.account_id) ?? []),
+      told.set(accountId, [
+        ...(told.get(accountId) ?? []),
         {
           title: one.exam.title,
           date: one.exam.date,
