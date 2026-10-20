@@ -837,31 +837,12 @@ How to read the task lines:
   - Done when: exported PDFs show Uzbek Latin and Cyrillic correctly.
   - From 5.5c-3a (pull request #158, decision 2): the "changed" mark shown on the class, teacher, room and branch views and on the teacher home page (`06`, How surprises are prevented: "Changed lessons carry a 'changed' mark on every timetable view for a week"): a lesson is marked while `isMarkedChanged` (`packages/shared/src/timetable.ts`) is true for its `lesson_changes.changed_at` (0084) and the clock of the request.
 
-- [ ] **5.10 Solver service**
-  - Read: `06` (Auto-generation, Rules), `13`, `edge/timetable` (Generator and editing).
-  - Build: `apps/solver` in Kotlin with Timefold Solver Community Edition; hard constraints equal to the blocked rules and soft constraints from the preferences table; pinned lessons kept; a time limit of 5 minutes with a first draft in about a minute.
-  - Done when: on sample data of one branch the solver returns a draft that the TypeScript rule engine accepts with zero blocked rules.
-  - From 5.2 (pull request #109): the re-check of the solver's output is `checkTimetable` in `mode: 'pattern'`; the blocked rules of `RULE_ORDER` (every code not in `WARNINGS`) are the hard constraints to mirror in Kotlin.
-  - From 5.3b-2 (pull request #129, decisions 1 and 2): `edge/timetable`, Generator and editing: "Before generating, the locked and pinned lessons are checked on their own. A blocked conflict stops the run and lists the lessons." The pins are `timetable_pins` (0070): a load row, a weekday and a slot position, breaks counted, as `pattern_blocks.slot_position`; a pin of a group row holds its whole block in that slot. The solver keeps them fixed and treats the busy-elsewhere lessons of other branches, and the travel time around them, as fixed (`06`, Busy elsewhere).
-  - From 5.3b-1 (pull request #128, decisions 3 and 8): the weights of the soft constraints are the eight `weight_<code>` columns of `timetable_versions` (codes `PREFERENCES` of `packages/timetable-rules`, in the order of the preferences table of `06`), whole numbers from 0 to 10; 0 means the preference is not used.
-  - From 5.4c-3a (pull request #137, decisions 2 and 11): `double_not_allowed` (a double of a load row without "double lessons allowed") is a blocked rule to mirror in Kotlin; the solver places doubles only for rows that allow them, as two blocks with one `double_pair_id` in consecutive lesson slots with the same teacher and room (`double_apart`, checked per load row).
-  - From 5.4c-3b (pull request #138, decisions 3 to 6): `edge/timetable`, Structure: "A mixed block is allowed: boys have physical education while girls have technology, and the reverse in another slot." The solver places a mixed split either whole or as pairings slot by slot with a half of another subject's mixed split of the same class (`partnersIn` of `packages/timetable-rules/src/facts-data.ts`); the engine's re-check accepts exactly those blocks (`checkBlocks`: any other set of rows in one block is `split_apart` with `rows`). `subject_twice` is counted per student (decision 2, Look first).
-
-- [ ] **5.11 Generation in the product**
-  - Read: `06` (Auto-generation, Building a timetable), `edge/timetable` (Generator and editing).
-  - Build: step 6 of the builder; the run as a background job on a snapshot; variants with score and comparison; regenerate with locks; generate for chosen classes; place the remaining lessons; lessons not placed listed with the blocking rule named by the rule engine.
-  - Done when: a variant from older inputs is marked "inputs changed" and re-checked before use.
-  - From 5.3b-2 (pull request #129, decision 1): `edge/timetable`, Generator and editing: "Before generating, the locked and pinned lessons are checked on their own. A blocked conflict stops the run and lists the lessons." `requireReady` already reads the pins' check (step 5); once 5.4b adds the busy-elsewhere lessons to `pattern-facts.ts`, the check before a run counts them. The locks of 5.4c-1 (`timetable_locks`, `lockedBy` of `packages/timetable-rules/src/locks.ts`) join the same check before a run, and "Regenerate" changes only what they do not hold.
-  - From 5.4c-1 (pull request #135, decision 2 with review correction 5): a run and the use of a variant are draft writes and take `lockDraft`, so they are refused `draft_edit_locked` while another account holds the draft's edit lock.
-  - From 5.3b-1 (pull request #128, decision 6): the run route calls `requireReady` of the timetable service first, in the run's transaction (409 `draft_not_ready`, one detail per step not ready).
-  - From 5.4c-3a (pull request #137, decision 8): a lock on either half of a double holds the pair; Regenerate keeps the two halves together.
-  - From 5.4c-3b (pull request #138): pins of a pairing are decided here. A pin names one load row (`timetable_pins`, 0070) and step 5 still refuses a mixed half (`pin_mixed_block`); a pinned pairing would need its partner row. A placed pairing is a block, so a lock holds it like any block (`lockedBy`).
-
 - [ ] **5.12 Timetable end-to-end tests**
   - Read: `14` (Timetable).
   - Build: the named cases of the quality plan as automated tests, including simultaneous actions.
   - Done when: all named cases pass in CI.
   - From the owner (15 October 2026): one run at the real school's size on invented data (3 branches, about 80 classes, 200 teachers and 2,000 students, with groups, splits and teachers shared between branches): generate, check with the rule engine, publish a version and open the board; the report gives the solver's time, the lessons it could not place, and the time of the board, the publish and a journal page.
+  - From the owner (20 October 2026): generation (5.10, 5.11) moved after the release of 25 October. Until then the real-size run places its timetable with a seed script on the same invented data, checks it with the rule engine and goes on from the publish; 5.11 adds the generate step and the solver's time to this run.
 
 ## Phase 6. Journal: model, grid and attendance
 
@@ -1065,6 +1046,29 @@ How to read the task lines:
 ## Deferred until after 25 October 2026
 
 Decided by the owner on 16 October 2026: these tasks are not needed for the release on the test site on 25 October 2026 and are built after it, in this order. The start routine never reaches them before the owner gate of Phase 10. Year-end work (closing the year, rollover, a new year) is needed only in June 2027; the handbook is written once the features are finished (`docs/decisions.md`, 16 October 2026).
+
+Decided by the owner on 20 October 2026: automatic generation (5.10 and 5.11) is built after the release too, first of this list. Until then a timetable is built in the grid by hand, with the rule engine, "Suggest a place" and the readiness check as they are; Release 1 still includes generation.
+
+- [ ] **5.10 Solver service**
+  - Read: `06` (Auto-generation, Rules), `13`, `edge/timetable` (Generator and editing).
+  - Build: `apps/solver` in Kotlin with Timefold Solver Community Edition; hard constraints equal to the blocked rules and soft constraints from the preferences table; pinned lessons kept; a time limit of 5 minutes with a first draft in about a minute.
+  - Done when: on sample data of one branch the solver returns a draft that the TypeScript rule engine accepts with zero blocked rules.
+  - From 5.2 (pull request #109): the re-check of the solver's output is `checkTimetable` in `mode: 'pattern'`; the blocked rules of `RULE_ORDER` (every code not in `WARNINGS`) are the hard constraints to mirror in Kotlin.
+  - From 5.3b-2 (pull request #129, decisions 1 and 2): `edge/timetable`, Generator and editing: "Before generating, the locked and pinned lessons are checked on their own. A blocked conflict stops the run and lists the lessons." The pins are `timetable_pins` (0070): a load row, a weekday and a slot position, breaks counted, as `pattern_blocks.slot_position`; a pin of a group row holds its whole block in that slot. The solver keeps them fixed and treats the busy-elsewhere lessons of other branches, and the travel time around them, as fixed (`06`, Busy elsewhere).
+  - From 5.3b-1 (pull request #128, decisions 3 and 8): the weights of the soft constraints are the eight `weight_<code>` columns of `timetable_versions` (codes `PREFERENCES` of `packages/timetable-rules`, in the order of the preferences table of `06`), whole numbers from 0 to 10; 0 means the preference is not used.
+  - From 5.4c-3a (pull request #137, decisions 2 and 11): `double_not_allowed` (a double of a load row without "double lessons allowed") is a blocked rule to mirror in Kotlin; the solver places doubles only for rows that allow them, as two blocks with one `double_pair_id` in consecutive lesson slots with the same teacher and room (`double_apart`, checked per load row).
+  - From 5.4c-3b (pull request #138, decisions 3 to 6): `edge/timetable`, Structure: "A mixed block is allowed: boys have physical education while girls have technology, and the reverse in another slot." The solver places a mixed split either whole or as pairings slot by slot with a half of another subject's mixed split of the same class (`partnersIn` of `packages/timetable-rules/src/facts-data.ts`); the engine's re-check accepts exactly those blocks (`checkBlocks`: any other set of rows in one block is `split_apart` with `rows`). `subject_twice` is counted per student (decision 2, Look first).
+
+- [ ] **5.11 Generation in the product**
+  - From the owner (20 October 2026): add the generate step and the solver's time to the real-size run of 5.12 (`docs/build-plan.md`, 5.12).
+  - Read: `06` (Auto-generation, Building a timetable), `edge/timetable` (Generator and editing).
+  - Build: step 6 of the builder; the run as a background job on a snapshot; variants with score and comparison; regenerate with locks; generate for chosen classes; place the remaining lessons; lessons not placed listed with the blocking rule named by the rule engine.
+  - Done when: a variant from older inputs is marked "inputs changed" and re-checked before use.
+  - From 5.3b-2 (pull request #129, decision 1): `edge/timetable`, Generator and editing: "Before generating, the locked and pinned lessons are checked on their own. A blocked conflict stops the run and lists the lessons." `requireReady` already reads the pins' check (step 5); once 5.4b adds the busy-elsewhere lessons to `pattern-facts.ts`, the check before a run counts them. The locks of 5.4c-1 (`timetable_locks`, `lockedBy` of `packages/timetable-rules/src/locks.ts`) join the same check before a run, and "Regenerate" changes only what they do not hold.
+  - From 5.4c-1 (pull request #135, decision 2 with review correction 5): a run and the use of a variant are draft writes and take `lockDraft`, so they are refused `draft_edit_locked` while another account holds the draft's edit lock.
+  - From 5.3b-1 (pull request #128, decision 6): the run route calls `requireReady` of the timetable service first, in the run's transaction (409 `draft_not_ready`, one detail per step not ready).
+  - From 5.4c-3a (pull request #137, decision 8): a lock on either half of a double holds the pair; Regenerate keeps the two halves together.
+  - From 5.4c-3b (pull request #138): pins of a pairing are decided here. A pin names one load row (`timetable_pins`, 0070) and step 5 still refuses a mixed half (`pin_mixed_block`); a pinned pairing would need its partner row. A placed pairing is a block, so a lock holds it like any block (`lockedBy`).
 
 - [ ] **3.7 The handbook for what is built so far** (owner, 15 October 2026)
   - Read: `docs/handbook/README.md`, every spec file, `docs/decisions.md`, issue #42 (the task comments and the owner's answers of 15 October 2026), issues #39 and #105, `docs/progress.md`, and the code and screens of every ticked task.
