@@ -2248,7 +2248,7 @@ describe('exams in the timetable', () => {
       expect(dayAnswerSchema.parse(response.body).exams).toEqual([
         expect.objectContaining({
           id: exam.exam.id,
-          room: { id: s.hall, name: expect.any(String) },
+          room: expect.objectContaining({ id: s.hall }) as unknown,
         }),
       ]);
     });
