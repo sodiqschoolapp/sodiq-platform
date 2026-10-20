@@ -5,6 +5,7 @@ import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import { actionsAreLast, panelActionNames, savedInPanel } from '@/testing/panel';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
+import { NO_LESSONS } from '@/testing/no-lessons';
 
 const PATH = '/setup/day-template-settings';
 const TODAY = '2026-10-10';
@@ -67,6 +68,8 @@ const PREVIEW: TemplatePreview = {
   before: tableWith(null),
   after: tableWith('Friday'),
   changed: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((grade) => ({ weekday: 5, grade })),
+  lessons: NO_LESSONS,
+  slotsInUse: [],
 };
 
 const sessionAs = (
