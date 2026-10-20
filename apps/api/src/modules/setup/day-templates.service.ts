@@ -54,11 +54,7 @@ import {
 } from './day-template-state.js';
 import { loadEntries } from './calendar-state.js';
 import { endFrom, isWithdrawn, scheduleFrom } from './dated-rows.js';
-import {
-  assignmentRefusals,
-  notFound,
-  refusingDuplicates,
-} from './setup-refusals.js';
+import { assignmentRefusals, notFound, refusingDuplicates } from './setup-refusals.js';
 import { markDraftsOutOfDate } from '../timetable/out-of-date.js';
 import { lessonsAuditOf, NO_LESSONS, refuseForeignChoices } from '../timetable/calendar-lessons.js';
 import { PUBLISH_REFUSALS, refusingPublish } from '../timetable/publish.service.js';

@@ -38,10 +38,7 @@ import {
   type CalendarRewrite,
 } from '../timetable/calendar-lessons.js';
 import { markDraftsOutOfDate } from '../timetable/out-of-date.js';
-import {
-  PUBLISH_REFUSALS,
-  refusingPublish,
-} from '../timetable/publish.service.js';
+import { PUBLISH_REFUSALS, refusingPublish } from '../timetable/publish.service.js';
 
 /** A refusal of 409 that names the fields to show it beside. */
 function refused(
