@@ -3842,6 +3842,13 @@ export const en = {
       },
       dayChanges: {
         title: 'One-day changes',
+        absencesTitle_one: 'Absences kept: {{count}}',
+        absencesTitle_other: 'Absences kept: {{count}}',
+        absenceLine_one: '{{name}}, absent {{days}}: {{count}} new lesson needs a teacher',
+        absenceLine_other: '{{name}}, absent {{days}}: {{count}} new lessons need a teacher',
+        absenceDays: '{{from}} – {{to}}',
+        absenceFrom: 'from {{from}}',
+        absenceUnnamed: 'A teacher of another branch',
         keptTitle_one: 'Kept: {{count}}',
         keptTitle_other: 'Kept: {{count}}',
         decideTitle_one: 'Needs a decision: {{count}}',

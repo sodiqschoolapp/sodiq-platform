@@ -188,6 +188,7 @@ describe('the absences page', () => {
       '08:00–08:45',
       '7 Oxford',
       'Mathematics',
+      'Room 12',
       texts.state_needs_teacher,
     ]);
 

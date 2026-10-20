@@ -143,7 +143,8 @@ export function PublishDayChanges({
     dayChanges.decide.length === 0 &&
     dayChanges.dropped.length === 0 &&
     dayChanges.bulk.length === 0 &&
-    dayChanges.exams.length === 0
+    dayChanges.exams.length === 0 &&
+    dayChanges.absences.length === 0
   ) {
     return null;
   }
@@ -485,6 +486,38 @@ export function PublishDayChanges({
         </div>
       )}
       {list('kept', dayChanges.kept, bulkKept, examsKept)}
+      {/* Task 5.7a-1 (decision 7): the absences of the dates, always kept. */}
+      {dayChanges.absences.length > 0 && (
+        <div className="grid gap-1">
+          <h4 className={SUBSECTION_TITLE}>
+            {t('timetable.publish.dayChanges.absencesTitle', {
+              count: dayChanges.absences.length,
+            })}
+          </h4>
+          <ul className="grid gap-1 text-sm" data-day-changes="absences">
+            {dayChanges.absences.map((absence) => (
+              <li key={absence.id} data-key={absence.id}>
+                {t('timetable.publish.dayChanges.absenceLine', {
+                  count: absence.lessons,
+                  name:
+                    absence.name === ''
+                      ? t('timetable.publish.dayChanges.absenceUnnamed')
+                      : absence.name,
+                  days:
+                    absence.endsOn === null
+                      ? t('timetable.publish.dayChanges.absenceFrom', {
+                          from: schoolDateText(absence.startsOn, language),
+                        })
+                      : t('timetable.publish.dayChanges.absenceDays', {
+                          from: schoolDateText(absence.startsOn, language),
+                          to: schoolDateText(absence.endsOn, language),
+                        }),
+                })}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {list('dropped', dayChanges.dropped)}
     </section>
   );

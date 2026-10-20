@@ -43,7 +43,7 @@ export function AbsencesPage() {
   const people = useMemo(
     () =>
       (staff.data?.staff ?? [])
-        .filter((one) => one.status === 'active' || one.status === null)
+        // Decision 11: a person who is inactive or has left may still be entered.
         .map((one) => ({
           id: one.id,
           name: listName({ firstName: one.firstName, lastName: one.lastName }),

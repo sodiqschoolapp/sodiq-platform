@@ -1005,6 +1005,7 @@ How to read the task lines:
   - Build: the four lesson statuses; the reminders panel on the journal and the teacher home page; counts per teacher for Head Teachers and the Academic Vice Principal.
   - Done when: the counts on the home page match the journal.
   - From 5.6a-4 (pull request #163, decision 11): a held lesson is the one `lessonStateOf` (`packages/shared/src/timetable.ts`) calls `held`; an unresolved or cancelled lesson never counts as held, and an unresolved one never as "attendance not marked" against anyone (`edge/00-definitions`, Held lesson; `edge/timetable`, After publishing).
+  - From 5.7a-1 (pull request #185, spec review should-fix 7): the `absent` that `lessonStateOf` takes is read through `absentLessons` of `apps/api/src/modules/timetable/absences-read.ts` (`absences_of_teachers`, 0096), never from the membership-filtered `absences` table, and a lesson with a `lesson_absence_taught` row is not absent.
 
 - [ ] **8.8 Plans in the journal**
   - Read: `09` (In the journal, Reports), `edge/lesson-plans` (Plans and the journal).

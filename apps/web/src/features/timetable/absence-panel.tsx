@@ -148,6 +148,7 @@ export function AbsencePanel({ absence, columns, canEdit }: AbsencePanelProps) {
                 <TableHead>{t('timetable.absences.time')}</TableHead>
                 <TableHead>{t('timetable.absences.unit')}</TableHead>
                 <TableHead>{t('timetable.absences.subject')}</TableHead>
+                <TableHead>{t('timetable.absences.room')}</TableHead>
                 <TableHead>{t('timetable.absences.lessonState')}</TableHead>
               </TableRow>
             </TableHeader>
@@ -160,6 +161,7 @@ export function AbsencePanel({ absence, columns, canEdit }: AbsencePanelProps) {
                   </TableCell>
                   <TableCell>{lesson.unit}</TableCell>
                   <TableCell>{lesson.subject[language]}</TableCell>
+                  <TableCell>{lesson.room ?? t('timetable.absences.noRoom')}</TableCell>
                   <TableCell>{t(`timetable.absences.state_${lesson.state}`)}</TableCell>
                 </TableRow>
               ))}

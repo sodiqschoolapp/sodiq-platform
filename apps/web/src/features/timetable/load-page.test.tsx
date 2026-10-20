@@ -699,6 +699,52 @@ describe('the teaching load page: withdraw', () => {
     ).toEqual({ dayChangesKey: KEY, dayDecisions: [] });
   });
 
+  // Task 5.7a-1 (decision 7): the absences of the dates are listed as kept,
+  // with nothing to choose; one the branch cannot name is still listed.
+  it('lists the absences of the withdrawn dates as kept, with the lessons they cover, and asks nothing for them', async () => {
+    const calls = await openPage({
+      versions: [later, earlier],
+      extra: {
+        ...checkRoute({
+          absences: [
+            {
+              id: uid(911),
+              name: 'Karimova Aziza',
+              startsOn: '2026-11-16',
+              endsOn: null,
+              lessons: 3,
+            },
+            { id: uid(912), name: '', startsOn: '2026-11-16', endsOn: '2026-11-20', lessons: 1 },
+          ],
+        }),
+        [`POST /api/timetable/versions/${later.id}/withdraw`]: () =>
+          json({ ...later, status: 'archived' }),
+      },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: en.timetable.load.withdraw }));
+    const dialog = await screen.findByRole('alertdialog');
+    const list = await waitFor(() => {
+      const found = dialog.querySelector<HTMLElement>('[data-day-changes="absences"]');
+      expect(found).not.toBeNull();
+      return found as HTMLElement;
+    });
+    expect([...list.querySelectorAll('li')].map((one) => one.textContent)).toEqual([
+      'Karimova Aziza, absent from 16 November 2026: 3 new lessons need a teacher',
+      `${en.timetable.publish.dayChanges.absenceUnnamed}, absent 16 November 2026 – 20 November 2026: 1 new lesson needs a teacher`,
+    ]);
+    const send = within(dialog).getByRole('button', { name: en.timetable.load.withdraw });
+    await waitFor(() => {
+      expect((send as HTMLButtonElement).disabled).toBe(false);
+    });
+    fireEvent.click(send);
+    await waitFor(() => {
+      expect(
+        calls.find((call) => call.route === `POST /api/timetable/versions/${later.id}/withdraw`)
+          ?.body,
+      ).toEqual({ dayChangesKey: KEY, dayDecisions: [] });
+    });
+  });
+
   // Task 5.6a-5b-2 (edge/timetable, Versions and drafts: "The preview sorts
   // them into kept, needs a decision and dropped. Publish waits until every
   // 'needs a decision' item is settled.").

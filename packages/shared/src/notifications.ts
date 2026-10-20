@@ -227,13 +227,6 @@ export const NOTIFICATION_KINDS = {
     also: z.strictObject(teacherWeek).optional(),
   }),
   /**
-   * A calendar entry made the date of an exam a day off, and the exam is
-   * cancelled (`edge/timetable`, Exams: "a day off removes the exam and tells
-   * the Academic Vice Principal"; task 5.6b-2c-1, decision 4): the entry's
-   * name, the exam's title and its date. Sent to every Academic Vice
-   * Principal of the branch.
-   */
-  /**
    * An absence of a person was entered, changed or withdrawn (task 5.7a-1,
    * decision 8; `06`, Teachers who work in several branches: "Each branch's
    * Academic Vice Principal gets the list of own affected lessons and arranges
@@ -265,6 +258,13 @@ export const NOTIFICATION_KINDS = {
     name: z.string().min(1).max(200),
     startsOn: schoolDateSchema,
   }),
+  /**
+   * A calendar entry made the date of an exam a day off, and the exam is
+   * cancelled (`edge/timetable`, Exams: "a day off removes the exam and tells
+   * the Academic Vice Principal"; task 5.6b-2c-1, decision 4): the entry's
+   * name, the exam's title and its date. Sent to every Academic Vice
+   * Principal of the branch.
+   */
   'timetable.exam_day_off': z.strictObject({
     name: z.string().min(1).max(200),
     title: z.string().min(1).max(200),

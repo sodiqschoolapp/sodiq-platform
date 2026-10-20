@@ -325,17 +325,6 @@ describe('teacher absences', () => {
     }
   }
 
-  const auditCount = async () =>
-    Number(
-      (
-        await t.database.migrator
-          .selectFrom('audit_log')
-          .select((eb) => eb.fn.countAll().as('n'))
-          .where('action', 'like', 'absence.%')
-          .executeTakeFirstOrThrow()
-      ).n,
-    );
-
   /**
    * Every row of the tables the routes write, in every branch (permission
    * review must-fix 2; `.claude/rules/api.md`).
@@ -428,8 +417,13 @@ describe('teacher absences', () => {
         endsOn: null,
         reason: 'Course',
       });
-      const before = await auditCount();
-      for (const cookie of [t.principal, t.teacher]) {
+      // A Head Teacher and a Tutor of the branch too (spec review must-fix 4b).
+      const headTeacher = await t.kit.fullSession('Nodira', 'Qodirova');
+      await t.kit.giveRole(headTeacher.account.id, { role: 'head_teacher', branchId: t.north });
+      const tutor = await t.kit.fullSession('Sardor', 'Toshmatov');
+      await t.kit.giveRole(tutor.account.id, { role: 'tutor', branchId: t.north });
+      const before = await everything();
+      for (const cookie of [t.principal, t.teacher, headTeacher.cookie, tutor.cookie]) {
         refusedWith(
           await create(
             t.north,
@@ -446,14 +440,16 @@ describe('teacher absences', () => {
         );
         refusedWith(await withdraw(t.north, absence.id, cookie), 403, 'permission_denied');
       }
-      refusedWith(await lessonsOf(t.north, absence.id, t.teacher), 403, 'permission_denied');
-      refusedWith(await list(t.north, '', t.teacher), 403, 'permission_denied');
-      refusedWith(
-        await t.get('/api/timetable/attention', t.north, t.teacher),
-        403,
-        'permission_denied',
-      );
-      expect(await auditCount()).toBe(before);
+      for (const cookie of [t.teacher, headTeacher.cookie, tutor.cookie]) {
+        refusedWith(await lessonsOf(t.north, absence.id, cookie), 403, 'permission_denied');
+        refusedWith(await list(t.north, '', cookie), 403, 'permission_denied');
+        refusedWith(
+          await t.get('/api/timetable/attention', t.north, cookie),
+          403,
+          'permission_denied',
+        );
+      }
+      expect(await everything()).toEqual(before);
       const row = await t.database.migrator
         .selectFrom('absences')
         .select(['starts_on', 'withdrawn_at'])
@@ -926,6 +922,51 @@ describe('teacher absences', () => {
           branch_id: away,
         },
       ]);
+    });
+
+    // Spec review must-fixes 3 and 4c: a branch whose link to the person was
+    // removed while it holds the person's lessons reads the same absence, its
+    // days from the moments; once the time passes its lesson is "unresolved".
+    it('lists the absence in a branch unlinked from the person, and its passed lesson as "unresolved", never held', async () => {
+      const person = await load.teacher(t.north);
+      const away = await t.newBranch();
+      await t.database.migrator
+        .insertInto('staff_branches')
+        .values({ staff_id: person.staffId, branch_id: away, is_main: false })
+        .execute();
+      const awayScene = await scene({ branch: away, teacher: person, weekday: 2 });
+      const absence = await entered(t.north, {
+        staffId: person.staffId,
+        startsOn: MONDAY,
+        endsOn: null,
+        reason: 'Ill',
+      });
+      await t.database.migrator
+        .deleteFrom('staff_branches')
+        .where('staff_id', '=', person.staffId)
+        .where('branch_id', '=', away)
+        .execute();
+      await asViceAt(away, at(TUESDAY, '10:00'), async (cookie) => {
+        const listed = await attention(away, cookie);
+        expect(listed.unresolved).toEqual([
+          expect.objectContaining({
+            cause: 'absence',
+            absence: { id: absence.id, startsOn: MONDAY, endsOn: null },
+            lessons: 1,
+            firstDate: TUESDAY,
+          }),
+        ]);
+        expect(listed.needsTeacher).toContainEqual(
+          expect.objectContaining({
+            cause: 'absence',
+            absence: { id: absence.id, startsOn: MONDAY, endsOn: null },
+            firstDate: '2026-10-20',
+          }),
+        );
+        expect(await statesOn(awayScene, TUESDAY, cookie)).toEqual([
+          { state: 'unresolved', absent: true },
+        ]);
+      });
     });
 
     it('lists a past lesson of an absent person as "unresolved", never held', async () => {

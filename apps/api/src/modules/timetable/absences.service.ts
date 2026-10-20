@@ -487,15 +487,37 @@ export class TimetableAbsences {
         transaction,
         lessons.map((one) => ({ id: one.id, teacherId: one.teacher_id, startsAt: one.starts_at })),
       );
-      const absenceIds = [...new Set([...absent.values()].map((one) => one.absenceId))];
-      const absences =
-        absenceIds.length === 0
+      // The days of each absence: its stored row when the branch sees it,
+      // else read from its moments, so that a branch whose link to the person
+      // was removed reads the same absence (decision 3; spec review must-fix 3).
+      const branch = await transaction
+        .selectFrom('branches')
+        .select('time_zone')
+        .where('id', '=', branchId)
+        .executeTakeFirstOrThrow();
+      const spans = new Map([...absent.values()].map((one) => [one.absenceId, one]));
+      const stored =
+        spans.size === 0
           ? []
           : await transaction
               .selectFrom('absences')
               .select(['id', 'starts_on', 'ends_on'])
-              .where('id', 'in', absenceIds)
+              .where('id', 'in', [...spans.keys()])
               .execute();
+      const storedOf = new Map(stored.map((one) => [one.id, one]));
+      const absences = [...spans.values()].map((span) => {
+        const row = storedOf.get(span.absenceId);
+        return {
+          id: span.absenceId,
+          starts_on: row?.starts_on ?? schoolDateOf(span.from, branch.time_zone),
+          ends_on:
+            row === undefined
+              ? span.until === null
+                ? null
+                : schoolDateOf(new Date(span.until.getTime() - 1), branch.time_zone)
+              : row.ends_on,
+        };
+      });
       const absenceOf = new Map(absences.map((one) => [one.id, one]));
       const permanent = await this.permanentOf(transaction, branchId, moment, absences);
 
@@ -505,10 +527,24 @@ export class TimetableAbsences {
       };
       for (const one of lessons) {
         const span = absent.get(one.id);
+        // The one place of a lesson's state (5.6a-4 decision 11): a row of
+        // the lists is a lesson that needs a teacher or is unresolved there.
+        // A teacher the branch filter hides is a person (a vacancy has one
+        // branch, 0025).
+        const state = lessonStateOf(
+          {
+            startsAt: one.starts_at,
+            cancelled: false,
+            teacher: one.teacher_id === null ? null : one.kind === 'vacancy' ? 'vacancy' : 'person',
+            absent: span !== undefined,
+          },
+          moment,
+        );
+        if (state !== 'needs_teacher' && state !== 'unresolved') continue;
         let key: string;
         let group: Omit<AttentionGroup, 'lessons' | 'firstDate' | 'lastDate'>;
         if (span !== undefined) {
-          const stored = absenceOf.get(span.absenceId);
+          const days = absenceOf.get(span.absenceId);
           key = `absence:${span.absenceId}`;
           group = {
             cause: 'absence',
@@ -522,15 +558,15 @@ export class TimetableAbsences {
             },
             absence: {
               id: span.absenceId,
-              startsOn: stored?.starts_on ?? one.date,
-              endsOn: stored?.ends_on ?? null,
+              startsOn: days?.starts_on ?? one.date,
+              endsOn: days?.ends_on ?? null,
             },
             suggestPermanent: permanent.has(span.absenceId),
           };
         } else if (one.teacher_id === null) {
           key = 'nobody';
           group = { cause: 'nobody', teacher: null, absence: null, suggestPermanent: false };
-        } else if (one.kind === 'vacancy') {
+        } else {
           key = `vacancy:${one.teacher_id}`;
           group = {
             cause: 'vacancy',
@@ -538,11 +574,8 @@ export class TimetableAbsences {
             absence: null,
             suggestPermanent: false,
           };
-        } else {
-          continue;
         }
-        const side =
-          one.starts_at.getTime() <= moment.getTime() ? groups.unresolved : groups.needsTeacher;
+        const side = state === 'unresolved' ? groups.unresolved : groups.needsTeacher;
         const found = side.get(key);
         side.set(
           key,

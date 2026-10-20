@@ -3881,6 +3881,14 @@ export const uz: Texts<'one' | 'other'> = {
       },
       dayChanges: {
         title: 'Bir kunlik oʻzgarishlar',
+        absencesTitle_one: 'Saqlanadigan kelmasliklar: {{count}}',
+        absencesTitle_other: 'Saqlanadigan kelmasliklar: {{count}}',
+        absenceLine_one: '{{name}} {{days}} ishda emas: {{count}} ta yangi darsga oʻqituvchi kerak',
+        absenceLine_other:
+          '{{name}} {{days}} ishda emas: {{count}} ta yangi darsga oʻqituvchi kerak',
+        absenceDays: '{{from}} – {{to}}',
+        absenceFrom: '{{from}} dan',
+        absenceUnnamed: 'Boshqa filial oʻqituvchisi',
         keptTitle_one: 'Saqlanadi: {{count}}',
         keptTitle_other: 'Saqlanadi: {{count}}',
         decideTitle_one: 'Qaror kerak: {{count}}',
