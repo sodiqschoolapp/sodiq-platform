@@ -400,6 +400,22 @@ describe('the academic years page', () => {
     expect(calls.some((call) => call.route.startsWith('PUT'))).toBe(false);
   });
 
+  // Plan test 7b (code review must-fix 1): a closed year refused at the preview.
+  it('shows a refused preview of the quarters on the form, with no dialog and no save', async () => {
+    const calls = await openList('super_admin', [CURRENT], {
+      [PREVIEW_ROUTE]: () => refusalWith('year_closed', []),
+    });
+    const panel = await openYear('2026–2027');
+    const form = await changeQuarters(panel);
+    type(within(form).getByLabelText('Quarter 3: start'), '2027-01-12');
+    type(within(form).getByLabelText('Quarter 3: end'), '2027-03-20');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    expect(await within(form).findByText(en.errors.year_closed)).toBeDefined();
+    expect(calls.some((call) => call.route === PREVIEW_ROUTE)).toBe(true);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(calls.some((call) => call.route.startsWith('PUT'))).toBe(false);
+  });
+
   it('shows the Principal the years and quarters read only, without "Add year"', async () => {
     await openList('principal', [CURRENT]);
 

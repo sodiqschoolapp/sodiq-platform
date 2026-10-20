@@ -169,6 +169,6 @@ Not built yet: the mark on the timetable itself (task 5.4a).
 
 **What the person sees.**
 
-- In the preview, under what stops the save: "The new dates cannot be saved: a held lesson keeps its quarter, an exam is cancelled or moved first, and a lesson moved for one day keeps its two dates in one quarter."
+- In the preview, under what stops the save: "The new dates cannot be saved: a held lesson keeps its quarter, an exam is cancelled or moved first, and a one-day move keeps its two dates in one quarter."
 - Over held lessons in the way: "These quarter dates would move lessons of today or earlier to another quarter, or out of every quarter. Only future dates can change quarter: keep the dates of the lessons listed."
 - Over exams outside the year: "An exam of this year would lie outside the new dates. Keep the year around the exam, or change the exam first."

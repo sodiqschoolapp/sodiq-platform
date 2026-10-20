@@ -56,13 +56,16 @@ const ITEM_CODES = [
   'year_leaves_exam',
 ] as const;
 
-/** The items a refused save names in its details, or `null` for another failure. */
-export function quarterItemsOf(failure: unknown): QuarterItems | null {
-  if (!(failure instanceof ApiFailure) || !ITEM_CODES.some((code) => code === failure.code)) {
-    return null;
-  }
+/** The code and the items a refused save names in its details, or `null` for another failure. */
+export function quarterItemsOf(
+  failure: unknown,
+): (QuarterItems & { code: (typeof ITEM_CODES)[number] }) | null {
+  if (!(failure instanceof ApiFailure)) return null;
+  const code = ITEM_CODES.find((one) => one === failure.code);
+  if (code === undefined) return null;
   const details = failure.details ?? [];
   return {
+    code,
     items: details.flatMap((one) => (one.quarterItem === undefined ? [] : [one.quarterItem])),
     more: details.find((one) => one.path === 'more')?.more ?? 0,
   };
@@ -136,10 +139,8 @@ const LIST_TITLES = {
 export function QuarterRefusalLines({ failure }: { failure: unknown }): React.JSX.Element | null {
   const { t } = useTranslation();
   const list = quarterItemsOf(failure);
-  if (list === null || !(failure instanceof ApiFailure)) return null;
-  const code = ITEM_CODES.find((one) => one === failure.code);
-  if (code === undefined) return null;
-  return <QuarterItemsList title={t(LIST_TITLES[code])} list={list} />;
+  if (list === null) return null;
+  return <QuarterItemsList title={t(LIST_TITLES[list.code])} list={list} />;
 }
 
 /** Whether the preview refuses the save with a list (`pastLessons`, `exams`, `splitMoves`). */
@@ -297,7 +298,11 @@ export function useQuartersPreview(): {
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
           <DialogHeader>
             <DialogTitle>{t('setup.years.preview.title')}</DialogTitle>
-            <DialogDescription>{t('setup.years.preview.description')}</DialogDescription>
+            {/* Code review should-fix 1: no sentence under the title
+                (`.claude/rules/web.md`); the description is for screen readers. */}
+            <DialogDescription className="sr-only">
+              {t('setup.years.preview.description')}
+            </DialogDescription>
           </DialogHeader>
           {listsRefuse(question.preview) && (
             <div className="space-y-3" data-testid="quarter-refusals">
