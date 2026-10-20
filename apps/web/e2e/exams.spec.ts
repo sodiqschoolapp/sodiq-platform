@@ -23,7 +23,7 @@ function mondaysAhead(count: number): string[] {
 // from the page over a shared block with its choice, and cancelled with a
 // lesson kept cancelled". The scene of its own: 7 Oxford (lesson 1) and
 // 7 Princeton (lesson 2) with Aliyeva's geometry on Monday, the group
-// 7-Astronomy of both classes in lesson 3, and Nazarov free to invigilate.
+// 7-Ecology of both classes in lesson 3, and Nazarov free to invigilate.
 // All names are invented.
 test('an Academic Vice Principal makes an exam over a shared block and cancels it keeping a lesson cancelled', async ({
   page,
@@ -79,7 +79,7 @@ test('an Academic Vice Principal makes an exam over a shared block and cancels i
   await page.getByRole('link', { name: day.examsLink, exact: true }).click();
   await expect(heading(page, texts.title)).toBeVisible();
 
-  // The exam of 7 Oxford in lessons 1 to 3, over the shared astronomy lesson.
+  // The exam of 7 Oxford in lessons 1 to 3, over the shared ecology lesson.
   await page.getByRole('button', { name: texts.new, exact: true }).first().click();
   const form = page.getByRole('dialog');
   await form.getByLabel(texts.examTitle, { exact: true }).fill('Quarter exam');
@@ -91,7 +91,7 @@ test('an Academic Vice Principal makes an exam over a shared block and cancels i
   await form.getByRole('button', { name: texts.check, exact: true }).click();
   const shared = form.locator('[data-shared]');
   await expect(shared).toHaveCount(1);
-  await expect(shared).toContainText('Astronomy');
+  await expect(shared).toContainText('Ecology');
   await expect(form.locator('[data-exam-cancels] li')).toHaveCount(1);
   await shared.getByRole('radio', { name: texts.choice_keep, exact: true }).check();
   const save = form.getByRole('button', { name: texts.save, exact: true });

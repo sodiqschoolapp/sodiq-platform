@@ -3184,7 +3184,7 @@ try {
      */
     publishable?: boolean;
     /**
-     * Task 5.6c-2: a block shared by both classes (the group 7-Astronomy of
+     * Task 5.6c-2: a block shared by both classes (the group 7-Ecology of
      * 7 Oxford and 7 Princeton, Monday slot 3, Aliyeva's) and a person with
      * no lessons to invigilate (the staff id and phone given).
      */
@@ -3498,12 +3498,12 @@ try {
           .execute();
       }
       if (scene.examShared !== undefined) {
-        const astronomy = await transaction
+        const ecology = await transaction
           .insertInto('subjects')
           .values({
-            name_uz: 'Astronomiya',
-            name_ru: 'Астрономия',
-            name_en: 'Astronomy',
+            name_uz: 'Ekologiya',
+            name_ru: 'Экология',
+            name_en: 'Ecology',
             department_id: steam.id,
             grades: [7],
             colour: 'violet',
@@ -3513,15 +3513,15 @@ try {
           .executeTakeFirstOrThrow();
         await transaction
           .insertInto('staff_subjects')
-          .values({ staff_id: person.id, subject_id: astronomy.id, grades: [7] })
+          .values({ staff_id: person.id, subject_id: ecology.id, grades: [7] })
           .execute();
         const group = await transaction
           .insertInto('groups')
           .values({
             branch_id: gridBranch,
             academic_year_id: year.id,
-            subject_id: astronomy.id,
-            name: '7-Astronomy',
+            subject_id: ecology.id,
+            name: '7-Ecology',
             language: 'uz',
             max_size: 40,
           })
@@ -3539,7 +3539,7 @@ try {
             branch_id: gridBranch,
             version_id: draft.id,
             group_id: group.id,
-            subject_id: astronomy.id,
+            subject_id: ecology.id,
             teacher_id: person.id,
             lessons_per_week: 1,
           })
