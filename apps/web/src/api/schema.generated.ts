@@ -12096,6 +12096,13 @@ export interface operations {
                         /** @enum {string} */
                         choice: "cancel" | "keep";
                     }[];
+                    groupBlocks?: {
+                        weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+                        start: number;
+                        groupIds: string[];
+                        /** @enum {string} */
+                        choice: "cancel" | "keep";
+                    }[];
                 };
             };
         };
@@ -12265,6 +12272,13 @@ export interface operations {
                         /** @enum {string} */
                         choice: "cancel" | "keep";
                     }[];
+                    groupBlocks?: {
+                        weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+                        start: number;
+                        groupIds: string[];
+                        /** @enum {string} */
+                        choice: "cancel" | "keep";
+                    }[];
                 } | {
                     /** @enum {string} */
                     action: "edit";
@@ -12302,6 +12316,13 @@ export interface operations {
                         /** @enum {string} */
                         choice: "cancel" | "keep";
                     }[];
+                    groupBlocks?: {
+                        weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+                        start: number;
+                        groupIds: string[];
+                        /** @enum {string} */
+                        choice: "cancel" | "keep";
+                    }[];
                 } | {
                     /** @enum {string} */
                     action: "archive";
@@ -12323,6 +12344,13 @@ export interface operations {
                         /** @enum {string} */
                         choice: "cancel" | "keep";
                     }[];
+                    groupBlocks?: {
+                        weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+                        start: number;
+                        groupIds: string[];
+                        /** @enum {string} */
+                        choice: "cancel" | "keep";
+                    }[];
                 } | {
                     /** @enum {string} */
                     action: "restore";
@@ -12341,6 +12369,13 @@ export interface operations {
                         /** Format: uuid */
                         classId: string;
                         start: number;
+                        /** @enum {string} */
+                        choice: "cancel" | "keep";
+                    }[];
+                    groupBlocks?: {
+                        weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+                        start: number;
+                        groupIds: string[];
                         /** @enum {string} */
                         choice: "cancel" | "keep";
                     }[];
@@ -12688,6 +12723,21 @@ export interface operations {
                                     choice: "cancel" | "keep" | null;
                                 }[];
                             }[];
+                            groupBlocks: {
+                                weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+                                start: number;
+                                end: number;
+                                groupIds: string[];
+                                gradesAtSchool: number[];
+                                dates: string[];
+                                /** @enum {string|null} */
+                                choice: "cancel" | "keep" | null;
+                            }[];
+                            groupBlocksUnused: {
+                                weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+                                start: number;
+                                groupIds: string[];
+                            }[];
                             names: {
                                 units: {
                                     /** Format: uuid */
@@ -12867,6 +12917,13 @@ export interface operations {
                         /** @enum {string} */
                         choice: "cancel" | "keep";
                     }[];
+                    groupBlocks?: {
+                        weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+                        start: number;
+                        groupIds: string[];
+                        /** @enum {string} */
+                        choice: "cancel" | "keep";
+                    }[];
                 };
             };
         };
@@ -13031,6 +13088,13 @@ export interface operations {
                         /** @enum {string} */
                         choice: "cancel" | "keep";
                     }[];
+                    groupBlocks?: {
+                        weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+                        start: number;
+                        groupIds: string[];
+                        /** @enum {string} */
+                        choice: "cancel" | "keep";
+                    }[];
                 };
             };
         };
@@ -13192,6 +13256,13 @@ export interface operations {
                         /** Format: uuid */
                         classId: string;
                         start: number;
+                        /** @enum {string} */
+                        choice: "cancel" | "keep";
+                    }[];
+                    groupBlocks?: {
+                        weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+                        start: number;
+                        groupIds: string[];
                         /** @enum {string} */
                         choice: "cancel" | "keep";
                     }[];

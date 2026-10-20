@@ -407,7 +407,14 @@ export class TimetableWithdraw {
         warnings: [],
         needsTeacher: [],
         cancelled: [],
-        dated: { lessons: [], cancelled: [], noTutor: [], shortened: [], unusedKeeps: [] },
+        dated: {
+          lessons: [],
+          cancelled: [],
+          noTutor: [],
+          shortened: [],
+          unusedKeeps: [],
+          splitGroups: [],
+        },
       };
     } else {
       const stored = await this.timetable.versionRow(transaction, before.id);

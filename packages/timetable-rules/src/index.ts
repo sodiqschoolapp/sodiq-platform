@@ -228,11 +228,13 @@ export {
   type DatedCancelReason,
   type DatedDay,
   type DatedEntry,
+  type DatedGroupChoice,
   type DatedLesson,
   type DatedNoTutor,
   type DatedPattern,
   type DatedPatternInput,
   type DatedShortened,
+  type DatedSplitGroup,
   type DatedUnusedKeep,
 } from './dated.js';
 // Task 5.5a-2b-1: the impact preview and the transition week of a publish.

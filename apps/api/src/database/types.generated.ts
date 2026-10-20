@@ -198,6 +198,27 @@ export interface CalendarEntries {
   name: string;
 }
 
+export interface CalendarGroupBlockGroups {
+  block_id: string;
+  branch_id: string;
+  calendar_entry_id: string;
+  group_id: string;
+  lesson_date: string;
+  start_minutes: number;
+}
+
+export interface CalendarGroupBlocks {
+  branch_id: string;
+  calendar_entry_id: string;
+  choice: string;
+  created_at: Generated<Timestamp>;
+  end_minutes: number;
+  id: Generated<string>;
+  lesson_date: string;
+  start_minutes: number;
+  weekday: number;
+}
+
 export interface Classes {
   academic_year_id: string;
   archived_at: Timestamp | null;
@@ -1077,6 +1098,8 @@ export interface DB {
   bulk_cancel_spans: BulkCancelSpans;
   bulk_cancels: BulkCancels;
   calendar_entries: CalendarEntries;
+  calendar_group_block_groups: CalendarGroupBlockGroups;
+  calendar_group_blocks: CalendarGroupBlocks;
   class_memberships: ClassMemberships;
   class_tutors: ClassTutors;
   classes: Classes;

@@ -39,6 +39,7 @@ import {
   type ExamChoiceOf,
   type SortedExam,
 } from './calendar-exams.js';
+import { groupBlockLines, storeGroupChoices, type GroupBlockAudit } from './calendar-groups.js';
 import { runningUntil } from './chain.js';
 import { datedCheck, type DatedFindings } from './dated-check.js';
 import { writeDatedLessons, type DatedWrite } from './dated-lessons.js';
@@ -121,6 +122,12 @@ import {
  * both (`across` of `sortDayChanges`): kept when its new place takes it,
  * else needs a decision in both halves; settled and audited once, in the
  * stretch of its old place.
+ *
+ * Task 5.6b-3: a day-off entry that leaves one grade of a two-grade group at
+ * school takes a choice per block of the group (`calendar-groups.ts`),
+ * stored per date for the dates written before each stretch is checked
+ * again, as the shortened day's choice; a block of the entry with none
+ * refuses the save, a detail of `calendar_blocked`.
  */
 
 /** A stretch as read once: its version, dates, state and findings (task 5.6b-2c-2). */
@@ -174,6 +181,8 @@ export interface CalendarRewrite {
     readonly dayKeeps: readonly KeepAudit[];
     /** Task 5.6b-2c-1 (decision 7): what the save did to each exam of its dates. */
     readonly exams: readonly ExamAudit[];
+    /** Task 5.6b-3: each choice of a split group's block written or removed. */
+    readonly groupBlocks: readonly GroupBlockAudit[];
   } | null;
 }
 
@@ -208,6 +217,8 @@ export const NO_LESSONS: CalendarLessons = {
   shortenedDays: [],
   keepRefusals: [],
   exams: [],
+  groupBlocks: [],
+  groupBlocksUnused: [],
   names: EMPTY_NAMES,
 };
 
@@ -351,6 +362,8 @@ export class TimetableCalendarLessons {
        * save; task 5.6b-2b: the shortened days' choices, of the save and the preview.
        */
       readonly days: CalendarDaysBody;
+      /** Task 5.6b-3: the entry whose split groups' choices are stored; `null` for an archive. */
+      readonly entryId: string | null;
     },
   ): Promise<CalendarRewrite> {
     const { branchId, today } = input;
@@ -374,10 +387,18 @@ export class TimetableCalendarLessons {
       if (keep.date <= keepToday) refuseKeep(keep, 'day_keep_date_passed');
       else keeps.push(keep);
     }
+    const sentGroups = input.entryId === null ? [] : (input.days.groupBlocks ?? []);
     const noLessons = (): CalendarRewrite => {
       // No date written: no choice has a day to decide.
       for (const keep of keeps) refuseKeep(keep, 'day_keep_not_short');
-      return { lessons: { ...NO_LESSONS, keepRefusals }, audit: null };
+      return {
+        lessons: {
+          ...NO_LESSONS,
+          keepRefusals,
+          groupBlocksUnused: groupBlockLines(input.entryId, [], sentGroups).unused,
+        },
+        audit: null,
+      };
     };
     if (dates.length === 0) return noLessons();
 
@@ -431,6 +452,7 @@ export class TimetableCalendarLessons {
       return false;
     });
     const keepAudit: KeepAudit[] = [];
+    const groupAudit: GroupBlockAudit[] = [];
 
     // Task 5.6b-2c-1: the exams standing on the dates written, locked, and
     // the choices for shared blocks, per block (spec review of the code,
@@ -517,6 +539,21 @@ export class TimetableCalendarLessons {
             before: storedKeeps.get(`${keep.date}|${keep.classId}`) ?? [],
             after: [...keep.slotPositions].sort((a, b) => a - b),
           });
+        }
+        // Task 5.6b-3: the entry's choices for its split groups' blocks
+        // stored for the dates of the stretch, then the stretch checked again.
+        if (input.entryId !== null) {
+          const changedGroups = await storeGroupChoices(transaction, {
+            branchId,
+            entryId: input.entryId,
+            dates: part.dates.filter((date) => date > keepToday),
+            splits: findings.dated.splitGroups,
+            sent: sentGroups,
+          });
+          if (changedGroups.length > 0) {
+            groupAudit.push(...changedGroups);
+            findings = await check();
+          }
         }
         bases.push({ versionId, part, state, findings });
       }
@@ -698,6 +735,12 @@ export class TimetableCalendarLessons {
     const examsAll = stretches.flatMap((one) => one.exams);
     const examNeedsAll = stretches.flatMap((one) => one.examNeeds);
     const refusedExams = examsAll.filter((one) => one.outcome === 'refused');
+    // Task 5.6b-3: the entry's split blocks, and those with no choice.
+    const groupLines = groupBlockLines(
+      input.entryId,
+      stretches.flatMap((one) => one.findings.dated.splitGroups),
+      sentGroups,
+    );
     const blocked = [
       ...stretches.flatMap((one) => one.findings.blocked),
       ...backs.flatMap((one) => one.blocked.map(datedAnswerOf)),
@@ -726,6 +769,13 @@ export class TimetableCalendarLessons {
             message: 'A shared block newly under an exam needs a choice.',
             day: need.date,
           })),
+        // Task 5.6b-3 (decision 4): a split group's block with no choice.
+        ...groupLines.missing.map((split): ErrorDetail => ({
+          path: `groupBlocks.${String(split.weekday)}.${String(split.start)}.${split.groupIds.join(',')}`,
+          code: 'calendar_group_block_choice',
+          message: 'A block of a two-grade group left with one grade at school needs a choice.',
+          day: split.date,
+        })),
       ];
       if (details.length > 0) {
         throw new ApiException('calendar_blocked', 409, undefined, details);
@@ -946,6 +996,8 @@ export class TimetableCalendarLessons {
       shortenedDays,
       keepRefusals,
       exams: examLines,
+      groupBlocks: groupLines.lines,
+      groupBlocksUnused: groupLines.unused,
     };
     let notices: WeekNotices = { notified: 0, marked: 0 };
     let shown: StoredLesson[] = [];
@@ -979,6 +1031,7 @@ export class TimetableCalendarLessons {
           ...examLines.flatMap((one) =>
             one.blocks.flatMap((block) => block.lessons.map((lesson) => lesson.unitId)),
           ),
+          ...groupLines.lines.flatMap((one) => one.groupIds),
         ],
         subjectIds: [
           ...shown.map((one) => one.lesson.subjectId),
@@ -1047,6 +1100,7 @@ export class TimetableCalendarLessons {
         movedBack: backs.map((one) => one.key).sort(),
         dayKeeps: keepAudit,
         exams: examAudit,
+        groupBlocks: groupAudit,
       },
     };
   }

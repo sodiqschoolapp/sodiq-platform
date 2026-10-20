@@ -389,8 +389,27 @@ export async function storedDayCheck(
     const key = `${one.doublePairId}|${unitOf(one)}`;
     halves.set(key, (halves.get(key) ?? 0) + 1);
   }
+  // Task 5.6b-3: a two-grade group's lesson kept for the grade at school on
+  // a day off of the other, as the expansion of the date keeps it: its grade
+  // off is no refusal of a one-day change of it.
+  const keptOff = new Map(
+    dated.dated.lessons.flatMap((one) =>
+      one.placement.gradesOff === undefined || one.placement.groupId === null
+        ? []
+        : [
+            [
+              `${one.placement.groupId}|${String(one.placement.start)}`,
+              { grades: one.placement.gradesOff, exempt: one.placement.exemptStudentIds },
+            ] as const,
+          ],
+    ),
+  );
   const placementOf = (one: StoredDayLesson, teacherId: string | null, roomId: string | null) => {
     const unitId = unitOf(one);
+    const off =
+      one.groupId === null || one.date !== date
+        ? undefined
+        : keptOff.get(`${one.groupId}|${String(minutesOf(one.startsAt))}`);
     // A correction takes one half of a double alone, whose teacher and room
     // may differ from the other's (task 5.6a-4, decision 1; spec review of
     // the code, must-fix 1): it is no half of a pair in the check.
@@ -412,7 +431,8 @@ export async function storedDayCheck(
       groupId: one.groupId,
       classIds: units.get(unitId)?.classIds ?? (one.classId === null ? [] : [one.classId]),
       studentIds: studentsOn(unitId, date),
-      exemptStudentIds: [],
+      // Task 5.6b-3: the off grade's students of a kept lesson are exempt.
+      exemptStudentIds: off === undefined ? [] : [...off.exempt],
       subjectId: one.subjectId,
       loadRowId: one.loadRowId,
       teacherIds: teacherId === null ? [] : [teacherId],
@@ -420,6 +440,7 @@ export async function storedDayCheck(
       roomId,
       examRooms: [],
       fixed: false,
+      ...(off === undefined ? {} : { gradesOff: off.grades }),
     } satisfies Placement;
   };
 

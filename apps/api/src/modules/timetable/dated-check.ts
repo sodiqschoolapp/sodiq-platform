@@ -10,6 +10,7 @@ import {
   weekdayOf,
   type DatedBlock,
   type DatedDay,
+  type DatedGroupChoice,
   type DatedLesson,
   type DatedPattern,
   type EngineDay,
@@ -20,6 +21,7 @@ import {
   type RuleResult,
 } from '@sodiq/timetable-rules';
 import {
+  calendarGroupChoiceSchema,
   weekdaySchema,
   type CancelledLesson,
   type NeedsTeacherAnswer,
@@ -271,51 +273,53 @@ export async function datedLessonsOf(
   const rows = data.rows;
   const classIds = [...new Set(data.units.flatMap((unit) => unit.classIds))].sort();
   const groupIds = data.units.filter((unit) => unit.kind === 'group').map((unit) => unit.id);
-  const [classMembers, groupMembers, tutorRows, begins, classGrades, keeps] = await Promise.all([
-    classIds.length === 0
-      ? Promise.resolve([] as MemberRow[])
-      : transaction
-          .selectFrom('class_memberships')
-          .select([
-            'class_id as unit_id',
-            'student_id',
-            sql<string>`valid_from::text`.as('valid_from'),
-            sql<string>`valid_until::text`.as('valid_until'),
-          ])
-          .where('class_id', 'in', classIds)
-          .where('valid_from', '<=', lastDate)
-          .where('valid_until', '>', startsOn)
-          .orderBy('student_id')
-          .execute(),
-    groupIds.length === 0
-      ? Promise.resolve([] as MemberRow[])
-      : transaction
-          .selectFrom('group_memberships')
-          .select([
-            'group_id as unit_id',
-            'student_id',
-            sql<string>`valid_from::text`.as('valid_from'),
-            sql<string>`valid_until::text`.as('valid_until'),
-          ])
-          .where('group_id', 'in', groupIds)
-          .where('valid_from', '<=', lastDate)
-          .where('valid_until', '>', startsOn)
-          .orderBy('student_id')
-          .execute(),
-    readTutorRows(
-      transaction,
-      rows.flatMap((row) => (row.classId === null ? [] : [row.classId])),
-    ),
-    dayBeginnings(transaction, branch.time_zone, startsOn, addDays(lastDate, 1)),
-    classIds.length === 0
-      ? Promise.resolve([] as { id: string; grade: number }[])
-      : transaction
-          .selectFrom('classes')
-          .select(['id', 'grade'])
-          .where('id', 'in', classIds)
-          .execute(),
-    readDayKeeps(transaction, state.version.id, startsOn, lastDate),
-  ]);
+  const [classMembers, groupMembers, tutorRows, begins, classGrades, keeps, groupChoices] =
+    await Promise.all([
+      classIds.length === 0
+        ? Promise.resolve([] as MemberRow[])
+        : transaction
+            .selectFrom('class_memberships')
+            .select([
+              'class_id as unit_id',
+              'student_id',
+              sql<string>`valid_from::text`.as('valid_from'),
+              sql<string>`valid_until::text`.as('valid_until'),
+            ])
+            .where('class_id', 'in', classIds)
+            .where('valid_from', '<=', lastDate)
+            .where('valid_until', '>', startsOn)
+            .orderBy('student_id')
+            .execute(),
+      groupIds.length === 0
+        ? Promise.resolve([] as MemberRow[])
+        : transaction
+            .selectFrom('group_memberships')
+            .select([
+              'group_id as unit_id',
+              'student_id',
+              sql<string>`valid_from::text`.as('valid_from'),
+              sql<string>`valid_until::text`.as('valid_until'),
+            ])
+            .where('group_id', 'in', groupIds)
+            .where('valid_from', '<=', lastDate)
+            .where('valid_until', '>', startsOn)
+            .orderBy('student_id')
+            .execute(),
+      readTutorRows(
+        transaction,
+        rows.flatMap((row) => (row.classId === null ? [] : [row.classId])),
+      ),
+      dayBeginnings(transaction, branch.time_zone, startsOn, addDays(lastDate, 1)),
+      classIds.length === 0
+        ? Promise.resolve([] as { id: string; grade: number }[])
+        : transaction
+            .selectFrom('classes')
+            .select(['id', 'grade'])
+            .where('id', 'in', classIds)
+            .execute(),
+      readDayKeeps(transaction, state.version.id, startsOn, lastDate),
+      readGroupChoices(transaction, startsOn, lastDate),
+    ]);
   const gradeOfClass = new Map(classGrades.map((row) => [row.id, row.grade]));
   const keptOf = new Map<string, number[]>();
   for (const keep of keeps) {
@@ -346,7 +350,14 @@ export async function datedLessonsOf(
     const found = dayOn(grade, date, settings);
     let value: { engine: EngineDay; dated: DatedDay };
     if (!found.lessons) {
-      value = { engine: { lessons: false, reason: found.reason }, dated: { lessons: false } };
+      value = {
+        engine: { lessons: false, reason: found.reason },
+        // Task 5.6b-3: the day-off entry, whose choice decides a split group.
+        dated:
+          found.reason === 'day_off' && found.entryId !== null
+            ? { lessons: false, dayOffEntryId: found.entryId }
+            : { lessons: false },
+      };
     } else {
       const timed = dayOf(store, found.dayTemplateId, date);
       const noRegularLessons = found.examWeek === 'no_regular_lessons';
@@ -438,6 +449,8 @@ export async function datedLessonsOf(
       return grade;
     },
     keptOn: (classId, date) => keptOf.get(`${classId}|${date}`) ?? null,
+    groupChoiceOn: (entryId, date, groups, start) =>
+      groupChoices.get(groupChoiceKey(entryId, date, groups, start)) ?? null,
   });
 
   return { dated, begins, classOn, studentsOn, tutorOn, dayOfDate, branch, cancelledTeacher };
@@ -460,6 +473,54 @@ export function readDayKeeps(
     .orderBy('kept_on')
     .orderBy('slot_position')
     .execute();
+}
+
+/** The key of a split group's block on a date (task 5.6b-3): entry, date, weekly start, groups sorted. */
+export const groupChoiceKey = (
+  entryId: string,
+  date: string,
+  groupIds: readonly string[],
+  start: number,
+) => [entryId, date, String(start), ...[...groupIds].sort()].join('|');
+
+/**
+ * The stored choices of day-off entries for blocks of two-grade groups
+ * between two dates (task 5.6b-3), by `groupChoiceKey`. A row's groups are
+ * read with it, so a block is matched by its whole group set.
+ */
+export async function readGroupChoices(
+  transaction: Transaction,
+  firstDate: string,
+  lastDate: string,
+): Promise<Map<string, DatedGroupChoice>> {
+  const rows = await transaction
+    .selectFrom('calendar_group_blocks as b')
+    .innerJoin('calendar_group_block_groups as g', 'g.block_id', 'b.id')
+    .select([
+      'b.id',
+      'b.calendar_entry_id',
+      sql<string>`b.lesson_date::text`.as('lesson_date'),
+      'b.start_minutes',
+      'b.choice',
+      'g.group_id',
+    ])
+    .where('b.lesson_date', '>=', firstDate)
+    .where('b.lesson_date', '<=', lastDate)
+    .orderBy('b.id')
+    .orderBy('g.group_id')
+    .execute();
+  const byBlock = new Map<string, { row: (typeof rows)[number]; groups: string[] }>();
+  for (const row of rows) {
+    const known = byBlock.get(row.id);
+    if (known === undefined) byBlock.set(row.id, { row, groups: [row.group_id] });
+    else known.groups.push(row.group_id);
+  }
+  return new Map(
+    [...byBlock.values()].map(({ row, groups }) => [
+      groupChoiceKey(row.calendar_entry_id, row.lesson_date, groups, row.start_minutes),
+      calendarGroupChoiceSchema.parse(row.choice),
+    ]),
+  );
 }
 
 /**

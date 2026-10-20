@@ -101,6 +101,8 @@ const NO_LESSONS: CalendarPreview['lessons'] = {
   shortenedDays: [],
   keepRefusals: [],
   exams: [],
+  groupBlocks: [],
+  groupBlocksUnused: [],
   names: { units: [], subjects: [], teachers: [], rooms: [] },
 };
 
@@ -773,6 +775,77 @@ describe('the calendar page', () => {
       });
     },
   );
+
+  // Task 5.6b-3: the blocks of two-grade groups a day off for one grade
+  // splits, a stored choice shown chosen, Save off until each has one.
+  it("lists the split groups' blocks, keeps Save off until each has a choice, and sends the choice made", async () => {
+    const GROUP = uid(71);
+    const OTHER = uid(72);
+    const line = (groupId: string, start: number, choice: 'keep' | 'cancel' | null) => ({
+      weekday: 1 as const,
+      start,
+      end: start + 45,
+      groupIds: [groupId],
+      gradesAtSchool: [10],
+      dates: ['2026-10-19', '2026-10-26'],
+      choice,
+    });
+    const { calls } = await openList('academic_vice_principal', {
+      'POST /api/setup/calendar-entries/preview': () =>
+        json({
+          ...PREVIEW,
+          lessons: {
+            ...NO_LESSONS,
+            groupBlocks: [line(GROUP, 590, null), line(OTHER, 480, 'keep')],
+            names: {
+              units: [
+                { id: GROUP, kind: 'group' as const, name: 'PE 9-10', grades: [9, 10] },
+                { id: OTHER, kind: 'group' as const, name: 'Art 9-10', grades: [9, 10] },
+              ],
+              subjects: [],
+              teachers: [],
+              rooms: [],
+            },
+          },
+        }),
+      [`POST /api/setup/calendar-entries/${HOLIDAY.id}/archive`]: () =>
+        json({ ...HOLIDAY, archivedAt: '2026-10-10T10:00:00.000Z' }),
+    });
+    const panel = await openEntry('Teachers day');
+    fireEvent.click(within(panel).getByRole('button', { name: en.setup.calendar.archive }));
+    const dialog = await screen.findByRole('dialog', { name: en.setup.calendar.previewTitle });
+    const block = (groupId: string, start: number) =>
+      dialog.querySelector<HTMLElement>(`[data-block="1|${String(start)}|${groupId}"]`);
+    const pe = block(GROUP, 590);
+    expect(pe?.querySelector('legend')?.textContent).toBe(
+      'PE 9-10 · Monday 09:50–10:35 · 19 October 2026, 26 October 2026',
+    );
+    const radios = (element: HTMLElement | null) =>
+      within(element ?? dialog).getAllByRole<HTMLInputElement>('radio');
+    // The stored choice of the other block is shown chosen.
+    expect(radios(block(OTHER, 480)).map((one) => one.checked)).toEqual([false, true]);
+    expect(radios(pe).map((one) => one.checked)).toEqual([false, false]);
+    const save = within(dialog).getByRole('button', { name: en.setup.calendar.save });
+    expect(save).toHaveProperty('disabled', true);
+    const cancel = radios(pe)[0];
+    if (cancel === undefined) throw new Error('No choice to cancel.');
+    fireEvent.click(cancel);
+    await waitFor(() => {
+      expect(save).toHaveProperty('disabled', false);
+    });
+    fireEvent.click(save);
+    await waitFor(() => {
+      expect(
+        calls.find(
+          (call) => call.route === `POST /api/setup/calendar-entries/${HOLIDAY.id}/archive`,
+        )?.body,
+      ).toEqual({
+        dayChangesKey: 'e'.repeat(64),
+        dayDecisions: [],
+        groupBlocks: [{ weekday: 1, start: 590, groupIds: [GROUP], choice: 'cancel' }],
+      });
+    });
+  });
 
   it('lists a stored choice that "Back to the default" removes and sends an empty list', async () => {
     const OXFORD = uid(45);

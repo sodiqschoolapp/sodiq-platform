@@ -362,7 +362,16 @@ function checkDay(placement: Placement, facts: Facts, results: Results): void {
     grade,
     day: facts.dayOf(placement.branchId, grade, placement.day),
   }));
+  const offByDay = (one: (typeof days)[number]) =>
+    !one.day.lessons &&
+    one.day.reason === 'day_off' &&
+    placement.gradesOff?.includes(one.grade) === true;
+  const excused = (one: (typeof days)[number]) =>
+    offByDay(one) && days.some((other) => other.day.lessons);
   for (const one of days) {
+    // Task 5.6b-3: a grade of a kept two-grade lesson off by a day off,
+    // while another grade of it has school.
+    if (excused(one)) continue;
     if (!one.day.lessons) {
       results.add(one.day.reason, placement.day, [placement], { grade: one.grade });
       return;

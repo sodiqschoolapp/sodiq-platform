@@ -45977,6 +45977,90 @@
                       ],
                       "additionalProperties": false
                     }
+                  },
+                  "groupBlocks": {
+                    "maxItems": 500,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "weekday": {
+                          "anyOf": [
+                            {
+                              "type": "number",
+                              "enum": [
+                                1
+                              ]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [
+                                2
+                              ]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [
+                                3
+                              ]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [
+                                4
+                              ]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [
+                                5
+                              ]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [
+                                6
+                              ]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [
+                                7
+                              ]
+                            }
+                          ]
+                        },
+                        "start": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 1439
+                        },
+                        "groupIds": {
+                          "minItems": 1,
+                          "maxItems": 20,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          }
+                        },
+                        "choice": {
+                          "type": "string",
+                          "enum": [
+                            "cancel",
+                            "keep"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "weekday",
+                        "start",
+                        "groupIds",
+                        "choice"
+                      ],
+                      "additionalProperties": false
+                    }
                   }
                 },
                 "required": [
@@ -46990,6 +47074,90 @@
                           ],
                           "additionalProperties": false
                         }
+                      },
+                      "groupBlocks": {
+                        "maxItems": 500,
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "weekday": {
+                              "anyOf": [
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    1
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    2
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    3
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    4
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    5
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    6
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    7
+                                  ]
+                                }
+                              ]
+                            },
+                            "start": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1439
+                            },
+                            "groupIds": {
+                              "minItems": 1,
+                              "maxItems": 20,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              }
+                            },
+                            "choice": {
+                              "type": "string",
+                              "enum": [
+                                "cancel",
+                                "keep"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "weekday",
+                            "start",
+                            "groupIds",
+                            "choice"
+                          ],
+                          "additionalProperties": false
+                        }
                       }
                     },
                     "required": [
@@ -47193,6 +47361,90 @@
                           ],
                           "additionalProperties": false
                         }
+                      },
+                      "groupBlocks": {
+                        "maxItems": 500,
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "weekday": {
+                              "anyOf": [
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    1
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    2
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    3
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    4
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    5
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    6
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    7
+                                  ]
+                                }
+                              ]
+                            },
+                            "start": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1439
+                            },
+                            "groupIds": {
+                              "minItems": 1,
+                              "maxItems": 20,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              }
+                            },
+                            "choice": {
+                              "type": "string",
+                              "enum": [
+                                "cancel",
+                                "keep"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "weekday",
+                            "start",
+                            "groupIds",
+                            "choice"
+                          ],
+                          "additionalProperties": false
+                        }
                       }
                     },
                     "required": [
@@ -47286,6 +47538,90 @@
                           ],
                           "additionalProperties": false
                         }
+                      },
+                      "groupBlocks": {
+                        "maxItems": 500,
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "weekday": {
+                              "anyOf": [
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    1
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    2
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    3
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    4
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    5
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    6
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    7
+                                  ]
+                                }
+                              ]
+                            },
+                            "start": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1439
+                            },
+                            "groupIds": {
+                              "minItems": 1,
+                              "maxItems": 20,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              }
+                            },
+                            "choice": {
+                              "type": "string",
+                              "enum": [
+                                "cancel",
+                                "keep"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "weekday",
+                            "start",
+                            "groupIds",
+                            "choice"
+                          ],
+                          "additionalProperties": false
+                        }
                       }
                     },
                     "required": [
@@ -47374,6 +47710,90 @@
                             "examId",
                             "classId",
                             "start",
+                            "choice"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "groupBlocks": {
+                        "maxItems": 500,
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "weekday": {
+                              "anyOf": [
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    1
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    2
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    3
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    4
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    5
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    6
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    7
+                                  ]
+                                }
+                              ]
+                            },
+                            "start": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1439
+                            },
+                            "groupIds": {
+                              "minItems": 1,
+                              "maxItems": 20,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              }
+                            },
+                            "choice": {
+                              "type": "string",
+                              "enum": [
+                                "cancel",
+                                "keep"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "weekday",
+                            "start",
+                            "groupIds",
                             "choice"
                           ],
                           "additionalProperties": false
@@ -49079,6 +49499,185 @@
                             "additionalProperties": false
                           }
                         },
+                        "groupBlocks": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "weekday": {
+                                "anyOf": [
+                                  {
+                                    "type": "number",
+                                    "enum": [
+                                      1
+                                    ]
+                                  },
+                                  {
+                                    "type": "number",
+                                    "enum": [
+                                      2
+                                    ]
+                                  },
+                                  {
+                                    "type": "number",
+                                    "enum": [
+                                      3
+                                    ]
+                                  },
+                                  {
+                                    "type": "number",
+                                    "enum": [
+                                      4
+                                    ]
+                                  },
+                                  {
+                                    "type": "number",
+                                    "enum": [
+                                      5
+                                    ]
+                                  },
+                                  {
+                                    "type": "number",
+                                    "enum": [
+                                      6
+                                    ]
+                                  },
+                                  {
+                                    "type": "number",
+                                    "enum": [
+                                      7
+                                    ]
+                                  }
+                                ]
+                              },
+                              "start": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "end": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              },
+                              "groupIds": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                }
+                              },
+                              "gradesAtSchool": {
+                                "type": "array",
+                                "items": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "dates": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "format": "date",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                                }
+                              },
+                              "choice": {
+                                "nullable": true,
+                                "type": "string",
+                                "enum": [
+                                  "cancel",
+                                  "keep"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "weekday",
+                              "start",
+                              "end",
+                              "groupIds",
+                              "gradesAtSchool",
+                              "dates",
+                              "choice"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "groupBlocksUnused": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "weekday": {
+                                "anyOf": [
+                                  {
+                                    "type": "number",
+                                    "enum": [
+                                      1
+                                    ]
+                                  },
+                                  {
+                                    "type": "number",
+                                    "enum": [
+                                      2
+                                    ]
+                                  },
+                                  {
+                                    "type": "number",
+                                    "enum": [
+                                      3
+                                    ]
+                                  },
+                                  {
+                                    "type": "number",
+                                    "enum": [
+                                      4
+                                    ]
+                                  },
+                                  {
+                                    "type": "number",
+                                    "enum": [
+                                      5
+                                    ]
+                                  },
+                                  {
+                                    "type": "number",
+                                    "enum": [
+                                      6
+                                    ]
+                                  },
+                                  {
+                                    "type": "number",
+                                    "enum": [
+                                      7
+                                    ]
+                                  }
+                                ]
+                              },
+                              "start": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "groupIds": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                }
+                              }
+                            },
+                            "required": [
+                              "weekday",
+                              "start",
+                              "groupIds"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
                         "names": {
                           "type": "object",
                           "properties": {
@@ -49221,6 +49820,8 @@
                         "shortenedDays",
                         "keepRefusals",
                         "exams",
+                        "groupBlocks",
+                        "groupBlocksUnused",
                         "names"
                       ],
                       "additionalProperties": false
@@ -50117,6 +50718,90 @@
                         "examId",
                         "classId",
                         "start",
+                        "choice"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "groupBlocks": {
+                    "maxItems": 500,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "weekday": {
+                          "anyOf": [
+                            {
+                              "type": "number",
+                              "enum": [
+                                1
+                              ]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [
+                                2
+                              ]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [
+                                3
+                              ]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [
+                                4
+                              ]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [
+                                5
+                              ]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [
+                                6
+                              ]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [
+                                7
+                              ]
+                            }
+                          ]
+                        },
+                        "start": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 1439
+                        },
+                        "groupIds": {
+                          "minItems": 1,
+                          "maxItems": 20,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          }
+                        },
+                        "choice": {
+                          "type": "string",
+                          "enum": [
+                            "cancel",
+                            "keep"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "weekday",
+                        "start",
+                        "groupIds",
                         "choice"
                       ],
                       "additionalProperties": false
@@ -51067,6 +51752,90 @@
                       ],
                       "additionalProperties": false
                     }
+                  },
+                  "groupBlocks": {
+                    "maxItems": 500,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "weekday": {
+                          "anyOf": [
+                            {
+                              "type": "number",
+                              "enum": [
+                                1
+                              ]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [
+                                2
+                              ]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [
+                                3
+                              ]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [
+                                4
+                              ]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [
+                                5
+                              ]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [
+                                6
+                              ]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [
+                                7
+                              ]
+                            }
+                          ]
+                        },
+                        "start": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 1439
+                        },
+                        "groupIds": {
+                          "minItems": 1,
+                          "maxItems": 20,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          }
+                        },
+                        "choice": {
+                          "type": "string",
+                          "enum": [
+                            "cancel",
+                            "keep"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "weekday",
+                        "start",
+                        "groupIds",
+                        "choice"
+                      ],
+                      "additionalProperties": false
+                    }
                   }
                 },
                 "additionalProperties": false
@@ -51998,6 +52767,90 @@
                         "examId",
                         "classId",
                         "start",
+                        "choice"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "groupBlocks": {
+                    "maxItems": 500,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "weekday": {
+                          "anyOf": [
+                            {
+                              "type": "number",
+                              "enum": [
+                                1
+                              ]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [
+                                2
+                              ]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [
+                                3
+                              ]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [
+                                4
+                              ]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [
+                                5
+                              ]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [
+                                6
+                              ]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [
+                                7
+                              ]
+                            }
+                          ]
+                        },
+                        "start": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 1439
+                        },
+                        "groupIds": {
+                          "minItems": 1,
+                          "maxItems": 20,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          }
+                        },
+                        "choice": {
+                          "type": "string",
+                          "enum": [
+                            "cancel",
+                            "keep"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "weekday",
+                        "start",
+                        "groupIds",
                         "choice"
                       ],
                       "additionalProperties": false

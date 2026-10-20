@@ -141,6 +141,8 @@ export const ERROR_CODES = [
   'calendar_exam_templates',
   /** Task 5.6b-2c-1: a shared block newly under an exam has no choice in the save; a detail of `calendar_blocked`. */
   'calendar_exam_block_choice',
+  /** Task 5.6b-3: a block of a two-grade group that a day off leaves with one grade at school has no choice in the save; a detail of `calendar_blocked`. */
+  'calendar_group_block_choice',
   /** The go-live date must be a school day: some grade has lessons on it (`edge/academic-year`; task 1.4). */
   'go_live_not_school_day',
   /** Travel time is set between two different branches (task 1.6). */

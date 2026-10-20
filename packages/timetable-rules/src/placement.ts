@@ -72,6 +72,12 @@ export interface Placement {
    * reported (06, Teachers who work in several branches, Busy elsewhere).
    */
   readonly fixed: boolean;
+  /**
+   * Task 5.6b-3: the grades of a two-grade group's lesson kept for the grade
+   * that has school on a day off of the other (`datedPattern`): their day off
+   * is no refusal, their students are in `exemptStudentIds`. Absent: none.
+   */
+  readonly gradesOff?: readonly number[];
 }
 
 /** An availability entry of a teacher or vacancy in one branch (task 2.2b), in force over `[validFrom, validUntil)`. */

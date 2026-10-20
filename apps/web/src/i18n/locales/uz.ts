@@ -171,6 +171,8 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu oʻzgarishdan keyin imtihon sinflari ikki xil kun shablonida boʻlib qoladi. Avval imtihonni oʻzgartiring, soʻng qayta saqlang.',
     calendar_exam_block_choice:
       'Umumiy dars endi imtihon vaqtiga toʻgʻri keladi. Oldindan koʻrishni qayta oching va tanlang: darsni bekor qilish yoki uni boshqa sinflar uchun qoldirish.',
+    calendar_group_block_choice:
+      'Ikki parallel guruhining darsida endi maktabda faqat bitta parallel bor. Oldindan koʻrishni qayta oching va tanlang: dam olish kuni sifatida bekor qilish yoki maktabda boʻlgan parallel uchun qoldirish.',
     own_account:
       'Oʻz hisobingizni bloklay, blokdan chiqara yoki tiklay olmaysiz. Boshqa administratorga murojaat qiling.',
     account_already_locked:
@@ -1347,6 +1349,13 @@ export const uz: Texts<'one' | 'other'> = {
             '{{unit}} imtihon topshiradi, lekin uning darsi topshirmaydigan sinflar bilan umumiy: {{lessons}}',
           choice_cancel: 'Imtihon uchun butun darsni bekor qilish',
           choice_keep: 'Uni boshqa sinflar uchun qoldirish; {{unit}} undan chiqariladi',
+        },
+        groups: {
+          title: 'Bu kunlardagi ikki parallel guruhlari',
+          block: '{{groups}} · {{weekday}} {{time}} · {{dates}}',
+          choice_cancel: 'Bu kunlarda bekor qilish: dam olish kuni',
+          choice_keep:
+            '{{grades}}-sinf uchun qoldirish; dam olayotgan parallel oʻquvchilari ozod qilinadi',
         },
       },
     },
