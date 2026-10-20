@@ -447,7 +447,17 @@ export class TimetableExams {
     }
 
     const lessons = await storedExamLessonsOn(transaction, branchId, body.date, day.begins);
-    const choiceOf = choicesOf(body, lessons, input.stored, standing, day.begins);
+    // The stored choices are read with the stored exam's own classes and
+    // groups (code review round 1, change 1): a block shared only under the
+    // new classes was never chosen for, and is asked for again.
+    const storedStanding =
+      input.stored === null
+        ? null
+        : await standingOf(transaction, input.stored.id, {
+            ...body,
+            rooms: input.stored.rooms.map((room) => ({ ...room })),
+          });
+    const choiceOf = choicesOf(body, lessons, input.stored, storedStanding, day.begins);
     const found = examLessonsOf({ ...standing, date: body.date }, time, lessons, choiceOf);
     if (found.needs.length > 0) {
       throw new ApiException(
@@ -1073,7 +1083,7 @@ function choicesOf(
   body: ExamInput,
   lessons: readonly ExamDayLesson[],
   stored: StoredExam | null,
-  standing: StandingExam,
+  storedStanding: StandingExam | null,
   begins: Date,
 ): ExamChoiceOf {
   const patternOf = new Map(lessons.map((one) => [one.blockId, one.patternBlockId]));
@@ -1091,10 +1101,10 @@ function choicesOf(
     }
   }
   const before =
-    stored === null || stored.date !== body.date
+    stored === null || storedStanding === null || stored.date !== body.date
       ? new Map<string, ExamBlockChoice>()
       : storedChoicesOf(
-          { ...standing, outs: stored.outs },
+          { ...storedStanding, outs: stored.outs },
           {
             start: Math.round((stored.startsAt.getTime() - begins.getTime()) / MINUTE),
             end: Math.round((stored.endsAt.getTime() - begins.getTime()) / MINUTE),

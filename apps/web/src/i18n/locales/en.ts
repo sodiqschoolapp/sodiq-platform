@@ -198,7 +198,7 @@ export const en = {
       'A group sits only an exam of its own subject. Choose the group’s subject for the exam.',
     exam_unit_year: 'A class or group of another academic year cannot sit this exam.',
     exam_blocked:
-      'The exam clashes with lessons or exams listed below. Move or cancel them first, or change the exam.',
+      'The exam cannot be saved for the reasons listed below: a lesson or exam at the same time, an invigilator who cannot invigilate, or a date without lessons. Change the exam, or what stands in its way.',
     exam_warnings: 'Check the warnings below and tick them to save the exam.',
     exam_restore_blocked:
       'Some lessons the exam cancelled cannot be brought back, listed below. Keep them cancelled with a reason, or free their time first.',

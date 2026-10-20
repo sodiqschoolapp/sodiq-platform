@@ -204,7 +204,7 @@ export const uz: Texts<'one' | 'other'> = {
       'Guruh faqat oʻz fanidan imtihon topshiradi. Imtihon uchun guruh fanini tanlang.',
     exam_unit_year: 'Boshqa oʻquv yilining sinfi yoki guruhi bu imtihonni topshira olmaydi.',
     exam_blocked:
-      'Imtihon quyidagi darslar yoki imtihonlar bilan toʻqnashadi. Avval ularni koʻchiring yoki bekor qiling, yoki imtihonni oʻzgartiring.',
+      'Imtihonni quyidagi sabablarga koʻra saqlab boʻlmaydi: shu vaqtdagi dars yoki imtihon, navbatchilik qila olmaydigan xodim yoki darssiz sana. Imtihonni yoki unga toʻsqinlik qilayotgan narsani oʻzgartiring.',
     exam_warnings: 'Quyidagi ogohlantirishlarni tekshiring va imtihonni saqlash uchun belgilang.',
     exam_restore_blocked:
       'Imtihon bekor qilgan baʼzi darslarni qaytarib boʻlmaydi (quyidagi roʻyxat). Ularni sabab bilan bekor holida qoldiring yoki avval vaqtini boʻshating.',

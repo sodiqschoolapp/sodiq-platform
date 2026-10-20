@@ -404,8 +404,24 @@ export async function storedDayCheck(
           ],
     ),
   );
+  // Task 5.6c-1 (code review round 1): a class a standing exam keeps out of
+  // a block is out of its lessons, as the block's class claims leave it out (0060).
+  const blockIds = [...new Set([...stored, ...input.lessons].map((one) => one.blockId))];
+  const outRows =
+    blockIds.length === 0
+      ? []
+      : await transaction
+          .selectFrom('lesson_block_class_outs')
+          .innerJoin('exams', 'exams.id', 'lesson_block_class_outs.exam_id')
+          .select(['lesson_block_class_outs.block_id', 'lesson_block_class_outs.class_id'])
+          .where('lesson_block_class_outs.block_id', 'in', blockIds)
+          .where('exams.cancel_cause', 'is', null)
+          .execute();
+  const outOf = (blockId: string) =>
+    new Set(outRows.filter((row) => row.block_id === blockId).map((row) => row.class_id));
   const placementOf = (one: StoredDayLesson, teacherId: string | null, roomId: string | null) => {
     const unitId = unitOf(one);
+    const out = outOf(one.blockId);
     const off =
       one.groupId === null || one.date !== date
         ? undefined
@@ -429,7 +445,9 @@ export async function storedDayCheck(
       doublePairId: pair,
       classId: one.classId,
       groupId: one.groupId,
-      classIds: units.get(unitId)?.classIds ?? (one.classId === null ? [] : [one.classId]),
+      classIds: (units.get(unitId)?.classIds ?? (one.classId === null ? [] : [one.classId])).filter(
+        (id) => !out.has(id),
+      ),
       studentIds: studentsOn(unitId, date),
       // Task 5.6b-3: the off grade's students of a kept lesson are exempt.
       exemptStudentIds: off === undefined ? [] : [...off.exempt],
