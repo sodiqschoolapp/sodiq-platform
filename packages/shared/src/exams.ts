@@ -98,7 +98,7 @@ type ExamChecked = {
   keepReason?: string | undefined;
 };
 
-const checkExam = (body: ExamChecked, context: z.RefinementCtx): void => {
+const checkExam = (body: ExamChecked, context: z.RefinementCtx, needsReason = true): void => {
   if (body.lastLesson < body.firstLesson) {
     context.addIssue({
       code: 'custom',
@@ -147,7 +147,7 @@ const checkExam = (body: ExamChecked, context: z.RefinementCtx): void => {
       message: 'A block is chosen twice.',
     });
   }
-  if (!keptWithReason(body)) context.addIssue({ code: 'custom', ...keptMessage });
+  if (needsReason && !keptWithReason(body)) context.addIssue({ code: 'custom', ...keptMessage });
 };
 
 /** A change of an exam: the lessons it gives back may be kept cancelled with a reason (decision 3). */
@@ -173,7 +173,9 @@ export const examCreateBodySchema = z
 export const examCheckBodySchema = z
   .strictObject({ examId: z.uuid().optional(), ...placeFields, ...keepCancelled })
   .superRefine((body, context) => {
-    checkExam(body, context);
+    // The check answers nothing on the reason: lessons are named to stay
+    // cancelled before it is typed.
+    checkExam(body, context, false);
     if (body.examId === undefined && body.keepCancelled !== undefined) {
       context.addIssue({
         code: 'custom',

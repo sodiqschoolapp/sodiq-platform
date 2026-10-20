@@ -1,4 +1,4 @@
-import type { DayAnswer, DayLesson, Room, SchoolClass } from '@sodiq/shared';
+import type { DayAnswer, DayExam, DayLesson, Room, SchoolClass } from '@sodiq/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
@@ -79,6 +79,7 @@ async function openPage(
   options: {
     role?: 'academic_vice_principal' | 'principal';
     lessons?: DayLesson[];
+    exams?: DayExam[];
     longestDay?: number;
     extra?: Record<string, (body: unknown) => Response>;
   } = {},
@@ -94,6 +95,7 @@ async function openPage(
     longestDay: options.longestDay ?? 2,
     today: '2026-10-10',
     lessons,
+    exams: options.exams ?? [],
   });
   const calls = fakeApi({
     'GET /api/auth/session': () => json(session(options.role ?? 'academic_vice_principal')),
@@ -870,5 +872,37 @@ describe('the correction of a past lesson', () => {
     expect(
       page.calls.filter((call) => call.route.endsWith('/correction')).map((call) => call.body),
     ).toEqual([{ kind: 'restore', reason: 'It took place' }]);
+  });
+
+  // Task 5.6c-2 (plan test 17; `06`, Exam: "It is shown on every timetable
+  // view ..., marked 'exam'").
+  it('shows the class’s exam of the date as a row marked "Exam", with its room and invigilators', async () => {
+    await openPage({
+      lessons: [lesson(1, { cancelCause: 'exam', state: 'cancelled', canCancel: false })],
+      exams: [
+        {
+          id: uid(901),
+          title: 'Quarter exam in maths',
+          subject: null,
+          start: 480,
+          end: 570,
+          room: { id: uid(902), name: 'Hall' },
+          invigilators: ['Karimova Dilnoza'],
+        },
+      ],
+    });
+    await waitFor(() => {
+      expect(document.querySelector(`[data-exam="${uid(901)}"]`)).not.toBeNull();
+    });
+    const row = document.querySelector(`[data-exam="${uid(901)}"]`);
+    const cells = [...(row?.querySelectorAll('td') ?? [])].map((one) => one.textContent);
+    expect(cells.slice(0, 6)).toEqual([
+      '08:00–09:30',
+      'Quarter exam in maths',
+      '',
+      'Karimova Dilnoza',
+      'Hall',
+      en.timetable.day.exam,
+    ]);
   });
 });

@@ -40,6 +40,13 @@ import {
   bulkCancelCheckAnswerSchema,
   type BulkCancelBody,
   type BulkCancelCheckBody,
+  examCheckSchema,
+  examSaveAnswerSchema,
+  examsAnswerSchema,
+  type ExamBody,
+  type ExamCancelBody,
+  type ExamCheckBody,
+  type ExamCreateBody,
 } from '@sodiq/shared';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { api, branchHeader } from '@/api/client';
@@ -572,3 +579,51 @@ export const correctionTeachersQuery = (
       ),
     enabled: branchId !== null && enabled,
   });
+
+/** The exams of one date (task 5.6c-2), standing and cancelled. */
+export const examsQuery = (branchId: string | null, date: string | null) =>
+  queryOptions({
+    queryKey: [...timetableKey(branchId), 'exams', date],
+    queryFn: async () =>
+      examsAnswerSchema.parse(
+        await answerOf(
+          api.GET('/api/timetable/exams', {
+            params: { header: branchHeader(), query: { from: date ?? '', to: date ?? '' } },
+          }),
+        ),
+      ),
+    enabled: branchId !== null && date !== null,
+  });
+
+/** What a save of the exam would do (task 5.6c-2); writes nothing. */
+export const checkExam = (body: ExamCheckBody) =>
+  answerOf(
+    api.POST('/api/timetable/exams/check', { params: { header: branchHeader() }, body }),
+  ).then((answer) => examCheckSchema.parse(answer));
+
+/** A new exam (task 5.6c-2); `key` makes a repeat harmless. */
+export const createExam = (body: ExamCreateBody, key: string) =>
+  answerOf(
+    api.POST('/api/timetable/exams', {
+      params: { header: { ...branchHeader(), 'Idempotency-Key': key } },
+      body,
+    }),
+  ).then((answer) => examSaveAnswerSchema.parse(answer));
+
+/** A change of an exam (task 5.6c-2); `key` makes a repeat harmless. */
+export const changeExam = (id: string, body: ExamBody, key: string) =>
+  answerOf(
+    api.PUT('/api/timetable/exams/{id}', {
+      params: { header: { ...branchHeader(), 'Idempotency-Key': key }, path: { id } },
+      body,
+    }),
+  ).then((answer) => examSaveAnswerSchema.parse(answer));
+
+/** The cancel of an exam (task 5.6c-2); `key` makes a repeat harmless. */
+export const cancelExam = (id: string, body: ExamCancelBody, key: string) =>
+  answerOf(
+    api.POST('/api/timetable/exams/{id}/cancel', {
+      params: { header: { ...branchHeader(), 'Idempotency-Key': key }, path: { id } },
+      body,
+    }),
+  ).then((answer) => examSaveAnswerSchema.parse(answer));
