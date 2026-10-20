@@ -335,8 +335,13 @@ export async function sendWeekChanges(
         readonly name: string;
         readonly firstDate: string;
         readonly lastDate: string;
+        readonly examsChanged?: ExamsChanged;
       }
-    | { readonly kind: 'timetable.template_changed'; readonly from: string }
+    | {
+        readonly kind: 'timetable.template_changed';
+        readonly from: string;
+        readonly examsChanged?: ExamsChanged;
+      }
     | {
         readonly kind: 'timetable.quarters_changed';
         readonly firstDate: string;
@@ -428,6 +433,7 @@ export async function sendWeekChanges(
               firstDate: event.firstDate,
               lastDate: event.lastDate,
               ...week,
+              ...examsOf(event.examsChanged, accountId),
             },
           });
         case 'timetable.template_changed':
@@ -435,7 +441,7 @@ export async function sendWeekChanges(
             kind: event.kind,
             branchId: snapshot.branchId,
             accountIds: [accountId],
-            data: { from: event.from, ...week },
+            data: { from: event.from, ...week, ...examsOf(event.examsChanged, accountId) },
           });
         case 'timetable.quarters_changed':
           return notifications.send(transaction, {
@@ -483,6 +489,39 @@ export async function sendWeekChanges(
       dropped += 1;
     }
   }
+  // Task 5.6c-3b (decision 3): an invigilator of an exam a calendar or
+  // template change moved or cancelled whose week did not change gets the
+  // event's notice with the exams alone; one notice per person.
+  let invigilated = 0;
+  if (event.kind === 'timetable.calendar_changed' || event.kind === 'timetable.template_changed') {
+    const told = [...(event.examsChanged ?? new Map<string, readonly ExamChanged[]>())];
+    for (const [accountId, exams] of told.sort(([a], [b]) => a.localeCompare(b))) {
+      if (sentTo.has(accountId) || exams.length === 0) continue;
+      const examsData = exams.map((one) => ({
+        ...one,
+        invigilation: one.invigilation === null ? null : { ...one.invigilation },
+      }));
+      await (event.kind === 'timetable.calendar_changed'
+        ? notifications.send(transaction, {
+            kind: event.kind,
+            branchId: snapshot.branchId,
+            accountIds: [accountId],
+            data: {
+              name: event.name,
+              firstDate: event.firstDate,
+              lastDate: event.lastDate,
+              exams: examsData,
+            },
+          })
+        : notifications.send(transaction, {
+            kind: event.kind,
+            branchId: snapshot.branchId,
+            accountIds: [accountId],
+            data: { from: event.from, exams: examsData },
+          }));
+      invigilated += 1;
+    }
+  }
   // Task 5.6c-1 (spec review of the plan, should-fix 2): an invigilator whose
   // week did not change is told of the exam alone; one notice per person.
   let invigilators = 0;
@@ -500,7 +539,40 @@ export async function sendWeekChanges(
       invigilators += 1;
     }
   }
-  return { notified: notified + invigilators + dropped, marked: changes.marked.length };
+  return {
+    notified: notified + invigilators + dropped + invigilated,
+    marked: changes.marked.length,
+  };
+}
+
+/**
+ * Task 5.6c-3b (decision 3): an exam a calendar or template change moved
+ * with its slots or cancelled for a day off, as one invigilator is told of
+ * it: the invigilation after the save, `null` when cancelled.
+ */
+export interface ExamChanged {
+  readonly title: string;
+  readonly date: string;
+  readonly action: 'moved' | 'cancelled';
+  readonly invigilation: Invigilation | null;
+}
+
+/** The exams changed of each invigilator, by account. */
+export type ExamsChanged = ReadonlyMap<string, readonly ExamChanged[]>;
+
+/** The `exams` of a person's notice, or nothing. */
+function examsOf(
+  examsChanged: ExamsChanged | undefined,
+  accountId: string,
+): { exams?: ExamChanged[] } {
+  const exams = examsChanged?.get(accountId);
+  if (exams === undefined || exams.length === 0) return {};
+  return {
+    exams: exams.map((one) => ({
+      ...one,
+      invigilation: one.invigilation === null ? null : { ...one.invigilation },
+    })),
+  };
 }
 
 /** One person's invigilation after an exam save: its clock times and room. */

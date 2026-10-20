@@ -44,7 +44,9 @@ import {
  * save (`quarter_leaves_exam`, decision 5), and so does a stored one-day move
  * whose two dates the save puts in two quarters (`quarter_splits_move`,
  * decision 6). The year's own dates move no lesson (decision 2): a dated
- * quarter stays inside its year (`outside_year`).
+ * quarter stays inside its year (`outside_year`). Task 5.6c-3b (decision 2):
+ * new dates that bring two standing rating exams linked to one journal into
+ * one quarter refuse the save (`quarter_rating_exams`).
  */
 
 /** A quarter's number and dates, as the save reads them before and after. */
@@ -173,10 +175,12 @@ export class QuarterLessons {
     const splitMoves = itemsOf(
       await this.splitMoves(transaction, branchId, yearId, input.before, after),
     );
+    const ratingExams = itemsOf(await this.ratingExamsTwice(transaction, yearId, after));
     for (const [code, list] of [
       ['quarter_past_lessons', pastLessons],
       ['quarter_leaves_exam', exams],
       ['quarter_splits_move', splitMoves],
+      ['quarter_rating_exams', ratingExams],
     ] as const) {
       if (!input.preview && list.items.length > 0) throw refusalOf(code, list);
     }
@@ -210,8 +214,11 @@ export class QuarterLessons {
         pastLessons,
         exams,
         splitMoves,
+        ratingExams,
       },
-      refused: [pastLessons, exams, splitMoves].some((list) => list.items.length > 0),
+      refused: [pastLessons, exams, splitMoves, ratingExams].some(
+        (list) => list.items.length > 0,
+      ),
     };
   }
 
@@ -352,6 +359,72 @@ export class QuarterLessons {
             : { kind: 'class', name: row.class_name ?? '', grade: row.grade },
         subject: subjectOf(row),
       }));
+  }
+
+  /**
+   * Task 5.6c-3b (decision 2): each journal that the new dates give two or
+   * more standing rating exams in one quarter, by the later exam's date. The
+   * year row is held `for no key update` (`lock`), and every exam save
+   * holds it `for share`, so no link is written meanwhile.
+   */
+  private async ratingExamsTwice(
+    transaction: Transaction,
+    yearId: string,
+    after: readonly Dated[],
+  ): Promise<QuarterItem[]> {
+    const rows = await transaction
+      .selectFrom('exam_rating_journals')
+      .innerJoin('exams', 'exams.id', 'exam_rating_journals.exam_id')
+      .innerJoin('journals', 'journals.id', 'exam_rating_journals.journal_id')
+      .innerJoin('subjects', 'subjects.id', 'journals.subject_id')
+      .leftJoin('classes', 'classes.id', 'journals.class_id')
+      .leftJoin('groups', 'groups.id', 'journals.group_id')
+      .select([
+        'exam_rating_journals.journal_id',
+        'exams.title',
+        sql<string>`exams.exam_date::text`.as('date'),
+        'journals.class_id',
+        'classes.name as class_name',
+        'classes.grade',
+        'groups.name as group_name',
+        'journals.subject_id',
+        'subjects.name_uz',
+        'subjects.name_ru',
+        'subjects.name_en',
+      ])
+      .where('exams.academic_year_id', '=', yearId)
+      .where('exams.rating_exam', '=', true)
+      .where('exams.cancel_cause', 'is', null)
+      .where('exam_rating_journals.linked', '=', true)
+      .orderBy('exams.exam_date')
+      .orderBy('exams.starts_at')
+      .orderBy('exams.id')
+      .execute();
+    const byQuarter = new Map<string, typeof rows>();
+    for (const row of rows) {
+      const quarter = quarterOn(after, row.date);
+      if (quarter === null) continue;
+      const key = `${row.journal_id}|${String(quarter)}`;
+      byQuarter.set(key, [...(byQuarter.get(key) ?? []), row]);
+    }
+    return [...byQuarter.values()]
+      .flatMap((list) => {
+        const row = list.at(-1);
+        return list.length > 1 && row !== undefined ? [{ list, row }] : [];
+      })
+      .sort((a, b) => a.row.date.localeCompare(b.row.date))
+      .map(({ list, row }): QuarterItem => {
+        return {
+          kind: 'rating_exams',
+          date: row.date,
+          unit:
+            row.class_id === null
+              ? { kind: 'group', name: row.group_name ?? '', grade: null }
+              : { kind: 'class', name: row.class_name ?? '', grade: row.grade },
+          subject: subjectOf(row),
+          exams: list.map((one) => ({ title: one.title, date: one.date })),
+        };
+      });
   }
 
   /** Every block of the year on a date that goes to another quarter takes that quarter (decision 4). */

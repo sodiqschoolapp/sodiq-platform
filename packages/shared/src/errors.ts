@@ -152,6 +152,8 @@ export const ERROR_CODES = [
   'quarter_leaves_exam',
   /** Task 5.6b-5a (decision 6): a stored one-day move would have its two dates in two quarters ("A one-day move stays inside the same quarter"). */
   'quarter_splits_move',
+  /** Task 5.6c-3b (decision 2): the new quarter dates would bring two standing rating exams linked to one journal into one quarter. */
+  'quarter_rating_exams',
   /** Task 5.6b-5a: a lesson would lie outside its quarter's dates (`quarters_lessons`, 0093). */
   'quarter_leaves_lesson',
   /** Task 5.6b-5a: an exam of the year would lie outside the year's new dates (the From line of 5.1b). */
@@ -182,6 +184,12 @@ export const ERROR_CODES = [
   'exam_warnings',
   /** Task 5.6c-1 (decision 3): a lesson the exam no longer covers cannot be restored; `details` lists each with the free rooms of its time, and the save is sent again with the lesson in `keepCancelled`. */
   'exam_restore_blocked',
+  /** Task 5.6c-3b (decision 5): the exam's subject has no rating exam, so the exam cannot be its rating exam. */
+  'exam_rating_subject',
+  /** Task 5.6c-3b (decision 2): a journal the exam would link is linked to another standing exam of the same quarter; `details` lists each (`recordId` the journal, `day` the other exam's date). */
+  'exam_rating_taken',
+  /** Task 5.6c-3b: a journal of a rating exam is of another subject or year than the exam (`exam_rating_journal`, 0095). */
+  'exam_rating_journal',
   /** The go-live date must be a school day: some grade has lessons on it (`edge/academic-year`; task 1.4). */
   'go_live_not_school_day',
   /** Travel time is set between two different branches (task 1.6). */
@@ -826,7 +834,7 @@ export const errorDetailSchema = z.object({
     .optional(),
   /** A room free at the time of a refused restore, room change or move, on a `restore_blocked` or `day_change_blocked` (tasks 5.6a-1 and 5.6a-2). */
   room: z.object({ id: z.uuid(), name: z.string() }).optional(),
-  /** What stands in the way of a save of the quarters, on a `quarter_past_lessons`, `quarter_leaves_exam` or `quarter_splits_move` (task 5.6b-5a), or an exam left out by new year dates, on a `year_leaves_exam` (task 5.6b-5b). */
+  /** What stands in the way of a save of the quarters, on a `quarter_past_lessons`, `quarter_leaves_exam` or `quarter_splits_move` (task 5.6b-5a) or a `quarter_rating_exams` (task 5.6c-3b), or an exam left out by new year dates, on a `year_leaves_exam` (task 5.6b-5b). */
   quarterItem: quarterItemSchema.optional(),
   /** The number of items a list of details leaves out, on its detail `more` (`year_cut_holds`, task 3.6b-2). */
   more: z.int().min(1).optional(),

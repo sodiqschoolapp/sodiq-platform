@@ -341,6 +341,14 @@ export interface ExamInvigilators {
   staff_kind: Generated<string>;
 }
 
+export interface ExamRatingJournals {
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  exam_id: string;
+  journal_id: string;
+  linked: boolean;
+}
+
 export interface ExamRoomClasses {
   branch_id: string;
   class_id: string | null;
@@ -369,6 +377,7 @@ export interface Exams {
   first_slot: number;
   id: Generated<string>;
   last_slot: number;
+  rating_exam: Generated<boolean>;
   starts_at: Timestamp;
   subject_id: string | null;
   title: string;
@@ -1128,6 +1137,7 @@ export interface DB {
   departments: Departments;
   divisions: Divisions;
   exam_invigilators: ExamInvigilators;
+  exam_rating_journals: ExamRatingJournals;
   exam_room_classes: ExamRoomClasses;
   exam_rooms: ExamRooms;
   exams: Exams;

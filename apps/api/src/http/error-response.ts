@@ -92,6 +92,8 @@ const MESSAGE: Record<ErrorCode, string> = {
     'The new quarter dates would move lessons of today or earlier to another quarter; each is listed.',
   quarter_leaves_exam: 'An exam lies on a date the new quarter dates take out of every quarter.',
   quarter_splits_move: 'A one-day move would have its two dates in two quarters.',
+  quarter_rating_exams:
+    'The new quarter dates would give a journal two rating exams in one quarter; each is listed.',
   quarter_leaves_lesson: 'A lesson would lie outside the dates of its quarter.',
   year_leaves_exam: 'An exam of the year would lie outside the new dates.',
   exam_year:
@@ -109,6 +111,10 @@ const MESSAGE: Record<ErrorCode, string> = {
     'The exam meets a blocked rule: a clash, an invigilator who cannot invigilate, or a date without lessons.',
   exam_warnings: 'The exam meets warnings that need a tick.',
   exam_restore_blocked: 'A lesson the exam no longer covers cannot be restored.',
+  exam_rating_subject: 'The subject of the exam has no rating exam.',
+  exam_rating_taken:
+    'A journal is already linked to another rating exam of the same quarter; each is listed.',
+  exam_rating_journal: 'A journal of the rating exam is of another subject or year than the exam.',
   travel_time_same_branch: 'Travel time is set between two different branches.',
   subject_archived: 'The subject is archived. Restore it first.',
   department_not_academic: 'A subject belongs to a department of the Academic division.',
