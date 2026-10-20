@@ -300,7 +300,7 @@ Plan approved on pull request #185 with corrections 1 to 4; decisions 1 to 13 co
 | One audit entry, in the request's branch | Decision 6 |
 | An absence writes no lesson; in the sorting of a publish and a withdraw it is always kept, with the number of the run's new lessons it puts under "needs a teacher", and is not in `dayChangesKeyOf` | Decision 7; a calendar save lists none |
 | One notice to the current Academic Vice Principals of every branch linked to the person or holding their lessons in the range, the author left out, labelled with the request's branch; five kinds (`timetable.absence_entered`, `_entered_open`, `_changed`, `_changed_open`, `_withdrawn`), since a text is not chosen by the data | Decision 8 |
-| The home page lists: "unresolved" the started lessons of the current year, "needs a teacher" those not started, one row per cause (an absence, a vacancy, nobody) | Decision 9 |
+| The home page lists: "unresolved" the started lessons of the branch's years not closed (the current one, and a planned one that already holds published lessons), "needs a teacher" those not started, one row per cause (an absence, a vacancy, nobody) | Decision 9; read at the build as "the open years" after the browser test's planned year showed nothing (`edge/timetable`, "The school needs next year's timetable in August") |
 | "Consider a permanent change" once the absence has covered 10 school days of the branch up to and including today | Decision 10 |
 | A vacancy cannot be absent (422 `absence_person`), no trigger | Decision 11 |
 | `reason` required, 1 to 500 characters | Decision 13 |

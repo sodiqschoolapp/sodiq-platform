@@ -453,7 +453,7 @@ export class TimetableAbsences {
 
   /**
    * The home page's "needs a teacher" and "unresolved" lists of the branch's
-   * current year (decision 9): one row per cause, an absence of a person, a
+   * years not closed (decision 9, read at the build as "the open years"): one row per cause, an absence of a person, a
    * vacancy or nobody recorded.
    */
   attention(access: Access): Promise<Attention> {
@@ -476,7 +476,9 @@ export class TimetableAbsences {
           'staff.vacancy_name',
         ])
         .where('lessons.branch_id', '=', branchId)
-        .where('academic_years.status', '=', 'current')
+        // Every year not closed: a planned year can hold published lessons
+        // too (`edge/timetable`, "The school needs next year's timetable in August").
+        .where('academic_years.status', '<>', 'closed')
         .where('lessons.cancel_cause', 'is', null)
         .orderBy('lessons.starts_at')
         .execute();
