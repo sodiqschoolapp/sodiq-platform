@@ -4,7 +4,7 @@ import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
 import type { BulkHold } from './bulk-cancels-kept.js';
 import type { ExamWrite } from './calendar-exams.js';
-import { examDaysBefore, refuseOverExams } from './exam-guard.js';
+import { examDaysBefore, refuseOutBlocks, refuseOverExams } from './exam-guard.js';
 import type { DatedFindings } from './dated-check.js';
 import type { DayWritePlan } from './day-changes-kept.js';
 import type { PatternState } from './pattern.service.js';
@@ -723,6 +723,8 @@ export async function writeDatedLessons(
   // Task 5.6b-2c-1: a class kept out of a block for an exam goes first
   // (`lesson_block_class_outs_block_fkey` is not deferrable).
   await exams?.beforeBlocksDeleted(transaction, emptied);
+  // Task 5.6c-1: without the calendar's exam write, a block kept for an exam stays.
+  if (exams === null) await refuseOutBlocks(transaction, emptied);
   for (let index = 0; index < emptied.length; index += BATCH) {
     await transaction
       .deleteFrom('lesson_blocks')
@@ -1000,6 +1002,11 @@ export async function removeDatedLessons(
       .where('id', '=', id)
       .execute();
   }
+  // Task 5.6c-1 (spec review of the code, must-fix 2): a block a standing exam keeps a class out of.
+  await refuseOutBlocks(
+    transaction,
+    blocks.map((one) => one.id),
+  );
   for (let index = 0; index < rows.length; index += BATCH) {
     await transaction
       .deleteFrom('lessons')

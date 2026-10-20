@@ -87,7 +87,6 @@ export const EXAM_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   room_shared_capacity: 'exam_blocked',
   lesson_block_student_twice: 'exam_blocked',
   lesson_block_class_out_exam: 'exam_blocked',
-  lesson_block_class_outs_pkey: 'exam_blocked',
   exam_year: 'exam_year',
   exam_date: 'exam_year',
   exam_group_slots: 'exam_group_slots',
@@ -475,6 +474,16 @@ export class TimetableExams {
       (one) => (found.covered.has(one.id) && one.cancelCause === null) || linked.includes(one.id),
     );
     refuseStarted(storedDay, touched, moment);
+    // A change of date gives back the lessons of the old date: none of them,
+    // nor an earlier half of their double, may have started (must-fix 4).
+    if (input.stored !== null && input.stored.date !== body.date) {
+      const oldDay = await storedLessonsOn(transaction, branchId, input.stored.date);
+      refuseStarted(
+        oldDay,
+        oldDay.filter((one) => linked.includes(one.id)),
+        moment,
+      );
+    }
 
     const checked = await examCheck(transaction, services, {
       accountId: access.accountId,
@@ -637,21 +646,8 @@ export class TimetableExams {
     for (const date of input.dates) {
       const day = await storedLessonsOn(transaction, input.branchId, date);
       const free = day.filter((one) => unlinked.includes(one.id) && !still.has(one.id));
-      const keepNow = free.filter((one) => kept.has(one.id));
-      if (keepNow.length > 0) {
-        await transaction
-          .updateTable('lessons')
-          .set({ cancel_cause: 'reason', cancel_reason: input.keepReason })
-          .where(
-            'id',
-            'in',
-            keepNow.map((one) => one.id),
-          )
-          .execute();
-        result.lessonsKeptCancelled.push(...keepNow.map((one) => one.id));
-      }
       const units = new Map<string, StoredDayLesson[]>();
-      for (const one of free.filter((lesson) => !kept.has(lesson.id))) {
+      for (const one of free) {
         const key = one.doublePairId ?? one.blockId;
         units.set(key, [...(units.get(key) ?? []), one]);
       }
@@ -660,6 +656,22 @@ export class TimetableExams {
           accountId: access.accountId,
           lessons,
         });
+        // Kept cancelled only when the check blocks it (spec review of the code,
+        // must-fix 3), the halves of a double together, named by either.
+        if (checked.blocked.length > 0 && lessons.some((one) => kept.has(one.id))) {
+          await transaction
+            .updateTable('lessons')
+            .set({ cancel_cause: 'reason', cancel_reason: input.keepReason })
+            .where(
+              'id',
+              'in',
+              lessons.map((one) => one.id),
+            )
+            .execute();
+          result.lessonsKeptCancelled.push(...lessons.map((one) => one.id));
+          for (const one of lessons) kept.delete(one.id);
+          continue;
+        }
         if (checked.blocked.length > 0) {
           blocked.push(
             ...checked.blocked.map((one) =>
@@ -683,6 +695,8 @@ export class TimetableExams {
         }
       }
     }
+    // A lesson named to stay cancelled that can be restored is refused.
+    if (kept.size > 0) throw notFound();
     if (blocked.length > 0) {
       const rooms =
         freeRooms.size === 0

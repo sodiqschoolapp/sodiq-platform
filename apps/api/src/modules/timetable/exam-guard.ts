@@ -138,3 +138,38 @@ async function lessonsAt(
     )
     .join(',');
 }
+
+/**
+ * Before blocks are deleted: a block a standing exam keeps a class out of
+ * is refused here, as `lesson_block_class_outs_block_fkey` cannot be deferred
+ * and would end the write in a 500 before `refuseOverExams` runs (spec review
+ * of the code, must-fix 2).
+ */
+export async function refuseOutBlocks(
+  transaction: Transaction,
+  blockIds: readonly string[],
+): Promise<void> {
+  if (blockIds.length === 0) return;
+  const held = await transaction
+    .selectFrom('lesson_block_class_outs')
+    .innerJoin('exams', 'exams.id', 'lesson_block_class_outs.exam_id')
+    .select(['exams.id', 'exams.title', sql<string>`exams.exam_date::text`.as('date')])
+    .where('lesson_block_class_outs.block_id', 'in', [...blockIds])
+    .where('exams.cancel_cause', 'is', null)
+    .orderBy('exams.id')
+    .execute();
+  if (held.length === 0) return;
+  const exams = [...new Map(held.map((one) => [one.id, one])).values()];
+  throw new ApiException(
+    'publish_over_exam',
+    409,
+    undefined,
+    exams.map((one) => ({
+      path: 'exams',
+      code: 'publish_over_exam',
+      message: one.title,
+      recordId: one.id,
+      day: one.date,
+    })),
+  );
+}

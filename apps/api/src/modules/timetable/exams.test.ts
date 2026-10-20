@@ -13,6 +13,7 @@ import { Transactions, type Transaction } from '../../database/transactions.js';
 import {
   dayTemplatesKit,
   MONDAY,
+  START,
   UNKNOWN,
   type DayTemplatesKit,
 } from '../../testing/day-templates-kit.js';
@@ -177,7 +178,15 @@ describe('exams in the timetable', () => {
    * with `art`, a group of the first class and a class of grade 8 for art on
    * Thursday in lesson 1.
    */
-  async function scene(input: { double?: boolean; art?: boolean; branch?: string } = {}) {
+  async function scene(
+    input: {
+      double?: boolean;
+      art?: boolean;
+      artTwice?: boolean;
+      eighthTemplate?: boolean;
+      branch?: string;
+    } = {},
+  ) {
     const branch = input.branch ?? (await t.newBranch());
     const year = await load.classes.year(branch);
     for (const [index, [start, end]] of QUARTERS.entries()) {
@@ -198,6 +207,19 @@ describe('exams in the timetable', () => {
       lesson,
     ]);
     await t.assign(branch, regular);
+    // With `eighthTemplate`, grade 8 has its own day: lesson 1 at the same
+    // time, then a shorter break, so its later slots differ.
+    if (input.eighthTemplate === true) {
+      const short = await t.createSlotType(branch, 'Short break', 'break', 5);
+      const senior = await t.createTemplate(branch, 'Grade 8', [
+        lesson,
+        short,
+        lesson,
+        short,
+        lesson,
+      ]);
+      await t.assign(branch, senior, { level: 'grades', gradeFrom: 8, gradeTo: 8 });
+    }
     const maths = await load.classes.subject({ grades: [7], journalType: 'attendance_only' });
     const room = await load.classes.room(branch);
     const otherRoom = await load.classes.room(branch);
@@ -236,7 +258,7 @@ describe('exams in the timetable', () => {
     });
     await placeAt(branch, version, otherRow, 1);
     let art: { subject: string; group: string; eighth: string; teacher: string } | null = null;
-    if (input.art === true) {
+    if (input.art === true || input.artTwice === true) {
       const subject = await load.classes.subject({
         grades: [7, 8],
         journalType: 'attendance_only',
@@ -250,9 +272,11 @@ describe('exams in the timetable', () => {
         group_id: group,
         subject_id: subject,
         teacher_id: artTeacher.staffId,
-        lessons_per_week: 1,
+        lessons_per_week: input.artTwice === true ? 2 : 1,
       });
       await placeAt(branch, version, artRow, 4);
+      // With `artTwice`, a second art lesson on Thursday in lesson 2.
+      if (input.artTwice === true) await placeAt(branch, version, artRow, 4, 3);
       art = { subject, group, eighth, teacher: artTeacher.staffId };
     }
     const confirmed = await t.post(`/api/timetable/versions/${version}/templates/confirm`, branch);
@@ -569,6 +593,52 @@ describe('exams in the timetable', () => {
       );
     });
 
+    it('passes a shared room within its count while another class’s lesson is in it', async () => {
+      const s = await scene();
+      await t.database.migrator
+        .updateTable('rooms')
+        .set({ shared: true, max_simultaneous_lessons: 2 })
+        .where('id', '=', s.otherRoom)
+        .execute();
+      saved(await create(s.branch, examOf(s, { classIds: [s.classId], roomId: s.otherRoom })));
+    });
+
+    it('refuses a date with no published version in force (decision 16)', async () => {
+      const s = await scene();
+      refusedWith(
+        await create(s.branch, examOf(s, { date: '2026-10-11' })),
+        409,
+        'exam_no_timetable',
+      );
+    });
+
+    it('refuses classes on two day templates (edge/timetable, Exams, fourth row)', async () => {
+      const s = await scene({ art: true, eighthTemplate: true });
+      refusedWith(
+        await create(
+          s.branch,
+          examOf(s, { date: THURSDAY, classIds: [s.classId, s.art?.eighth ?? ''] }),
+        ),
+        409,
+        'exam_templates',
+      );
+    });
+
+    it('tells a teacher who also invigilates once, with the invigilation and the week (spec review of the plan, should-fix 2)', async () => {
+      const s = await scene();
+      saved(
+        await create(
+          s.branch,
+          examOf(s, { classIds: [s.classId], invigilatorIds: [s.teacher.staffId] }),
+        ),
+      );
+      const notices = await noticesOf(s.teacher.accountId);
+      expect(notices).toHaveLength(1);
+      const data = NOTIFICATION_KINDS['timetable.exam_changed'].parse(notices[0]?.data);
+      expect(data.invigilation).toMatchObject({ start: '08:00', end: '08:45' });
+      expect(data.weekStart).toBe(NEXT_MONDAY);
+    });
+
     it('is refused with a vacancy or an inactive person as invigilator', async () => {
       const s = await scene();
       const vacancy = await load.vacancy(s.branch, {
@@ -628,7 +698,7 @@ describe('exams in the timetable', () => {
       });
     });
 
-    it('refuses a date before today, a lesson that has started and a slot the day does not have', async () => {
+    it('refuses a date before today, a date outside every year, a vacation and a slot the day does not have', async () => {
       const s = await scene();
       refusedWith(await create(s.branch, examOf(s, { date: '2026-10-09' })), 409, 'exam_started');
       refusedWith(await create(s.branch, examOf(s, { first: 1, last: 4 })), 409, 'exam_slots');
@@ -746,6 +816,37 @@ describe('exams in the timetable', () => {
       expect(await linksOf(block.id)).toEqual([whole.exam.id]);
     });
 
+    it('keeps a choice per block: one class with two shared blocks, one kept and one cancelled (.claude/rules/timetable.md)', async () => {
+      const s = await scene({ artTwice: true });
+      const art = s.art;
+      if (art === null) throw new Error('No art.');
+      const [first, second] = await lessonsOf(THURSDAY, { groupId: art.group });
+      if (first === undefined || second === undefined) throw new Error('No art lessons.');
+      const exam = saved(
+        await create(
+          s.branch,
+          examOf(s, {
+            date: THURSDAY,
+            classIds: [s.classId],
+            first: 1,
+            last: 2,
+            blockChoices: [
+              { classId: s.classId, blockId: first.block_id, choice: 'keep' },
+              { classId: s.classId, blockId: second.block_id, choice: 'cancel' },
+            ],
+          }),
+        ),
+      );
+      const outs = await t.database.migrator
+        .selectFrom('lesson_block_class_outs')
+        .select('block_id')
+        .where('exam_id', '=', exam.exam.id)
+        .execute();
+      expect(outs.map((one) => one.block_id)).toEqual([first.block_id]);
+      const after = await lessonsOf(THURSDAY, { groupId: art.group });
+      expect(after.map((one) => one.cancel_cause)).toEqual([null, 'exam']);
+    });
+
     it('keeps a block kept for the other class in the check: its teacher invigilating elsewhere refuses the exam', async () => {
       const s = await scene({ art: true });
       const art = s.art;
@@ -827,9 +928,16 @@ describe('exams in the timetable', () => {
   });
 
   describe('a cancel', () => {
-    it('restores only the lessons it cancelled; one cancelled with a reason before stays cancelled; a second cancel is refused (done when)', async () => {
-      const s = await scene();
-      const own = await lessonOf(LATER_MONDAY, s.classId);
+    it('restores only the lessons it cancelled; one cancelled with a reason, and one of an exam week, stay cancelled; a second cancel is refused (done when)', async () => {
+      const s = await scene({ double: true });
+      const [own, week] = await lessonsOf(LATER_MONDAY, { classId: s.classId });
+      if (own === undefined || week === undefined) throw new Error('No lessons.');
+      // The first class's lesson 2 is cancelled "exam week" (edge/timetable, Exams, fifth row).
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ cancel_cause: 'exam_week' })
+        .where('id', '=', week.id)
+        .execute();
       const other = await lessonOf(LATER_MONDAY, s.otherClass);
       const before = await request(t.kit.server)
         .post(`/api/timetable/lessons/${own.id}/cancel`)
@@ -838,12 +946,17 @@ describe('exams in the timetable', () => {
         .set(REQUEST_KEY_HEADER, randomUUID())
         .send({ reason: 'Excursion to the museum' });
       expect(before.status, JSON.stringify(before.body)).toBe(200);
-      const exam = saved(await create(s.branch, examOf(s, { date: LATER_MONDAY })));
+      const exam = saved(
+        await create(s.branch, examOf(s, { date: LATER_MONDAY, first: 1, last: 2 })),
+      );
       expect(exam.exam.lessonIds).toEqual([other.id]);
+      expect(await linksOf(week.id)).toEqual([]);
       expect(await linksOf(own.id)).toEqual([]);
       const cancelled = saved(await cancel(s.branch, exam.exam.id), 200);
       expect(cancelled.exam).toMatchObject({ cancelled: true, lessonIds: [] });
-      expect((await lessonOf(LATER_MONDAY, s.classId)).cancel_cause).toBe('reason');
+      expect(
+        (await lessonsOf(LATER_MONDAY, { classId: s.classId })).map((one) => one.cancel_cause),
+      ).toEqual(['reason', 'exam_week']);
       expect(await lessonOf(LATER_MONDAY, s.otherClass)).toMatchObject({
         cancel_cause: null,
         teacher_id: s.otherTeacher.staffId,
@@ -967,6 +1080,7 @@ describe('exams in the timetable', () => {
       const exam = saved(
         await create(s.branch, examOf(s, { date: LATER_MONDAY, classIds: [s.otherClass] })),
       );
+      const told = await noticesOf(s.otherTeacher.accountId);
       saved(
         await change(
           s.branch,
@@ -975,6 +1089,11 @@ describe('exams in the timetable', () => {
         ),
         200,
       );
+      // One notice to the teacher, with the two weeks of the two dates.
+      const notices = await noticesOf(s.otherTeacher.accountId);
+      expect(notices).toHaveLength(told.length + 1);
+      const data = NOTIFICATION_KINDS['timetable.exam_changed'].parse(notices.at(-1)?.data);
+      expect([data.weekStart, data.also?.weekStart].sort()).toEqual([NEXT_MONDAY, LATER_MONDAY]);
       expect((await lessonOf(LATER_MONDAY, s.otherClass)).cancel_cause).toBeNull();
       expect((await lessonOf(NEXT_MONDAY, s.otherClass)).cancel_cause).toBe('exam');
       refusedWith(
@@ -1104,10 +1223,10 @@ describe('exams in the timetable', () => {
       refusedWith(response, 409, 'exam_blocked');
       const after = await everything();
       // Only the held side's lesson and claim changed.
-      expect(after[0]).toEqual(before[0]);
-      expect(after[5]).toEqual(before[5]);
-      expect(after[9]).toEqual(before[9]);
-      expect(after[11]).toEqual(before[11]);
+      // Every table but the held side's lesson and its claim (spec review of the code, should-fix 2).
+      for (const index of [0, 1, 2, 3, 4, 5, 8, 9, 10, 11]) {
+        expect(after[index]).toEqual(before[index]);
+      }
       // In the other order the lesson's write is refused by the exam's claim.
       const exam = saved(await create(s.branch, examOf(s, { date: LATER_MONDAY })));
       expect(exam.exam.cancelled).toBe(false);
@@ -1190,6 +1309,152 @@ describe('exams in the timetable', () => {
       const refused = await publish(s.branch, version, NEXT_MONDAY);
       refusedWith(refused, 409, 'publish_over_exam');
       expect(detailsOf(refused)).toEqual([expect.objectContaining({ recordId: exam.exam.id })]);
+      // With the exam cancelled, the same version publishes.
+      saved(await cancel(s.branch, exam.exam.id), 200);
+      await load.freeEditLock(version);
+      const done = await publish(s.branch, version, NEXT_MONDAY);
+      expect(done.status, JSON.stringify(done.body)).toBe(200);
+    });
+
+    it('refuses a withdraw and a publish that would remove a block a standing exam keeps a class out of, with no 500 (spec review of the code, must-fix 2)', async () => {
+      const s = await scene({ art: true });
+      const art = s.art;
+      if (art === null) throw new Error('No art.');
+      const [block] = await lessonsOf(THURSDAY, { groupId: art.group });
+      if (block === undefined) throw new Error('No art lesson.');
+      const exam = saved(
+        await create(
+          s.branch,
+          examOf(s, {
+            date: THURSDAY,
+            classIds: [s.classId],
+            blockChoices: [{ classId: s.classId, blockId: block.block_id, choice: 'keep' }],
+          }),
+        ),
+      );
+      // A new version without the art lessons, from Monday 19 October.
+      const draft = await t.post('/api/timetable/versions', s.branch, {
+        academicYearId: s.year,
+        startsOn: NEXT_MONDAY,
+        copyFrom: s.version,
+      });
+      expect(draft.status, JSON.stringify(draft.body)).toBe(201);
+      const version = (draft.body as { id: string }).id;
+      await t.database.migrator
+        .deleteFrom('pattern_blocks')
+        .where('version_id', '=', version)
+        .execute();
+      await t.database.migrator
+        .deleteFrom('teaching_load_rows')
+        .where('version_id', '=', version)
+        .where('group_id', '=', art.group)
+        .execute();
+      for (const row of await t.database.migrator
+        .selectFrom('teaching_load_rows')
+        .select('id')
+        .where('version_id', '=', version)
+        .execute()) {
+        await placeAt(s.branch, version, row.id, 1);
+      }
+      const confirmed = await t.post(
+        `/api/timetable/versions/${version}/templates/confirm`,
+        s.branch,
+      );
+      expect(confirmed.status, JSON.stringify(confirmed.body)).toBe(200);
+      await load.freeEditLock(version);
+      const published = await publish(s.branch, version, NEXT_MONDAY);
+      refusedWith(published, 409, 'publish_over_exam');
+      expect(detailsOf(published)).toEqual([expect.objectContaining({ recordId: exam.exam.id })]);
+      const withdrawn = await request(t.kit.server)
+        .post(`/api/timetable/versions/${s.version}/withdraw`)
+        .set('Cookie', t.admin)
+        .set(BRANCH_HEADER, s.branch)
+        .set(REQUEST_KEY_HEADER, randomUUID())
+        .send({});
+      refusedWith(withdrawn, 409, 'publish_over_exam');
+    });
+  });
+
+  describe('a started exam or lesson (06, Exam: "only in slots that have not started")', () => {
+    /** An Academic Vice Principal of the branch, signed in now. */
+    const viceAt = async (branch: string) => {
+      const browser = await t.kit.completeSession('Gulnora', 'Tursunova');
+      await t.kit.giveRole(browser.account.id, {
+        role: 'academic_vice_principal',
+        branchId: branch,
+      });
+      return browser.cookie;
+    };
+
+    it('refuses an exam whose slot or whose lesson’s earlier half has started, and a change and a cancel of a started exam', async () => {
+      const s = await scene({ double: true });
+      await pairUp(s, NEXT_MONDAY);
+      const second = await person(s.branch, [s.maths]);
+      // Made before the clock moves: an exam of the other class in lesson 1,
+      // and one of the first class over lesson 2, which takes both halves.
+      const early = saved(await create(s.branch, examOf(s, { classIds: [s.otherClass] })));
+      const later = saved(
+        await create(
+          s.branch,
+          examOf(s, {
+            classIds: [s.classId],
+            first: 2,
+            roomId: s.spareRoom,
+            invigilatorIds: [second.staffId],
+          }),
+        ),
+      );
+      expect(later.exam.lessonIds).toHaveLength(2);
+      // 08:30 on Monday 19 October: lesson 1 has started, lesson 2 has not.
+      t.clock.set('2026-10-19T08:30:00+05:00');
+      // A session of its own, signed in at the moved moment: the kit's sessions
+      // would end as idle and stay ended for the tests that follow.
+      const vice = await viceAt(s.branch);
+      try {
+        const third = await person(s.branch, [s.maths]);
+        refusedWith(
+          await create(
+            s.branch,
+            examOf(s, {
+              classIds: [s.otherClass],
+              roomId: s.room,
+              invigilatorIds: [third.staffId],
+            }),
+            vice,
+          ),
+          409,
+          'exam_started',
+        );
+        refusedWith(
+          await change(s.branch, early.exam.id, examOf(s, { classIds: [s.otherClass] }), vice),
+          409,
+          'exam_started',
+        );
+        refusedWith(await cancel(s.branch, early.exam.id, {}, vice), 409, 'exam_started');
+        // Lesson 2 has not started, but the earlier half of its double has.
+        refusedWith(await cancel(s.branch, later.exam.id, {}, vice), 409, 'exam_started');
+      } finally {
+        t.clock.set(START);
+      }
+      const other = await scene({ double: true });
+      await pairUp(other, NEXT_MONDAY);
+      t.clock.set('2026-10-19T08:30:00+05:00');
+      // A session of its own, signed in at the moved moment: the kit's sessions
+      // would end as idle and stay ended for the tests that follow.
+      const otherVice = await viceAt(other.branch);
+      try {
+        refusedWith(
+          await create(
+            other.branch,
+            examOf(other, { classIds: [other.classId], first: 2 }),
+            otherVice,
+          ),
+          409,
+          'exam_started',
+        );
+      } finally {
+        t.clock.set(START);
+      }
     });
   });
 
