@@ -24,6 +24,10 @@ Decided once, valid for every task. A session reads this section at its start (`
 | The module and feature names are `auth`, `access`, `audit`, `notifications`, `setup`, `people`, `classes`, `timetable`, `journal`, `plans`, `results`, `feedback` | `CLAUDE.md`, Repository layout; `feedback` was added for task 0.8b-3. |
 | At most 3 Super Admins (`MAX_SUPER_ADMINS` in `packages/shared/src/roles.ts`); changing it means the constant, its test and the spec row together | Decided by the owner in 0.7a. |
 
+## 20 October 2026: generation after the release
+
+Decided by the owner on 20 October 2026: the solver service (5.10) and generation in the product (5.11) move to "Deferred until after 25 October 2026", first of that list, so that the journal, lesson plans and results reach the test site by 25 October. Generation is the largest remaining piece (a separate Kotlin service), and a timetable can already be built by hand in the grid with the rule engine, "Suggest a place" and the readiness check. 5.12 keeps its real-size run, with the timetable placed by a seed script until 5.11 adds the generate step. Release 1 still includes generation.
+
 ## 20 October 2026: the builder waits for its code review
 
 Decided by the owner on 20 October 2026, to save time without lowering the bar. The ten tasks of 19 October took 2 hours 9 minutes on average; eight needed one code round of about 50 minutes, and every round was resumed by the start routine about seven minutes after the review, in a new session that had to read the task again, although the builder was bound to the pull request. Three changes:
