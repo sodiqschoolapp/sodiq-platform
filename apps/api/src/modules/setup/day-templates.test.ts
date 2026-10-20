@@ -493,7 +493,9 @@ describe('day templates', () => {
   // the branch row, as the version route does, sends the archive of that slot
   // type, sees it wait in pg_stat_activity, commits, and reads the answer: the
   // archive saw the version and is refused. Without the lock it would have read
-  // the state before the commit and archived a slot type in use.
+  // the state before the commit and archived a slot type in use. Task 5.6b-4a
+  // (decision 7, review correction 1): the held side takes the route's own
+  // lock, `for no key update`, which still makes the archive wait.
   it('runs the archive of a slot type after a write that holds the branch row, and sees what it wrote', async () => {
     const { branch, lesson } = await slotTypes();
     const spare = await t.createSlotType(branch, 'Lesson spare');
@@ -506,7 +508,7 @@ describe('day templates', () => {
         .selectFrom('branches')
         .select('id')
         .where('id', '=', branch)
-        .forUpdate()
+        .forNoKeyUpdate()
         .execute();
       // The version in force is cut first, as the route does.
       await transaction

@@ -168,6 +168,8 @@ export const en = {
       'A shared lesson newly falls under an exam. Open the preview again and choose for it: cancel the lesson, or keep it for the other classes.',
     calendar_group_block_choice:
       'A lesson of a group of two grades now has only one of its grades at school. Open the preview again and choose for it: cancel it as a day off, or keep it for the grade that has school.',
+    template_slot_in_use:
+      'This change removes or reorders a lesson slot that the published timetable uses. Keep the slot, or first publish a timetable version that no longer uses it.',
     own_account: 'You cannot lock, unlock or reset your own account. Ask another administrator.',
     account_already_locked: 'This account is already locked. Reload the page to see who locked it.',
     account_not_locked:
@@ -3133,6 +3135,8 @@ export const en = {
           'A one-day change (a cancel or a restore) changed your lessons. Your week before and after:',
         calendar_changed:
           'The calendar entry "{{name}}" changed your lessons. Your week before and after:',
+        template_changed:
+          'A change of the day templates from {{from}} changed your lessons. Your week before and after:',
         exam_day_off:
           'The calendar entry "{{name}}" made {{date}} a day off: the exam "{{title}}" is cancelled.',
       },

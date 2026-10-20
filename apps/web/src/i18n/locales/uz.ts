@@ -173,6 +173,8 @@ export const uz: Texts<'one' | 'other'> = {
       'Umumiy dars endi imtihon vaqtiga toʻgʻri keladi. Oldindan koʻrishni qayta oching va tanlang: darsni bekor qilish yoki uni boshqa sinflar uchun qoldirish.',
     calendar_group_block_choice:
       'Ikki parallel guruhining darsida endi maktabda faqat bitta parallel bor. Oldindan koʻrishni qayta oching va tanlang: dam olish kuni sifatida bekor qilish yoki maktabda boʻlgan parallel uchun qoldirish.',
+    template_slot_in_use:
+      'Bu oʻzgarish eʼlon qilingan dars jadvali foydalanadigan dars slotini olib tashlaydi yoki tartibini oʻzgartiradi. Slotni qoldiring yoki avval uni ishlatmaydigan dars jadvali versiyasini eʼlon qiling.',
     own_account:
       'Oʻz hisobingizni bloklay, blokdan chiqara yoki tiklay olmaysiz. Boshqa administratorga murojaat qiling.',
     account_already_locked:
@@ -3164,6 +3166,8 @@ export const uz: Texts<'one' | 'other'> = {
           'Bir kunlik oʻzgarish (bekor qilish yoki tiklash) darslaringizni oʻzgartirdi. Haftangiz oldin va keyin:',
         calendar_changed:
           '«{{name}}» taqvim yozuvi darslaringizni oʻzgartirdi. Haftangiz oldin va keyin:',
+        template_changed:
+          '{{from}} sanasidan kun shablonlarining oʻzgarishi darslaringizni oʻzgartirdi. Haftangiz oldin va keyin:',
         exam_day_off:
           '«{{name}}» taqvim yozuvi {{date}} sanasini dam olish kuni qildi: «{{title}}» imtihoni bekor qilindi.',
       },

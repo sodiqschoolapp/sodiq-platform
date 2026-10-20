@@ -1041,6 +1041,16 @@ export interface TimetablePins {
   weekday: number;
 }
 
+export interface TimetableVersionDays {
+  branch_id: string;
+  end_minutes: number;
+  grade: number;
+  lesson_number: number;
+  start_minutes: number;
+  version_id: string;
+  weekday: number;
+}
+
 export interface TimetableVersionOutOfDateCauses {
   action: string;
   branch_id: string;
@@ -1169,6 +1179,7 @@ export interface DB {
   timetable_day_keeps: TimetableDayKeeps;
   timetable_locks: TimetableLocks;
   timetable_pins: TimetablePins;
+  timetable_version_days: TimetableVersionDays;
   timetable_version_out_of_date_causes: TimetableVersionOutOfDateCauses;
   timetable_versions: TimetableVersions;
   travel_times: TravelTimes;

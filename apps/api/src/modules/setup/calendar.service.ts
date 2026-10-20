@@ -30,6 +30,8 @@ import { calendarSettings, loadEntries, losesGoLive, type StoredEntry } from './
 import { loadStore, type TemplateStore } from './day-template-state.js';
 import { notFound } from './setup-refusals.js';
 import {
+  lessonsAuditOf,
+  refuseForeignChoices,
   NO_LESSONS,
   TimetableCalendarLessons,
   type CalendarEvent,
@@ -38,7 +40,6 @@ import {
 import { markDraftsOutOfDate } from '../timetable/out-of-date.js';
 import {
   PUBLISH_REFUSALS,
-  refuseUnknownKeys,
   refusingPublish,
 } from '../timetable/publish.service.js';
 
@@ -147,41 +148,6 @@ function lessonDatesOf(
     )
     .sort();
 }
-
-/** What an audit entry of a save records of its lessons (task 5.6b-1, decision 8). */
-const lessonsAuditOf = (rewrite: CalendarRewrite) =>
-  rewrite.audit === null
-    ? {}
-    : {
-        lessonDates: [...rewrite.audit.dates],
-        datedLessons: rewrite.audit.datedLessons.map((one) => ({ ...one })),
-        notices: { ...rewrite.audit.notices },
-        // Task 5.6b-2a (decision 10): the stored changes per stretch, when any.
-        ...(rewrite.audit.dayChanges.length === 0
-          ? {}
-          : { dayChanges: rewrite.audit.dayChanges.map((one) => structuredClone(one)) }),
-        ...(rewrite.audit.movedBack.length === 0
-          ? {}
-          : { movedBack: [...rewrite.audit.movedBack] }),
-        // Task 5.6b-2b (decision 6, review correction 2): each choice sent.
-        ...(rewrite.audit.dayKeeps.length === 0
-          ? {}
-          : {
-              dayKeeps: rewrite.audit.dayKeeps.map((one) => ({
-                ...one,
-                before: [...one.before],
-                after: [...one.after],
-              })),
-            }),
-        // Task 5.6b-2c-1 (decision 7): each exam of its dates, when any.
-        ...(rewrite.audit.exams.length === 0
-          ? {}
-          : { exams: rewrite.audit.exams.map((one) => structuredClone(one)) }),
-        // Task 5.6b-3: each choice of a split group's block written or removed.
-        ...(rewrite.audit.groupBlocks.length === 0
-          ? {}
-          : { groupBlocks: rewrite.audit.groupBlocks.map((one) => structuredClone(one)) }),
-      };
 
 /** The dates whose stored choice a save changed (task 5.6b-2b, decision 7). */
 const keepDatesChanged = (rewrite: CalendarRewrite): string[] =>
@@ -350,68 +316,9 @@ export class Calendar {
     return refusingPublish(
       () =>
         this.transactions.run(access.branchIds, async (transaction) => {
-          // Task 5.6b-2a (decision 11): every key and block of a decision is
-          // the branch's, checked before any lock.
-          await refuseUnknownKeys(
-            transaction,
-            branchId,
-            (days.dayDecisions ?? []).map((one) => one.key),
-            (days.dayDecisions ?? []).flatMap((one) =>
-              one.blockId === undefined ? [] : [one.blockId],
-            ),
-          );
-          // Task 5.6b-2b: every class of a choice is the branch's, checked
-          // before any lock or write (`.claude/rules/api.md`).
-          // Task 5.6b-2c-1: so is every exam and class of a block's choice.
-          const classIds = [
-            ...new Set([
-              // One spelling for both (spec review of the code, should-fix 6).
-              ...(days.dayKeeps ?? []).map((one) => one.classId.toLowerCase()),
-              ...(days.examBlocks ?? []).map((one) => one.classId.toLowerCase()),
-            ]),
-          ];
-          // Task 5.6b-3: every group of a block's choice is the branch's.
-          const groupIds = [
-            ...new Set(
-              (days.groupBlocks ?? []).flatMap((one) => one.groupIds.map((id) => id.toLowerCase())),
-            ),
-          ];
-          if (groupIds.length > 0) {
-            const known = await transaction
-              .selectFrom('groups')
-              .select('id')
-              .where('id', 'in', groupIds)
-              .where('branch_id', '=', branchId)
-              .execute();
-            if (known.length !== groupIds.length) {
-              throw notFound();
-            }
-          }
-          const examIds = [
-            ...new Set((days.examBlocks ?? []).map((one) => one.examId.toLowerCase())),
-          ];
-          if (examIds.length > 0) {
-            const known = await transaction
-              .selectFrom('exams')
-              .select('id')
-              .where('id', 'in', examIds)
-              .where('branch_id', '=', branchId)
-              .execute();
-            if (known.length !== examIds.length) {
-              throw notFound();
-            }
-          }
-          if (classIds.length > 0) {
-            const known = await transaction
-              .selectFrom('classes')
-              .select('id')
-              .where('id', 'in', classIds)
-              .where('branch_id', '=', branchId)
-              .execute();
-            if (known.length !== classIds.length) {
-              throw notFound();
-            }
-          }
+          // Every id of the choices is the branch's, checked before any lock
+          // (task 5.6b-2a decision 11, 5.6b-2b, 5.6b-2c-1, 5.6b-3).
+          await refuseForeignChoices(transaction, branchId, days);
           return work(
             await this.context(transaction, access, branchId, requestId, true, preview, days),
           );

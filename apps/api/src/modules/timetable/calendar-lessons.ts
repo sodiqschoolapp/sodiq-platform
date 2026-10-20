@@ -63,6 +63,7 @@ import {
   dayRefusalsOf,
   detailOf,
   planOfRun,
+  refuseUnknownKeys,
   type DayAudit,
 } from './publish.service.js';
 import { storedDayCheck, storedLessonsOn, type StoredDayLesson } from './stored-day.js';
@@ -186,6 +187,41 @@ export interface CalendarRewrite {
   } | null;
 }
 
+/** What an audit entry of a save (a calendar entry, task 5.6b-1, or a template change, task 5.6b-4a) records of its lessons (task 5.6b-1, decision 8). */
+export const lessonsAuditOf = (rewrite: CalendarRewrite) =>
+  rewrite.audit === null
+    ? {}
+    : {
+        lessonDates: [...rewrite.audit.dates],
+        datedLessons: rewrite.audit.datedLessons.map((one) => ({ ...one })),
+        notices: { ...rewrite.audit.notices },
+        // Task 5.6b-2a (decision 10): the stored changes per stretch, when any.
+        ...(rewrite.audit.dayChanges.length === 0
+          ? {}
+          : { dayChanges: rewrite.audit.dayChanges.map((one) => structuredClone(one)) }),
+        ...(rewrite.audit.movedBack.length === 0
+          ? {}
+          : { movedBack: [...rewrite.audit.movedBack] }),
+        // Task 5.6b-2b (decision 6, review correction 2): each choice sent.
+        ...(rewrite.audit.dayKeeps.length === 0
+          ? {}
+          : {
+              dayKeeps: rewrite.audit.dayKeeps.map((one) => ({
+                ...one,
+                before: [...one.before],
+                after: [...one.after],
+              })),
+            }),
+        // Task 5.6b-2c-1 (decision 7): each exam of its dates, when any.
+        ...(rewrite.audit.exams.length === 0
+          ? {}
+          : { exams: rewrite.audit.exams.map((one) => structuredClone(one)) }),
+        // Task 5.6b-3: each choice of a split group's block written or removed.
+        ...(rewrite.audit.groupBlocks.length === 0
+          ? {}
+          : { groupBlocks: rewrite.audit.groupBlocks.map((one) => structuredClone(one)) }),
+      };
+
 /** A choice of the lessons kept on a shortened day as the audit entry keeps it (task 5.6b-2b). */
 export interface KeepAudit {
   readonly versionId: string;
@@ -203,6 +239,14 @@ export interface CalendarEvent {
   readonly firstDate: string;
   readonly lastDate: string;
 }
+
+/** Task 5.6b-4a (decision 6): a change of the day templates from a date, named in the notices. */
+export interface TemplateEvent {
+  readonly templateFrom: string;
+}
+
+/** What wrote the dates again: a calendar entry or a template change. */
+export type RewriteEvent = CalendarEvent | TemplateEvent;
 
 const EMPTY_NAMES: CalendarLessons['names'] = { units: [], subjects: [], teachers: [], rooms: [] };
 
@@ -289,6 +333,78 @@ function blockedDetail(result: DatedFindings['blocked'][number]): ErrorDetail {
   };
 }
 
+/**
+ * Every id of the choices a save of dated lessons takes (a calendar save, a
+ * template change of task 5.6b-4a) is the branch's: the keys and blocks of
+ * the decisions, the classes of the shortened days' and the exam blocks'
+ * choices, the exams and the groups; checked before any lock or write, a 404
+ * otherwise (`.claude/rules/api.md`).
+ */
+export async function refuseForeignChoices(
+  transaction: Transaction,
+  branchId: string,
+  days: CalendarDaysBody,
+): Promise<void> {
+  // Task 5.6b-2a (decision 11): every key and block of a decision is
+  // the branch's, checked before any lock.
+  await refuseUnknownKeys(
+    transaction,
+    branchId,
+    (days.dayDecisions ?? []).map((one) => one.key),
+    (days.dayDecisions ?? []).flatMap((one) => (one.blockId === undefined ? [] : [one.blockId])),
+  );
+  // Task 5.6b-2b: every class of a choice is the branch's, checked
+  // before any lock or write (`.claude/rules/api.md`).
+  // Task 5.6b-2c-1: so is every exam and class of a block's choice.
+  const classIds = [
+    ...new Set([
+      // One spelling for both (spec review of the code, should-fix 6).
+      ...(days.dayKeeps ?? []).map((one) => one.classId.toLowerCase()),
+      ...(days.examBlocks ?? []).map((one) => one.classId.toLowerCase()),
+    ]),
+  ];
+  // Task 5.6b-3: every group of a block's choice is the branch's.
+  const groupIds = [
+    ...new Set(
+      (days.groupBlocks ?? []).flatMap((one) => one.groupIds.map((id) => id.toLowerCase())),
+    ),
+  ];
+  if (groupIds.length > 0) {
+    const known = await transaction
+      .selectFrom('groups')
+      .select('id')
+      .where('id', 'in', groupIds)
+      .where('branch_id', '=', branchId)
+      .execute();
+    if (known.length !== groupIds.length) {
+      throw new ApiException('not_found', 404);
+    }
+  }
+  const examIds = [...new Set((days.examBlocks ?? []).map((one) => one.examId.toLowerCase()))];
+  if (examIds.length > 0) {
+    const known = await transaction
+      .selectFrom('exams')
+      .select('id')
+      .where('id', 'in', examIds)
+      .where('branch_id', '=', branchId)
+      .execute();
+    if (known.length !== examIds.length) {
+      throw new ApiException('not_found', 404);
+    }
+  }
+  if (classIds.length > 0) {
+    const known = await transaction
+      .selectFrom('classes')
+      .select('id')
+      .where('id', 'in', classIds)
+      .where('branch_id', '=', branchId)
+      .execute();
+    if (known.length !== classIds.length) {
+      throw new ApiException('not_found', 404);
+    }
+  }
+}
+
 @Injectable()
 export class TimetableCalendarLessons {
   constructor(
@@ -355,7 +471,7 @@ export class TimetableCalendarLessons {
       readonly accountId: string;
       readonly today: string;
       readonly dates: readonly string[];
-      readonly event: CalendarEvent;
+      readonly event: RewriteEvent;
       readonly preview: boolean;
       /**
        * Task 5.6b-2a: the key of the sorting shown and the choices, of the
@@ -1075,20 +1191,29 @@ export class TimetableCalendarLessons {
           .sort(byPlace),
         notified: teacherIds.filter((id) => withAccount.has(id)).sort(),
       };
-      if (!input.preview) {
-        await this.tellExamsCancelled(
-          transaction,
-          branchId,
-          input.event,
-          examsAll.filter((one) => one.outcome === 'cancelled_day_off'),
-        );
+      const { event } = input;
+      if ('templateFrom' in event) {
+        // A template change gives no day off, so it cancels no exam "day off".
+        notices = await sendWeekChanges(transaction, this.notifications, snapshot, {
+          kind: 'timetable.template_changed',
+          from: event.templateFrom,
+        });
+      } else {
+        if (!input.preview) {
+          await this.tellExamsCancelled(
+            transaction,
+            branchId,
+            event,
+            examsAll.filter((one) => one.outcome === 'cancelled_day_off'),
+          );
+        }
+        notices = await sendWeekChanges(transaction, this.notifications, snapshot, {
+          kind: 'timetable.calendar_changed',
+          name: event.name,
+          firstDate: event.firstDate,
+          lastDate: event.lastDate,
+        });
       }
-      notices = await sendWeekChanges(transaction, this.notifications, snapshot, {
-        kind: 'timetable.calendar_changed',
-        name: input.event.name,
-        firstDate: input.event.firstDate,
-        lastDate: input.event.lastDate,
-      });
     }
     return {
       lessons,

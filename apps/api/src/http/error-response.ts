@@ -86,6 +86,8 @@ const MESSAGE: Record<ErrorCode, string> = {
     'A shared lesson newly under an exam needs a choice: cancel it or keep it for the other classes.',
   calendar_group_block_choice:
     'A lesson of a two-grade group left with one grade at school needs a choice: cancel it or keep it for that grade.',
+  template_slot_in_use:
+    'The change removes or reorders a lesson slot the published timetable uses; each is listed.',
   travel_time_same_branch: 'Travel time is set between two different branches.',
   subject_archived: 'The subject is archived. Restore it first.',
   department_not_academic: 'A subject belongs to a department of the Academic division.',

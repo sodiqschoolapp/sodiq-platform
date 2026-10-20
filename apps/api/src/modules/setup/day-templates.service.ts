@@ -5,23 +5,25 @@ import {
   TEMPLATE_LEVELS,
   timeText,
   type Assignment,
-  type AssignmentEnd,
+  type AssignmentEndSave,
   type AssignmentList,
-  type AssignmentRecord,
+  type AssignmentSave,
   type Clock,
   type DayTemplate,
   type DayTemplateList,
   type DayTemplateRecord,
   type DayTemplateRename,
-  type DayTemplateVersionRecord,
+  type DayTemplateVersionSave,
   type ErrorCode,
   type ErrorDetail,
-  type SlotLengthChange,
+  type SlotInUse,
+  type SlotLengthSave,
   type SlotType,
   type SlotTypeList,
   type SlotTypeRecord,
   type SlotTypeRename,
   type TemplateChange,
+  type TemplateDaysBody,
   type TemplatePreview,
   type TemplateTable,
   type Weekday,
@@ -55,10 +57,12 @@ import { endFrom, isWithdrawn, scheduleFrom } from './dated-rows.js';
 import {
   assignmentRefusals,
   notFound,
-  refusingConstraints,
   refusingDuplicates,
 } from './setup-refusals.js';
 import { markDraftsOutOfDate } from '../timetable/out-of-date.js';
+import { lessonsAuditOf, NO_LESSONS, refuseForeignChoices } from '../timetable/calendar-lessons.js';
+import { PUBLISH_REFUSALS, refusingPublish } from '../timetable/publish.service.js';
+import { TemplateLessons } from './template-lessons.js';
 
 /** A refusal of 409 that names the fields to show it beside. */
 function refused(code: ErrorCode, paths: readonly string[] = []): ApiException {
@@ -87,6 +91,10 @@ interface Context {
   /** Today in branch time, from the injected clock (`edge/00-definitions`, Branch time). */
   readonly today: string;
   readonly weekdays: readonly Weekday[];
+  /** Task 5.6b-4a: a preview answers what refuses the save as lines (decision 9 of 5.6b-1). */
+  readonly preview: boolean;
+  /** Task 5.6b-4a: what the change did to the published timetable's lessons, for the preview. */
+  readonly followed: { value: Awaited<ReturnType<TemplateLessons['follow']>> | null };
 }
 
 /** Carries the answer of a preview out of the transaction it rolls back. */
@@ -124,6 +132,7 @@ export class DayTemplates {
     private readonly transactions: Transactions,
     private readonly audit: Audit,
     @Inject(CLOCK) private readonly clock: Clock,
+    private readonly templateLessons: TemplateLessons,
   ) {}
 
   /** A read in the branch of the request; today in branch time. */
@@ -150,8 +159,12 @@ export class DayTemplates {
   }
 
   /**
-   * A write: the branch row taken for update first (decision 12); refusals of
-   * the database mapped, `refusals` over the general ones.
+   * A write: the branch row taken first (decision 12); refusals of the
+   * database mapped, `refusals` over the general ones. Task 5.6b-4a
+   * (decision 7; `.claude/rules/timetable.md`): `for no key update`, which
+   * still orders every write of the branch's setup, and which an insert
+   * naming the branch (a class or staff write's audit entry, a dated lesson)
+   * does not wait for.
    */
   private write<T>(
     access: Access,
@@ -159,17 +172,22 @@ export class DayTemplates {
     requestId: string,
     work: (context: Context) => Promise<T>,
     refusals: Readonly<Record<string, ErrorCode>> = {},
+    options: { readonly preview?: boolean; readonly days?: TemplateDaysBody } = {},
   ): Promise<T> {
-    return refusingConstraints(
+    // Task 5.6b-4a: the dated lessons a change writes are refused by the
+    // database as a publish's are (the claims, `timetable_busy`).
+    return refusingPublish(
       () =>
         refusingDuplicates(
           () =>
             this.transactions.run(access.branchIds, async (transaction) => {
+              // Task 5.6b-4a: every id of the choices is the branch's, before any lock.
+              await refuseForeignChoices(transaction, branchId, options.days ?? {});
               const branch = await transaction
                 .selectFrom('branches')
                 .select(['time_zone', 'working_weekdays'])
                 .where('id', '=', branchId)
-                .forUpdate()
+                .forNoKeyUpdate()
                 .executeTakeFirst();
               if (branch === undefined) {
                 throw notFound();
@@ -181,11 +199,13 @@ export class DayTemplates {
                 requestId,
                 today: schoolDateOf(this.clock.now(), branch.time_zone),
                 weekdays: weekdaysOf(branch.working_weekdays),
+                preview: options.preview ?? false,
+                followed: { value: null },
               });
             }),
           NAME_INDEXES,
         ),
-      refusals,
+      { ...PUBLISH_REFUSALS, ...refusals },
     );
   }
 
@@ -229,6 +249,32 @@ export class DayTemplates {
       ...values,
       requestId: context.requestId,
     });
+  }
+
+  /**
+   * Task 5.6b-4a: the published timetable's lessons of the dates whose times
+   * the change written in this transaction changes, written again
+   * (`template-lessons.ts`); what the audit entry of the change records of
+   * them, which is written after (one entry, spec review should-fix 8).
+   */
+  private async followLessons(
+    context: Context,
+    from: string,
+    before: TemplateStore,
+    days: TemplateDaysBody | undefined,
+  ): Promise<Record<string, JsonValue>> {
+    const followed = await this.templateLessons.follow(context.transaction, {
+      branchId: context.branchId,
+      accountId: context.access.accountId,
+      today: context.today,
+      from,
+      workingWeekdays: context.weekdays,
+      before,
+      preview: context.preview,
+      days: days ?? {},
+    });
+    context.followed.value = followed;
+    return lessonsAuditOf(followed.rewrite);
   }
 
   /** A change takes effect from tomorrow at the earliest in branch time (`03`). */
@@ -346,17 +392,15 @@ export class DayTemplates {
     });
   }
 
-  private async changeLength(
-    context: Context,
-    id: string,
-    change: SlotLengthChange,
-  ): Promise<void> {
+  private async changeLength(context: Context, id: string, change: SlotLengthSave): Promise<void> {
     // An id of another branch or an unknown one answers 404 before any other refusal.
     const slotType = await DayTemplates.slotTypeOf(context, id);
     DayTemplates.requireFuture(context, change.from);
     if (slotType.archivedAt !== null) {
       throw refused('slot_type_archived');
     }
+    await this.templateLessons.lock(context.transaction, context.branchId, change.from);
+    const before = await loadStore(context.transaction);
     const schedule = scheduleFrom(slotType.lengths, change.from);
     if (schedule.cut !== null) {
       await context.transaction
@@ -376,6 +420,7 @@ export class DayTemplates {
       })
       .execute();
     await DayTemplates.refuseMidnight(context, change.from, ['lengthMinutes']);
+    const lessons = await this.followLessons(context, change.from, before, change.days);
     const cut = slotType.lengths.find((length) => length.id === schedule.cut?.id);
     await this.record(
       context,
@@ -396,6 +441,7 @@ export class DayTemplates {
           lengthMinutes: change.lengthMinutes,
           validFrom: schedule.validFrom,
           validUntil: schedule.validUntil,
+          ...lessons,
         },
       },
     );
@@ -407,13 +453,20 @@ export class DayTemplates {
     access: Access,
     branchId: string,
     id: string,
-    change: SlotLengthChange,
+    change: SlotLengthSave,
     requestId: string,
   ): Promise<SlotType> {
-    return this.write(access, branchId, requestId, async (context) => {
-      await this.changeLength(context, id, change);
-      return this.slotTypeAnswer(context, id);
-    });
+    return this.write(
+      access,
+      branchId,
+      requestId,
+      async (context) => {
+        await this.changeLength(context, id, change);
+        return this.slotTypeAnswer(context, id);
+      },
+      {},
+      { days: change.days },
+    );
   }
 
   /** Archived when unused (answer 9, decision 11); a second archive changes nothing. */
@@ -641,7 +694,7 @@ export class DayTemplates {
   private async addVersion(
     context: Context,
     id: string,
-    record: DayTemplateVersionRecord,
+    record: DayTemplateVersionSave,
   ): Promise<void> {
     const store = await loadStore(context.transaction);
     const template = store.templates.get(id);
@@ -653,6 +706,7 @@ export class DayTemplates {
     if (template.archivedAt !== null) {
       throw refused('template_archived');
     }
+    await this.templateLessons.lock(context.transaction, context.branchId, record.from);
     const schedule = scheduleFrom(template.versions, record.from);
     if (schedule.cut !== null) {
       await context.transaction
@@ -663,6 +717,7 @@ export class DayTemplates {
     }
     await DayTemplates.insertVersion(context, id, record, schedule);
     await DayTemplates.refuseMidnight(context, record.from, ['startTime', 'slotTypeIds']);
+    const lessons = await this.followLessons(context, record.from, store, record.days);
     const cut = template.versions.find((version) => version.id === schedule.cut?.id);
     await this.record(
       context,
@@ -685,6 +740,7 @@ export class DayTemplates {
           slotTypeIds: record.slotTypeIds,
           validFrom: schedule.validFrom,
           validUntil: schedule.validUntil,
+          ...lessons,
         },
       },
     );
@@ -696,13 +752,20 @@ export class DayTemplates {
     access: Access,
     branchId: string,
     id: string,
-    record: DayTemplateVersionRecord,
+    record: DayTemplateVersionSave,
     requestId: string,
   ): Promise<DayTemplate> {
-    return this.write(access, branchId, requestId, async (context) => {
-      await this.addVersion(context, id, record);
-      return templateAnswer(await loadStore(context.transaction), id, record.from);
-    });
+    return this.write(
+      access,
+      branchId,
+      requestId,
+      async (context) => {
+        await this.addVersion(context, id, record);
+        return templateAnswer(await loadStore(context.transaction), id, record.from);
+      },
+      {},
+      { days: record.days },
+    );
   }
 
   /** Archived while no setting of it is in force today or later (decision 11). */
@@ -815,7 +878,7 @@ export class DayTemplates {
     return row;
   }
 
-  private async setAssignment(context: Context, record: AssignmentRecord): Promise<string> {
+  private async setAssignment(context: Context, record: AssignmentSave): Promise<string> {
     const store = await loadStore(context.transaction);
     const template = store.templates.get(record.dayTemplateId);
     if (template === undefined) {
@@ -825,6 +888,7 @@ export class DayTemplates {
     if (template.archivedAt !== null) {
       throw refused('template_archived', ['dayTemplateId']);
     }
+    await this.templateLessons.lock(context.transaction, context.branchId, record.from);
     const live = store.assignments.filter(
       (row) => !isWithdrawn(row) && row.level === record.level && row.weekday === record.weekday,
     );
@@ -871,6 +935,7 @@ export class DayTemplates {
       })
       .returning('id')
       .executeTakeFirstOrThrow();
+    const lessons = await this.followLessons(context, record.from, store, record.days);
     const cut = sameKey.find((row) => row.id === schedule.cut?.id);
     await this.record(
       context,
@@ -895,6 +960,7 @@ export class DayTemplates {
           dayTemplateId: record.dayTemplateId,
           validFrom: schedule.validFrom,
           validUntil,
+          ...lessons,
         },
       },
     );
@@ -906,7 +972,7 @@ export class DayTemplates {
   assign(
     access: Access,
     branchId: string,
-    record: AssignmentRecord,
+    record: AssignmentSave,
     requestId: string,
   ): Promise<Assignment> {
     return this.write(
@@ -916,11 +982,17 @@ export class DayTemplates {
       async (context) =>
         DayTemplates.assignmentAnswer(context, await this.setAssignment(context, record)),
       assignmentRefusals(record.level),
+      { days: record.days },
     );
   }
 
-  private async endAssignment(context: Context, id: string, change: AssignmentEnd): Promise<void> {
-    const row = (await loadStore(context.transaction)).assignments.find((one) => one.id === id);
+  private async endAssignment(
+    context: Context,
+    id: string,
+    change: AssignmentEndSave,
+  ): Promise<void> {
+    const store = await loadStore(context.transaction);
+    const row = store.assignments.find((one) => one.id === id);
     if (row === undefined) {
       throw notFound();
     }
@@ -932,16 +1004,18 @@ export class DayTemplates {
     if (validUntil === null) {
       throw refused('already_ended', ['from']);
     }
+    await this.templateLessons.lock(context.transaction, context.branchId, change.from);
     await context.transaction
       .updateTable('day_template_assignments')
       .set({ valid_until: validUntil })
       .where('id', '=', id)
       .execute();
+    const lessons = await this.followLessons(context, change.from, store, change.days);
     await this.record(
       context,
       'day_template_assignment.end',
       { type: 'day_template_assignment', id },
-      { oldValue: { validUntil: row.validUntil }, newValue: { validUntil } },
+      { oldValue: { validUntil: row.validUntil }, newValue: { validUntil, ...lessons } },
     );
     await this.markDrafts(context, 'day_template_assignment.end', id, change.from);
   }
@@ -951,13 +1025,20 @@ export class DayTemplates {
     access: Access,
     branchId: string,
     id: string,
-    change: AssignmentEnd,
+    change: AssignmentEndSave,
     requestId: string,
   ): Promise<Assignment> {
-    return this.write(access, branchId, requestId, async (context) => {
-      await this.endAssignment(context, id, change);
-      return DayTemplates.assignmentAnswer(context, id);
-    });
+    return this.write(
+      access,
+      branchId,
+      requestId,
+      async (context) => {
+        await this.endAssignment(context, id, change);
+        return DayTemplates.assignmentAnswer(context, id);
+      },
+      {},
+      { days: change.days },
+    );
   }
 
   // The table and the preview.
@@ -1014,9 +1095,13 @@ export class DayTemplates {
               { store: storeBefore, table: before },
               { store: storeAfter, table: after },
             ),
+            // Task 5.6b-4a: what the save does to the published timetable's lessons.
+            lessons: context.followed.value?.rewrite.lessons ?? NO_LESSONS,
+            slotsInUse: context.followed.value?.slotsInUse ?? ([] as SlotInUse[]),
           });
         },
         change.kind === 'assignment_set' ? assignmentRefusals(change.change.level) : {},
+        { preview: true, days: change.change.days },
       );
     } catch (error) {
       if (error instanceof PreviewDone) {
