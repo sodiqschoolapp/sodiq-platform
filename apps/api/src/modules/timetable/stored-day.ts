@@ -491,7 +491,34 @@ export async function storedDayCheck(
     begins(addDays(date, 1)),
   );
   const fixed = [...(elsewhere.get(date) ?? []), ...exams];
-  const others = [...held.map((one) => placementOf(one, one.teacherId, one.roomId)), ...fixed];
+  // A cancelled part: placed with no teacher, room or student, its students
+  // exempt, so its block is still whole. Task 5.6b-3 (code review round 1): a
+  // part cancelled "day off" in a kept block is of the grade that is off alone,
+  // so no grade or class of it is checked.
+  const alongsideOf = (one: StoredDayLesson): Placement => ({
+    ...placementOf(one, null, null),
+    studentIds: [],
+    exemptStudentIds: studentsOn(unitOf(one), date),
+    ...(one.cancelCause === 'day_off'
+      ? { classId: null, groupId: null, classIds: [], subjectId: null }
+      : {}),
+  });
+  // Task 5.6b-3 (code review round 1): the parts cancelled "day off" of the
+  // blocks held on the date go with them, as in `datedCheck`.
+  const sent = new Set((input.alongside ?? []).map((one) => one.id));
+  const heldBlocks = new Set([...held, ...input.lessons].map((one) => one.blockId));
+  const offParts = stored.filter(
+    (one) =>
+      one.cancelCause === 'day_off' &&
+      !ids.has(one.id) &&
+      !sent.has(one.id) &&
+      heldBlocks.has(one.blockId),
+  );
+  const others = [
+    ...held.map((one) => placementOf(one, one.teacherId, one.roomId)),
+    ...offParts.map(alongsideOf),
+    ...fixed,
+  ];
   const facts: Facts = {
     ...model.facts,
     mode: 'dated',
@@ -511,11 +538,7 @@ export async function storedDayCheck(
           roomId === undefined ? one.roomId : roomId,
         ),
       ),
-      ...(input.alongside ?? []).map((one) => ({
-        ...placementOf(one, null, null),
-        studentIds: [],
-        exemptStudentIds: studentsOn(unitOf(one), date),
-      })),
+      ...(input.alongside ?? []).map(alongsideOf),
     ];
     const results = checkCandidates(others, facts, candidates, {
       availabilityFrom: date,

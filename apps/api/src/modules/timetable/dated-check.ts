@@ -2,6 +2,7 @@ import {
   addDays,
   checkTeacherTime,
   checkTimetable,
+  datedId,
   datedPattern,
   datedPublishResults,
   patternIdOf,
@@ -133,7 +134,7 @@ export async function datedCheck(
   const { data } = model;
   const branchId = data.branchId;
   const lastDate = data.versionEnd;
-  const { dated, begins, classOn, studentsOn, dayOfDate, branch, cancelledTeacher } =
+  const { dated, begins, classOn, studentsOn, dayOfDate, branch, cancelledTeacher, alongsideOn } =
     await datedLessonsOf(transaction, state, startsOn, lastDate);
   const { outOn, teachersOn } = await teacherStatesOf(transaction, data.teachers, branchId);
   // Every other branch's claims of the teachers, on the branch's dates and minutes.
@@ -178,7 +179,11 @@ export async function datedCheck(
     const checked = lessons.map((lesson) =>
       lesson.tutorFollowed ? { ...lesson.placement, teacherIds: [] } : lesson.placement,
     );
-    results.push(...checkTimetable([...checked, ...fixed], facts, { availabilityFrom: startsOn }));
+    results.push(
+      ...checkTimetable([...checked, ...alongsideOn(date), ...fixed], facts, {
+        availabilityFrom: startsOn,
+      }),
+    );
     const others = [...lessons.map((lesson) => ({ ...lesson.placement, fixed: true })), ...fixed];
     for (const lesson of lessons.filter((one) => one.tutorFollowed)) {
       if (checkTeacherTime(others, lesson.placement, facts.travelMinutes).length > 0) {
@@ -453,7 +458,58 @@ export async function datedLessonsOf(
       groupChoices.get(groupChoiceKey(entryId, date, groups, start)) ?? null,
   });
 
-  return { dated, begins, classOn, studentsOn, tutorOn, dayOfDate, branch, cancelledTeacher };
+  // Task 5.6b-3 (code review round 1): the parts of a kept block cancelled
+  // "day off" (a group of the grade that is off alone) go with the block's
+  // held lessons into the check, as the cancelled parts of a one-day change
+  // do (`alongside` of `storedDayCheck`): no teacher, room, grade or
+  // student, their students exempt, so the block is still whole.
+  const heldBlocks = new Map(
+    dated.lessons.map((lesson) => [lesson.placement.blockId, lesson.placement] as const),
+  );
+  const alongside = new Map<string, Placement[]>();
+  for (const one of dated.cancelled) {
+    const held = heldBlocks.get(datedId(one.blockId, one.date));
+    if (one.reason !== 'day_off' || held === undefined) continue;
+    const found = blocks.find((block) => block.id === one.blockId);
+    for (const entry of found?.entries.filter((own) => one.entryIds.includes(own.id)) ?? []) {
+      const list = alongside.get(one.date) ?? [];
+      list.push({
+        id: datedId(entry.id, one.date),
+        kind: 'lesson',
+        branchId,
+        day: one.date,
+        start: held.start,
+        end: held.end,
+        blockId: datedId(one.blockId, one.date),
+        doublePairId: null,
+        classId: null,
+        groupId: null,
+        classIds: [],
+        studentIds: [],
+        exemptStudentIds: studentsOn(entry.classId ?? entry.groupId ?? '', one.date),
+        subjectId: null,
+        loadRowId: entry.loadRowId,
+        teacherIds: [],
+        substitute: false,
+        roomId: null,
+        examRooms: [],
+        fixed: false,
+      });
+      alongside.set(one.date, list);
+    }
+  }
+
+  return {
+    dated,
+    begins,
+    classOn,
+    studentsOn,
+    tutorOn,
+    dayOfDate,
+    branch,
+    cancelledTeacher,
+    alongsideOn: (date: string): readonly Placement[] => alongside.get(date) ?? [],
+  };
 }
 
 /** The stored choices of the lessons kept on a shortened day of a version between two dates (task 5.5a-2b-2). */

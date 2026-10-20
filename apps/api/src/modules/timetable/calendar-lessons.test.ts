@@ -198,7 +198,7 @@ describe('calendar entries after publishing', () => {
    * the grade-7 class in slot 1 and history of the grade-10 class in slot 3,
    * both on Mondays, each with its own teacher.
    */
-  async function scene(input: { group?: boolean; three?: boolean } = {}) {
+  async function scene(input: { group?: boolean; three?: boolean; nineGroup?: boolean } = {}) {
     const branch = await t.newBranch();
     const year = await load.classes.year(branch);
     for (const [index, [start, end]] of QUARTERS.entries()) {
@@ -260,7 +260,8 @@ describe('calendar entries after publishing', () => {
     // grade-10 class (`edge/timetable`, Structure, "Physical education joins a
     // grade-9 and a grade-10 class"), in slot 5 on Mondays.
     let groupId: string | null = null;
-    if (input.group === true) {
+    let nineGroupId: string | null = null;
+    if (input.group === true || input.nineGroup === true) {
       const nineId = await load.classes.schoolClass(branch, year, {
         grade: 9,
         room: await load.classes.room(branch),
@@ -279,6 +280,23 @@ describe('calendar entries after publishing', () => {
         teacher_id: coach,
         lessons_per_week: 1,
       });
+      // Task 5.6b-3 (code review round 1), with `nineGroup`: a group of the
+      // grade-9 class alone, linked to the first by that class: one block with it.
+      if (input.nineGroup === true) {
+        nineGroupId = await load.classes.group(branch, year, sport, [nineId]);
+        const nineCoach = (
+          await load.teacher(branch, { subjects: [{ subject: sport, grades: [9] }] })
+        ).staffId;
+        await hours(branch, nineCoach);
+        await load.row({
+          branch_id: branch,
+          version_id: version,
+          group_id: nineGroupId,
+          subject_id: sport,
+          teacher_id: nineCoach,
+          lessons_per_week: 1,
+        });
+      }
       await placeAt(branch, version, groupRow, 1, 5);
     }
     // Task 5.6b-2b, with `three`: art and music of the grade-7 class in
@@ -326,6 +344,7 @@ describe('calendar entries after publishing', () => {
       short,
       lessonType: lesson,
       groupId,
+      nineGroupId,
       art,
       music,
     };
@@ -863,6 +882,39 @@ describe('calendar entries after publishing', () => {
         );
         const [after] = await groupOn(s, OCT19);
         expect(after?.cancel_cause).toBeNull();
+      });
+
+      // Code review round 1: a group of grade 9 alone in a kept block.
+      it('with "keep" over a block with a group of grade 9 alone holds the two-grade group and cancels that one "day off"', async () => {
+        const s = await scene({ nineGroup: true });
+        const before = await lessonsOn(s.branch, OCT19);
+        const nine = before.find((one) => one.group_id === s.nineGroupId);
+        expect(nine?.block_id).toBe(before.find((one) => one.group_id === s.groupId)?.block_id);
+        const groupIds = [s.groupId ?? '', s.nineGroupId ?? ''];
+        const shown = await preview(s.branch, { action: 'create', record: nineOff() });
+        expect(shown.lessons.groupBlocks.map((one) => one.groupIds.toSorted())).toEqual([
+          groupIds.toSorted(),
+        ]);
+
+        okay(
+          await create(s.branch, {
+            ...nineOff(),
+            groupBlocks: [{ weekday: 1, start: 590, groupIds, choice: 'keep' }],
+          }),
+          201,
+        );
+
+        const after = await lessonsOn(s.branch, OCT19);
+        expect(after.find((one) => one.group_id === s.groupId)?.cancel_cause).toBeNull();
+        expect(after.find((one) => one.group_id === s.nineGroupId)?.cancel_cause).toBe('day_off');
+        // A one-day room change of the kept lesson: the part cancelled "day off" goes alongside.
+        const kept = after.find((one) => one.group_id === s.groupId);
+        okay(
+          await keyed(`/api/timetable/lessons/${kept?.id ?? ''}/room`, s.branch, {
+            roomId: await load.classes.room(s.branch),
+            reason: 'The hall is painted',
+          }),
+        );
       });
 
       // Permission review must-fix 1: an archive leaves no grade off and takes no choice.

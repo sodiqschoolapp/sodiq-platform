@@ -46,7 +46,8 @@
  * week there cancels it `exam_week`, a slot their template lacks or times it
  * differently cancels it `not_in_template`, else the lesson takes their time
  * and the students of the grade that is off, by their membership on the date,
- * are exempt for it. Every such block and date is listed in `splitGroups`.
+ * are exempt for it; a lesson of that grade alone (a group of its classes
+ * only) is cancelled `day_off` on the date (code review round 1). Every such block and date is listed in `splitGroups`.
  */
 import type { Day } from './day.js';
 import type { Placement } from './placement.js';
@@ -483,7 +484,23 @@ export function datedPattern(input: DatedPatternInput): DatedPattern {
         });
         continue;
       }
+      // Code review round 1: under "keep", a lesson of the grade that is off
+      // alone has nobody at school: it is cancelled "day off"; the rest is held.
+      const offOnly = block.entries.filter(
+        (entry) =>
+          found.offClassIds.length > 0 &&
+          entry.classIds.every((classId) => found.offClassIds.includes(classId)),
+      );
+      if (offOnly.length > 0) {
+        cancelled.push({
+          date,
+          reason: 'day_off',
+          blockId: block.id,
+          entryIds: offOnly.map((entry) => entry.id),
+        });
+      }
       for (const entry of block.entries) {
+        if (offOnly.includes(entry)) continue;
         let teacherId: string | null = entry.teacherId;
         if (entry.tutorRow && entry.classId !== null) {
           teacherId = input.tutorOn(entry.classId, date, found.start);

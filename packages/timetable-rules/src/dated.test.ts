@@ -335,6 +335,50 @@ describe('datedPattern', () => {
         expect(asked).toEqual([['navruz-9', '2026-11-16', ['pe910'], 480]]);
       });
 
+      // Code review round 1: a group of the off grade alone in a kept block.
+      it('keeps a block of three groups for grade 10 and cancels "day off" the group of grade 9 alone', () => {
+        const entry = (id: string, classIds: string[]) => ({
+          id: `e-${id}`,
+          loadRowId: `row-${id}`,
+          classId: null,
+          groupId: id,
+          classIds,
+          subjectId: 'english',
+          teacherId: `t-${id}`,
+          roomId: `r-${id}`,
+          tutorRow: false,
+        });
+        const found = run('keep', {
+          blocks: [
+            group({
+              entries: [entry('a9', ['9a']), entry('b910', ['9a', '10a']), entry('c10', ['10a'])],
+            }),
+          ],
+          studentsOn: (unitId) =>
+            ({
+              a9: ['s9a'],
+              b910: ['s9b', 's10b'],
+              c10: ['s10c'],
+              '9a': ['s9a', 's9b'],
+              '10a': ['s10b', 's10c'],
+            })[unitId] ?? [],
+        });
+        expect(found.cancelled).toEqual([
+          { date: '2026-11-16', reason: 'day_off', blockId: 'pe', entryIds: ['e-a9'] },
+        ]);
+        expect(
+          found.lessons.map((one) => [
+            one.entryId,
+            one.placement.start,
+            one.placement.exemptStudentIds,
+          ]),
+        ).toEqual([
+          ['e-b910', 480, ['s9b']],
+          ['e-c10', 480, []],
+        ]);
+        expect(found.splitGroups.map((one) => one.groupIds)).toEqual([['a9', 'b910', 'c10']]);
+      });
+
       it('cancels it "day off" when the choice is cancel', () => {
         const found = run('cancel');
         expect(found.lessons).toEqual([]);
