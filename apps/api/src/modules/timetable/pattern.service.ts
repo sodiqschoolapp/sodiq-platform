@@ -40,6 +40,7 @@ import { branchOf } from '../classes/classes.service.js';
 import { notFound, refusingConstraints } from '../setup/setup-refusals.js';
 import { LOAD_REFUSALS, LoadFacts, type StoredLoadRow } from './load-facts.js';
 import { readPatternFacts, type PatternFacts } from './pattern-facts.js';
+import { readVersionDays } from './version-days.js';
 import { deferPatternClashes, readBlocks, readLocks } from './pattern-queries.js';
 import { readPins } from './pins-check.js';
 import { blockedRefusal, resultAnswerOf } from './rule-answers.js';
@@ -840,7 +841,13 @@ export class TimetablePattern {
       versionRows: rows,
       extraTeacherIds,
     });
-    const pattern = await readPatternFacts(transaction, context, rows, load, { extraTeacherIds });
+    const pattern = await readPatternFacts(transaction, context, rows, load, {
+      extraTeacherIds,
+      // Task 5.6b-4a (decision 3): a version no longer a draft is read in the
+      // weekly days its publish checked.
+      weeklyDays:
+        version.status === 'draft' ? null : await readVersionDays(transaction, version.id),
+    });
     const [blocks, locks] = await Promise.all([
       readBlocks(transaction, version.id),
       readLocks(transaction, version.id),

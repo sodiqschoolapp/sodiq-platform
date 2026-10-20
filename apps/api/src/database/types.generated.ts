@@ -1045,7 +1045,8 @@ export interface TimetableVersionDays {
   branch_id: string;
   end_minutes: number;
   grade: number;
-  lesson_number: number;
+  kind: string;
+  position: number;
   start_minutes: number;
   version_id: string;
   weekday: number;

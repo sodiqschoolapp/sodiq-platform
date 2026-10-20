@@ -76,7 +76,16 @@ export async function readPatternFacts(
   context: VersionContext,
   rows: readonly StoredLoadRow[],
   load: LoadFacts,
-  options: { readonly extraTeacherIds?: readonly string[] } = {},
+  options: {
+    readonly extraTeacherIds?: readonly string[];
+    /**
+     * Task 5.6b-4a (decision 3): a published version's weekly days as its
+     * publish checked them (`timetable_version_days`), in place of the
+     * templates on `statusOn`, so its blocks are read in the day they were
+     * placed in after a template change from a date.
+     */
+    readonly weeklyDays?: ReadonlyMap<string, Day> | null;
+  } = {},
 ): Promise<PatternFacts> {
   const { branchId, statusOn } = context;
   const teacherIds = [
@@ -259,6 +268,10 @@ export async function readPatternFacts(
   const dayFor = (grade: number, weekday: number): EngineDay => {
     if (!branch.working_weekdays.includes(weekday)) {
       return { lessons: false, reason: 'not_working_day' };
+    }
+    const stored = options.weeklyDays?.get(`${grade}|${weekday}`);
+    if (stored !== undefined) {
+      return { lessons: true, day: stored, noRegularLessons: false };
     }
     const date = firstOn(statusOn, weekday);
     const templateId = templateFor(grade, date, weekly);

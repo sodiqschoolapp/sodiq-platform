@@ -28,8 +28,8 @@ export function weeklyDaysOf(state: PatternState): Map<string, Day> {
 
 /**
  * Stores the weekly days of the version being published, while it is still
- * a draft (`pattern_rows_draft`): its lesson slots only, the only slots a
- * block takes.
+ * a draft (`pattern_rows_draft`): every slot, breaks included, so that a
+ * later check of the version's pattern reads the day its blocks were placed in.
  */
 export async function storeVersionDays(
   transaction: Transaction,
@@ -38,7 +38,7 @@ export async function storeVersionDays(
   const rows = [...weeklyDaysOf(state)].flatMap(([key, day]) => {
     const [grade, weekday] = key.split('|').map(Number);
     return day.slots.flatMap((slot) =>
-      slot.lessonNumber === null || grade === undefined || weekday === undefined
+      grade === undefined || weekday === undefined
         ? []
         : [
             {
@@ -46,7 +46,8 @@ export async function storeVersionDays(
               version_id: state.version.id,
               grade,
               weekday,
-              lesson_number: slot.lessonNumber,
+              position: slot.position,
+              kind: slot.kind,
               start_minutes: slot.start,
               end_minutes: slot.end,
             },
@@ -68,23 +69,25 @@ export async function readVersionDays(
 ): Promise<WeeklyDays | null> {
   const rows = await transaction
     .selectFrom('timetable_version_days')
-    .select(['grade', 'weekday', 'lesson_number', 'start_minutes', 'end_minutes'])
+    .select(['grade', 'weekday', 'position', 'kind', 'start_minutes', 'end_minutes'])
     .where('version_id', '=', versionId)
     .orderBy('grade')
     .orderBy('weekday')
-    .orderBy('lesson_number')
+    .orderBy('position')
     .execute();
   if (rows.length === 0) return null;
   const slots = new Map<string, DaySlot[]>();
   for (const row of rows) {
     const key = weeklyKey(row.grade, row.weekday);
     const list = slots.get(key) ?? [];
+    const lessons = list.filter((slot) => slot.kind === 'lesson').length;
+    const kind = row.kind === 'lesson' ? 'lesson' : 'break';
     list.push({
-      position: list.length + 1,
-      kind: 'lesson',
+      position: row.position,
+      kind,
       start: row.start_minutes,
       end: row.end_minutes,
-      lessonNumber: row.lesson_number,
+      lessonNumber: kind === 'lesson' ? lessons + 1 : null,
     });
     slots.set(key, list);
   }
