@@ -192,7 +192,9 @@ export const calendarGroupBlocksSchema = z
   .refine(
     (list) =>
       new Set(list.map((one) => groupBlockKeyOf(one))).size === list.length &&
-      list.every((one) => new Set(one.groupIds.map((id) => id.toLowerCase())).size === one.groupIds.length),
+      list.every(
+        (one) => new Set(one.groupIds.map((id) => id.toLowerCase())).size === one.groupIds.length,
+      ),
     { message: 'Each block once, each group once in it.' },
   );
 
@@ -204,7 +206,11 @@ export const groupBlockKeyOf = (block: {
   readonly start: number;
   readonly groupIds: readonly string[];
 }): string =>
-  [String(block.weekday), String(block.start), ...block.groupIds.map((id) => id.toLowerCase()).sort()].join('|');
+  [
+    String(block.weekday),
+    String(block.start),
+    ...block.groupIds.map((id) => id.toLowerCase()).sort(),
+  ].join('|');
 
 /**
  * A create or an edit (task 5.6b-2a): the entry, with the key of the sorting
@@ -488,7 +494,9 @@ export const calendarLessonsSchema = z.object({
     }),
   ),
   /** Task 5.6b-3: choices sent for blocks the preview does not list, ignored. */
-  groupBlocksUnused: z.array(z.object({ weekday: weekdaySchema, start: z.int(), groupIds: z.array(z.uuid()) })),
+  groupBlocksUnused: z.array(
+    z.object({ weekday: weekdaySchema, start: z.int(), groupIds: z.array(z.uuid()) }),
+  ),
   names: previewNamesSchema,
 });
 
