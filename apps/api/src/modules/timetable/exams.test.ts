@@ -6,6 +6,7 @@ import {
   REQUEST_KEY_HEADER,
   examCheckSchema,
   examSaveAnswerSchema,
+  examSchema,
   examsAnswerSchema,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
@@ -1537,6 +1538,10 @@ describe('exams in the timetable', () => {
           [early.exam.id, true],
           [later.exam.id, false],
         ]);
+        // The single exam says the same (permission review should-fix 2).
+        const single = await t.get(`/api/timetable/exams/${early.exam.id}`, s.branch, vice);
+        expect(single.status, JSON.stringify(single.body)).toBe(200);
+        expect(examSchema.parse(single.body).started).toBe(true);
         const third = await person(s.branch, [s.maths]);
         refusedWith(
           await create(
@@ -2160,8 +2165,12 @@ describe('exams in the timetable', () => {
   // standing exams the class sits (06, Exam: "It is shown on every timetable
   // view ..., marked 'exam'").
   describe('the exams of the class day page (task 5.6c-2)', () => {
-    const dayOf = async (branch: string, date: string, classId: string) => {
-      const response = await t.get(`/api/timetable/day?date=${date}&classId=${classId}`, branch);
+    const dayOf = async (branch: string, date: string, classId: string, cookie = t.admin) => {
+      const response = await t.get(
+        `/api/timetable/day?date=${date}&classId=${classId}`,
+        branch,
+        cookie,
+      );
       expect(response.status, JSON.stringify(response.body)).toBe(200);
       return dayAnswerSchema.parse(response.body);
     };
@@ -2211,9 +2220,37 @@ describe('exams in the timetable', () => {
       expect((await dayOf(s.branch, THURSDAY, s.classId)).exams.map((one) => one.id)).toEqual([
         group.exam.id,
       ]);
+      // Another branch's standing exam of the same date stays out (permission
+      // review should-fix 1), as the Super Admin who holds every branch.
+      const elsewhere = await scene();
+      const theirs = saved(await create(elsewhere.branch, examOf(elsewhere)));
+      expect(theirs.exam.cancelled).toBe(false);
+      expect((await dayOf(s.branch, NEXT_MONDAY, s.classId)).exams.map((one) => one.id)).toEqual([
+        named.exam.id,
+      ]);
       expect((await dayOf(s.branch, NEXT_MONDAY, s.otherClass)).exams.map((one) => one.id)).toEqual(
         [others.exam.id],
       );
+    });
+  });
+
+  describe('the exams of the class day page, read by the Principal (task 5.6c-2)', () => {
+    it('shows the Principal the exam of the class with its room and invigilator (permission review should-fix 3)', async () => {
+      const s = await northScene();
+      const date = '2026-12-07';
+      const exam = saved(await create(s.branch, examOf(s, { date, classIds: [s.classId] })));
+      const response = await t.get(
+        `/api/timetable/day?date=${date}&classId=${s.classId}`,
+        s.branch,
+        t.principal,
+      );
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      expect(dayAnswerSchema.parse(response.body).exams).toEqual([
+        expect.objectContaining({
+          id: exam.exam.id,
+          room: { id: s.hall, name: expect.any(String) },
+        }),
+      ]);
     });
   });
 
