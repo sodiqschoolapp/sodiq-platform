@@ -5,29 +5,38 @@ import { ApiException } from '../../http/api-exception.js';
 /**
  * Until 5.6c-3 (task 5.6c-1, decision 5; `.claude/rules/timetable.md`, a task
  * that first writes rows): a publish or a withdraw that would create, remove
- * or change a lesson on the date of a standing exam is refused
- * `publish_over_exam`, one detail per exam. Without it, the write would
- * create lessons under the exam (refused by its class claims) or remove a
- * block an out row names (a foreign key, a 500). 5.6c-3 replaces it with the
- * sorting of the kept exam (`edge/timetable`, Exams: "An exam is stored on its
- * own like a one-day change and kept after a later publish").
+ * or change a lesson of the exam's classes at its time (a sitting class, a
+ * sitting group, a group of a sitting class), or a block it keeps a class out
+ * of, is refused `publish_over_exam`, one detail per exam. Without it, the
+ * write would create lessons under the exam (refused by its class claims) or
+ * remove a block an out row names (a foreign key, a 500). Other lessons are
+ * written as before; one that meets an invigilator or an exam room is
+ * refused by the claims as any publish clash (`timetable_busy`). 5.6c-3 replaces it
+ * with the sorting of the kept exam (`edge/timetable`, Exams: "An exam is
+ * stored on its own like a one-day change and kept after a later publish").
  */
 
-interface ExamDay {
-  readonly exams: readonly { readonly id: string; readonly title: string }[];
+interface ExamTime {
+  readonly id: string;
+  readonly title: string;
+  readonly date: string;
+  readonly startsAt: Date;
+  readonly endsAt: Date;
+  readonly examId: string;
+  /** The lessons of its classes that overlap it, and of its out rows' blocks, before the write. */
   readonly lessons: string;
 }
 
-/** The standing exams of a range with the lessons of their dates, before a write. */
+/** The standing exams of a range with the lessons at their times, before a write. */
 export async function examDaysBefore(
   transaction: Transaction,
   branchId: string,
   firstDate: string,
   lastDate: string,
-): Promise<Map<string, ExamDay>> {
+): Promise<ExamTime[]> {
   const exams = await transaction
     .selectFrom('exams')
-    .select(['id', 'title', sql<string>`exam_date::text`.as('date')])
+    .select(['id', 'title', sql<string>`exam_date::text`.as('date'), 'starts_at', 'ends_at'])
     .where('branch_id', '=', branchId)
     .where('exam_date', '>=', firstDate)
     .where('exam_date', '<=', lastDate)
@@ -35,28 +44,29 @@ export async function examDaysBefore(
     .orderBy('exam_date')
     .orderBy('id')
     .execute();
-  const days = new Map<string, ExamDay>();
-  for (const date of [...new Set(exams.map((one) => one.date))]) {
-    days.set(date, {
-      exams: exams
-        .filter((one) => one.date === date)
-        .map((one) => ({ id: one.id, title: one.title })),
-      lessons: await lessonsOn(transaction, branchId, date),
+  const times: ExamTime[] = [];
+  for (const exam of exams) {
+    const time = { date: exam.date, startsAt: exam.starts_at, endsAt: exam.ends_at };
+    const at = { ...time, examId: exam.id };
+    times.push({
+      id: exam.id,
+      title: exam.title,
+      ...at,
+      lessons: await lessonsAt(transaction, branchId, at),
     });
   }
-  return days;
+  return times;
 }
 
-/** Refuses the write when a lesson of an exam's date differs from before it. */
+/** Refuses the write when a lesson at an exam's time differs from before it. */
 export async function refuseOverExams(
   transaction: Transaction,
   branchId: string,
-  before: ReadonlyMap<string, ExamDay>,
+  before: readonly ExamTime[],
 ): Promise<void> {
-  const refused: { id: string; title: string; date: string }[] = [];
-  for (const [date, day] of before) {
-    if ((await lessonsOn(transaction, branchId, date)) === day.lessons) continue;
-    refused.push(...day.exams.map((one) => ({ ...one, date })));
+  const refused: ExamTime[] = [];
+  for (const exam of before) {
+    if ((await lessonsAt(transaction, branchId, exam)) !== exam.lessons) refused.push(exam);
   }
   if (refused.length === 0) return;
   throw new ApiException(
@@ -73,19 +83,48 @@ export async function refuseOverExams(
   );
 }
 
-/** The lessons of a date as one text: what the guard compares. */
-async function lessonsOn(
+/** The lessons of a date overlapping a time, as one text: what the guard compares. */
+async function lessonsAt(
   transaction: Transaction,
   branchId: string,
-  date: string,
+  time: {
+    readonly date: string;
+    readonly startsAt: Date;
+    readonly endsAt: Date;
+    readonly examId: string;
+  },
 ): Promise<string> {
-  const rows = await transaction
-    .selectFrom('lessons')
-    .select(['id', 'starts_at', 'ends_at', 'teacher_id', 'room_id', 'cancel_cause'])
-    .where('branch_id', '=', branchId)
-    .where('lesson_date', '=', date)
-    .orderBy('id')
-    .execute();
+  const { rows } = await sql<{
+    id: string;
+    starts_at: Date;
+    ends_at: Date;
+    teacher_id: string | null;
+    room_id: string | null;
+    cancel_cause: string | null;
+  }>`
+    select l.id, l.starts_at, l.ends_at, l.teacher_id, l.room_id, l.cancel_cause
+    from lessons l
+    where l.branch_id = ${branchId}::uuid
+      and l.lesson_date = ${time.date}::date
+      and (
+        (
+          l.starts_at < ${time.endsAt}::timestamptz and l.ends_at > ${time.startsAt}::timestamptz
+          and exists (
+            select 1 from exam_room_classes rc
+            where rc.exam_id = ${time.examId}::uuid
+              and (
+                rc.class_id = l.class_id
+                or rc.group_id = l.group_id
+                or rc.class_id in (select gc.class_id from group_classes gc where gc.group_id = l.group_id)
+              )
+          )
+        )
+        or l.block_id in (
+          select o.block_id from lesson_block_class_outs o where o.exam_id = ${time.examId}::uuid
+        )
+      )
+    order by l.id
+  `.execute(transaction);
   return rows
     .map((one) =>
       [

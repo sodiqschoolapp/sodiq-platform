@@ -1145,9 +1145,12 @@ describe('exams in the timetable', () => {
       expect(done.status, JSON.stringify(done.body)).toBe(200);
     });
 
-    it('refuses a publish that adds a lesson on the date of a standing exam', async () => {
+    it('refuses a publish that adds a lesson of its class under a standing exam', async () => {
       const s = await scene();
-      const exam = saved(await create(s.branch, examOf(s, { classIds: [s.classId] })));
+      // The exam over lessons 1 and 2 of the first class; the new version adds its lesson 2.
+      const exam = saved(
+        await create(s.branch, examOf(s, { classIds: [s.classId], first: 1, last: 2 })),
+      );
       const draft = await t.post('/api/timetable/versions', s.branch, {
         academicYearId: s.year,
         startsOn: NEXT_MONDAY,
@@ -1172,7 +1175,7 @@ describe('exams in the timetable', () => {
       const extra = await load.row({
         branch_id: s.branch,
         version_id: version,
-        class_id: s.otherClass,
+        class_id: s.classId,
         subject_id: music,
         teacher_id: singer.staffId,
         lessons_per_week: 1,
