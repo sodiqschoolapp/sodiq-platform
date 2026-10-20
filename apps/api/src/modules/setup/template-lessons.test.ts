@@ -1193,6 +1193,42 @@ describe('template changes after publishing', () => {
       okay(await changeLength(s, 35, OCT19, { dayChangesKey: again.lessons.dayChanges.key }));
       const last = await lessonOf(s, OCT26, s.seniorId);
       expect([clock(last.starts_at), await roomOf(last.id)]).toEqual(['08:45', room]);
+
+      // A calendar save over that date (a day off for grades 1 and 2), which
+      // reads the stored change with no template change's map, keeps it too.
+      const record = {
+        kind: 'day_off',
+        name: 'Sports day',
+        firstDate: OCT26,
+        lastDate: OCT26,
+        gradeFrom: 1,
+        gradeTo: 2,
+        dayTemplateId: null,
+        followsWeekday: null,
+        examWeek: null,
+      };
+      const calendar = await post('/api/setup/calendar-entries/preview', s.branch, {
+        action: 'create',
+        record,
+      });
+      expect(calendar.status, JSON.stringify(calendar.body)).toBe(200);
+      const sorted = (
+        calendar.body as {
+          lessons: {
+            dayChanges: { key: string; kept: { kind: string; from: { start: number } }[] };
+          };
+        }
+      ).lessons.dayChanges;
+      expect(sorted.kept.map((one) => [one.kind, one.from.start])).toEqual([['room', 525]]);
+      okay(
+        await post('/api/setup/calendar-entries', s.branch, {
+          ...record,
+          dayChangesKey: sorted.key,
+        }),
+        201,
+      );
+      const after = await lessonOf(s, OCT26, s.seniorId);
+      expect([clock(after.starts_at), await roomOf(after.id)]).toEqual(['08:45', room]);
     });
 
     it('a move inside a written date goes to the new times of its lesson number', async () => {
@@ -1261,6 +1297,24 @@ describe('template changes after publishing', () => {
         ['09:40', '10:20', null],
       ]);
       expect(await timesOf(s, OCT19, s.seniorId)).toEqual([]);
+      // The kept block moved is in the change's audit entry, before and after.
+      const [entry] = await t.entries('slot_type.length_change', s.lessonType);
+      const blocks = (
+        entry?.new_value as {
+          storedBlocks?: {
+            date: string;
+            before: { startsAt: string };
+            after: { startsAt: string };
+          }[];
+        }
+      ).storedBlocks;
+      expect(
+        blocks?.map((one) => [
+          one.date,
+          clock(new Date(one.before.startsAt)),
+          clock(new Date(one.after.startsAt)),
+        ]),
+      ).toEqual([[OCT26, '09:50', '09:40']]);
     });
 
     it('a move into a lesson number the change removes needs a decision: refused without one, cancelled with "cancel the lesson that day"', async () => {
@@ -1373,17 +1427,22 @@ describe('template changes after publishing', () => {
       expect(item?.kind).toBe('room');
       expect(item?.blocked.length).toBeGreaterThan(0);
 
-      // A key of another sorting is refused.
-      refusedWith(
-        await assign(s, record, { dayChangesKey: 'a'.repeat(64) }),
-        409,
-        'calendar_blocked',
-      );
-      refusedWith(
-        await assign(s, record, { dayChangesKey: shown.lessons.dayChanges.key }),
-        409,
-        'calendar_blocked',
-      );
+      const refusalOf = async (days: object) => {
+        const refused = await assign(s, record, days);
+        refusedWith(refused, 409, 'calendar_blocked');
+        return detailsOf(refused).map((one) => one.code);
+      };
+      // A key of another sorting is refused, with the choice made.
+      expect(
+        await refusalOf({
+          dayChangesKey: 'a'.repeat(64),
+          dayDecisions: [{ key: item?.key ?? '', choice: 'drop' }],
+        }),
+      ).toEqual(['day_changes_changed']);
+      // The key shown with no choice is refused as undecided.
+      expect(await refusalOf({ dayChangesKey: shown.lessons.dayChanges.key })).toEqual([
+        'day_change_undecided',
+      ]);
       okay(
         await assign(s, record, {
           dayChangesKey: shown.lessons.dayChanges.key,
@@ -1647,6 +1706,14 @@ describe('template changes after publishing', () => {
     const southExam = { id: examOf[south.branch] ?? '' };
     const northExam = examOf[north.branch] ?? '';
     const northLesson = await lessonOf(north, OCT26, north.classId);
+    // Task 5.6b-4b (planned test 9): a stored room change on a date the
+    // north changes write, which the template change would move.
+    okay(
+      await keyed(`/api/timetable/lessons/${northLesson.id}/room`, north.branch, {
+        roomId: await load.classes.room(north.branch),
+        reason: 'The room is painted',
+      }),
+    );
     const set = okay(
       await assign(
         north,
@@ -1662,6 +1729,8 @@ describe('template changes after publishing', () => {
     const rows = [await storedRowsOf(north.branch), await storedRowsOf(south.branch)];
     for (const one of rows) {
       expect(one.bulk_cancel_blocks?.length).toBeGreaterThan(0);
+      expect(one.bulk_cancel_spans?.length).toBeGreaterThan(0);
+      expect(one.lesson_day_changes?.length).toBeGreaterThan(0);
       expect(one.lesson_block_class_outs?.length).toBeGreaterThan(0);
     }
     const audit = await t.auditCount();

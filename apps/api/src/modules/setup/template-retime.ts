@@ -285,6 +285,9 @@ export async function retimeStored(
       transaction
         .selectFrom('bulk_cancel_blocks')
         .select([
+          // The row itself: a choice whose block a publish removed has no
+          // key of its own, and a moved time may meet another row's old one.
+          sql<string>`ctid::text`.as('row_key'),
           'bulk_cancel_id',
           'block_id',
           sql<string>`lesson_date::text`.as('lesson_date'),
@@ -370,13 +373,7 @@ export async function retimeStored(
         .set({ starts_at: times.starts_at, ends_at: times.ends_at })
         .where('branch_id', '=', branchId)
         .where('bulk_cancel_id', '=', choice.bulk_cancel_id)
-        .where('lesson_date', '=', choice.lesson_date)
-        .where('starts_at', '=', choice.starts_at)
-        .where((eb) =>
-          choice.block_id === null
-            ? eb('block_id', 'is', null)
-            : eb('block_id', '=', choice.block_id),
-        )
+        .where(sql<boolean>`ctid = ${choice.row_key}::tid`)
         .execute();
     }
   }

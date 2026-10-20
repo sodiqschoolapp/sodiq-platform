@@ -467,7 +467,7 @@ describe('the preview of a template change over a published timetable', () => {
     expect(save).toHaveProperty('disabled', false);
   });
 
-  it.each(['blocked', 'slotsInUse'] as const)(
+  it.each(['blocked', 'slotsInUse', 'exams', 'keepRefusals'] as const)(
     'keeps Save off while the server would refuse it: %s, listed as a line',
     async (refusal) => {
       const { calls, dialog, save } = await previewFriday(() => ({
@@ -483,6 +483,26 @@ describe('the preview of a template change over a published timetable', () => {
                     lessons: [{ unitId: OXFORD, subjectId: MATHS }],
                   },
                 ]
+              : [],
+          exams:
+            refusal === 'exams'
+              ? [
+                  {
+                    id: uid(30),
+                    title: 'Quarter exam',
+                    date: '2026-10-23',
+                    outcome: 'refused',
+                    before: { start: 480, end: 525 },
+                    after: null,
+                    code: 'calendar_exam_slots',
+                    blockedRules: [],
+                    blocks: [],
+                  },
+                ]
+              : [],
+          keepRefusals:
+            refusal === 'keepRefusals'
+              ? [{ date: '2026-10-23', classId: OXFORD, code: 'day_keep_over_slots' }]
               : [],
           names,
         },
@@ -500,7 +520,13 @@ describe('the preview of a template change over a published timetable', () => {
               ]
             : [],
       }));
-      if (refusal === 'blocked') {
+      if (refusal === 'exams') {
+        expect(dialog.querySelector('[data-exam="' + uid(30) + '"]')?.textContent).toContain(
+          en.setup.calendar.lessons.exams.codes.calendar_exam_slots,
+        );
+      } else if (refusal === 'keepRefusals') {
+        expect(dialog.querySelector('[data-keep-refusals]')).not.toBeNull();
+      } else if (refusal === 'blocked') {
         const section = within(dialog).getByTestId('calendar-lessons');
         expect(within(section).getByRole('alert').textContent).toBe(
           en.setup.calendar.lessons.refused,

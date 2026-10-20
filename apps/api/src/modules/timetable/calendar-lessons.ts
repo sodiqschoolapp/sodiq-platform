@@ -186,6 +186,8 @@ export interface CalendarRewrite {
     readonly exams: readonly ExamAudit[];
     /** Task 5.6b-3: each choice of a split group's block written or removed. */
     readonly groupBlocks: readonly GroupBlockAudit[];
+    /** Task 5.6b-4b: the stored blocks a template change kept and moved to their new times. */
+    readonly storedBlocks: readonly StoredBlockTimes[];
   } | null;
 }
 
@@ -218,11 +220,23 @@ export const lessonsAuditOf = (rewrite: CalendarRewrite) =>
         ...(rewrite.audit.exams.length === 0
           ? {}
           : { exams: rewrite.audit.exams.map((one) => structuredClone(one)) }),
+        // Task 5.6b-4b: each kept stored block moved, before and after.
+        ...(rewrite.audit.storedBlocks.length === 0
+          ? {}
+          : { storedBlocks: rewrite.audit.storedBlocks.map((one) => structuredClone(one)) }),
         // Task 5.6b-3: each choice of a split group's block written or removed.
         ...(rewrite.audit.groupBlocks.length === 0
           ? {}
           : { groupBlocks: rewrite.audit.groupBlocks.map((one) => structuredClone(one)) }),
       };
+
+/** Task 5.6b-4b: a kept stored block moved to the new times of a template change, as the audit entry keeps it. */
+export type StoredBlockTimes = {
+  readonly blockId: string;
+  readonly date: string;
+  readonly before: { readonly startsAt: string; readonly endsAt: string };
+  readonly after: { readonly startsAt: string; readonly endsAt: string };
+};
 
 /** A choice of the lessons kept on a shortened day as the audit entry keeps it (task 5.6b-2b). */
 export interface KeepAudit {
@@ -966,6 +980,7 @@ export class TimetableCalendarLessons {
     const writes: DatedWrite[] = [];
     const days: StretchDays[] = [];
     const examAudit: ExamAudit[] = [];
+    const storedBlocks: StoredBlockTimes[] = [];
     const doWrite = async () => {
       const moment = await transactionMoment(transaction);
       const keptStored = new Set<string>();
@@ -999,7 +1014,9 @@ export class TimetableCalendarLessons {
       }
       await writeMovesBack(transaction, backs);
       if (input.retime !== undefined) {
-        await writeStoredTimes(transaction, branchId, [...keptStored], input.retime);
+        storedBlocks.push(
+          ...(await writeStoredTimes(transaction, branchId, [...keptStored], input.retime)),
+        );
       }
       if (input.preview) return;
       for (const one of stretches) {
@@ -1235,6 +1252,7 @@ export class TimetableCalendarLessons {
         dayKeeps: keepAudit,
         exams: examAudit,
         groupBlocks: groupAudit,
+        storedBlocks,
       },
     };
   }
@@ -1490,8 +1508,8 @@ async function writeStoredTimes(
   branchId: string,
   lessonIds: readonly string[],
   retime: StoredRetime,
-): Promise<void> {
-  if (lessonIds.length === 0) return;
+): Promise<StoredBlockTimes[]> {
+  if (lessonIds.length === 0) return [];
   const rows = await transaction
     .selectFrom('lessons')
     .select([
@@ -1506,23 +1524,34 @@ async function writeStoredTimes(
     .where('id', 'in', lessonIds)
     .orderBy('block_id')
     .execute();
-  const moved = new Map<string, { starts_at: Date; ends_at: Date }>();
+  type Row = (typeof rows)[number];
+  const moved = new Map<string, { before: Row; after: { starts_at: Date; ends_at: Date } }>();
   for (const row of rows) {
     const times = retimed(row, retime);
-    if (times !== row && !moved.has(row.block_id)) moved.set(row.block_id, times);
+    if (times !== row && !moved.has(row.block_id)) {
+      moved.set(row.block_id, { before: row, after: times });
+    }
   }
-  if (moved.size === 0) return;
+  if (moved.size === 0) return [];
   // Two kept blocks may pass each other: the exclusions are checked on the end state.
   await sql`set constraints time_claims_teacher_excl, time_claims_room_excl, time_claims_class_excl deferred`.execute(
     transaction,
   );
-  for (const [blockId, times] of moved) {
+  const audit: StoredBlockTimes[] = [];
+  for (const [blockId, { before, after }] of moved) {
     await transaction
       .updateTable('lesson_blocks')
-      .set({ starts_at: times.starts_at, ends_at: times.ends_at })
+      .set({ starts_at: after.starts_at, ends_at: after.ends_at })
       .where('id', '=', blockId)
       .execute();
+    audit.push({
+      blockId,
+      date: before.lesson_date,
+      before: { startsAt: before.starts_at.toISOString(), endsAt: before.ends_at.toISOString() },
+      after: { startsAt: after.starts_at.toISOString(), endsAt: after.ends_at.toISOString() },
+    });
   }
+  return audit;
 }
 
 /** Puts each stored block back at its old place (see `movesBack`). */
