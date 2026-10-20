@@ -3,6 +3,7 @@ import { patternIdOf } from '@sodiq/timetable-rules';
 import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
 import type { BulkHold } from './bulk-cancels-kept.js';
+import type { ExamWrite } from './calendar-exams.js';
 import type { DatedFindings } from './dated-check.js';
 import type { DayWritePlan } from './day-changes-kept.js';
 import type { PatternState } from './pattern.service.js';
@@ -386,6 +387,11 @@ export async function writeDatedLessons(
   firstDate: string,
   lastDate: string,
   plan: DayWritePlan | null = null,
+  /**
+   * Task 5.6b-2c-1: the exams of a calendar save on these dates, written in
+   * the deferred span (spec review of the plan, must-fix 1).
+   */
+  exams: ExamWrite | null = null,
 ): Promise<DatedWrite> {
   const { model } = state.pattern;
   const branchId = model.data.branchId;
@@ -393,6 +399,7 @@ export async function writeDatedLessons(
   const begins = findings.begins;
 
   await sql`set constraints all deferred`.execute(transaction);
+  await exams?.start(transaction);
 
   // The stored blocks and lessons of the run, locked in the order of their id.
   const allBlocks = await transaction
@@ -709,12 +716,17 @@ export async function writeDatedLessons(
 
   // The stored blocks no new block reuses, empty now.
   const emptied = storedBlocks.filter((one) => !taken.has(one.id)).map((one) => one.id);
+  // Task 5.6b-2c-1: a class kept out of a block for an exam goes first
+  // (`lesson_block_class_outs_block_fkey` is not deferrable).
+  await exams?.beforeBlocksDeleted(transaction, emptied);
   for (let index = 0; index < emptied.length; index += BATCH) {
     await transaction
       .deleteFrom('lesson_blocks')
       .where('id', 'in', emptied.slice(index, index + BATCH))
       .execute();
   }
+
+  await exams?.end(transaction);
 
   await sql`set constraints all immediate`.execute(transaction);
 

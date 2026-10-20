@@ -23,6 +23,22 @@ import {
   sortBulkOf,
   type SortedBulk,
 } from './bulk-cancels-kept.js';
+import {
+  examBlocked,
+  examLessonsOf,
+  examPlacementOf,
+  examWeekLessonsOn,
+  examWriteOf,
+  findingsLessonsOn,
+  sortExams,
+  standingExamsOn,
+  storedChoicesOf,
+  storedExamLessonsOn,
+  type ExamAudit,
+  type ExamBlockChoice,
+  type ExamChoiceOf,
+  type SortedExam,
+} from './calendar-exams.js';
 import { runningUntil } from './chain.js';
 import { datedCheck, type DatedFindings } from './dated-check.js';
 import { writeDatedLessons, type DatedWrite } from './dated-lessons.js';
@@ -84,9 +100,8 @@ import {
  * are sorted as a publish sorts them (`sortDayChanges`, `sortBulkOf`), kept,
  * needs a decision or dropped, with one key over the stretches; the save
  * takes the key and a choice for each "needs a decision" item, and writes
- * over the findings with the kept changes applied. A stored exam on a date
- * written, or a move between two stretches, still refuses the save (5.6b-1
- * decision 7; 5.6b-2a decision 3) until 5.6b-2c.
+ * over the findings with the kept changes applied. A move between two
+ * stretches still refuses the save (5.6b-2a decision 3) until 5.6b-2c-2.
  *
  * Task 5.6b-2b (pull request #171): the choices of the lessons kept on the
  * shortened days of the dates written (`edge/time-dates-calendar`, "A
@@ -95,6 +110,13 @@ import {
  * is checked, so the findings, the sorting and its key follow them; a choice
  * the day cannot take refuses the save with the draft's codes (decision 9),
  * and is a line of the preview, left out (decision 10).
+ *
+ * Task 5.6b-2c-1 (pull request #173): the exams standing on the dates
+ * written follow the day after the save (`calendar-exams.ts`): cancelled for
+ * a day off, the Academic Vice Principals told; moved with their slots and
+ * checked again; refused, listed, when the day drops a slot or puts their
+ * classes on two templates; the lessons under them cancelled "exam" over the
+ * rewrite, and those no longer under one held again.
  */
 
 /** One stretch of consecutive lesson dates of one published version. */
@@ -108,6 +130,22 @@ interface Stretch {
   readonly sorting: DaySorting;
   readonly bulk: readonly SortedBulk[];
   readonly key: string;
+  /** Task 5.6b-2c-1: its exams as the save leaves them, and their recheck. */
+  readonly exams: readonly SortedExam[];
+  readonly examBlocked: readonly { readonly examId: string; readonly result: RuleResult }[];
+  /** The sitting classes with a shared block newly under an exam: the block's lessons. */
+  readonly examNeeds: readonly ExamNeed[];
+}
+
+/** A sitting class whose lesson a save newly puts in a block shared under an exam (decision 5). */
+interface ExamNeed {
+  readonly examId: string;
+  readonly date: string;
+  readonly classId: string;
+  /** The block's first minute after the save, which names it in the save's choices. */
+  readonly start: number;
+  /** The dated lessons of the block, by placement id. */
+  readonly lessonIds: readonly string[];
 }
 
 /** What the rewrite found and did; `audit` is `null` when no date lies in a published run. */
@@ -122,6 +160,8 @@ export interface CalendarRewrite {
     readonly movedBack: readonly string[];
     /** Task 5.6b-2b: each choice sent, per version, date and class, before and after. */
     readonly dayKeeps: readonly KeepAudit[];
+    /** Task 5.6b-2c-1 (decision 7): what the save did to each exam of its dates. */
+    readonly exams: readonly ExamAudit[];
   } | null;
 }
 
@@ -156,6 +196,7 @@ export const NO_LESSONS: CalendarLessons = {
   dayChanges: { key: calendarDaysKeyOf([]), kept: [], decide: [], dropped: [], bulk: [] },
   shortenedDays: [],
   keepRefusals: [],
+  exams: [],
   names: EMPTY_NAMES,
 };
 
@@ -380,6 +421,36 @@ export class TimetableCalendarLessons {
     });
     const keepAudit: KeepAudit[] = [];
 
+    // Task 5.6b-2c-1: the exams standing on the dates written, locked, and
+    // the choices for shared blocks, per block (spec review of the code,
+    // must-fix 6): the stored one of an exam, class and pattern block first
+    // (decision 5), else the save's, named by the block's first minute.
+    const standing = await standingExamsOn(transaction, branchId, written);
+    const sentKeyOf = (examId: string, classId: string, start: number) =>
+      `${examId.toLowerCase()}|${classId.toLowerCase()}|${String(start)}`;
+    const sentChoices = new Map(
+      (input.days.examBlocks ?? []).map((one) => [
+        sentKeyOf(one.examId, one.classId, one.start),
+        one.choice,
+      ]),
+    );
+    const storedChoices = new Map<string, ExamBlockChoice>();
+    const storedChoiceOf =
+      (examId: string): ExamChoiceOf =>
+      (classId, block) => {
+        for (const pattern of block.patternBlockIds) {
+          const found = storedChoices.get(`${examId}|${classId}|${pattern}`);
+          if (found !== undefined) return found;
+        }
+        return null;
+      };
+    const choiceOf =
+      (examId: string): ExamChoiceOf =>
+      (classId, block) =>
+        storedChoiceOf(examId)(classId, block) ??
+        sentChoices.get(sentKeyOf(examId, classId, block.start)) ??
+        null;
+
     // Each stretch of each version, read as if it started on its first date.
     const stretches: Stretch[] = [];
     for (const [versionId, own] of byVersion) {
@@ -436,6 +507,40 @@ export class TimetableCalendarLessons {
             after: [...keep.slotPositions].sort((a, b) => a - b),
           });
         }
+        // Task 5.6b-2c-1: the exams of the stretch by the day after the save,
+        // with their stored choices, and the lessons they cover on the
+        // findings, which the sorting leaves out (should-fix 5).
+        const ownExams = standing.filter(
+          (exam) => part.first <= exam.date && exam.date <= part.last,
+        );
+        const examsSorted = sortExams(ownExams, findings, branchId);
+        const groupOfRow = (loadRowId: string) =>
+          state.rows.find((row) => row.id === loadRowId)?.group_id ?? null;
+        for (const one of examsSorted) {
+          const lessonsThere = await storedExamLessonsOn(
+            transaction,
+            branchId,
+            one.exam.date,
+            findings.begins(one.exam.date),
+          );
+          for (const [key, choice] of storedChoicesOf(one.exam, one.before, lessonsThere)) {
+            storedChoices.set(`${one.exam.id}|${key}`, choice);
+          }
+        }
+        const coveredOf = (on: DatedFindings) => {
+          const covered = new Set<string>();
+          for (const one of examsSorted) {
+            if (one.after === null) continue;
+            const found = examLessonsOf(
+              one.exam,
+              one.after,
+              findingsLessonsOn(on, one.exam.date),
+              (classId, block) => choiceOf(one.exam.id)(classId, block) ?? 'cancel',
+            );
+            for (const id of found.covered) covered.add(id);
+          }
+          return covered;
+        };
         // Task 5.6b-2a: the stored one-day changes and bulk cancels of the
         // stretch, sorted as a publish sorts them (decision 2), the bulk
         // cancels on the findings with the kept changes applied.
@@ -445,7 +550,65 @@ export class TimetableCalendarLessons {
           firstDate: part.first,
           lastDate: part.last,
           carriedVersionId: null,
+          ...(examsSorted.length === 0
+            ? {}
+            : {
+                exams: {
+                  on: (date: string) => examPlacementsOn(examsSorted, branchId, date),
+                  covered: coveredOf(findings),
+                },
+              }),
         });
+        // Review correction 1: a sitting group whose own lessons are not one
+        // block at the exam's time after the save refuses the exam. Then the
+        // recheck of each exam that stands (decision 9) and the shared blocks
+        // newly under one (decision 5), on the findings the save writes.
+        const examBlockedHere: { examId: string; result: RuleResult }[] = [];
+        const examNeeds: ExamNeed[] = [];
+        for (const one of examsSorted) {
+          if (one.after === null) continue;
+          const there = [
+            ...findingsLessonsOn(sorting.findings, one.exam.date),
+            ...examWeekLessonsOn(sorting.findings, state.blocks, groupOfRow, one.exam.date),
+          ];
+          const fresh = examLessonsOf(one.exam, one.after, there, storedChoiceOf(one.exam.id));
+          if (fresh.groupMisses) {
+            one.outcome = 'refused';
+            one.code = 'calendar_exam_slots';
+            one.after = null;
+            continue;
+          }
+          for (const need of fresh.needs) {
+            examNeeds.push({
+              examId: one.exam.id,
+              date: one.exam.date,
+              classId: need.classId,
+              start: need.start,
+              lessonIds: need.lessons.map((lesson) => lesson.id),
+            });
+          }
+          // The recheck reads the choices sent: a block kept for the other
+          // classes stays in it without the class (must-fix 4); one cancelled,
+          // or still without a choice (refused below), is left out.
+          const decided = examLessonsOf(one.exam, one.after, there, choiceOf(one.exam.id));
+          const skipped = new Set([
+            ...decided.covered,
+            ...decided.needs.flatMap((need) => need.lessons.map((lesson) => lesson.id)),
+          ]);
+          const others = examPlacementsOn(examsSorted, branchId, one.exam.date).filter(
+            (placement) => placement.id !== `exam:${one.exam.id}`,
+          );
+          for (const result of examBlocked(
+            one,
+            branchId,
+            sorting.findings,
+            others,
+            skipped,
+            decided.outs,
+          )) {
+            examBlockedHere.push({ examId: one.exam.id, result });
+          }
+        }
         const bulk = sortBulkOf({
           lessons: sorting.findings.dated.lessons,
           movedAt: sorting.movedAt,
@@ -467,6 +630,9 @@ export class TimetableCalendarLessons {
             sorting.items,
             bulk.length === 0 ? null : bulkKeyPartOf(bulk),
           ),
+          exams: examsSorted,
+          examBlocked: examBlockedHere,
+          examNeeds,
         });
       }
     }
@@ -475,7 +641,8 @@ export class TimetableCalendarLessons {
     const bulkAll = stretches.flatMap((one) => one.bulk);
 
     // What refuses the save as stored records (decision 7 of 5.6b-1): a move
-    // between two stretches (5.6b-2a decision 3) and an exam (until 5.6b-2c).
+    // between two stretches (5.6b-2a decision 3), until 5.6b-2c-2. Exams are
+    // sorted since 5.6b-2c-1.
     const stored: CalendarLessons['stored'] = [];
     const stretchOf = (date: string) =>
       stretches.findIndex((one) => one.firstDate <= date && date <= one.lastDate);
@@ -487,17 +654,6 @@ export class TimetableCalendarLessons {
       if (stored.some((one) => one.id === item.answer.key)) continue;
       stored.push({ kind: 'day_change', id: item.answer.key, date: item.answer.to.date });
     }
-    const exams = await transaction
-      .selectFrom('exams')
-      .select(['id', sql<string>`exam_date::text`.as('exam_date')])
-      .where('branch_id', '=', branchId)
-      // Only the dates written (code review should-fix 3; decision 10).
-      .where('exam_date', 'in', written)
-      .where('cancel_cause', 'is', null)
-      .orderBy('exam_date')
-      .orderBy('id')
-      .execute();
-    for (const exam of exams) stored.push({ kind: 'exam', id: exam.id, date: exam.exam_date });
     if (!input.preview && stored.length > 0) {
       throw new ApiException(
         'calendar_stored_changes',
@@ -529,14 +685,37 @@ export class TimetableCalendarLessons {
           items,
           decisions,
         });
+    const examsAll = stretches.flatMap((one) => one.exams);
+    const examNeedsAll = stretches.flatMap((one) => one.examNeeds);
+    const refusedExams = examsAll.filter((one) => one.outcome === 'refused');
     const blocked = [
       ...stretches.flatMap((one) => one.findings.blocked),
       ...backs.flatMap((one) => one.blocked.map(datedAnswerOf)),
+      ...stretches.flatMap((one) => one.examBlocked.map((found) => datedAnswerOf(found.result))),
     ];
     if (!input.preview) {
       const details = [
         ...blocked.map(blockedDetail),
         ...dayRefusalsOf({ key, items, bulk: bulkAll }, input.days).map(detailOf),
+        // Task 5.6b-2c-1 (decision 10): an exam refused, and a shared block
+        // newly under an exam with no choice (decision 5).
+        ...refusedExams.map((one): ErrorDetail => ({
+          path: `exams.${one.exam.id}`,
+          code: one.code ?? 'calendar_exam_slots',
+          message:
+            one.code === 'calendar_exam_templates'
+              ? 'The classes of an exam are on two day templates after the save.'
+              : 'The day after the save has no lesson slot of the exam, or its group no lesson at its time.',
+          day: one.exam.date,
+        })),
+        ...examNeedsAll
+          .filter((need) => !sentChoices.has(sentKeyOf(need.examId, need.classId, need.start)))
+          .map((need): ErrorDetail => ({
+            path: `exams.${need.examId}.${need.classId}.${String(need.start)}`,
+            code: 'calendar_exam_block_choice',
+            message: 'A shared block newly under an exam needs a choice.',
+            day: need.date,
+          })),
       ];
       if (details.length > 0) {
         throw new ApiException('calendar_blocked', 409, undefined, details);
@@ -607,6 +786,7 @@ export class TimetableCalendarLessons {
     // the database may refuse it.
     const writes: DatedWrite[] = [];
     const days: StretchDays[] = [];
+    const examAudit: ExamAudit[] = [];
     const doWrite = async () => {
       const moment = await transactionMoment(transaction);
       for (const one of stretches) {
@@ -622,6 +802,17 @@ export class TimetableCalendarLessons {
             one.firstDate,
             one.lastDate,
             plan,
+            one.exams.length === 0
+              ? null
+              : examWriteOf({
+                  branchId,
+                  sorted: one.exams,
+                  begins: one.sorting.findings.begins,
+                  // The preview takes no choice it was not sent: "cancel" in its place.
+                  choiceOf: (examId) => (classId, block) =>
+                    choiceOf(examId)(classId, block) ?? (input.preview ? 'cancel' : null),
+                  audit: examAudit,
+                }),
           ),
         );
       }
@@ -658,7 +849,9 @@ export class TimetableCalendarLessons {
     let wrote = true;
     if (!input.preview) {
       await doWrite();
-    } else if (stored.length > 0) {
+    } else if (stored.length > 0 || refusedExams.length > 0) {
+      // Task 5.6b-2c-1 (must-fix 4): a refused exam keeps its claims, which
+      // the rewrite would meet; the preview writes nothing.
       wrote = false;
     } else {
       await sql`savepoint calendar_rewrite`.execute(transaction);
@@ -701,6 +894,38 @@ export class TimetableCalendarLessons {
         missingPositions: [...one.missingPositions],
       }))
       .sort((a, b) => a.date.localeCompare(b.date) || a.classId.localeCompare(b.classId));
+    // Task 5.6b-2c-1: each exam as the save leaves it, with the rules its
+    // recheck meets and the shared blocks newly under it.
+    const unitOfDated = (id: string) => entryUnits.get(patternIdOf(id)?.id ?? id);
+    const examLines: CalendarLessons['exams'] = examsAll.map((one) => ({
+      id: one.exam.id,
+      title: one.exam.title,
+      date: one.exam.date,
+      outcome: one.outcome,
+      before: { start: one.before.start, end: one.before.end },
+      after: one.after === null ? null : { start: one.after.start, end: one.after.end },
+      code: one.code,
+      blockedRules: [
+        ...new Set(
+          stretches.flatMap((stretch) =>
+            stretch.examBlocked
+              .filter((found) => found.examId === one.exam.id)
+              .map((found) => found.result.rule),
+          ),
+        ),
+      ].sort(),
+      blocks: examNeedsAll
+        .filter((need) => need.examId === one.exam.id)
+        .map((need) => ({
+          classId: need.classId,
+          start: need.start,
+          lessons: need.lessonIds.flatMap((id) => {
+            const found = unitOfDated(id);
+            return found === undefined ? [] : [found];
+          }),
+          choice: sentChoices.get(sentKeyOf(need.examId, need.classId, need.start)) ?? null,
+        })),
+    }));
     let lessons: CalendarLessons = {
       ...NO_LESSONS,
       needsTeacher,
@@ -709,6 +934,7 @@ export class TimetableCalendarLessons {
       dayChanges,
       shortenedDays,
       keepRefusals,
+      exams: examLines,
     };
     let notices: WeekNotices = { notified: 0, marked: 0 };
     let shown: StoredLesson[] = [];
@@ -739,6 +965,9 @@ export class TimetableCalendarLessons {
             one.lessons.flatMap((lesson) => lesson.subjects.map((s) => s.unitId)),
           ),
           ...named.unitIds,
+          ...examLines.flatMap((one) =>
+            one.blocks.flatMap((block) => block.lessons.map((lesson) => lesson.unitId)),
+          ),
         ],
         subjectIds: [
           ...shown.map((one) => one.lesson.subjectId),
@@ -748,6 +977,9 @@ export class TimetableCalendarLessons {
             one.lessons.flatMap((lesson) => lesson.subjects.map((s) => s.subjectId)),
           ),
           ...named.subjectIds,
+          ...examLines.flatMap((one) =>
+            one.blocks.flatMap((block) => block.lessons.map((lesson) => lesson.subjectId)),
+          ),
         ],
         teacherIds: [...shown.flatMap((one) => one.lesson.teacherIds), ...teacherIds],
         roomIds: [
@@ -779,6 +1011,14 @@ export class TimetableCalendarLessons {
           .sort(byPlace),
         notified: teacherIds.filter((id) => withAccount.has(id)).sort(),
       };
+      if (!input.preview) {
+        await this.tellExamsCancelled(
+          transaction,
+          branchId,
+          input.event,
+          examsAll.filter((one) => one.outcome === 'cancelled_day_off'),
+        );
+      }
       notices = await sendWeekChanges(transaction, this.notifications, snapshot, {
         kind: 'timetable.calendar_changed',
         name: input.event.name,
@@ -795,8 +1035,44 @@ export class TimetableCalendarLessons {
         dayChanges: days,
         movedBack: backs.map((one) => one.key).sort(),
         dayKeeps: keepAudit,
+        exams: examAudit,
       },
     };
+  }
+
+  /**
+   * Task 5.6b-2c-1 (decision 4): each exam a day off cancelled told to every
+   * Academic Vice Principal of the branch, in force at the moment of the
+   * save; `assignments` has no row filter, so the branch is named here
+   * (`.claude/rules/database.md`).
+   */
+  private async tellExamsCancelled(
+    transaction: Transaction,
+    branchId: string,
+    event: CalendarEvent,
+    cancelled: readonly SortedExam[],
+  ): Promise<void> {
+    if (cancelled.length === 0) return;
+    const moment = await transactionMoment(transaction);
+    const vices = await transaction
+      .selectFrom('assignments')
+      .select('account_id')
+      .distinct()
+      .where('role', '=', 'academic_vice_principal')
+      .where('branch_id', '=', branchId)
+      .where('valid_from', '<=', moment)
+      .where((eb) => eb.or([eb('valid_until', 'is', null), eb('valid_until', '>', moment)]))
+      .orderBy('account_id')
+      .execute();
+    if (vices.length === 0) return;
+    for (const one of cancelled) {
+      await this.notifications.send(transaction, {
+        kind: 'timetable.exam_day_off',
+        data: { name: event.name, title: one.exam.title, date: one.exam.date },
+        branchId,
+        accountIds: vices.map((vice) => vice.account_id),
+      });
+    }
   }
 
   /**
@@ -936,6 +1212,17 @@ export class TimetableCalendarLessons {
     }
     return backs;
   }
+}
+
+/**
+ * Task 5.6b-2c-1: the branch's exams of a date as a save leaves them: a moved
+ * or kept one at its time after the save, a refused one at its stored time,
+ * none for one cancelled.
+ */
+function examPlacementsOn(sorted: readonly SortedExam[], branchId: string, date: string) {
+  return sorted
+    .filter((one) => one.exam.date === date && one.outcome !== 'cancelled_day_off')
+    .map((one) => examPlacementOf(one.exam, branchId, one.after ?? one.before));
 }
 
 /** A result of a date as a dated check names it (task 5.6b-2a: a move put back). */

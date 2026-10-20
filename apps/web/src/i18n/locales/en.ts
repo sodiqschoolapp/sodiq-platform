@@ -161,7 +161,13 @@ export const en = {
     calendar_blocked:
       'This change meets a blocked conflict on a date it changes or on the date a moved lesson goes back to, or the stored one-day changes of its dates changed since the preview, or a choice is missing. Open the preview again, settle what it lists and choose for each change that needs a decision.',
     calendar_stored_changes:
-      'A date this change touches holds an exam, or a lesson moved for one day between two dates this change rewrites. Cancel the exam or move the lesson back first, then save again.',
+      'A date this change touches holds a lesson moved for one day between two dates this change rewrites. Move the lesson back first, then save again.',
+    calendar_exam_slots:
+      'After this change an exam has no lesson slot of its own on its date, or its group no lesson at its time. Change the exam first, then save again.',
+    calendar_exam_templates:
+      'After this change the classes of an exam are on two day templates. Change the exam first, then save again.',
+    calendar_exam_block_choice:
+      'A shared lesson newly falls under an exam. Open the preview again and choose for it: cancel the lesson, or keep it for the other classes.',
     own_account: 'You cannot lock, unlock or reset your own account. Ask another administrator.',
     account_already_locked: 'This account is already locked. Reload the page to see who locked it.',
     account_not_locked:
@@ -1314,6 +1320,26 @@ export const en = {
         notified_one: '{{count}} teacher is told.',
         notified_other: '{{count}} teachers are told.',
         refused: 'This save is refused until the items above are settled.',
+        exams: {
+          title: 'Exams on these dates',
+          outcomes: {
+            cancelled_day_off:
+              'cancelled: the date becomes a day off; the Academic Vice Principals are told',
+            moved: 'moved with its slots to {{time}}',
+            kept: 'stays at its time',
+            refused: 'refused',
+          },
+          codes: {
+            calendar_exam_slots:
+              'the day has no lesson slot of the exam, or its group no lesson at its time; change the exam first',
+            calendar_exam_templates: 'its classes are on two day templates; change the exam first',
+          },
+          blocked: 'meets: {{rules}}',
+          block:
+            '{{unit}} sits the exam, but its lesson is shared with classes that do not sit: {{lessons}}',
+          choice_cancel: 'Cancel the whole lesson for the exam',
+          choice_keep: 'Keep it for the other classes; {{unit}} is taken out of it',
+        },
       },
     },
     templateSettings: {
@@ -3107,6 +3133,8 @@ export const en = {
           'A one-day change (a cancel or a restore) changed your lessons. Your week before and after:',
         calendar_changed:
           'The calendar entry "{{name}}" changed your lessons. Your week before and after:',
+        exam_day_off:
+          'The calendar entry "{{name}}" made {{date}} a day off: the exam "{{title}}" is cancelled.',
       },
     },
     // The week before and after of a notice of a timetable change (task 5.5c-3a).

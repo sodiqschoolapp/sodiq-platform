@@ -14,13 +14,21 @@ export function hasLessons(lessons: CalendarLessons): boolean {
     lessons.cancelled.length > 0 ||
     lessons.needsTeacher.length > 0 ||
     lessons.blocked.length > 0 ||
-    lessons.stored.length > 0
+    lessons.stored.length > 0 ||
+    lessons.exams.length > 0
   );
 }
 
-/** Whether the server will refuse the save: a blocked conflict or a stored record (task 5.6b-1). */
+/**
+ * Whether the server will refuse the save: a blocked conflict or a stored
+ * record (task 5.6b-1), or an exam refused (task 5.6b-2c-1).
+ */
 export function refusesSave(lessons: CalendarLessons): boolean {
-  return lessons.blocked.length > 0 || lessons.stored.length > 0;
+  return (
+    lessons.blocked.length > 0 ||
+    lessons.stored.length > 0 ||
+    lessons.exams.some((one) => one.outcome === 'refused')
+  );
 }
 
 /**

@@ -128,6 +128,42 @@ export const calendarDayKeepsSchema = z
 
 export type CalendarDayKeeps = z.infer<typeof calendarDayKeepsSchema>;
 
+/** Task 5.6b-2c-1: the two choices for a shared block newly under an exam (`edge/timetable`, Exams, second row). */
+export const CALENDAR_EXAM_BLOCK_CHOICES = ['cancel', 'keep'] as const;
+
+/**
+ * Task 5.6b-2c-1 (decision 5): for a class sitting an exam whose lesson at the
+ * exam's time a calendar save newly puts in a block shared with classes that
+ * do not sit, the choice of the Exams row: `cancel` the whole block with the
+ * reason "exam", or `keep` it for the other classes and take the sitting
+ * class out of it. Once per exam, class and block ("For each [block], the
+ * Academic Vice Principal chooses"), the block named by its first minute of
+ * the day after the save, as the preview lists it (`blocks[].start`).
+ */
+export const calendarExamBlocksSchema = z
+  .array(
+    z.strictObject({
+      examId: z.uuid(),
+      classId: z.uuid(),
+      start: z.int().min(0).max(1440),
+      choice: z.enum(CALENDAR_EXAM_BLOCK_CHOICES),
+    }),
+  )
+  .max(500)
+  .refine(
+    (list) =>
+      new Set(
+        list.map(
+          (one) => `${one.examId.toLowerCase()}|${one.classId.toLowerCase()}|${String(one.start)}`,
+        ),
+      ).size === list.length,
+    {
+      message: 'Each exam, class and block once.',
+    },
+  );
+
+export type CalendarExamBlocks = z.infer<typeof calendarExamBlocksSchema>;
+
 /**
  * A create or an edit (task 5.6b-2a): the entry, with the key of the sorting
  * of the stored one-day changes and bulk cancels the preview showed
@@ -143,6 +179,8 @@ export const calendarSaveSchema = z
     dayDecisions: dayDecisionsSchema.optional(),
     /** Task 5.6b-2b: the shortened days' choices. */
     dayKeeps: calendarDayKeepsSchema.optional(),
+    /** Task 5.6b-2c-1: the choices for shared blocks newly under an exam. */
+    examBlocks: calendarExamBlocksSchema.optional(),
   })
   .superRefine(refineEntry);
 
@@ -155,6 +193,7 @@ export const calendarDaysBodySchema = z
     dayChangesKey: transitionKeySchema.optional(),
     dayDecisions: dayDecisionsSchema.optional(),
     dayKeeps: calendarDayKeepsSchema.optional(),
+    examBlocks: calendarExamBlocksSchema.optional(),
   })
   .default({});
 
@@ -171,22 +210,26 @@ export const calendarChangeSchema = z.discriminatedUnion('action', [
     action: z.literal('create'),
     record: calendarEntryRecordSchema,
     dayKeeps: calendarDayKeepsSchema.optional(),
+    examBlocks: calendarExamBlocksSchema.optional(),
   }),
   z.object({
     action: z.literal('edit'),
     id: z.uuid(),
     record: calendarEntryRecordSchema,
     dayKeeps: calendarDayKeepsSchema.optional(),
+    examBlocks: calendarExamBlocksSchema.optional(),
   }),
   z.object({
     action: z.literal('archive'),
     id: z.uuid(),
     dayKeeps: calendarDayKeepsSchema.optional(),
+    examBlocks: calendarExamBlocksSchema.optional(),
   }),
   z.object({
     action: z.literal('restore'),
     id: z.uuid(),
     dayKeeps: calendarDayKeepsSchema.optional(),
+    examBlocks: calendarExamBlocksSchema.optional(),
   }),
 ]);
 
@@ -279,11 +322,17 @@ export const CALENDAR_CANCEL_CAUSES = ['not_in_template', 'day_off', 'exam_week'
 
 /**
  * What a stored record on a changed date is that refuses the save (decision
- * 7): an exam until 5.6b-2c, and since 5.6b-2a a move between two stretches
- * of the save (`day_change`, 5.6b-2a decision 3); `bulk_cancel` is no
- * longer given.
+ * 7): since 5.6b-2a a move between two stretches of the save (`day_change`,
+ * 5.6b-2a decision 3), until 5.6b-2c-2; `bulk_cancel` and `exam` (sorted
+ * since 5.6b-2c-1) are no longer given.
  */
 export const CALENDAR_STORED_KINDS = ['day_change', 'bulk_cancel', 'exam'] as const;
+
+/** A time of a day in minutes, as `calendarLessonSchema` gives it. */
+const dayTimeSchema = z.object({
+  start: z.int().min(0).max(1440),
+  end: z.int().min(0).max(1440),
+});
 
 /**
  * What a calendar save does to the dated lessons of the published versions
@@ -352,6 +401,35 @@ export const calendarLessonsSchema = z.object({
         'day_keep_lessons',
         'day_keep_over_slots',
       ]),
+    }),
+  ),
+  /**
+   * Task 5.6b-2c-1: each exam standing on a date written, as the save leaves
+   * it: cancelled for a day off, moved with its slots, kept, or refused with
+   * its code (a detail of `calendar_blocked` in the save); the rules its
+   * recheck meets, and the shared blocks newly under it with the choice sent
+   * (`null`: none yet, which the save refuses).
+   */
+  exams: z.array(
+    z.object({
+      id: z.uuid(),
+      title: z.string(),
+      date: schoolDateSchema,
+      outcome: z.enum(['cancelled_day_off', 'moved', 'kept', 'refused']),
+      before: dayTimeSchema,
+      /** `null` for an exam cancelled or refused. */
+      after: dayTimeSchema.nullable(),
+      code: z.enum(['calendar_exam_slots', 'calendar_exam_templates']).nullable(),
+      blockedRules: z.array(z.string().regex(/^[a-z_]+$/)),
+      blocks: z.array(
+        z.object({
+          classId: z.uuid(),
+          /** The block's first minute after the save: names it in `examBlocks`. */
+          start: z.int().min(0).max(1440),
+          lessons: z.array(z.object({ unitId: z.uuid(), subjectId: z.uuid() })),
+          choice: z.enum(CALENDAR_EXAM_BLOCK_CHOICES).nullable(),
+        }),
+      ),
     }),
   ),
   names: previewNamesSchema,

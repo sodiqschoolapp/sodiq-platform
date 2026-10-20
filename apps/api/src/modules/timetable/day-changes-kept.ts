@@ -372,6 +372,15 @@ export async function sortDayChanges(
     readonly lastDate: string;
     /** The carried version whose run this is, `null` for the published one's. */
     readonly carriedVersionId: string | null;
+    /**
+     * Task 5.6b-2c-1 (spec review of the plan, should-fix 5): the branch's
+     * exams of a date as a calendar save leaves them, in place of their
+     * stored claims, and the lessons they cover (placement ids), left out.
+     */
+    readonly exams?: {
+      readonly on: (date: string) => readonly Placement[];
+      readonly covered: ReadonlySet<string>;
+    };
   },
 ): Promise<DaySorting> {
   const { state, findings, firstDate, lastDate } = input;
@@ -576,7 +585,8 @@ export async function sortDayChanges(
     }
   }
   const examCache = new Map<string, Placement[]>();
-  const examsOf = async (date: string) => {
+  const examsOf = async (date: string): Promise<readonly Placement[]> => {
+    if (input.exams !== undefined) return input.exams.on(date);
     const known = examCache.get(date);
     if (known !== undefined) return known;
     const found = await examsOn(
@@ -594,7 +604,10 @@ export async function sortDayChanges(
     lesson.tutorFollowed ? { ...lesson.placement, teacherIds: [] } : lesson.placement;
   const othersOn = async (date: string, own: ReadonlySet<DatedLesson>) => [
     ...findings.dated.lessons
-      .filter((one) => !own.has(one) && !skipped.has(one))
+      .filter(
+        (one) =>
+          !own.has(one) && !skipped.has(one) && input.exams?.covered.has(one.placement.id) !== true,
+      )
       .map((one) => placed.get(one) ?? one)
       .filter((one) => one.date === date)
       .map(checkedOf),

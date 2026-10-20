@@ -135,8 +135,14 @@ export const ERROR_CODES = [
   'go_live_school_day_taken',
   /** A calendar save over published dates meets a blocked conflict on a date it changes; `details` lists each by date (task 5.6b-1). */
   'calendar_blocked',
-  /** A date a calendar save changes holds a stored one-day change, bulk cancel or exam, which 5.6b-2 sorts; `details` lists each (task 5.6b-1). */
+  /** A date a calendar save changes holds a stored one-day move between two of its stretches, which 5.6b-2c-2 sorts; `details` lists each (task 5.6b-1; exams sorted since 5.6b-2c-1). */
   'calendar_stored_changes',
+  /** Task 5.6b-2c-1: the day after a calendar save has no lesson slot of the exam, or its group no lesson at the exam's time; a detail of `calendar_blocked`. */
+  'calendar_exam_slots',
+  /** Task 5.6b-2c-1: the classes of an exam are on two day templates after a calendar save; a detail of `calendar_blocked`. */
+  'calendar_exam_templates',
+  /** Task 5.6b-2c-1: a shared block newly under an exam has no choice in the save; a detail of `calendar_blocked`. */
+  'calendar_exam_block_choice',
   /** The go-live date must be a school day: some grade has lessons on it (`edge/academic-year`; task 1.4). */
   'go_live_not_school_day',
   /** Travel time is set between two different branches (task 1.6). */

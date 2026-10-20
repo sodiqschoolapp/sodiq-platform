@@ -101,6 +101,7 @@ const NO_LESSONS: CalendarPreview['lessons'] = {
   dayChanges: { key: 'e'.repeat(64), kept: [], decide: [], dropped: [], bulk: [] },
   shortenedDays: [],
   keepRefusals: [],
+  exams: [],
   names: { units: [], subjects: [], teachers: [], rooms: [] },
 };
 
@@ -663,6 +664,110 @@ describe('the calendar page', () => {
       });
     });
   });
+
+  // Task 5.6b-2c-1: the exams of the dates written, each as the save leaves
+  // it, and the two choices for a shared block newly under one.
+  it.each([true, false])(
+    'lists the exams of the dates, keeps Save off for a refused exam (%s) or a block with no choice, and sends the choice',
+    async (refused) => {
+      const BROWN = uid(61);
+      const SPORT = uid(62);
+      const GROUP = uid(63);
+      const examLine = (
+        id: string,
+        outcome: 'cancelled_day_off' | 'moved' | 'kept' | 'refused',
+      ) => ({
+        id,
+        title: 'Quarter exam',
+        date: '2026-10-19',
+        outcome,
+        before: { start: 480, end: 525 },
+        after: outcome === 'moved' ? { start: 540, end: 585 } : null,
+        code: outcome === 'refused' ? ('calendar_exam_slots' as const) : null,
+        blockedRules: [],
+        blocks:
+          outcome === 'kept'
+            ? [
+                {
+                  classId: BROWN,
+                  start: 590,
+                  lessons: [{ unitId: GROUP, subjectId: SPORT }],
+                  choice: null,
+                },
+              ]
+            : [],
+      });
+      const names = {
+        units: [
+          { id: BROWN, kind: 'class' as const, name: 'Brown', grades: [10] },
+          { id: GROUP, kind: 'group' as const, name: 'PE 9-10', grades: [9, 10] },
+        ],
+        subjects: [{ id: SPORT, names: { uz: 'Sport', ru: 'Sport', en: 'Sport' } }],
+        teachers: [],
+        rooms: [],
+      };
+      const { calls } = await openList('academic_vice_principal', {
+        'POST /api/setup/calendar-entries/preview': () =>
+          json({
+            ...PREVIEW,
+            lessons: {
+              ...NO_LESSONS,
+              exams: refused
+                ? [examLine(uid(64), 'refused')]
+                : [
+                    examLine(uid(65), 'cancelled_day_off'),
+                    examLine(uid(66), 'moved'),
+                    examLine(uid(67), 'kept'),
+                  ],
+              names,
+            },
+          }),
+        [`POST /api/setup/calendar-entries/${HOLIDAY.id}/archive`]: () =>
+          json({ ...HOLIDAY, archivedAt: '2026-10-10T10:00:00.000Z' }),
+      });
+      const panel = await openEntry('Teachers day');
+      const archive = within(panel).getByRole('button', { name: en.setup.calendar.archive });
+      fireEvent.click(archive);
+      const dialog = await screen.findByRole('dialog', { name: en.setup.calendar.previewTitle });
+      const line = (id: string) => dialog.querySelector<HTMLElement>(`[data-exam="${id}"]`);
+      if (refused) {
+        expect(line(uid(64))?.textContent).toContain(
+          en.setup.calendar.lessons.exams.codes.calendar_exam_slots,
+        );
+        expect(within(dialog).getByRole('button', { name: en.setup.calendar.save })).toHaveProperty(
+          'disabled',
+          true,
+        );
+        return;
+      }
+      expect(line(uid(65))?.textContent).toContain(
+        en.setup.calendar.lessons.exams.outcomes.cancelled_day_off,
+      );
+      expect(line(uid(66))?.dataset.outcome).toBe('moved');
+      const block = dialog.querySelector<HTMLElement>(`[data-block="${uid(67)}|${BROWN}|590"]`);
+      expect(block?.textContent).toContain('PE 9-10 Sport');
+      const save = within(dialog).getByRole('button', { name: en.setup.calendar.save });
+      expect(save).toHaveProperty('disabled', true);
+      const keep = within(block ?? dialog).getAllByRole<HTMLInputElement>('radio')[1];
+      if (keep === undefined) throw new Error('No choice to keep.');
+      fireEvent.click(keep);
+      await waitFor(() => {
+        expect(save).toHaveProperty('disabled', false);
+      });
+      fireEvent.click(save);
+      await waitFor(() => {
+        expect(
+          calls.find(
+            (call) => call.route === `POST /api/setup/calendar-entries/${HOLIDAY.id}/archive`,
+          )?.body,
+        ).toEqual({
+          dayChangesKey: 'e'.repeat(64),
+          dayDecisions: [],
+          examBlocks: [{ examId: uid(67), classId: BROWN, start: 590, choice: 'keep' }],
+        });
+      });
+    },
+  );
 
   it('lists a stored choice that "Back to the default" removes and sends an empty list', async () => {
     const OXFORD = uid(45);

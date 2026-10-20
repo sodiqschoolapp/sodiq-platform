@@ -114,6 +114,16 @@ describe('the notices of a timetable change', () => {
     ).toHaveProperty('also');
   });
 
+  // Task 5.6b-2c-1, decision 4: an exam cancelled by a day off carries the entry, the exam and its date.
+  it('carry the entry, the title and the date of an exam a day off cancelled', () => {
+    const schema = NOTIFICATION_KINDS['timetable.exam_day_off'];
+    const cancelled = { name: 'Navruz', title: 'Quarter exam', date: '2026-10-19' };
+    expect(schema.parse(cancelled)).toEqual(cancelled);
+    expect(schema.safeParse({ ...cancelled, title: '' }).success).toBe(false);
+    expect(schema.safeParse({ ...cancelled, date: '19 October' }).success).toBe(false);
+    expect(schema.safeParse({ ...cancelled, weekStart: '2026-10-19' }).success).toBe(false);
+  });
+
   // Task 5.6a-1, decision 10: a one-day change carries the week without a number.
   it('carry the week of a one-day change without a number, and refuse one with a number', () => {
     const schema = NOTIFICATION_KINDS['timetable.day_changed'];
