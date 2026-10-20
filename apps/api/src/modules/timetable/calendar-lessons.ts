@@ -30,6 +30,7 @@ import {
   examWeekLessonsOn,
   examWriteOf,
   findingsLessonsOn,
+  examsChangedOf,
   sortExams,
   standingExamsOn,
   storedChoicesOf,
@@ -42,6 +43,7 @@ import {
 } from './calendar-exams.js';
 import { groupBlockLines, storeGroupChoices, type GroupBlockAudit } from './calendar-groups.js';
 import { runningUntil } from './chain.js';
+import { invigilatorsOf } from './exams-kept.js';
 import { datedCheck, type DatedFindings } from './dated-check.js';
 import { writeDatedLessons, type DatedWrite } from './dated-lessons.js';
 import {
@@ -642,8 +644,12 @@ export class TimetableCalendarLessons {
           await this.timetable.contextOf(transaction, row),
           await this.timetable.rowsOf(transaction, versionId),
         );
+        // Task 5.6c-3b (From line of 5.6c-3a): the standing exams'
+        // invigilators are teachers of the facts, as for a publish, so that
+        // an exam whose invigilator teaches no row is checked too.
+        const invigilators = await invigilatorsOf(transaction, branchId, part.first, part.last);
         const state = runningUntil(
-          await this.pattern.stateOf(transaction, row, input.accountId, rows),
+          await this.pattern.stateOf(transaction, row, input.accountId, rows, invigilators),
           part.last,
         );
         // Task 5.6b-2b: the choices of the stretch stored for its version
@@ -1233,6 +1239,11 @@ export class TimetableCalendarLessons {
         notified: teacherIds.filter((id) => withAccount.has(id)).sort(),
       };
       const { event } = input;
+      // Task 5.6c-3b (decision 3): the invigilators of the exams moved or
+      // cancelled for a day off, told in the event's own notice.
+      const examsChanged = input.preview
+        ? new Map<string, never[]>()
+        : await examsChangedOf(transaction, examsAll);
       if ('quarterDates' in event) {
         // A quarter change gives no day off; an exam on a date it takes out
         // of every quarter refuses it first (decision 5).
@@ -1246,6 +1257,7 @@ export class TimetableCalendarLessons {
         notices = await sendWeekChanges(transaction, this.notifications, snapshot, {
           kind: 'timetable.template_changed',
           from: event.templateFrom,
+          examsChanged,
         });
       } else {
         if (!input.preview) {
@@ -1261,6 +1273,7 @@ export class TimetableCalendarLessons {
           name: event.name,
           firstDate: event.firstDate,
           lastDate: event.lastDate,
+          examsChanged,
         });
       }
     }

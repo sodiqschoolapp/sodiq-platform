@@ -11,6 +11,7 @@ import {
   type ExamCheck,
   type ExamCheckBody,
   type ExamInput,
+  type ExamRating,
   type ExamSaveAnswer,
 } from '@sodiq/shared';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -138,6 +139,8 @@ export function ExamForm({
   );
   const [keeps, setKeeps] = useState<readonly string[]>([]);
   const [ticked, setTicked] = useState(false);
+  // Task 5.6c-3b: the quarter's rating exam, offered for a subject with one.
+  const [rating, setRating] = useState(exam?.rating != null);
   // The warnings the tick was given for: other warnings need it again (spec
   // review of the code, must-fix 2).
   const tickedFor = useRef('');
@@ -156,6 +159,8 @@ export function ExamForm({
     lastLesson: typed.lastLesson === '' ? 0 : Number(typed.lastLesson),
     title: typed.title,
     subjectId: typed.subjectId === '' ? null : typed.subjectId,
+    // Sent only when ticked: the schema's default is off.
+    ...(rating && ratingSubject(typed.subjectId) ? { ratingExam: true } : {}),
     rooms: roomRows.map((one) => ({
       roomId: one.roomId,
       classIds: [...one.classIds],
@@ -269,6 +274,10 @@ export function ExamForm({
     .filter((one) => one.status === 'in_use')
     .sort((a, b) => a.name.localeCompare(b.name))
     .map((one) => ({ value: one.id, label: one.name }));
+  // Task 5.6c-3b (decision 5): the tick is offered for a subject with the rating exam.
+  function ratingSubject(subjectId: string): boolean {
+    return (subjects.data?.subjects ?? []).some((one) => one.id === subjectId && one.ratingExam);
+  }
   const subjectOptions = (subjects.data?.subjects ?? [])
     .filter((one) => one.archivedAt === null)
     .map((one) => ({ value: one.id, label: one.names[language] }))
@@ -370,6 +379,20 @@ export function ExamForm({
                 options={[{ value: '', label: t('timetable.exams.noSubject') }, ...subjectOptions]}
                 {...form.bind('subjectId')}
               />
+              {ratingSubject(typed.subjectId) && (
+                <label className={`${CHECKBOX_TARGET} self-end`}>
+                  <input
+                    type="checkbox"
+                    className={CHECKBOX}
+                    checked={rating}
+                    data-exam-rating="true"
+                    onChange={(event) => {
+                      setRating(event.target.checked);
+                    }}
+                  />
+                  <span className="text-sm">{t('timetable.exams.ratingExam')}</span>
+                </label>
+              )}
             </div>
             {roomRows.map((row, index) => (
               <fieldset
@@ -546,6 +569,7 @@ export function ExamForm({
                     </ul>
                   )}
                 </section>
+                {result.rating !== null && <RatingJournals rating={result.rating} />}
                 {result.choices.map((one) => (
                   <fieldset
                     key={choiceKey(one.classId, one.blockId)}
@@ -720,5 +744,40 @@ function UnitBoxes({
         ))}
       </div>
     </fieldset>
+  );
+}
+
+/**
+ * Task 5.6c-3b: the journals of a rating exam, linked and not linked
+ * (`edge/timetable`, Exams: "A group journal with students outside the exam
+ * is listed and not linked; its teacher sets the date by hand").
+ */
+export function RatingJournals({ rating }: { rating: ExamRating }) {
+  const { t } = useTranslation();
+  const list = (journals: ExamRating['linked'], none: string) =>
+    journals.length === 0 ? (
+      <p className="text-sm">{none}</p>
+    ) : (
+      <ul className="grid gap-1 text-sm">
+        {journals.map((one) => (
+          <li key={one.id} data-journal={one.id}>
+            {one.unit.name}
+          </li>
+        ))}
+      </ul>
+    );
+  return (
+    <section className="grid gap-2" data-exam-rating-journals="true">
+      <div className="grid gap-1" data-rating="linked">
+        <h4 className={SUBSECTION_TITLE}>{t('timetable.exams.ratingLinked')}</h4>
+        {list(rating.linked, t('timetable.exams.ratingNoneLinked'))}
+      </div>
+      {rating.notLinked.length > 0 && (
+        <div className="grid gap-1" data-rating="not-linked">
+          <h4 className={SUBSECTION_TITLE}>{t('timetable.exams.ratingNotLinked')}</h4>
+          {list(rating.notLinked, '')}
+        </div>
+      )}
+    </section>
   );
 }

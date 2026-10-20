@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 20 October 2026: task 5.6c-3b Exams in the timetable: the calendar notices, the rating-exam link
+
+- A calendar or template change that moves an exam or cancels it for a day off tells its invigilators in its own notice (`exams` of `timetable.calendar_changed` / `template_changed`, with the week or alone); the calendar path reads the standing exams' invigilators as teachers of the facts (an invigilator on no row no longer fails the engine).
+- An exam of a rating subject can be the quarter's rating exam (`ratingExam`; 0095 `exams.rating_exam`, `exam_rating_journals` linked or not): each save stores the journals reached on the exam's date; `exam_rating_subject`, `exam_rating_taken` (one per journal and quarter) and `quarter_rating_exams` in the quarter save and its preview.
+- Screens: the tick and the two journal lists in the exam form and panel; the exams line of the calendar and template notices; the quarter preview line. Handbook: `05-teaching-load-and-timetable.md`.
+- Left out: the rating exam date read by the journal and the per-quarter rating switch (8.2, From line); the browser test of the tick: the exam scene would need a graded rating subject with its weights for the publish and students in its classes and group, and changing the scene risks the exam browser test of 5.6c-2; API and page tests cover it.
+
+The next sessions must know:
+
+- Readers of a link read `exams.rating_exam and cancel_cause is null`; a cancelled exam keeps its rows.
+- `sendWeekChanges` takes `examsChanged` for the calendar and template kinds; `examsChangedOf` of `calendar-exams.ts` builds it.
+- The next task is 5.7a.
+
 ## 20 October 2026: task 5.6c-3a Exams in the timetable: the exam kept after a publish and a withdraw
 
 - A publish (its run and each carried run written) and a withdraw keep every standing exam of their dates (`exams-kept.ts`): its classes' new lessons in its slots are cancelled "exam" with the link; the preview and the withdraw check list each exam (`dayChanges.exams`), kept or "needs a decision" for a clash with its invigilators or rooms (`cancel` with a typed reason, or `drop`), a block newly shared (`cancel` / `keep` per block; a stored choice carries to a block of the same lessons), a group whose lesson moved or a date left with no timetable (`drop` only). A `drop` gives lessons back by the rule for a restored lesson; one that cannot come back stays cancelled with the reason.

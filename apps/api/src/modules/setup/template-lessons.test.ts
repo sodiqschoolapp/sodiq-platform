@@ -1025,6 +1025,35 @@ describe('template changes after publishing', () => {
       expect(await timesOf(s, OCT26, s.seniorId)).toEqual([['08:50', '09:30', 'exam']]);
     });
 
+    it('tells its invigilator, who teaches no row, in the template notice with the exam alone (task 5.6c-3b, decision 3)', async () => {
+      const s = await scene();
+      const watcher = (await load.teacher(s.branch)).staffId;
+      await hours(s.branch, watcher);
+      const id = await exam(s, [3, 3], '08:55', '09:40', watcher);
+      const room = await t.database.migrator
+        .selectFrom('exam_rooms')
+        .innerJoin('rooms', 'rooms.id', 'exam_rooms.room_id')
+        .select('rooms.name')
+        .where('exam_rooms.exam_id', '=', id)
+        .executeTakeFirstOrThrow();
+      okay(await changeLength(s, 40, OCT19));
+      const account = await accountOf(watcher);
+      const mine = (await noticesOf(s.branch)).filter((one) => one.account_id === account);
+      expect(mine.map((one) => one.data)).toEqual([
+        {
+          from: OCT19,
+          exams: [
+            {
+              title: 'Quarter exam',
+              date: OCT26,
+              action: 'moved',
+              invigilation: { start: '08:50', end: '09:30', room: room.name },
+            },
+          ],
+        },
+      ]);
+    });
+
     it("is checked again at its new times: onto its invigilator's lesson, refused by date", async () => {
       const s = await scene();
       const early = await templateAt(s, 'Early', '07:10');

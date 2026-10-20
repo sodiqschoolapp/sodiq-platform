@@ -99,6 +99,33 @@ const weekChange = z.union([
   z.strictObject({ number: versionNumber, examsCancelled }),
 ]);
 
+/**
+ * Task 5.6c-3b (decision 3): the exams a calendar or template change moved
+ * with their slots or cancelled for a day off that this person invigilates,
+ * in the event's own notice (one notice per person per event): the title,
+ * the date and, for a moved one, the person's invigilation after the save.
+ * A person whose week did not change gets the notice with these alone.
+ */
+const examsChanged = z
+  .array(
+    z.strictObject({
+      title: z.string().min(1).max(200),
+      date: schoolDateSchema,
+      action: z.enum(['moved', 'cancelled']),
+      invigilation: z
+        .strictObject({ start: clockTime, end: clockTime, room: z.string().min(1).max(200) })
+        .nullable(),
+    }),
+  )
+  .min(1)
+  .max(50);
+
+const calendarEntry = {
+  name: z.string().min(1).max(200),
+  firstDate: schoolDateSchema,
+  lastDate: schoolDateSchema,
+};
+
 export const NOTIFICATION_KINDS = {
   'sample.message': z.strictObject({ text: z.string().min(1).max(500) }),
   /**
@@ -163,24 +190,30 @@ export const NOTIFICATION_KINDS = {
    * dates, and the week, with a second, later week as a one-day change shows
    * one.
    */
-  'timetable.calendar_changed': z.strictObject({
-    name: z.string().min(1).max(200),
-    firstDate: schoolDateSchema,
-    lastDate: schoolDateSchema,
-    ...teacherWeek,
-    also: z.strictObject(teacherWeek).optional(),
-  }),
+  'timetable.calendar_changed': z.union([
+    z.strictObject({
+      ...calendarEntry,
+      ...teacherWeek,
+      also: z.strictObject(teacherWeek).optional(),
+      exams: examsChanged.optional(),
+    }),
+    z.strictObject({ ...calendarEntry, exams: examsChanged }),
+  ]),
   /**
    * A change of the day templates from a date (a slot length, a template's
    * version, a template set or a setting ended) changed this teacher's
    * lessons in the branch (task 5.6b-4a, decision 6): the change's date and
    * the week, with a second, later week as a calendar change shows one.
    */
-  'timetable.template_changed': z.strictObject({
-    from: schoolDateSchema,
-    ...teacherWeek,
-    also: z.strictObject(teacherWeek).optional(),
-  }),
+  'timetable.template_changed': z.union([
+    z.strictObject({
+      from: schoolDateSchema,
+      ...teacherWeek,
+      also: z.strictObject(teacherWeek).optional(),
+      exams: examsChanged.optional(),
+    }),
+    z.strictObject({ from: schoolDateSchema, exams: examsChanged }),
+  ]),
   /**
    * A save of a year's quarters added or removed this teacher's lessons in
    * the branch (task 5.6b-5a, decision 9): the first and last lesson date it

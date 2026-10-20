@@ -219,6 +219,17 @@ export const quarterItemSchema = z.discriminatedUnion('kind', [
     unit: lineUnitSchema,
     subject: lineSubjectSchema,
   }),
+  /**
+   * Task 5.6c-3b (decision 2): a journal the new dates would give two
+   * standing rating exams in one quarter, `date` the later one's.
+   */
+  z.object({
+    kind: z.literal('rating_exams'),
+    date: schoolDateSchema,
+    unit: lineUnitSchema,
+    subject: lineSubjectSchema,
+    exams: z.array(z.object({ title: z.string(), date: schoolDateSchema })).min(2),
+  }),
 ]);
 
 export type QuarterItem = z.infer<typeof quarterItemSchema>;

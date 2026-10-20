@@ -149,6 +149,50 @@ describe('the notices of a timetable change', () => {
     ).toHaveProperty('also');
   });
 
+  // Task 5.6c-3b, decision 3: the invigilators of an exam a calendar or
+  // template change moved or cancelled, in the event's own notice, with the
+  // week or alone.
+  it('carry the exams changed of an invigilator in a calendar or template notice, with the week or alone, never an empty list', () => {
+    const moved = {
+      title: 'Quarter exam',
+      date: '2026-10-19',
+      action: 'moved',
+      invigilation: { start: '09:00', end: '09:45', room: 'Hall' },
+    };
+    const cancelled = {
+      title: 'Quarter exam',
+      date: '2026-10-19',
+      action: 'cancelled',
+      invigilation: null,
+    };
+    const entry = { name: 'Open day', firstDate: '2026-10-19', lastDate: '2026-10-19' };
+    const calendar = NOTIFICATION_KINDS['timetable.calendar_changed'];
+    const template = NOTIFICATION_KINDS['timetable.template_changed'];
+    const weekOnly = { weekStart: week.weekStart, before: week.before, after: week.after };
+    expect(calendar.parse({ ...entry, exams: [moved, cancelled] })).toEqual({
+      ...entry,
+      exams: [moved, cancelled],
+    });
+    expect(calendar.parse({ ...entry, ...weekOnly, exams: [moved] })).toHaveProperty('exams');
+    expect(template.parse({ from: '2026-10-19', exams: [cancelled] })).toHaveProperty('exams');
+    expect(template.parse({ from: '2026-10-19', ...weekOnly, exams: [moved] })).toHaveProperty(
+      'weekStart',
+    );
+    // Neither a week nor an exam: nothing to tell.
+    expect(calendar.safeParse(entry).success).toBe(false);
+    expect(calendar.safeParse({ ...entry, exams: [] }).success).toBe(false);
+    expect(template.safeParse({ from: '2026-10-19', exams: [] }).success).toBe(false);
+    expect(calendar.safeParse({ ...entry, exams: [{ ...moved, action: 'created' }] }).success).toBe(
+      false,
+    );
+    expect(
+      calendar.safeParse({
+        ...entry,
+        exams: [{ ...moved, invigilation: { start: '9:00', end: '09:45', room: 'Hall' } }],
+      }).success,
+    ).toBe(false);
+  });
+
   // Task 5.6b-2c-1, decision 4: an exam cancelled by a day off carries the entry, the exam and its date.
   it('carry the entry, the title and the date of an exam a day off cancelled', () => {
     const schema = NOTIFICATION_KINDS['timetable.exam_day_off'];

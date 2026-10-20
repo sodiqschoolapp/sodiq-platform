@@ -10,6 +10,7 @@ import {
 import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
 import type { DatedFindings } from './dated-check.js';
+import type { ExamChanged } from './week-changes.js';
 
 /**
  * The exams standing on the dates a calendar save writes (task 5.6b-2c-1;
@@ -1061,4 +1062,63 @@ export function examWriteOf(input: {
       }
     },
   };
+}
+
+/** `HH:MM` of a minute of the day. */
+const clockOf = (minute: number): string =>
+  `${String(Math.floor(minute / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`;
+
+/**
+ * Task 5.6c-3b (decision 3; the invigilators are told by 5.6c, 5.6b-2c-1
+ * decision 4): each exam a calendar or template change moved with its slots
+ * or cancelled for a day off, by the account of each of its invigilators,
+ * with the person's invigilation after the save (`null` when cancelled). A
+ * kept or refused exam tells nobody; a person without an account is not told.
+ */
+export async function examsChangedOf(
+  transaction: Transaction,
+  sorted: readonly SortedExam[],
+): Promise<Map<string, ExamChanged[]>> {
+  const changed = sorted.filter(
+    (one) => one.outcome === 'moved' || one.outcome === 'cancelled_day_off',
+  );
+  const told = new Map<string, ExamChanged[]>();
+  if (changed.length === 0) return told;
+  const rows = await transaction
+    .selectFrom('exam_invigilators')
+    .innerJoin('exam_rooms', 'exam_rooms.id', 'exam_invigilators.exam_room_id')
+    .innerJoin('rooms', 'rooms.id', 'exam_rooms.room_id')
+    .innerJoin('staff', 'staff.id', 'exam_invigilators.staff_id')
+    .select(['exam_invigilators.exam_id', 'staff.account_id', 'rooms.name'])
+    .where(
+      'exam_invigilators.exam_id',
+      'in',
+      changed.map((one) => one.exam.id),
+    )
+    .where('staff.account_id', 'is not', null)
+    .orderBy('staff.account_id')
+    .execute();
+  for (const one of changed) {
+    for (const row of rows.filter((invigilator) => invigilator.exam_id === one.exam.id)) {
+      // The query keeps only people with an account.
+      const accountId = row.account_id ?? '';
+      const after = one.outcome === 'moved' ? one.after : null;
+      told.set(accountId, [
+        ...(told.get(accountId) ?? []),
+        {
+          title: one.exam.title,
+          date: one.exam.date,
+          action: after === null ? 'cancelled' : 'moved',
+          invigilation:
+            after === null
+              ? null
+              : { start: clockOf(after.start), end: clockOf(after.end), room: row.name },
+        },
+      ]);
+    }
+  }
+  for (const list of told.values()) {
+    list.sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title));
+  }
+  return told;
 }

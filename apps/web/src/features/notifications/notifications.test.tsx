@@ -3,6 +3,8 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
+import { uz } from '@/i18n/locales/uz';
+import { schoolDateText } from '@/lib/dates';
 import {
   fakeApi,
   json,
@@ -72,7 +74,7 @@ function fakeLive() {
 }
 
 /** The app on the home page with the given answers; the rest is the usual. */
-function open(handlers: Record<string, Handler> = {}, language: 'en' | 'ru' = 'en') {
+function open(handlers: Record<string, Handler> = {}, language: Language = 'en') {
   const live = fakeLive();
   const calls = fakeApi({
     'GET /api/auth/session': () => json(sessionOf()),
@@ -89,10 +91,12 @@ function open(handlers: Record<string, Handler> = {}, language: 'en' | 'ru' = 'e
   };
 }
 
-const t = { en, ru };
+const t = { en, ru, uz };
+
+type Language = keyof typeof t;
 
 /** The bell of the top bar, also while the dialog in front of it hides the page. */
-const bell = (language: 'en' | 'ru', unread?: number) =>
+const bell = (language: Language, unread?: number) =>
   screen.findByRole('button', {
     name:
       unread === undefined
@@ -101,7 +105,7 @@ const bell = (language: 'en' | 'ru', unread?: number) =>
     hidden: true,
   });
 
-async function openDialog(language: 'en' | 'ru' = 'en', unread?: number) {
+async function openDialog(language: Language = 'en', unread?: number) {
   fireEvent.click(await bell(language, unread));
   return screen.findByRole('dialog', { name: t[language].notifications.title });
 }
@@ -330,6 +334,61 @@ describe('the notifications of the top bar', () => {
       // The withdrawn notice without a week draws none.
       expect(within(dialog).getAllByTestId('week-before')).toHaveLength(1);
     });
+
+    // Task 5.6c-3b (decision 3): an exam a calendar or template change
+    // moved or cancelled rides in its own notice, with the week or alone.
+    it.each(['en', 'ru', 'uz'] as const)(
+      'names the exams a calendar or template change moved or cancelled, with the invigilation of a moved one (%s)',
+      async (language) => {
+        const calendar: Notification = {
+          ...MONDAY,
+          kind: 'timetable.calendar_changed',
+          data: {
+            name: 'Open day',
+            firstDate: '2026-10-19',
+            lastDate: '2026-10-19',
+            exams: [
+              {
+                title: 'Quarter exam',
+                date: '2026-10-19',
+                action: 'moved',
+                invigilation: { start: '09:00', end: '09:45', room: 'Hall' },
+              },
+            ],
+          },
+        };
+        const template: Notification = {
+          ...ROOM,
+          kind: 'timetable.template_changed',
+          data: {
+            from: '2026-11-09',
+            weekStart: '2026-11-09',
+            before: [{ ...lesson, changed: true }],
+            after: [],
+            exams: [
+              { title: 'Spring exam', date: '2026-11-10', action: 'cancelled', invigilation: null },
+            ],
+          },
+        };
+        open({ [LIST]: () => json({ unreadCount: 2, items: [calendar, template] }) }, language);
+        const dialog = await openDialog(language, 2);
+        const parts = [...dialog.querySelectorAll<HTMLElement>('[data-exams-changed]')];
+        const texts = t[language].notifications.exam;
+        expect(parts.map((one) => one.textContent)).toEqual([
+          texts.movedBy
+            .replace('{{title}}', 'Quarter exam')
+            .replace('{{date}}', schoolDateText('2026-10-19', language))
+            .replace('{{start}}', '09:00')
+            .replace('{{end}}', '09:45')
+            .replace('{{room}}', 'Hall'),
+          texts.cancelledBy
+            .replace('{{title}}', 'Spring exam')
+            .replace('{{date}}', schoolDateText('2026-11-10', language)),
+        ]);
+        // The calendar notice without a week draws none.
+        expect(within(dialog).getAllByTestId('week-before')).toHaveLength(1);
+      },
+    );
 
     it('shows the text and the week before and after, the changed and cancelled lines marked', async () => {
       open({ [LIST]: () => json({ unreadCount: 1, items: [PUBLISHED, WITHDRAWN] }) });

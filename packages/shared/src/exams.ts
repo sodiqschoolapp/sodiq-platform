@@ -80,6 +80,12 @@ const placeFields = {
   subjectId: z.uuid().nullable(),
   rooms: z.array(examRoomBodySchema).min(1).max(EXAM_ROOMS_MAX),
   blockChoices: z.array(examBlockChoiceSchema).max(200).default([]),
+  /**
+   * The quarter's rating exam of the journals it reaches (task 5.6c-3b;
+   * edge/timetable, Exams, "The exam is the quarter's rating exam"); only
+   * with a subject.
+   */
+  ratingExam: z.boolean().default(false),
 };
 
 const examFields = {
@@ -92,6 +98,7 @@ type ExamChecked = {
   firstLesson: number;
   lastLesson: number;
   subjectId: string | null;
+  ratingExam: boolean;
   rooms: { roomId: string; classIds: string[]; groupIds: string[]; invigilatorIds: string[] }[];
   blockChoices: { classId: string; blockId: string }[];
   keepCancelled?: string[] | undefined;
@@ -107,6 +114,13 @@ const checkExam = (body: ExamChecked, context: z.RefinementCtx, needsReason = tr
     });
   }
   const twice = (values: string[]) => values.length !== new Set(values).size;
+  if (body.ratingExam && body.subjectId === null) {
+    context.addIssue({
+      code: 'custom',
+      path: ['ratingExam'],
+      message: 'A rating exam has a subject.',
+    });
+  }
   if (twice(body.rooms.map((room) => room.roomId))) {
     context.addIssue({ code: 'custom', path: ['rooms'], message: 'A room is named twice.' });
   }
@@ -223,6 +237,30 @@ export type ExamsQuery = z.infer<typeof examsQuerySchema>;
 
 const named = z.object({ id: z.uuid(), name: z.string() });
 
+/**
+ * A journal the rating exam reaches (task 5.6c-3b): its class or group and
+ * its subject.
+ */
+export const examRatingJournalSchema = z.object({
+  id: z.uuid(),
+  unit: z.object({ kind: z.enum(['class', 'group']), id: z.uuid(), name: z.string() }),
+});
+
+export type ExamRatingJournal = z.infer<typeof examRatingJournalSchema>;
+
+/**
+ * The journals of a rating exam (edge/timetable, Exams: "class journals, and
+ * group journals whose students all come from sitting classes. A group
+ * journal with students outside the exam is listed and not linked; its
+ * teacher sets the date by hand"), by name.
+ */
+export const examRatingSchema = z.object({
+  linked: z.array(examRatingJournalSchema),
+  notLinked: z.array(examRatingJournalSchema),
+});
+
+export type ExamRating = z.infer<typeof examRatingSchema>;
+
 /** An exam as the list and the save answer it. */
 export const examSchema = z.object({
   id: z.uuid(),
@@ -254,6 +292,8 @@ export const examSchema = z.object({
   started: z.boolean(),
   /** The lessons it keeps cancelled (`lesson_exam_cancels`). */
   lessonIds: z.array(z.uuid()),
+  /** Its journals when it is the quarter's rating exam (task 5.6c-3b); `null`: it is not. */
+  rating: examRatingSchema.nullable(),
 });
 
 export type Exam = z.infer<typeof examSchema>;
@@ -325,6 +365,8 @@ export const examCheckSchema = z.object({
   warnings: z.array(errorDetailSchema).nullable(),
   givenBack: z.array(examGivenBackSchema).nullable(),
   freeRooms: z.array(named),
+  /** The journals a save would store, when the body is a rating exam (task 5.6c-3b). */
+  rating: examRatingSchema.nullable(),
   canSave: z.boolean(),
 });
 

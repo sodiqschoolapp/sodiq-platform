@@ -45,6 +45,8 @@ export const quartersPreviewSchema = z.object({
   pastLessons: itemsOf(quarterItemSchema),
   exams: itemsOf(quarterItemSchema),
   splitMoves: itemsOf(quarterItemSchema),
+  /** Task 5.6c-3b: the journals given two rating exams in one quarter (`quarter_rating_exams`). */
+  ratingExams: itemsOf(quarterItemSchema),
 });
 
 export type QuartersPreview = z.infer<typeof quartersPreviewSchema>;

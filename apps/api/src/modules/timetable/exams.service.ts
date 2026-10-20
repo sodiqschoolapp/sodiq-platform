@@ -44,6 +44,15 @@ import {
 } from './calendar-exams.js';
 import { classSlotsOn, dayLessonsOf } from './day-changes.service.js';
 import { examCheck, examDayOf, versionOnDate } from './exam-check.js';
+import {
+  ratingJournalsOf,
+  ratingNamesOf,
+  refuseRatingSubject,
+  refuseRatingTaken,
+  storedRating,
+  writeRating,
+  type RatingJournals,
+} from './exam-rating.js';
 import { TimetablePattern } from './pattern.service.js';
 import {
   PUBLISH_LOCK,
@@ -96,6 +105,7 @@ export const EXAM_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   exam_group_subject: 'exam_group_subject',
   exam_unit_year: 'exam_unit_year',
   exam_cancel_final: 'exam_cancelled',
+  exam_rating_journal: 'exam_rating_journal',
 };
 
 const MINUTE = 60_000;
@@ -117,6 +127,7 @@ interface StoredExam {
   readonly lastSlot: number;
   readonly title: string;
   readonly subjectId: string | null;
+  readonly ratingExam: boolean;
   readonly cancelCause: string | null;
   readonly rooms: readonly {
     readonly roomId: string;
@@ -166,6 +177,8 @@ interface CheckFound {
     | { readonly lessonId: string; readonly state: GivenBackState; readonly rules: ErrorDetail[] }[]
     | null;
   freeRooms: string[];
+  /** The journals a save would store (task 5.6c-3b); `null`: not a rating exam. */
+  rating: RatingJournals | null;
 }
 
 type GivenBackState = 'restored' | 'blocked' | 'kept' | 'restorable' | 'otherExam';
@@ -314,6 +327,7 @@ export class TimetableExams {
               warnings: null,
               givenBack: null,
               freeRooms: [],
+              rating: null,
             };
             try {
               await this.save(
@@ -409,6 +423,17 @@ export class TimetableExams {
     const versionId = await versionOnDate(transaction, branchId, yearId, input.date);
     if (versionId === null) throw new ApiException('exam_no_timetable', 409);
 
+    // Task 5.6c-3b: the journals of a rating exam, from the memberships on
+    // its date (decisions 1, 4 and 9), refused for a subject without one or
+    // a journal another rating exam of the quarter links (decisions 2, 5).
+    const rating = await ratingFor(transaction, {
+      branchId,
+      yearId,
+      examId: stored?.id ?? null,
+      input,
+    });
+    if (found !== null) found.rating = rating;
+
     const planned = await this.plan(transaction, access, {
       branchId,
       versionId,
@@ -431,6 +456,7 @@ export class TimetableExams {
       last_slot: planned.lastSlot,
       title: input.title,
       subject_id: input.subjectId,
+      rating_exam: input.ratingExam,
     };
     const examId =
       stored === null
@@ -448,6 +474,7 @@ export class TimetableExams {
     }
     await writeRooms(transaction, branchId, examId, input.rooms);
     const outs = await writeOuts(transaction, branchId, examId, stored?.outs ?? [], planned.outs);
+    await writeRating(transaction, branchId, examId, rating);
     const cancelled = await cancelCovered(
       transaction,
       branchId,
@@ -495,6 +522,8 @@ export class TimetableExams {
         outsRemoved: outs.removed,
         choices: planned.chosen.map((one) => ({ ...one })),
         warnings: planned.warnings.map((one) => one.rule),
+        rating:
+          rating === null ? null : { linked: [...rating.linked], notLinked: [...rating.notLinked] },
         notices: { ...notices },
       },
       requestId,
@@ -1140,6 +1169,7 @@ async function readExam(
       'last_slot',
       'title',
       'subject_id',
+      'rating_exam',
       'cancel_cause',
     ])
     .where('id', '=', id)
@@ -1179,6 +1209,7 @@ async function readExam(
     lastSlot: row.last_slot,
     title: row.title,
     subjectId: row.subject_id,
+    ratingExam: row.rating_exam,
     cancelCause: row.cancel_cause,
     rooms: rooms.map((room) => ({
       roomId: room.room_id,
@@ -1455,9 +1486,46 @@ function auditOf(exam: StoredExam) {
     lastSlot: exam.lastSlot,
     title: exam.title,
     subjectId: exam.subjectId,
+    ratingExam: exam.ratingExam,
     cancelCause: exam.cancelCause,
     rooms: exam.rooms.map((one) => ({ ...one })),
   };
+}
+
+/**
+ * The journals of the body when it is a rating exam (task 5.6c-3b), checked:
+ * a subject with the rating exam, no journal linked to another standing
+ * rating exam of the quarter.
+ */
+async function ratingFor(
+  transaction: Transaction,
+  input: {
+    readonly branchId: string;
+    readonly yearId: string;
+    readonly examId: string | null;
+    readonly input: ExamInput;
+  },
+): Promise<RatingJournals | null> {
+  const body = input.input;
+  // The schema refuses a rating exam with no subject.
+  if (!body.ratingExam || body.subjectId === null) return null;
+  await refuseRatingSubject(transaction, body.subjectId);
+  const rating = await ratingJournalsOf(transaction, {
+    branchId: input.branchId,
+    yearId: input.yearId,
+    subjectId: body.subjectId,
+    date: body.date,
+    classIds: body.rooms.flatMap((one) => one.classIds),
+    groupIds: body.rooms.flatMap((one) => one.groupIds),
+  });
+  await refuseRatingTaken(transaction, {
+    branchId: input.branchId,
+    yearId: input.yearId,
+    examId: input.examId,
+    date: body.date,
+    linked: rating.linked,
+  });
+  return rating;
 }
 
 /** The exams of `ids` of the branch as the API answers them, in the order given. */
@@ -1584,6 +1652,12 @@ export async function examsOf(
       cancelled: exam.cancelCause !== null,
       started: exam.startsAt.getTime() <= moment.getTime(),
       lessonIds: [...lessons].sort(),
+      // A cancelled exam keeps its rows as history but is no longer the
+      // rating exam (decision 6): no list.
+      rating:
+        exam.ratingExam && exam.cancelCause === null
+          ? await ratingNamesOf(transaction, await storedRating(transaction, exam.id))
+          : null,
     });
   }
   return answers;
@@ -1649,6 +1723,7 @@ async function checkAnswer(
     warnings: found.warnings,
     givenBack,
     freeRooms: rooms.map((one) => ({ id: one.id, name: one.name })),
+    rating: found.rating === null ? null : await ratingNamesOf(transaction, found.rating),
     canSave:
       found.choices.every((one) => one.choice !== null) &&
       found.blocked !== null &&

@@ -629,6 +629,74 @@ describe('quarter and year dates after lessons exist', () => {
     okay(await saveQuarters(other, dates));
   });
 
+  // Task 5.6c-3b (decision 2; edge/calculation, "The rating exam": one
+  // column per rating journal and quarter, with one exam date).
+  it('dates that bring two standing rating exams of one journal into one quarter refuse the save, listed, and the preview lists them; with one cancelled or not a rating exam they do not', async () => {
+    const s = await scene();
+    const journal = (
+      await t.database.migrator
+        .selectFrom('journals')
+        .select('id')
+        .where('class_id', '=', s.seniorId)
+        .where('subject_id', '=', s.history)
+        .executeTakeFirstOrThrow()
+    ).id;
+    const ratingExam = async (date: string) => {
+      const id = await insertExam(s, date, s.seniorTeacher);
+      await t.database.migrator
+        .updateTable('exams')
+        .set({ subject_id: s.history, rating_exam: true })
+        .where('id', '=', id)
+        .execute();
+      await t.database.migrator
+        .insertInto('exam_rating_journals')
+        .values({ branch_id: s.branch, exam_id: id, journal_id: journal, linked: true })
+        .execute();
+      return id;
+    };
+    await ratingExam(NOV16);
+    const later = await ratingExam('2027-01-11');
+    const rows = await storedRowsOf(s.branch);
+    // The second quarter now runs to 12 January: both exams in it.
+    const dates = withQuarters({ 2: [NOV09, '2027-01-12'], 3: ['2027-01-13', '2027-03-20'] });
+    const item = {
+      kind: 'rating_exams',
+      date: '2027-01-11',
+      unit: { kind: 'class', name: expect.any(String) as string, grade: 10 },
+      subject: await subjectLine(s.history),
+      exams: [
+        { title: 'Quarter exam', date: NOV16 },
+        { title: 'Quarter exam', date: '2027-01-11' },
+      ],
+    };
+
+    const refused = await saveQuarters(s, dates);
+    refusedWith(refused, 409, 'quarter_rating_exams');
+    expect(detailsOf(refused).map((one) => one.quarterItem)).toEqual([item]);
+    expect(await storedRowsOf(s.branch)).toEqual(rows);
+    const shown = await shownFor(s, dates);
+    expect(shown.ratingExams).toEqual({ items: [item], more: 0 });
+
+    // The later exam cancelled: it no longer counts (decision 6).
+    await t.database.migrator
+      .updateTable('exams')
+      .set({ cancel_cause: 'cancelled' })
+      .where('id', '=', later)
+      .execute();
+    expect((await shownFor(s, dates)).ratingExams).toEqual({ items: [], more: 0 });
+    // Another one on that date with the tick taken off: one rating exam in
+    // the quarter (a cancel is final, so a third exam).
+    const third = await ratingExam('2027-01-11');
+    expect((await shownFor(s, dates)).ratingExams.items).toHaveLength(1);
+    await t.database.migrator
+      .updateTable('exams')
+      .set({ rating_exam: false })
+      .where('id', '=', third)
+      .execute();
+    expect((await shownFor(s, dates)).ratingExams).toEqual({ items: [], more: 0 });
+    okay(await saveQuarters(s, dates));
+  });
+
   // Plan test 10 (decision 6).
   it('a stored move whose two dates the save puts in two quarters refuses it; one whose dates move together saves and its block takes the new quarter', async () => {
     const s = await scene();

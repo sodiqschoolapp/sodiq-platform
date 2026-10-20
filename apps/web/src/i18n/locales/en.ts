@@ -176,6 +176,8 @@ export const en = {
       'An exam stands on a date these quarter dates take out of every quarter. Cancel or move the exam first, or keep that date in a quarter.',
     quarter_splits_move:
       'A lesson moved for one day would end up with its old and new date in two quarters. Move that lesson back to its own date first, or keep both dates in one quarter.',
+    quarter_rating_exams:
+      'These quarter dates would give a journal two rating exams in one quarter, listed below. Keep the exams in two quarters, or take the rating tick off one of them first.',
     quarter_leaves_lesson:
       'A lesson would lie outside the dates of its quarter. Reload the page and try again.',
     year_leaves_exam:
@@ -202,6 +204,12 @@ export const en = {
     exam_warnings: 'Check the warnings below and tick them to save the exam.',
     exam_restore_blocked:
       'Some lessons the exam cancelled cannot be brought back, listed below. Keep them cancelled with a reason, or free their time first.',
+    exam_rating_subject:
+      'The subject of this exam has no rating exam, so the exam cannot be its rating exam. Take the tick off, or choose a subject with a rating exam.',
+    exam_rating_taken:
+      'A journal of this exam already has its rating exam in this quarter, on another exam. Take the tick off, or change that exam first.',
+    exam_rating_journal:
+      'A journal of this rating exam is of another subject or year. Check the exam again and save it once more.',
     own_account: 'You cannot lock, unlock or reset your own account. Ask another administrator.',
     account_already_locked: 'This account is already locked. Reload the page to see who locked it.',
     account_not_locked:
@@ -1465,6 +1473,8 @@ export const en = {
         examLine: '{{date}} · {{title}}',
         cancelledExamLine: '{{date}} · {{title}} (cancelled)',
         moveLine: '{{from}} → {{to}} · {{unit}} · {{subject}}',
+        ratingExams: 'Journals that would have two rating exams in one quarter',
+        ratingLine: '{{unit}} · {{subject}}: {{exams}}',
         more_one: 'and {{count}} more',
         more_other: 'and {{count}} more',
         refused:
@@ -3218,6 +3228,8 @@ export const en = {
       cancelled: 'The exam was cancelled.',
       invigilation: 'You invigilate {{start}}–{{end}} in {{room}}.',
       cancelledBy: 'Exam cancelled by this change: {{title}}, {{date}}.',
+      movedBy:
+        'Exam moved by this change: {{title}}, {{date}}. You invigilate {{start}}–{{end}} in {{room}}.',
     },
     // The week before and after of a notice of a timetable change (task 5.5c-3a).
     week: {
@@ -3289,6 +3301,10 @@ export const en = {
       blocked: 'The exam cannot be saved',
       warnings: 'Warnings',
       tick: 'I have read the warnings and save the exam with them.',
+      ratingExam: 'Rating exam of the quarter',
+      ratingLinked: 'Journals linked to this rating exam',
+      ratingNoneLinked: 'No journal is linked.',
+      ratingNotLinked: 'Journals not linked: their teacher sets the date by hand',
       givenBack: 'Lessons given back',
       givenBackLater: 'The lessons the change gives back are listed once nothing blocks the exam.',
       given_restored: 'comes back',
