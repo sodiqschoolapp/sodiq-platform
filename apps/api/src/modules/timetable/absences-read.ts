@@ -1,4 +1,4 @@
-import { listName, type DayChangesAnswer } from '@sodiq/shared';
+import { listName, schoolDateOf, type DayChangesAnswer } from '@sodiq/shared';
 import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
 import { dayBeginnings } from './dated-check.js';
@@ -177,18 +177,27 @@ export async function runAbsences(
   return [...counts.values()]
     .map(({ span, lessons }) => {
       const row = rowOf.get(span.absenceId);
+      // A person the branch no longer sees is named by nothing, and the days
+      // are read from the moments (decision 3; permission review should-fix 4).
+      if (row === undefined) {
+        return {
+          id: span.absenceId,
+          name: '',
+          startsOn: schoolDateOf(span.from, branch.time_zone),
+          endsOn:
+            span.until === null
+              ? null
+              : schoolDateOf(new Date(span.until.getTime() - 1), branch.time_zone),
+          lessons,
+        };
+      }
       return {
         id: span.absenceId,
-        // A person the branch no longer sees is named by nothing (decision 3).
-        name:
-          row === undefined
-            ? ''
-            : listName({ firstName: row.first_name ?? '', lastName: row.last_name ?? '' }),
-        startsOn: row?.starts_on ?? '',
-        endsOn: row?.ends_on ?? null,
+        name: listName({ firstName: row.first_name ?? '', lastName: row.last_name ?? '' }),
+        startsOn: row.starts_on,
+        endsOn: row.ends_on,
         lessons,
       };
     })
-    .filter((one) => one.startsOn !== '')
     .sort((a, b) => (a.startsOn < b.startsOn ? -1 : a.startsOn > b.startsOn ? 1 : 0));
 }

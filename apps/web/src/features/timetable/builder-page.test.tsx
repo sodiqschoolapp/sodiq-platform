@@ -1042,6 +1042,7 @@ describe('pinSlots', () => {
                   kept: [],
                   decide: [],
                   dropped: [],
+                  absences: [],
                   bulk: [],
                   exams: [],
                 },
@@ -1178,6 +1179,7 @@ describe('pinSlots', () => {
                   kept: [item(uid(621), 'room')],
                   decide: [item(uid(622), 'move', ['teacher_double'])],
                   dropped: [item(uid(623), 'cancel')],
+                  absences: [],
                   bulk: [],
                   exams: [],
                 },
@@ -1269,6 +1271,7 @@ describe('pinSlots', () => {
                   kept: [],
                   decide: [],
                   dropped: [],
+                  absences: [],
                   bulk: [],
                   exams: [
                     {
@@ -1408,6 +1411,7 @@ describe('pinSlots', () => {
                   decide: [],
                   dropped: [],
                   exams: [],
+                  absences: [],
                   bulk: [
                     {
                       key: bulkKept,
@@ -1515,6 +1519,7 @@ describe('pinSlots', () => {
                   kept: [],
                   decide: [],
                   dropped: [],
+                  absences: [],
                   bulk: [],
                   exams: [],
                 },

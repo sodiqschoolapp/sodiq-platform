@@ -336,6 +336,22 @@ describe('teacher absences', () => {
       ).n,
     );
 
+  /**
+   * Every row of the tables the routes write, in every branch (permission
+   * review must-fix 2; `.claude/rules/api.md`).
+   */
+  const everything = () =>
+    Promise.all([
+      t.database.migrator.selectFrom('absences').selectAll().orderBy('id').execute(),
+      t.database.migrator.selectFrom('notifications').select('id').orderBy('id').execute(),
+      t.database.migrator.selectFrom('audit_log').select('id').orderBy('id').execute(),
+      t.database.migrator
+        .selectFrom('lesson_absence_taught')
+        .selectAll()
+        .orderBy('lesson_id')
+        .execute(),
+    ]);
+
   const noticesOf = (accountId: string, branch: string) =>
     t.database.migrator
       .selectFrom('notifications')
@@ -454,7 +470,8 @@ describe('teacher absences', () => {
         endsOn: null,
         reason: 'Course',
       });
-      const before = await auditCount();
+      const vacancy = await load.vacancy(t.north);
+      const before = await everything();
       for (const id of [other.id, UNKNOWN]) {
         refusedWith(
           await edit(t.north, id, { startsOn: '2026-11-03', endsOn: null }),
@@ -471,7 +488,6 @@ describe('teacher absences', () => {
           'not_found',
         );
       }
-      const vacancy = await load.vacancy(t.north);
       refusedWith(
         await create(t.north, {
           staffId: vacancy,
@@ -482,7 +498,7 @@ describe('teacher absences', () => {
         422,
         'absence_person',
       );
-      expect(await auditCount()).toBe(before);
+      expect(await everything()).toEqual(before);
       const row = await t.database.migrator
         .selectFrom('absences')
         .select(['starts_on', 'withdrawn_at'])
@@ -893,6 +909,22 @@ describe('teacher absences', () => {
       expect(after.needsTeacher.filter((one) => one.cause === 'absence')).toEqual([]);
       expect(await statesOn(awayScene, '2026-10-20', awayVice.cookie)).toEqual([
         { state: 'upcoming', absent: false },
+      ]);
+      // The other branch's Academic Vice Principal changes the same absence
+      // back (permission review should-fix 1): its entry is in that branch,
+      // and the home branch's Academic Vice Principal is told.
+      ok(await edit(away, absence.id, { startsOn: NEXT_MONDAY, endsOn: null }, awayVice.cookie));
+      expect(await statesOn(awayScene, '2026-10-20', awayVice.cookie)).toEqual([
+        { state: 'needs_teacher', absent: true },
+      ]);
+      const entries = await t.entries('absence.edit', absence.id);
+      expect(entries.map((one) => one.branch_id)).toEqual([home.branch, away]);
+      expect(await noticesOf(vice, away)).toEqual([
+        {
+          kind: 'timetable.absence_changed_open',
+          data: { name: expect.any(String) as unknown, startsOn: NEXT_MONDAY },
+          branch_id: away,
+        },
       ]);
     });
 

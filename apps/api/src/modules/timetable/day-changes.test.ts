@@ -515,6 +515,12 @@ describe('one-day changes: cancel and restore', () => {
       t.database.migrator.selectFrom('time_claims').selectAll().orderBy('id').execute(),
       t.database.migrator.selectFrom('lesson_changes').selectAll().orderBy('lesson_id').execute(),
       t.database.migrator.selectFrom('lesson_day_changes').selectAll().orderBy('id').execute(),
+      // Task 5.7a-1 (permission review must-fix 1): the correction writes it.
+      t.database.migrator
+        .selectFrom('lesson_absence_taught')
+        .selectAll()
+        .orderBy('lesson_id')
+        .execute(),
       t.database.migrator
         .selectFrom('lesson_day_change_ends')
         .selectAll()
@@ -3288,6 +3294,77 @@ describe('one-day changes: cancel and restore', () => {
         refusedWith(await teachersFor(t.north, UNKNOWN, cookie), 404, 'not_found');
       }
       expect(await everything()).toEqual(before);
+    });
+
+    // Task 5.7a-1 (permission review must-fix 1): the path that records an
+    // absent teacher as having taught the lesson writes `lesson_absence_taught`;
+    // another branch's or an unknown lesson, and a used key with one, change nothing.
+    it('answers 404 on the "taught while absent" path for another branch’s or an unknown lesson, also with a used key; nothing changes', async () => {
+      const s = northScene;
+      const lesson = await pastOne(s, { date: '2026-10-05' });
+      const other = await scene();
+      const foreign = await pastOne(other, { date: '2026-10-05' });
+      const account = await load.classes.account();
+      const absences = await t.database.migrator
+        .insertInto('absences')
+        .values(
+          [s.teacher.staffId, other.teacher.staffId].map((staffId) => ({
+            staff_id: staffId,
+            starts_on: '2026-10-05',
+            ends_on: '2026-10-05',
+            applies_from: at('2026-10-05', '00:00'),
+            applies_until: at('2026-10-06', '00:00'),
+            reason: 'Ill',
+            created_by: account,
+          })),
+        )
+        .returning('id')
+        .execute();
+      try {
+        const key = randomUUID();
+        const taught = (id: string, teacherId: string, cookie: string, used = randomUUID()) =>
+          correct(
+            t.north,
+            id,
+            { kind: 'teacher', teacherId, reason: 'Came after all' },
+            cookie,
+            used,
+          );
+        const before = await everything();
+        for (const cookie of [t.vicePrincipal, t.admin]) {
+          refusedWith(await taught(foreign, other.teacher.staffId, cookie), 404, 'not_found');
+          refusedWith(await taught(UNKNOWN, s.teacher.staffId, cookie), 404, 'not_found');
+        }
+        expect(await everything()).toEqual(before);
+        changed(await taught(lesson, s.teacher.staffId, t.vicePrincipal, key));
+        const after = await everything();
+        refusedWith(
+          await taught(foreign, other.teacher.staffId, t.vicePrincipal, key),
+          404,
+          'not_found',
+        );
+        refusedWith(
+          await taught(UNKNOWN, s.teacher.staffId, t.vicePrincipal, key),
+          404,
+          'not_found',
+        );
+        expect(await everything()).toEqual(after);
+        const rows = await t.database.migrator
+          .selectFrom('lesson_absence_taught')
+          .select('lesson_id')
+          .where('lesson_id', 'in', [lesson, foreign])
+          .execute();
+        expect(rows).toEqual([{ lesson_id: lesson }]);
+      } finally {
+        await t.database.migrator
+          .deleteFrom('absences')
+          .where(
+            'id',
+            'in',
+            absences.map((one) => one.id),
+          )
+          .execute();
+      }
     });
 
     it('keeps a used key to its account, its branch and its role (request keys)', async () => {
