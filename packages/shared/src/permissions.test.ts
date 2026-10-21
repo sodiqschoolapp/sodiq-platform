@@ -348,6 +348,16 @@ describe('a frozen permission table', () => {
     }
   });
 
+  // Task 5.8b, decision 10 of pull request #195: 06, Protection, "Forced
+  // delete is for Super Admin only".
+  it('gives the forced delete and its store to the Super Admin alone', () => {
+    for (const role of ROLES) {
+      expect(PERMISSIONS.forced_deletes[role], role).toEqual(
+        role === 'super_admin' ? ['view', 'edit'] : [],
+      );
+    }
+  });
+
   it('gives the personal data report to the Super Admin alone, as an export (task 2.6b)', () => {
     for (const role of ROLES) {
       expect(PERMISSIONS.personal_data_report[role], role).toEqual(
@@ -369,6 +379,7 @@ describe('a frozen permission table', () => {
       'current_period',
       'day_templates',
       'divisions',
+      'forced_deletes',
       'group_transfers',
       'groups',
       'head_teachers',

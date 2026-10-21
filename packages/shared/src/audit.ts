@@ -233,6 +233,9 @@ export const AUDIT_ACTION_GROUPS = {
     // Task 5.7b-1: a substitution of a lesson, and its withdrawal.
     'lesson.substitute',
     'lesson.substitute_withdraw',
+    // Task 5.8b: the Super Admin's forced delete of a dated lesson, and its restore.
+    'lesson.forced_delete',
+    'forced_delete.restore',
     // Task 5.6c-1: an exam created, changed or cancelled.
     'exam.create',
     'exam.change',

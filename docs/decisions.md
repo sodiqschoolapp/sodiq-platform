@@ -285,6 +285,30 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 21 October 2026: protection of dated lessons and their forced delete (task 5.8b)
+
+Plan approved on pull request #195 with corrections 1 and 2; decisions 1 to 12 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (guard changed). `lessons_delete_past()` (0079) is replaced in 0105 to let through a lesson or block named by a forced-delete store row of the same transaction; every other writer is still refused for today and earlier | Decision 1; `06`, Protection rule 2 needs the forced delete to reach past lessons |
+| **Look first** (rule left to 6.1). `lesson_holds_data(uuid)` answers no until 6.1 reads the cells; the database guard (`lessons_delete_data`) and the writers' refusal are tested with a stand-in function; From line on 6.1 | Decision 2; `edge/00-definitions`, Data on a lesson |
+| **Look first** (rule left to 9.2b). The forced delete and its restore are refused in a closed quarter once 9.2b closes quarters (From line); a closed year refuses them now | Decision 3; `edge/timetable`, After publishing |
+| **Look first** (tests changed). The held sides of same-moment tests and the database fixtures that change a lesson as the application now write an audit entry (`heldEntry`, `apps/api/src/testing/held-entry.ts`), and five "nothing changed" snapshots leave out the entries of action `test.held_side`, which no route writes; the day page's test of a row's buttons now expects "History" on every row | The commit check of decision 4 refuses a lesson change with no entry; the held side writes what its route writes (`.claude/rules/api.md`) |
+| Who, when, before and after of every teacher, room, date, time and cancel change: `lesson_history` (0105, partitioned by month, written only by triggers for the session user `sodiq_app`, correction 1), tied to the audit entries of the same transaction by `audit_log.written_xact` | Decision 4; ten of the 39 writes had no per-lesson before value in their entry |
+| **Build decision.** The check that every history line has an audit entry of its transaction in its branch runs in `Transactions.run` before the commit (`lesson_history_unaudited`, security definer, correction 2), not as a deferred constraint trigger | 22 writers run `set constraints all immediate` before they write their entry, which would fire a deferred trigger early |
+| The cancel and its reason are in the history | Decision 5 |
+| One lesson per forced delete; its block goes with its last lesson | Decision 6 |
+| Any dated lesson can be force-deleted; a restore is refused once another version is in force on its date (`forced_delete_version`) | Decision 7 |
+| `restore_until` is stored and compared with the clock on each request; no purge job | Decision 8 |
+| A restore brings back the same ids and values, the rows kept (change mark, exam cancels, absence-taught record, class outs) and the links (day changes, bulk cancel choices); a substitution is recorded again for the same record (`recorded_again`); an exam that no longer stands refuses it (`forced_delete_parent_changed`); the lesson is checked again with `storedDayCheck` | Decision 9; review must-fixes 1 and 2 of the plan |
+| New area `forced_deletes` (Super Admin `view`, `edit`); the store and its restore live in the audit module with a restorer per record type, which 5.8c extends | Decision 10 |
+| The teacher of a lesson force-deleted or restored today or later gets the one-day change notice | Decision 11 |
+| The history and the forced delete's entry hold ids, dates, times and reasons; names are read through the branch filter | Decision 12 |
+| **Build decision.** A repeat of a forced delete with its key finds the lesson in the store of the branch, so the stored answer is given instead of a 404 | `.claude/rules/api.md`, request keys |
+| **Build decision.** "History" is a column of its own on the day page, for every reader of the day; "Delete for good" is in the actions of the Super Admin | The Principal reads the history and has no actions column |
+| **Build decision.** The page "Deleted lessons" (`/forced-deletes`) is linked from School setup for the Super Admin | It holds 5.8c's buildings, floors and rooms too |
+
 ## 21 October 2026: version history and restore (task 5.8a)
 
 Plan approved on pull request #194 with corrections 1 and 2; decisions 1 to 10 confirmed there. Flagged on issue #42.

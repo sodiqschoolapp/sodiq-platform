@@ -615,6 +615,16 @@ export const uz: Texts<'one' | 'other'> = {
     substitution_not_in_force: 'Bu darsda bekor qilinadigan oʻrinbosar yoʻq. Kunni qayta yuklang.',
     substitution_return_blocked:
       'Dars qaytariladigan oʻqituvchining shu vaqtda boshqa darsi yoki imtihoni bor yoki yoʻlga vaqti yetmaydi. Avval oʻsha darsni oʻzgartiring.',
+    lesson_holds_data:
+      'Darsda davomat yoki baholar bor, shuning uchun uni oʻchirib boʻlmaydi. Uni faqat Super Admin sabab koʻrsatib butunlay oʻchira oladi.',
+    forced_delete_expired: 'Bu darsni tiklash uchun 30 kun oʻtib ketdi, uni endi tiklab boʻlmaydi.',
+    forced_delete_restored: 'Bu dars allaqachon tiklangan. Roʻyxatni yangilang.',
+    forced_delete_version:
+      'Bu dars sanasida endi boshqa dars jadvali amalda, shuning uchun u qaytmaydi. Darsni oʻsha jadvalga qoʻshing.',
+    forced_delete_parent_changed:
+      'Dars oʻchirilgandan beri unga bogʻliq narsa oʻzgardi (uni bekor qilgan imtihon bekor qilindi), shuning uchun u avvalgidek qaytmaydi.',
+    forced_delete_restore_blocked:
+      'Dars qaytmaydi: u quyidagi jadval qoidasini buzadi. Avval uning oʻrnini egallagan darsni oʻzgartiring.',
     journal_substitute_none:
       'Bu davrda jurnalning hech bir darsi bu oʻrinbosarni ololmaydi. Sanalar va sabablari koʻrsatilgan; boshqa oʻqituvchini tanlang.',
     vacancy_has_load:
@@ -965,6 +975,7 @@ export const uz: Texts<'one' | 'other'> = {
     settingsLink: 'Sozlamalar',
     travelTimesLink: 'Yoʻl vaqti',
     subjectsLink: 'Fanlar',
+    forcedDeletesLink: 'Oʻchirilgan darslar',
     branches: {
       title: 'Filiallar',
       caption: 'Maktab filiallari',
@@ -2695,6 +2706,28 @@ export const uz: Texts<'one' | 'other'> = {
     roleHint: 'Huquqlaringiz barcha rollaringiz boʻyicha qoladi.',
     branch: 'Filial',
   },
+  forcedDeletes: {
+    title: 'Oʻchirilgan darslar',
+    caption: 'Butunlay oʻchirilgan darslar',
+    lesson: 'Dars',
+    unit: 'Sinf yoki guruh',
+    subject: 'Fan',
+    teacher: 'Oʻqituvchi',
+    room: 'Xona',
+    reason: 'Sabab',
+    deleted: 'Oʻchirildi',
+    deletedBy: '{{name}}, {{moment}}',
+    state: 'Holati',
+    state_restorable: 'Tiklash mumkin',
+    state_restored: 'Tiklangan',
+    state_expired: '30 kun oʻtgan',
+    restoreUntil: 'Tiklash mumkin boʻlgan sana',
+    restored: 'Tiklangan',
+    restore: 'Tiklash',
+    restoredMessage: 'Dars tiklandi.',
+    emptyTitle: 'Oʻchirilgan darslar yoʻq',
+    empty: 'Sinf kunidan butunlay oʻchirilgan dars bu yerda 30 kun koʻrinadi.',
+  },
   audit: {
     title: 'Audit jurnali',
     caption: 'Audit jurnali yozuvlari',
@@ -3077,6 +3110,10 @@ export const uz: Texts<'one' | 'other'> = {
         correct: 'Oʻtgan dars tuzatildi',
         substitute: 'Darsga oʻrinbosar qoʻyildi',
         substitute_withdraw: 'Oʻrinbosar bekor qilindi',
+        forced_delete: 'Dars butunlay oʻchirildi',
+      },
+      forced_delete: {
+        restore: 'Oʻchirilgan dars tiklandi',
       },
       teaching_load: {
         create: 'Oʻquv yuklamasi qatori qoʻshildi',
@@ -3732,6 +3769,31 @@ export const uz: Texts<'one' | 'other'> = {
       cancelSend: 'Imtihonni bekor qilish',
       cancelKeeping: 'Imtihonni bekor qilish va bu darslarni bekorligicha qoldirish',
     },
+    forcedDelete: {
+      title: 'Butunlay oʻchirish: {{subject}}, {{unit}}, {{time}}',
+      kept_one:
+        'Dars va undagi maʼlumotlar {{count}} kun saqlanadi va «Oʻchirilgan darslar» boʻlimidan tiklanishi mumkin.',
+      kept_other:
+        'Dars va undagi maʼlumotlar {{count}} kun saqlanadi va «Oʻchirilgan darslar» boʻlimidan tiklanishi mumkin.',
+      send: 'Butunlay oʻchirish',
+      done: 'Dars butunlay oʻchirildi. Uni 30 kun ichida «Oʻchirilgan darslar» boʻlimidan tiklash mumkin.',
+    },
+    lessonHistory: {
+      title: 'Tarix: {{subject}}, {{unit}}, {{time}}',
+      empty: 'Bu darsda hech narsa oʻzgarmagan.',
+      none: 'yoʻq',
+      teacher: 'Oʻqituvchi: {{before}} → {{after}}',
+      room: 'Xona: {{before}} → {{after}}',
+      time: 'Vaqt: {{before}} → {{after}}',
+      cancelled: 'Bekor qilindi: {{reason}}',
+      uncancelled: 'Bekor qilingandan keyin tiklandi',
+      by: '{{name}}, {{moment}}',
+      system: 'Tizim',
+      kind_changed: 'Oʻzgartirildi',
+      kind_removed: 'Yangi jadval bilan olib tashlandi',
+      kind_forced_delete: 'Butunlay oʻchirildi',
+      kind_restored: 'Tiklandi',
+    },
     day: {
       // The class's exams of the date (task 5.6c-2).
       exam: 'Imtihon',
@@ -3849,6 +3911,9 @@ export const uz: Texts<'one' | 'other'> = {
       withdrawSubstitutionTitle: '{{subject}}, {{time}} darsidagi oʻrinbosarni bekor qilish',
       withdrawSubstitutionSend: 'Oʻrinbosarni bekor qilish',
       substitutionWithdrawn: 'Oʻrinbosar bekor qilindi.',
+      historyColumn: 'Oʻzgarishlar',
+      history: 'Tarix',
+      forcedDelete: 'Butunlay oʻchirish',
     },
     // The substitution per journal (task 5.7b-2).
     journalSubstitute: {

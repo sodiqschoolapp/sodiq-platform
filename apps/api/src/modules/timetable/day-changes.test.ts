@@ -21,6 +21,7 @@ import { errorCode } from '../../testing/sign-in-kit.js';
 import { MembersKit } from '../../testing/members-kit.js';
 import { DAY_REFUSALS, MOVE_REFUSALS } from './day-changes.service.js';
 import { followTutors } from './tutor-lessons.js';
+import { HELD_ENTRY_ACTION, heldEntry } from '../../testing/held-entry.js';
 
 const refusedWith = (response: Response, status: number, code: string) => {
   expect(response.status, JSON.stringify(response.body)).toBe(status);
@@ -533,7 +534,12 @@ describe('one-day changes: cancel and restore', () => {
       sql<{ id: string }>`select id from pgboss.job order by id`
         .execute(t.database.migrator)
         .then((result) => result.rows),
-      t.database.migrator.selectFrom('audit_log').select('id').orderBy('id').execute(),
+      t.database.migrator
+        .selectFrom('audit_log')
+        .select('id')
+        .where('action', '<>', HELD_ENTRY_ACTION)
+        .orderBy('id')
+        .execute(),
       // Task 5.6a-5a (permission review, must-fix 2): every other table a publish writes.
       t.database.migrator.selectFrom('timetable_versions').selectAll().orderBy('id').execute(),
       t.database.migrator.selectFrom('teaching_load_rows').selectAll().orderBy('id').execute(),
@@ -1088,6 +1094,7 @@ describe('one-day changes: cancel and restore', () => {
             .set({ teacher_id: s.teacher.staffId })
             .where('id', '=', awayLesson.id)
             .execute();
+          await heldEntry(transaction, away.branch);
           ready();
           await released;
         })
@@ -2257,6 +2264,7 @@ describe('one-day changes: cancel and restore', () => {
             .execute();
           // The real follow of the change: the class's Tutor lessons go to the acting Tutor.
           await followTutors(transaction, [away.classId], at('2026-10-11', '00:00'));
+          await heldEntry(transaction, away.branch);
           ready();
           await released;
         })

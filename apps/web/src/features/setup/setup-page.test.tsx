@@ -181,6 +181,19 @@ describe('the School setup entry', () => {
     },
   );
 
+  // Task 5.8b: the deleted lessons are the Super Admin's (forced_deletes).
+  it.each([
+    ['super_admin', true],
+    ['principal', false],
+    ['academic_vice_principal', false],
+  ] as const)('links the deleted lessons for the %s: %s', async (role, shown) => {
+    fakeApi({ 'GET /api/auth/session': () => json(sessionAs(role)) });
+    renderApp('/setup');
+    await screen.findByRole('heading', { name: en.setup.title });
+    const link = screen.queryByRole('link', { name: en.setup.forcedDeletesLink });
+    expect(link?.getAttribute('href') ?? null).toBe(shown ? '/forced-deletes' : null);
+  });
+
   it('says that a role without setup rights has no setup pages', async () => {
     fakeApi({ 'GET /api/auth/session': () => json(sessionAs('teacher')) });
     renderApp('/setup');

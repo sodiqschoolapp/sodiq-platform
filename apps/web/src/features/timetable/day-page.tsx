@@ -48,6 +48,7 @@ import { roomsQuery } from '@/features/setup/setup-api';
 import { BlockedRules } from './blocked-rules';
 import { BulkCancelDialog } from './bulk-cancel-dialog';
 import { CorrectionDialog, correctionKinds } from './correction-dialog';
+import { ForcedDeleteDialog, LessonHistoryDialog } from './lesson-forced-delete';
 import { SubstituteDialog, WithdrawSubstitutionDialog } from './substitute-dialog';
 import { ruleText } from './rule-text';
 import {
@@ -82,6 +83,8 @@ export function DayPage(): React.JSX.Element {
   const queryClient = useQueryClient();
   const language = languageOf(i18n.language);
   const edits = role !== null && permits(PERMISSIONS, role, 'timetable', 'edit');
+  // Task 5.8b: the forced delete is the Super Admin's; the history is for every reader of the day.
+  const deletes = role !== null && permits(PERMISSIONS, role, 'forced_deletes', 'edit');
   const versions = useQuery(versionsQuery(branchId));
   const classes = useQuery(classesQuery(branchId));
   const date = search.date ?? versions.data?.today ?? null;
@@ -108,6 +111,9 @@ export function DayPage(): React.JSX.Element {
   // The substitution of a lesson and its withdrawal (task 5.7b-1).
   const [substituting, setSubstituting] = useState<DayLesson | null>(null);
   const [withdrawing, setWithdrawing] = useState<DayLesson | null>(null);
+  // The forced delete of a lesson and the history of a lesson (task 5.8b).
+  const [deleting, setDeleting] = useState<DayLesson | null>(null);
+  const [historyOf, setHistoryOf] = useState<DayLesson | null>(null);
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: timetableKey(branchId) });
   const restore = useMutation({
@@ -290,6 +296,8 @@ export function DayPage(): React.JSX.Element {
                   <TableHead>{t('timetable.day.room')}</TableHead>
                   <TableHead>{t('timetable.day.state')}</TableHead>
                   {edits && <TableHead>{t('timetable.day.actions')}</TableHead>}
+                  {/* Task 5.8b: the history of a lesson, for every reader of the day. */}
+                  <TableHead>{t('timetable.day.historyColumn')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -322,6 +330,7 @@ export function DayPage(): React.JSX.Element {
                         <TableCell>{exam.room.name}</TableCell>
                         <TableCell className="font-semibold">{t('timetable.day.exam')}</TableCell>
                         {edits && <TableCell />}
+                        <TableCell />
                       </TableRow>
                     ) : lesson === null ? null : (
                       <TableRow key={lesson.id} data-lesson={lesson.id}>
@@ -452,8 +461,32 @@ export function DayPage(): React.JSX.Element {
                                 {t('timetable.day.correct')}
                               </Button>
                             )}
+                            {deletes && (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => {
+                                  setMessage(null);
+                                  restore.reset();
+                                  setDeleting(lesson);
+                                }}
+                              >
+                                {t('timetable.day.forcedDelete')}
+                              </Button>
+                            )}
                           </TableCell>
                         )}
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setHistoryOf(lesson);
+                            }}
+                          >
+                            {t('timetable.day.history')}
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ),
                   )}
@@ -473,6 +506,32 @@ export function DayPage(): React.JSX.Element {
             setCancelling(null);
             setMessage(t('timetable.day.cancelled'));
             await refresh();
+          }}
+        />
+      )}
+      {deleting !== null && (
+        <ForcedDeleteDialog
+          key={deleting.id}
+          lesson={deleting}
+          subject={deleting.subject.names[language]}
+          onClose={() => {
+            setDeleting(null);
+          }}
+          onDeleted={async () => {
+            setDeleting(null);
+            setMessage(t('timetable.forcedDelete.done'));
+            await refresh();
+          }}
+        />
+      )}
+      {historyOf !== null && (
+        <LessonHistoryDialog
+          key={historyOf.id}
+          lesson={historyOf}
+          branchId={branchId}
+          subject={historyOf.subject.names[language]}
+          onClose={() => {
+            setHistoryOf(null);
           }}
         />
       )}

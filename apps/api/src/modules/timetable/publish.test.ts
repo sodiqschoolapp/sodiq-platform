@@ -32,6 +32,7 @@ import { TimetablePattern } from './pattern.service.js';
 import { Timetable } from './timetable.service.js';
 import { Notifications } from '../notifications/notifications.service.js';
 import { sendWeekChanges, snapshotWeek } from './week-changes.js';
+import { heldEntry } from '../../testing/held-entry.js';
 
 const refusedWith = (response: Response, status: number, code: string) => {
   expect(response.status, JSON.stringify(response.body)).toBe(status);
@@ -1342,16 +1343,15 @@ describe('publish', () => {
       // C's lesson of 18 January has another room, as a one-day change will
       // give it; the second teacher leaves on 1 March, inside C's run.
       const room3 = await load.classes.room(s.branch);
-      await t.app
-        .get(Transactions)
-        .run([s.branch], (transaction) =>
-          transaction
-            .updateTable('lessons')
-            .set({ room_id: room3 })
-            .where('branch_id', '=', s.branch)
-            .where('lesson_date', '=', '2027-01-18')
-            .execute(),
-        );
+      await t.app.get(Transactions).run([s.branch], async (transaction) => {
+        await transaction
+          .updateTable('lessons')
+          .set({ room_id: room3 })
+          .where('branch_id', '=', s.branch)
+          .where('lesson_date', '=', '2027-01-18')
+          .execute();
+        await heldEntry(transaction, s.branch);
+      });
       expect((await lessonsOf(s.branch)).find((one) => one.date === '2027-01-18')?.room_id).toBe(
         room3,
       );
@@ -1406,6 +1406,7 @@ describe('publish', () => {
         const ids = blocks.map((one) => one.id);
         await transaction.deleteFrom('lessons').where('block_id', 'in', ids).execute();
         await transaction.deleteFrom('lesson_blocks').where('id', 'in', ids).execute();
+        await heldEntry(transaction, s.branch);
       });
       expect((await lessonsOf(s.branch)).filter((one) => one.date >= '2027-01-11')).toEqual([]);
       const answer = checkOf(await checkChain(s.branch, s.fix, '2026-10-19', 'carry'));
@@ -3935,8 +3936,12 @@ describe('publish', () => {
     // transaction of the application, with the moment that 0079 reads
     // (review correction 1).
     describe('from the stored lessons (task 5.5b-2)', () => {
+      /** A change of stored lessons with the audit entry its route would write. */
       const directly = (branch: string, work: (transaction: Transaction) => Promise<unknown>) =>
-        t.app.get(Transactions).run([branch], work);
+        t.app.get(Transactions).run([branch], async (transaction) => {
+          await work(transaction);
+          await heldEntry(transaction, branch);
+        });
 
       it('lists a lesson stored with no teacher the same on both sides, with no change, and a vacancy kept (Done when)', async () => {
         const s = await scene();

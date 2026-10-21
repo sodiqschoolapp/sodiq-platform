@@ -24,6 +24,7 @@ import {
 import { LoadKit } from '../../testing/load-kit.js';
 import { substitutionRowsOf } from '../../testing/substitutions-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
+import { HELD_ENTRY_ACTION, heldEntry } from '../../testing/held-entry.js';
 
 const refusedWith = (response: Response, status: number, code: string) => {
   expect(response.status, JSON.stringify(response.body)).toBe(status);
@@ -460,7 +461,12 @@ describe('the substitution of a lesson', () => {
         .orderBy('lesson_id')
         .execute(),
       t.database.migrator.selectFrom('notifications').select('id').orderBy('id').execute(),
-      t.database.migrator.selectFrom('audit_log').select('id').orderBy('id').execute(),
+      t.database.migrator
+        .selectFrom('audit_log')
+        .select('id')
+        .where('action', '<>', HELD_ENTRY_ACTION)
+        .orderBy('id')
+        .execute(),
       t.database.migrator.selectFrom('request_keys').selectAll().orderBy('key').execute(),
       // Permission review, should-fix 5: the notices enqueue their delivery job.
       sql<{ id: string }>`select id from pgboss.job order by id`
@@ -888,6 +894,7 @@ describe('the substitution of a lesson', () => {
             .set({ teacher_id: teacherId })
             .where('id', '=', lessonId)
             .execute();
+          await heldEntry(transaction, branch);
           await sql`set constraints all immediate`.execute(transaction);
           ready();
           await released;
@@ -1495,6 +1502,7 @@ describe('the substitution of a lesson', () => {
             .set({ teacher_id: taught.staffId })
             .where('id', '=', other.id)
             .execute();
+          await heldEntry(transaction, elsewhere.branch);
           await sql`set constraints all immediate`.execute(transaction);
           ready();
           await released;

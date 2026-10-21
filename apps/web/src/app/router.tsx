@@ -13,6 +13,7 @@ import { HomePage } from '@/features/access/home-page';
 import { AccountPage } from '@/features/auth/account-page';
 import { AuditPage } from '@/features/audit/audit-page';
 import { auditSearch } from '@/features/audit/audit-search';
+import { ForcedDeletesPage } from '@/features/audit/forced-deletes-page';
 import { CodePage } from '@/features/auth/code-page';
 import { ForgotPasswordPage } from '@/features/auth/forgot-password-page';
 import { ResetPasswordPage } from '@/features/auth/reset-password-page';
@@ -420,6 +421,14 @@ const auditRoute = createRoute({
   component: guarded('audit_log', AuditPage),
 });
 
+// The lessons the Super Admin deleted for good, restorable for 30 days (task 5.8b).
+const forcedDeletesRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/forced-deletes',
+  validateSearch: listSearch,
+  component: guarded('forced_deletes', ForcedDeletesPage),
+});
+
 /** The accounts never used of the branch, a section of People (task 2.3c-1). */
 const neverUsedRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -537,6 +546,7 @@ const routeTree = rootRoute.addChildren([
     headTeachersRoute,
     neverUsedRoute,
     auditRoute,
+    forcedDeletesRoute,
     personalDataRoute,
     patternsRoute,
   ]),

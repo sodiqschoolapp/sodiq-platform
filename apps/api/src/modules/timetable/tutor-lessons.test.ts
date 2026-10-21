@@ -19,6 +19,7 @@ import { errorCode, signInKit, type SignInKit } from '../../testing/sign-in-kit.
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
 import { readTutorRows } from './load-facts.js';
 import { followTutors } from './tutor-lessons.js';
+import { heldEntry } from '../../testing/held-entry.js';
 
 /** Thursday 15 October 2026, 10:00 in Tashkent. */
 const NOW = '2026-10-15T10:00:00+05:00';
@@ -1189,6 +1190,8 @@ describe('Tutor lessons follow the Tutor', () => {
         .get(Transactions)
         .run([north], async (transaction) => {
           await work(transaction);
+          // Each held side stands for a route that changes the North's lessons.
+          await heldEntry(transaction, north);
           ready();
           await released;
         })

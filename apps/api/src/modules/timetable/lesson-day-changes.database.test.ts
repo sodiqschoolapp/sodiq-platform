@@ -7,6 +7,7 @@ import { at, LessonsKit, type LessonSource } from '../../testing/lessons-kit.js'
 import type { DatedLesson } from '@sodiq/timetable-rules';
 import { settleDayChanges, type Chain, type SortedDayChange } from './day-changes-kept.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
+import { heldEntry } from '../../testing/held-entry.js';
 
 /** Thursday 15 October 2026, 10:00 in Tashkent. */
 const NOW = '2026-10-15T10:00:00+05:00';
@@ -193,9 +194,10 @@ describe('the record of a one-day change in the database', () => {
     const place = await fresh();
     const { id } = await record(place);
     // As a publish removes it, dated after today.
-    await app().run([place.branch], (transaction) =>
-      transaction.deleteFrom('lessons').where('id', '=', place.lesson.id).execute(),
-    );
+    await app().run([place.branch], async (transaction) => {
+      await transaction.deleteFrom('lessons').where('id', '=', place.lesson.id).execute();
+      await heldEntry(transaction, place.branch);
+    });
     const kept = await database.migrator
       .selectFrom('lesson_day_changes')
       .select(['lesson_id', 'from_room_id', 'reason'])
@@ -229,8 +231,8 @@ describe('the record of a one-day change in the database', () => {
     );
     const moveTo = (date: string, time: string) =>
       outcome(
-        app().run([place.branch], (transaction) =>
-          transaction
+        app().run([place.branch], async (transaction) => {
+          await transaction
             .updateTable('lesson_blocks')
             .set({
               lesson_date: date,
@@ -238,8 +240,9 @@ describe('the record of a one-day change in the database', () => {
               ends_at: new Date(at(date, time).getTime() + 45 * 60_000),
             })
             .where('id', '=', place.lesson.block_id)
-            .execute(),
-        ),
+            .execute();
+          await heldEntry(transaction, place.branch);
+        }),
       );
     expect(await moveTo(DATE, '10:00')).toBe('time_claims_room_excl');
     expect(await moveTo('2026-11-09', '09:00')).toBe('lesson_block_quarter');

@@ -25,6 +25,7 @@ import {
 import { LoadKit } from '../../testing/load-kit.js';
 import { MembersKit } from '../../testing/members-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
+import { HELD_ENTRY_ACTION, heldEntry } from '../../testing/held-entry.js';
 
 const refusedWith = (response: Response, status: number, code: string) => {
   expect(response.status, JSON.stringify(response.body)).toBe(status);
@@ -528,7 +529,12 @@ describe('exams in the timetable', () => {
       sql<{ id: string }>`select id from pgboss.job order by id`
         .execute(t.database.migrator)
         .then((result) => result.rows),
-      t.database.migrator.selectFrom('audit_log').select('id').orderBy('id').execute(),
+      t.database.migrator
+        .selectFrom('audit_log')
+        .select('id')
+        .where('action', '<>', HELD_ENTRY_ACTION)
+        .orderBy('id')
+        .execute(),
       // Task 5.6c-3b: the rating link the save writes (last, so the indexes
       // the tests read stay).
       t.database.migrator
@@ -1397,6 +1403,7 @@ describe('exams in the timetable', () => {
             .set({ teacher_id: s.invigilator.staffId })
             .where('id', '=', theirs.id)
             .execute();
+          await heldEntry(transaction, south.branch);
           ready();
           await released;
         })

@@ -748,10 +748,11 @@ describe('the correction of a past lesson', () => {
     const rows = [...document.querySelectorAll('tbody tr')];
     const buttons = (row: number) =>
       [...(rows[row]?.querySelectorAll('button') ?? [])].map((one) => one.textContent);
-    expect(buttons(0)).toEqual([en.timetable.day.correct]);
-    expect(buttons(1)).toEqual([en.timetable.day.correct]);
+    // Task 5.8b: every lesson also opens its history.
+    expect(buttons(0)).toEqual([en.timetable.day.correct, en.timetable.day.history]);
+    expect(buttons(1)).toEqual([en.timetable.day.correct, en.timetable.day.history]);
     expect(buttons(2)).not.toContain(en.timetable.day.correct);
-    expect(buttons(3)).toEqual([]);
+    expect(buttons(3)).toEqual([en.timetable.day.history]);
   });
 
   it('offers no correction to the Principal', async () => {

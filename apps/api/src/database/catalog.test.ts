@@ -186,6 +186,8 @@ function auditSchoolPartitions(): Record<string, string> {
  * Look first).
  */
 const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
+  'lesson_history_unaudited(xid8)':
+    'Whether a line of the lesson history that one transaction wrote has no audit entry of that transaction in its branch, a yes or no asked by Transactions.run before the commit (task 5.8b, correction 2 of pull request #195): the branch filter in force at that moment must not decide it.',
   'audit_names(uuid[])':
     "The first and last name of each person named by an account or staff id, in any branch, for the actor and the person of one page of the audit log (task 2.6a, decision 12 of pull request #75, Look first), and for the Head Teachers and Senior Head Teachers the appointments list of a branch answers, named in every branch (task 3.6a, the owner's answer L32, decision 1 of pull request #118, Look first); the Basic group only.",
   'assignments_class_tutors_end()':

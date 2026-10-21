@@ -1166,7 +1166,8 @@ export async function refuseBlocked(
     | 'day_change_blocked'
     | 'correction_blocked'
     | 'substitution_blocked'
-    | 'substitution_return_blocked',
+    | 'substitution_return_blocked'
+    | 'forced_delete_restore_blocked',
   checked: StoredDayResult,
 ): Promise<void> {
   if (checked.blocked.length === 0) return;

@@ -5,6 +5,7 @@ import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
 import { at, LessonsKit, type LessonSource } from '../../testing/lessons-kit.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
+import { heldEntry } from '../../testing/held-entry.js';
 
 /** Thursday 15 October 2026, 23:30 in Tashkent: today is the 15th, tomorrow the 16th. */
 const NOW = '2026-10-15T23:30:00+05:00';
@@ -144,6 +145,7 @@ describe('the deletes and re-pointing of dated lessons in the database', () => {
       await inBranch(async (transaction) => {
         await transaction.deleteFrom('lessons').where('block_id', '=', written.block).execute();
         await transaction.deleteFrom('lesson_blocks').where('id', '=', written.block).execute();
+        await heldEntry(transaction, north);
       });
       const left = await database.migrator
         .selectFrom('time_claims')

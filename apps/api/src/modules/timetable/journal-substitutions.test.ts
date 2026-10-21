@@ -22,6 +22,7 @@ import {
 } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
+import { HELD_ENTRY_ACTION, heldEntry } from '../../testing/held-entry.js';
 
 const refusedWith = (response: Response, status: number, code: string) => {
   expect(response.status, JSON.stringify(response.body)).toBe(status);
@@ -420,7 +421,12 @@ describe('the substitution from an absence or a vacancy', () => {
       t.database.migrator.selectFrom('substitution_lessons').selectAll().orderBy('id').execute(),
       t.database.migrator.selectFrom('absences').selectAll().orderBy('id').execute(),
       t.database.migrator.selectFrom('notifications').select('id').orderBy('id').execute(),
-      t.database.migrator.selectFrom('audit_log').select('id').orderBy('id').execute(),
+      t.database.migrator
+        .selectFrom('audit_log')
+        .select('id')
+        .where('action', '<>', HELD_ENTRY_ACTION)
+        .orderBy('id')
+        .execute(),
       sql<{ id: string }>`select id from pgboss.job order by id`
         .execute(t.database.migrator)
         .then((result) => result.rows),
@@ -1268,6 +1274,7 @@ describe('the substitution from an absence or a vacancy', () => {
             .set({ teacher_id: teacherId })
             .where('id', '=', lessonId)
             .execute();
+          await heldEntry(transaction, branch);
           await sql`set constraints all immediate`.execute(transaction);
           ready();
           await released;

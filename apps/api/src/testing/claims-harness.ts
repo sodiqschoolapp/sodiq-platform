@@ -5,6 +5,7 @@ import { insertBranch } from './branch-filter-sql.js';
 import { FixedClock } from './fixed-clock.js';
 import { at, LessonsKit } from './lessons-kit.js';
 import { createTestDatabase, type TestDatabase } from './test-database.js';
+import { heldEntry } from './held-entry.js';
 
 export const CHECK_VIOLATION = '23514';
 export const EXCLUSION_VIOLATION = '23P01';
@@ -243,16 +244,21 @@ export function claimsHarness() {
       .where('id', '=', lessonId)
       .execute();
     await linkEarlierExam(transaction, branch, lessonId);
+    await heldEntry(transaction, branch);
   }
 
   /** A lesson cancelled 'exam' held again, its links removed with it. */
   async function restoreFromExam(transaction: Transaction, lessonId: string) {
     await transaction.deleteFrom('lesson_exam_cancels').where('lesson_id', '=', lessonId).execute();
-    await transaction
+    const restored = await transaction
       .updateTable('lessons')
       .set({ cancel_cause: null, cancel_reason: null })
       .where('id', '=', lessonId)
+      .returning('branch_id')
       .execute();
+    for (const { branch_id } of restored) {
+      await heldEntry(transaction, branch_id);
+    }
   }
 
   /** An exam with its out rows, rooms, classes and invigilators, in the transaction given. */

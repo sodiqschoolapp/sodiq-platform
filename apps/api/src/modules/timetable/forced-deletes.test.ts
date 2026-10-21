@@ -1,0 +1,762 @@
+import { randomUUID } from 'node:crypto';
+import {
+  BRANCH_HEADER,
+  REQUEST_KEY_HEADER,
+  forcedDeleteListSchema,
+  forcedDeleteSchema,
+  lessonHistorySchema,
+} from '@sodiq/shared';
+import { sql } from 'kysely';
+import request, { type Response } from 'supertest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { Transactions, type Transaction } from '../../database/transactions.js';
+import {
+  dayTemplatesKit,
+  MONDAY,
+  START,
+  UNKNOWN,
+  type DayTemplatesKit,
+} from '../../testing/day-templates-kit.js';
+import { LoadKit } from '../../testing/load-kit.js';
+import { errorCode } from '../../testing/sign-in-kit.js';
+import { publishedScene, publishOf, type PublishedScene } from '../../testing/published-scene.js';
+import { RESTORE_REFUSALS } from './forced-deletes.service.js';
+
+const refusedWith = (response: Response, status: number, code: string) => {
+  expect(response.status, JSON.stringify(response.body)).toBe(status);
+  expect(errorCode(response)).toBe(code);
+};
+
+const done = (response: Response) => {
+  expect(response.status, JSON.stringify(response.body)).toBe(200);
+  return forcedDeleteSchema.parse(response.body);
+};
+
+/** A moment of a school date at a clock time in Tashkent (+05:00). */
+const at = (date: string, time: string): Date => new Date(`${date}T${time}:00+05:00`);
+
+const NEXT_MONDAY = '2026-10-19';
+/** Monday 5 October 2026, before the clock. */
+const PAST_MONDAY = '2026-10-05';
+
+// All names are invented. Task 5.8b, pull request #195: the Super Admin's
+// forced delete of a dated lesson, its store and its restore, and the history
+// of a lesson (docs/spec/06-timetable.md, Protection: "Forced delete is for
+// Super Admin only, with a typed reason. The attendance and marks are kept for
+// 30 days and can be restored." "Every change records who, when, the value
+// before and the value after."; edge/timetable, After publishing: "Every rule
+// is checked again. The restore can be refused."). The clock stands at 23:55
+// on Saturday 10 October 2026 in Tashkent.
+describe('the forced delete of a dated lesson and its restore', () => {
+  let t: DayTemplatesKit;
+  let load: LoadKit;
+  let northScene: Scene;
+  let adminAccount: string;
+  /** A second Super Admin, for the request keys (at most three: `MAX_SUPER_ADMINS`). */
+  let second: { cookie: string };
+
+  const keyed = (path: string, branch: string, body: object, cookie: string, key: string) =>
+    request(t.kit.server)
+      .post(path)
+      .set('Cookie', cookie)
+      .set(BRANCH_HEADER, branch)
+      .set(REQUEST_KEY_HEADER, key)
+      .send(body);
+
+  const forceDelete = (
+    branch: string,
+    id: string,
+    reason: unknown = 'Entered for the wrong class',
+    cookie = t.admin,
+    key: string = randomUUID(),
+  ) => keyed(`/api/timetable/lessons/${id}/forced-delete`, branch, { reason }, cookie, key);
+
+  const restore = (branch: string, id: string, cookie = t.admin, key: string = randomUUID()) =>
+    keyed(`/api/forced-deletes/${id}/restore`, branch, {}, cookie, key);
+
+  const list = (branch: string, cookie = t.admin) => t.get('/api/forced-deletes', branch, cookie);
+
+  const history = (branch: string, id: string, cookie = t.admin) =>
+    t.get(`/api/timetable/lessons/${id}/history`, branch, cookie);
+
+  const publish = (branch: string, version: string, startsOn: string) =>
+    publishOf(t)(branch, version, startsOn);
+
+  const scene = (input: { branch?: string; double?: boolean } = {}) =>
+    publishedScene(t, load, input);
+
+  type Scene = PublishedScene;
+
+  /** The stored lessons of a class and subject on a date, by start. */
+  const lessonsOf = (s: Scene, date: string, classId = s.classId) =>
+    t.database.migrator
+      .selectFrom('lessons')
+      .selectAll()
+      .where('branch_id', '=', s.branch)
+      .where('class_id', '=', classId)
+      .where('subject_id', '=', s.subject)
+      .where('lesson_date', '=', date)
+      .orderBy('starts_at')
+      .execute();
+
+  const lessonOf = async (s: Scene, date: string, classId = s.classId) => {
+    const [found] = await lessonsOf(s, date, classId);
+    if (found === undefined) throw new Error('No such lesson.');
+    return found;
+  };
+
+  const rowOf = (id: string) =>
+    t.database.migrator.selectFrom('lessons').selectAll().where('id', '=', id).executeTakeFirst();
+
+  const blockOf = (id: string) =>
+    t.database.migrator
+      .selectFrom('lesson_blocks')
+      .selectAll()
+      .where('id', '=', id)
+      .executeTakeFirst();
+
+  const claimsOf = (id: string) =>
+    t.database.migrator
+      .selectFrom('time_claims')
+      .select('kind')
+      .where('lesson_id', '=', id)
+      .execute();
+
+  const historyOf = (id: string) =>
+    t.database.migrator
+      .selectFrom('lesson_history')
+      .selectAll()
+      .where('lesson_id', '=', id)
+      .orderBy('changed_at')
+      .orderBy('id')
+      .execute();
+
+  const noticesOf = (accountId: string) =>
+    t.database.migrator
+      .selectFrom('notifications')
+      .select(['data'])
+      .where('account_id', '=', accountId)
+      .where('kind', '=', 'timetable.day_changed')
+      .execute();
+
+  /** Every row of the tables a forced delete or a restore writes, and the log. */
+  const everything = () =>
+    Promise.all([
+      t.database.migrator.selectFrom('lessons').selectAll().orderBy('id').execute(),
+      t.database.migrator.selectFrom('lesson_blocks').selectAll().orderBy('id').execute(),
+      t.database.migrator.selectFrom('time_claims').selectAll().orderBy('id').execute(),
+      t.database.migrator.selectFrom('lesson_changes').selectAll().orderBy('lesson_id').execute(),
+      t.database.migrator.selectFrom('lesson_day_changes').selectAll().orderBy('id').execute(),
+      t.database.migrator
+        .selectFrom('lesson_absence_taught')
+        .selectAll()
+        .orderBy('lesson_id')
+        .execute(),
+      t.database.migrator
+        .selectFrom('lesson_exam_cancels')
+        .selectAll()
+        .orderBy('lesson_id')
+        .execute(),
+      t.database.migrator
+        .selectFrom('lesson_block_class_outs')
+        .selectAll()
+        .orderBy('block_id')
+        .execute(),
+      t.database.migrator
+        .selectFrom('bulk_cancel_blocks')
+        .selectAll()
+        .orderBy('bulk_cancel_id')
+        .orderBy('block_id')
+        .execute(),
+      t.database.migrator.selectFrom('substitution_lessons').selectAll().orderBy('id').execute(),
+      t.database.migrator.selectFrom('forced_deletes').selectAll().orderBy('id').execute(),
+      t.database.migrator.selectFrom('lesson_history').selectAll().orderBy('id').execute(),
+      t.database.migrator.selectFrom('notifications').select('id').orderBy('id').execute(),
+      t.database.migrator.selectFrom('audit_log').select('id').orderBy('id').execute(),
+      t.database.migrator.selectFrom('request_keys').selectAll().orderBy('key').execute(),
+    ]);
+
+  /** A copy of a stored lesson in a block of its own dated `date`, written by the migrator. */
+  async function lessonDated(s: Scene, date: string) {
+    const from = await lessonOf(s, MONDAY);
+    const block = await blockOf(from.block_id);
+    if (block === undefined) throw new Error('No block.');
+    const made = await t.database.migrator
+      .insertInto('lesson_blocks')
+      .values({
+        branch_id: s.branch,
+        academic_year_id: block.academic_year_id,
+        quarter_id: block.quarter_id,
+        lesson_date: date,
+        starts_at: at(date, '08:00'),
+        ends_at: at(date, '08:45'),
+        version_id: block.version_id,
+        pattern_block_id: block.pattern_block_id,
+      })
+      .returning(['id', 'lesson_date', 'starts_at', 'ends_at'])
+      .executeTakeFirstOrThrow();
+    const lesson = await t.database.migrator
+      .insertInto('lessons')
+      .values({
+        branch_id: s.branch,
+        block_id: made.id,
+        lesson_date: made.lesson_date,
+        starts_at: made.starts_at,
+        ends_at: made.ends_at,
+        class_id: from.class_id,
+        subject_id: from.subject_id,
+        load_row_id: from.load_row_id,
+        pattern_entry_id: from.pattern_entry_id,
+        teacher_id: from.teacher_id,
+        room_id: from.room_id,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    return lesson.id;
+  }
+
+  /** The two Monday lessons of the first class on `date`, made one double pair by the migrator. */
+  async function doubleOf(s: Scene, date: string) {
+    const both = await lessonsOf(s, date);
+    const [first, second] = both;
+    if (both.length !== 2 || first === undefined || second === undefined) {
+      throw new Error('No double lesson.');
+    }
+    await t.database.migrator
+      .updateTable('lesson_blocks')
+      .set({ double_pair_id: randomUUID() })
+      .where('id', 'in', [first.block_id, second.block_id])
+      .execute();
+    return [first, second] as const;
+  }
+
+  /** A substitute put on a lesson through its route. */
+  const substitute = async (s: Scene, lessonId: string) => {
+    const response = await keyed(
+      `/api/timetable/lessons/${lessonId}/substitute`,
+      s.branch,
+      { teacherId: s.spareTeacher.staffId, reason: 'Away at a seminar' },
+      t.admin,
+      randomUUID(),
+    );
+    expect(response.status, JSON.stringify(response.body)).toBe(200);
+  };
+
+  /** The id of the store row of a forced delete answered. */
+  const storeOf = (response: Response) => done(response).id;
+
+  async function waiting(): Promise<number> {
+    const found = await sql<{ n: number }>`
+      select count(distinct l.pid)::int as n
+      from pg_locks l join pg_stat_activity a on a.pid = l.pid
+      where a.datname = current_database() and not l.granted
+    `.execute(t.database.migrator);
+    return found.rows[0]?.n ?? 0;
+  }
+
+  /** Two real requests behind the publish lock held open, the first sent first. */
+  async function inOrder(
+    branch: string,
+    first: () => Promise<Response>,
+    second: () => Promise<Response>,
+  ): Promise<[Response, Response]> {
+    let release: () => void = () => undefined;
+    const released = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let ready: () => void = () => undefined;
+    const isReady = new Promise<void>((resolve) => {
+      ready = resolve;
+    });
+    const held = t.app
+      .get(Transactions)
+      .run([branch], async (transaction: Transaction) => {
+        await sql`select pg_advisory_xact_lock(550001)`.execute(transaction);
+        ready();
+        await released;
+      })
+      .catch((error: unknown) => error);
+    await isReady;
+    const one = first().then((response) => response);
+    await expect.poll(() => waiting(), { timeout: 20_000, interval: 25 }).toBe(1);
+    const two = second().then((response) => response);
+    await expect.poll(() => waiting(), { timeout: 20_000, interval: 25 }).toBe(2);
+    release();
+    expect(await held).toBeUndefined();
+    return Promise.all([one, two]);
+  }
+
+  /** A draft copied from the scene's version, its first class's teacher changed, published from `startsOn`. */
+  async function republish(s: Scene, startsOn: string) {
+    const created = await t.post('/api/timetable/versions', s.branch, {
+      academicYearId: s.year,
+      startsOn,
+      copyFrom: s.version,
+    });
+    expect(created.status, JSON.stringify(created.body)).toBe(201);
+    const draft = (created.body as { id: string }).id;
+    await t.database.migrator
+      .updateTable('teaching_load_rows')
+      .set({ teacher_id: s.spareTeacher.staffId })
+      .where('version_id', '=', draft)
+      .where('class_id', '=', s.classId)
+      .execute();
+    const confirmed = await t.post(`/api/timetable/versions/${draft}/templates/confirm`, s.branch);
+    expect(confirmed.status, JSON.stringify(confirmed.body)).toBe(200);
+    await load.freeEditLock(draft);
+    return () => publish(s.branch, draft, startsOn);
+  }
+
+  beforeAll(async () => {
+    t = await dayTemplatesKit({ jobs: true });
+    load = new LoadKit(t.database.migrator);
+    northScene = await scene({ branch: t.north });
+    const browser = await t.kit.completeSession('Malika', 'Tosheva');
+    await t.kit.giveRole(browser.account.id, { role: 'super_admin' });
+    second = browser;
+    adminAccount = (
+      await t.database.migrator
+        .selectFrom('assignments')
+        .select('account_id')
+        .where('id', '=', t.adminAssignment)
+        .executeTakeFirstOrThrow()
+    ).account_id;
+  });
+
+  afterAll(async () => {
+    await t.close();
+  });
+
+  describe('a forced delete', () => {
+    it('removes a future lesson and its block, keeps them in the store, writes its history line, its entry and the notice', async () => {
+      const s = northScene;
+      const lesson = await lessonOf(s, NEXT_MONDAY);
+      expect(await claimsOf(lesson.id)).not.toEqual([]);
+      const answer = done(
+        await forceDelete(s.branch, lesson.id, '  Entered for the wrong class  '),
+      );
+      expect(answer).toMatchObject({
+        recordType: 'lesson',
+        reason: 'Entered for the wrong class',
+        lesson: { id: lesson.id, date: NEXT_MONDAY, unit: { kind: 'class', id: s.classId } },
+        restoredAt: null,
+        restorable: true,
+      });
+      expect(answer.restoreUntil).toBe(
+        new Date(new Date(START).getTime() + 30 * 86_400_000).toISOString(),
+      );
+      expect(await rowOf(lesson.id)).toBeUndefined();
+      expect(await blockOf(lesson.block_id)).toBeUndefined();
+      expect(await claimsOf(lesson.id)).toEqual([]);
+      expect((await historyOf(lesson.id)).map((one) => one.kind)).toEqual(['forced_delete']);
+      const [entry] = await t.entries('lesson.forced_delete', lesson.id);
+      expect(entry).toMatchObject({
+        assignment_id: t.adminAssignment,
+        reason: 'Entered for the wrong class',
+      });
+      expect(await noticesOf(s.teacher.accountId)).toHaveLength(1);
+      // The other class's lesson at the same time stays.
+      expect(await rowOf((await lessonOf(s, NEXT_MONDAY, s.otherClass)).id)).toBeDefined();
+    });
+
+    it('removes a past lesson, which only a forced delete can, and tells nobody', async () => {
+      const s = northScene;
+      const id = await lessonDated(s, PAST_MONDAY);
+      const before = (await noticesOf(s.teacher.accountId)).length;
+      done(await forceDelete(s.branch, id));
+      expect(await rowOf(id)).toBeUndefined();
+      expect(await noticesOf(s.teacher.accountId)).toHaveLength(before);
+    });
+
+    it('takes one half of a double lesson: the other half and its block stay', async () => {
+      const s = await scene({ double: true });
+      const [first, second] = await doubleOf(s, NEXT_MONDAY);
+      done(await forceDelete(s.branch, second.id));
+      expect(await rowOf(first.id)).toBeDefined();
+      expect(await blockOf(first.block_id)).toBeDefined();
+      expect(await rowOf(second.id)).toBeUndefined();
+    });
+
+    it('ends the substitution of the lesson with its own cause', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, NEXT_MONDAY);
+      await substitute(s, lesson.id);
+      done(await forceDelete(s.branch, lesson.id));
+      const rows = await t.database.migrator
+        .selectFrom('substitution_lessons')
+        .select(['end_cause', 'lesson_id'])
+        .where('lesson_date', '=', NEXT_MONDAY)
+        .where('branch_id', '=', s.branch)
+        .execute();
+      expect(rows).toEqual([{ end_cause: 'forced_delete', lesson_id: null }]);
+    });
+
+    it('refuses a reason missing, of spaces only or of 501 characters as an input error', async () => {
+      const s = northScene;
+      const lesson = await lessonOf(s, '2026-10-26');
+      const before = await everything();
+      for (const body of [{}, { reason: '   ' }, { reason: 'x'.repeat(501) }]) {
+        refusedWith(
+          await keyed(
+            `/api/timetable/lessons/${lesson.id}/forced-delete`,
+            s.branch,
+            body,
+            t.admin,
+            randomUUID(),
+          ),
+          400,
+          'validation_failed',
+        );
+      }
+      expect(await everything()).toEqual(before);
+    });
+
+    it('is refused in a closed year', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, NEXT_MONDAY);
+      await t.database.migrator
+        .updateTable('academic_years')
+        .set({ status: 'current' })
+        .where('id', '=', s.year)
+        .where('status', '=', 'planned')
+        .execute();
+      await t.database.migrator
+        .updateTable('academic_years')
+        .set({ status: 'closed' })
+        .where('id', '=', s.year)
+        .execute();
+      refusedWith(await forceDelete(s.branch, lesson.id), 409, 'timetable_year_closed');
+      expect(await rowOf(lesson.id)).toBeDefined();
+    });
+
+    it('is refused to the Academic Vice Principal, the Principal and a Teacher, and nothing changes', async () => {
+      const s = northScene;
+      const lesson = await lessonOf(s, '2026-11-09');
+      const before = await everything();
+      for (const cookie of [t.vicePrincipal, t.principal, t.teacher]) {
+        refusedWith(
+          await forceDelete(s.branch, lesson.id, 'Rain', cookie),
+          403,
+          'permission_denied',
+        );
+      }
+      expect(await everything()).toEqual(before);
+    });
+
+    it('answers 404 for a lesson of another branch and an unknown one, and nothing changes', async () => {
+      const other = await scene();
+      const foreign = await lessonOf(other, NEXT_MONDAY);
+      const before = await everything();
+      refusedWith(await forceDelete(t.north, foreign.id), 404, 'not_found');
+      refusedWith(await forceDelete(t.north, UNKNOWN), 404, 'not_found');
+      expect(await everything()).toEqual(before);
+    });
+
+    it('keeps a used key to its account, its branch and its role (request keys)', async () => {
+      const s = northScene;
+      const other = await scene();
+      const foreign = await lessonOf(other, NEXT_MONDAY);
+      const lesson = await lessonOf(s, '2026-11-16');
+      const key = randomUUID();
+      done(await forceDelete(s.branch, lesson.id, 'Rain', t.admin, key));
+      const after = await everything();
+      done(await forceDelete(s.branch, lesson.id, 'Rain', t.admin, key));
+      expect(await everything()).toEqual(after);
+      refusedWith(
+        await forceDelete(s.branch, lesson.id, 'Rain', second.cookie, key),
+        409,
+        'request_key_reused',
+      );
+      refusedWith(await forceDelete(s.branch, foreign.id, 'Rain', t.admin, key), 404, 'not_found');
+      refusedWith(await forceDelete(s.branch, UNKNOWN, 'Rain', t.admin, key), 404, 'not_found');
+      refusedWith(
+        await forceDelete(s.branch, lesson.id, 'Rain', t.vicePrincipal, key),
+        403,
+        'permission_denied',
+      );
+      expect(await everything()).toEqual(after);
+      expect(await t.entries('lesson.forced_delete', lesson.id)).toHaveLength(1);
+    });
+  });
+
+  describe('a restore', () => {
+    it('puts back the same lesson and block within 30 days, with its claims, its history line and its entry', async () => {
+      const s = northScene;
+      const lesson = await lessonOf(s, '2026-11-23');
+      const block = await blockOf(lesson.block_id);
+      const store = storeOf(await forceDelete(s.branch, lesson.id));
+      const answer = done(await restore(s.branch, store));
+      expect(answer).toMatchObject({ restorable: false, restoredBy: { id: adminAccount } });
+      // `created_at` is bookkeeping, written again by the insert.
+      const { created_at: _lessonCreated, ...kept } = lesson;
+      void _lessonCreated;
+      expect(await rowOf(lesson.id)).toMatchObject(kept);
+      const { created_at: _blockCreated, ...keptBlock } = block ?? {};
+      void _blockCreated;
+      expect(await blockOf(lesson.block_id)).toMatchObject(keptBlock);
+      expect(await claimsOf(lesson.id)).not.toEqual([]);
+      expect((await historyOf(lesson.id)).map((one) => one.kind)).toEqual([
+        'forced_delete',
+        'restored',
+      ]);
+      expect(await t.entries('forced_delete.restore', lesson.id)).toHaveLength(1);
+      refusedWith(await restore(s.branch, store), 409, 'forced_delete_restored');
+    });
+
+    it('puts back the second half of a double into its pair', async () => {
+      const s = await scene({ double: true });
+      const [first, second] = await doubleOf(s, NEXT_MONDAY);
+      const pair = (await blockOf(first.block_id))?.double_pair_id;
+      const store = storeOf(await forceDelete(s.branch, second.id));
+      done(await restore(s.branch, store));
+      expect((await blockOf(second.block_id))?.double_pair_id).toBe(pair);
+    });
+
+    it('records the substitution again for the same record', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, NEXT_MONDAY);
+      await substitute(s, lesson.id);
+      const store = storeOf(await forceDelete(s.branch, lesson.id));
+      done(await restore(s.branch, store));
+      expect((await rowOf(lesson.id))?.teacher_id).toBe(s.spareTeacher.staffId);
+      const rows = await t.database.migrator
+        .selectFrom('substitution_lessons')
+        .select(['substitution_id', 'end_cause', 'lesson_id'])
+        .where('lesson_date', '=', NEXT_MONDAY)
+        .where('branch_id', '=', s.branch)
+        .orderBy('id')
+        .execute();
+      expect(rows).toHaveLength(2);
+      expect(rows[0]?.substitution_id).toBe(rows[1]?.substitution_id);
+      expect(rows.map((one) => [one.end_cause, one.lesson_id])).toEqual([
+        ['forced_delete', null],
+        [null, lesson.id],
+      ]);
+    });
+
+    it('is refused after its 30 days', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, '2027-01-25');
+      const store = storeOf(await forceDelete(s.branch, lesson.id));
+      // The 30 days are a stored moment, compared with the clock on each request.
+      await t.database.migrator
+        .updateTable('forced_deletes')
+        .set({ restore_until: new Date(START) })
+        .where('id', '=', store)
+        .execute();
+      refusedWith(await restore(s.branch, store), 409, 'forced_delete_expired');
+      const listed = forcedDeleteListSchema.parse((await list(s.branch)).body);
+      expect(listed.entries.find((one) => one.id === store)?.restorable).toBe(false);
+      expect(await rowOf(lesson.id)).toBeUndefined();
+    });
+
+    it('is refused when a later version is in force on the date', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, '2026-11-30');
+      const store = storeOf(await forceDelete(s.branch, lesson.id));
+      const later = await republish(s, '2026-11-02');
+      expect((await later()).status).toBe(200);
+      refusedWith(await restore(s.branch, store), 409, 'forced_delete_version');
+    });
+
+    it('is refused when the room went to another lesson, every rule checked again', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, NEXT_MONDAY);
+      const store = storeOf(await forceDelete(s.branch, lesson.id));
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ room_id: s.room })
+        .where('id', '=', (await lessonOf(s, NEXT_MONDAY, s.otherClass)).id)
+        .execute();
+      refusedWith(await restore(s.branch, store), 409, 'forced_delete_restore_blocked');
+      expect(await rowOf(lesson.id)).toBeUndefined();
+    });
+
+    it('is refused when the exam that cancelled the lesson no longer stands', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, NEXT_MONDAY);
+      const exam = await t.database.migrator
+        .insertInto('exams')
+        .values({
+          branch_id: s.branch,
+          academic_year_id: s.year,
+          exam_date: NEXT_MONDAY,
+          starts_at: lesson.starts_at,
+          ends_at: lesson.ends_at,
+          first_slot: 1,
+          last_slot: 1,
+          title: 'Quarter exam',
+          cancel_cause: 'cancelled',
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await t.database.migrator.transaction().execute(async (transaction) => {
+        await transaction
+          .updateTable('lessons')
+          .set({ cancel_cause: 'exam' })
+          .where('id', '=', lesson.id)
+          .execute();
+        await transaction
+          .insertInto('lesson_exam_cancels')
+          .values({ branch_id: s.branch, lesson_id: lesson.id, exam_id: exam.id })
+          .execute();
+      });
+      const store = storeOf(await forceDelete(s.branch, lesson.id));
+      refusedWith(await restore(s.branch, store), 409, 'forced_delete_parent_changed');
+    });
+
+    it('maps the claims and the commit checks of 0058 to forced_delete_restore_blocked', () => {
+      for (const name of [
+        'time_claims_teacher_excl',
+        'time_claims_room_excl',
+        'time_claims_class_excl',
+        'room_shared_full',
+        'room_shared_capacity',
+        'lesson_block_student_twice',
+      ]) {
+        expect(RESTORE_REFUSALS[name]).toBe('forced_delete_restore_blocked');
+      }
+    });
+
+    it('is refused to every role but the Super Admin, and answers 404 for another branch’s and an unknown id', async () => {
+      const s = northScene;
+      const lesson = await lessonOf(s, '2026-12-07');
+      const store = storeOf(await forceDelete(s.branch, lesson.id));
+      const other = await scene();
+      const foreign = storeOf(
+        await forceDelete(other.branch, (await lessonOf(other, NEXT_MONDAY)).id),
+      );
+      const before = await everything();
+      for (const cookie of [t.vicePrincipal, t.principal, t.teacher]) {
+        refusedWith(await restore(s.branch, store, cookie), 403, 'permission_denied');
+        refusedWith(await list(s.branch, cookie), 403, 'permission_denied');
+      }
+      refusedWith(await restore(t.north, foreign), 404, 'not_found');
+      refusedWith(await restore(t.north, UNKNOWN), 404, 'not_found');
+      expect(await everything()).toEqual(before);
+      // The list holds the branch's records only.
+      const listed = forcedDeleteListSchema.parse((await list(t.north)).body);
+      expect(listed.entries.map((one) => one.id)).toContain(store);
+      expect(listed.entries.map((one) => one.id)).not.toContain(foreign);
+    });
+
+    it('keeps a used key to its account, its branch and its role (request keys)', async () => {
+      const s = northScene;
+      const lesson = await lessonOf(s, '2026-12-14');
+      const store = storeOf(await forceDelete(s.branch, lesson.id));
+      const other = await scene();
+      const foreign = storeOf(
+        await forceDelete(other.branch, (await lessonOf(other, NEXT_MONDAY)).id),
+      );
+      const key = randomUUID();
+      done(await restore(s.branch, store, t.admin, key));
+      const after = await everything();
+      done(await restore(s.branch, store, t.admin, key));
+      expect(await everything()).toEqual(after);
+      refusedWith(await restore(s.branch, store, second.cookie, key), 409, 'request_key_reused');
+      refusedWith(await restore(s.branch, foreign, t.admin, key), 404, 'not_found');
+      refusedWith(await restore(s.branch, UNKNOWN, t.admin, key), 404, 'not_found');
+      refusedWith(await restore(s.branch, store, t.vicePrincipal, key), 403, 'permission_denied');
+      expect(await everything()).toEqual(after);
+    });
+  });
+
+  describe('at the same moment', () => {
+    it('a restore and a publish of the date: the restore first is replaced by the publish; the publish first refuses the restore', async () => {
+      for (const restoreFirst of [true, false]) {
+        const s = await scene();
+        const lesson = await lessonOf(s, '2026-11-30');
+        const store = storeOf(await forceDelete(s.branch, lesson.id));
+        const later = await republish(s, '2026-11-02');
+        const [one, two] = await inOrder(
+          s.branch,
+          restoreFirst ? () => restore(s.branch, store) : later,
+          restoreFirst ? later : () => restore(s.branch, store),
+        );
+        const [restored, published] = restoreFirst ? [one, two] : [two, one];
+        expect(published.status, JSON.stringify(published.body)).toBe(200);
+        if (restoreFirst) {
+          done(restored);
+          expect((await lessonOf(s, '2026-11-30')).teacher_id).toBe(s.spareTeacher.staffId);
+        } else {
+          refusedWith(restored, 409, 'forced_delete_version');
+        }
+      }
+    });
+
+    it('a forced delete and a one-day cancel of the lesson: the delete first leaves nothing to cancel; the cancel first is kept in the store', async () => {
+      for (const deleteFirst of [true, false]) {
+        const s = await scene();
+        const lesson = await lessonOf(s, NEXT_MONDAY);
+        const cancel = () =>
+          keyed(
+            `/api/timetable/lessons/${lesson.id}/cancel`,
+            s.branch,
+            { reason: 'Excursion' },
+            t.admin,
+            randomUUID(),
+          );
+        const [one, two] = await inOrder(
+          s.branch,
+          deleteFirst ? () => forceDelete(s.branch, lesson.id) : cancel,
+          deleteFirst ? cancel : () => forceDelete(s.branch, lesson.id),
+        );
+        const [deleted, cancelled] = deleteFirst ? [one, two] : [two, one];
+        const answer = done(deleted);
+        if (deleteFirst) {
+          refusedWith(cancelled, 404, 'not_found');
+          expect(answer.lesson.cancelCause).toBeNull();
+        } else {
+          expect(cancelled.status, JSON.stringify(cancelled.body)).toBe(200);
+          expect(answer.lesson.cancelCause).toBe('reason');
+        }
+      }
+    });
+  });
+
+  describe('the history of a lesson', () => {
+    it('lists who changed what, when, before and after, for the Principal too', async () => {
+      const s = northScene;
+      const lesson = await lessonOf(s, '2027-02-08');
+      const cancelled = await keyed(
+        `/api/timetable/lessons/${lesson.id}/cancel`,
+        s.branch,
+        { reason: 'Excursion' },
+        t.admin,
+        randomUUID(),
+      );
+      expect(cancelled.status, JSON.stringify(cancelled.body)).toBe(200);
+      const response = await history(s.branch, lesson.id, t.admin);
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      const answer = lessonHistorySchema.parse(response.body);
+      expect(answer.lines).toHaveLength(1);
+      expect(answer.lines[0]).toMatchObject({
+        kind: 'changed',
+        who: { id: adminAccount },
+        cancelCause: { before: null, after: 'reason' },
+        cancelReason: { before: null, after: 'Excursion' },
+        teacher: { before: { id: s.teacher.staffId }, after: { id: s.teacher.staffId } },
+      });
+      expect(answer.lines[0]?.changedAt).toBe(new Date(START).toISOString());
+      // A lesson force-deleted keeps its history.
+      done(await forceDelete(s.branch, lesson.id));
+      const principal = lessonHistorySchema.parse(
+        (await history(s.branch, lesson.id, t.principal)).body,
+      );
+      expect(principal.lines.map((one) => one.kind)).toEqual(['changed', 'forced_delete']);
+    });
+
+    it('is refused to a Teacher and answers 404 for another branch’s and an unknown lesson', async () => {
+      const s = northScene;
+      const lesson = await lessonOf(s, '2027-02-01');
+      const other = await scene();
+      refusedWith(await history(s.branch, lesson.id, t.teacher), 403, 'permission_denied');
+      refusedWith(
+        await history(t.north, (await lessonOf(other, NEXT_MONDAY)).id),
+        404,
+        'not_found',
+      );
+      refusedWith(await history(t.north, UNKNOWN), 404, 'not_found');
+    });
+  });
+});

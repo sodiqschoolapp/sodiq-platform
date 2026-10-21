@@ -595,6 +595,17 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     substitution_not_in_force: 'У этого урока нет замены, которую можно отменить. Обновите день.',
     substitution_return_blocked:
       'У учителя, которому возвращается урок, в это время другой урок или экзамен либо не хватает времени на дорогу. Сначала измените тот урок.',
+    lesson_holds_data:
+      'В уроке есть посещаемость или оценки, поэтому его нельзя удалить. Удалить его окончательно, с причиной, может только Суперадминистратор.',
+    forced_delete_expired:
+      '30 дней на восстановление этого урока прошли, его больше нельзя восстановить.',
+    forced_delete_restored: 'Этот урок уже восстановлен. Обновите список.',
+    forced_delete_version:
+      'На дату этого урока теперь действует другое расписание, поэтому он не может вернуться. Добавьте урок в это расписание.',
+    forced_delete_parent_changed:
+      'С момента удаления изменилось то, с чем был связан урок (экзамен, отменивший его, отменён), поэтому он не может вернуться в прежнем виде.',
+    forced_delete_restore_blocked:
+      'Урок не может вернуться: он нарушил бы правило расписания, указанное ниже. Сначала измените урок, занявший его место.',
     journal_substitute_none:
       'Ни один урок журнала в этот период не может взять этого заменяющего. Даты и причины перечислены; выберите другого учителя.',
     vacancy_has_load:
@@ -970,6 +981,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     settingsLink: 'Настройки',
     travelTimesLink: 'Время в пути',
     subjectsLink: 'Предметы',
+    forcedDeletesLink: 'Удалённые уроки',
     branches: {
       title: 'Филиалы',
       caption: 'Филиалы школы',
@@ -2800,6 +2812,28 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     roleHint: 'Права остаются по всем вашим ролям.',
     branch: 'Филиал',
   },
+  forcedDeletes: {
+    title: 'Удалённые уроки',
+    caption: 'Уроки, удалённые окончательно',
+    lesson: 'Урок',
+    unit: 'Класс или группа',
+    subject: 'Предмет',
+    teacher: 'Учитель',
+    room: 'Кабинет',
+    reason: 'Причина',
+    deleted: 'Удалён',
+    deletedBy: '{{name}}, {{moment}}',
+    state: 'Состояние',
+    state_restorable: 'Можно восстановить',
+    state_restored: 'Восстановлен',
+    state_expired: 'Прошло 30 дней',
+    restoreUntil: 'Можно восстановить до',
+    restored: 'Восстановлен',
+    restore: 'Восстановить',
+    restoredMessage: 'Урок восстановлен.',
+    emptyTitle: 'Удалённых уроков нет',
+    empty: 'Урок, удалённый окончательно со страницы дня класса, виден здесь 30 дней.',
+  },
   audit: {
     title: 'Журнал аудита',
     caption: 'Записи журнала аудита',
@@ -3182,6 +3216,10 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         correct: 'Прошедший урок исправлен',
         substitute: 'Назначена замена на урок',
         substitute_withdraw: 'Замена отменена',
+        forced_delete: 'Урок удалён окончательно',
+      },
+      forced_delete: {
+        restore: 'Удалённый урок восстановлен',
       },
       teaching_load: {
         create: 'Добавлена строка учебной нагрузки',
@@ -3873,6 +3911,35 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       cancelSend: 'Отменить экзамен',
       cancelKeeping: 'Отменить экзамен и оставить эти уроки отменёнными',
     },
+    forcedDelete: {
+      title: 'Удалить окончательно: {{subject}}, {{unit}}, {{time}}',
+      kept_one:
+        'Урок и его данные хранятся {{count}} день, их можно восстановить в разделе «Удалённые уроки».',
+      kept_few:
+        'Урок и его данные хранятся {{count}} дня, их можно восстановить в разделе «Удалённые уроки».',
+      kept_many:
+        'Урок и его данные хранятся {{count}} дней, их можно восстановить в разделе «Удалённые уроки».',
+      kept_other:
+        'Урок и его данные хранятся {{count}} дня, их можно восстановить в разделе «Удалённые уроки».',
+      send: 'Удалить окончательно',
+      done: 'Урок удалён окончательно. Его можно восстановить в разделе «Удалённые уроки» в течение 30 дней.',
+    },
+    lessonHistory: {
+      title: 'История: {{subject}}, {{unit}}, {{time}}',
+      empty: 'В этом уроке ничего не менялось.',
+      none: 'нет',
+      teacher: 'Учитель: {{before}} → {{after}}',
+      room: 'Кабинет: {{before}} → {{after}}',
+      time: 'Время: {{before}} → {{after}}',
+      cancelled: 'Отменён: {{reason}}',
+      uncancelled: 'Восстановлен после отмены',
+      by: '{{name}}, {{moment}}',
+      system: 'Система',
+      kind_changed: 'Изменён',
+      kind_removed: 'Удалён новым расписанием',
+      kind_forced_delete: 'Удалён окончательно',
+      kind_restored: 'Восстановлен',
+    },
     day: {
       // The class's exams of the date (task 5.6c-2).
       exam: 'Экзамен',
@@ -3989,6 +4056,9 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       withdrawSubstitutionTitle: 'Отменить замену: {{subject}} в {{time}}',
       withdrawSubstitutionSend: 'Отменить замену',
       substitutionWithdrawn: 'Замена отменена.',
+      historyColumn: 'Изменения',
+      history: 'История',
+      forcedDelete: 'Удалить окончательно',
     },
     // The substitution per journal (task 5.7b-2).
     journalSubstitute: {
