@@ -286,6 +286,9 @@ function DayHeading({ day, language }: { day: ViewDay; language: Language }) {
         {weekdayName(language, weekdayOf(day.date))}, {schoolDateText(day.date, language)}
       </h2>
       {day.outsideYear && <p className="text-sm text-muted">{t('timetable.views.outsideYear')}</p>}
+      {!day.outsideYear && day.version === null && (
+        <p className="text-sm text-muted">{t('timetable.views.noVersion')}</p>
+      )}
       {day.dayOff !== null && (
         <p className="text-sm">{t('timetable.views.dayOff', { name: day.dayOff })}</p>
       )}
@@ -338,7 +341,11 @@ function DayTable({ items, language }: { items: Item[]; language: Language }) {
             const time = `${timeText(item.start)}–${timeText(item.end)}`;
             if (item.kind === 'busy') {
               return (
-                <TableRow key={`busy-${String(item.start)}`} data-busy="true" className="bg-muted">
+                <TableRow
+                  key={`busy-${String(item.start)}-${item.busy.branch.id}`}
+                  data-busy="true"
+                  className="bg-muted"
+                >
                   <TableCell>{time}</TableCell>
                   <TableCell colSpan={5}>
                     {t('timetable.views.busyIn', { branch: item.busy.branch.name })}
@@ -498,7 +505,10 @@ function WeekGrid({ view, language }: { view: TimetableView; language: Language 
         </Table>
       </div>
       {view.days.map((day) =>
-        day.dayOff === null && !day.fromPattern && !day.outsideYear ? null : (
+        day.dayOff === null &&
+        !day.fromPattern &&
+        !day.outsideYear &&
+        day.version !== null ? null : (
           <DayHeading key={day.date} day={day} language={language} />
         ),
       )}

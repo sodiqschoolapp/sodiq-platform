@@ -18,6 +18,7 @@ import { standingExamOver } from '../../testing/exams-kit.js';
 import { heldEntry } from '../../testing/held-entry.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { publishedScene, publishOf, type PublishedScene } from '../../testing/published-scene.js';
+import { subjectsTaughtOn } from './views.service.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 
 const NEXT_MONDAY = '2026-10-19';
@@ -619,6 +620,24 @@ describe('the timetable views', () => {
         403,
         'timetable_view_scope',
       );
+      // Spec review of the code, must-fix 3: the rows are read for each day,
+      // so the days of the second version name no subject of the teacher.
+      const byDay = await t.app
+        .get(Transactions)
+        .run([scene.branch], (transaction: Transaction) =>
+          subjectsTaughtOn(transaction, scene.branch, scene.teacher.staffId, [
+            '2026-10-12',
+            '2026-10-13',
+            '2026-10-14',
+            '2026-10-15',
+          ]),
+        );
+      expect([...byDay.entries()].map(([date, ids]) => [date, [...ids]])).toEqual([
+        ['2026-10-12', [scene.subject]],
+        ['2026-10-13', [scene.subject]],
+        ['2026-10-14', []],
+        ['2026-10-15', []],
+      ]);
     });
   });
 
@@ -692,10 +711,17 @@ describe('the timetable views', () => {
       expect(own.days[0]?.axis).toBe('clock');
       expect(JSON.stringify(own.busy)).not.toContain(away.classId);
 
-      // The Academic Vice Principal's view (here the Super Admin's) shows it too.
+      // The Academic Vice Principal's view shows it too.
+      const vice = await person(
+        'Oydin',
+        'Rasulova',
+        { role: 'academic_vice_principal' },
+        here.branch,
+      );
       expect(
-        viewOf(await view('teacher', { staffId: here.spareTeacher.staffId }, t.admin, here.branch))
-          .busy,
+        viewOf(
+          await view('teacher', { staffId: here.spareTeacher.staffId }, vice.cookie, here.branch),
+        ).busy,
       ).toHaveLength(1);
 
       // The reading branch's own lessons are never busy blocks.
@@ -763,6 +789,204 @@ describe('the timetable views', () => {
       expect(read.days[0]?.fromPattern).toBe(true);
       expect(read.lessons).toHaveLength(1);
       expect(read.lessons[0]).toMatchObject({ start: 480, lessonNumber: 1, changed: false });
+    });
+  });
+
+  // Spec review of the code, must-fixes 1, 2, 5, 6 and 7.
+  describe('the paths the review named', () => {
+    it('lays a room out by clock time when its day holds lessons of two templates', async () => {
+      const scene = await publishedScene(t, load);
+      const date = '2026-10-26';
+      // 7 Princeton becomes grade 8, whose Mondays start at 08:05 from 26 October.
+      const slot = await t.createSlotType(scene.branch, 'Grade 8 lesson', 'lesson', 45);
+      const later = await t.createTemplate(scene.branch, 'Grade 8', [slot, slot, slot], '08:05');
+      await t.database.migrator
+        .insertInto('day_template_assignments')
+        .values({
+          branch_id: scene.branch,
+          level: 'weekday_grades',
+          weekday: 1,
+          grade_from: 8,
+          grade_to: 8,
+          day_template_id: later,
+          valid_from: date,
+        })
+        .execute();
+      await t.database.migrator
+        .updateTable('classes')
+        .set({ grade: 8 })
+        .where('id', '=', scene.otherClass)
+        .execute();
+      // Both lessons in one shared room.
+      await t.database.migrator
+        .updateTable('rooms')
+        .set({ shared: true, max_simultaneous_lessons: 2 })
+        .where('id', '=', scene.room)
+        .execute();
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ room_id: scene.room })
+        .where('id', '=', (await lessonOf(scene, date, scene.otherClass)).id)
+        .execute();
+      const read = viewOf(await view('room', { date, roomId: scene.room }, t.admin, scene.branch));
+      expect(read.lessons).toHaveLength(2);
+      expect(read.days[0]?.axis).toBe('clock');
+      expect(read.days[0]?.slots).toEqual([]);
+      // One template only on another Monday: lesson numbers.
+      const before = viewOf(
+        await view('room', { date: NEXT_MONDAY, roomId: scene.room }, t.admin, scene.branch),
+      );
+      expect(before.days[0]?.axis).toBe('slots');
+    });
+
+    it('shows a Head Teacher no exam of another subject, nor one with no subject', async () => {
+      const scene = await publishedScene(t, load);
+      const head = await person(
+        'Bahrom',
+        'Toshev',
+        { role: 'head_teacher', subjectIds: [scene.subject] },
+        scene.branch,
+      );
+      const other = await load.classes.subject({ grades: [7] });
+      for (const [date, subject] of [
+        ['2026-11-30', null],
+        ['2026-12-07', other],
+      ] as const) {
+        // The teacher's own lesson is cancelled, and they invigilate the other class's exam.
+        const own = await lessonOf(scene, date);
+        expect(
+          (
+            await keyed(`/api/timetable/lessons/${own.id}/cancel`, scene.branch, {
+              reason: 'Exam duty',
+            })
+          ).status,
+        ).toBe(200);
+        const examId = await standingExamOver(t.database.migrator, {
+          lessonId: (await lessonOf(scene, date, scene.otherClass)).id,
+          roomId: scene.otherRoom,
+          staffId: scene.teacher.staffId,
+        });
+        await t.database.migrator
+          .updateTable('exams')
+          .set({ subject_id: subject })
+          .where('id', '=', examId)
+          .execute();
+        const all = viewOf(
+          await view('teacher', { date, staffId: scene.teacher.staffId }, t.admin, scene.branch),
+        );
+        expect(all.exams.map((one) => one.id)).toEqual([examId]);
+        const theirs = viewOf(
+          await view(
+            'teacher',
+            { date, staffId: scene.teacher.staffId },
+            head.cookie,
+            scene.branch,
+          ),
+        );
+        expect(theirs.exams).toEqual([]);
+        expect(theirs.lessons.map((one) => one.id)).toEqual([own.id]);
+      }
+    });
+
+    it('answers 404 for another branch’s vacancy and shows a vacancy of the branch', async () => {
+      const elsewhere = await load.vacancy(south.branch);
+      refused(await view('teacher', { staffId: elsewhere }), 404, 'not_found');
+      const vacancy = await load.vacancy(s.branch);
+      const read = viewOf(await view('teacher', { staffId: vacancy }));
+      expect(read.subject?.id).toBe(vacancy);
+      expect(read.busy).toEqual([]);
+      // A Head Teacher never reads a vacancy.
+      refused(
+        await view('teacher', { staffId: vacancy }, cookies.head),
+        403,
+        'timetable_view_scope',
+      );
+    });
+
+    it('lists a group lesson on the view of each class it draws from', async () => {
+      const scene = await publishedScene(t, load);
+      const date = '2026-10-26';
+      const group = await load.classes.group(scene.branch, scene.year, scene.subject, [
+        scene.classId,
+        scene.otherClass,
+      ]);
+      // 7 Oxford's own lesson at that time is cancelled, so the group's can claim the class.
+      const own = await lessonOf(scene, date);
+      expect(
+        (await keyed(`/api/timetable/lessons/${own.id}/cancel`, scene.branch, { reason: 'Trip' }))
+          .status,
+      ).toBe(200);
+      const lesson = await lessonOf(scene, date, scene.otherClass);
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ class_id: null, group_id: group })
+        .where('id', '=', lesson.id)
+        .execute();
+      for (const classId of [scene.classId, scene.otherClass]) {
+        const read = viewOf(await view('class', { date, classId }, t.admin, scene.branch));
+        const found = read.lessons.find((one) => one.id === lesson.id);
+        expect(found?.unit).toMatchObject({ kind: 'group', id: group });
+        expect(found?.classIds.sort()).toEqual([scene.classId, scene.otherClass].sort());
+      }
+    });
+
+    it('lists a special working Saturday of the week (decision 7)', async () => {
+      const scene = await publishedScene(t, load);
+      const saturday = '2026-10-24';
+      const template = await t.database.migrator
+        .selectFrom('day_template_assignments')
+        .select('day_template_id')
+        .where('branch_id', '=', scene.branch)
+        .executeTakeFirstOrThrow();
+      await t.database.migrator
+        .insertInto('calendar_entries')
+        .values({
+          branch_id: scene.branch,
+          kind: 'special_day',
+          name: 'Worked by Monday',
+          first_date: saturday,
+          last_date: saturday,
+          day_template_id: template.day_template_id,
+          follows_weekday: 1,
+        })
+        .execute();
+      // The teacher's hours cover that Saturday too.
+      const entry = await t.database.migrator
+        .selectFrom('staff_availability')
+        .select(['id', 'valid_until'])
+        .where('staff_id', '=', scene.teacher.staffId)
+        .where('branch_id', '=', scene.branch)
+        .executeTakeFirstOrThrow();
+      await t.database.migrator
+        .insertInto('staff_availability_ranges')
+        .values({
+          entry_id: entry.id,
+          branch_id: scene.branch,
+          staff_id: scene.teacher.staffId,
+          weekday: 6,
+          start_minutes: 0,
+          end_minutes: 1440,
+          valid_from: '2026-09-01',
+          valid_until: entry.valid_until,
+        })
+        .execute();
+      const lesson = await lessonOf(scene, NEXT_MONDAY);
+      const moved = await keyed(`/api/timetable/lessons/${lesson.id}/move`, scene.branch, {
+        date: saturday,
+        lessonNumber: 1,
+        reason: 'Worked Saturday',
+      });
+      expect(moved.status, JSON.stringify(moved.body)).toBe(200);
+      const read = viewOf(
+        await view(
+          'class',
+          { date: NEXT_MONDAY, span: 'week', classId: scene.classId },
+          t.admin,
+          scene.branch,
+        ),
+      );
+      expect(read.days.map((one) => one.date)).toContain(saturday);
+      expect(read.lessons.find((one) => one.date === saturday)).toBeDefined();
     });
   });
 });

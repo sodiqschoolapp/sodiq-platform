@@ -535,7 +535,7 @@ async function scopeOf(transaction: Transaction, access: Access): Promise<Scope>
  * The subjects of the load rows that name the staff record in the published
  * version in force on each date (decision 4, decided day by day).
  */
-async function subjectsTaughtOn(
+export async function subjectsTaughtOn(
   transaction: Transaction,
   branchId: string,
   staffId: string,

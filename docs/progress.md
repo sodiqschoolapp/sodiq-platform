@@ -6,7 +6,7 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 
 - A read-only page Timetable views (`/timetable/views`) shows the school, a class, a teacher or a room by day or by week, from the dated lessons with every one-day change: the "changed" mark, "Cancelled: <reason>", substitutes and "Replaced by", exams marked "Exam", busy blocks of other branches, the version and its "valid from" on each day.
 - The new area `timetable_views` lets nine roles in; the scope of each is decided in `views.service.ts` for every request. The menu item "Timetable" opens the views for the roles that see no draft.
-- Left out: the teacher home page across branches (5.9b); print, PDF and Excel (5.9c); the load report with invigilations (9.3b, From line).
+- Left out: the teacher home page across branches (5.9b); print, PDF and Excel (5.9c); the load report with invigilations (9.3b, From line). The browser test reads a changed, cancelled lesson only; an exam on the views and the Tutor's scope are tested on the routes and the page, not in the browser (no seeded exam or Tutor in a published scene).
 
 The next sessions must know:
 

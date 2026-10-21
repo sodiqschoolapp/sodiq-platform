@@ -302,6 +302,7 @@ Plan approved on pull request #197 with corrections 1 to 5; decisions 1 to 15 co
 | A teacher or room day is on the clock axis when its lessons and exams come from templates with different times, or it holds a busy block; a week with one such day is drawn by clock | Decision 10, correction 2 |
 | Each day names the version in force and its "valid from"; `versionOnDate` answers id, number and start | Decision 11 |
 | The views write no audit entry | Decision 12 |
+| **Build decision.** The teacher view takes `staffId` for a person and for a vacancy alike (both are `staff` rows), where the plan named `staffId` or `vacancyId` | Spec review of the code, should-fix 4 |
 | **Build decision.** `GET /api/timetable/views/choices` takes an optional date and answers for today in the branch without one, so a role without the area `timetable` learns today from the server | Plan, screens |
 
 ## 21 October 2026: forced delete of a building, floor or room (task 5.8c)
