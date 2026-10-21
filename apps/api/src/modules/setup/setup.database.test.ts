@@ -442,14 +442,19 @@ describe('school setup in the database', () => {
     });
   });
 
-  // CLAUDE.md: archive, do not delete. The application user removes nothing
-  // and changes only what the Super Admin may type.
+  // CLAUDE.md: archive, do not delete. The application user removes no branch
+  // and changes only what the Super Admin may type; a building, floor or room
+  // goes only by the Super Admin's forced delete (task 5.8c, 0106), which the
+  // database refuses for any other delete.
   describe('let the application', () => {
-    it('remove nothing', async () => {
-      for (const table of ['branches', 'buildings', 'floors', 'rooms'] as const) {
+    it('remove nothing outside a forced delete', async () => {
+      await expect(
+        inBranch(north, (transaction) => transaction.deleteFrom('branches').execute()),
+      ).rejects.toMatchObject({ code: INSUFFICIENT_PRIVILEGE });
+      for (const table of ['buildings', 'floors', 'rooms'] as const) {
         await expect(
           inBranch(north, (transaction) => transaction.deleteFrom(table).execute()),
-        ).rejects.toMatchObject({ code: INSUFFICIENT_PRIVILEGE });
+        ).rejects.toMatchObject({ code: CHECK_VIOLATION, constraint: 'place_delete_unforced' });
       }
     });
 

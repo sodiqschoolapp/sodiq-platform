@@ -239,6 +239,23 @@ export class PlaceForcedDeletes implements OnModuleInit {
       reason,
       requestId,
     });
+    // The floors that went with a building, each with an entry of its own, so
+    // a search of the log by the floor finds it (permission review, should-fix 4).
+    if ('floors' in rows) {
+      for (const floor of rows.floors) {
+        await this.audit.record(transaction, {
+          branchId,
+          actorId: access.accountId,
+          assignmentId: access.assignmentId,
+          action: 'floor.forced_delete',
+          record: { type: 'floor', id: floor.id },
+          oldValue: floor as unknown as JsonValue,
+          newValue: { forcedDeleteId: stored.id, buildingId: id },
+          reason,
+          requestId,
+        });
+      }
+    }
     return this.store.answerOf(transaction, branchId, stored.id);
   }
 
@@ -400,6 +417,20 @@ export class PlaceForcedDeletes implements OnModuleInit {
       newValue: rows as unknown as JsonValue,
       requestId,
     });
+    if ('floors' in rows) {
+      for (const floor of rows.floors) {
+        await this.audit.record(transaction, {
+          branchId,
+          actorId: access.accountId,
+          assignmentId: access.assignmentId,
+          action: 'forced_delete.restore',
+          record: { type: 'floor', id: floor.id },
+          oldValue: { forcedDeleteId: row.id, buildingId: row.recordId },
+          newValue: floor as unknown as JsonValue,
+          requestId,
+        });
+      }
+    }
   }
 }
 

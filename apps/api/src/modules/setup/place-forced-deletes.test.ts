@@ -110,6 +110,24 @@ describe('the forced delete of a building, floor or room and its restore', () =>
     return { building: building.id, floor: floor.id, room: room.id, roomName };
   }
 
+  /** A building, floor or room of the branch that nothing references. */
+  async function unused(kind: Kind, branch = t.north): Promise<string> {
+    count += 1;
+    const building = await t.database.migrator
+      .insertInto('buildings')
+      .values({ branch_id: branch, name: `Shed ${String(count)}` })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    if (kind === 'building') return building.id;
+    const floor = await t.database.migrator
+      .insertInto('floors')
+      .values({ branch_id: branch, building_id: building.id, name: 'Loft' })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    if (kind === 'floor') return floor.id;
+    return (await place(branch)).room;
+  }
+
   const rowOf = (kind: Kind, id: string) =>
     t.database.migrator.selectFrom(PATHS[kind]).selectAll().where('id', '=', id).executeTakeFirst();
 
@@ -269,7 +287,13 @@ describe('the forced delete of a building, floor or room and its restore', () =>
       const answer = done(await forceDelete(t.north, 'building', building.id));
       expect(answer.place.floors.map((one) => one.name).sort()).toEqual(['Attic', 'Lower']);
       expect(await rowOf('building', building.id)).toBeUndefined();
-      for (const floor of floors) expect(await rowOf('floor', floor.id)).toBeUndefined();
+      for (const floor of floors) {
+        expect(await rowOf('floor', floor.id)).toBeUndefined();
+        // Each floor has an entry of its own, with the reason.
+        expect(await t.entries('floor.forced_delete', floor.id)).toMatchObject([
+          { reason: 'Added by mistake' },
+        ]);
+      }
     });
 
     it('refuses a building or a floor with a room on it, and nothing changes', async () => {
@@ -385,40 +409,42 @@ describe('the forced delete of a building, floor or room and its restore', () =>
       },
     );
 
-    it('keeps a used key to its account, its branch and its role (request keys)', async () => {
-      const ids = await place();
-      const branch = await t.newBranch();
-      const foreign = await place(branch);
-      const key = randomUUID();
-      const first = done(await forceDelete(t.north, 'room', ids.room, 'Rain', t.admin, key));
-      const after = await everything();
-      expect(done(await forceDelete(t.north, 'room', ids.room, 'Rain', t.admin, key)).id).toBe(
-        first.id,
-      );
-      expect(await everything()).toEqual(after);
-      refusedWith(
-        await forceDelete(t.north, 'room', ids.room, 'Rain', second.cookie, key),
-        409,
-        'request_key_reused',
-      );
-      refusedWith(
-        await forceDelete(t.north, 'room', foreign.room, 'Rain', t.admin, key),
-        404,
-        'not_found',
-      );
-      refusedWith(
-        await forceDelete(t.north, 'room', UNKNOWN, 'Rain', t.admin, key),
-        404,
-        'not_found',
-      );
-      refusedWith(
-        await forceDelete(t.north, 'room', ids.room, 'Rain', t.vicePrincipal, key),
-        403,
-        'permission_denied',
-      );
-      expect(await everything()).toEqual(after);
-      expect(await t.entries('room.forced_delete', ids.room)).toHaveLength(1);
-    });
+    it.each(['building', 'floor', 'room'] as const)(
+      'keeps a used key of a %s to its account, its branch and its role (request keys)',
+      async (kind) => {
+        const id = await unused(kind);
+        const branch = await t.newBranch();
+        const foreign = await unused(kind, branch);
+        const key = randomUUID();
+        const first = done(await forceDelete(t.north, kind, id, 'Rain', t.admin, key));
+        const after = await everything();
+        // The repeat finds the record in the store: the row is gone by then.
+        expect(done(await forceDelete(t.north, kind, id, 'Rain', t.admin, key)).id).toBe(first.id);
+        expect(await everything()).toEqual(after);
+        refusedWith(
+          await forceDelete(t.north, kind, id, 'Rain', second.cookie, key),
+          409,
+          'request_key_reused',
+        );
+        refusedWith(
+          await forceDelete(t.north, kind, foreign, 'Rain', t.admin, key),
+          404,
+          'not_found',
+        );
+        refusedWith(
+          await forceDelete(t.north, kind, UNKNOWN, 'Rain', t.admin, key),
+          404,
+          'not_found',
+        );
+        refusedWith(
+          await forceDelete(t.north, kind, id, 'Rain', t.vicePrincipal, key),
+          403,
+          'permission_denied',
+        );
+        expect(await everything()).toEqual(after);
+        expect(await t.entries(`${kind}.forced_delete`, id)).toHaveLength(1);
+      },
+    );
   });
 
   describe('a restore', () => {
@@ -568,11 +594,15 @@ describe('the forced delete of a building, floor or room and its restore', () =>
       const branch = await t.newBranch();
       const foreign = await place(branch);
       const foreignStore = done(await forceDelete(branch, 'room', foreign.room)).id;
+      const foreignBuilding = done(
+        await forceDelete(branch, 'building', await unused('building', branch)),
+      ).id;
       const before = await everything();
       for (const cookie of [t.vicePrincipal, t.principal, t.teacher]) {
         refusedWith(await restore(t.north, store, cookie), 403, 'permission_denied');
       }
       refusedWith(await restore(t.north, foreignStore), 404, 'not_found');
+      refusedWith(await restore(t.north, foreignBuilding), 404, 'not_found');
       refusedWith(await restore(t.north, UNKNOWN), 404, 'not_found');
       expect(await everything()).toEqual(before);
     });
