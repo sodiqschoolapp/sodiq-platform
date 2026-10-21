@@ -80,6 +80,7 @@ export type AccountKey =
   | 'absences'
   | 'roomClosures'
   | 'vacancyFill'
+  | 'actingTeacher'
   | 'whoTeacher'
   | 'whoHeadTutor'
   | 'whoHeadTeacher';

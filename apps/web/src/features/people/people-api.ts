@@ -1,4 +1,7 @@
 import {
+  actingTeacherCheckSchema,
+  actingTeacherSchema,
+  type ActingTeacherBody,
   accountAccessSchema,
   appointmentListSchema,
   availabilitySchema,
@@ -188,6 +191,44 @@ export const fillVacancy = (body: VacancyFillBody, key: string) =>
       body,
     }),
   ).then((answer) => vacancyFillSchema.parse(answer));
+
+/** Task 5.7a-3c: what naming an acting teacher would meet, nothing written. */
+export const actingCheckQuery = (branchId: string | null, body: ActingTeacherBody | null) =>
+  queryOptions({
+    queryKey: [...vacanciesKey(branchId), 'acting-check', body],
+    queryFn: async () => {
+      // Never runs without a body: the query is off until there is one.
+      if (body === null) throw new Error('acting check without a body');
+      return actingTeacherCheckSchema.parse(
+        await answerOf(
+          api.POST('/api/timetable/acting-teachers/check', {
+            params: { header: branchHeader() },
+            body,
+          }),
+        ),
+      );
+    },
+    enabled: branchId !== null && body !== null,
+    retry: false,
+  });
+
+/** Task 5.7a-3c: names an acting teacher; safe to repeat with its key. */
+export const nameActing = (body: ActingTeacherBody, key: string) =>
+  answerOf(
+    api.POST('/api/timetable/acting-teachers', {
+      params: { header: { ...branchHeader(), 'Idempotency-Key': key } },
+      body,
+    }),
+  ).then((answer) => actingTeacherSchema.parse(answer));
+
+/** Task 5.7a-3c: ends a period on a day, or withdraws a planned one (its start); safe to repeat with its key. */
+export const endActing = (id: string, until: string, key: string) =>
+  answerOf(
+    api.POST('/api/timetable/acting-teachers/{id}/end', {
+      params: { header: { ...branchHeader(), 'Idempotency-Key': key }, path: { id } },
+      body: { until },
+    }),
+  ).then((answer) => actingTeacherSchema.parse(answer));
 
 /** After a change of a vacancy: the vacancy lists. */
 export const invalidateVacancies = (queryClient: QueryClient): Promise<unknown> =>

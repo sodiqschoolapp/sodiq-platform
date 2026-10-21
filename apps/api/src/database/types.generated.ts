@@ -463,6 +463,20 @@ export interface Groups {
   version: Generated<number>;
 }
 
+export interface JournalActingTeachers {
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  end_cause: string | null;
+  ended_by: string | null;
+  given_by: string;
+  id: Generated<string>;
+  journal_id: string;
+  person_id: string;
+  vacancy_id: string;
+  valid_from: string;
+  valid_until: string | null;
+}
+
 export interface Journals {
   academic_year_id: string;
   branch_id: string;
@@ -1216,6 +1230,7 @@ export interface DB {
   group_classes: GroupClasses;
   group_memberships: GroupMemberships;
   groups: Groups;
+  journal_acting_teachers: JournalActingTeachers;
   journals: Journals;
   known_devices: KnownDevices;
   lesson_absence_taught: LessonAbsenceTaught;

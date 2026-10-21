@@ -181,6 +181,7 @@ const vacancyDetail = (row: VacancyListItem): VacancyDetail => ({
   statuses: [{ id: uid(71), status: row.status, from: '2026-10-01', until: null }],
   fills: [],
   fillUnits: [],
+  journals: [],
   today: '2026-10-10',
 });
 

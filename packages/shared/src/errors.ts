@@ -755,6 +755,26 @@ export const ERROR_CODES = [
   'fill_rows_changed',
   /** Task 5.7a-3a: a row of the version in force cannot be copied on the fill date (a teacher out, a class with no Tutor); `details` names the rows. */
   'fill_version_rows',
+  /** Task 5.7a-3c: the journal's row in the published version in force on the start day does not name the vacancy (filled, another teacher, no run), or the record is not a vacancy of the branch. */
+  'acting_not_vacancy',
+  /** Task 5.7a-3c (decision 5): the person is a vacancy, not linked to the branch, or not active on the start day. */
+  'acting_person',
+  /** Task 5.7a-3c (decision 5): the person's profile lacks the subject for the grades of the class or group. */
+  'acting_profile',
+  /** Task 5.7a-3c (decision 5): the person does not teach in the class's language; send `confirmLanguage`. */
+  'acting_language',
+  /** Task 5.7a-3c (decision 4): the period would start before today. */
+  'acting_start_past',
+  /** Task 5.7a-3c (decision 6): the journal has another acting teacher on a day of the period; `details` names it. */
+  'acting_overlap',
+  /** Task 5.7a-3c: the end is before today. */
+  'acting_end_past',
+  /** Task 5.7a-3c: the end is after the period's own end; a new period is named instead. */
+  'acting_end_later',
+  /** Task 5.7a-3c: the period has ended or is withdrawn. */
+  'acting_ended',
+  /** Task 5.7a-3c: a period that has started is ended, not withdrawn. */
+  'acting_started',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

@@ -35,6 +35,7 @@ import {
   type SchoolNames,
 } from '../audit/export-list.js';
 import { unitNamesOf } from '../classes/unit-names.js';
+import { vacancyJournalsOf } from '../timetable/acting-teachers.service.js';
 import { changesOf, notFound, refusingConstraints } from '../setup/setup-refusals.js';
 
 /** The refusals of the database for a vacancy (db/migrations/0024, 0025), by the name of the constraint. */
@@ -894,18 +895,28 @@ export class Vacancies {
       (row) => ({ id: row.id, status: row.status, from: row.validFrom, until: row.validUntil }),
     );
     const fills = await this.fillsOf(transaction, id, branchId);
-    // Task 5.7a-3b (decision 6): the classes and groups of the fills, archived ones included.
+    // Task 5.7a-3c: the vacancy's journals and their acting teachers.
+    const journals =
+      today === null ? [] : await vacancyJournalsOf(transaction, branchId, id, today);
+    // Task 5.7a-3b (decision 6): the classes and groups of the fills, archived
+    // ones included, and (task 5.7a-3c) of the journals.
     const fillUnits = await unitNamesOf(
       transaction,
       branchId,
-      fills.flatMap((one) =>
-        one.rows.flatMap((row) => (row.classId === null ? [] : [row.classId])),
-      ),
-      fills.flatMap((one) =>
-        one.rows.flatMap((row) => (row.groupId === null ? [] : [row.groupId])),
-      ),
+      [
+        ...fills.flatMap((one) =>
+          one.rows.flatMap((row) => (row.classId === null ? [] : [row.classId])),
+        ),
+        ...journals.flatMap((one) => (one.classId === null ? [] : [one.classId])),
+      ],
+      [
+        ...fills.flatMap((one) =>
+          one.rows.flatMap((row) => (row.groupId === null ? [] : [row.groupId])),
+        ),
+        ...journals.flatMap((one) => (one.groupId === null ? [] : [one.groupId])),
+      ],
     );
-    return { ...item, statuses, fills, fillUnits, today };
+    return { ...item, statuses, fills, fillUnits, journals, today };
   }
 
   /**

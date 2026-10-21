@@ -4029,6 +4029,21 @@ try {
   });
   seeded.vacancyFill = { login: fillVice.login, password: fillVice.firstPassword };
 
+  // The acting teacher (task 5.7a-3c): the vacancy fill's scene again, in a
+  // branch of its own; the browser test publishes, names Aliyeva the acting
+  // teacher of 7 Oxford's Geometry journal from the vacancy's record and
+  // finds the period there, 7 Princeton's journal still with no teacher.
+  const actingVice = await gridScene({
+    branch: 'Acting teacher browser test branch',
+    vice: ['Dildora', 'Rasulova'],
+    staffId: 'S-269347',
+    phone: '+998935557347',
+    rooms: [],
+    publishable: true,
+    vacancyFill: { staffId: 'S-269348', phone: '+998935557348' },
+  });
+  seeded.actingTeacher = { login: actingVice.login, password: actingVice.firstPassword };
+
   // The department move (task 3.4c): a branch of its own with a year around
   // today, 7 Oxford, the attendance-only subject Cosmology of STEAM and a
   // draft whose row of it names a STEAM teacher who no longer has it in the

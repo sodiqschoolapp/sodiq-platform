@@ -588,6 +588,22 @@ export const uz: Texts<'one' | 'other'> = {
       'Toʻldiriladigan qatorlar siz tekshirganingizdan keyin oʻzgardi. Qayta tekshiring.',
     fill_version_rows:
       'Amaldagi jadvalning bir qatorini shu sanaga koʻchirib boʻlmaydi (oʻqituvchi ishlamaydi yoki sinfning tyutori yoʻq). Avval jadvalni tuzating yoki boshqa sanani tanlang.',
+    acting_not_vacancy:
+      'Bu kuni jurnal vakansiyada emas: u toʻldirilgan, boshqa oʻqituvchisi bor yoki u paytda ishlamaydi. Boshqa jurnal yoki kunni tanlang.',
+    acting_person:
+      'Bu kuni bu shaxsni tayinlab boʻlmaydi: u vakansiya, bu filialda emas yoki u paytda faol emas.',
+    acting_profile:
+      'Shu sinf darajasi uchun fan shaxsning profilida yoʻq. Boshqa shaxsni tanlang yoki avval fanni uning profiliga qoʻshing.',
+    acting_language:
+      'Bu shaxs sinfning tilida dars bermaydi. Baribir tayinlayotganingizni belgilang.',
+    acting_start_past: 'Vaqtincha oʻqituvchi eng erta bugundan tayinlanadi.',
+    acting_overlap:
+      'Bu davrning bir kunida jurnalning vaqtincha oʻqituvchisi allaqachon bor. Avval uni tugating yoki boshqa kunlarni tanlang.',
+    acting_end_past: 'Tugash eng erta bugun va birinchi kundan oldin emas.',
+    acting_end_later:
+      'Tugash davrning oʻz tugashidan keyin boʻlolmaydi. Keyingi kunlar uchun yangi davr tayinlang.',
+    acting_ended: 'Bu davr allaqachon tugagan yoki qaytarib olingan. Koʻrish uchun qayta yuklang.',
+    acting_started: 'Bu davr boshlangan, uni qaytarib olib boʻlmaydi. Uning oʻrniga tugating.',
     vacancy_has_load:
       'Bu vakansiya qoralamada yoki hali amal qilishi mumkin boʻlgan eʼlon qilingan yuklamada koʻrsatilgan yoki unga kelgusi dars biriktirilgan, shuning uchun uni hozircha yopib boʻlmaydi. Shu qatorlarga boshqa oʻqituvchini tayinlang yoki yuklama tugagach, vakansiyani yoping.',
     vacancy_in_load:
@@ -2245,6 +2261,42 @@ export const uz: Texts<'one' | 'other'> = {
       deleteTitle: 'Vakansiya oʻchirilsinmi?',
       deleteText: 'Vakansiya va uning soatlari oʻchiriladi. Audit jurnalida nusxasi qoladi.',
       closesOn: '{{status}}, {{date}} dan yopiladi',
+      acting: {
+        title: 'Vaqtincha oʻqituvchilar',
+        none: 'Bugundan bu vakansiyaning hech bir jurnali ishlamaydi.',
+        noTeacher: 'Vaqtincha oʻqituvchi yoʻq: jurnalning oʻqituvchisi yoʻq.',
+        line: '{{person}}, {{from}} dan',
+        until: 'jurnalni {{date}} da qaytaradi',
+        endsOnFill: 'vakansiya {{date}} da toʻldirilgunicha',
+        openEnded: 'muddatsiz',
+        states: {
+          planned: 'rejalashtirilgan',
+          current: 'amalda',
+          ended: 'tugagan',
+          withdrawn: 'qaytarib olingan',
+        },
+        open: 'Vaqtincha oʻqituvchi tayinlash',
+        dialogTitle: '{{name}} uchun vaqtincha oʻqituvchi',
+        journal: 'Jurnal',
+        chooseJournal: 'Jurnalni tanlang',
+        person: 'Shaxs',
+        choosePerson: 'Shaxsni tanlang',
+        from: 'Dan',
+        untilField: 'Jurnalni qaytaradigan kun (ixtiyoriy)',
+        chooseDate: 'Sanani tanlang.',
+        tooEarly: 'Eng erta {{date}} (bugun).',
+        untilAfter: 'Birinchi kundan keyin.',
+        language: 'Bu shaxs sinfning tilida dars bermaydi. Baribir tayinlash.',
+        name: 'Tayinlash',
+        cancel: 'Bekor qilish',
+        end: 'Tugatish',
+        endTitle: '{{person}} davrini tugatish',
+        endOn: 'Jurnalni qaytaradigan kun',
+        withdraw: 'Qaytarib olish',
+        withdrawTitle: 'Vaqtincha oʻqituvchini qaytarib olasizmi?',
+        withdrawText:
+          'Rejalashtirilgan davr boshlanishidan oldin qaytarib olinadi. U tarixda qoladi.',
+      },
       fillsTitle: 'Toʻldirishlar',
       noFills: 'Hali toʻldirilmagan.',
       fillLine: '{{date}} dan: {{person}}',
@@ -2871,6 +2923,8 @@ export const uz: Texts<'one' | 'other'> = {
         close: 'Boʻsh oʻrin yopildi',
         reopen: 'Boʻsh oʻrin qayta ochildi',
         fill: 'Boʻsh oʻrin toʻldirildi',
+        acting_name: 'Vaqtincha oʻqituvchi tayinlandi',
+        acting_end: 'Vaqtincha oʻqituvchi davri tugatildi',
         delete: 'Boʻsh oʻrin oʻchirildi',
         export: 'Boʻsh oʻrinlar eksport qilindi',
       },

@@ -22,6 +22,7 @@ import { useView } from '@/features/access/use-view';
 import { nameOf } from '@/features/setup/setup-api';
 import { AvailabilitySection } from './availability-section';
 import { invalidateVacancies, vacancyDetailQuery } from './people-api';
+import { ActingSection } from './vacancy-acting';
 import { fillRowName, VacancyFillDialog } from './vacancy-fill-dialog';
 import { VacancyForm } from './vacancy-form';
 import { schoolDateText } from '@/lib/dates';
@@ -33,7 +34,7 @@ import { SECTION_TITLE } from '@/components/ui/control';
  * reopen, and the delete of a vacancy that never held a load. It reads first,
  * with Edit, Close or Reopen and Delete at the bottom (task 2.7c-2b-2a).
  * Task 5.7a-3b: Fill, the fills of the vacancy and a close planned from a
- * later day.
+ * later day. Task 5.7a-3c: the acting teachers of the vacancy's journals.
  */
 export function VacancyPanel({
   id,
@@ -150,6 +151,8 @@ export function VacancyPanel({
             <History vacancy={vacancy} />
           </section>
           <Fills vacancy={vacancy} subjects={subjects} />
+          {/* Task 5.7a-3c (decision 7): the routes are `timetable` `edit`, as the fill. */}
+          <ActingSection vacancy={vacancy} name={name} subjects={subjects} canAct={canFill} />
         </>
       )}
       {panel.editing === null && (

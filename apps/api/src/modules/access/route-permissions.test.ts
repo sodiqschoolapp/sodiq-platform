@@ -647,6 +647,19 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     branch: 'request',
     roles: ['super_admin', 'academic_vice_principal'],
   },
+  // Task 5.7a-3c: the acting teacher of a vacancy's journal, under timetable edit as the fill.
+  'POST /api/timetable/acting-teachers': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'POST /api/timetable/acting-teachers/check': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'POST /api/timetable/acting-teachers/:id/end': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
   // Task 5.6c-2: the check of a save, under timetable edit as the save.
   'POST /api/timetable/exams/check': {
     branch: 'request',

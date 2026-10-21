@@ -1495,3 +1495,20 @@ export {
   type VacancyFillHistory,
   type VacancyFillUnit,
 } from './vacancy-fills.js';
+export {
+  ACTING_PROBLEMS,
+  ACTING_STATES,
+  actingProblemSchema,
+  actingTeacherBodySchema,
+  actingTeacherCheckSchema,
+  actingTeacherEndSchema,
+  actingTeacherParamsSchema,
+  actingTeacherSchema,
+  vacancyJournalSchema,
+  type ActingTeacher,
+  type ActingTeacherBody,
+  type ActingTeacherCheck,
+  type ActingTeacherEnd,
+  type ActingTeacherParams,
+  type VacancyJournal,
+} from './acting-teachers.js';
