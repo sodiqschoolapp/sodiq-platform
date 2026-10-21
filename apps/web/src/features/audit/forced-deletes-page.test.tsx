@@ -94,6 +94,31 @@ describe('the deleted lessons', () => {
     );
   });
 
+  it('names an account without a name "No name" where it deleted and restored, never a blank', async () => {
+    fakeApi({
+      'GET /api/auth/session': () => json(session()),
+      'GET /api/forced-deletes': () =>
+        json({
+          entries: [
+            record(1, {
+              deletedBy: { id: uid(700), name: '' },
+              restorable: false,
+              restoredAt: '2026-10-11T10:00:00.000Z',
+              restoredBy: { id: uid(700), name: '' },
+            }),
+          ],
+        }),
+    });
+    renderApp('/forced-deletes', 'en');
+    const panel = await openRow('7 Oxford 1');
+    const [row] = cellsOf();
+    expect(row?.some((cell) => cell.startsWith(en.audit.unnamed))).toBe(true);
+    const restored = [...panel.querySelectorAll('dt')].find(
+      (one) => one.textContent === en.forcedDeletes.restored,
+    );
+    expect(restored?.nextElementSibling?.textContent).toContain(en.audit.unnamed);
+  });
+
   it('restores a record while it can, and shows a refusal with its rules', async () => {
     let refuse = false;
     const calls = fakeApi({

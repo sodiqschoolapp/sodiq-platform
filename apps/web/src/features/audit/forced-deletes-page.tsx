@@ -72,7 +72,7 @@ export function ForcedDeletesPage() {
         header: t('forcedDeletes.deleted'),
         cell: (row) =>
           t('forcedDeletes.deletedBy', {
-            name: row.deletedBy.name,
+            name: row.deletedBy.name === '' ? t('audit.unnamed') : row.deletedBy.name,
             moment: formatMoment(i18n.language, row.deletedAt),
           }),
         sortValue: (row) => row.deletedAt,
@@ -173,7 +173,7 @@ function ForcedDeletePanel({ record, language }: { record: ForcedDelete; languag
             <dt className="font-semibold">{t('forcedDeletes.restored')}</dt>
             <dd>
               {t('forcedDeletes.deletedBy', {
-                name: record.restoredBy.name,
+                name: record.restoredBy.name === '' ? t('audit.unnamed') : record.restoredBy.name,
                 moment: formatMoment(i18n.language, record.restoredAt),
               })}
             </dd>

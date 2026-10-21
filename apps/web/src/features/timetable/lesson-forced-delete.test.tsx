@@ -209,6 +209,21 @@ describe('the forced delete of a lesson on the day page', () => {
     expect(lines.length).toBeGreaterThan(2);
   });
 
+  it('names an account without a name "No name", never a blank', async () => {
+    const first = HISTORY.lines[0];
+    if (first === undefined) throw new Error('No line.');
+    await openDay('principal', {
+      [`GET /api/timetable/lessons/${LESSON.id}/history`]: () =>
+        json({ lines: [{ ...first, who: { id: uid(700), name: '' } }] }),
+    });
+    fireEvent.click(await screen.findByRole('button', { name: en.timetable.day.history }));
+    const dialog = await screen.findByRole('dialog');
+    await within(dialog).findAllByRole('listitem');
+    const [line] = [...dialog.querySelectorAll('ol > li')];
+    expect(line?.textContent).toContain(en.audit.unnamed);
+    expect(line?.textContent).not.toContain(' · ,');
+  });
+
   it('shows the history in Russian', async () => {
     await openDay(
       'principal',

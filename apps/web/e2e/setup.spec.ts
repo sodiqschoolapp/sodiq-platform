@@ -14,6 +14,7 @@ import {
 import { codeNow } from './totp';
 import { moveSubjectDepartment } from './department-move';
 import { mergeRecords } from './merges';
+import { forceDeleteAndRestore } from './timetable-forced-delete';
 
 /**
  * The first sign-in of a seeded Super Admin or Academic Vice Principal: the
@@ -245,7 +246,7 @@ async function printPersonalDataReport(page: Page): Promise<void> {
 test('the Super Admin edits the branch, adds a building, a floor and a room, and archives the floor once its room is closed, then prints a personal data report', async ({
   page,
 }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(210_000);
   await signInAsSuperAdmin(page);
 
   // The branch: a working Saturday is ticked and saved.
@@ -321,6 +322,10 @@ test('the Super Admin edits the branch, adds a building, a floor and a room, and
 
   await printPersonalDataReport(page);
   await checkSuperAdminPages(page);
+
+  // Task 5.8b: the seed holds no fourth Super Admin (correction 1 of #87).
+  await test.step('deletes a lesson for good, restores it from Deleted lessons and reads both in its history', () =>
+    forceDeleteAndRestore(page));
 });
 
 // docs/build-plan.md, task 1.2, done when: "Academic cannot be renamed or

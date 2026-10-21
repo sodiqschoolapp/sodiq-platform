@@ -206,7 +206,13 @@ export function LessonHistoryDialog({
                 <p className="font-semibold">
                   {t(`timetable.lessonHistory.kind_${line.kind}`)} ·{' '}
                   {t('timetable.lessonHistory.by', {
-                    name: line.who?.name ?? t('timetable.lessonHistory.system'),
+                    // An account with no staff record has no name: never a blank.
+                    name:
+                      line.who === null
+                        ? t('timetable.lessonHistory.system')
+                        : line.who.name === ''
+                          ? t('audit.unnamed')
+                          : line.who.name,
                     moment: moment(line.changedAt),
                   })}
                 </p>
