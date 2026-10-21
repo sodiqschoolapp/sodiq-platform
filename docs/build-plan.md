@@ -1111,6 +1111,7 @@ How to read the task lines:
   - Build: reopen rules; the nightly job that recalculates open journals and stored results, alerts on a difference and blocks closing that journal.
   - Done when: a deliberately corrupted stored result is caught by the check in a test.
   - From 4.3 (pull request #104, `edge/calculation`, "A bug is found after results were closed and exported"): the "recalculate and compare" tool over `recalculateAndCompare` (lists the differences, changes nothing; a record the current module refuses is listed with its code, `refused`, not thrown) and "apply with a reason", which keeps the old results and tells the teachers concerned; the nightly check uses the same function.
+  - From 5.8b (pull request #195, decision 8; `edge/people-roles-accounts`: "after that the data is removed and a summary stays in the audit log"): a nightly job removes the rows of a forced delete whose `restore_until` (`forced_deletes`, 0105) has passed and was not restored, decided from the stored moment and the injected clock, and writes a summary entry in the audit log; the store row itself stays with its reason. 5.8b keeps the rows and only refuses their restore.
 
 - [ ] **9.3a Rating**
   - Read: `08` (Rating).

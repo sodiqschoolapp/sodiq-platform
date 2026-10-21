@@ -6,7 +6,7 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 
 - The database keeps a lesson's class, group and subject (grants) and refuses the delete of a lesson that holds data (`lesson_holds_data`, 0105, answers no until 6.1); every teacher, room, time and cancel change is written to `lesson_history` by triggers, and `Transactions.run` refuses a commit whose lesson change has no audit entry of its transaction in the lesson's branch.
 - The Super Admin deletes a lesson for good from the day page and restores it within 30 days from "Deleted lessons" (`forced_deletes`, the store 5.8c reuses); every lesson has "History" on the day page. Handbook: "Deleting a lesson for good, and the history of a lesson".
-- Left out: the cells kept by a forced delete and "kept and listed" (6.1); the closed-quarter refusal (9.2b); a purge after 30 days; a route test of a publish refused by `lesson_holds_data` (the withdraw's test reaches the same guard).
+- Left out: the cells kept by a forced delete and "kept and listed" (6.1); the closed-quarter refusal (9.2b); the purge of stores older than 30 days (9.2c, its nightly job).
 
 The next sessions must know:
 

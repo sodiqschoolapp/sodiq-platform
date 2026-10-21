@@ -37,10 +37,6 @@ export async function transactionMoment(transaction: Transaction): Promise<Date>
 }
 
 /**
- * The value of `app.branch_ids` for a list of branch ids: a PostgreSQL array
- * of uuids. Each id is checked first, so nothing else can reach the setting.
- */
-/**
  * Task 5.8b (decision 4, correction 2 of pull request #195): every line of
  * the lesson history this transaction wrote has an audit entry of this
  * transaction in the lesson's branch, which names who. Asked of the database
@@ -59,6 +55,10 @@ export async function assertLessonChangesAudited(transaction: Transaction): Prom
   }
 }
 
+/**
+ * The value of `app.branch_ids` for a list of branch ids: a PostgreSQL array
+ * of uuids. Each id is checked first, so nothing else can reach the setting.
+ */
 export function branchFilterValue(branchIds: readonly string[]): string {
   for (const id of branchIds) {
     if (!branchIdSchema.safeParse(id).success) {

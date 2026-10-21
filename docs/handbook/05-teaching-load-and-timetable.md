@@ -417,13 +417,13 @@ Not built yet: the substitute in the journal and the plan (tasks 6.3, 7.1b, 8.4,
 **How to do it.**
 
 1. Open Timetable, then the day of a class. "History" on a lesson lists its changes.
-2. As the Super Admin, "Delete for good" on a lesson asks for the reason and deletes it. The teacher of a lesson of today or later is told, as for a one-day change.
+2. As the Super Admin, "Delete for good" on a lesson asks for the reason and deletes it. The lesson's teacher, the Academic Vice Principal and the Principal of the branch are told, also for a past lesson; they are told again when it is restored.
 3. School setup, then "Deleted lessons": open the lesson and press "Restore" while its 30 days last.
 
 **Rules.**
 
 - One lesson is deleted at a time. The other half of a double lesson stays.
-- A restore brings the same lesson back, with its teacher, room and cancel, and a substitute it had with the same substitution. Every timetable rule is checked again.
+- A restore brings the same lesson back, with its teacher, room and cancel, and a substitute it had with the same substitution. A lesson taught together with others comes back at the times of that block now. Every timetable rule is checked again.
 - A lesson of a closed year cannot be deleted or restored.
 - The history is written by the database for every change, whatever page or job made it; a change made by the system (a job) shows "The system".
 
@@ -432,5 +432,7 @@ Not built yet: the substitute in the journal and the plan (tasks 6.3, 7.1b, 8.4,
 - *The 30 days have passed.* The lesson stays listed but can no longer be restored.
 - *A new timetable is in force on the lesson's date now.* The lesson cannot come back; add it in that timetable.
 - *Its room or teacher was taken by another lesson meanwhile.* The restore is refused and the rule is named; change the other lesson first.
-- *The exam that cancelled the lesson was cancelled since.* The lesson cannot come back as it was.
+- *The exam that cancelled the lesson was cancelled or moved since.* The lesson cannot come back as it was.
+- *Its substitution was withdrawn since, or the absence it covered was withdrawn.* The lesson cannot come back as it was.
+- *The lessons it was taught together with are gone since.* The lesson cannot come back; restore them first if they were deleted for good too.
 - *A new timetable or a withdraw would remove a lesson that holds attendance or marks.* It is refused for now; when the journal arrives (task 6.1) such a lesson is kept and listed instead.
