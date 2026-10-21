@@ -3740,7 +3740,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       outsideYear: 'Вне учебного года',
       dayOff: 'Выходной: {{name}}',
       fromPattern: 'По недельному шаблону; изменения на один день не учтены',
-      replacedBy: 'Заменяет {{name}}',
+      replacedBy: 'Замена: {{name}}',
       busyIn: 'Занят в филиале {{branch}}',
       noLessons: 'Нет уроков',
       lessonNumber: 'Урок {{number}}',
