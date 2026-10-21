@@ -613,7 +613,7 @@ export const uz: Texts<'one' | 'other'> = {
       'Oʻrinbosar quyidagi ogohlantirishlar uchun belgini talab qiladi. Tekshirib, qayta saqlang.',
     substitution_not_in_force: 'Bu darsda bekor qilinadigan oʻrinbosar yoʻq. Kunni qayta yuklang.',
     substitution_return_blocked:
-      'Almashtirilgan oʻqituvchining shu vaqtda boshqa darsi yoki imtihoni bor. Avval uni koʻchiring yoki oʻzgartiring.',
+      'Dars qaytariladigan oʻqituvchining shu vaqtda boshqa darsi yoki imtihoni bor yoki yoʻlga vaqti yetmaydi. Quyidagi roʻyxatga qarang va avval oʻsha darsni oʻzgartiring.',
     vacancy_has_load:
       'Bu vakansiya qoralamada yoki hali amal qilishi mumkin boʻlgan eʼlon qilingan yuklamada koʻrsatilgan yoki unga kelgusi dars biriktirilgan, shuning uchun uni hozircha yopib boʻlmaydi. Shu qatorlarga boshqa oʻqituvchini tayinlang yoki yuklama tugagach, vakansiyani yoping.',
     vacancy_in_load:

@@ -1232,8 +1232,27 @@ describe('the substitution of a lesson', () => {
       const tutorLesson = await lessonOf(s, TUESDAY, s.classId, s.tutorSubject ?? '');
       const free = await tutorHolder(s);
       changed(await substitute(s.branch, tutorLesson.id, { teacherId: free.staffId }));
+      // A new acting Tutor through the class route while the lesson is
+      // substituted: the follow keeps the substitute, so the teacher replaced
+      // (the earlier Tutor) and the Tutor in force now differ (code round 1,
+      // finding 1).
+      const acting = await person(s.branch);
+      const assignmentId = await load.classes.role(acting.accountId, s.branch, 'tutor');
+      const given = await t.post(`/api/classes/${s.classId}/tutors`, s.branch, {
+        kind: 'acting',
+        assignmentId,
+        from: '2026-10-11',
+        until: null,
+      });
+      expect(given.status, JSON.stringify(given.body)).toBe(201);
+      expect((await rowOf(tutorLesson.id)).teacher_id).toBe(free.staffId);
       changed(await withdraw(s.branch, tutorLesson.id));
-      expect((await rowOf(tutorLesson.id)).teacher_id).toBe(s.tutor?.staffId);
+      expect((await rowOf(tutorLesson.id)).teacher_id).toBe(acting.staffId);
+      expect((await rowOf(tutorLesson.id)).teacher_id).not.toBe(s.tutor?.staffId);
+      const [entry] = await auditOf(tutorLesson.id, 'lesson.substitute_withdraw');
+      expect(entry?.new_value).toMatchObject({
+        teacherIds: { [tutorLesson.id]: acting.staffId },
+      });
     });
 
     it('refuses a lesson that started', async () => {
