@@ -308,6 +308,7 @@ Plan approved on pull request #188 with corrections 1 to 3; decisions 1 to 16 co
 | **Build decision.** The fill copies the pattern itself (a copy takes the load and the pins only, 5.4b-2a decision 3) and confirms the templates as they are on the date | A copied draft with no pattern cannot be published |
 | **Build decision.** A fill carried in place sends a notice of its own kind, `timetable.vacancy_filled`, with the version's number; a fill that publishes sends `timetable.published` | Decision 12 named no new kind; "version N was published" is untrue when nothing is published |
 | **Build decision.** A row of the version in force that cannot be copied on the date (a teacher out, a class with no Tutor) refuses the fill `fill_version_rows` | The load trigger refuses the copy; the fill changes nothing else |
+| **Build decision.** A fill that would still leave a carried version as it is is refused `fill_blocked` (plan step 4); the check in memory leaves such rows first, so no fixture reaches it; `lesson_vacancy_closed` met by a fill is `fill_blocked` too | Spec review of the code, must-fix 6 and should-fix 6 |
 | **Build decision.** `vacancy.fill` names the person (`person_id`): the person's personal-data report lists it | `personal-data.query.ts`, every people action is classified |
 
 ## 21 October 2026: room closures (task 5.7a-2b)
