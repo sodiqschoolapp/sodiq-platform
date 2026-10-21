@@ -401,6 +401,9 @@ describe('withdraw', () => {
         .orderBy('class_id')
         .execute(),
       t.database.migrator.selectFrom('notifications').selectAll().orderBy('id').execute(),
+      // Task 5.7a-3a (permission review of the code, must-fix 1): a withdraw
+      // reopens a vacancy a fill closed from a later day.
+      t.database.migrator.selectFrom('staff_statuses').selectAll().orderBy('id').execute(),
     ]);
   };
 

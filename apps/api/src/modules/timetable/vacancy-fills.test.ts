@@ -769,6 +769,33 @@ describe('vacancy fill', () => {
       expect(detail.fills.map((one) => one.withdrawn)).toEqual([true]);
     });
 
+    it("a withdraw of another branch's fill version is 404 and reopens nothing in either branch (permission review of the code, must-fix 1)", async () => {
+      const s = await scene();
+      const theirs = await scene();
+      const ours = await filled(s, bodyOf(s, OCTOBER_19));
+      const their = await filled(theirs, bodyOf(theirs, OCTOBER_19));
+      const before = await Promise.all([
+        statusesOf(s.vacancy),
+        statusesOf(theirs.vacancy),
+        lessonsOf(s.branch),
+        lessonsOf(theirs.branch),
+        t.auditCount(),
+      ]);
+      for (const id of [their.versionId ?? '', UNKNOWN]) {
+        refusedWith(await withdraw(s.branch, id), 404, 'not_found');
+      }
+      expect(ours.closed).toBe(true);
+      expect(
+        await Promise.all([
+          statusesOf(s.vacancy),
+          statusesOf(theirs.vacancy),
+          lessonsOf(s.branch),
+          lessonsOf(theirs.branch),
+          t.auditCount(),
+        ]),
+      ).toEqual(before);
+    });
+
     it('a withdraw whose run ends before the close day reopens nothing (spec review of the plan, should-fix 2)', async () => {
       const s = await scene();
       const b = await laterCopy(s, s.a, NOVEMBER);
@@ -896,6 +923,13 @@ describe('vacancy fill', () => {
             'journals',
             'vacancy_fills',
             'vacancy_fill_rows',
+            // The publish's writes of the stored one-day changes, bulk cancels
+            // and exams (permission review of the code, must-fix 2).
+            'lesson_day_changes',
+            'lesson_day_change_ends',
+            'bulk_cancel_blocks',
+            'lesson_exam_cancels',
+            'lesson_block_class_outs',
           ] as const
         ).map((table) =>
           t.database.migrator
@@ -920,9 +954,27 @@ describe('vacancy fill', () => {
       expect(await written([s.branch])).toEqual(before);
     });
 
-    it("answers 404 for another branch's or an unknown vacancy, person, class or subject, and changes nothing", async () => {
+    it("answers 404 for another branch's or an unknown vacancy, person, class, group, subject, decision key or block, and changes nothing", async () => {
       const s = await scene();
       const theirs = await scene();
+      const theirGroup = await load.classes.group(theirs.branch, theirs.year, theirs.subject, [
+        theirs.classA,
+      ]);
+      const theirLesson = await t.database.migrator
+        .selectFrom('lessons')
+        .select('id')
+        .where('branch_id', '=', theirs.branch)
+        .executeTakeFirstOrThrow();
+      const theirBlock = await t.database.migrator
+        .selectFrom('pattern_blocks')
+        .select('id')
+        .where('branch_id', '=', theirs.branch)
+        .executeTakeFirstOrThrow();
+      const ownLesson = await t.database.migrator
+        .selectFrom('lessons')
+        .select('id')
+        .where('branch_id', '=', s.branch)
+        .executeTakeFirstOrThrow();
       const before = await written([s.branch, theirs.branch]);
       const bodies = [
         { ...bodyOf(s, OCTOBER_19), vacancyId: theirs.vacancy },
@@ -931,6 +983,7 @@ describe('vacancy fill', () => {
         { ...bodyOf(s, OCTOBER_19), personId: UNKNOWN },
         bodyOf(s, OCTOBER_19, { rows: [{ classId: theirs.classA, subjectId: s.subject }] }),
         bodyOf(s, OCTOBER_19, { rows: [{ classId: UNKNOWN, subjectId: s.subject }] }),
+        bodyOf(s, OCTOBER_19, { rows: [{ groupId: theirGroup, subjectId: s.subject }] }),
         bodyOf(s, OCTOBER_19, { rows: [{ groupId: UNKNOWN, subjectId: s.subject }] }),
         bodyOf(s, OCTOBER_19, { rows: [{ classId: s.classA, subjectId: UNKNOWN }] }),
       ];
@@ -938,16 +991,35 @@ describe('vacancy fill', () => {
         refusedWith(await checkFill(s.branch, body), 404, 'not_found');
         refusedWith(await fillOf(s.branch, { ...body, rowsKey: '0'.repeat(64) }), 404, 'not_found');
       }
-      refusedWith(
-        await fillOf(s.branch, {
-          ...bodyOf(s, OCTOBER_19),
-          rowsKey: '0'.repeat(64),
-          dayDecisions: [{ key: UNKNOWN, choice: 'drop' }],
-        }),
-        404,
-        'not_found',
-      );
+      const decisions = [
+        [{ key: UNKNOWN, choice: 'drop' }],
+        [{ key: theirLesson.id, choice: 'drop' }],
+        [{ key: ownLesson.id, blockId: theirBlock.id, blockDate: OCTOBER_19, choice: 'keep' }],
+        [{ key: ownLesson.id, blockId: UNKNOWN, blockDate: OCTOBER_19, choice: 'keep' }],
+      ];
+      for (const dayDecisions of decisions) {
+        refusedWith(
+          await fillOf(s.branch, {
+            ...bodyOf(s, OCTOBER_19),
+            rowsKey: '0'.repeat(64),
+            dayDecisions,
+          }),
+          404,
+          'not_found',
+        );
+      }
       expect(await written([s.branch, theirs.branch])).toEqual(before);
+    });
+  });
+
+  describe('the readers of the fill', () => {
+    it("lists the fill in the hired person's personal-data report (permission review of the code, should-fix 3)", async () => {
+      const s = await scene();
+      await filled(s, bodyOf(s, OCTOBER_19));
+      const report = await t.post(`/api/people/staff/${s.person}/report`, s.branch, {}, t.admin);
+      expect(report.status, JSON.stringify(report.body)).toBe(200);
+      const entries = (report.body as { entries: { action: string }[] }).entries;
+      expect(entries.map((one) => one.action)).toContain('vacancy.fill');
     });
   });
 
@@ -979,8 +1051,18 @@ describe('vacancy fill', () => {
       const key = randomUUID();
       const body = { ...bodyOf(s, OCTOBER_19), ...keysOf(check) };
       expect((await fillOf(s.branch, body, key)).status).toBe(201);
-      for (const vacancyId of [theirs.vacancy, UNKNOWN]) {
-        refusedWith(await fillOf(s.branch, { ...body, vacancyId }, key), 404, 'not_found');
+      // Permission review of the code, should-fix 1: every id of the body.
+      const repeats = [
+        { vacancyId: theirs.vacancy },
+        { vacancyId: UNKNOWN },
+        { personId: theirs.person },
+        { personId: UNKNOWN },
+        { rows: [{ classId: theirs.classA, subjectId: s.subject }] },
+        { rows: [{ groupId: UNKNOWN, subjectId: s.subject }] },
+        { dayDecisions: [{ key: UNKNOWN, choice: 'drop' }] },
+      ];
+      for (const one of repeats) {
+        refusedWith(await fillOf(s.branch, { ...body, ...one }, key), 404, 'not_found');
       }
       const principal = await t.database.migrator
         .selectFrom('assignments')
