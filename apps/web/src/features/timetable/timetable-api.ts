@@ -18,6 +18,9 @@ import {
   type DayKeepBody,
   type LessonCancelBody,
   type LessonCorrectionBody,
+  type LessonSubstituteBody,
+  type SubstitutionWithdrawBody,
+  substitutesAnswerSchema,
   type LessonMoveBody,
   type LessonRestoreBody,
   type LessonRoomBody,
@@ -592,6 +595,49 @@ export const correctionTeachersQuery = (
       ),
     enabled: branchId !== null && enabled,
   });
+
+/** The suggested substitutes of a lesson (task 5.7b-1, decision 3). */
+export const substitutesQuery = (branchId: string | null, lessonId: string) =>
+  queryOptions({
+    queryKey: [...timetableKey(branchId), 'substitutes', lessonId],
+    queryFn: async () =>
+      substitutesAnswerSchema.parse(
+        await answerOf(
+          api.GET('/api/timetable/lessons/{id}/substitutes', {
+            params: { header: branchHeader(), path: { id: lessonId } },
+          }),
+        ),
+      ),
+    enabled: branchId !== null,
+  });
+
+/** The substitution of a lesson with its reason (task 5.7b-1); `key` makes a repeat harmless. */
+export const substituteLesson = (lessonId: string, body: LessonSubstituteBody, key: string) =>
+  answerOf(
+    api.POST('/api/timetable/lessons/{id}/substitute', {
+      params: {
+        header: { ...branchHeader(), 'Idempotency-Key': key },
+        path: { id: lessonId },
+      },
+      body,
+    }),
+  ).then((answer) => dayChangeAnswerSchema.parse(answer));
+
+/** The withdrawal of a substitution with its reason (task 5.7b-1); `key` makes a repeat harmless. */
+export const withdrawSubstitution = (
+  lessonId: string,
+  body: SubstitutionWithdrawBody,
+  key: string,
+) =>
+  answerOf(
+    api.POST('/api/timetable/lessons/{id}/substitution/withdraw', {
+      params: {
+        header: { ...branchHeader(), 'Idempotency-Key': key },
+        path: { id: lessonId },
+      },
+      body,
+    }),
+  ).then((answer) => dayChangeAnswerSchema.parse(answer));
 
 /** The exams of one date (task 5.6c-2), standing and cancelled. */
 export const examsQuery = (branchId: string | null, date: string | null) =>

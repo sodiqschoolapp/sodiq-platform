@@ -262,6 +262,9 @@ export async function dayTemplatesKit(
         // Task 5.5a-3b-1: the drafts a template change marks out of date, and the marks.
         'timetable_versions',
         'timetable_version_out_of_date_causes',
+        // Task 5.7b-1 (permission review, must-fix 1): the writes of dated lessons end their rows.
+        'substitutions',
+        'substitution_lessons',
       ] as const) {
         rows[table] = await database.migrator
           .selectFrom(table)

@@ -11,6 +11,7 @@ import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
 import { claimsElsewhere, datedLessonsOf, teacherStatesOf } from './dated-check.js';
 import { closedSpansOn } from './rooms-out-read.js';
+import { substitutionsInForce } from './substitutions-read.js';
 import type { TimetablePattern } from './pattern.service.js';
 import type { Timetable } from './timetable.service.js';
 
@@ -83,6 +84,16 @@ export interface StoredDayResult {
    * out (decision 7); else none.
    */
   readonly freeRooms: readonly string[];
+  /**
+   * Task 5.7b-1 (decision 3): each candidate of `input.candidates` placed as
+   * the substitute of every lesson, checked as if no teacher of the subject
+   * were free: the relaxed rules are warnings here, and a candidate without
+   * one of them passes every blocked rule.
+   */
+  readonly candidates: ReadonlyMap<
+    string,
+    { readonly blocked: readonly RuleResult[]; readonly warnings: readonly RuleResult[] }
+  >;
 }
 
 const MINUTE = 60_000;
@@ -331,6 +342,20 @@ export async function storedDayCheck(
     /** The person recorded as having taught it (task 5.6a-4); implies `keepTeacher`. */
     readonly teacherId?: string;
     /**
+     * Task 5.7b-1 (spec review of the plan, must-fix 1): the substitute of
+     * each lesson named, by lesson id, placed with `substitute: true` and no
+     * Tutor follow (the halves of a double stay a pair), relaxed only when
+     * its substitution was saved under the exception (spec review of the
+     * plan, must-fix 2). Apart from `relaxed`, so a
+     * substitute who cannot teach in the class's language is the warning
+     * `substitute_language` and a vacancy `substitute_vacancy` whether or not
+     * the rules are relaxed.
+     */
+    readonly substitutes?: ReadonlyMap<
+      string,
+      { readonly teacherId: string; readonly relaxed: boolean }
+    >;
+    /**
      * The teacher placed as a substitute when no teacher of the subject is
      * free (`noSubjectTeacherFree`): subject, grades and availability are
      * warnings, double booking stays blocked (task 5.6a-4, decision 2). For
@@ -344,6 +369,8 @@ export async function storedDayCheck(
      * past lesson and the calendar's move back do not.
      */
     readonly closures?: boolean;
+    /** Task 5.7b-1 (decision 3): the teachers to check as substitutes of the lessons, each alone. */
+    readonly candidates?: readonly string[];
   },
 ): Promise<StoredDayResult> {
   const [lesson] = input.lessons;
@@ -351,6 +378,21 @@ export async function storedDayCheck(
   const { date, branchId } = lesson;
   const ids = new Set(input.lessons.map((one) => one.id));
   const correcting = input.keepTeacher === true || input.teacherId !== undefined;
+  // Task 5.7b-1 (spec review of the plan, must-fix 2): unless the caller
+  // names the substitutes or the person recorded, the substitutions in force
+  // stay on their lessons, so no one-day change, restore or move takes a
+  // substitute off, and one saved under the exception is checked the same way.
+  const substitutes =
+    input.substitutes ??
+    (input.teacherId !== undefined
+      ? new Map<string, { teacherId: string; relaxed: boolean }>()
+      : new Map(
+          [...(await substitutionsInForce(transaction, input.lessons))].map(([id, one]) => [
+            id,
+            { teacherId: one.substituteId, relaxed: one.relaxed },
+          ]),
+        ));
+  const anyRelaxed = input.relaxed === true || [...substitutes.values()].some((one) => one.relaxed);
   const stored = await storedLessonsOn(transaction, branchId, date);
   // The teachers no row names are read too: the person recorded, and one a
   // correction recorded earlier on a lesson of the date (task 5.6a-4), of
@@ -358,6 +400,8 @@ export async function storedDayCheck(
   const named = [
     ...new Set([
       ...(input.teacherId === undefined ? [] : [input.teacherId]),
+      ...[...substitutes.values()].map((one) => one.teacherId),
+      ...(input.candidates ?? []),
       ...[...stored, ...input.lessons].flatMap((one) =>
         one.teacherId === null ? [] : [one.teacherId],
       ),
@@ -462,7 +506,10 @@ export async function storedDayCheck(
       subjectId: one.subjectId,
       loadRowId: one.loadRowId,
       teacherIds: teacherId === null ? [] : [teacherId],
-      substitute: input.relaxed === true && ids.has(one.id),
+      substitute: (input.relaxed === true || substitutes.has(one.id)) && ids.has(one.id),
+      ...(ids.has(one.id) && substitutes.has(one.id)
+        ? { relaxed: substitutes.get(one.id)?.relaxed === true }
+        : {}),
       roomId,
       examRooms: [],
       fixed: false,
@@ -478,8 +525,14 @@ export async function storedDayCheck(
   const followed = new Set<string>();
   const kept = correcting;
   for (const one of input.lessons) {
-    let teacherId = input.teacherId ?? one.teacherId;
-    if (!kept && tutorSubjects.has(one.subjectId) && one.classId !== null) {
+    const substitute = substitutes.get(one.id);
+    let teacherId = substitute?.teacherId ?? input.teacherId ?? one.teacherId;
+    if (
+      !kept &&
+      substitute === undefined &&
+      tutorSubjects.has(one.subjectId) &&
+      one.classId !== null
+    ) {
       teacherId = tutorOn(one.classId, date, minutesOf(one.startsAt));
       if (teacherId !== null && teacherId !== model.rowOf(one.loadRowId).teacherId) {
         followed.add(one.id);
@@ -487,7 +540,12 @@ export async function storedDayCheck(
     }
     teacherIds.set(one.id, teacherId);
   }
-  const candidateTeachers = [...new Set([...teacherIds.values()].flatMap((one) => one ?? []))];
+  const candidateTeachers = [
+    ...new Set([
+      ...[...teacherIds.values()].flatMap((one) => one ?? []),
+      ...(input.candidates ?? []),
+    ]),
+  ];
 
   // Only a teacher of the branch has claims elsewhere to read (`teacher_claims_elsewhere`
   // refuses another), as `datedCheck` reads them (permission review should-fix 6).
@@ -585,7 +643,7 @@ export async function storedDayCheck(
     ];
     const results = checkCandidates(others, facts, candidates, {
       availabilityFrom: date,
-      ...(input.relaxed === true ? { noSubjectTeacherFree: true } : {}),
+      ...(anyRelaxed ? { noSubjectTeacherFree: true } : {}),
     }).filter((one) => one.rule !== 'teacher_week_load');
     return { candidates, results };
   };
@@ -614,10 +672,33 @@ export async function storedDayCheck(
         .map((room) => room.id)
         .sort()
         .filter((id) => !check(id).results.some((one) => one.severity === 'blocked'));
+  const byCandidate = new Map(
+    (input.candidates ?? []).map((teacherId) => {
+      const placed = input.lessons.map((one) => ({
+        ...placementOf(one, teacherId, roomId === undefined ? one.roomId : roomId),
+        substitute: true,
+        relaxed: true,
+      }));
+      const found = checkCandidates(
+        others,
+        facts,
+        [...placed, ...(input.alongside ?? []).map(alongsideOf)],
+        { availabilityFrom: date, noSubjectTeacherFree: true },
+      ).filter((one) => one.rule !== 'teacher_week_load');
+      return [
+        teacherId,
+        {
+          blocked: found.filter((one) => one.severity === 'blocked'),
+          warnings: found.filter((one) => one.severity === 'warning'),
+        },
+      ] as const;
+    }),
+  );
   return {
     blocked,
     warnings: results.filter((one) => one.severity === 'warning'),
     teacherIds,
     freeRooms,
+    candidates: byCandidate,
   };
 }

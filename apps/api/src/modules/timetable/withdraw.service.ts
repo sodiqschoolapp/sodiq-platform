@@ -340,6 +340,7 @@ export class TimetableWithdraw {
         ? await removeDatedLessons(
             transaction,
             branchId,
+            access.accountId,
             version.starts_on,
             runEnd,
             plan,

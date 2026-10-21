@@ -62,6 +62,12 @@ export interface Placement {
   readonly teacherIds: readonly string[];
   /** The teacher is a substitute of a one-day change (06, Changes after publishing, Substitution). */
   readonly substitute: boolean;
+  /**
+   * Task 5.7b-1: `false` keeps the blocked rules of a substitute saved while
+   * a teacher of the subject was free, in a call that relaxes another
+   * substitute's lesson (`noSubjectTeacherFree`). Unset: relaxed with the call.
+   */
+  readonly relaxed?: boolean;
   /** The room of a lesson; `null` when it has none. */
   readonly roomId: string | null;
   /** The rooms of an exam, each with the students of the classes it holds; empty for a lesson. */

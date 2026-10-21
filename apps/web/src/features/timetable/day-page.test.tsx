@@ -66,6 +66,8 @@ const lesson = (n: number, fields: Partial<DayLesson> = {}): DayLesson => ({
   canRestore: false,
   state: 'upcoming',
   canCorrect: false,
+  substitution: null,
+  canSubstitute: false,
   ...fields,
 });
 
@@ -965,5 +967,221 @@ describe('the correction of a past lesson', () => {
       'Hall',
       en.timetable.day.exam,
     ]);
+  });
+});
+
+// Task 5.7b-1, pull request #191: the substitution of a lesson from the day
+// page (06, Changes after publishing, Substitution; 05, Substitution:
+// "listed last and marked. Choosing one needs a confirmation").
+describe('the substitution of a lesson', () => {
+  const FREE = { id: uid(611), name: 'Rahimov Bobur' };
+  const RUSSIAN = { id: uid(612), name: 'Saidova Malika' };
+  const coming = (n: number, fields: Partial<DayLesson> = {}) =>
+    lesson(n, { canSubstitute: true, ...fields });
+
+  const suggestions = (noSubjectTeacherFree = false) => ({
+    noSubjectTeacherFree,
+    teachers: [
+      { ...FREE, group: 'subject', language: false, warnings: ['teacher_day_load'] },
+      { ...RUSSIAN, group: 'department', language: true, warnings: ['substitute_language'] },
+    ],
+  });
+
+  const needsConfirm = () =>
+    json(
+      {
+        error: {
+          code: 'substitution_needs_confirm',
+          message: 'ENGLISH TEXT FOR THE DEVELOPER',
+          requestId: 'test-request',
+          details: [
+            {
+              path: 'rules.substitute_language',
+              code: 'substitute_language',
+              message: 'x',
+              rule: { weekday: 1, lessonIds: [] },
+            },
+          ],
+        },
+      },
+      409,
+    );
+
+  it('marks a substituted lesson with the teacher replaced, and offers the substitution and its withdrawal only on a lesson to come', async () => {
+    await openPage({
+      lessons: [
+        coming(1, {
+          teacher: { ...FREE, kind: 'person' },
+          substitution: {
+            id: uid(700),
+            replaced: { id: uid(600), kind: 'person', name: 'Karimova Aziza' },
+          },
+        }),
+        lesson(2, { start: 535, end: 580, canCancel: false, state: 'held' }),
+      ],
+    });
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(2);
+    });
+    expect(rowsDrawn()[0]?.[3]).toBe(
+      `${FREE.name} · ${en.timetable.day.substituteFor.replace('{{name}}', 'Karimova Aziza')}`,
+    );
+    const rows = [...document.querySelectorAll('tbody tr')];
+    const buttons = (row: number) =>
+      [...(rows[row]?.querySelectorAll('button') ?? [])].map((one) => one.textContent);
+    expect(buttons(0)).toContain(en.timetable.day.substitute);
+    expect(buttons(0)).toContain(en.timetable.day.withdrawSubstitution);
+    expect(buttons(1)).not.toContain(en.timetable.day.substitute);
+  });
+
+  it('offers no substitution to the Principal', async () => {
+    await openPage({ role: 'principal', lessons: [coming(1)] });
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(1);
+    });
+    expect(screen.queryByRole('button', { name: en.timetable.day.substitute })).toBeNull();
+  });
+
+  it('lists the suggestions in their order with their group and mark, and asks the tick for a language warning before saving', async () => {
+    let sent = 0;
+    const page = await openPage({
+      lessons: [coming(1)],
+      extra: {
+        [`GET /api/timetable/lessons/${uid(301)}/substitutes`]: () => json(suggestions()),
+        [`POST /api/timetable/lessons/${uid(301)}/substitute`]: () => {
+          sent += 1;
+          return sent === 1
+            ? needsConfirm()
+            : json({
+                lesson: coming(1, { teacher: { ...RUSSIAN, kind: 'person' } }),
+                warnings: [],
+              });
+        },
+      },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: en.timetable.day.substitute }));
+    const dialog = await screen.findByRole('dialog');
+    const field = await within(dialog).findByLabelText(en.timetable.day.substitute);
+    const options = [...field.querySelectorAll('option')].map((one) => one.textContent);
+    expect(options).toEqual([
+      en.timetable.day.teacherChoose,
+      `${FREE.name} · ${en.timetable.day.substituteOfSubject} · ${en.timetable.rule.teacher_day_load}`,
+      `${RUSSIAN.name} · ${en.timetable.day.substituteOfDepartment} · ${en.timetable.day.substituteLanguage}`,
+    ]);
+    fireEvent.change(field, { target: { value: RUSSIAN.id } });
+    fireEvent.change(within(dialog).getByLabelText(en.timetable.day.reason), {
+      target: { value: 'The teacher is ill' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.timetable.day.substituteSend }));
+    expect(await within(dialog).findByText(en.errors.substitution_needs_confirm)).not.toBeNull();
+    expect(within(dialog).getByText(en.timetable.rule.substitute_language)).not.toBeNull();
+    fireEvent.click(within(dialog).getByLabelText(en.timetable.day.substituteConfirm));
+    fireEvent.click(within(dialog).getByRole('button', { name: en.timetable.day.substituteSend }));
+    expect(await screen.findByText(en.timetable.day.substituted)).not.toBeNull();
+    expect(
+      page.calls.filter((call) => call.route.endsWith('/substitute')).map((call) => call.body),
+    ).toEqual([
+      { teacherId: RUSSIAN.id, reason: 'The teacher is ill' },
+      { teacherId: RUSSIAN.id, reason: 'The teacher is ill', confirm: true },
+    ]);
+  });
+
+  it('takes the tick away when another teacher is chosen', async () => {
+    const page = await openPage({
+      lessons: [coming(1)],
+      extra: {
+        [`GET /api/timetable/lessons/${uid(301)}/substitutes`]: () => json(suggestions()),
+        [`POST /api/timetable/lessons/${uid(301)}/substitute`]: () => needsConfirm(),
+      },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: en.timetable.day.substitute }));
+    const dialog = await screen.findByRole('dialog');
+    const field = await within(dialog).findByLabelText(en.timetable.day.substitute);
+    fireEvent.change(field, { target: { value: RUSSIAN.id } });
+    fireEvent.change(within(dialog).getByLabelText(en.timetable.day.reason), {
+      target: { value: 'The teacher is ill' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.timetable.day.substituteSend }));
+    const tick = await within(dialog).findByLabelText(en.timetable.day.substituteConfirm);
+    fireEvent.click(tick);
+    fireEvent.change(field, { target: { value: FREE.id } });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.timetable.day.substituteSend }));
+    await waitFor(() => {
+      expect(page.calls.filter((call) => call.route.endsWith('/substitute'))).toHaveLength(2);
+    });
+    expect(
+      page.calls.filter((call) => call.route.endsWith('/substitute')).map((call) => call.body),
+    ).toEqual([
+      { teacherId: RUSSIAN.id, reason: 'The teacher is ill' },
+      { teacherId: FREE.id, reason: 'The teacher is ill' },
+    ]);
+  });
+
+  it('says when no teacher of the subject is free, and when no teacher is free at all', async () => {
+    await openPage({
+      lessons: [coming(1)],
+      extra: {
+        [`GET /api/timetable/lessons/${uid(301)}/substitutes`]: () => json(suggestions(true)),
+      },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: en.timetable.day.substitute }));
+    const dialog = await screen.findByRole('dialog');
+    expect(
+      await within(dialog).findByText(en.timetable.day.substituteNoneOfSubject),
+    ).not.toBeNull();
+  });
+
+  it('withdraws a substitution with a reason, and shows a refused return', async () => {
+    let sent = 0;
+    const substituted = coming(1, {
+      teacher: { ...FREE, kind: 'person' },
+      substitution: { id: uid(700), replaced: null },
+    });
+    const page = await openPage({
+      lessons: [substituted],
+      extra: {
+        [`POST /api/timetable/lessons/${uid(301)}/substitution/withdraw`]: () => {
+          sent += 1;
+          return sent === 1
+            ? json(
+                {
+                  error: {
+                    code: 'substitution_return_blocked',
+                    message: 'ENGLISH TEXT FOR THE DEVELOPER',
+                    requestId: 'test-request',
+                    details: [
+                      {
+                        path: 'rules.teacher_double',
+                        code: 'teacher_double',
+                        message: 'x',
+                        rule: { weekday: 1, lessonIds: [] },
+                      },
+                    ],
+                  },
+                },
+                409,
+              )
+            : json({ lesson: coming(1), warnings: [] });
+        },
+      },
+    });
+    fireEvent.click(
+      await screen.findByRole('button', { name: en.timetable.day.withdrawSubstitution }),
+    );
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.change(within(dialog).getByLabelText(en.timetable.day.reason), {
+      target: { value: 'The teacher is back' },
+    });
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: en.timetable.day.withdrawSubstitutionSend }),
+    );
+    expect(await within(dialog).findByText(en.errors.substitution_return_blocked)).not.toBeNull();
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: en.timetable.day.withdrawSubstitutionSend }),
+    );
+    expect(await screen.findByText(en.timetable.day.substitutionWithdrawn)).not.toBeNull();
+    expect(
+      page.calls.filter((call) => call.route.endsWith('/withdraw')).map((call) => call.body),
+    ).toEqual([{ reason: 'The teacher is back' }, { reason: 'The teacher is back' }]);
   });
 });

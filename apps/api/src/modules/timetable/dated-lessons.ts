@@ -1,12 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { patternIdOf } from '@sodiq/timetable-rules';
 import { sql } from 'kysely';
-import type { Transaction } from '../../database/transactions.js';
+import { transactionMoment, type Transaction } from '../../database/transactions.js';
 import type { BulkHold } from './bulk-cancels-kept.js';
 import type { ExamWrite } from './calendar-exams.js';
 import type { DatedFindings } from './dated-check.js';
 import type { DayWritePlan } from './day-changes-kept.js';
 import type { PatternState } from './pattern.service.js';
+import { endSubstitutionRows } from './substitutions-read.js';
 
 /**
  * The dated lessons of a version written at publish (task 5.5b-1, pull
@@ -51,6 +52,12 @@ export interface DatedWrite {
   readonly cancelled: number;
   readonly removed: readonly RemovedLesson[];
   readonly changed: readonly ChangedLesson[];
+  /**
+   * Task 5.7b-1 (decision 6, review correction 1): the substitutions in force
+   * the write took off a lesson or removed with it, ended `dropped` (5.7b-3
+   * sorts them instead).
+   */
+  readonly substitutionsDropped: readonly { lessonId: string; substitutionId: string }[];
 }
 
 /** A lesson removed, with every value it held. */
@@ -506,6 +513,14 @@ export async function writeDatedLessons(
   // pairs.
   const kept = new Set([...pairOf.values()].map((one) => one.id));
   const removedRows = stored.filter((one) => !kept.has(one.id));
+  const endedAt = await transactionMoment(transaction);
+  // Task 5.7b-1: a substitution of a removed lesson ends before the lesson goes.
+  const substitutionsDropped = await endSubstitutionRows(transaction, {
+    lessonIds: removedRows.map((one) => one.id),
+    cause: 'dropped',
+    accountId: state.accountId,
+    moment: endedAt,
+  });
   for (let index = 0; index < removedRows.length; index += BATCH) {
     await transaction
       .deleteFrom('lessons')
@@ -545,6 +560,7 @@ export async function writeDatedLessons(
 
   // The reused blocks re-pointed, then their kept lessons.
   const changed: ChangedLesson[] = [...storedCancels];
+  const restaffed: string[] = [];
   let keptCount = 0;
   for (const block of wantedBlocks) {
     if (block.reused === null) continue;
@@ -578,6 +594,7 @@ export async function writeDatedLessons(
       // Task 5.6a-5b-1: a part of a block decided `keep` is held.
       const hold = held.has(found.id);
       if (!moved && !staffed && oneDay === null && !hold) continue;
+      if (found.teacher_id !== lesson.teacherId) restaffed.push(found.id);
       await transaction
         .updateTable('lessons')
         .set({
@@ -601,6 +618,14 @@ export async function writeDatedLessons(
       }
     }
   }
+
+  // Task 5.7b-1: a kept lesson given another teacher drops its substitution.
+  const substitutionsRestaffed = await endSubstitutionRows(transaction, {
+    lessonIds: restaffed,
+    cause: 'dropped',
+    accountId: state.accountId,
+    moment: endedAt,
+  });
 
   // The new blocks and lessons.
   const quarters = await transaction
@@ -733,6 +758,7 @@ export async function writeDatedLessons(
   await sql`set constraints all immediate`.execute(transaction);
 
   return {
+    substitutionsDropped: [...substitutionsDropped, ...substitutionsRestaffed],
     firstDate,
     lastDate,
     created: inserts.length,
@@ -938,6 +964,8 @@ async function wantedOf(
 export async function removeDatedLessons(
   transaction: Transaction,
   branchId: string,
+  /** Task 5.7b-1: the account of the withdraw, which ends the substitutions of the lessons removed. */
+  accountId: string,
   firstDate: string,
   lastDate: string,
   plan: Pick<DayWritePlan, 'keepStored' | 'cancelStored'> | null = null,
@@ -1007,6 +1035,13 @@ export async function removeDatedLessons(
     transaction,
     blocks.map((one) => one.id),
   );
+  // Task 5.7b-1: a substitution of a removed lesson ends before the lesson goes.
+  const substitutionsDropped = await endSubstitutionRows(transaction, {
+    lessonIds: rows.map((one) => one.id),
+    cause: 'dropped',
+    accountId,
+    moment: await transactionMoment(transaction),
+  });
   for (let index = 0; index < rows.length; index += BATCH) {
     await transaction
       .deleteFrom('lessons')
@@ -1030,6 +1065,7 @@ export async function removeDatedLessons(
   await exams?.end(transaction);
   await sql`set constraints all immediate`.execute(transaction);
   return {
+    substitutionsDropped,
     firstDate,
     lastDate,
     created: 0,

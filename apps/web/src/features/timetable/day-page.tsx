@@ -48,6 +48,7 @@ import { roomsQuery } from '@/features/setup/setup-api';
 import { BlockedRules } from './blocked-rules';
 import { BulkCancelDialog } from './bulk-cancel-dialog';
 import { CorrectionDialog, correctionKinds } from './correction-dialog';
+import { SubstituteDialog, WithdrawSubstitutionDialog } from './substitute-dialog';
 import { ruleText } from './rule-text';
 import {
   cancelLesson,
@@ -104,6 +105,9 @@ export function DayPage(): React.JSX.Element {
   const [bulk, setBulk] = useState(false);
   // The correction of a past lesson (task 5.6a-4).
   const [correcting, setCorrecting] = useState<DayLesson | null>(null);
+  // The substitution of a lesson and its withdrawal (task 5.7b-1).
+  const [substituting, setSubstituting] = useState<DayLesson | null>(null);
+  const [withdrawing, setWithdrawing] = useState<DayLesson | null>(null);
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: timetableKey(branchId) });
   const restore = useMutation({
@@ -328,6 +332,17 @@ export function DayPage(): React.JSX.Element {
                         <TableCell>{lesson.subject.names[language]}</TableCell>
                         <TableCell>
                           {lesson.teacher?.name ?? t('timetable.day.needsTeacher')}
+                          {/* Task 5.7b-1: the substitute, and the teacher replaced. */}
+                          {lesson.substitution !== null && (
+                            <span data-substitution="true">
+                              {' · '}
+                              {lesson.substitution.replaced === null
+                                ? t('timetable.day.substituteMark')
+                                : t('timetable.day.substituteFor', {
+                                    name: lesson.substitution.replaced.name,
+                                  })}
+                            </span>
+                          )}
                           {lesson.away === 'absence' && <> · {t('timetable.day.absent')}</>}
                           {lesson.away !== null && lesson.away !== 'absence' && (
                             <> · {t(`timetable.day.away_${lesson.away}`)}</>
@@ -385,6 +400,32 @@ export function DayPage(): React.JSX.Element {
                                 {t('timetable.day.move')}
                               </Button>
                             )}
+                            {lesson.canSubstitute && (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => {
+                                  setMessage(null);
+                                  restore.reset();
+                                  setSubstituting(lesson);
+                                }}
+                              >
+                                {t('timetable.day.substitute')}
+                              </Button>
+                            )}
+                            {lesson.canSubstitute && lesson.substitution !== null && (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => {
+                                  setMessage(null);
+                                  restore.reset();
+                                  setWithdrawing(lesson);
+                                }}
+                              >
+                                {t('timetable.day.withdrawSubstitution')}
+                              </Button>
+                            )}
                             {lesson.canRestore && (
                               <Button
                                 variant="secondary"
@@ -431,6 +472,44 @@ export function DayPage(): React.JSX.Element {
           onCancelled={async () => {
             setCancelling(null);
             setMessage(t('timetable.day.cancelled'));
+            await refresh();
+          }}
+        />
+      )}
+      {substituting !== null && (
+        <SubstituteDialog
+          key={substituting.id}
+          lesson={substituting}
+          branchId={branchId}
+          subject={substituting.subject.names[language]}
+          onClose={() => {
+            setSubstituting(null);
+          }}
+          onSubstituted={async (warnings) => {
+            setSubstituting(null);
+            setMessage(
+              [
+                t('timetable.day.substituted'),
+                ...warnings.map((rule) =>
+                  t('timetable.day.changedWarning', { rule: ruleText(t, rule) }),
+                ),
+              ].join(' '),
+            );
+            await refresh();
+          }}
+        />
+      )}
+      {withdrawing !== null && (
+        <WithdrawSubstitutionDialog
+          key={withdrawing.id}
+          lesson={withdrawing}
+          subject={withdrawing.subject.names[language]}
+          onClose={() => {
+            setWithdrawing(null);
+          }}
+          onWithdrawn={async () => {
+            setWithdrawing(null);
+            setMessage(t('timetable.day.substitutionWithdrawn'));
             await refresh();
           }}
         />

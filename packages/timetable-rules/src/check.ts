@@ -81,7 +81,7 @@ class Results {
       this.mode === 'dated' &&
       RELAXED_WHEN_NO_TEACHER_FREE.includes(rule) &&
       placements.length === 1 &&
-      placements.every((one) => one.substitute);
+      placements.every((one) => one.substitute && one.relaxed !== false);
     const severity = WARNINGS.includes(rule) || relaxed ? 'warning' : 'blocked';
     this.seen.set(key, {
       rule,

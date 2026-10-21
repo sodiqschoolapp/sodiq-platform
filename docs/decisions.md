@@ -285,6 +285,33 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 21 October 2026: the substitution of a lesson (task 5.7b-1)
+
+Plan approved on pull request #191 with corrections 1 and 2; decisions 1 to 12 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a task split in parts). 5.7b is split into 5.7b-1 (the substitution of a lesson), 5.7b-2 (from an absence or a vacancy) and 5.7b-3 (substitutions kept after a publish); each From line of 5.7b went to the part that reads it | Decision 1 with correction 2 |
+| **Look first** (a reading of a timetable rule). "No teacher of the subject is free" is decided by the server on each save, with the computation of the suggestions: a person with the subject and every grade who passes every blocked rule, the class's language a warning; the lesson's teacher and the teacher replaced never count. While one is free, subject, grades and availability stay blocked | Decision 2; `edge/timetable`, After publishing |
+| The suggestions list only teachers a save would take, from the staff of the branch with a subject in the profile, not away at the lesson's start: subject, then the subject's department, then the others, by name; every teacher who cannot teach in the class's language after all the others, marked | Decision 3; `06` and `05`, Substitution |
+| A substitute away at the lesson's start (absent, inactive, left, locked) is refused (`substitute_away`) | Decision 4 |
+| The record keeps the teacher first replaced; naming that teacher as the substitute is refused (`substitute_is_replaced`); `relaxed` is stored so a later room change, move or restore checks the substitute the same way | Decision 5 |
+| The substitute is written into `lessons.teacher_id`; a row of `substitution_lessons` is in force while not ended and the lesson's teacher is its substitute; every writer that takes the substitute off or removes the lesson ends the row in its transaction (`dropped` by the writes of dated lessons until 5.7b-3) and lists it in its audit entry | Decision 6 with correction 1 |
+| The substitute gets `timetable.substitution_assigned` (date and week); every other teacher whose week changed gets `timetable.day_changed` | Decision 7; `10` |
+| Only a lesson that has not started, in a year not closed; a started one is corrected, and the correction of kind `teacher` writes a record of source `correction` (the teacher replaced ends it with no record, `lesson_absence_taught` when away); earlier corrections are not copied | Decision 8 |
+| Suggestions, substitution and withdrawal are `timetable` `edit`; no role widened | Decision 9 |
+| The substitute's rights in the journal and the plan and the month count of the Free now board are From lines (6.3, 7.1b, 8.4, 8.7, 8.8, 5.7c) | Decision 10 |
+| Audit actions `lesson.substitute` and `lesson.substitute_withdraw`; not in the personal-data report, as `lesson.correct` | Decision 11 |
+| The withdrawal is refused only by a clash of time of the teacher returned (`teacher_double`, `travel_time`); otherwise the lesson goes back as it was, "needs a teacher" when the teacher is away, a vacancy or nobody | Decision 12 |
+| **Build decision.** `storedDayCheck` keeps the substitutions in force on its lessons unless its caller names the substitutes or the person recorded, so every one-day change, the exam's restore, the room closure's "move all" and the calendar's move back keep a substitute without a change of their own | Spec review of the plan, must-fix 2: listing each caller would miss the next one |
+| **Build decision.** The rule engine's `Placement` takes `relaxed` (`false` keeps the blocked rules of a substitute saved while a teacher of the subject was free, in a call that relaxes another substitute's lesson), with its test first | `.claude/rules/timetable.md`: an exception applies to the lesson it is for only |
+| **Build decision.** A vacancy fill drops a substitution of the vacancy's lesson, as a publish does (its publish or carry rewrites the kept lesson); so a withdrawal can never return a closed vacancy, and `lesson_vacancy_closed` is not mapped. 5.7b-3 sorts the fill too | The plan said the fill never meets a substituted lesson; the route test showed its carry does |
+| **Build decision.** "The subject's department" of a candidate is the department of the person's record now, as the department move writes it (3.4c decision 2) | No dated department is stored |
+| **Look first** (a pinned list widened). \`WEEK_KINDS\` (\`packages/shared/src/notifications.ts\`) takes \`timetable.substitution_assigned\`, and its pinned test with it | Decision 7: the substitute's notice carries the week like every one-day change; code review must-fix 2 |
+| **Build decision.** A withdrawal whose teacher replaced no longer works in the branch gives the lesson to nobody ("needs a teacher"); the day answer shows that teacher's id with no name | Permission review, notes 7 and 9; decision 12 |
+| **Build decision.** The substitution, the withdrawal and the correction defer the three claim checks until after their records are written, so a claim taken at the same moment refuses the whole change | Code review must-fixes 8 and 9; \`.claude/rules/api.md\`, a refusal after the writes ran |
+| **Build decision.** The live index of \`substitution_lessons\` stays on \`lesson_id\` alone: a lesson id is unique and the composite key ties the row to the lesson's branch | Permission review, note 8; a change of the applied migration would mean resetting the local database |
+
 ## 21 October 2026: the acting teacher of a vacancy's journal (task 5.7a-3c)
 
 Plan approved on pull request #190 with corrections 1 to 4; decisions 1 to 10 confirmed there. Flagged on issue #42.

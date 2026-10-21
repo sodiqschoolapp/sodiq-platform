@@ -1970,6 +1970,10 @@ export function datedAuditOf(write: DatedWrite) {
       roomId: { ...one.roomId },
       ...(one.cancel === undefined ? {} : { cancel: { ...one.cancel } }),
     })),
+    // Task 5.7b-1 (decision 6): the substitutions the write dropped.
+    ...(write.substitutionsDropped.length === 0
+      ? {}
+      : { substitutionsDropped: write.substitutionsDropped.map((one) => ({ ...one })) }),
   };
 }
 

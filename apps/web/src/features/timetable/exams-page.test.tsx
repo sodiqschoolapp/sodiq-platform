@@ -108,6 +108,8 @@ const lesson = (n: number, fields: Partial<DayLesson> = {}): DayLesson => ({
   canRestore: false,
   state: 'upcoming',
   canCorrect: false,
+  substitution: null,
+  canSubstitute: false,
   ...fields,
 });
 

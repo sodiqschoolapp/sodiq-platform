@@ -1054,6 +1054,29 @@ export interface Subjects {
   weights_round: Generated<number>;
 }
 
+export interface SubstitutionLessons {
+  branch_id: string;
+  end_cause: string | null;
+  ended_at: Timestamp | null;
+  ended_by: string | null;
+  id: Generated<string>;
+  lesson_date: string;
+  lesson_id: string | null;
+  substitution_id: string;
+}
+
+export interface Substitutions {
+  branch_id: string;
+  id: Generated<string>;
+  made_at: Timestamp;
+  made_by: string;
+  reason: string;
+  relaxed: boolean;
+  replaced_id: string | null;
+  source: string;
+  substitute_id: string;
+}
+
 export interface TeachingLoadRows {
   branch_id: string;
   class_id: string | null;
@@ -1281,6 +1304,8 @@ export interface DB {
   subject_daily_weights: SubjectDailyWeights;
   subject_quarter_weights: SubjectQuarterWeights;
   subjects: Subjects;
+  substitution_lessons: SubstitutionLessons;
+  substitutions: Substitutions;
   teaching_load_rows: TeachingLoadRows;
   time_claims: TimeClaims;
   timetable_day_keeps: TimetableDayKeeps;

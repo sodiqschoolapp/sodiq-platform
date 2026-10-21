@@ -230,6 +230,9 @@ export const AUDIT_ACTION_GROUPS = {
     'lesson.bulk_cancel',
     // Task 5.6a-4: the correction of a past lesson.
     'lesson.correct',
+    // Task 5.7b-1: a substitution of a lesson, and its withdrawal.
+    'lesson.substitute',
+    'lesson.substitute_withdraw',
     // Task 5.6c-1: an exam created, changed or cancelled.
     'exam.create',
     'exam.change',

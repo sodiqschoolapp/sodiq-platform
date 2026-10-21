@@ -604,6 +604,16 @@ export const uz: Texts<'one' | 'other'> = {
       'Tugash davrning oʻz tugashidan keyin boʻlolmaydi. Keyingi kunlar uchun yangi davr tayinlang.',
     acting_ended: 'Bu davr allaqachon tugagan yoki qaytarib olingan. Koʻrish uchun qayta yuklang.',
     acting_started: 'Bu davr boshlangan, uni qaytarib olib boʻlmaydi. Uning oʻrniga tugating.',
+    substitute_away:
+      'Bu oʻqituvchi shu vaqtda dars bera olmaydi: yoʻq, faol emas, ketgan yoki bloklangan. Boshqa oʻqituvchini tanlang.',
+    substitute_is_replaced:
+      'Bu almashtirilgan oʻqituvchi. Darsni unga qaytarish uchun oʻrinbosarni bekor qiling.',
+    substitution_blocked: 'Oʻrinbosar dars jadvali qoidasini buzadi. Quyidagi roʻyxatga qarang.',
+    substitution_needs_confirm:
+      'Oʻrinbosar quyidagi ogohlantirishlar uchun belgini talab qiladi. Tekshirib, qayta saqlang.',
+    substitution_not_in_force: 'Bu darsda bekor qilinadigan oʻrinbosar yoʻq. Kunni qayta yuklang.',
+    substitution_return_blocked:
+      'Dars qaytariladigan oʻqituvchining shu vaqtda boshqa darsi yoki imtihoni bor yoki yoʻlga vaqti yetmaydi. Avval oʻsha darsni oʻzgartiring.',
     vacancy_has_load:
       'Bu vakansiya qoralamada yoki hali amal qilishi mumkin boʻlgan eʼlon qilingan yuklamada koʻrsatilgan yoki unga kelgusi dars biriktirilgan, shuning uchun uni hozircha yopib boʻlmaydi. Shu qatorlarga boshqa oʻqituvchini tayinlang yoki yuklama tugagach, vakansiyani yoping.',
     vacancy_in_load:
@@ -3057,6 +3067,8 @@ export const uz: Texts<'one' | 'other'> = {
         move: 'Dars bir kunga koʻchirildi',
         bulk_cancel: 'Tadbir uchun darslar bekor qilindi (ommaviy bekor qilish)',
         correct: 'Oʻtgan dars tuzatildi',
+        substitute: 'Darsga oʻrinbosar qoʻyildi',
+        substitute_withdraw: 'Oʻrinbosar bekor qilindi',
       },
       teaching_load: {
         create: 'Oʻquv yuklamasi qatori qoʻshildi',
@@ -3429,6 +3441,7 @@ export const uz: Texts<'one' | 'other'> = {
           'Sinf rahbari almashgani sababli sinf rahbari darslaringiz oʻzgardi. Haftangiz oldin va keyin:',
         day_changed:
           'Bir kunlik oʻzgarish (bekor qilish yoki tiklash) darslaringizni oʻzgartirdi. Haftangiz oldin va keyin:',
+        substitution_assigned: 'Siz {{date}} kuni darsga oʻrinbosarsiz. Haftangiz oldin va keyin:',
         calendar_changed:
           '«{{name}}» taqvim yozuvi darslaringizni oʻzgartirdi. Haftangiz oldin va keyin:',
         template_changed:
@@ -3736,6 +3749,25 @@ export const uz: Texts<'one' | 'other'> = {
       confirm: 'Men bularni tekshirdim va tuzatishni saqlayman',
       correctSend: 'Tuzatishni saqlash',
       corrected: 'Tuzatish saqlandi.',
+      substitute: 'Oʻrinbosar',
+      substituteTitle: '{{subject}}, {{time}} darsiga oʻrinbosar',
+      substituteOfSubject: 'fanni oʻqitadi',
+      substituteOfDepartment: 'shu kafedra',
+      substituteOfOther: 'boshqa kafedra',
+      substituteLanguage: 'sinf tilida dars bera olmaydi',
+      substituteNone: 'Bu vaqtda boʻsh oʻqituvchi yoʻq.',
+      substituteNoneOfSubject:
+        'Fanning boʻsh oʻqituvchisi yoʻq: har qanday tanlov belgini talab qiladi.',
+      substituteNeeded: 'Oʻrinbosarni tanlang.',
+      substituteConfirm: 'Bularni tekshirdim va oʻrinbosarni saqlayman',
+      substituteSend: 'Oʻrinbosarni saqlash',
+      substituteFor: '{{name}} oʻrniga',
+      substituteMark: 'oʻrinbosar',
+      substituted: 'Oʻrinbosar saqlandi.',
+      withdrawSubstitution: 'Oʻrinbosarni bekor qilish',
+      withdrawSubstitutionTitle: '{{subject}}, {{time}} darsidagi oʻrinbosarni bekor qilish',
+      withdrawSubstitutionSend: 'Oʻrinbosarni bekor qilish',
+      substitutionWithdrawn: 'Oʻrinbosar bekor qilindi.',
     },
     bulk: {
       open: 'Ommaviy bekor qilish',

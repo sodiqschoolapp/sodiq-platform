@@ -18,6 +18,7 @@ import {
   START,
 } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
+import { substitutedIn } from '../../testing/substitutions-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 
 const refusedWith = (response: Response, status: number, code: string) => {
@@ -3164,6 +3165,12 @@ describe('calendar entries after publishing', () => {
         .execute();
       expect(outs).toEqual([{ exam_id: examOf[one.branch] }]);
     }
+    // Task 5.7b-1 (permission review, must-fix 1): substitutions in force on
+    // the lessons from 19 October in each branch, which a save of those dates
+    // would end with the lessons it rewrites or removes.
+    for (const one of [north, south]) {
+      expect(await substitutedIn(t.database.migrator, one.branch, OCT19)).toBeGreaterThan(0);
+    }
     const southLesson = await lessonOf(south, '2026-11-16', south.classId);
     const southBlock = await t.database.migrator
       .selectFrom('pattern_blocks')
@@ -3855,6 +3862,10 @@ describe('calendar entries after publishing', () => {
       'timetable_day_keeps',
       // Task 5.6b-3: the split groups' choices the save now writes.
       'calendar_group_blocks',
+      // Task 5.7b-1 (permission review, must-fix 1): the substitutions the
+      // save ends with the lessons it rewrites or removes.
+      'substitutions',
+      'substitution_lessons',
     ] as const) {
       rows[table] = await t.database.migrator
         .selectFrom(table)

@@ -46,6 +46,12 @@ import { dayOf, loadStore } from '../setup/day-template-state.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { awayLessons, settledByTaught } from './away-read.js';
 import { roomsOutLessons } from './rooms-out-read.js';
+import {
+  endSubstitutionRows,
+  substitutionsInForce,
+  writeRecord,
+  type SubstitutionInForce,
+} from './substitutions-read.js';
 import { OUT_STATUSES, dayBeginnings } from './dated-check.js';
 import { examsOf } from './exams.service.js';
 import { TimetablePattern } from './pattern.service.js';
@@ -388,8 +394,11 @@ export class TimetableDayChanges {
     });
   }
 
-  /** The lesson's branch before the request key (`.claude/rules/api.md`), then the work once. */
-  private keyed(
+  /**
+   * The lesson's branch before the request key (`.claude/rules/api.md`), then the work once;
+   * the substitutions of task 5.7b-1 run through it too.
+   */
+  keyed(
     access: Access,
     id: string,
     key: string,
@@ -467,7 +476,7 @@ export class TimetableDayChanges {
    * side of the same boundary: `lesson_not_started` unless it, or the
    * earlier half of its pair, has started (review correction 2).
    */
-  private async lockedLesson(
+  async lockedLesson(
     transaction: Transaction,
     branchId: string,
     id: string,
@@ -934,6 +943,12 @@ export class TimetableDayChanges {
     let warnings: readonly RuleResult[] = [];
     let taught = false;
     let taughtCause: string | null = null;
+    // Task 5.7b-1: the substitution in force on the lesson; recording the
+    // teacher it replaced ends it with no new record (spec review of the
+    // plan, must-fix 3).
+    const inForce = (await substitutionsInForce(transaction, [lesson])).get(id);
+    const backToReplaced =
+      input.kind === 'teacher' && inForce !== undefined && input.teacherId === inForce.replacedId;
     if (input.kind === 'cancel') {
       if (lesson.cancelCause !== null) {
         throw new ApiException('lesson_cancelled', 409);
@@ -955,6 +970,15 @@ export class TimetableDayChanges {
         taught = settledByTaught(span);
         taughtCause = span?.cause ?? null;
         if (!taught) throw new ApiException('teacher_unchanged', 409);
+      }
+      if (backToReplaced && input.kind === 'teacher') {
+        // The teacher replaced taught it after all: held, not unresolved,
+        // when they are away by a cause the record settles.
+        const span = (
+          await awayLessons(transaction, [{ ...lesson, teacherId: input.teacherId }])
+        ).get(id);
+        taught = settledByTaught(span);
+        taughtCause = span?.cause ?? null;
       }
       const newRoom = input.kind === 'teacher' ? undefined : input.roomId;
       if (newRoom !== undefined && newRoom === lesson.roomId) {
@@ -1012,6 +1036,12 @@ export class TimetableDayChanges {
       if (input.kind === 'restore') cancelCause = null;
     }
 
+    // The claims are checked at the end of the change (`set constraints all
+    // immediate` below), after its records are written, so a race refuses the
+    // whole change (task 5.7b-1, code review must-fix 9).
+    await sql`set constraints time_claims_teacher_excl, time_claims_room_excl, time_claims_class_excl deferred`.execute(
+      transaction,
+    );
     await transaction
       .updateTable('lessons')
       .set({
@@ -1036,7 +1066,38 @@ export class TimetableDayChanges {
           recorded_by: access.accountId,
           recorded_at: moment,
         })
+        // Task 5.7b-1: recorded once; a lesson given back to its teacher keeps it.
+        .onConflict((conflict) => conflict.column('lesson_id').doNothing())
         .execute();
+    }
+    // Task 5.7b-1 (decision 8): another person recorded ends the substitution
+    // in force and is recorded as substituting; the teacher replaced ends it
+    // with no record.
+    let substitutionId: string | null = null;
+    let endedSubstitution: string | null = null;
+    if (input.kind === 'teacher' && input.teacherId !== lesson.teacherId) {
+      if (inForce !== undefined) {
+        await endSubstitutionRows(transaction, {
+          lessonIds: [id],
+          cause: 'corrected',
+          accountId: access.accountId,
+          moment,
+        });
+        endedSubstitution = inForce.id;
+      }
+      if (!backToReplaced) {
+        substitutionId = await writeRecord(transaction, {
+          branchId,
+          source: 'correction',
+          replacedId: inForce?.replacedId ?? lesson.teacherId,
+          substituteId: input.teacherId,
+          relaxed: true,
+          reason: input.reason,
+          moment,
+          accountId: access.accountId,
+          lessons: [lesson],
+        });
+      }
     }
     // The commit checks of 0058 now, so that a race meets the refusals here.
     await sql`set constraints all immediate`.execute(transaction);
@@ -1060,6 +1121,8 @@ export class TimetableDayChanges {
         cancelCause,
         reason: input.reason,
         ...(taught ? { taughtWhileAbsent: true, awayCause: taughtCause } : {}),
+        ...(substitutionId === null ? {} : { substitutionId }),
+        ...(endedSubstitution === null ? {} : { endedSubstitution }),
         ...(input.kind !== 'cancel' && input.confirm === true ? { confirmed: true } : {}),
         warnings: warnings.map((one) => one.rule),
         notices: { ...notices },
@@ -1069,7 +1132,7 @@ export class TimetableDayChanges {
     return this.answerOf(transaction, branchId, id, moment, warnings);
   }
 
-  private async answerOf(
+  async answerOf(
     transaction: Transaction,
     branchId: string,
     id: string,
@@ -1099,7 +1162,12 @@ export class TimetableDayChanges {
 export async function refuseBlocked(
   transaction: Transaction,
   branchId: string,
-  code: 'restore_blocked' | 'day_change_blocked' | 'correction_blocked',
+  code:
+    | 'restore_blocked'
+    | 'day_change_blocked'
+    | 'correction_blocked'
+    | 'substitution_blocked'
+    | 'substitution_return_blocked',
   checked: StoredDayResult,
 ): Promise<void> {
   if (checked.blocked.length === 0) return;
@@ -1322,7 +1390,16 @@ export async function dayLessonsOf(
   const classIds = ids((one) => one.classId);
   const groupIds = ids((one) => one.groupId);
   const subjectIds = ids((one) => one.subjectId);
-  const teacherIds = ids((one) => one.teacherId);
+  // Task 5.7b-1: the substitutions in force, and the names of the teachers they replaced.
+  const substitutions = await substitutionsInForce(transaction, lessons);
+  const teacherIds = [
+    ...new Set([
+      ...ids((one) => one.teacherId),
+      ...[...substitutions.values()].flatMap((one) =>
+        one.replacedId === null ? [] : [one.replacedId],
+      ),
+    ]),
+  ];
   const roomIds = ids((one) => one.roomId);
   const [classes, groups, subjects, teachers, rooms, marks, branch, closed] = await Promise.all([
     classIds.length === 0
@@ -1428,6 +1505,13 @@ export async function dayLessonsOf(
   );
   const minutesOf = (one: StoredDayLesson, at: Date) =>
     Math.round((at.getTime() - begins(one.date).getTime()) / 60_000);
+  const substitutionOf = (found: SubstitutionInForce | undefined) =>
+    found === undefined
+      ? null
+      : {
+          id: found.id,
+          replaced: found.replacedId === null ? null : (teacherOf.get(found.replacedId) ?? null),
+        };
   return lessons.map((one) => {
     // A double lesson has started when its earlier half has (decision 3).
     const started = pairOf(lessons, one).some(
@@ -1474,6 +1558,8 @@ export async function dayLessonsOf(
         ? (roomOut.get(one.id)?.cause ?? null)
         : null,
       canCorrect: started && !closedBlocks.has(one.blockId),
+      substitution: substitutionOf(substitutions.get(one.id)),
+      canSubstitute: one.cancelCause === null && !started && !closedBlocks.has(one.blockId),
     };
   });
 }
