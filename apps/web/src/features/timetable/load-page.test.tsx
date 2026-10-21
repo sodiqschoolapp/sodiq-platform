@@ -639,6 +639,7 @@ describe('the teaching load page: withdraw', () => {
         bulk: [],
         exams: [],
         absences: [],
+        closures: [],
         ...dayChanges,
       },
       names: {

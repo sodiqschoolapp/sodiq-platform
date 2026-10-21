@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import { schoolDateSchema } from './academic-year.js';
-import { awayCauseSchema, lessonStateSchema, roomOutCauseSchema, ruleResultSchema } from './timetable.js';
+import {
+  awayCauseSchema,
+  lessonStateSchema,
+  roomOutCauseSchema,
+  ruleResultSchema,
+} from './timetable.js';
 
 /**
  * One-day changes of a published timetable (task 5.6a-1, pull request #160;

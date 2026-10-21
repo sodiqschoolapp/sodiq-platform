@@ -34,7 +34,9 @@ const ok = (response: Response, status = 200) => {
 
 /** The rule codes of a refusal's details. */
 const rulesOf = (response: Response): string[] =>
-  ((response.body as { error: { details?: { code: string }[] } }).error.details ?? []).map((one) => one.code);
+  ((response.body as { error: { details?: { code: string }[] } }).error.details ?? []).map(
+    (one) => one.code,
+  );
 
 /** The quarters of the year 2026-09-01 to 2027-05-31, dated. */
 const QUARTERS = [
@@ -890,10 +892,9 @@ describe('room closures', () => {
       const refused = await move(s.branch, closure.id, { roomId: s.otherRoom, reason: 'Repairs' });
       refusedWith(refused, 409, 'room_move_blocked');
       expect(
-        (refused.body as { error: { details: { code: string; day: string }[] } }).error.details.map((one) => [
-          one.code,
-          one.day,
-        ]),
+        (refused.body as { error: { details: { code: string; day: string }[] } }).error.details.map(
+          (one) => [one.code, one.day],
+        ),
       ).toEqual([['room_double', NEXT_MONDAY]]);
       expect(await everything()).toEqual(before);
     });

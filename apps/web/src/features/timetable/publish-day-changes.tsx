@@ -144,7 +144,8 @@ export function PublishDayChanges({
     dayChanges.dropped.length === 0 &&
     dayChanges.bulk.length === 0 &&
     dayChanges.exams.length === 0 &&
-    dayChanges.absences.length === 0
+    dayChanges.absences.length === 0 &&
+    dayChanges.closures.length === 0
   ) {
     return null;
   }
@@ -512,6 +513,30 @@ export function PublishDayChanges({
                           from: schoolDateText(absence.startsOn, language),
                           to: schoolDateText(absence.endsOn, language),
                         }),
+                })}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {/* Task 5.7a-2b (decision 9): the room closures of the dates, always kept. */}
+      {dayChanges.closures.length > 0 && (
+        <div className="grid gap-1">
+          <h4 className={SUBSECTION_TITLE}>
+            {t('timetable.publish.dayChanges.closuresTitle', {
+              count: dayChanges.closures.length,
+            })}
+          </h4>
+          <ul className="grid gap-1 text-sm" data-day-changes="closures">
+            {dayChanges.closures.map((closure) => (
+              <li key={closure.id} data-key={closure.id}>
+                {t('timetable.publish.dayChanges.closureLine', {
+                  count: closure.lessons,
+                  room: closure.room,
+                  days: t('timetable.publish.dayChanges.absenceDays', {
+                    from: schoolDateText(closure.startsOn, language),
+                    to: schoolDateText(closure.endsOn, language),
+                  }),
                 })}
               </li>
             ))}

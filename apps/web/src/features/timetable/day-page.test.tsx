@@ -59,6 +59,7 @@ const lesson = (n: number, fields: Partial<DayLesson> = {}): DayLesson => ({
   room: { id: uid(400), name: 'Room 12' },
   cancelCause: null,
   away: null,
+  roomOut: null,
   cancelReason: null,
   changed: false,
   canCancel: true,
@@ -195,6 +196,22 @@ describe('the day page', () => {
     ]);
     expect(second?.[3]).toBe(`Karimova Aziza · ${en.timetable.day.away_left}`);
     expect(second?.[5]).toBe(en.timetable.day.unresolved_left);
+  });
+
+  // Task 5.7a-2b (decision 2): a lesson whose room is out at its start.
+  it('marks the room of a lesson that needs a room, by its cause', async () => {
+    await openPage({
+      lessons: [
+        lesson(1, { roomOut: 'closure' }),
+        lesson(2, { start: 535, end: 580, roomOut: 'under_repair' }),
+      ],
+    });
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(2);
+    });
+    const [first, second] = rowsDrawn();
+    expect(first?.[4]).toBe(`Room 12 · ${en.timetable.day.roomOut_closure}`);
+    expect(second?.[4]).toBe(`Room 12 · ${en.timetable.day.roomOut_under_repair}`);
   });
 
   it('shows no actions to the Principal', async () => {

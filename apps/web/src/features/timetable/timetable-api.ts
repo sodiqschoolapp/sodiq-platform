@@ -51,6 +51,13 @@ import {
   absenceListSchema,
   absenceSchema,
   attentionSchema,
+  roomClosureLessonsSchema,
+  roomClosureListSchema,
+  roomClosureMoveAnswerSchema,
+  roomClosureSchema,
+  type RoomClosureEdit,
+  type RoomClosureMove,
+  type RoomClosureRecord,
   type AbsenceEdit,
   type AbsenceRecord,
 } from '@sodiq/shared';
@@ -694,3 +701,62 @@ export const withdrawAbsence = (id: string) =>
       params: { header: branchHeader(), path: { id } },
     }),
   ).then((answer) => absenceSchema.parse(answer));
+
+/** The closures of the branch's rooms (task 5.7a-2b), every state. */
+export const roomClosuresQuery = (branchId: string | null) =>
+  queryOptions({
+    queryKey: [...timetableKey(branchId), 'room-closures'],
+    queryFn: async () =>
+      roomClosureListSchema.parse(
+        await answerOf(
+          api.GET('/api/timetable/room-closures', {
+            params: { header: branchHeader(), query: { state: 'all' } },
+          }),
+        ),
+      ),
+    enabled: branchId !== null,
+  });
+
+/** The lessons of the room inside a closure (task 5.7a-2b). */
+export const roomClosureLessonsQuery = (branchId: string | null, id: string) =>
+  queryOptions({
+    queryKey: [...timetableKey(branchId), 'room-closures', id, 'lessons'],
+    queryFn: async () =>
+      roomClosureLessonsSchema.parse(
+        await answerOf(
+          api.GET('/api/timetable/room-closures/{id}/lessons', {
+            params: { header: branchHeader(), path: { id } },
+          }),
+        ),
+      ),
+    enabled: branchId !== null,
+  });
+
+export const createRoomClosure = (body: RoomClosureRecord) =>
+  answerOf(
+    api.POST('/api/timetable/room-closures', { params: { header: branchHeader() }, body }),
+  ).then((answer) => roomClosureSchema.parse(answer));
+
+export const editRoomClosure = (id: string, body: RoomClosureEdit) =>
+  answerOf(
+    api.PATCH('/api/timetable/room-closures/{id}', {
+      params: { header: branchHeader(), path: { id } },
+      body,
+    }),
+  ).then((answer) => roomClosureSchema.parse(answer));
+
+export const withdrawRoomClosure = (id: string) =>
+  answerOf(
+    api.POST('/api/timetable/room-closures/{id}/withdraw', {
+      params: { header: branchHeader(), path: { id } },
+    }),
+  ).then((answer) => roomClosureSchema.parse(answer));
+
+/** "Move all to room R for the period" (task 5.7a-2b, decision 6). */
+export const moveRoomClosure = (id: string, body: RoomClosureMove) =>
+  answerOf(
+    api.POST('/api/timetable/room-closures/{id}/move', {
+      params: { header: branchHeader(), path: { id } },
+      body,
+    }),
+  ).then((answer) => roomClosureMoveAnswerSchema.parse(answer));

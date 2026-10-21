@@ -158,7 +158,15 @@ export class TimetableRoomClosures {
         .orderBy('room_closures.starts_on', 'desc')
         .orderBy('room_closures.id', 'desc')
         .execute();
-      return { closures: found.map((row) => answerOf(row, row.room_name, moment)) };
+      const branch = await transaction
+        .selectFrom('branches')
+        .select('time_zone')
+        .where('id', '=', branchId)
+        .executeTakeFirstOrThrow();
+      return {
+        closures: found.map((row) => answerOf(row, row.room_name, moment)),
+        today: schoolDateOf(moment, branch.time_zone),
+      };
     });
   }
 
@@ -670,4 +678,3 @@ export class TimetableRoomClosures {
     }
   }
 }
-

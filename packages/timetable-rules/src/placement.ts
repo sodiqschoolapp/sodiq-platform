@@ -127,7 +127,11 @@ export interface EngineRoom {
    * room closure, and a whole day for a room under repair. Only the one-day
    * changes and the exam save pass them; a pattern call never reads them.
    */
-  readonly closed?: readonly { readonly day: string; readonly start: number; readonly end: number }[];
+  readonly closed?: readonly {
+    readonly day: string;
+    readonly start: number;
+    readonly end: number;
+  }[];
 }
 
 /** A class or a group. */

@@ -42567,6 +42567,8 @@ export interface operations {
                             canEdit: boolean;
                             canWithdraw: boolean;
                         }[];
+                        /** Format: date */
+                        today: string;
                     };
                 };
             };

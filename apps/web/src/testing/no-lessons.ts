@@ -20,6 +20,7 @@ export const NO_LESSONS: CalendarLessons = {
     bulk: [],
     exams: [],
     absences: [],
+    closures: [],
   },
   shortenedDays: [],
   keepRefusals: [],

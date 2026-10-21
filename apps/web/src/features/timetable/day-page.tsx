@@ -333,7 +333,13 @@ export function DayPage(): React.JSX.Element {
                             <> · {t(`timetable.day.away_${lesson.away}`)}</>
                           )}
                         </TableCell>
-                        <TableCell>{lesson.room?.name ?? t('timetable.day.needsRoom')}</TableCell>
+                        <TableCell>
+                          {lesson.room?.name ?? t('timetable.day.needsRoom')}
+                          {/* Task 5.7a-2b (decision 2): the room is out at the lesson's start. */}
+                          {lesson.roomOut !== null && (
+                            <> · {t(`timetable.day.roomOut_${lesson.roomOut}`)}</>
+                          )}
+                        </TableCell>
                         <TableCell>
                           {stateOf(lesson)}
                           {lesson.changed && <> · {t('timetable.day.changed')}</>}

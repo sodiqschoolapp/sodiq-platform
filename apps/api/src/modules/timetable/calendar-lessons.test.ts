@@ -2888,6 +2888,8 @@ describe('calendar entries after publishing', () => {
         exams: [],
         // Task 5.7a-1 (decision 7): a calendar save lists no absences.
         absences: [],
+        // Task 5.7a-2b (decision 9): nor room closures.
+        closures: [],
       });
       expect(await storedRowsOf(s.branch)).toEqual(rows[0]);
       expect(await storedRowsOf(other.branch)).toEqual(rows[1]);

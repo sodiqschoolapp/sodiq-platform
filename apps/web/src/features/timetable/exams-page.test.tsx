@@ -101,6 +101,7 @@ const lesson = (n: number, fields: Partial<DayLesson> = {}): DayLesson => ({
   room: { id: uid(402), name: 'Room 12' },
   cancelCause: null,
   away: null,
+  roomOut: null,
   cancelReason: null,
   changed: false,
   canCancel: true,

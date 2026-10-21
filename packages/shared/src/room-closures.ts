@@ -85,7 +85,11 @@ export const roomClosureSchema = z.object({
 
 export type RoomClosure = z.infer<typeof roomClosureSchema>;
 
-export const roomClosureListSchema = z.object({ closures: z.array(roomClosureSchema) });
+export const roomClosureListSchema = z.object({
+  closures: z.array(roomClosureSchema),
+  /** Today in branch time: the first day a new closure may take. */
+  today: schoolDateSchema,
+});
 
 export type RoomClosureList = z.infer<typeof roomClosureListSchema>;
 

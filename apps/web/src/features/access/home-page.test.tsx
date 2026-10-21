@@ -8,7 +8,13 @@ import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/r
 const sessionAs = (role: Role) =>
   sessionOf({ assignments: [{ role, branchId: role === 'super_admin' ? null : NORTH.id }] });
 
-const NOTHING: Attention = { needsTeacher: [], unresolved: [], needsInvigilator: [] };
+const NOTHING: Attention = {
+  needsTeacher: [],
+  unresolved: [],
+  needsInvigilator: [],
+  needsRoom: [],
+  examsNeedRoom: [],
+};
 
 const emptyPage = () => screen.queryByRole('heading', { name: en.home.emptyTitle });
 
@@ -138,6 +144,8 @@ describe('the home page', () => {
             needsTeacher: [absence],
             unresolved: [vacancy],
             needsInvigilator: [],
+            needsRoom: [],
+            examsNeedRoom: [],
           } satisfies Attention),
       });
       renderApp('/');
@@ -173,6 +181,8 @@ describe('the home page', () => {
             ],
             unresolved: [],
             needsInvigilator: [],
+            needsRoom: [],
+            examsNeedRoom: [],
           } satisfies Attention),
       });
       renderApp('/');
@@ -205,6 +215,8 @@ describe('the home page', () => {
               needsTeacher: causes,
               unresolved: [],
               needsInvigilator: [],
+              needsRoom: [],
+              examsNeedRoom: [],
             } satisfies Attention),
         });
         renderApp('/', language);
@@ -247,6 +259,8 @@ describe('the home page', () => {
                 ],
               },
             ],
+            needsRoom: [],
+            examsNeedRoom: [],
           } satisfies Attention),
       });
       renderApp('/');
@@ -261,6 +275,68 @@ describe('the home page', () => {
       expect(
         within(row).getByRole('link', { name: en.home.attention.openExams }).getAttribute('href'),
       ).toBe('/timetable/exams?date=2026-10-19');
+      expect(emptyPage()).toBeNull();
+    });
+
+    // Task 5.7a-2b (decisions 2, 7 and 10): the lessons and the exams that need a room.
+    it('lists the lessons that need a room by closure and by status, and the exams that need a room', async () => {
+      const calls = fakeApi({
+        'GET /api/auth/session': () => json(sessionAs('academic_vice_principal')),
+        'GET /api/people/students/no-class': () => json({ count: 0 }),
+        'GET /api/people/relatives/no-valid-phone': () => json({ count: 0 }),
+        'GET /api/timetable/attention': () =>
+          json({
+            needsTeacher: [],
+            unresolved: [],
+            needsInvigilator: [],
+            needsRoom: [
+              {
+                cause: 'closure',
+                room: { id: uid(30), name: 'Laboratory 1' },
+                closure: { id: uid(31), startsOn: '2026-10-19', endsOn: '2026-10-30' },
+                lessons: 3,
+                firstDate: '2026-10-19',
+                lastDate: '2026-10-26',
+              },
+              {
+                cause: 'under_repair',
+                room: { id: uid(32), name: 'Room 12' },
+                closure: null,
+                lessons: 1,
+                firstDate: '2026-10-20',
+                lastDate: '2026-10-20',
+              },
+            ],
+            examsNeedRoom: [
+              {
+                examId: uid(33),
+                title: 'Quarter exam',
+                date: '2026-10-21',
+                start: 535,
+                end: 580,
+                rooms: [{ id: uid(30), name: 'Laboratory 1', cause: 'closure' }],
+              },
+            ],
+          } satisfies Attention),
+      });
+      renderApp('/');
+      await bothAsked(calls);
+      const rooms = await screen.findByRole('region', { name: en.home.needsRoom.title });
+      const closure = rooms.querySelector('[data-room-row="closure"]') as HTMLElement;
+      expect(within(closure).getByText('Laboratory 1, closed for a period')).toBeDefined();
+      expect(
+        within(closure)
+          .getByRole('link', { name: en.home.attention.openClosure })
+          .getAttribute('href'),
+      ).toBe(`/timetable/room-closures?open=${uid(31)}`);
+      const repair = rooms.querySelector('[data-room-row="under_repair"]') as HTMLElement;
+      expect(within(repair).getByText('Room 12, under repair')).toBeDefined();
+      expect(
+        within(repair).getByRole('link', { name: en.home.attention.open }).getAttribute('href'),
+      ).toBe('/timetable/day?date=2026-10-20');
+      const exams = await screen.findByRole('region', { name: en.home.examsNeedRoom.title });
+      const row = exams.querySelector(`[data-exam="${uid(33)}"]`) as HTMLElement;
+      expect(within(row).getByText('Laboratory 1 · closed for a period')).toBeDefined();
       expect(emptyPage()).toBeNull();
     });
 
