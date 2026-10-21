@@ -303,6 +303,9 @@ Plan approved on pull request #189 with correction 1; decisions 1 to 12 confirme
 | **Build decision.** The fill's draft is rolled back after the check, so the dialog names no lesson of it: dated refusals and warnings show their date and rule without the lessons, and a refusal of a row falls back to its text without the row | The draft's rows and pattern entries exist only inside the check's savepoint |
 | **Build decision.** The shortened days of the fill's publish are shown read only (`PublishShortened` with no draft): their choices are the version in force's, copied by the fill | A choice is saved on a draft, and the fill's draft is not kept |
 | **Build decision.** A row left with the vacancy is itself what keeps the vacancy open; `holders` lists versions and lessons only when every row was filled | The server's close check (5.7a-3a decision 5) |
+| **Build decision.** A fill carried in place has its own undo line: withdrawing the version it changed takes back the rest of that version too, or a new version corrects it | Spec review of the code, should-fix 6; `06`, Withdraw |
+| **Build decision.** The class and group names stay `unitNamesOf`'s, not the impact's names: the impact takes grades from the facts of a version, the fill's history from the stored classes; the shape is the same | Spec review of the code, should-fix 5, not taken |
+| **Build decision.** The browser test fills one vacancy twice (a row left, then the rest and the close), not a second vacancy, and fills from a Monday after the scene's version so no transition week depends on the day it runs | Plan's browser test; spec review of the code, must-fix 5 |
 
 ## 21 October 2026: vacancy fill, the fill and the close (task 5.7a-3a)
 
