@@ -285,6 +285,25 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 21 October 2026: the acting teacher of a vacancy's journal (task 5.7a-3c)
+
+Plan approved on pull request #190 with corrections 1 to 4; decisions 1 to 10 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a reading of "as a substitute per journal"). Naming an acting teacher makes the person the journal's owner for the period (plan, works, rating exam, discipline report) and puts nobody on the lessons; until a substitute is set (5.7b) the lessons stay in `needsTeacher`, and 5.7b offers the per-journal substitution with the acting teacher | Decision 1 with correction 4; `06`, Substitution: "the one way to put another teacher on a lesson" |
+| **Look first** (a reading of "When the vacancy is filled, the hired teacher becomes the owner from that date"). A period counts only on days the journal's row in the published version in force names its vacancy, read on each request: a fill ends it with no write, a withdrawn fill gives it back | Decision 2; `CLAUDE.md`, state from stored moments |
+| **Look first** (a journal rule; spec text that should change). The closing checklist lists a journal with days under a vacancy and no acting teacher as "no teacher", a warning (9.2a, `journalsWithoutTeacher`); proposed `/spec-change`: a row of the `07` table "A journal with days under a vacancy and no acting teacher ("no teacher") \| Warning" | Decision 3; `edge/timetable` says only "lists" |
+| A period is school dates, half-open (`until` the first day without the person), open-ended allowed, from today at the earliest; a planned one is withdrawn by ending it on its start, kept as an empty row | Decision 4 with corrections 1 and 2; the acting Tutor (0042) |
+| The person is active in the branch on the first day and has the subject for the class's grades (blocking); the class's language is a warning that needs a confirmation, as for a substitute; a vacancy is refused | Decision 5; `06`, Substitution |
+| One acting teacher of a journal on a day (`journal_acting_one`) | Decision 6 |
+| The routes are in area `timetable` `edit`; no role widened | Decision 7; the fill (5.7a-3a decision 9) |
+| The vacancy's journals and periods are answered on its record | Decision 8 |
+| An acting person who leaves or becomes inactive leaves the journal with no teacher on those days (read in `journalOwnerOn`) | Spec review of the plan, should-fix 2 |
+| No notice to the person named | Decision 10; no spec line names one |
+| **Build decision.** The audit actions are `vacancy.acting_name` and `vacancy.acting_end` (the record is the vacancy, `person_id` the person), so the person's personal-data report lists them as it lists `vacancy.fill` | The plan named `timetable.acting_teacher.*`; the people report classifies only people actions |
+| **Build decision.** The dialog's first day defaults to the chosen journal's first day under the vacancy from today (a publish usually starts after today) | The browser test: a version starting on Monday made "today" refused |
+
 ## 21 October 2026: vacancy fill, the screen (task 5.7a-3b)
 
 Plan approved on pull request #189 with correction 1; decisions 1 to 12 confirmed there, none of a Look first kind. Flagged on issue #42.

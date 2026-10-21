@@ -3,6 +3,7 @@ import { schoolDateSchema } from './academic-year.js';
 import { instructionLanguageSchema } from './settings.js';
 import { DAILY_LESSONS_MAX, WEEKLY_LESSONS_MAX } from './staff.js';
 import { subjectGradesSchema } from './subjects.js';
+import { vacancyJournalSchema } from './acting-teachers.js';
 import { vacancyFillHistorySchema, vacancyFillUnitSchema } from './vacancy-fills.js';
 
 /**
@@ -102,6 +103,12 @@ export const vacancyDetailSchema = vacancyListItemSchema.extend({
   fills: z.array(vacancyFillHistorySchema),
   /** Task 5.7a-3b: the classes and groups the rows of `fills` name, archived ones included. */
   fillUnits: z.array(vacancyFillUnitSchema),
+  /**
+   * Task 5.7a-3c: the journals whose published rows name the vacancy from
+   * today, with their acting teachers; their classes and groups are in
+   * `fillUnits` too.
+   */
+  journals: z.array(vacancyJournalSchema),
   today: schoolDateSchema,
 });
 

@@ -138,7 +138,45 @@ Not written yet for most of the teaching load and the timetable: task 3.7 descri
 
 **What the person sees.** "The vacancy will be closed from 19 October 2026." "The vacancy stays open." "To take it back, withdraw the version before 19 October 2026." "This person cannot take the vacancy from that date. Choose a staff member who is active on it."
 
-Not built yet: the acting teacher of a vacancy's journal (task 5.7a-3c); substitutes for its lessons (task 5.7b).
+Not built yet: substitutes for its lessons (task 5.7b).
+
+## The acting teacher of a vacancy's journal
+
+<!-- Sources: edge/timetable (After publishing, "A vacancy lasts a quarter: who writes the plan and grades?", "The plan, the journal and the reports of a vacancy's subject"), spec 06 (Substitution), spec 07 (Who can do what); task 5.7a-3c, its decisions and plan review corrections -->
+
+**What it is.** While a vacancy waits for a teacher, the Academic Vice Principal can name an acting teacher for one of its journals for a period. For that period the acting teacher owns the journal: the plan, the works, the rating exam and the discipline report count for them. Nothing is ever counted against the vacancy. Without an acting teacher, the journal has no teacher.
+
+**Who can do it.** The Super Admin and the Academic Vice Principal name, end and withdraw acting teachers. The Principal and others who read the vacancy see the periods, but no buttons.
+
+**How to do it.**
+
+1. Open People, then Vacancies, and open the vacancy. The "Acting teachers" section lists each journal the vacancy holds from today, with its periods.
+2. Press **Name an acting teacher** (**Vaqtincha oʻqituvchi tayinlash**).
+3. Choose the journal and the person. People with a subject of the vacancy come first.
+4. The first day starts on the journal's first day under the vacancy from today. Today is the earliest. Leave "Hands the journal back on" empty for an open-ended period, or choose the first day without the acting teacher.
+5. The dialog checks the choice. If the person does not teach in the class's language, tick that you name them all the same. Press **Name**.
+6. The period appears under its journal. **End** sets the day the person hands the journal back (today at the earliest). **Withdraw** takes back a period that has not started; it stays in the history.
+
+**Rules.**
+
+- One acting teacher per journal on a day.
+- The person must be active in the branch and teach the subject in the class's grade. A vacancy cannot be an acting teacher.
+- The period counts only on the days the vacancy holds the journal. When the vacancy is filled, the hired teacher owns the journal from the fill date, and the record says "until" that date, "when the vacancy no longer holds the journal". If the fill is taken back, the acting teacher owns it again.
+- If the acting teacher leaves or becomes inactive, the journal has no teacher on those days.
+- Naming an acting teacher does not put them on the lessons. The lessons still need a teacher until a substitute is set (task 5.7b).
+
+**What happens if…**
+
+| Case | What happens |
+| --- | --- |
+| The journal already has an acting teacher on a day of the period | Refused: "The journal already has an acting teacher on a day of this period." |
+| The journal is filled or has another teacher on the first day | Refused: "This journal is not under the vacancy on that day." |
+| The subject for the class's grade is not in the person's profile | Refused, with that reason. |
+| The period has started | It can be ended, not withdrawn. |
+
+**What the person sees.** "Yusupova Nodira, from 12 October 2026, open-ended, planned." "No acting teacher: the journal has no teacher."
+
+Not built yet: what the acting teacher does in the plan and the journal (tasks 7.1b, 8.1, 8.2, 8.7) and the closing checklist's "no teacher" (task 9.2a).
 
 ## Exams after a publish or a withdraw
 

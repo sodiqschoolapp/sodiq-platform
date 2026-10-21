@@ -143,6 +143,7 @@ const detailOf = (row: VacancyListItem, extra: Partial<VacancyDetail> = {}): Vac
   statuses: [{ id: uid(71), status: row.status, from: '2026-09-01', until: null }],
   fills: [],
   fillUnits: [],
+  journals: [],
   today: TODAY,
   ...extra,
 });

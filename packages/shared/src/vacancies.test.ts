@@ -70,12 +70,17 @@ describe('vacancy answers', () => {
       closesOn: null,
       statuses: [],
       fills: [],
+      journals: [],
       today: '2026-10-21',
     };
     const unit = { id, kind: 'group', name: 'English A', grades: [7, 8] };
     expect(vacancyDetailSchema.parse({ ...detail, fillUnits: [unit] }).fillUnits).toEqual([unit]);
     expect(vacancyDetailSchema.safeParse(detail).success).toBe(false);
     expect(vacancyFillUnitSchema.safeParse({ ...unit, kind: 'room' }).success).toBe(false);
+    // Task 5.7a-3c: the journals of the vacancy are part of the record.
+    const withoutJournals: Record<string, unknown> = { ...detail, fillUnits: [unit] };
+    delete withoutJournals.journals;
+    expect(vacancyDetailSchema.safeParse(withoutJournals).success).toBe(false);
   });
 
   it('takes a fill check with the units of its rows, and refuses one without them', () => {

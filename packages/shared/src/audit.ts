@@ -118,6 +118,9 @@ export const AUDIT_ACTION_GROUPS = {
     'vacancy.close',
     'vacancy.reopen',
     'vacancy.fill',
+    // Task 5.7a-3c: an acting teacher named for a journal of the vacancy, and the end of the period.
+    'vacancy.acting_name',
+    'vacancy.acting_end',
     'vacancy.delete',
     'student.create',
     'student.edit',

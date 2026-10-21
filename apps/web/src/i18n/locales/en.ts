@@ -572,6 +572,22 @@ export const en = {
     fill_rows_changed: 'The rows to fill changed since you checked them. Check again.',
     fill_version_rows:
       'A row of the timetable in force cannot be copied to that date (a teacher who is out, a class with no Tutor). Fix the timetable first, or choose another date.',
+    acting_not_vacancy:
+      'This journal is not under the vacancy on that day: it is filled, has another teacher, or does not run then. Choose another journal or day.',
+    acting_person:
+      'This person cannot be named on that day: they are a vacancy, are not in this branch, or are not active then.',
+    acting_profile:
+      "The subject for this class's grade is not in the person's profile. Choose another person, or add the subject to their profile first.",
+    acting_language:
+      "The person does not teach in the class's language. Tick that you name them all the same.",
+    acting_start_past: 'An acting teacher is named from today at the earliest.',
+    acting_overlap:
+      'The journal already has an acting teacher on a day of this period. End that one first, or choose other days.',
+    acting_end_past: 'The end is today at the earliest, and not before the first day.',
+    acting_end_later:
+      "The end cannot be after the period's own end. Name a new period for later days.",
+    acting_ended: 'This period has already ended or was withdrawn. Reload to see it.',
+    acting_started: 'This period has started, so it cannot be withdrawn. End it instead.',
     vacancy_has_load:
       'A draft or published teaching load that can still run, or a future lesson, names this vacancy, so it cannot be closed yet. Give those rows another teacher, or close it once that load has ended.',
     vacancy_in_load:
@@ -2217,6 +2233,41 @@ export const en = {
       deleteTitle: 'Delete the vacancy?',
       deleteText: 'The vacancy and its hours are removed. The audit log keeps a copy.',
       closesOn: '{{status}}, closes on {{date}}',
+      acting: {
+        title: 'Acting teachers',
+        none: 'No journal of this vacancy runs from today.',
+        noTeacher: 'No acting teacher: the journal has no teacher.',
+        line: '{{person}}, from {{from}}',
+        until: 'hands the journal back on {{date}}',
+        endsOnRow: 'until {{date}}, when the vacancy no longer holds the journal',
+        openEnded: 'open-ended',
+        states: {
+          planned: 'planned',
+          current: 'in force',
+          ended: 'ended',
+          withdrawn: 'withdrawn',
+        },
+        open: 'Name an acting teacher',
+        dialogTitle: 'Acting teacher for {{name}}',
+        journal: 'Journal',
+        chooseJournal: 'Choose a journal',
+        person: 'Person',
+        choosePerson: 'Choose a person',
+        from: 'From',
+        untilField: 'Hands the journal back on (optional)',
+        chooseDate: 'Choose a date.',
+        tooEarly: '{{date}} (today) at the earliest.',
+        untilAfter: 'After the first day.',
+        language: "This person does not teach in the class's language. Name them all the same.",
+        name: 'Name',
+        cancel: 'Cancel',
+        end: 'End',
+        endTitle: 'End the period of {{person}}',
+        endOn: 'Hands the journal back on',
+        withdraw: 'Withdraw',
+        withdrawTitle: 'Withdraw the acting teacher?',
+        withdrawText: 'The planned period is withdrawn before it starts. It stays in the history.',
+      },
       fillsTitle: 'Fills',
       noFills: 'Not filled yet.',
       fillLine: 'From {{date}}: {{person}}',
@@ -2840,6 +2891,8 @@ export const en = {
         close: 'Vacancy closed',
         reopen: 'Vacancy reopened',
         fill: 'Vacancy filled',
+        acting_name: 'Acting teacher named',
+        acting_end: 'Acting teacher period ended',
         delete: 'Vacancy deleted',
         export: 'Vacancies exported',
       },
