@@ -878,7 +878,7 @@ How to read the task lines:
   - Done when: an acting teacher is named for a vacancy's journal for a period and the From lines to 7.x and 8.x say what they read.
   - From 5.7a-3a (pull request #188, decision 16): when the vacancy is filled, the hired teacher becomes the owner from the fill date (`edge/timetable`: "When the vacancy is filled, the hired teacher becomes the owner from that date"), read from `vacancy_fills` and `vacancy_fill_rows`; an acting teacher's period ends there.
 
-- [ ] **5.7b-1 Substitution: the substitution of a lesson** (5.7b split in three, pull request #191, decision 1)
+- [x] **5.7b-1 Substitution: the substitution of a lesson** (5.7b split in three, pull request #191, decision 1)
   - Read: `06` (Changes after publishing), `edge/timetable` (After publishing).
   - Build: the one Substitution action started from a lesson (both halves of a double, one part of a block alone); suggestions ordered by subject, department and language; the substitution record; the exception "no teacher of the subject is free"; the withdrawal; the correction's record; the substitute's rights on that lesson through the lesson's teacher (From lines to 6.3, 7.1b, 8.4, 8.7, 8.8 and 5.7c).
   - Done when: the exception "no teacher of the subject is free" works as the edge case says.

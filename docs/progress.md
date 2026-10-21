@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 21 October 2026: task 5.7b-1 Substitution: the substitution of a lesson
+
+- 5.7b split in three (5.7b-1, 5.7b-2, 5.7b-3). The Academic Vice Principal substitutes one upcoming lesson from the class's day page (`GET /api/timetable/lessons/:id/substitutes`, `POST .../substitute`, `POST .../substitution/withdraw`; area `timetable` `edit`): suggestions by subject, department and language, the exception "no teacher of the subject is free" decided on each save, the substitute written into `lessons.teacher_id`, the record in `substitutions` and `substitution_lessons` (0101). The correction of kind `teacher` writes a record too.
+- `storedDayCheck` keeps the substitutions in force (`substitutes`, read itself unless named) and checks candidates (`candidates`); the engine's `Placement.relaxed`. Every write of dated lessons ends the rows it takes off (`dropped`). Handbook: "Substituting a lesson". Browser test: `timetable-substitution.spec.ts`.
+- Left out: substitution from an absence or a vacancy, an absence giving substituted lessons back (5.7b-2); substitutions sorted by a publish, a withdraw, a fill or a calendar change (5.7b-3); the substitute in the journal, plans and reports and the Free now board (From lines to 6.3, 7.1b, 8.4, 8.7, 8.8, 5.7c).
+
+The next sessions must know:
+
+- A substitution is in force only while its row has no end and the lesson's teacher is its substitute: read it with `substitutionsInForce`, end it with `endSubstitutionRows` (`substitutions-read.ts`), never by hand.
+- Any new writer of `lessons.teacher_id` or of the removal of lessons ends the live rows it affects in its transaction and lists them in its audit entry.
+- Until 5.7b-3 a publish, a withdraw, a vacancy fill or a calendar change drops a substitution of a lesson it rewrites; a withdrawal therefore never returns a closed vacancy.
+- Locally, the browser tests ran with `PLAYWRIGHT_BROWSERS_PATH` pointing at a folder that links `chromium_headless_shell-1243` to the preinstalled 1194 build.
+- The next task is 5.7b-2.
+
 ## 21 October 2026: task 5.7a-3c Teacher absence: the acting teacher
 
 - The Academic Vice Principal names an acting teacher for a journal of a vacancy for a period from the vacancy's record (`POST /api/timetable/acting-teachers`, its `/check`, `/:id/end`; area `timetable` `edit`), ends it or withdraws a planned one; stored in `journal_acting_teachers` (0100: one per journal on a day, from today, an end passed is final).
