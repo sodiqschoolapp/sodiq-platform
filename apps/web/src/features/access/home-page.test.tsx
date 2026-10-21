@@ -34,12 +34,13 @@ async function bothAsked(calls: { route: string }[]): Promise<void> {
 // empty and error states").
 describe('the home page', () => {
   it('is the empty page with one short line of its kind, no intro and no action', async () => {
-    fakeApi({ 'GET /api/auth/session': () => json(sessionAs('teacher')) });
+    // The teacher's home lists lessons since task 5.9b; the Principal's is still empty.
+    fakeApi({ 'GET /api/auth/session': () => json(sessionAs('principal')) });
     renderApp('/');
     const title = await screen.findByRole('heading', { name: en.home.emptyTitle });
     const panel = title.closest('div.bg-card');
     expect(panel).not.toBeNull();
-    expect(within(panel as HTMLElement).getByText(en.home.teaching).tagName).toBe('P');
+    expect(within(panel as HTMLElement).getByText(en.home.branch_summary).tagName).toBe('P');
     expect(within(panel as HTMLElement).queryByRole('button')).toBeNull();
     expect(within(panel as HTMLElement).queryByRole('link')).toBeNull();
     // Each kind keeps a line of its own, so a test of which home a role gets can fail.
@@ -368,9 +369,22 @@ describe('the home page', () => {
     });
 
     it('asks nothing of the timetable for a Teacher', async () => {
-      const calls = fakeApi({ 'GET /api/auth/session': () => json(sessionAs('teacher')) });
+      // Since task 5.9b the Teacher's home asks for its own lessons, and nothing else of the timetable.
+      const calls = fakeApi({
+        'GET /api/auth/session': () => json(sessionAs('teacher')),
+        'GET /api/timetable/home': () =>
+          json({
+            today: '2026-10-19',
+            week: { from: '2026-10-19', to: '2026-10-25' },
+            branches: [],
+            days: [],
+            lessons: [],
+            exams: [],
+            busy: [],
+          }),
+      });
       renderApp('/');
-      expect(await screen.findByRole('heading', { name: en.home.emptyTitle })).toBeDefined();
+      expect(await screen.findByText(en.home.lessons.noToday)).toBeDefined();
       expect(calls.some((call) => call.route === 'GET /api/timetable/attention')).toBe(false);
     });
   });

@@ -1,4 +1,5 @@
 import {
+  teachingHomeSchema,
   forcedDeleteSchema,
   lessonHistorySchema,
   type ForcedDeleteBody,
@@ -1004,4 +1005,15 @@ export const timetableViewQuery = (
     },
     enabled:
       branchId !== null && input.date !== null && (input.kind === 'branch' || input.id !== null),
+  });
+
+/** The own lessons and exams of the week from every branch, for the teaching home page (task 5.9b). */
+export const teachingHomeQuery = (branchId: string | null) =>
+  queryOptions({
+    queryKey: [...timetableKey(branchId), 'teaching-home'],
+    queryFn: async () =>
+      teachingHomeSchema.parse(
+        await answerOf(api.GET('/api/timetable/home', { params: { header: branchHeader() } })),
+      ),
+    enabled: branchId !== null,
   });

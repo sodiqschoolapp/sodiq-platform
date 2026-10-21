@@ -298,7 +298,7 @@ function DayHeading({ day, language }: { day: ViewDay; language: Language }) {
 }
 
 /** The words of a lesson's state: cancelled with its reason, needs a teacher or a room, changed. */
-function useLessonMarks() {
+export function useLessonMarks() {
   const { t } = useTranslation();
   return (lesson: ViewLesson): string[] => [
     ...(lesson.cancelCause === 'reason'

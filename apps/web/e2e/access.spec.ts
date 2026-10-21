@@ -3,6 +3,10 @@ import { en } from '../src/i18n/locales/en';
 import { accountOf } from './accounts';
 import { changeFirstPassword, heading, languageChooser, signIn } from './steps';
 
+// Task 5.9b: the Tutor's and the Teacher's home show the own lessons under "Today".
+const todayOf = (page: Parameters<typeof heading>[0]) =>
+  page.getByRole('heading', { name: new RegExp(`^${en.home.lessons.today}, `) });
+
 const roleButton = (role: 'tutor' | 'teacher') =>
   en.switcher.roleButton.replace('{{role}}', en.roles[role]);
 
@@ -22,7 +26,7 @@ test('the role switcher changes the home page and the branch switcher the branch
   // The first role of the table of 02: Tutor.
   // Issue #105, H11b: a menu button that says what it changes, its menu the hint.
   const roles = page.getByRole('button', { name: roleButton('tutor'), exact: true });
-  await expect(page.getByText(en.home.tutor)).toBeVisible();
+  await expect(todayOf(page)).toBeVisible();
   await expect(roles).toHaveText(`${en.switcher.rolePrefix}${en.roles.tutor}`);
   // The keyboard: Enter opens the menu with its hint, Escape closes it, the
   // arrows move between the roles and Enter chooses one.
@@ -41,7 +45,7 @@ test('the role switcher changes the home page and the branch switcher the branch
   await page.keyboard.press('ArrowDown');
   await expect(page.getByRole('menuitemradio', { name: en.roles.teacher })).toBeFocused();
   await page.keyboard.press('Enter');
-  await expect(page.getByText(en.home.teaching)).toBeVisible();
+  await expect(todayOf(page)).toBeVisible();
   await expect(
     page.getByRole('button', { name: roleButton('teacher'), exact: true }),
   ).toBeVisible();
@@ -50,7 +54,7 @@ test('the role switcher changes the home page and the branch switcher the branch
 
   // The choice is kept by the tab, not by the account.
   await page.reload();
-  await expect(page.getByText(en.home.teaching)).toBeVisible();
+  await expect(todayOf(page)).toBeVisible();
 
   // The next call names the chosen branch.
   const second = await branches.locator('option').nth(1).getAttribute('value');
