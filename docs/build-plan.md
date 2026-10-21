@@ -922,7 +922,7 @@ How to read the task lines:
   - Build: the Super Admin's forced delete of a building, floor or room that nothing references, with a reason, an audit entry and 30 days to restore, on the store and restore of 5.8b (not a second mechanism); a referenced one stays archive-only.
   - From 2.7 (pull request #77, decision 2; issue #39, item 6): the same forced delete for a building, floor or room that nothing references (`03`, Building, floor, room; spec change of 13 October 2026), with a reason, an audit entry and 30 days to restore; a referenced one stays archive-only.
 
-- [ ] **5.9a Timetable views** (5.9 split in three, pull request #197, decision 1, Look first)
+- [x] **5.9a Timetable views** (5.9 split in three, pull request #197, decision 1, Look first)
   - Read: `06` (Views and outputs, Teachers who work in several branches, How surprises are prevented), `02`, `edge/timetable` (Structure, Exams).
   - Build: class, teacher, room and branch views by day and by week from the dated lessons, in the scope of each role; the "changed" mark; exams marked "exam"; the version in force and its "valid from"; a teacher's lessons in other branches as grey blocks; a clock axis on teacher and room views when more than one template is in force.
   - Done when: each role's scope of `06`, Views and outputs, has an allow and a refuse test, and the changed mark and an exam are shown on every view that holds the lesson or exam.

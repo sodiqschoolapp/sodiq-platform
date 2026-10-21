@@ -285,6 +285,25 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 21 October 2026: timetable views (task 5.9a)
+
+Plan approved on pull request #197 with corrections 1 to 5; decisions 1 to 15 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (task split). 5.9 is split into 5.9a (views), 5.9b (teacher home page across branches) and 5.9c (print, PDF and Excel; only the PDF library is new, the font is Golos Text) | Decision 1 |
+| **Look first** (widening what a role sees). A new area `timetable_views` gives `view` to the Super Admin, the Principal, both Vice Principals, the Head Tutor, the Tutor, both Head Teachers and the Teacher; the area `timetable` is unchanged. The menu item "Timetable" follows either area (`MENU_AREAS`) and opens `/timetable/views` for a role without `timetable` | Decision 2; `06`, Views and outputs: "Principal and Vice Principals the whole branch" |
+| **Look first** (a Build line moved). The load report half of 5.6c-1's From line goes to 9.3b | Decision 3, correction 1 |
+| Scope by role, in the service: the whole branch for the four branch-wide roles; the school and every class for the Head Tutor; the school and the classes of the Tutor rows in force now for the Tutor; the teachers named by a load row of a subject in scope in the version in force on each day, in those subjects only and with no busy block, for the Head Teachers; everyone's own teacher view; rooms for the branch-wide roles only. Out of scope is 403 `timetable_view_scope`, another branch's or an unknown record 404 | Decisions 4, 5, 13 |
+| The views read the dated lessons; lessons the expansion created cancelled (a day off, not in the template) are not listed; a version published before 0079 is read from its pattern and marked | Decisions 6, 14 |
+| A week is Monday to Sunday; a day is listed when it is a working weekday, holds lessons or exams, or (teacher view) busy blocks | Decisions 7, 15 |
+| A substituted lesson shows on the substitute's view and, marked "Replaced by", on the replaced teacher's | Decision 8 |
+| Busy blocks of other branches give start, end and the branch name only (`claimsElsewhere`) | Decision 9 |
+| A teacher or room day is on the clock axis when its lessons and exams come from templates with different times, or it holds a busy block; a week with one such day is drawn by clock | Decision 10, correction 2 |
+| Each day names the version in force and its "valid from"; `versionOnDate` answers id, number and start | Decision 11 |
+| The views write no audit entry | Decision 12 |
+| **Build decision.** `GET /api/timetable/views/choices` takes an optional date and answers for today in the branch without one, so a role without the area `timetable` learns today from the server | Plan, screens |
+
 ## 21 October 2026: forced delete of a building, floor or room (task 5.8c)
 
 Plan approved on pull request #196 with corrections 1 to 3; decisions 1 to 11 confirmed there. Flagged on issue #42.

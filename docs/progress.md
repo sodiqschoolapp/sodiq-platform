@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 21 October 2026: task 5.9a Timetable views
+
+- A read-only page Timetable views (`/timetable/views`) shows the school, a class, a teacher or a room by day or by week, from the dated lessons with every one-day change: the "changed" mark, "Cancelled: <reason>", substitutes and "Replaced by", exams marked "Exam", busy blocks of other branches, the version and its "valid from" on each day.
+- The new area `timetable_views` lets nine roles in; the scope of each is decided in `views.service.ts` for every request. The menu item "Timetable" opens the views for the roles that see no draft.
+- Left out: the teacher home page across branches (5.9b); print, PDF and Excel (5.9c); the load report with invigilations (9.3b, From line).
+
+The next sessions must know:
+
+- `versionOnDate` answers `{ id, number, startsOn }`, not an id.
+- `publishedScene` takes `accounts` to link its teacher or spare teacher to a signed-in account.
+- A view's lessons are `dayLessonsOf` less the action flags (the parse drops them); 5.9c's prints read the same answer.
+- The next task is 5.9b.
+
 ## 21 October 2026: task 5.8c Forced delete of a building, floor or room
 
 - The Super Admin deletes a room, a floor or a building (with its empty floors) for good when nothing references it, with a reason, from the Rooms and Buildings panels; it goes into the store of 5.8b and is restored from "Deleted for good" (the page renamed) within 30 days with the same ids and values.

@@ -323,7 +323,7 @@ describe('the timetable views', () => {
         '2026-10-22',
         '2026-10-23',
       ]);
-      expect(read.days[0]?.version).toEqual({ number: expect.any(Number), startsOn: '2026-10-12' });
+      expect(read.days[0]?.version?.startsOn).toBe('2026-10-12');
       expect(read.days[0]?.slots.map((one) => one.lessonNumber)).toEqual([1, 2, 3]);
       expect(read.lessons).toHaveLength(1);
       expect(read.lessons[0]).toMatchObject({
@@ -384,7 +384,9 @@ describe('the timetable views', () => {
         expect(viewOf(response).exams.map((one) => one.id)).toEqual([examId]);
       }
       // The class's lesson is cancelled for the exam.
-      const read = viewOf(seen[1] as Response);
+      const [, classView] = seen;
+      if (classView === undefined) throw new Error('The class view was asked.');
+      const read = viewOf(classView);
       expect(read.lessons.find((one) => one.id === lesson.id)?.cancelCause).toBe('exam');
       expect(read.exams[0]?.rooms[0]).not.toHaveProperty('invigilatorIds');
       // Another class and another room do not hold it.
