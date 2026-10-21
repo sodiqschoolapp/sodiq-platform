@@ -285,6 +285,26 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 21 October 2026: substitutions kept after a publish (task 5.7b-3)
+
+Plan approved on pull request #193 with corrections 1 to 3; decisions 1 to 13 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a reading of a timetable rule). A substitution is kept when the new version has the lesson at the same place (class or group, subject, date, start, end) with the record's teacher replaced and the substitute passes the rules there; needs a decision when it meets a blocked rule or the substitute is away; dropped when the lesson is gone, moved, cancelled or given another teacher (the substitute included) | Decision 1; the From line of 5.6a-5a |
+| **Look first** (a reading of "Filling a vacancy"). A future substitution of a vacancy's lesson from the fill date is dropped: the hired teacher takes the lesson | Decision 2; `06`, Filling a vacancy |
+| **Look first** (tests changed). The 5.7b-1 tests of a publish and a withdraw over a substituted lesson, and two publish tests that seed substitutions, now send the preview's key; the kept lesson keeps its substitute | Decision 3 with correction 1; 5.7b-1 decision 6, "until 5.7b-3" |
+| One item per lesson, or per double whose halves carry rows of one record; a split double dropped or needing a decision when either half is | Decision 5 |
+| A kept item on a lesson created again (in another block, or at new times) is recorded again: the old row ended `recorded_again` by id, a new row of the same record | Decision 6; 0103 |
+| `drop` offered only when the version's teacher passes the time rules against everything kept; `cancel` always, with a reason; never `keep` | Decision 7 |
+| The engine's check on the date with the row's own `relaxed`; all candidates put in place first, so a teacher replaced on one lesson and substituting on another counts once | Decision 8; spec review of the plan, must-fix 4 |
+| A lesson cancelled by the write or by another stored change drops its substitution; a `cancel` of another "needs a decision" item that names the lesson drops it too | Decisions 9 and 12 |
+| No new route, notice kind, area or audit action; the audit entries gain `dayChanges.substitutions` | Decision 10 |
+| The substitution items join the calendar save's key | Decision 11 |
+| **Build decision.** `day_decisions_clash` (decision 4) is not built: `drop` is offered only when it passes in the state where every other undecided item is dropped too, and `cancel` only takes claims away, so no set of choices makes two teachers meet; a clash the database meets at the commit still answers `timetable_busy` | No path reaches the refusal; a code that no test can reach is not kept |
+| **Build decision.** `invigilatorsOf` also gives the substitutes in force on the dates, so the run's facts know a substitute who teaches no row | The engine fails on a teacher it does not know (5.6c-3a build decision) |
+| **Build decision.** A substitution on a stored lesson that is cancelled is dropped by a rewrite | A cancelled lesson has no teacher claim (decision 9) |
+
 ## 21 October 2026: substitution from an absence or a vacancy (task 5.7b-2)
 
 Plan approved on pull request #192 with corrections 1 and 2; decisions 1 to 13 confirmed there. Flagged on issue #42.

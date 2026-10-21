@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 21 October 2026: task 5.7b-3 Substitution: substitutions kept after a publish
+
+- A publish, a carry, a vacancy fill, a withdraw and a calendar, template or quarter save sort the substitutions in force on the dates they rewrite (`substitutions-kept.ts`): kept when the lesson stays with the teacher replaced and the substitute passes the rules there (the substitute written on the lesson, its row recorded again when the lesson is created again), needs a decision (`drop` when offered, `cancel` with a reason), dropped otherwise. The items join the key of the sorting and every preview (`dayChanges.substitutions`).
+- 0103: `substitution_lessons` records the lesson's place when the row is written, and `recorded_again`. Handbook: "Substituting a lesson", After a new timetable is published. Browser test: `timetable-substitution.spec.ts` (the withdraw question lists the substitution).
+- Left out: the substitute in the journal, plans and reports (6.3, 7.1b, 8.4, 8.7, 8.8) and the Free now board (5.7c).
+
+The next sessions must know:
+
+- Every writer of dated lessons passes the sorting's substitutions to `planOfRun` (with the decisions sent) and calls `settleSubstitutions` after the write; a new writer does the same, or a kept substitution is dropped by the write.
+- `invigilatorsOf` also gives the substitutes in force, so the run's facts know a substitute who teaches no row.
+- A test that seeds substitutions with `substitutedIn` (replaced nobody) sees them dropped by a rewrite and sends the preview's `dayChangesKey`.
+- The next task is 5.8.
+
 ## 21 October 2026: task 5.7b-2 Substitution: from an absence or a vacancy
 
 - From an absence's panel the Academic Vice Principal substitutes one lesson or, per journal, every lesson of the absence in one action (`GET /api/timetable/absences/:id/journals/:journalId/substitutes`, `POST .../absences/:id/journal-substitute`): each date checked on its own, blocked dates listed, the rest saved in one record (source `absence`). A vacancy's journal is substituted the same way over a period from its record (`.../vacancies/:id/...`, source `journal`), its acting teacher chosen first.
