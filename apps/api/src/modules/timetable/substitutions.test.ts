@@ -1226,6 +1226,96 @@ describe('the substitution of a lesson', () => {
       expect(JSON.stringify(entry.new_value)).toContain(lesson.id);
       expect(JSON.stringify(entry.new_value)).toContain('substitutionsDropped');
     });
+
+    /** The rows of the records whose substitute is `staffId`, with their lesson ids. */
+    const rowsBy = (staffId: string) =>
+      t.database.migrator
+        .selectFrom('substitution_lessons')
+        .innerJoin('substitutions', 'substitutions.id', 'substitution_lessons.substitution_id')
+        .select([
+          'substitution_lessons.lesson_id',
+          'substitution_lessons.end_cause',
+          'substitution_lessons.ended_by',
+        ])
+        .where('substitutions.substitute_id', '=', staffId)
+        .execute();
+
+    it('ends the substitution of a lesson a publish removes before the lesson goes (review correction 1)', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, '2026-10-19');
+      const free = await person(s.branch, { subjects: [{ subject: s.subject, grades: [7] }] });
+      changed(await substitute(s.branch, lesson.id, { teacherId: free.staffId }));
+      // A fix from Monday 19 October that places the first class's maths on Tuesday.
+      const copied = await t.post('/api/timetable/versions', s.branch, {
+        academicYearId: s.year,
+        startsOn: '2026-10-19',
+        copyFrom: s.version,
+      });
+      expect(copied.status, JSON.stringify(copied.body)).toBe(201);
+      const fix = (copied.body as { id: string }).id;
+      await t.database.migrator
+        .deleteFrom('pattern_blocks')
+        .where('version_id', '=', fix)
+        .execute();
+      const fixRows = await t.database.migrator
+        .selectFrom('teaching_load_rows')
+        .select(['id', 'class_id'])
+        .where('version_id', '=', fix)
+        .execute();
+      for (const row of fixRows) {
+        await placeAt(s.branch, fix, row.id, row.class_id === s.classId ? 2 : 1);
+      }
+      const confirmed = await t.post(`/api/timetable/versions/${fix}/templates/confirm`, s.branch);
+      expect(confirmed.status, JSON.stringify(confirmed.body)).toBe(200);
+      await load.freeEditLock(fix);
+      const published = await publish(s.branch, fix, '2026-10-19');
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      expect(
+        await t.database.migrator
+          .selectFrom('lessons')
+          .select('id')
+          .where('id', '=', lesson.id)
+          .executeTakeFirst(),
+      ).toBeUndefined();
+      // Ended before the delete set its lesson to null: never a row with no end.
+      expect(await rowsBy(free.staffId)).toEqual([
+        { lesson_id: null, end_cause: 'dropped', ended_by: expect.any(String) as unknown },
+      ]);
+      const entry = await t.database.migrator
+        .selectFrom('audit_log')
+        .select('new_value')
+        .where('action', '=', 'timetable_version.publish')
+        .where('record_id', '=', fix)
+        .executeTakeFirstOrThrow();
+      expect(JSON.stringify(entry.new_value)).toContain('substitutionsDropped');
+      expect(JSON.stringify(entry.new_value)).toContain(lesson.id);
+    });
+
+    it('ends the substitution of a lesson a withdraw removes before the lesson goes (review correction 1)', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, MONDAY);
+      const free = await person(s.branch, { subjects: [{ subject: s.subject, grades: [7] }] });
+      changed(await substitute(s.branch, lesson.id, { teacherId: free.staffId }));
+      // The only version, not started yet: its withdraw removes its lessons.
+      const withdrawn = await request(t.kit.server)
+        .post(`/api/timetable/versions/${s.version}/withdraw`)
+        .set('Cookie', t.admin)
+        .set(BRANCH_HEADER, s.branch)
+        .set(REQUEST_KEY_HEADER, randomUUID())
+        .send();
+      expect(withdrawn.status, JSON.stringify(withdrawn.body)).toBe(200);
+      expect(await rowsBy(free.staffId)).toEqual([
+        { lesson_id: null, end_cause: 'dropped', ended_by: expect.any(String) as unknown },
+      ]);
+      const entry = await t.database.migrator
+        .selectFrom('audit_log')
+        .select('new_value')
+        .where('action', '=', 'timetable_version.withdraw')
+        .where('record_id', '=', s.version)
+        .executeTakeFirstOrThrow();
+      expect(JSON.stringify(entry.new_value)).toContain('substitutionsDropped');
+      expect(JSON.stringify(entry.new_value)).toContain(lesson.id);
+    });
   });
 
   describe('permissions and ids', () => {
