@@ -88,7 +88,7 @@ const FILL_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   load_teacher_status: 'fill_version_rows',
   load_no_tutor: 'fill_version_rows',
   load_tutor_row_teacher: 'fill_version_rows',
-  lesson_vacancy_closed: 'timetable_busy',
+  lesson_vacancy_closed: 'fill_blocked',
 };
 
 /**
@@ -224,6 +224,13 @@ export class VacancyFills {
     const prepared = await this.prepare(transaction, access, input, requestId);
     if (prepared.rowsKey !== input.rowsKey) {
       throw new ApiException('fill_rows_changed', 409);
+    }
+    // Plan step 4: a fill never leaves a carried version as it is (`06`:
+    // "Every later published version that still names the vacancy is
+    // changed in the same way"). The check in memory leaves every row that
+    // would make a version left, so this is a guard, not a path.
+    if (prepared.check?.chain?.carried.some((one) => one.left) === true) {
+      throw new ApiException('fill_blocked', 409);
     }
     if (prepared.own === null) {
       throw new ApiException(

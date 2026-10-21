@@ -157,6 +157,8 @@ describe('vacancy fill', () => {
     input: {
       second?: boolean;
       personSubjects?: 'none' | 'grade8';
+      /** 7B taught in Russian; the vacancy teaches both languages, the person Uzbek only. */
+      classBLanguage?: 'ru';
       /** A row of art taught by the person, placed in A at slot 1 of the weekday, for 7A or 7B. */
       art?: { weekday: number; unit: 'A' | 'B' };
     } = {},
@@ -185,8 +187,15 @@ describe('vacancy fill', () => {
     const room = await load.classes.room(branch);
     const roomB = await load.classes.room(branch);
     const classA = await load.classes.schoolClass(branch, year, { grade: 7, room });
-    const classB = await load.classes.schoolClass(branch, year, { grade: 7, room: roomB });
-    const vacancy = await load.vacancy(branch, { subjects: [{ subject, grades: [7] }] });
+    const classB = await load.classes.schoolClass(branch, year, {
+      grade: 7,
+      room: roomB,
+      ...(input.classBLanguage === undefined ? {} : { language: input.classBLanguage }),
+    });
+    const vacancy = await load.vacancy(branch, {
+      subjects: [{ subject, grades: [7] }],
+      languages: input.classBLanguage === undefined ? ['uz'] : ['uz', 'ru'],
+    });
     await hours(branch, vacancy);
     const person = (
       await load.teacher(branch, {
@@ -1154,6 +1163,35 @@ describe('vacancy fill', () => {
       }
     });
 
+    it('meets a fill in place and a close by hand of the vacancy, both directions (spec review of the code, must-fix 5)', async () => {
+      for (const order of [0, 1]) {
+        const s = await scene();
+        const check = await checked(s.branch, bodyOf(s, MONDAY));
+        const fill = () => fillOf(s.branch, { ...bodyOf(s, MONDAY), ...keysOf(check) });
+        const close = () => post(`/api/people/vacancies/${s.vacancy}/close`, s.branch);
+        if (order === 0) {
+          const [filling, closing] = await inOrder(s.vacancy, fill, close);
+          expect(filling.status, JSON.stringify(filling.body)).toBe(201);
+          // After the fill nothing holds the vacancy from today: the close by
+          // hand empties the planned close and closes from today.
+          expect(closing.status, JSON.stringify(closing.body)).toBe(200);
+          expect(await liveStatusesOf(s.vacancy)).toEqual([
+            { status: 'open', from: '2026-09-01', until: '2026-10-10' },
+            { status: 'closed', from: '2026-10-10', until: null },
+          ]);
+        } else {
+          const [closing, filling] = await inOrder(s.vacancy, close, fill);
+          // Version A still names the vacancy: the close is refused.
+          refusedWith(closing, 409, 'vacancy_has_load');
+          expect(filling.status, JSON.stringify(filling.body)).toBe(201);
+          expect(await liveStatusesOf(s.vacancy)).toEqual([
+            { status: 'open', from: '2026-09-01', until: MONDAY },
+            { status: 'closed', from: MONDAY, until: null },
+          ]);
+        }
+      }
+    });
+
     it("meets a fill and the person's status change, both directions", async () => {
       for (const order of [0, 1]) {
         const s = await scene();
@@ -1176,6 +1214,71 @@ describe('vacancy fill', () => {
           expect(await t.entries('vacancy.fill', s.vacancy)).toEqual([]);
         }
       }
+    });
+  });
+  describe('the spec review of the code', () => {
+    it('leaves a row whose language the person does not teach, reason profile, and fills the others (must-fix 1)', async () => {
+      const s = await scene({ second: true, classBLanguage: 'ru' });
+      const fill = await filled(s, bodyOf(s, OCTOBER_19));
+      const byClass = new Map(fill.rows.map((one) => [one.classId, one]));
+      expect(byClass.get(s.classA)).toMatchObject({ filled: true, reason: null });
+      expect(byClass.get(s.classB)).toMatchObject({ filled: false, reason: 'profile', dates: [] });
+      expect(await teachersOfRows(fill.versionId ?? '')).toEqual(
+        expect.arrayContaining([
+          { class_id: s.classA, teacher_id: s.person },
+          { class_id: s.classB, teacher_id: s.vacancy },
+        ]),
+      );
+    });
+
+    it('leaves a row whose lesson meets the person in another branch on one date, listed with that date (must-fix 2)', async () => {
+      const s = await scene();
+      const other = await scene();
+      // The person also works in the other branch and is recorded there on
+      // one lesson of 26 October at the same time as 7A's maths here.
+      await t.database.migrator
+        .insertInto('staff_branches')
+        .values({ staff_id: s.person, branch_id: other.branch, is_main: false })
+        .execute();
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ teacher_id: s.person })
+        .where('branch_id', '=', other.branch)
+        .where('lesson_date', '=', '2026-10-26')
+        .execute();
+      const check = await checked(s.branch, bodyOf(s, OCTOBER_19));
+      expect(check.rows).toMatchObject([
+        { classId: s.classA, filled: false, reason: 'blocked', dates: ['2026-10-26'] },
+      ]);
+    });
+
+    it('a withdraw of the fill version after a carry keeps the carried version as it is and reopens the vacancy (must-fix 4)', async () => {
+      const s = await scene();
+      const b = await laterCopy(s, s.a, NOVEMBER);
+      const fill = await filled(s, bodyOf(s, OCTOBER_19));
+      expect(fill.closed).toBe(true);
+      const answer = await keyed(
+        `/api/timetable/versions/${fill.versionId ?? ''}/withdraw`,
+        s.branch,
+        {},
+      );
+      expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+      // 5.5c-2a decision 13: the carry into B stays.
+      expect(await teachersOfRows(b)).toEqual([{ class_id: s.classA, teacher_id: s.person }]);
+      const lessons = await lessonsOf(s.branch);
+      expect(
+        new Set(lessons.filter((one) => one.date < NOVEMBER).map((one) => one.teacher_id)),
+      ).toEqual(new Set([s.vacancy]));
+      expect(
+        new Set(lessons.filter((one) => one.date >= NOVEMBER).map((one) => one.teacher_id)),
+      ).toEqual(new Set([s.person]));
+      expect((await liveStatusesOf(s.vacancy)).map((one) => one.status)).toEqual(['open', 'open']);
+    });
+
+    it('refuses a second fill of a vacancy whose close is already planned (should-fix 3)', async () => {
+      const s = await scene({ second: true });
+      await filled(s, bodyOf(s, OCTOBER_19));
+      refusedWith(await checkFill(s.branch, bodyOf(s, DECEMBER)), 409, 'fill_vacancy');
     });
   });
 });

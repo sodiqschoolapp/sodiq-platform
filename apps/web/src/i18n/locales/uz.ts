@@ -582,6 +582,8 @@ export const uz: Texts<'one' | 'other'> = {
     fill_rows: 'Bu vakansiyada shu sanadan bunday qator yoʻq. Qatorlar va sanani qayta tekshiring.',
     fill_nothing:
       'Barcha qatorlar vakansiyada qoladi: xodim bu vaqtda band yoki profili mos emas. Hech narsa toʻldirilmadi.',
+    fill_blocked:
+      'Toʻldirish keyingi jadval versiyasini vakansiya bilan qoldirgan boʻlardi. Hech narsa toʻldirilmadi; qayta tekshiring.',
     fill_rows_changed:
       'Toʻldiriladigan qatorlar siz tekshirganingizdan keyin oʻzgardi. Qayta tekshiring.',
     fill_version_rows:
@@ -2823,7 +2825,7 @@ export const uz: Texts<'one' | 'other'> = {
         edit: 'Boʻsh oʻrin oʻzgartirildi',
         close: 'Boʻsh oʻrin yopildi',
         reopen: 'Boʻsh oʻrin qayta ochildi',
-        fill: 'Vakansiya toʻldirildi',
+        fill: 'Boʻsh oʻrin toʻldirildi',
         delete: 'Boʻsh oʻrin oʻchirildi',
         export: 'Boʻsh oʻrinlar eksport qilindi',
       },

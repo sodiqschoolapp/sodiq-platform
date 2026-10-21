@@ -404,6 +404,7 @@ const MESSAGE: Record<ErrorCode, string> = {
   fill_start: 'A vacancy is filled from tomorrow at the earliest, inside the year.',
   fill_rows: 'A row named is not a row of the vacancy from the date.',
   fill_nothing: 'Every row stays with the vacancy.',
+  fill_blocked: 'The fill would leave a later version with the vacancy.',
   fill_rows_changed: 'The rows the fill would fill or leave changed since the check.',
   fill_version_rows: 'A row of the version in force cannot be copied on the date.',
   vacancy_has_load: 'A load row that can still run, or a future lesson, names the vacancy.',

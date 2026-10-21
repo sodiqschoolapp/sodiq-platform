@@ -567,6 +567,8 @@ export const en = {
     fill_rows: 'This vacancy has no such row from that date. Check the rows and the date again.',
     fill_nothing:
       'Every row stays with the vacancy: the person is busy then, or the profile does not fit. Nothing was filled.',
+    fill_blocked:
+      'The fill would leave a later timetable version with the vacancy. Nothing was filled; check again.',
     fill_rows_changed: 'The rows to fill changed since you checked them. Check again.',
     fill_version_rows:
       'A row of the timetable in force cannot be copied to that date (a teacher who is out, a class with no Tutor). Fix the timetable first, or choose another date.',

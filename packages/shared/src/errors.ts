@@ -749,6 +749,8 @@ export const ERROR_CODES = [
   'fill_rows',
   /** Task 5.7a-3a (decision 3): every row stays with the vacancy; `details` lists them. */
   'fill_nothing',
+  /** Task 5.7a-3a (plan step 4): the fill would leave a later published version naming the vacancy unchanged; nothing is filled. */
+  'fill_blocked',
   /** Task 5.7a-3a: the rows the fill would fill or leave differ from those the check showed (`rowsKey`). */
   'fill_rows_changed',
   /** Task 5.7a-3a: a row of the version in force cannot be copied on the fill date (a teacher out, a class with no Tutor); `details` names the rows. */
