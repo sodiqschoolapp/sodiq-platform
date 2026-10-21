@@ -17,8 +17,10 @@ import { TimetablePublish } from './publish.service.js';
 import { TimetableWithdraw } from './withdraw.service.js';
 import { Timetable } from './timetable.service.js';
 import { TimetableUpToDate } from './up-to-date.service.js';
+import { VacancyFillsController } from './vacancy-fills.controller.js';
+import { VacancyFills } from './vacancy-fills.service.js';
 
-/** Draft timetable versions, their teaching load (task 3.4a) and the grid of their pattern (task 5.4a) publish (task 5.5a-1) bringing a draft up to date (tasks 5.5a-3b-1 and 5.5a-3b-2) one-day changes (task 5.6a-1), the bulk cancel (task 5.6a-3) and exams (task 5.6c-1). */
+/** Draft timetable versions, their teaching load (task 3.4a) and the grid of their pattern (task 5.4a) publish (task 5.5a-1) bringing a draft up to date (tasks 5.5a-3b-1 and 5.5a-3b-2) one-day changes (task 5.6a-1), the bulk cancel (task 5.6a-3) exams (task 5.6c-1) and the vacancy fill (task 5.7a-3a). */
 @Module({
   imports: [NotificationsModule],
   controllers: [
@@ -28,6 +30,7 @@ import { TimetableUpToDate } from './up-to-date.service.js';
     ExamsController,
     AbsencesController,
     RoomClosuresController,
+    VacancyFillsController,
   ],
   providers: [
     Timetable,
@@ -41,6 +44,7 @@ import { TimetableUpToDate } from './up-to-date.service.js';
     TimetableExams,
     TimetableAbsences,
     TimetableRoomClosures,
+    VacancyFills,
   ],
   // Task 5.6b-1: a calendar save writes the lessons of the dates it changes.
   exports: [TimetableCalendarLessons],

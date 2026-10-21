@@ -3,6 +3,7 @@ import { schoolDateSchema } from './academic-year.js';
 import { instructionLanguageSchema } from './settings.js';
 import { DAILY_LESSONS_MAX, WEEKLY_LESSONS_MAX } from './staff.js';
 import { subjectGradesSchema } from './subjects.js';
+import { vacancyFillHistorySchema } from './vacancy-fills.js';
 
 /**
  * Vacancies (docs/spec/04-people.md, Vacancy; task 2.2b, pull request #57): a
@@ -91,6 +92,8 @@ export type VacancyList = z.infer<typeof vacancyListSchema>;
 /** A vacancy as the record route answers it. */
 export const vacancyDetailSchema = vacancyListItemSchema.extend({
   statuses: z.array(vacancyStatusRowSchema),
+  /** Task 5.7a-3a: every fill, newest first. */
+  fills: z.array(vacancyFillHistorySchema),
   today: schoolDateSchema,
 });
 

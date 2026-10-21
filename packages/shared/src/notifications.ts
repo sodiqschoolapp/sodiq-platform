@@ -165,6 +165,13 @@ export const NOTIFICATION_KINDS = {
   /** A withdraw changed them (task 5.5c-2a, decision 8): the withdrawn version's number and the week. */
   'timetable.withdrawn': weekChange,
   /**
+   * A vacancy fill carried into a published version that starts on its date
+   * changed this teacher's lessons (task 5.7a-3a, decision 4): that
+   * version's number and the week. A fill that publishes a version sends
+   * `timetable.published`.
+   */
+  'timetable.vacancy_filled': weekChange,
+  /**
    * A change of a class's Tutor moved this teacher's Tutor lessons in the
    * branch (task 5.5c-3b, decisions 1 to 5): the week only, no version is
    * published (3.6c-2 decision 6) and no class is named (one role end can
@@ -295,7 +302,11 @@ export const NOTIFICATION_KINDS = {
 export type NotificationKind = keyof typeof NOTIFICATION_KINDS;
 
 /** The kinds that carry a week before and after (task 5.5c-3a). */
-export const WEEK_CHANGE_KINDS = ['timetable.published', 'timetable.withdrawn'] as const;
+export const WEEK_CHANGE_KINDS = [
+  'timetable.published',
+  'timetable.withdrawn',
+  'timetable.vacancy_filled',
+] as const;
 
 export type WeekChangeKind = (typeof WEEK_CHANGE_KINDS)[number];
 

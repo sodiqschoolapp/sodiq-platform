@@ -25,9 +25,11 @@ import {
   addDays,
   carryChanges,
   checkTimetable,
+  type CarryOffer,
   checkedPlacements,
   publishRefusals,
   startChoices,
+  type CarryChange,
   type EngineYear,
 } from '@sodiq/timetable-rules';
 import { sql } from 'kysely';
@@ -90,7 +92,7 @@ import {
 import type { ExamAudit } from './calendar-exams.js';
 import { impactOf, type Impact } from './impact.js';
 import { syncJournals } from './journals.js';
-import { markPublished, outOfDateColumn } from './out-of-date.js';
+import { markFilled, markPublished, outOfDateColumn } from './out-of-date.js';
 import { PATTERN_REFUSALS, TimetablePattern, type PatternState } from './pattern.service.js';
 import { resultAnswerOf } from './rule-answers.js';
 import { lockSubjects, Timetable, type VersionRow } from './timetable.service.js';
@@ -114,7 +116,7 @@ interface QuarterRow {
 }
 
 /** What a check found: the refusals and the warnings, on the date checked; the lists of the dates (task 5.5a-2a). */
-interface Findings {
+export interface Findings {
   readonly refusals: PublishRefusal[];
   readonly warnings: RuleResultAnswer[];
   readonly cancelledLessons: CancelledLesson[];
@@ -144,6 +146,37 @@ interface Findings {
     /** Task 5.6c-3a: the standing exams of each run, sorted. */
     readonly exams: ReadonlyMap<string | null, readonly KeptExam[]>;
   } | null;
+}
+
+/** Task 5.7a-3a: the vacancy fill a publish or a carry in place makes, for its audit entry. */
+export interface VacancyFillOf {
+  readonly vacancyId: string;
+  readonly personId: string;
+}
+
+/**
+ * Task 5.7a-3a: what a check or a write of the fill gives the publish's own
+ * steps: the changes carried into the later versions (the rows of every
+ * version, spec review of the plan, must-fix 4), and the fill for the audit.
+ */
+export interface FillOptions {
+  readonly carry?: readonly CarryChange[];
+  readonly vacancyFillOf?: VacancyFillOf;
+}
+
+/** The writes after the checks: of a publish, or of a fill carried in place (decision 4). */
+interface RunWrite {
+  readonly mode: 'publish' | 'fill';
+  readonly version: VersionRow;
+  readonly startsOn: string;
+  readonly input: PublishBody;
+  readonly findings: Findings;
+  readonly requestId: string;
+  readonly transitionKey: string | null;
+  readonly startBefore: string;
+  readonly follow: Awaited<ReturnType<typeof followVersion>> | null;
+  readonly vacancyFillOf: VacancyFillOf | null;
+  readonly changes?: readonly CarryChange[];
 }
 
 /**
@@ -658,6 +691,7 @@ export class TimetablePublish {
     id: string,
     input: PublishBody,
     requestId: string,
+    options: FillOptions = {},
   ): Promise<TimetableVersion> {
     const { startsOn } = input;
     const branchId = branchOf(access);
@@ -695,42 +729,139 @@ export class TimetablePublish {
       quarters,
       access.accountId,
       input.chain,
+      options,
     );
-    // Task 5.5a-3a (spec review of the plan, should-fix 2): the answer counts
-    // only for the later versions that were shown.
-    if (
-      findings.chain !== null &&
-      input.chain !== undefined &&
-      input.laterKey !== findings.chain.key
-    ) {
-      findings.refusals.push({ code: 'chain_changed' });
-    }
-    // Decision 11 with review correction 1: a transition week that differs
-    // from the load is published only with the key of what was shown.
-    const transitionKey = findings.impact?.answer.transition?.key ?? null;
-    if (transitionKey !== null && input.transitionKey !== transitionKey) {
-      findings.refusals.push({ code: 'transition_unacknowledged' });
-    }
-    // Task 5.6a-5a: the one-day changes as shown, and a choice for each
-    // "needs a decision" item (edge/timetable, Versions and drafts: "Publish
-    // waits until every 'needs a decision' item is settled").
+    const transitionKey = refuseUnshown(findings, input);
+
+    await this.writeRuns(transaction, access, {
+      mode: 'publish',
+      version,
+      startsOn,
+      input,
+      findings,
+      requestId,
+      transitionKey,
+      startBefore,
+      follow,
+      vacancyFillOf: options.vacancyFillOf ?? null,
+    });
+    return this.timetable.answerOf(transaction, id, access.accountId);
+  }
+
+  /**
+   * Task 5.7a-3a: the check of a fill's run, written nowhere: the version (a
+   * draft the fill copied, or a published version that starts on the fill
+   * date, its rows already changed in the transaction) checked on
+   * `startsOn`, as the publish check answers it, with the findings the fill
+   * reads its rows from.
+   */
+  async checkForFill(
+    transaction: Transaction,
+    access: Access,
+    version: VersionRow,
+    startsOn: string,
+    chain: PublishChain | undefined,
+    options: FillOptions,
+  ): Promise<{ readonly check: PublishCheck; readonly findings: Findings }> {
+    const today = await this.timetable.todayIn(transaction, version.branch_id);
+    const quarters = await this.quartersOf(transaction, version);
+    const choices = startChoices(today, engineYearOf(version, quarters));
+    const findings = await this.findingsOn(
+      transaction,
+      version,
+      startsOn,
+      choices.earliest,
+      quarters,
+      access.accountId,
+      chain,
+      options,
+    );
+    return {
+      findings,
+      check: {
+        startsOn,
+        earliest: choices.earliest,
+        defaultStart: choices.defaultStart,
+        quarterStarts: [...choices.quarterStarts],
+        refusals: [...findings.refusals],
+        warnings: findings.warnings,
+        cancelledLessons: findings.cancelledLessons,
+        needsTeacher: findings.needsTeacher,
+        impact: findings.impact?.answer ?? null,
+        shortenedDays: findings.shortenedDays,
+        unusedKeeps: findings.unusedKeeps,
+        chain: findings.chain,
+        canPublish: findings.refusals.length === 0,
+      },
+    };
+  }
+
+  /**
+   * Task 5.7a-3a: the publish of the draft a fill copied, inside the fill's
+   * transaction, which holds `PUBLISH_LOCK` and its request key.
+   */
+  publishForFill(
+    transaction: Transaction,
+    access: Access,
+    id: string,
+    input: PublishBody,
+    options: FillOptions,
+    requestId: string,
+  ): Promise<TimetableVersion> {
+    return this.publishLocked(transaction, access, id, input, requestId, options);
+  }
+
+  /**
+   * Task 5.7a-3a (decision 4): a fill whose date is a published version's
+   * start carries the change into that version in place, and into the later
+   * ones; the version's rows are already changed in the transaction. The
+   * same checks and writes as a publish (`refuseUnshown`, `writeRuns`).
+   */
+  async carryInPlace(
+    transaction: Transaction,
+    access: Access,
+    version: VersionRow,
+    input: PublishBody,
+    options: FillOptions,
+    requestId: string,
+  ): Promise<void> {
+    const { findings } = await this.checkForFill(
+      transaction,
+      access,
+      version,
+      version.starts_on,
+      input.chain,
+      options,
+    );
+    const transitionKey = refuseUnshown(findings, input);
+    await this.writeRuns(transaction, access, {
+      mode: 'fill',
+      version,
+      startsOn: version.starts_on,
+      input,
+      findings,
+      requestId,
+      transitionKey,
+      startBefore: version.starts_on,
+      follow: null,
+      vacancyFillOf: options.vacancyFillOf ?? null,
+      ...(options.carry === undefined ? {} : { changes: options.carry }),
+    });
+  }
+
+  /**
+   * The writes of a publish after its checks (task 5.5a-1 to 5.6c-3a), and of
+   * a fill carried into a published version that starts on its date (task
+   * 5.7a-3a, decision 4; spec review of the plan, must-fix 3: the publish's
+   * code moved, not copied). `fill` changes only what that version has not:
+   * no status, no weekly days, every draft of the year marked with the
+   * fill's cause, the version's own entry a carry's, its notice the fill's.
+   */
+  private async writeRuns(transaction: Transaction, access: Access, run: RunWrite): Promise<void> {
+    const { mode, version, startsOn, input, findings, requestId, transitionKey } = run;
+    const id = version.id;
+    const branchId = branchOf(access);
     const { decisions, bulkDecisions } = dayDecisionsOf(input.dayDecisions);
-    if (findings.days !== null) {
-      findings.refusals.push(
-        ...dayRefusalsOf(
-          {
-            key: findings.days.key,
-            items: findings.days.items,
-            bulk: [...findings.days.bulk.values()].flat(),
-            exams: [...findings.days.exams.values()].flat(),
-          },
-          input,
-        ),
-      );
-    }
-    if (findings.refusals.length > 0) {
-      throw new ApiException('publish_blocked', 409, undefined, findings.refusals.map(detailOf));
-    }
     const versions = await transaction
       .selectFrom('timetable_versions')
       .select(['id', 'number', 'status', 'starts_on', 'from_version_id', outOfDateColumn])
@@ -744,17 +875,19 @@ export class TimetablePublish {
         .sort((a, b) => b.starts_on.localeCompare(a.starts_on) || b.number - a.number)[0] ?? null;
     // Task 5.6b-4a (decision 3): the weekly days the blocks were checked
     // against, written while the version is still a draft (0091).
-    if (findings.written !== null) {
+    if (findings.written !== null && mode === 'publish') {
       await storeVersionDays(transaction, findings.written.state);
     }
     // The checks deferred to the commit (the pattern written by the Tutor
     // rows that followed, 0058) run now, while the version is still a draft.
     await sql`set constraints all immediate`.execute(transaction);
-    await transaction
-      .updateTable('timetable_versions')
-      .set({ status: 'published', edit_holder_id: null, edit_seen_at: null })
-      .where('id', '=', id)
-      .execute();
+    if (mode === 'publish') {
+      await transaction
+        .updateTable('timetable_versions')
+        .set({ status: 'published', edit_holder_id: null, edit_seen_at: null })
+        .where('id', '=', id)
+        .execute();
+    }
     // Decision 4: every other draft of the branch and year is marked, unless
     // the published version is in its chain of sources; a draft already marked
     // gets the publish's cause too (task 5.5a-3b-1, spec review must-fix 2).
@@ -769,11 +902,12 @@ export class TimetablePublish {
       }
       return false;
     };
+    // Task 5.7a-3a (decision 15): a fill in place marks every draft.
     const marked = versions.filter(
-      (one) => one.id !== id && one.status === 'draft' && !descends(one.id),
+      (one) => one.id !== id && one.status === 'draft' && (mode === 'fill' || !descends(one.id)),
     );
     // Task 5.5a-3a: the answer to the later published versions.
-    const replaced = input.chain === 'replace' ? findings.later : [];
+    const replaced = mode === 'publish' && input.chain === 'replace' ? findings.later : [];
     for (const later of replaced) {
       await transaction
         .updateTable('timetable_versions')
@@ -868,7 +1002,7 @@ export class TimetablePublish {
     );
     // Task 5.5c-3a: one notice per affected teacher, and the changed lessons marked.
     const notices = await sendWeekChanges(transaction, this.notifications, week, {
-      kind: 'timetable.published',
+      kind: mode === 'publish' ? 'timetable.published' : 'timetable.vacancy_filled',
       number: version.number,
       examsCancelled,
     });
@@ -878,63 +1012,102 @@ export class TimetablePublish {
       assignmentId: access.assignmentId,
       requestId,
     });
-    await this.audit.record(transaction, {
-      branchId,
-      actorId: access.accountId,
-      assignmentId: access.assignmentId,
-      action: 'timetable_version.publish',
-      record: { type: 'timetable_version', id },
-      oldValue: { status: 'draft', startsOn: startBefore },
-      newValue: {
-        status: 'published',
+    // Task 5.7a-3a: the fill that made the change, on the version's own entry.
+    const fillPart = run.vacancyFillOf === null ? {} : { vacancyFill: { ...run.vacancyFillOf } };
+    const ownPart = {
+      markedOutOfDate: marked.map((one) => one.id),
+      chain: findings.chain === null ? null : (input.chain ?? null),
+      replaced: replaced.map((one) => ({ id: one.id, number: one.number })),
+      carried: carried.map((one) => ({ id: one.version.id, number: one.version.number })),
+      carryLeft: carryLeft.map((one) => ({ id: one.version.id, number: one.version.number })),
+      ...(run.follow !== null && followChanged(run.follow)
+        ? { tutorLessons: auditOf(run.follow) }
+        : {}),
+      // Task 5.5a-2b-1, decision 11: the counts of the preview and the rows acknowledged.
+      impact: findings.impact?.answer.counts ?? null,
+      datedLessons: datedAuditOf(lessons),
+      // Task 5.6a-5a: the outcome of every stored one-day change, by key.
+      ...(ownSorting === null || settled === null
+        ? {}
+        : {
+            dayChanges: dayAuditOf(
+              ownSorting.items,
+              decisions,
+              settled,
+              bulkAuditOf(ownBulk, bulkRecorded),
+            ),
+          }),
+      // Task 5.6c-3a: each standing exam of the run, kept or decided.
+      ...(ownExams.length === 0
+        ? {}
+        : { exams: examAuditOf(ownExams, input.dayDecisions, ownExamAudit) }),
+      journals: { ...journals },
+      notices: { ...notices },
+      ...(transitionKey === null || findings.impact === null
+        ? {}
+        : {
+            transition: {
+              weekStart: findings.impact.answer.transition?.weekStart ?? null,
+              acknowledged: findings.impact.acknowledged.map((row) => ({ ...row })),
+            },
+          }),
+    };
+    if (mode === 'publish') {
+      await this.audit.record(transaction, {
+        branchId,
+        actorId: access.accountId,
+        assignmentId: access.assignmentId,
+        action: 'timetable_version.publish',
+        record: { type: 'timetable_version', id },
+        oldValue: { status: 'draft', startsOn: run.startBefore },
+        newValue: {
+          status: 'published',
+          number: version.number,
+          startsOn,
+          inForceBefore: before === null ? null : { id: before.id, number: before.number },
+          ...ownPart,
+          ...fillPart,
+        },
+        requestId,
+      });
+      await markPublished(transaction, this.audit, marked, {
+        branchId,
+        id,
         number: version.number,
-        startsOn,
-        inForceBefore: before === null ? null : { id: before.id, number: before.number },
-        markedOutOfDate: marked.map((one) => one.id),
-        chain: findings.chain === null ? null : (input.chain ?? null),
-        replaced: replaced.map((one) => ({ id: one.id, number: one.number })),
-        carried: carried.map((one) => ({ id: one.version.id, number: one.version.number })),
-        carryLeft: carryLeft.map((one) => ({ id: one.version.id, number: one.version.number })),
-        ...(follow !== null && followChanged(follow) ? { tutorLessons: auditOf(follow) } : {}),
-        // Task 5.5a-2b-1, decision 11: the counts of the preview and the rows acknowledged.
-        impact: findings.impact?.answer.counts ?? null,
-        datedLessons: datedAuditOf(lessons),
-        // Task 5.6a-5a: the outcome of every stored one-day change, by key.
-        ...(ownSorting === null || settled === null
-          ? {}
-          : {
-              dayChanges: dayAuditOf(
-                ownSorting.items,
-                decisions,
-                settled,
-                bulkAuditOf(ownBulk, bulkRecorded),
-              ),
-            }),
-        // Task 5.6c-3a: each standing exam of the run, kept or decided.
-        ...(ownExams.length === 0
-          ? {}
-          : { exams: examAuditOf(ownExams, input.dayDecisions, ownExamAudit) }),
-        journals: { ...journals },
-        notices: { ...notices },
-        ...(transitionKey === null || findings.impact === null
-          ? {}
-          : {
-              transition: {
-                weekStart: findings.impact.answer.transition?.weekStart ?? null,
-                acknowledged: findings.impact.acknowledged.map((row) => ({ ...row })),
-              },
-            }),
-      },
-      requestId,
-    });
-    await markPublished(transaction, this.audit, marked, {
-      branchId,
-      id,
-      number: version.number,
-      actorId: access.accountId,
-      assignmentId: access.assignmentId,
-      requestId,
-    });
+        actorId: access.accountId,
+        assignmentId: access.assignmentId,
+        requestId,
+      });
+    } else {
+      // Decision 4: the version that starts on the fill date takes the
+      // change in place; its entry is a carry's, from no version.
+      await this.audit.record(transaction, {
+        branchId,
+        actorId: access.accountId,
+        assignmentId: access.assignmentId,
+        action: 'timetable_version.carry',
+        record: { type: 'timetable_version', id },
+        oldValue: null,
+        newValue: {
+          fromVersionId: null,
+          fromNumber: null,
+          number: version.number,
+          startsOn,
+          changes: (run.changes ?? []).map((one) => ({ ...one })),
+          ...ownPart,
+          ...fillPart,
+        },
+        requestId,
+      });
+      await markFilled(transaction, this.audit, marked, {
+        branchId,
+        id,
+        number: version.number,
+        actorId: access.accountId,
+        assignmentId: access.assignmentId,
+        requestId,
+      });
+    }
     for (const later of replaced) {
       await this.audit.record(transaction, {
         branchId,
@@ -968,7 +1141,6 @@ export class TimetablePublish {
         requestId,
       });
     }
-    return this.timetable.answerOf(transaction, id, access.accountId);
   }
 
   /**
@@ -1103,6 +1275,7 @@ export class TimetablePublish {
     quarters: readonly QuarterRow[],
     accountId: string,
     chain?: PublishChain,
+    options: FillOptions = {},
   ): Promise<Findings> {
     const refusals: PublishRefusal[] = startProblems(stored, startsOn, earliest).map((code) => ({
       code,
@@ -1139,7 +1312,11 @@ export class TimetablePublish {
     // question. "Run until" and "carry" end the new version the day before
     // the next start (decision 5: never on that start); "replace" runs it to
     // the year's end. With no answer yet, it is read as "run until".
-    const later = await laterVersionsOf(transaction, version, startsOn);
+    // Task 5.7a-3a (decision 4): a published version checked on its own
+    // start is not its own later version.
+    const later = (await laterVersionsOf(transaction, version, startsOn)).filter(
+      (one) => one.id !== version.id,
+    );
     const first = later[0];
     let runEnd = version.end_date;
     if (first !== undefined) {
@@ -1176,6 +1353,34 @@ export class TimetablePublish {
     for (const row of readiness.load.problemRows) {
       for (const problem of row.problems) {
         refusals.push({ code: 'load_problem', loadRowId: row.id, problem });
+      }
+    }
+    // Task 5.7a-3a (decision 8): a row naming a vacancy closed on a date of
+    // the run, a close a fill planned (`lessons_vacancy_closed` refuses its
+    // lessons anyway).
+    const teacherIds = [...new Set(rows.map((row) => row.teacher_id))];
+    if (teacherIds.length > 0) {
+      const closed = await transaction
+        .selectFrom('staff_statuses')
+        .select('staff_id')
+        .where('staff_id', 'in', teacherIds)
+        .where('status', '=', 'closed')
+        .where('valid_from', '<=', runEnd)
+        .where((builder) =>
+          builder.or([
+            builder('valid_until', 'is', null),
+            builder.and([
+              builder('valid_until', '>', startsOn),
+              builder('valid_until', '>', builder.ref('valid_from')),
+            ]),
+          ]),
+        )
+        .execute();
+      const closedIds = new Set(closed.map((one) => one.staff_id));
+      for (const row of rows) {
+        if (closedIds.has(row.teacher_id)) {
+          refusals.push({ code: 'load_vacancy_closed', loadRowId: row.id });
+        }
       }
     }
 
@@ -1223,8 +1428,9 @@ export class TimetablePublish {
     let chainAnswer: PublishChainAnswer | null = null;
     const carried: CarryResult[] = [];
     if (first !== undefined) {
+      // Task 5.7a-3a: a fill names its changes, the rows of every version.
       const source =
-        version.from_version_id === null
+        options.carry !== undefined || version.from_version_id === null
           ? null
           : carryVersionOf(
               await this.pattern.stateOf(
@@ -1233,7 +1439,10 @@ export class TimetablePublish {
                 accountId,
               ),
             );
-      const offer = carryChanges(source, carryVersionOf(state));
+      const offer: CarryOffer =
+        options.carry === undefined
+          ? carryChanges(source, carryVersionOf(state))
+          : { offered: true, changes: options.carry };
       if (chain === 'carry' && !offer.offered) {
         refusals.push({ code: 'chain_carry_not_offered' });
       }
@@ -1549,6 +1758,49 @@ export class TimetablePublish {
       .orderBy('number')
       .execute();
   }
+}
+
+/**
+ * What refuses a write of what the check showed (tasks 5.5a-2b-1 to 5.6a-5a),
+ * added to the findings' refusals, which refuse the write together
+ * (`publish_blocked`); the transition week's key, or `null`.
+ */
+function refuseUnshown(findings: Findings, input: PublishBody): string | null {
+  // Task 5.5a-3a (spec review of the plan, should-fix 2): the answer counts
+  // only for the later versions that were shown.
+  if (
+    findings.chain !== null &&
+    input.chain !== undefined &&
+    input.laterKey !== findings.chain.key
+  ) {
+    findings.refusals.push({ code: 'chain_changed' });
+  }
+  // Decision 11 with review correction 1: a transition week that differs
+  // from the load is published only with the key of what was shown.
+  const transitionKey = findings.impact?.answer.transition?.key ?? null;
+  if (transitionKey !== null && input.transitionKey !== transitionKey) {
+    findings.refusals.push({ code: 'transition_unacknowledged' });
+  }
+  // Task 5.6a-5a: the one-day changes as shown, and a choice for each
+  // "needs a decision" item (edge/timetable, Versions and drafts: "Publish
+  // waits until every 'needs a decision' item is settled").
+  if (findings.days !== null) {
+    findings.refusals.push(
+      ...dayRefusalsOf(
+        {
+          key: findings.days.key,
+          items: findings.days.items,
+          bulk: [...findings.days.bulk.values()].flat(),
+          exams: [...findings.days.exams.values()].flat(),
+        },
+        input,
+      ),
+    );
+  }
+  if (findings.refusals.length > 0) {
+    throw new ApiException('publish_blocked', 409, undefined, findings.refusals.map(detailOf));
+  }
+  return transitionKey;
 }
 
 /** The year as the start choices read it: its dates and its dated quarters. */

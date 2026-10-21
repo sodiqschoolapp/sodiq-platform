@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
+  listName,
   schoolDateOf,
   type Clock,
   type ErrorCode,
@@ -8,6 +9,7 @@ import {
   type VacancyDetail,
   type VacancyExport,
   type VacancyExportColumn,
+  type VacancyFillHistory,
   type VacancyList,
   type VacancyListItem,
   type VacancyRecord,
@@ -331,8 +333,48 @@ export class Vacancies {
           }
           const statuses = await this.statusesOf(transaction, id, true);
           const current = statuses.find((row) => inForceOn(row, today));
+          // Task 5.7a-3a (spec review of the plan, must-fix 5): a close a fill
+          // planned from a later day (decision 5). A reopen while the vacancy
+          // is open today cancels it; a close from today takes its place.
+          const planned = statuses.find(
+            (row) => isLive(row) && row.status === 'closed' && row.validFrom > today,
+          );
+          if (planned !== undefined && status === 'open' && current?.status === 'open') {
+            await transaction
+              .updateTable('staff_statuses')
+              .set({ valid_until: planned.validFrom })
+              .where('id', '=', planned.id)
+              .execute();
+            await transaction
+              .insertInto('staff_statuses')
+              .values({
+                staff_id: id,
+                status: 'open',
+                valid_from: planned.validFrom,
+                valid_until: planned.validUntil,
+              })
+              .execute();
+            await this.audit.record(transaction, {
+              branchId,
+              actorId: access.accountId,
+              assignmentId: access.assignmentId,
+              action: 'vacancy.reopen',
+              record: { type: 'staff', id },
+              oldValue: { status: 'open', plannedClose: planned.validFrom },
+              newValue: { status: 'open', from: planned.validFrom },
+              requestId,
+            });
+            return this.readDetail(transaction, id, branchId);
+          }
           if (current?.status === status) {
             throw refused('status_unchanged');
+          }
+          if (planned !== undefined && status === 'closed') {
+            await transaction
+              .updateTable('staff_statuses')
+              .set({ valid_until: planned.validFrom })
+              .where('id', '=', planned.id)
+              .execute();
           }
           if (status === 'open') {
             // A closed vacancy is out of service, and the subject edit and
@@ -345,8 +387,9 @@ export class Vacancies {
             await this.checkDepartment(transaction, fields.departmentId);
             await this.checkSubjectsFit(transaction, fields);
           }
-          // Rows are written from today, so none is planned later; the row in
-          // force today is cut at today (an empty range when it began today).
+          // Rows are written from today; a planned close was emptied above.
+          // The row in force today is cut at today (an empty range when it
+          // began today).
           if (current !== undefined) {
             await transaction
               .updateTable('staff_statuses')
@@ -364,7 +407,10 @@ export class Vacancies {
             assignmentId: access.assignmentId,
             action: status === 'open' ? 'vacancy.reopen' : 'vacancy.close',
             record: { type: 'staff', id },
-            oldValue: { status: current?.status ?? null },
+            oldValue: {
+              status: current?.status ?? null,
+              ...(planned === undefined ? {} : { plannedClose: planned.validFrom }),
+            },
             newValue: { status, from: today },
             requestId,
           });
@@ -837,7 +883,63 @@ export class Vacancies {
     const statuses: VacancyStatusRow[] = (await this.statusesOf(transaction, id, false)).map(
       (row) => ({ id: row.id, status: row.status, from: row.validFrom, until: row.validUntil }),
     );
-    return { ...item, statuses, today };
+    return { ...item, statuses, fills: await this.fillsOf(transaction, id), today };
+  }
+
+  /**
+   * Task 5.7a-3a (`04`: "its history lists every fill with the date, the
+   * person and the rows"), newest first; a fill whose version was withdrawn
+   * is marked (decision 11), read from the version's status: a withdrawn
+   * version is archived before its start, and nothing else archives one the
+   * chain still names (a replace archives a version that never started too,
+   * and is read the same way: the fill's version no longer runs).
+   */
+  private async fillsOf(transaction: Transaction, id: string): Promise<VacancyFillHistory[]> {
+    const fills = await transaction
+      .selectFrom('vacancy_fills')
+      .innerJoin('staff', 'staff.id', 'vacancy_fills.person_id')
+      .leftJoin('timetable_versions', 'timetable_versions.id', 'vacancy_fills.version_id')
+      .select([
+        'vacancy_fills.id',
+        sql<string>`vacancy_fills.fills_from::text`.as('fills_from'),
+        'vacancy_fills.person_id',
+        'staff.first_name',
+        'staff.last_name',
+        'timetable_versions.number',
+        'timetable_versions.status',
+      ])
+      .where('vacancy_fills.vacancy_id', '=', id)
+      .orderBy('vacancy_fills.fills_from', 'desc')
+      .orderBy('vacancy_fills.id', 'desc')
+      .execute();
+    if (fills.length === 0) return [];
+    const rows = await transaction
+      .selectFrom('vacancy_fill_rows')
+      .select(['fill_id', 'class_id', 'group_id', 'subject_id'])
+      .where(
+        'fill_id',
+        'in',
+        fills.map((one) => one.id),
+      )
+      .orderBy('id')
+      .execute();
+    return fills.map((one) => ({
+      id: one.id,
+      startsOn: one.fills_from,
+      person: {
+        id: one.person_id,
+        name: listName({ firstName: one.first_name ?? '', lastName: one.last_name ?? '' }),
+      },
+      rows: rows
+        .filter((row) => row.fill_id === one.id)
+        .map((row) => ({
+          classId: row.class_id,
+          groupId: row.group_id,
+          subjectId: row.subject_id,
+        })),
+      versionNumber: one.number,
+      withdrawn: one.status === 'archived',
+    }));
   }
 }
 

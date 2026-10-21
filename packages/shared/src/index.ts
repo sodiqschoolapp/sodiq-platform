@@ -1474,3 +1474,22 @@ export {
   type RoomClosureRecord,
   type RoomClosuresQuery,
 } from './room-closures.js';
+export {
+  VACANCY_FILL_LEFT_REASONS,
+  vacancyFillRowSchema,
+  vacancyFillRowKeyOf,
+  vacancyFillCheckBodySchema,
+  vacancyFillBodySchema,
+  vacancyFillRowAnswerSchema,
+  vacancyFillHolderSchema,
+  vacancyFillCheckSchema,
+  vacancyFillSchema,
+  vacancyFillHistorySchema,
+  type VacancyFillRow,
+  type VacancyFillCheckBody,
+  type VacancyFillBody,
+  type VacancyFillRowAnswer,
+  type VacancyFillCheck,
+  type VacancyFill,
+  type VacancyFillHistory,
+} from './vacancy-fills.js';

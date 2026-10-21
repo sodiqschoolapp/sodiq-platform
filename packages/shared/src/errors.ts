@@ -739,6 +739,20 @@ export const ERROR_CODES = [
   'room_move_same',
   /** Task 5.7a-2b (decision 6): a lesson of "move all" meets a blocked rule in the room; `details` lists each, nothing is moved. */
   'room_move_blocked',
+  /** Task 5.7a-3a: the vacancy to fill is not open (closed, or closed from a later day). */
+  'fill_vacancy',
+  /** Task 5.7a-3a: the person is a vacancy, or is not active on the fill date. */
+  'fill_person',
+  /** Task 5.7a-3a: the fill date is today or earlier, or outside the year of a published version. */
+  'fill_start',
+  /** Task 5.7a-3a: a row named is not a row of the vacancy in a version that runs on or after the fill date, or the vacancy has none. */
+  'fill_rows',
+  /** Task 5.7a-3a (decision 3): every row stays with the vacancy; `details` lists them. */
+  'fill_nothing',
+  /** Task 5.7a-3a: the rows the fill would fill or leave differ from those the check showed (`rowsKey`). */
+  'fill_rows_changed',
+  /** Task 5.7a-3a: a row of the version in force cannot be copied on the fill date (a teacher out, a class with no Tutor); `details` names the rows. */
+  'fill_version_rows',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

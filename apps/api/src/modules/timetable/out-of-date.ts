@@ -188,6 +188,28 @@ export function markWithdrawn(
 }
 
 /**
+ * A fill carried into a published version that starts on its date marks every
+ * draft of its branch and year (task 5.7a-3a, decision 15), named by that
+ * version.
+ */
+export function markFilled(
+  transaction: Transaction,
+  audit: Audit,
+  drafts: readonly { id: string; out_of_date: boolean }[],
+  changed: MarkActor & { branchId: string; id: string; number: number },
+): Promise<void> {
+  return addCauses(transaction, audit, drafts, {
+    branchId: changed.branchId,
+    action: 'vacancy.fill',
+    recordId: changed.id,
+    details: { changedId: changed.id, changedNumber: changed.number },
+    actorId: changed.actorId,
+    ...(changed.assignmentId === undefined ? {} : { assignmentId: changed.assignmentId }),
+    ...(changed.requestId === undefined ? {} : { requestId: changed.requestId }),
+  });
+}
+
+/**
  * A copy takes the causes of its source when the source is a draft (5.5a-1
  * decision 14; review correction 2: a published source is read as up to date).
  */
@@ -246,7 +268,10 @@ export function causesKey(versionId: string, causes: readonly { id: string }[]):
  * 5), or a withdraw (task 5.5c-2a, decision 6), brought up to date the same way.
  */
 export const isPublishCause = (cause: { action: string }): boolean =>
-  cause.action === 'timetable_version.publish' || cause.action === 'timetable_version.withdraw';
+  cause.action === 'timetable_version.publish' ||
+  cause.action === 'timetable_version.withdraw' ||
+  // Task 5.7a-3a (decision 15): a fill in place changes the chain as a publish does.
+  cause.action === 'vacancy.fill';
 
 type CauseRecord = NonNullable<OutOfDateCause['record']>;
 
@@ -369,7 +394,7 @@ async function recordsOf(
       .execute();
     for (const row of rows) found.set(row.id, named(row.id, row.name));
   }
-  const versions = idsOf(['publish', 'withdraw']);
+  const versions = idsOf(['publish', 'withdraw', 'fill']);
   if (versions.length > 0) {
     const rows = await transaction
       .selectFrom('timetable_versions')

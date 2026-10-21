@@ -1157,6 +1157,26 @@ export interface TravelTimes {
   minutes: number;
 }
 
+export interface VacancyFillRows {
+  branch_id: string;
+  class_id: string | null;
+  fill_id: string;
+  group_id: string | null;
+  id: Generated<string>;
+  subject_id: string;
+}
+
+export interface VacancyFills {
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  created_by: string;
+  fills_from: string;
+  id: Generated<string>;
+  person_id: string;
+  vacancy_id: string;
+  version_id: string | null;
+}
+
 export interface DB {
   absences: Absences;
   academic_years: AcademicYears;
@@ -1255,4 +1275,6 @@ export interface DB {
   timetable_version_out_of_date_causes: TimetableVersionOutOfDateCauses;
   timetable_versions: TimetableVersions;
   travel_times: TravelTimes;
+  vacancy_fill_rows: VacancyFillRows;
+  vacancy_fills: VacancyFills;
 }

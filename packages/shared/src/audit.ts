@@ -117,6 +117,7 @@ export const AUDIT_ACTION_GROUPS = {
     'vacancy.edit',
     'vacancy.close',
     'vacancy.reopen',
+    'vacancy.fill',
     'vacancy.delete',
     'student.create',
     'student.edit',
