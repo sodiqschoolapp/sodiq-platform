@@ -276,6 +276,22 @@ describe('acting teachers', () => {
       expect(entry).toMatchObject({ new_value: { language: true } });
     });
 
+    it('refuses a naming and an end in a closed year, writing nothing (code review, must-fix 1)', async () => {
+      const s = await scene();
+      const period = await named(s, { from: FILL });
+      await t.database.migrator
+        .updateTable('academic_years')
+        .set({ status: 'closed' })
+        .where('id', '=', s.year)
+        .execute();
+      const before = await rowsOf(s.branch);
+      const audit = await t.auditCount();
+      refusedWith(await name(s, { until: FILL }), 409, 'class_year_closed');
+      refusedWith(await end(s, period.id, '2026-11-09'), 409, 'class_year_closed');
+      expect(await rowsOf(s.branch)).toEqual(before);
+      expect(await t.auditCount()).toBe(audit);
+    });
+
     it('refuses a start before today (decision 4)', async () => {
       const s = await scene();
       refusedWith(await name(s, { from: YESTERDAY }), 422, 'acting_start_past');
@@ -464,6 +480,27 @@ describe('acting teachers', () => {
       expect(actions).toEqual(
         expect.arrayContaining(['vacancy.acting_name', 'vacancy.acting_end']),
       );
+    });
+
+    it('answers a period the vacancy no longer holds from today as ended, with no End (decision 2; code review, should-fix 1)', async () => {
+      const s = await scene();
+      const period = await kit.period(s, '2026-09-14');
+      const other = await kit.load.teacher(s.branch, {
+        subjects: [{ subject: s.subject, grades: [7] }],
+      });
+      // The row went to another teacher from a day before today.
+      await kit.published(s, '2026-10-05', other.staffId);
+      const answer = await t.get(`/api/people/vacancies/${s.vacancy}`, s.branch);
+      expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+      expect(vacancyDetailSchema.parse(answer.body).journals[0]?.acting).toEqual([
+        expect.objectContaining({
+          id: period,
+          endsOn: '2026-10-05',
+          state: 'ended',
+          canEnd: false,
+          canWithdraw: false,
+        }),
+      ]);
     });
 
     it('answers 404 for another branch’s vacancy', async () => {

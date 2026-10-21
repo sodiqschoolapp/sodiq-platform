@@ -161,7 +161,7 @@ Not built yet: substitutes for its lessons (task 5.7b).
 
 - One acting teacher per journal on a day.
 - The person must be active in the branch and teach the subject in the class's grade. A vacancy cannot be an acting teacher.
-- The period counts only on the days the vacancy holds the journal. When the vacancy is filled, the hired teacher owns the journal from the fill date, and the record says "until the vacancy is filled on" that date. If the fill is taken back, the acting teacher owns it again.
+- The period counts only on the days the vacancy holds the journal. When the vacancy is filled, the hired teacher owns the journal from the fill date, and the record says "until" that date, "when the vacancy no longer holds the journal". If the fill is taken back, the acting teacher owns it again.
 - If the acting teacher leaves or becomes inactive, the journal has no teacher on those days.
 - Naming an acting teacher does not put them on the lessons. The lessons still need a teacher until a substitute is set (task 5.7b).
 

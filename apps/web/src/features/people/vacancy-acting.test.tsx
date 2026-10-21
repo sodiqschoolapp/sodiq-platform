@@ -174,7 +174,7 @@ describe('the acting teacher of a vacancy’s journal', () => {
     ]);
     const panel = await openVacancy();
     expect(panel.querySelector(`[data-acting-period="${uid(301)}"] > span`)?.textContent).toBe(
-      'Yusupova Nodira, from 10 October 2026, until the vacancy is filled on 2 November 2026, in force',
+      'Yusupova Nodira, from 10 October 2026, until 2 November 2026, when the vacancy no longer holds the journal, in force',
     );
   });
 
@@ -260,6 +260,33 @@ describe('the acting teacher of a vacancy’s journal', () => {
           return body.until === TODAY;
         }),
     ).toBe(false);
+  });
+
+  it('ends a period in force on a day, today at the earliest and not after its own end (code review, should-fix 4)', async () => {
+    const calls = api('academic_vice_principal', [
+      period({ from: '2026-10-05', until: '2026-10-26', state: 'current', canWithdraw: false }),
+    ]);
+    const panel = await openVacancy();
+    fireEvent.click(within(panel).getByRole('button', { name: texts.end }));
+    const dialog = await screen.findByRole('dialog', {
+      name: texts.endTitle.replace('{{person}}', 'Yusupova Nodira'),
+    });
+    const field = within(dialog).getByLabelText<HTMLInputElement>(texts.endOn);
+    expect(field.value).toBe(TODAY);
+    const save = within(dialog).getByRole<HTMLButtonElement>('button', { name: texts.end });
+    fireEvent.change(field, { target: { value: '2026-11-02' } });
+    expect(await within(dialog).findByText(en.errors.acting_end_later)).toBeDefined();
+    expect(save.disabled).toBe(true);
+    fireEvent.change(field, { target: { value: '2026-10-09' } });
+    expect(save.disabled).toBe(true);
+    fireEvent.change(field, { target: { value: '2026-10-19' } });
+    await waitFor(() => {
+      expect(save.disabled).toBe(false);
+    });
+    fireEvent.click(save);
+    await waitFor(() => {
+      expect(calls.find((call) => call.route === END_ROUTE)?.body).toEqual({ until: '2026-10-19' });
+    });
   });
 
   it('withdraws a planned period after a confirmation, ending it on its start', async () => {

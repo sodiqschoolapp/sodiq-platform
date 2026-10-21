@@ -91,14 +91,6 @@ export function actingAnswerOf(
   runs: readonly OwnerRun[],
   today: string,
 ): ActingTeacher {
-  const state: ActingTeacher['state'] =
-    row.end_cause === 'withdrawn'
-      ? 'withdrawn'
-      : row.valid_until !== null && row.valid_until <= today
-        ? 'ended'
-        : row.valid_from > today
-          ? 'planned'
-          : 'current';
   const period: ActingPeriod = {
     id: row.id,
     journalId: row.journal_id,
@@ -107,13 +99,25 @@ export function actingAnswerOf(
     from: row.valid_from,
     until: row.valid_until,
   };
+  const endsOn = row.end_cause === 'withdrawn' ? null : endsOnOf(runs, period);
+  // Decision 2: a period the vacancy no longer holds from today (a fill) has
+  // ended, whatever its own end (code review, should-fix 1).
+  const state: ActingTeacher['state'] =
+    row.end_cause === 'withdrawn'
+      ? 'withdrawn'
+      : (row.valid_until !== null && row.valid_until <= today) ||
+          (endsOn !== null && endsOn <= today)
+        ? 'ended'
+        : row.valid_from > today
+          ? 'planned'
+          : 'current';
   return {
     id: row.id,
     journalId: row.journal_id,
     person: { id: row.person_id, name },
     from: row.valid_from,
     until: row.valid_until,
-    endsOn: state === 'withdrawn' ? null : endsOnOf(runs, period),
+    endsOn,
     state,
     canEnd: state === 'planned' || state === 'current',
     canWithdraw: state === 'planned',
@@ -374,14 +378,7 @@ export class ActingTeachers {
     input: ActingTeacherBody,
     requestId: string,
   ): Promise<ActingTeacher> {
-    // The journal row first: two namings of one journal wait for each other,
-    // and the second sees the first's period.
-    await transaction
-      .selectFrom('journals')
-      .select('id')
-      .where('id', '=', input.journalId)
-      .forNoKeyUpdate()
-      .execute();
+    // Two namings at one moment meet `journal_acting_one`, answered `acting_overlap`.
     const answer = await this.checked(transaction, branchId, input);
     const [problem] = answer.problems;
     if (problem !== undefined) {

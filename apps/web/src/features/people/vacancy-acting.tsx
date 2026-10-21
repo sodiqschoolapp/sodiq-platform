@@ -188,10 +188,10 @@ function periodLine(t: TFunction, language: string, period: ActingTeacher): stri
     parts.push(t('people.vacancies.acting.states.withdrawn'));
     return parts.join(', ');
   }
-  // Decision 2: a fill (or another teacher of the row) before the typed end ends it there.
+  // Decision 2: a fill, another teacher of the row or no run ends it there, before the typed end.
   if (period.endsOn !== null) {
     parts.push(
-      t('people.vacancies.acting.endsOnFill', { date: schoolDateText(period.endsOn, language) }),
+      t('people.vacancies.acting.endsOnRow', { date: schoolDateText(period.endsOn, language) }),
     );
   } else if (period.until !== null) {
     parts.push(

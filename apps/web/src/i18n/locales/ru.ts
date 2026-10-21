@@ -2369,7 +2369,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         noTeacher: 'Исполняющего обязанности нет: у журнала нет учителя.',
         line: '{{person}}, с {{from}}',
         until: 'возвращает журнал {{date}}',
-        endsOnFill: 'до заполнения вакансии {{date}}',
+        endsOnRow: 'до {{date}}, затем журнал уже не за вакансией',
         openEnded: 'без срока',
         states: {
           planned: 'запланирован',

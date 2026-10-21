@@ -2239,7 +2239,7 @@ export const en = {
         noTeacher: 'No acting teacher: the journal has no teacher.',
         line: '{{person}}, from {{from}}',
         until: 'hands the journal back on {{date}}',
-        endsOnFill: 'until the vacancy is filled on {{date}}',
+        endsOnRow: 'until {{date}}, when the vacancy no longer holds the journal',
         openEnded: 'open-ended',
         states: {
           planned: 'planned',

@@ -2267,7 +2267,7 @@ export const uz: Texts<'one' | 'other'> = {
         noTeacher: 'Vaqtincha oʻqituvchi yoʻq: jurnalning oʻqituvchisi yoʻq.',
         line: '{{person}}, {{from}} dan',
         until: 'jurnalni {{date}} da qaytaradi',
-        endsOnFill: 'vakansiya {{date}} da toʻldirilgunicha',
+        endsOnRow: '{{date}} gacha, shundan keyin jurnal vakansiyada emas',
         openEnded: 'muddatsiz',
         states: {
           planned: 'rejalashtirilgan',
