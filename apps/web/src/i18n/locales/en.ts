@@ -2255,6 +2255,8 @@ export const en = {
         doneTitle: 'Filled',
         closed: 'The vacancy is closed from {{date}}.',
         undo: 'To take it back, withdraw the version before {{date}}.',
+        undoInPlace:
+          'The version that starts on {{date}} was changed: to take it back, withdraw that version before it starts, which takes back the rest of it too, or publish a new version.',
         close: 'Close',
         unknownUnit: 'A class',
         unknownSubject: 'a subject',

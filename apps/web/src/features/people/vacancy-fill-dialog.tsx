@@ -94,7 +94,9 @@ export function VacancyFillDialog({
   }>({ key: null, choices: {}, reasons: {} });
   // One key per fill the person asks for: a retry of the same click repeats it harmlessly.
   const key = useRef<string | null>(null);
+  // The fill done, with the units of the check it was sent from (the checks are off after it).
   const [done, setDone] = useState<VacancyFill | null>(null);
+  const [doneUnits, setDoneUnits] = useState<readonly VacancyFillUnit[]>([]);
 
   const staff = useQuery(staffQuery(branchId));
   const versions = useQuery(versionsQuery(branchId));
@@ -130,6 +132,7 @@ export function VacancyFillDialog({
       return fillVacancy(sent, key.current);
     },
     onSuccess: (answer) => {
+      setDoneUnits([...(all.data?.units ?? []), ...(check.data?.units ?? [])]);
       setDone(answer);
     },
     onError: async () => {
@@ -144,7 +147,8 @@ export function VacancyFillDialog({
     },
   });
 
-  const units = [...(all.data?.units ?? []), ...(check.data?.units ?? [])];
+  const units =
+    done === null ? [...(all.data?.units ?? []), ...(check.data?.units ?? [])] : doneUnits;
   const rowName = (row: { classId: string | null; groupId: string | null; subjectId: string }) =>
     fillRowName(t, language, row, units, subjects);
 
@@ -306,6 +310,16 @@ export function VacancyFillDialog({
                     date: schoolDateText(nextMonday(vacancy.today), language),
                   })}
                 </Button>
+                {(versions.isError || years.isError) && (
+                  // The quarter and version shortcuts need both reads (`.claude/rules/web.md`).
+                  <ErrorState
+                    error={versions.error ?? years.error}
+                    onRetry={() => {
+                      if (versions.isError) void versions.refetch();
+                      if (years.isError) void years.refetch();
+                    }}
+                  />
+                )}
                 {shortcuts.map((one) => (
                   <Button
                     key={`${one.date}|${one.text}`}
@@ -672,7 +686,11 @@ function FillDone({
           ? t('people.vacancies.fill.closed', { date })
           : t('people.vacancies.fill.staysOpen')}
       </p>
-      <p className="text-sm">{t('people.vacancies.fill.undo', { date })}</p>
+      <p className="text-sm" data-undo="true">
+        {fill.versionId === null
+          ? t('people.vacancies.fill.undoInPlace', { date })
+          : t('people.vacancies.fill.undo', { date })}
+      </p>
     </section>
   );
 }

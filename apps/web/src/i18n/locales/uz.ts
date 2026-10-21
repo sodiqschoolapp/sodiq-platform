@@ -2283,6 +2283,8 @@ export const uz: Texts<'one' | 'other'> = {
         doneTitle: 'Toʻldirildi',
         closed: 'Vakansiya {{date}} dan yopildi.',
         undo: 'Bekor qilish uchun versiyani {{date}} gacha qaytarib oling.',
+        undoInPlace:
+          '{{date}} da boshlanadigan versiya oʻzgardi: bekor qilish uchun shu versiyani boshlanishidan oldin qaytarib oling (unda boshqa hammasi ham bekor boʻladi) yoki yangi versiya eʼlon qiling.',
         close: 'Yopish',
         unknownUnit: 'Sinf',
         unknownSubject: 'fan',

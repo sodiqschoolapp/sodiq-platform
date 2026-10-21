@@ -404,6 +404,7 @@ describe('the fill of a vacancy', () => {
     // A decline sends nothing.
     fireEvent.click(action);
     let question = await screen.findByRole('alertdialog');
+    expect(within(question).getByRole('heading').textContent).toBe('Fill Mathematics vacancy 1?');
     expect(within(question).getByText('7 Oxford, Mathematics')).toBeDefined();
     expect(
       within(question).getByText(
@@ -435,6 +436,11 @@ describe('the fill of a vacancy', () => {
       if (found === null) throw new Error('Not done yet.');
       return found as HTMLElement;
     });
+    // The rows named from the check's units (spec review of the code, must-fix 1).
+    expect([...done.querySelectorAll('li')].map((one) => one.textContent)).toEqual([
+      '7 Oxford, Mathematics: goes to the person',
+      '7 Princeton, Mathematics: the person is busy or not available on 13 October 2026, 20 October 2026',
+    ]);
     expect(done.querySelector('[data-closed]')?.textContent).toBe(texts.staysOpen);
     expect(
       within(done).getByText('To take it back, withdraw the version before 12 October 2026.'),
@@ -591,6 +597,154 @@ describe('the fill of a vacancy', () => {
     expect(await within(dialog).findByText(en.errors.fill_rows_changed)).toBeDefined();
     await waitFor(() => {
       expect(checks(calls).length).toBeGreaterThan(count);
+    });
+  });
+
+  it('keeps Fill off until each one-day change that needs a decision has a choice, and sends it', async () => {
+    const item = {
+      key: uid(622),
+      kind: 'move' as const,
+      unitId: CLASS_A,
+      subjectId: MATHEMATICS.id,
+      from: { date: '2026-10-19', start: 480, end: 525, roomId: null },
+      to: { date: '2026-10-21', start: 535, end: 580, roomId: null },
+      reason: 'Excursion to the museum',
+      carriedVersionId: null,
+      blocked: [
+        {
+          rule: 'teacher_double',
+          severity: 'blocked',
+          weekday: 3,
+          lessonIds: [],
+          date: '2026-10-21',
+        },
+      ],
+    };
+    const calls = api('academic_vice_principal', {
+      [CHECK_ROUTE]: () =>
+        json({
+          ...CHECK,
+          publish: {
+            ...PUBLISH,
+            impact: {
+              ...IMPACT,
+              transition: null,
+              dayChanges: { ...IMPACT.dayChanges, decide: [item] },
+            },
+          },
+        }),
+      [FILL_ROUTE]: () =>
+        json({
+          id: uid(900),
+          vacancyId: OPEN.id,
+          personId: AKMAL.id,
+          startsOn: '2026-10-12',
+          versionId: null,
+          rows: CHECK.rows,
+          closed: false,
+          holders: [],
+        }),
+    });
+    const dialog = await openDialog();
+    await choosePerson(dialog);
+    const decide = await waitFor(() => {
+      const found = dialog.querySelector('[data-day-changes="decide"]');
+      if (found === null) throw new Error('No one-day changes yet.');
+      return found as HTMLElement;
+    });
+    const action = within(dialog).getByRole('button', { name: texts.action });
+    expect(action).toHaveProperty('disabled', true);
+    expect(dialog.querySelector('[data-decision-needed]')?.textContent).toBe(
+      en.timetable.publish.dayChanges.decisionNeeded,
+    );
+    fireEvent.click(
+      within(decide).getByRole('radio', { name: en.timetable.publish.dayChanges.choice_cancel }),
+    );
+    expect(action).toHaveProperty('disabled', false);
+    fireEvent.click(action);
+    const question = await screen.findByRole('alertdialog');
+    fireEvent.click(within(question).getByRole('button', { name: texts.action }));
+    await waitFor(() => {
+      expect(calls.find((call) => call.route === FILL_ROUTE)?.body).toEqual({
+        vacancyId: OPEN.id,
+        personId: AKMAL.id,
+        startsOn: '2026-10-12',
+        rowsKey: 'a'.repeat(64),
+        dayChangesKey: 'd'.repeat(64),
+        dayDecisions: [{ key: uid(622), choice: 'cancel' }],
+      });
+    });
+    // Carried in place (no version of its own): the undo line says so.
+    await waitFor(() => {
+      expect(document.querySelector('[data-undo]')?.textContent).toBe(
+        texts.undoInPlace.replace('{{date}}', '12 October 2026'),
+      );
+    });
+  });
+
+  it('shows the later versions with "carry" fixed, offers no other answer, and sends the later key', async () => {
+    const calls = api('academic_vice_principal', {
+      [CHECK_ROUTE]: () =>
+        json({
+          ...CHECK,
+          publish: {
+            ...PUBLISH,
+            impact: { ...IMPACT, transition: null },
+            chain: {
+              key: 'e'.repeat(64),
+              later: [{ id: uid(501), number: 2, startsOn: '2026-11-16' }],
+              carryOffered: true,
+              carryReason: null,
+              changes: [],
+              carried: [
+                {
+                  versionId: uid(501),
+                  number: 2,
+                  startsOn: '2026-11-16',
+                  applied: 1,
+                  left: false,
+                  refusals: [],
+                },
+              ],
+            },
+          },
+        }),
+    });
+    const dialog = await openDialog();
+    await choosePerson(dialog);
+    const chain = await waitFor(() => {
+      const found = dialog.querySelector('[data-chain]');
+      if (found === null) throw new Error('No chain yet.');
+      return found as HTMLElement;
+    });
+    expect(within(chain).getByText(en.timetable.publish.chain.fixedCarry)).toBeDefined();
+    expect(within(chain).queryAllByRole('radio')).toHaveLength(0);
+    expect(chain.querySelector('[data-carried] li')).not.toBeNull();
+    fireEvent.click(within(dialog).getByRole('button', { name: texts.action }));
+    const question = await screen.findByRole('alertdialog');
+    fireEvent.click(within(question).getByRole('button', { name: texts.action }));
+    await waitFor(() => {
+      expect(
+        (calls.find((call) => call.route === FILL_ROUTE)?.body as { laterKey?: string } | undefined)
+          ?.laterKey,
+      ).toBe('e'.repeat(64));
+    });
+  });
+
+  it('shows the failure of the versions behind the shortcuts, with a retry', async () => {
+    const calls = api('academic_vice_principal', {
+      'GET /api/timetable/versions': () =>
+        json({ error: { code: 'internal', message: 'x', requestId: 'r' } }, 500),
+    });
+    const dialog = await openDialog();
+    const shortcuts = within(dialog).getByRole('group', { name: texts.shortcuts });
+    const retry = await within(shortcuts).findByRole('button', { name: en.problems.retry });
+    const before = calls.filter((call) => call.route === 'GET /api/timetable/versions').length;
+    fireEvent.click(retry);
+    await waitFor(() => {
+      expect(calls.filter((call) => call.route === 'GET /api/timetable/versions').length).toBe(
+        before + 1,
+      );
     });
   });
 

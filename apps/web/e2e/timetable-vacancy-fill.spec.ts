@@ -4,6 +4,19 @@ import { accountOf } from './accounts';
 import { changeFirstPassword, heading, languageChooser, signIn } from './steps';
 import { codeNow } from './totp';
 
+/**
+ * The second Monday after today in Tashkent, as a school date: always after
+ * the scene's version, which starts a week from today, so the fill publishes
+ * from a Monday and has no transition week, whatever day the test runs.
+ */
+function fillMonday(): string {
+  const today = new Date(
+    new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tashkent' }).format(new Date()),
+  );
+  const days = ((8 - today.getUTCDay()) % 7 || 7) + 7;
+  return new Date(today.getTime() + days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
 // docs/spec/06-timetable.md, Changes after publishing, "Filling a vacancy":
 // "a row with a blocked date stays with the vacancy and is listed, and the
 // fill goes ahead for the rest ... A vacancy with no load left is closed."
@@ -53,19 +66,17 @@ test('an Academic Vice Principal fills a vacancy, sees a row left, then fills th
   await page.getByRole('button', { name: vacancy, exact: true }).click();
   const panel = page.getByRole('complementary', { name: vacancy });
 
-  /** One fill from the start of version 1, with the person named; answers the dialog. */
+  const date = fillMonday();
+  /** One fill from `date`, with the person named; answers the dialog. */
   const fillWith = async (person: string, check: (dialog: Locator) => Promise<void>) => {
     await panel.getByRole('button', { name: texts.open, exact: true }).click();
     const dialog = page.getByRole('dialog', { name: texts.title.replace('{{name}}', vacancy) });
     await dialog.getByLabel(texts.person, { exact: true }).selectOption({ label: person });
-    await dialog
-      .getByRole('group', { name: texts.shortcuts })
-      .getByRole('button', { name: /^Start of version 1, / })
-      .click();
+    await dialog.getByLabel(texts.startsOn, { exact: true }).fill(date);
     await expect(dialog.locator('[data-fill-check]')).toBeVisible();
     await check(dialog);
-    const tick = dialog.getByRole('checkbox', { name: publish.transition.tick });
-    if (await tick.isVisible()) await tick.check();
+    // From a Monday: no transition week to tick.
+    await expect(dialog.getByRole('checkbox', { name: publish.transition.tick })).toHaveCount(0);
     await dialog.getByRole('button', { name: texts.action, exact: true }).click();
     await page
       .getByRole('alertdialog')
@@ -83,8 +94,15 @@ test('an Academic Vice Principal fills a vacancy, sees a row left, then fills th
     await expect(dialog.locator('[data-rows-left] li')).toHaveText([
       '7 Princeton, Geometry: the person does not teach this subject, grade or language',
     ]);
+    // The row left is what keeps the vacancy open: no version or lesson is listed.
     await expect(dialog.locator('[data-closes]')).toHaveText(texts.staysOpen);
+    await expect(dialog.locator('[data-holders]')).toHaveCount(0);
   });
+  // The result names its rows (spec review of the code, must-fix 1).
+  await expect(first.locator('[data-fill-done] li')).toHaveText([
+    '7 Oxford, Geometry: goes to the person',
+    '7 Princeton, Geometry: the person does not teach this subject, grade or language',
+  ]);
   await expect(first.locator('[data-closed]')).toHaveText(texts.staysOpen);
   await first.getByRole('button', { name: texts.close, exact: true }).click();
 
@@ -95,6 +113,9 @@ test('an Academic Vice Principal fills a vacancy, sees a row left, then fills th
     ]);
     await expect(dialog.locator('[data-closes]')).toHaveText(/^The vacancy will be closed from /);
   });
+  await expect(second.locator('[data-fill-done] li')).toHaveText([
+    '7 Princeton, Geometry: goes to the person',
+  ]);
   await expect(second.locator('[data-closed]')).toHaveText(/^The vacancy is closed from /);
   await second.getByRole('button', { name: texts.close, exact: true }).click();
 

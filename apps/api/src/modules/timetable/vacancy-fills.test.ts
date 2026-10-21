@@ -21,6 +21,7 @@ import {
   type DayTemplatesKit,
 } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
+import { unitNamesOf } from '../classes/unit-names.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 
 const refusedWith = (response: Response, status: number, code: string) => {
@@ -1333,6 +1334,18 @@ describe('vacancy fill', () => {
         .set({ archived_at: new Date('2026-10-12T08:00:00Z') })
         .where('id', '=', group)
         .execute();
+      // A class archived after the fill too (spec review of the code, must-fix 4): a
+      // class with lessons cannot be archived, so a row of one without them.
+      const gone = await load.classes.schoolClass(s.branch, s.year, { grade: 7, room: s.room });
+      await t.database.migrator
+        .insertInto('vacancy_fill_rows')
+        .values({ fill_id: fill.id, branch_id: s.branch, class_id: gone, subject_id: s.subject })
+        .execute();
+      await t.database.migrator
+        .updateTable('classes')
+        .set({ archived_at: new Date('2026-10-12T08:00:00Z') })
+        .where('id', '=', gone)
+        .execute();
       const withdrawn = await keyed(
         `/api/timetable/versions/${fill.versionId ?? ''}/withdraw`,
         s.branch,
@@ -1343,7 +1356,30 @@ describe('vacancy fill', () => {
         (await t.get(`/api/people/vacancies/${s.vacancy}`, s.branch)).body,
       );
       expect(detail.fills.map((one) => one.withdrawn)).toEqual([true]);
-      expect(detail.fillUnits).toEqual(byId(await unitsOf([s.classA], [group])));
+      expect(detail.fillUnits).toEqual(byId(await unitsOf([s.classA, gone], [group])));
+    });
+
+    it("names a group as a group with its classes' grades, and nothing of another branch (spec review of the code, must-fix 3)", async () => {
+      const s = await scene({ second: true });
+      const theirs = await scene();
+      const group = await load.classes.group(s.branch, s.year, s.subject, [s.classA, s.classB], {
+        name: 'Maths A',
+      });
+      const theirGroup = await load.classes.group(theirs.branch, theirs.year, theirs.subject, [
+        theirs.classA,
+      ]);
+      // As the application reads it: with both branches in the filter, the branch named decides.
+      const named = await t.database.migrator
+        .transaction()
+        .execute((transaction) =>
+          unitNamesOf(transaction, s.branch, [s.classA, theirs.classA], [group, theirGroup]),
+        );
+      expect(named).toEqual(
+        byId([
+          ...(await unitsOf([s.classA])),
+          { id: group, kind: 'group', name: 'Maths A', grades: [7] },
+        ]),
+      );
     });
 
     it('the list and the record give the close a fill planned; a reopen that cancels it gives none', async () => {

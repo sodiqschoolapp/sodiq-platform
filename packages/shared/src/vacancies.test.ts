@@ -5,7 +5,7 @@ import {
   vacancyListItemSchema,
   vacancyRecordSchema,
 } from './vacancies.js';
-import { vacancyFillUnitSchema } from './vacancy-fills.js';
+import { vacancyFillCheckSchema, vacancyFillUnitSchema } from './vacancy-fills.js';
 
 // Task 2.2b: what is typed for a vacancy (04, Vacancy): a name, a department,
 // subjects with grades, languages and the contract load, nothing personal.
@@ -76,5 +76,19 @@ describe('vacancy answers', () => {
     expect(vacancyDetailSchema.parse({ ...detail, fillUnits: [unit] }).fillUnits).toEqual([unit]);
     expect(vacancyDetailSchema.safeParse(detail).success).toBe(false);
     expect(vacancyFillUnitSchema.safeParse({ ...unit, kind: 'room' }).success).toBe(false);
+  });
+
+  it('takes a fill check with the units of its rows, and refuses one without them', () => {
+    const check = {
+      rows: [],
+      rowsKey: 'a'.repeat(64),
+      inPlace: false,
+      publish: null,
+      closes: false,
+      holders: [],
+    };
+    const unit = { id, kind: 'class', name: 'Oxford', grades: [7] };
+    expect(vacancyFillCheckSchema.parse({ ...check, units: [unit] }).units).toEqual([unit]);
+    expect(vacancyFillCheckSchema.safeParse(check).success).toBe(false);
   });
 });
