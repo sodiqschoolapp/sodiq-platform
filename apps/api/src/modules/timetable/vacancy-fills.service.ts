@@ -24,7 +24,7 @@ import { branchOf } from '../classes/classes.service.js';
 import { notFound } from '../setup/setup-refusals.js';
 import type { StoredLoadRow } from './load-facts.js';
 import { carryResultOf, type CarryReader } from './chain.js';
-import { invigilatorsOf } from './exams-kept.js';
+import { extraTeachersOf } from './exams-kept.js';
 import { TimetablePattern, type PatternState } from './pattern.service.js';
 import {
   PUBLISH_LOCK,
@@ -469,7 +469,7 @@ export class VacancyFills {
     // blocked result of a lesson of a filled row leaves that row with the
     // vacancy in every version; again without it until nothing more is left.
     const left = new Map<string, Left>();
-    const invigilators = await invigilatorsOf(
+    const invigilators = await extraTeachersOf(
       transaction,
       branchId,
       input.startsOn,

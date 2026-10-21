@@ -76,7 +76,7 @@ import type { PatternState } from './pattern.service.js';
  * teachers, as the exam's own check does (`exam-check.ts`; task 5.6c-1,
  * decision 12), so that the engine knows a person who teaches no row.
  */
-export async function invigilatorsOf(
+export async function extraTeachersOf(
   transaction: Transaction,
   branchId: string,
   firstDate: string,

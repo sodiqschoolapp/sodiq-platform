@@ -1395,7 +1395,7 @@ export const substitutionLessonSchema = z.object({
  * Task 5.7b-3 (`edge/timetable`, Versions and drafts, "A substitution and a
  * one-day move are already recorded for a date after the new version
  * starts"): a substitution in force on a lesson of the dates written, sorted.
- * `key` is its oldest `substitution_lessons` row; one item per lesson, or
+ * `key` is its smallest `substitution_lessons` id; one item per lesson, or
  * per double whose halves carry rows of one record (decision 4). A "needs a
  * decision" item offers `cancel` (with a reason) and, when the version's
  * teacher passes the time rules there, `drop` (`dropOffered`; decisions 6

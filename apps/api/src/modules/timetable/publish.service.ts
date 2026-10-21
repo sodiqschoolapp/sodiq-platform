@@ -84,7 +84,7 @@ import {
   examsBeforeOf,
   examsCancelledOf,
   examsWriteOf,
-  invigilatorsOf,
+  extraTeachersOf,
   sortExamsKept,
   type ExamsAudit,
   type KeptExam,
@@ -1467,7 +1467,7 @@ export class TimetablePublish {
 
     // Task 5.6c-3a: the invigilators of the standing exams to the year's
     // end are teachers of the facts, so the exams' check knows them.
-    const invigilators = await invigilatorsOf(
+    const invigilators = await extraTeachersOf(
       transaction,
       version.branch_id,
       startsOn,

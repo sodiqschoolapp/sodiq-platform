@@ -43,7 +43,7 @@ import {
 } from './calendar-exams.js';
 import { groupBlockLines, storeGroupChoices, type GroupBlockAudit } from './calendar-groups.js';
 import { runningUntil } from './chain.js';
-import { invigilatorsOf } from './exams-kept.js';
+import { extraTeachersOf } from './exams-kept.js';
 import { datedCheck, type DatedFindings } from './dated-check.js';
 import { writeDatedLessons, type DatedWrite } from './dated-lessons.js';
 import {
@@ -656,7 +656,7 @@ export class TimetableCalendarLessons {
         // Task 5.6c-3b (From line of 5.6c-3a): the standing exams'
         // invigilators are teachers of the facts, as for a publish, so that
         // an exam whose invigilator teaches no row is checked too.
-        const invigilators = await invigilatorsOf(transaction, branchId, part.first, part.last);
+        const invigilators = await extraTeachersOf(transaction, branchId, part.first, part.last);
         const state = runningUntil(
           await this.pattern.stateOf(transaction, row, input.accountId, rows, invigilators),
           part.last,

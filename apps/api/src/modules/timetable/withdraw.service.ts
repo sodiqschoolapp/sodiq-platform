@@ -51,7 +51,7 @@ import {
   examsBeforeOf,
   examsCancelledOf,
   examsWriteOf,
-  invigilatorsOf,
+  extraTeachersOf,
   sortExamsKept,
   type KeptExam,
 } from './exams-kept.js';
@@ -497,7 +497,7 @@ export class TimetableWithdraw {
     const runEnd = next === undefined ? version.end_date : addDays(next, -1);
 
     // Task 5.6c-3a: the standing exams' invigilators are teachers of the facts.
-    const invigilators = await invigilatorsOf(transaction, branchId, version.starts_on, runEnd);
+    const invigilators = await extraTeachersOf(transaction, branchId, version.starts_on, runEnd);
     let earlier: WithdrawFindings['earlier'] = null;
     let state: PatternState;
     let dated: DatedFindings;

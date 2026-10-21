@@ -753,6 +753,9 @@ export async function writeDatedLessons(
         };
       }),
   );
+  // A block holds one lesson of each class or group (`lessons_block_class_key`,
+  // `lessons_block_group_key`, 0058), and a pattern entry is one lesson of its
+  // block, so `block|entry` names one inserted lesson.
   const insertedAt = new Map(
     wantedBlocks.flatMap((block) =>
       block.lessons
