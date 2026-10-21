@@ -530,6 +530,59 @@ export class LessonForcedDeletes implements OnModuleInit {
         ]);
       }
     }
+    // The substitution kept must still stand (decision 9): neither its absence
+    // withdrawn nor another of its lessons given back since the delete, or the
+    // lesson would come back with a substitute the school no longer has.
+    if (rows.substitution !== null) {
+      const parentChanged = (path: string, code: string, message: string) =>
+        new ApiException('forced_delete_parent_changed', 409, undefined, [{ path, code, message }]);
+      // A substitution never changes (no update grant), so it is read without
+      // a lock; its absence and the rows of its lessons are held.
+      const substitution = await transaction
+        .selectFrom('substitutions')
+        .select('absence_id')
+        .where('id', '=', rows.substitution.substitutionId)
+        .executeTakeFirstOrThrow();
+      if (substitution.absence_id !== null) {
+        const absence = await transaction
+          .selectFrom('absences')
+          .select('withdrawn_at')
+          .where('id', '=', substitution.absence_id)
+          .forShare()
+          .executeTakeFirst();
+        if (absence === undefined || absence.withdrawn_at !== null) {
+          throw parentChanged(
+            'absences',
+            'absence_withdrawn',
+            'The absence of the substitution was withdrawn since.',
+          );
+        }
+      }
+      const { deleted_at: deletedAt } = await transaction
+        .selectFrom('forced_deletes')
+        .select('deleted_at')
+        .where('id', '=', row.id)
+        .executeTakeFirstOrThrow();
+      const lessonRows = await transaction
+        .selectFrom('substitution_lessons')
+        .select(['end_cause', 'ended_at'])
+        .where('substitution_id', '=', rows.substitution.substitutionId)
+        .forShare()
+        .execute();
+      const givenBack = lessonRows.some(
+        (one) =>
+          (one.end_cause === 'withdrawn' || one.end_cause === 'returned') &&
+          one.ended_at !== null &&
+          one.ended_at >= deletedAt,
+      );
+      if (givenBack) {
+        throw parentChanged(
+          'substitutions',
+          'substitution_withdrawn',
+          'The substitution was withdrawn from another of its lessons since.',
+        );
+      }
+    }
     // The store row first: the database lets the same ids back in only then.
     await transaction
       .updateTable('forced_deletes')

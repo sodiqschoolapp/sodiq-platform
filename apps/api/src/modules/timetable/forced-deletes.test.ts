@@ -28,6 +28,10 @@ const refusedWith = (response: Response, status: number, code: string) => {
   expect(errorCode(response)).toBe(code);
 };
 
+/** The details of a refusal: what each names and why. */
+const detailsOf = (response: Response) =>
+  (response.body as { error: { details: { code: string; path: string }[] } }).error.details;
+
 const done = (response: Response) => {
   expect(response.status, JSON.stringify(response.body)).toBe(200);
   return forcedDeleteSchema.parse(response.body);
@@ -557,6 +561,65 @@ describe('the forced delete of a dated lesson and its restore', () => {
         ['forced_delete', null],
         [null, lesson.id],
       ]);
+    });
+
+    it('is refused when the substitution was withdrawn from the other half of the double since', async () => {
+      const s = await scene({ double: true });
+      const [first, second] = await doubleOf(s, NEXT_MONDAY);
+      await substitute(s, first.id);
+      const store = storeOf(await forceDelete(s.branch, second.id));
+      const withdrawn = await keyed(
+        `/api/timetable/lessons/${first.id}/substitution/withdraw`,
+        s.branch,
+        { reason: 'Back from the seminar' },
+        t.admin,
+        randomUUID(),
+      );
+      expect(withdrawn.status, JSON.stringify(withdrawn.body)).toBe(200);
+      const refused = await restore(s.branch, store);
+      refusedWith(refused, 409, 'forced_delete_parent_changed');
+      expect(detailsOf(refused)).toEqual([
+        expect.objectContaining({ path: 'substitutions', code: 'substitution_withdrawn' }),
+      ]);
+      expect(await rowOf(second.id)).toBeUndefined();
+    });
+
+    it('is refused when the absence of the substitution was withdrawn since', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, NEXT_MONDAY);
+      const absence = await t.database.migrator
+        .insertInto('absences')
+        .values({
+          staff_id: s.teacher.staffId,
+          starts_on: NEXT_MONDAY,
+          ends_on: NEXT_MONDAY,
+          applies_from: at(NEXT_MONDAY, '00:00'),
+          applies_until: at('2026-10-20', '00:00'),
+          reason: 'Ill',
+          created_by: adminAccount,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await substitute(s, lesson.id);
+      const kept = await t.database.migrator
+        .selectFrom('substitution_lessons')
+        .innerJoin('substitutions', 'substitutions.id', 'substitution_lessons.substitution_id')
+        .select('substitutions.absence_id')
+        .where('substitution_lessons.lesson_id', '=', lesson.id)
+        .executeTakeFirstOrThrow();
+      expect(kept.absence_id).toBe(absence.id);
+      const store = storeOf(await forceDelete(s.branch, lesson.id));
+      await t.database.migrator
+        .updateTable('absences')
+        .set({ withdrawn_at: at('2026-10-10', '23:55') })
+        .where('id', '=', absence.id)
+        .execute();
+      const refused = await restore(s.branch, store);
+      refusedWith(refused, 409, 'forced_delete_parent_changed');
+      expect(detailsOf(refused)).toEqual([
+        expect.objectContaining({ path: 'absences', code: 'absence_withdrawn' }),
+      ]);
+      expect(await rowOf(lesson.id)).toBeUndefined();
     });
 
     it('is refused after its 30 days', async () => {
