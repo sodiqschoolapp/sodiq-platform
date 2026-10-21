@@ -16,7 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { DateField, SelectField } from '@/components/field';
 import { PageHeader } from '@/components/page-header';
 import { EmptyState, ErrorState, LoadingOutline } from '@/components/states';
-import { PANEL } from '@/components/ui/control';
+import { PANEL, SECTION_TITLE } from '@/components/ui/control';
 import { Segmented } from '@/components/ui/segmented';
 import {
   Table,
@@ -282,7 +282,7 @@ function DayHeading({ day, language }: { day: ViewDay; language: Language }) {
   const { t } = useTranslation();
   return (
     <div className="grid gap-1">
-      <h2 className="font-semibold">
+      <h2 className={SECTION_TITLE}>
         {weekdayName(language, weekdayOf(day.date))}, {schoolDateText(day.date, language)}
       </h2>
       {day.outsideYear && <p className="text-sm text-muted">{t('timetable.views.outsideYear')}</p>}

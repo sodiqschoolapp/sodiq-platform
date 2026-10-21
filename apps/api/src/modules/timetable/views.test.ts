@@ -48,6 +48,8 @@ describe('the timetable views', () => {
   let s: PublishedScene;
   let south: PublishedScene;
   const cookies: Record<string, string> = {};
+  /** The staff records of the Head Tutor and the Tutor, their own teacher views. */
+  const ownStaff: Record<string, string> = {};
 
   const query = (path: string, values: Record<string, string>) =>
     `${path}?${new URLSearchParams(values).toString()}`;
@@ -121,8 +123,9 @@ describe('the timetable views', () => {
 
     const spiritual = await person('Nodira', 'Rahimova', { role: 'spiritual_vice_principal' });
     const headTutor = await person('Sardor', 'Yusupov', { role: 'head_tutor' });
+    ownStaff.headTutor = (await load.teacher(s.branch, { accountId: headTutor.accountId })).staffId;
     const tutor = await person('Gulnora', 'Azimova', { role: 'tutor' });
-    await load.teacher(s.branch, { accountId: tutor.accountId });
+    ownStaff.tutor = (await load.teacher(s.branch, { accountId: tutor.accountId })).staffId;
     await load.classes.tutorRow(s.branch, s.classId, tutor.assignmentId);
     // Decision 12: a Tutor whose row ended on 5 October, and the one whose row began then.
     const former = await person('Ulugbek', 'Nazarov', { role: 'tutor' });
@@ -141,6 +144,12 @@ describe('the timetable views', () => {
     });
     // A Head Teacher of another subject (the kit makes one for the appointment).
     const otherHead = await person('Rustam', 'Ismoilov', { role: 'head_teacher' });
+    // A Senior Head Teacher works in every branch: the subjects of both scenes.
+    const senior = await person('Davron', 'Ergashev', {
+      role: 'senior_head_teacher',
+      subjectIds: [s.subject, south.subject],
+    });
+    const otherSenior = await person('Nigora', 'Usmonova', { role: 'senior_head_teacher' });
     const own = await roleOf(ownBrowser, { role: 'teacher' }, s.branch);
     const spare = await roleOf(spareBrowser, { role: 'teacher' }, s.branch);
     Object.assign(cookies, {
@@ -151,6 +160,8 @@ describe('the timetable views', () => {
       newTutor: newTutor.cookie,
       head: head.cookie,
       otherHead: otherHead.cookie,
+      senior: senior.cookie,
+      otherSenior: otherSenior.cookie,
       own: own.cookie,
       spare: spare.cookie,
     });
@@ -224,7 +235,57 @@ describe('the timetable views', () => {
       );
     });
 
+    it('gives the Tutor and the Head Tutor their own teacher view', async () => {
+      for (const [who, cookie] of [
+        ['tutor', cookies.tutor],
+        ['headTutor', cookies.headTutor],
+      ] as const) {
+        const staffId = ownStaff[who] ?? '';
+        expect(viewOf(await view('teacher', { staffId }, cookie)).subject?.id).toBe(staffId);
+      }
+    });
+
+    it('gives a Senior Head Teacher the teachers of own subjects in every branch, nothing else', async () => {
+      const cookie = cookies.senior ?? '';
+      const north = viewOf(await view('teacher', { staffId: s.teacher.staffId }, cookie));
+      expect(north.lessons.map((one) => one.subject.id)).toEqual([s.subject]);
+      const inSouth = viewOf(
+        await view('teacher', { staffId: south.teacher.staffId }, cookie, south.branch),
+      );
+      expect(inSouth.lessons.map((one) => one.subject.id)).toEqual([south.subject]);
+      for (const [kind, values] of [
+        ['branch', {}],
+        ['class', { classId: s.classId }],
+        ['room', { roomId: s.room }],
+      ] as const) {
+        refused(await view(kind, values, cookie), 403, 'timetable_view_scope');
+      }
+      refused(
+        await view('teacher', { staffId: s.teacher.staffId }, cookies.otherSenior),
+        403,
+        'timetable_view_scope',
+      );
+      for (const [branch, teacher] of [
+        [s.branch, s.teacher.staffId],
+        [south.branch, south.teacher.staffId],
+      ] as const) {
+        const choices = viewChoicesSchema.parse(
+          (
+            await t.get(
+              query('/api/timetable/views/choices', { date: NEXT_MONDAY }),
+              branch,
+              cookie,
+            )
+          ).body,
+        );
+        expect(choices.branch).toBe(false);
+        expect(choices.rooms).toEqual([]);
+        expect(choices.teachers.map((one) => one.id)).toContain(teacher);
+      }
+    });
+
     it('gives a teacher their own timetable and nobody else’s', async () => {
+      refused(await view('room', { roomId: s.room }, cookies.own), 403, 'timetable_view_scope');
       const cookie = cookies.own ?? '';
       const read = viewOf(await view('teacher', { staffId: s.teacher.staffId }, cookie));
       expect(read.lessons.map((one) => one.teacher?.id)).toEqual([s.teacher.staffId]);
@@ -562,6 +623,42 @@ describe('the timetable views', () => {
   });
 
   describe('a teacher of two branches (06, Busy elsewhere)', () => {
+    it('shows a Head Teacher no busy block of another branch (decision 4)', async () => {
+      const here = await publishedScene(t, load);
+      const away = await publishedScene(t, load);
+      const head = await person(
+        'Jamshid',
+        'Hakimov',
+        { role: 'head_teacher', subjectIds: [here.subject] },
+        here.branch,
+      );
+      // The teacher's own lesson of that Monday is cancelled, so the other
+      // branch's lesson at the same time can be theirs.
+      const own = await lessonOf(here, NEXT_MONDAY);
+      const cancelled = await keyed(`/api/timetable/lessons/${own.id}/cancel`, here.branch, {
+        reason: 'Training day',
+      });
+      expect(cancelled.status, JSON.stringify(cancelled.body)).toBe(200);
+      await t.database.migrator
+        .insertInto('staff_branches')
+        .values({ staff_id: here.teacher.staffId, branch_id: away.branch, is_main: false })
+        .execute();
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ teacher_id: here.teacher.staffId })
+        .where('id', '=', (await lessonOf(away, NEXT_MONDAY)).id)
+        .execute();
+      // The Super Admin reads the block; the Head Teacher of the subject does not.
+      expect(
+        viewOf(await view('teacher', { staffId: here.teacher.staffId }, t.admin, here.branch)).busy,
+      ).toHaveLength(1);
+      const read = viewOf(
+        await view('teacher', { staffId: here.teacher.staffId }, head.cookie, here.branch),
+      );
+      expect(read.lessons.map((one) => one.id)).toEqual([own.id]);
+      expect(read.busy).toEqual([]);
+    });
+
     it('shows the lessons in the other branch as busy blocks with the branch only', async () => {
       const signedIn = await t.kit.completeSession('Sevara', 'Olimova');
       const here = await publishedScene(t, load, { accounts: { spare: signedIn.account.id } });
