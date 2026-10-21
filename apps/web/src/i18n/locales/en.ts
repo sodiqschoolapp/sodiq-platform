@@ -227,6 +227,8 @@ export const en = {
     room_closure_nothing: 'No lesson of this closure is left to move.',
     room_move_blocked:
       'Some lessons cannot go to that room. Nothing was moved. Move those lessons by hand, or choose another room.',
+    room_closure_days: 'The last day is before the first day. Choose a later last day.',
+    room_move_same: 'The lessons are already in this room. Choose another room to move them to.',
     own_account: 'You cannot lock, unlock or reset your own account. Ask another administrator.',
     account_already_locked: 'This account is already locked. Reload the page to see who locked it.',
     account_not_locked:

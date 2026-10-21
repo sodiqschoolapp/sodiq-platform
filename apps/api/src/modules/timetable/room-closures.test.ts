@@ -4,6 +4,7 @@ import {
   REQUEST_KEY_HEADER,
   attentionSchema,
   dayAnswerSchema,
+  examCheckSchema,
   roomClosureLessonsSchema,
   roomClosureListSchema,
   roomClosureMoveAnswerSchema,
@@ -316,6 +317,11 @@ describe('room closures', () => {
       t.database.migrator.selectFrom('lesson_day_changes').selectAll().orderBy('id').execute(),
       t.database.migrator.selectFrom('notifications').select('id').orderBy('id').execute(),
       t.database.migrator.selectFrom('audit_log').select('id').orderBy('id').execute(),
+      // The changed marks and the jobs of the notices (permission review must-fix 1).
+      t.database.migrator.selectFrom('lesson_changes').selectAll().orderBy('lesson_id').execute(),
+      sql<{ id: string }>`select id from pgboss.job order by id`
+        .execute(t.database.migrator)
+        .then((result) => result.rows),
     ]);
 
   beforeAll(async () => {
@@ -484,6 +490,37 @@ describe('room closures', () => {
       ).not.toContain(other.id);
     });
 
+    it('answers 404 for a move of another branch’s closure or to another branch’s room, with lessons in both branches left as they were', async () => {
+      const a = await scene();
+      const b = await scene();
+      const own = await entered(a.branch, {
+        roomId: a.room,
+        startsOn: NEXT_MONDAY,
+        endsOn: LAST_FRIDAY,
+        reason: 'Repairs',
+      });
+      const other = await entered(b.branch, {
+        roomId: b.room,
+        startsOn: NEXT_MONDAY,
+        endsOn: LAST_FRIDAY,
+        reason: 'Repairs',
+      });
+      const before = await everything();
+      for (const id of [other.id, UNKNOWN]) {
+        refusedWith(
+          await move(a.branch, id, { roomId: a.otherRoom, reason: 'Repairs' }),
+          404,
+          'not_found',
+        );
+      }
+      for (const roomId of [b.otherRoom, UNKNOWN]) {
+        refusedWith(await move(a.branch, own.id, { roomId, reason: 'Repairs' }), 404, 'not_found');
+      }
+      expect(await everything()).toEqual(before);
+      expect(await roomsOn(a, NEXT_MONDAY)).toEqual([{ room: a.room, roomOut: 'closure' }]);
+      expect(await roomsOn(b, NEXT_MONDAY)).toEqual([{ room: b.room, roomOut: 'closure' }]);
+    });
+
     it('refuses an empty reason, no last day and a last day before the first', async () => {
       const room = await load.classes.room(t.north);
       for (const body of [
@@ -577,8 +614,8 @@ describe('room closures', () => {
       });
       refusedWith(
         await edit(t.north, planned.id, { startsOn: NEXT_MONDAY, endsOn: '2026-10-18' }),
-        409,
-        'room_closure_past',
+        422,
+        'room_closure_days',
       );
     });
 
@@ -666,6 +703,10 @@ describe('room closures', () => {
           lastDate: MONDAY_AFTER,
         },
       ]);
+      // Another branch's home page has no row of it.
+      expect(
+        (await attention(t.north)).needsRoom.map((one) => one.closure?.id ?? one.room.id),
+      ).not.toContain(closure.id);
       expect(await roomsOn(s, MONDAY)).toEqual([{ room: s.room, roomOut: null }]);
       expect(await roomsOn(s, NEXT_MONDAY)).toEqual([{ room: s.room, roomOut: 'closure' }]);
       expect(await roomsOn(s, NOVEMBER_MONDAY)).toEqual([{ room: s.room, roomOut: null }]);
@@ -848,6 +889,30 @@ describe('room closures', () => {
       );
     });
 
+    it('leaves a cancelled lesson of the closure cancelled and in its room', async () => {
+      const s = await scene();
+      const closure = await entered(s.branch, {
+        roomId: s.room,
+        startsOn: NEXT_MONDAY,
+        endsOn: LAST_FRIDAY,
+        reason: 'Repairs',
+      });
+      const [cancelled] = await lessonsOn(s, MONDAY_AFTER);
+      ok(
+        await keyed(`/api/timetable/lessons/${cancelled?.id ?? ''}/cancel`, s.branch, {
+          reason: 'Trip',
+        }),
+      );
+      const answer = roomClosureMoveAnswerSchema.parse(
+        ok(await move(s.branch, closure.id, { roomId: s.otherRoom, reason: 'Repairs' })).body,
+      );
+      expect(answer.moved).toBe(1);
+      expect(
+        (await lessonsOn(s, MONDAY_AFTER)).map((one) => [one.room_id, one.cancel_cause]),
+      ).toEqual([[s.room, 'reason']]);
+      expect((await lessonsOn(s, NEXT_MONDAY))[0]?.room_id).toBe(s.otherRoom);
+    });
+
     it('moves both halves of a double together', async () => {
       const s = await scene({ double: true });
       const closure = await entered(s.branch, {
@@ -866,7 +931,7 @@ describe('room closures', () => {
       ]);
     });
 
-    it('refuses the whole move when one lesson cannot go to R, listing it, with nothing written', async () => {
+    it('refuses the whole move when lessons cannot go to R, listing each, with nothing written', async () => {
       const s = await scene({ busy: true });
       const closure = await entered(s.branch, {
         roomId: s.room,
@@ -874,20 +939,7 @@ describe('room closures', () => {
         endsOn: LAST_FRIDAY,
         reason: 'Repairs',
       });
-      // R is free on the 26th only: the other class's lesson of the 19th stays in it.
-      const [busyOn26] = await t.database.migrator
-        .selectFrom('lessons')
-        .select('id')
-        .where('branch_id', '=', s.branch)
-        .where('class_id', '=', s.otherClass ?? '')
-        .where('lesson_date', '=', MONDAY_AFTER)
-        .execute();
-      ok(
-        await keyed(`/api/timetable/lessons/${busyOn26?.id ?? ''}/room`, s.branch, {
-          roomId: s.thirdRoom,
-          reason: 'Swap',
-        }),
-      );
+      // R holds the other class's lessons of both Mondays.
       const before = await everything();
       const refused = await move(s.branch, closure.id, { roomId: s.otherRoom, reason: 'Repairs' });
       refusedWith(refused, 409, 'room_move_blocked');
@@ -895,7 +947,10 @@ describe('room closures', () => {
         (refused.body as { error: { details: { code: string; day: string }[] } }).error.details.map(
           (one) => [one.code, one.day],
         ),
-      ).toEqual([['room_double', NEXT_MONDAY]]);
+      ).toEqual([
+        ['room_double', NEXT_MONDAY],
+        ['room_double', MONDAY_AFTER],
+      ]);
       expect(await everything()).toEqual(before);
     });
 
@@ -910,7 +965,7 @@ describe('room closures', () => {
       refusedWith(
         await move(s.branch, closure.id, { roomId: s.room, reason: 'Repairs' }),
         422,
-        'room_closure_room',
+        'room_move_same',
       );
       await asViceAt(s.branch, at(NEXT_MONDAY, '08:10'), async (cookie) => {
         const answer = roomClosureMoveAnswerSchema.parse(
@@ -944,13 +999,62 @@ describe('room closures', () => {
       });
       refusedWith(refused, 409, 'day_change_blocked');
       expect(rulesOf(refused)).toContain('room_closed');
-      // The free rooms offered leave the closed room out.
-      expect(JSON.stringify(refused.body)).not.toContain(`"id":"${s.otherRoom}"`);
       const [outside] = await lessonsOn(s, MONDAY_AFTER);
       ok(
         await keyed(`/api/timetable/lessons/${outside?.id ?? ''}/room`, s.branch, {
           roomId: s.otherRoom,
           reason: 'Swap',
+        }),
+      );
+    });
+
+    it('leaves a room closed then out of the free rooms a refusal offers', async () => {
+      const s = await scene({ busy: true });
+      const spare = await load.classes.room(s.branch);
+      await entered(s.branch, {
+        roomId: s.thirdRoom,
+        startsOn: NEXT_MONDAY,
+        endsOn: NEXT_FRIDAY,
+        reason: 'Repairs',
+      });
+      const [lesson] = await lessonsOn(s, NEXT_MONDAY);
+      // The other class holds otherRoom then: refused, with the rooms free then offered.
+      const refused = await keyed(`/api/timetable/lessons/${lesson?.id ?? ''}/room`, s.branch, {
+        roomId: s.otherRoom,
+        reason: 'Swap',
+      });
+      refusedWith(refused, 409, 'day_change_blocked');
+      const offered = (
+        refused.body as { error: { details: { code: string; room?: { id: string } }[] } }
+      ).error.details
+        .filter((one) => one.code === 'room_free')
+        .map((one) => one.room?.id);
+      expect(offered).toContain(spare);
+      expect(offered).not.toContain(s.thirdRoom);
+    });
+
+    it('refuses a one-day move of a lesson kept in its room closed then', async () => {
+      const s = await scene();
+      await entered(s.branch, {
+        roomId: s.room,
+        startsOn: NEXT_MONDAY,
+        endsOn: NEXT_FRIDAY,
+        reason: 'Repairs',
+      });
+      const [lesson] = await lessonsOn(s, NEXT_MONDAY);
+      const refused = await keyed(`/api/timetable/lessons/${lesson?.id ?? ''}/move`, s.branch, {
+        date: NEXT_MONDAY,
+        lessonNumber: 3,
+        reason: 'Concert',
+      });
+      refusedWith(refused, 409, 'day_change_blocked');
+      expect(rulesOf(refused)).toContain('room_closed');
+      ok(
+        await keyed(`/api/timetable/lessons/${lesson?.id ?? ''}/move`, s.branch, {
+          date: NEXT_MONDAY,
+          lessonNumber: 3,
+          roomId: s.otherRoom,
+          reason: 'Concert',
         }),
       );
     });
@@ -1056,8 +1160,39 @@ describe('room closures', () => {
       });
       const refused = await exam(s, s.otherRoom);
       expect(refused.status, JSON.stringify(refused.body)).toBe(409);
-      expect(JSON.stringify(refused.body)).toContain('room_closed');
-      expect((await exam(s, s.otherRoom, MONDAY_AFTER)).status).toBe(201);
+      expect(rulesOf(refused)).toContain('room_closed');
+      const created = await exam(s, s.otherRoom, MONDAY_AFTER);
+      expect(created.status, JSON.stringify(created.body)).toBe(201);
+      const examId = (created.body as { exam: { id: string } }).exam.id;
+      const body = {
+        date: NEXT_MONDAY,
+        firstLesson: 2,
+        lastLesson: 2,
+        title: 'Quarter exam',
+        subjectId: null,
+        rooms: [
+          {
+            roomId: s.otherRoom,
+            classIds: [s.classId],
+            groupIds: [],
+            invigilatorIds: [s.teacher.staffId],
+          },
+        ],
+        blockChoices: [],
+      };
+      const changed = await request(t.kit.server)
+        .put(`/api/timetable/exams/${examId}`)
+        .set('Cookie', t.admin)
+        .set(BRANCH_HEADER, s.branch)
+        .set(REQUEST_KEY_HEADER, randomUUID())
+        .send({ ...body, confirm: true });
+      expect(changed.status, JSON.stringify(changed.body)).toBe(409);
+      expect(rulesOf(changed)).toContain('room_closed');
+      const checked = examCheckSchema.parse(
+        ok(await t.post('/api/timetable/exams/check', s.branch, { ...body, examId })).body,
+      );
+      expect((checked.blocked ?? []).map((one) => one.code)).toContain('room_closed');
+      expect(checked.canSave).toBe(false);
     });
 
     it('lists an exam whose room is closed at its start, by a closure or the room’s status, never a cancelled one or another branch’s', async () => {
@@ -1091,6 +1226,36 @@ describe('room closures', () => {
         .execute();
       expect((await attention(s.branch)).examsNeedRoom).toEqual([
         expect.objectContaining({ rooms: [expect.objectContaining({ cause: 'under_repair' })] }),
+      ]);
+      await t.database.migrator
+        .updateTable('rooms')
+        .set({ status: 'closed' })
+        .where('id', '=', s.otherRoom)
+        .execute();
+      expect((await attention(s.branch)).examsNeedRoom).toEqual([
+        expect.objectContaining({ rooms: [expect.objectContaining({ cause: 'closed' })] }),
+      ]);
+      // A cancelled exam is listed no more.
+      const cancelled = await request(t.kit.server)
+        .post(`/api/timetable/exams/${examId}/cancel`)
+        .set('Cookie', t.admin)
+        .set(BRANCH_HEADER, s.branch)
+        .set(REQUEST_KEY_HEADER, randomUUID())
+        .send({});
+      expect(cancelled.status, JSON.stringify(cancelled.body)).toBe(200);
+      expect((await attention(s.branch)).examsNeedRoom).toEqual([]);
+      // Another exam in a room under repair is listed until it starts.
+      const again = await exam(s, s.thirdRoom);
+      expect(again.status, JSON.stringify(again.body)).toBe(201);
+      await t.database.migrator
+        .updateTable('rooms')
+        .set({ status: 'under_repair' })
+        .where('id', '=', s.thirdRoom)
+        .execute();
+      expect((await attention(s.branch)).examsNeedRoom).toEqual([
+        expect.objectContaining({
+          examId: (again.body as { exam: { id: string } }).exam.id,
+        }),
       ]);
       await asViceAt(s.branch, at(NEXT_MONDAY, '09:30'), async (cookie) => {
         // Started: history.
@@ -1164,6 +1329,19 @@ describe('room closures', () => {
       expect(withdrawCheck.dayChanges.closures).toEqual([
         expect.objectContaining({ id: closure.id, lessons: 2 }),
       ]);
+      const withdrawn = await request(t.kit.server)
+        .post(`/api/timetable/versions/${draft}/withdraw`)
+        .set('Cookie', t.admin)
+        .set(BRANCH_HEADER, s.branch)
+        .set(REQUEST_KEY_HEADER, randomUUID())
+        .send({
+          dayChangesKey: (withdrawCheck as unknown as { dayChanges: { key: string } }).dayChanges
+            .key,
+        });
+      expect(withdrawn.status, JSON.stringify(withdrawn.body)).toBe(200);
+      // The earlier version runs again: its Monday lessons are in the closed room.
+      expect(await roomsOn(s, NEXT_MONDAY)).toEqual([{ room: s.room, roomOut: 'closure' }]);
+      expect(await roomsOn(s, '2026-10-21')).toEqual([]);
     });
   });
 });

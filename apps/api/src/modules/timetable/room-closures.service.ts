@@ -246,7 +246,9 @@ export class TimetableRoomClosures {
       let endsOn = input.endsOn;
       let until: Date;
       if (input.endsOn >= today) {
-        if (input.endsOn < input.startsOn) throw new ApiException('room_closure_past', 409);
+        // A planned closure whose last day is before its first (spec review
+        // of the code, must-fix 5): the days, not the past.
+        if (input.endsOn < input.startsOn) throw new ApiException('room_closure_days', 422);
         until = beginsOf(nextDay(input.endsOn));
       } else if (input.endsOn === dayBefore(today) && started) {
         // Back in use today: the closure ends at the save; its last day
@@ -434,29 +436,43 @@ export class TimetableRoomClosures {
     return this.transactions.run(access.branchIds, async (transaction) => {
       await this.roomOf(transaction, branchId, input.roomId);
       const closure = await this.lockedRow(transaction, branchId, id);
-      if (input.roomId === closure.room_id) throw new ApiException('room_closure_room', 422);
+      if (input.roomId === closure.room_id) throw new ApiException('room_move_same', 422);
       const moment = await transactionMoment(transaction);
       if (closure.applies_until.getTime() <= moment.getTime()) {
         throw new ApiException('room_closure_ended', 409);
       }
       const from =
         closure.applies_from.getTime() > moment.getTime() ? closure.applies_from : moment;
-      const listed = await transaction
-        .selectFrom('lessons')
-        .innerJoin('lesson_blocks', 'lesson_blocks.id', 'lessons.block_id')
-        .select([
-          sql<string>`lessons.lesson_date::text`.as('date'),
-          'lesson_blocks.academic_year_id',
-        ])
-        .where('lessons.branch_id', '=', branchId)
-        .where('lessons.room_id', '=', closure.room_id)
-        .where('lessons.cancel_cause', 'is', null)
-        .where('lessons.starts_at', '>', from)
-        .where('lessons.starts_at', '<', closure.applies_until)
-        .execute();
+      const listOf = () =>
+        transaction
+          .selectFrom('lessons')
+          .innerJoin('lesson_blocks', 'lesson_blocks.id', 'lessons.block_id')
+          .select([
+            sql<string>`lessons.lesson_date::text`.as('date'),
+            'lesson_blocks.academic_year_id',
+          ])
+          .where('lessons.branch_id', '=', branchId)
+          .where('lessons.room_id', '=', closure.room_id)
+          .where('lessons.cancel_cause', 'is', null)
+          .where('lessons.starts_at', '>', from)
+          .where('lessons.starts_at', '<', closure.applies_until)
+          .execute();
+      // The publish locks of every year first, then the list read again under
+      // them: a publish that committed meanwhile may have written lessons on
+      // other dates (spec review of the code, should-fix 2).
+      let listed = await listOf();
       if (listed.length === 0) throw new ApiException('room_closure_nothing', 409);
-      for (const yearId of [...new Set(listed.map((one) => one.academic_year_id))].sort()) {
-        await lockPublishChain(transaction, branchId, yearId);
+      const locked = new Set<string>();
+      for (;;) {
+        const years = [...new Set(listed.map((one) => one.academic_year_id))]
+          .filter((one) => !locked.has(one))
+          .sort();
+        if (years.length === 0) break;
+        for (const yearId of years) {
+          await lockPublishChain(transaction, branchId, yearId);
+          locked.add(yearId);
+        }
+        listed = await listOf();
       }
       const dates = [...new Set(listed.map((one) => one.date))].sort();
       const week = await snapshotDates(transaction, branchId, dates);
@@ -604,6 +620,7 @@ export class TimetableRoomClosures {
       .selectFrom('room_closures')
       .select(COLUMNS)
       .where('room_closures.id', '=', id)
+      .where('room_closures.branch_id', '=', branchId)
       .forUpdate()
       .executeTakeFirstOrThrow();
     if (row.withdrawn_at !== null) throw new ApiException('room_closure_withdrawn', 409);

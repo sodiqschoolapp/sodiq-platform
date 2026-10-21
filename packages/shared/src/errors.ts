@@ -733,6 +733,10 @@ export const ERROR_CODES = [
   'room_closure_room',
   /** Task 5.7a-2b: no lesson of the closure is left to move. */
   'room_closure_nothing',
+  /** Task 5.7a-2b: the last day of a closure is before its first (a change of a closure that has not started today). */
+  'room_closure_days',
+  /** Task 5.7a-2b: "move all" to the closure's own room. */
+  'room_move_same',
   /** Task 5.7a-2b (decision 6): a lesson of "move all" meets a blocked rule in the room; `details` lists each, nothing is moved. */
   'room_move_blocked',
   /** Any other refusal that has no code of its own yet. */

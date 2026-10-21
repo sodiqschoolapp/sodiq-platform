@@ -236,6 +236,8 @@ export const uz: Texts<'one' | 'other'> = {
     room_closure_nothing: 'Bu yopilishning koʻchiriladigan darsi qolmadi.',
     room_move_blocked:
       'Ayrim darslar bu xonaga oʻta olmaydi. Hech narsa koʻchirilmadi. Bu darslarni qoʻlda koʻchiring yoki boshqa xona tanlang.',
+    room_closure_days: 'Oxirgi kun birinchi kundan oldin. Keyinroq oxirgi kunni tanlang.',
+    room_move_same: 'Darslar allaqachon shu xonada. Ularni koʻchirish uchun boshqa xona tanlang.',
     own_account:
       'Oʻz hisobingizni bloklay, blokdan chiqara yoki tiklay olmaysiz. Boshqa administratorga murojaat qiling.',
     account_already_locked:

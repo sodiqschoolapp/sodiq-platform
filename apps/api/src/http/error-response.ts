@@ -127,6 +127,8 @@ const MESSAGE: Record<ErrorCode, string> = {
   room_closure_withdrawn: 'The closure is withdrawn.',
   room_closure_room: 'The room is closed; choose another room.',
   room_closure_nothing: 'No lesson of the closure is left to move.',
+  room_closure_days: 'The last day of the closure is before its first.',
+  room_move_same: 'The lessons are already in this room.',
   room_move_blocked: 'A lesson cannot move to the room; each is listed and nothing was moved.',
   travel_time_same_branch: 'Travel time is set between two different branches.',
   subject_archived: 'The subject is archived. Restore it first.',

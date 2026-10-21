@@ -304,6 +304,8 @@ Plan approved on pull request #187 with corrections 1 to 3; decisions 1 to 15 co
 | No notice for a closure; "move all" notifies as a one-day room change | Decision 12 |
 | A closure marks no draft out of date; no plan item moves | Decisions 14 and 15 |
 | **Build decision.** A room whose status is `closed` is refused a closure (422 `room_closure_room`): its lessons need a room already. Rooms have no archive of their own | The plan's "archived room" read at the build |
+| **Build decision.** "Move all" takes no request key: a repeat writes nothing, it is answered 409 `room_closure_nothing` | Permission review note 5; nothing is written twice |
+| **Build decision.** A planned closure changed to a last day before its first is 422 `room_closure_days`; "move all" to the closed room itself is 422 `room_move_same` | Spec review of the code, must-fix 5: each refusal's text true on its path |
 | **Build decision.** The day page keeps "needs a room" in place of the room name for a lesson with no room (5.6a-1), beside the new mark of a room out | Decision 8 left the text as it was |
 
 ## 20 October 2026: teacher status, lock and the invigilator (task 5.7a-2a)

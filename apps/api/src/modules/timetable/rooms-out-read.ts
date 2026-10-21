@@ -1,9 +1,4 @@
-import {
-  ROOM_OUT_CAUSES,
-  schoolDateOf,
-  type DayChangesAnswer,
-  type RoomOutCause,
-} from '@sodiq/shared';
+import { ROOM_OUT_CAUSES, type DayChangesAnswer, type RoomOutCause } from '@sodiq/shared';
 import type { Transaction } from '../../database/transactions.js';
 import { dayBeginnings } from './dated-check.js';
 
@@ -142,10 +137,6 @@ export async function roomsOutLessons(
   return out;
 }
 
-/** Whether a cause is a room's status rather than a closure. */
-export const isStatusCause = (cause: RoomOutCause): cause is 'closed' | 'under_repair' =>
-  cause !== 'closure';
-
 /** The rank of a cause, for a list sorted by it. */
 export const roomOutRank = (cause: RoomOutCause): number => ROOM_OUT_CAUSES.indexOf(cause);
 
@@ -254,13 +245,3 @@ export async function runClosures(
     }))
     .sort((a, b) => a.startsOn.localeCompare(b.startsOn) || a.room.localeCompare(b.room));
 }
-
-/** The first and last school date a moment span covers in the branch's time zone. */
-export const datesOfSpan = (
-  from: Date,
-  until: Date,
-  timeZone: string,
-): { first: string; last: string } => ({
-  first: schoolDateOf(from, timeZone),
-  last: schoolDateOf(new Date(until.getTime() - 1), timeZone),
-});
