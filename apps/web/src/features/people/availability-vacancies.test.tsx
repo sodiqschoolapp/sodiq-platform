@@ -166,6 +166,7 @@ const OPEN: VacancyListItem = {
   weeklyLessons: 18,
   dailyLessons: 6,
   status: 'open',
+  closesOn: null,
 };
 
 const CLOSED: VacancyListItem = {
@@ -179,6 +180,7 @@ const vacancyDetail = (row: VacancyListItem): VacancyDetail => ({
   ...row,
   statuses: [{ id: uid(71), status: row.status, from: '2026-10-01', until: null }],
   fills: [],
+  fillUnits: [],
   today: '2026-10-10',
 });
 

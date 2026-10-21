@@ -9,6 +9,7 @@ import {
   type VacancyRecord,
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { answerOf } from '@/api/failure';
@@ -21,6 +22,7 @@ import { useView } from '@/features/access/use-view';
 import { nameOf } from '@/features/setup/setup-api';
 import { AvailabilitySection } from './availability-section';
 import { invalidateVacancies, vacancyDetailQuery } from './people-api';
+import { fillRowName, VacancyFillDialog } from './vacancy-fill-dialog';
 import { VacancyForm } from './vacancy-form';
 import { schoolDateText } from '@/lib/dates';
 import { SECTION_TITLE } from '@/components/ui/control';
@@ -30,6 +32,8 @@ import { SECTION_TITLE } from '@/components/ui/control';
  * its record, its availability, its status with the history, close and
  * reopen, and the delete of a vacancy that never held a load. It reads first,
  * with Edit, Close or Reopen and Delete at the bottom (task 2.7c-2b-2a).
+ * Task 5.7a-3b: Fill, the fills of the vacancy and a close planned from a
+ * later day.
  */
 export function VacancyPanel({
   id,
@@ -44,7 +48,7 @@ export function VacancyPanel({
   subjects: readonly Subject[];
   onDeleted: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { role, branchId } = useView();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
@@ -53,6 +57,9 @@ export function VacancyPanel({
   const panel = usePanelEditing();
   const canEdit = role !== null && permits(PERMISSIONS, role, 'vacancies', 'edit');
   const canArchive = role !== null && permits(PERMISSIONS, role, 'vacancies', 'archive');
+  // Task 5.7a-3b (decision 3): the fill's routes are `timetable` `edit`.
+  const canFill = role !== null && permits(PERMISSIONS, role, 'timetable', 'edit');
+  const [filling, setFilling] = useState(false);
   const where = () => ({ header: branchHeader(), path: { id } });
   const refresh = async (answer: unknown) => {
     queryClient.setQueryData(
@@ -130,9 +137,17 @@ export function VacancyPanel({
           <AvailabilitySection id={vacancy.id} label={name} panel={panel} onOpen={forget} />
           <section className="grid gap-3">
             <h3 className={SECTION_TITLE}>{t('people.vacancies.statusTitle')}</h3>
-            <p className="text-sm">{t(`people.vacancies.statuses.${vacancy.status}`)}</p>
+            <p className="text-sm" data-vacancy-status="true">
+              {vacancy.closesOn === null
+                ? t(`people.vacancies.statuses.${vacancy.status}`)
+                : t('people.vacancies.closesOn', {
+                    status: t(`people.vacancies.statuses.${vacancy.status}`),
+                    date: schoolDateText(vacancy.closesOn, i18n.language),
+                  })}
+            </p>
             <History vacancy={vacancy} />
           </section>
+          <Fills vacancy={vacancy} subjects={subjects} />
         </>
       )}
       {panel.editing === null && (
@@ -150,20 +165,33 @@ export function VacancyPanel({
             )
           }
           secondary={
-            canArchive && (
-              <Button
-                variant="secondary"
-                disabled={status.isPending}
-                onClick={() => {
-                  remove.reset();
-                  status.mutate(vacancy.status === 'open' ? 'close' : 'reopen');
-                }}
-              >
-                {vacancy.status === 'open'
-                  ? t('people.vacancies.close')
-                  : t('people.vacancies.reopen')}
-              </Button>
-            )
+            <>
+              {canFill && vacancy.status === 'open' && vacancy.closesOn === null && (
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    forget();
+                    setFilling(true);
+                  }}
+                >
+                  {t('people.vacancies.fill.open')}
+                </Button>
+              )}
+              {canArchive && (
+                <Button
+                  variant="secondary"
+                  disabled={status.isPending}
+                  onClick={() => {
+                    remove.reset();
+                    status.mutate(vacancy.status === 'open' ? 'close' : 'reopen');
+                  }}
+                >
+                  {vacancy.status === 'open'
+                    ? t('people.vacancies.close')
+                    : t('people.vacancies.reopen')}
+                </Button>
+              )}
+            </>
           }
           danger={
             canArchive && (
@@ -195,6 +223,16 @@ export function VacancyPanel({
           saved={
             (panel.saved && status.isIdle && remove.isIdle) || (status.isSuccess && remove.isIdle)
           }
+        />
+      )}
+      {filling && (
+        <VacancyFillDialog
+          vacancy={vacancy}
+          name={name}
+          subjects={subjects}
+          onClose={() => {
+            setFilling(false);
+          }}
         />
       )}
     </div>
@@ -292,5 +330,49 @@ function History({ vacancy }: { vacancy: VacancyDetail }) {
         ))}
       </tbody>
     </table>
+  );
+}
+
+/** `04`: "its history lists every fill with the date, the person and the rows" (task 5.7a-3b). */
+function Fills({ vacancy, subjects }: { vacancy: VacancyDetail; subjects: readonly Subject[] }) {
+  const { t, i18n } = useTranslation();
+  const language = i18n.language;
+  return (
+    <section className="grid gap-3" data-vacancy-fills="true">
+      <h3 className={SECTION_TITLE}>{t('people.vacancies.fillsTitle')}</h3>
+      {vacancy.fills.length === 0 ? (
+        <p className="text-sm">{t('people.vacancies.noFills')}</p>
+      ) : (
+        <ul className="grid gap-2 text-sm">
+          {vacancy.fills.map((fill) => (
+            <li
+              key={fill.id}
+              className="grid gap-0.5"
+              data-withdrawn={fill.withdrawn ? 'true' : 'false'}
+            >
+              <span className="font-semibold">
+                {[
+                  t('people.vacancies.fillLine', {
+                    date: schoolDateText(fill.startsOn, language),
+                    person: fill.person.name,
+                  }),
+                  fill.versionNumber === null
+                    ? null
+                    : t('people.vacancies.fillVersion', { number: fill.versionNumber }),
+                  fill.withdrawn ? t('people.vacancies.fillWithdrawn') : null,
+                ]
+                  .filter(Boolean)
+                  .join(', ')}
+              </span>
+              <span>
+                {fill.rows
+                  .map((row) => fillRowName(t, language, row, vacancy.fillUnits, subjects))
+                  .join('; ')}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

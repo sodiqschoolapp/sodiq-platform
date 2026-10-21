@@ -12,6 +12,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { schoolDateText } from '@/lib/dates';
 import { api, branchHeader } from '@/api/client';
 import { answerOf } from '@/api/failure';
 import { ListPage } from '@/components/list/list-page';
@@ -124,11 +125,17 @@ export function VacanciesPage() {
       {
         key: 'status',
         header: t('people.vacancies.statusTitle'),
-        cell: (row) => t(`people.vacancies.statuses.${row.status}`),
+        cell: (row) =>
+          row.closesOn === null
+            ? t(`people.vacancies.statuses.${row.status}`)
+            : t('people.vacancies.closesOn', {
+                status: t(`people.vacancies.statuses.${row.status}`),
+                date: schoolDateText(row.closesOn, language),
+              }),
         sortValue: (row) => row.status,
       },
     ];
-  }, [t, departmentNames, subjectNames]);
+  }, [t, language, departmentNames, subjectNames]);
 
   const filters = useMemo(
     (): Filter<VacancyListItem>[] => [

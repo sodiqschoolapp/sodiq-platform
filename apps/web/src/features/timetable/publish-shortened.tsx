@@ -26,7 +26,8 @@ export function PublishShortened({
   className,
   lessonsText,
 }: {
-  versionId: string;
+  /** The draft whose choices are saved; `null` shows them only (a vacancy's fill, task 5.7a-3b). */
+  versionId: string | null;
   answer: PublishCheck;
   canEdit: boolean;
   /** The name of a class, or `null` when it is not known here. */
@@ -40,8 +41,11 @@ export function PublishShortened({
   // The ticks changed by the person, per date and class; the rest follow the answer.
   const [ticks, setTicks] = useState<Record<string, number[]>>({});
   const save = useMutation({
-    mutationFn: (body: { date: string; classId: string; slotPositions: number[] }) =>
-      setDayKeep(versionId, body),
+    mutationFn: (body: { date: string; classId: string; slotPositions: number[] }) => {
+      // Never runs without a draft: its Save is not drawn then.
+      if (versionId === null) throw new Error('no draft to keep a shortened day on');
+      return setDayKeep(versionId, body);
+    },
     onSuccess: async (_saved, body) => {
       setTicks((all) => {
         const rest = { ...all };

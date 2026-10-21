@@ -31,6 +31,7 @@ export function PublishChainQuestion({
   onChoose,
   canEdit,
   lessonName,
+  fixed = false,
 }: {
   answer: PublishChainAnswer;
   impact: PublishImpactAnswer | null;
@@ -39,6 +40,11 @@ export function PublishChainQuestion({
   canEdit: boolean;
   /** The class or group and subject of a change as a person reads them. */
   lessonName: (change: CarryChangeAnswer) => string;
+  /**
+   * Task 5.7a-3b (decision 8): the answer is "carry" and is not offered as a
+   * choice, as for the fill of a vacancy, which always carries.
+   */
+  fixed?: boolean;
 }): React.JSX.Element {
   const { t, i18n } = useTranslation();
   const language = i18n.language;
@@ -88,7 +94,9 @@ export function PublishChainQuestion({
       <h3 id="publish-chain" className={SECTION_TITLE}>
         {t('timetable.publish.chain.title')}
       </h3>
-      <p className="text-sm">{t('timetable.publish.chain.intro')}</p>
+      <p className="text-sm">
+        {fixed ? t('timetable.publish.chain.fixedCarry') : t('timetable.publish.chain.intro')}
+      </p>
       <ul className="grid gap-1 text-sm" data-later="true">
         {answer.later.map((one) => (
           <li key={one.id}>
@@ -99,37 +107,39 @@ export function PublishChainQuestion({
           </li>
         ))}
       </ul>
-      <fieldset className="grid gap-2" disabled={!canEdit}>
-        <legend className="sr-only">{t('timetable.publish.chain.title')}</legend>
-        {(['run_until', 'replace', 'carry'] as const).map((chain) => {
-          const off = chain === 'carry' && !answer.carryOffered;
-          return (
-            <div key={chain} className="grid gap-0.5">
-              <label className={CHECKBOX_TARGET}>
-                <input
-                  type="radio"
-                  name="publishChain"
-                  className={CHECKBOX}
-                  value={chain}
-                  checked={chosen === chain}
-                  disabled={off}
-                  onChange={() => {
-                    onChoose(chain);
-                  }}
-                />
-                <span className="text-sm font-semibold">
-                  {t(`timetable.publish.chain.answers.${chain}`)}
-                </span>
-              </label>
-              <p className="text-sm text-muted-foreground" data-hint={chain}>
-                {off && answer.carryReason !== null
-                  ? t(`timetable.publish.chain.notOffered.${answer.carryReason}`)
-                  : t(`timetable.publish.chain.hints.${chain}`)}
-              </p>
-            </div>
-          );
-        })}
-      </fieldset>
+      {!fixed && (
+        <fieldset className="grid gap-2" disabled={!canEdit}>
+          <legend className="sr-only">{t('timetable.publish.chain.title')}</legend>
+          {(['run_until', 'replace', 'carry'] as const).map((chain) => {
+            const off = chain === 'carry' && !answer.carryOffered;
+            return (
+              <div key={chain} className="grid gap-0.5">
+                <label className={CHECKBOX_TARGET}>
+                  <input
+                    type="radio"
+                    name="publishChain"
+                    className={CHECKBOX}
+                    value={chain}
+                    checked={chosen === chain}
+                    disabled={off}
+                    onChange={() => {
+                      onChoose(chain);
+                    }}
+                  />
+                  <span className="text-sm font-semibold">
+                    {t(`timetable.publish.chain.answers.${chain}`)}
+                  </span>
+                </label>
+                <p className="text-sm text-muted-foreground" data-hint={chain}>
+                  {off && answer.carryReason !== null
+                    ? t(`timetable.publish.chain.notOffered.${answer.carryReason}`)
+                    : t(`timetable.publish.chain.hints.${chain}`)}
+                </p>
+              </div>
+            );
+          })}
+        </fieldset>
+      )}
       {answer.changes.length > 0 && (
         <div className="grid gap-1">
           <h4 className={SUBSECTION_TITLE}>{t('timetable.publish.chain.changesTitle')}</h4>
