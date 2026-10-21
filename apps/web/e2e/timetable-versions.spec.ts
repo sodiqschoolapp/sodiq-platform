@@ -35,7 +35,8 @@ test('an Academic Vice Principal restores a version as a new draft and compares 
   await expect(heading(page, texts.title)).toBeVisible();
   const first = page.locator('tbody tr').filter({ hasText: 'Version 1' });
   await expect(first).toContainText(en.timetable.load.statuses.published);
-  await expect(first).toContainText('the first day of quarter');
+  // One quarter or several, as the seeded dates give it.
+  await expect(first).toContainText(/the first days? of quarters? \d/);
 
   // Restore version 1 as a new draft: the builder opens on its grid.
   await page.getByRole('button', { name: 'Version 1', exact: true }).click();
