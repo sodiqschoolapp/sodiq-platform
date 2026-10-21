@@ -32,6 +32,8 @@ import {
   nameActing,
   staffQuery,
 } from './people-api';
+import { JournalSubstituteDialog } from '@/features/timetable/journal-substitute-dialog';
+import { invalidateTimetable } from '@/features/timetable/timetable-api';
 import { fillRowName } from './vacancy-fill-dialog';
 
 /**
@@ -60,6 +62,8 @@ export function ActingSection({
   const confirm = useConfirm();
   const [naming, setNaming] = useState(false);
   const [ending, setEnding] = useState<ActingTeacher | null>(null);
+  const [substituting, setSubstituting] = useState<VacancyDetail['journals'][number] | null>(null);
+  const { branchId } = useView();
   const key = useRef<string | null>(null);
   const withdraw = useMutation({
     mutationFn: (period: ActingTeacher) => {
@@ -83,7 +87,21 @@ export function ActingSection({
         <ul className="grid gap-3 text-sm">
           {vacancy.journals.map((journal) => (
             <li key={journal.id} className="grid gap-1" data-acting-journal={journal.id}>
-              <span className="font-semibold">{journalName(journal)}</span>
+              <span className="flex flex-wrap items-center gap-2">
+                <span className="font-semibold">{journalName(journal)}</span>
+                {canAct && journal.runs.length > 0 && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    data-journal-substitute={journal.id}
+                    onClick={() => {
+                      setSubstituting(journal);
+                    }}
+                  >
+                    {t('people.vacancies.acting.substitute')}
+                  </Button>
+                )}
+              </span>
               {journal.acting.length === 0 ? (
                 <span>{t('people.vacancies.acting.noTeacher')}</span>
               ) : (
@@ -160,6 +178,28 @@ export function ActingSection({
           }))}
           onClose={() => {
             setNaming(false);
+          }}
+        />
+      )}
+      {substituting !== null && (
+        <JournalSubstituteDialog
+          title={t('people.vacancies.acting.substituteTitle', {
+            journal: journalName(substituting),
+          })}
+          target={{
+            kind: 'vacancy',
+            vacancyId: vacancy.id,
+            from: substituting.runs[0]?.from ?? vacancy.today,
+            until: null,
+          }}
+          journalId={substituting.id}
+          branchId={branchId}
+          onClose={() => {
+            setSubstituting(null);
+          }}
+          onDone={async () => {
+            setSubstituting(null);
+            await Promise.all([invalidateVacancies(queryClient), invalidateTimetable(queryClient)]);
           }}
         />
       )}

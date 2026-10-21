@@ -204,6 +204,8 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
     'The trigger that opens a lock span at a lock of an account and closes it at the unlock, at app.now (task 5.7a-2a, decision 5 and correction 1 of pull request #186, Look first): the application has no write right on the table, so the spans never differ from accounts.locked_at.',
   'absence_notice_accounts(uuid,timestamp with time zone,timestamp with time zone)':
     "The accounts of the current Academic Vice Principals of every branch linked to a person the transaction sees or holding the person's lessons in a range, ids only, for the notice of an absence (task 5.7a-1, decision 3 of pull request #185, Look first; as relative_notice_accounts).",
+  'absence_substitution_branches(uuid,uuid)':
+    'The branches holding a substitution in force made for an absence on a lesson not started, ids only, after the route checked the absence against the branch of the request, so that shortening or withdrawing the absence returns its lessons in every branch (task 5.7b-2, decision 1 of pull request #192, Look first).',
   'branch_moves_incoming(uuid)':
     "The open releases of students to one branch of the request, with the UID, name and grade of each student and nothing else of the record, for that branch's incoming list (task 3.3c, decision 2 of pull request #97, Look first): the student is still of the sending branch.",
   'branch_move_sending(uuid,uuid)':

@@ -337,6 +337,16 @@ export async function sendWeekChanges(
          * of this kind.
          */
         readonly substitute?: { readonly accountId: string; readonly date: string };
+        /**
+         * Task 5.7b-2 (decision 8): the substitute of a per-journal action,
+         * its first and last date; that account
+         * gets `timetable.substitutions_assigned` in place of this kind.
+         */
+        readonly substitutePeriod?: {
+          readonly accountId: string;
+          readonly firstDate: string;
+          readonly lastDate: string;
+        };
       }
     | {
         readonly kind: 'timetable.calendar_changed';
@@ -425,6 +435,18 @@ export async function sendWeekChanges(
             },
           });
         case 'timetable.day_changed':
+          if (event.substitutePeriod?.accountId === accountId) {
+            return notifications.send(transaction, {
+              kind: 'timetable.substitutions_assigned',
+              branchId: snapshot.branchId,
+              accountIds: [accountId],
+              data: {
+                firstDate: event.substitutePeriod.firstDate,
+                lastDate: event.substitutePeriod.lastDate,
+                ...week,
+              },
+            });
+          }
           if (event.substitute?.accountId === accountId) {
             return notifications.send(transaction, {
               kind: 'timetable.substitution_assigned',

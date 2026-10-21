@@ -107,6 +107,8 @@ export const ENTRY_ABOUT: Readonly<Record<PeopleAction, readonly About[]>> = {
   // Task 5.7a-3c: the record is the vacancy; `person_id` names the acting teacher.
   'vacancy.acting_name': ['person'],
   'vacancy.acting_end': ['person'],
+  // Task 5.7b-2 (decision 10): a timetable change, out of the report as `lesson.substitute`.
+  'vacancy.journal_substitute': ['none'],
   'vacancy.delete': ['none'],
   'vacancy.export': ['none'],
   'student.create': ['record'],

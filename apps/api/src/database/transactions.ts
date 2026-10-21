@@ -198,4 +198,51 @@ export class Transactions {
     }
     await sql`select set_config(${BRANCH_SETTING}, ${filter}, true)`.execute(transaction);
   }
+
+  /**
+   * The shortening and the withdraw of an absence only (task 5.7b-2, decision
+   * 1 of pull request #192, Look first): "Shortening the absence returns
+   * future lessons to the teacher" in every branch, and the rows of another
+   * branch are outside the filter of the request. Asks
+   * `absence_substitution_branches` (0102) for the branches holding a
+   * substitution in force made for the absence on a lesson not started, which
+   * answers nothing unless the absence's person is linked to `branchId`, the
+   * branch of the request, which the filter must already hold; then adds
+   * those branches, and no other, to the filter of the rest of this one
+   * transaction. Answers them, the branch of the request among them when it
+   * holds such a lesson. Refuses a second join in one transaction.
+   */
+  async joinAbsenceBranches(
+    transaction: Transaction,
+    absenceId: string,
+    branchId: string,
+  ): Promise<string[]> {
+    if (this.joined.has(transaction)) {
+      throw new Error('A transaction joins other branches once.');
+    }
+    const found = await sql<{ branch_id: string }>`
+      select s.branch_id
+      from absence_substitution_branches(${absenceId}::uuid, ${branchId}::uuid) s
+    `.execute(transaction);
+    const filter = await sql<{ filter: string | null }>`
+      select current_setting(${BRANCH_SETTING}, true) as filter
+    `.execute(transaction);
+    const current = (filter.rows[0]?.filter ?? '')
+      .replace(/^\{|\}$/g, '')
+      .split(',')
+      .filter((id) => id !== '');
+    const has = (id: string) => current.some((one) => one.toLowerCase() === id.toLowerCase());
+    if (!has(branchId)) {
+      throw new Error('The branch of the request is not in the filter of this transaction.');
+    }
+    const branches = found.rows.map((row) => row.branch_id);
+    const added = branches.filter((id) => !has(id));
+    if (added.length > 0) {
+      await sql`select set_config(${BRANCH_SETTING}, ${branchFilterValue([...current, ...added])}, true)`.execute(
+        transaction,
+      );
+    }
+    this.joined.add(transaction);
+    return branches;
+  }
 }

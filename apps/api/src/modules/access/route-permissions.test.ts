@@ -607,6 +607,23 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     branch: 'request',
     roles: ['super_admin', 'academic_vice_principal'],
   },
+  // Task 5.7b-2: the substitution per journal from an absence or a vacancy, under timetable edit.
+  'GET /api/timetable/absences/:id/journals/:journalId/substitutes': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'POST /api/timetable/absences/:id/journal-substitute': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'GET /api/timetable/vacancies/:id/journals/:journalId/substitutes': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'POST /api/timetable/vacancies/:id/journal-substitute': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
   // Task 5.7b-1: the substitution of a lesson, its suggestions and its withdrawal, under timetable edit.
   'GET /api/timetable/lessons/:id/substitutes': {
     branch: 'request',

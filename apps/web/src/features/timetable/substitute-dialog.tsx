@@ -54,7 +54,7 @@ export function SubstituteDialog({
   onClose,
   onSubstituted,
 }: {
-  lesson: DayLesson;
+  lesson: Pick<DayLesson, 'id' | 'start'>;
   branchId: string | null;
   subject: string;
   onClose: () => void;
@@ -209,7 +209,7 @@ export function WithdrawSubstitutionDialog({
   onClose,
   onWithdrawn,
 }: {
-  lesson: DayLesson;
+  lesson: Pick<DayLesson, 'id' | 'start'>;
   subject: string;
   onClose: () => void;
   onWithdrawn: () => Promise<void>;

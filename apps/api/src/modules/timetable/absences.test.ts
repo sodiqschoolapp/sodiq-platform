@@ -339,6 +339,10 @@ describe('teacher absences', () => {
         .selectAll()
         .orderBy('lesson_id')
         .execute(),
+      // Task 5.7b-2: a shortening or a withdraw returns substituted lessons.
+      t.database.migrator.selectFrom('lessons').selectAll().orderBy('id').execute(),
+      t.database.migrator.selectFrom('substitutions').selectAll().orderBy('id').execute(),
+      t.database.migrator.selectFrom('substitution_lessons').selectAll().orderBy('id').execute(),
     ]);
 
   const noticesOf = (accountId: string, branch: string) =>

@@ -3196,6 +3196,11 @@ try {
      * given; Russian) fits 7 Princeton's.
      */
     vacancyFill?: { readonly staffId: string; readonly phone: string };
+    /**
+     * Task 5.7b-2: a second teacher of Geometry in Uzbek (the staff id and
+     * phone given), free all day, to substitute the scene's teacher.
+     */
+    secondTeacher?: { readonly staffId: string; readonly phone: string };
   }) => {
     const gridBranch = await insertBranch(migrator, scene.branch);
     const gridVice = await create(scene.vice[0], scene.vice[1]);
@@ -3480,6 +3485,68 @@ try {
             )
             .execute();
         }
+      }
+      // Task 5.7b-2: a second teacher of Geometry, to substitute the first.
+      if (scene.secondTeacher !== undefined) {
+        const second = await transaction
+          .insertInto('staff')
+          .values({
+            kind: 'person',
+            staff_id: scene.secondTeacher.staffId,
+            first_name: 'Nodir',
+            last_name: 'Rahimov',
+            sex: 'male',
+            birth_date: '1990-02-11',
+            phone: scene.secondTeacher.phone,
+            admission_date: '2026-09-01',
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('staff_branches')
+          .values({ staff_id: second.id, branch_id: gridBranch, is_main: true })
+          .execute();
+        await transaction
+          .insertInto('staff_divisions')
+          .values({
+            staff_id: second.id,
+            division_id: academic.id,
+            department_id: steam.id,
+            is_main: true,
+          })
+          .execute();
+        await transaction
+          .insertInto('staff_languages')
+          .values({ staff_id: second.id, language: 'uz' })
+          .execute();
+        await transaction
+          .insertInto('staff_subjects')
+          .values({ staff_id: second.id, subject_id: geometry.id, grades: [7] })
+          .execute();
+        await transaction
+          .insertInto('staff_statuses')
+          .values({ staff_id: second.id, status: 'active', valid_from: '2026-09-01' })
+          .execute();
+        const own = await transaction
+          .insertInto('staff_availability')
+          .values({ branch_id: gridBranch, staff_id: second.id, valid_from: startDate })
+          .returning(['id', 'valid_until'])
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('staff_availability_ranges')
+          .values(
+            [1, 2, 3, 4, 5].map((weekday) => ({
+              entry_id: own.id,
+              branch_id: gridBranch,
+              staff_id: second.id,
+              weekday,
+              start_minutes: 0,
+              end_minutes: 1440,
+              valid_from: startDate,
+              valid_until: own.valid_until,
+            })),
+          )
+          .execute();
       }
       // Task 5.4b-2a: rooms of the branch for the room picker.
       if (scene.rooms.length > 0) {
@@ -4061,6 +4128,26 @@ try {
   seeded.substitution = {
     login: substitutionVice.login,
     password: substitutionVice.firstPassword,
+  };
+
+  // The substitution from an absence (task 5.7b-2): the publishable scene
+  // again, in a branch of its own, with a second teacher of Geometry; the
+  // browser test publishes, enters Aliyeva's absence for two weeks and
+  // Rahimov's for the first, substitutes Rahimov for 7 Oxford's Geometry for
+  // the whole absence (the first week is listed as blocked), and shortens
+  // Aliyeva's absence to the first week: the second week's lessons return.
+  const absenceSubstitutionVice = await gridScene({
+    branch: 'Absence substitution browser test branch',
+    vice: ['Gulnora', 'Tojiyeva'],
+    staffId: 'S-269351',
+    phone: '+998935557351',
+    rooms: [],
+    publishable: true,
+    secondTeacher: { staffId: 'S-269352', phone: '+998935557352' },
+  });
+  seeded.absenceSubstitution = {
+    login: absenceSubstitutionVice.login,
+    password: absenceSubstitutionVice.firstPassword,
   };
 
   // The department move (task 3.4c): a branch of its own with a year around

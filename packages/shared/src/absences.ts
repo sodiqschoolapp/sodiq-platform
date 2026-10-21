@@ -89,6 +89,25 @@ export const absenceSchema = z.object({
   canEdit: z.boolean(),
   /** Not started at the moment of the request (decision 5). */
   canWithdraw: z.boolean(),
+  /**
+   * Task 5.7b-2 (decisions 1 and 2): what a shortening or a withdraw did to
+   * the substitutions made for the absence in the branch of the request: the
+   * lessons returned to the teacher, and those kept with their substitute
+   * because the return clashes, with the rules. Only on the answer of a
+   * change.
+   */
+  returns: z
+    .object({
+      returned: z.array(z.uuid()),
+      kept: z.array(
+        z.object({
+          lessonId: z.uuid(),
+          date: schoolDateSchema,
+          rules: z.array(z.string().regex(/^[a-z_]+$/)),
+        }),
+      ),
+    })
+    .optional(),
 });
 
 export type Absence = z.infer<typeof absenceSchema>;
@@ -110,6 +129,10 @@ export const absenceLessonSchema = z.object({
   subject: names,
   room: z.string().nullable(),
   state: lessonStateSchema,
+  /** Task 5.7b-2: the substitute in force on the lesson, `null` for none. */
+  substitute: z.object({ id: z.uuid(), name: z.string() }).nullable(),
+  /** Task 5.7b-2: the lesson's journal, for the per-journal action; `null` before a publish opened one. */
+  journalId: z.uuid().nullable(),
 });
 
 export type AbsenceLesson = z.infer<typeof absenceLessonSchema>;

@@ -598,6 +598,8 @@ export const en = {
     substitution_not_in_force: 'This lesson has no substitution to withdraw. Reload the day.',
     substitution_return_blocked:
       'The teacher the lesson goes back to has another lesson or exam at that time, or too little time to travel to it. Change that lesson first.',
+    journal_substitute_none:
+      'No lesson of the journal in this period can take this substitute. The dates and their reasons are listed; choose another teacher.',
     vacancy_has_load:
       'A draft or published teaching load that can still run, or a future lesson, names this vacancy, so it cannot be closed yet. Give those rows another teacher, or close it once that load has ended.',
     vacancy_in_load:
@@ -2245,6 +2247,8 @@ export const en = {
       closesOn: '{{status}}, closes on {{date}}',
       acting: {
         title: 'Acting teachers',
+        substitute: 'Substitute per journal',
+        substituteTitle: 'Substitute for {{journal}}',
         none: 'No journal of this vacancy runs from today.',
         noTeacher: 'No acting teacher: the journal has no teacher.',
         line: '{{person}}, from {{from}}',
@@ -2903,6 +2907,7 @@ export const en = {
         fill: 'Vacancy filled',
         acting_name: 'Acting teacher named',
         acting_end: 'Acting teacher period ended',
+        journal_substitute: 'Substitute for a journal of the vacancy',
         delete: 'Vacancy deleted',
         export: 'Vacancies exported',
       },
@@ -3016,6 +3021,8 @@ export const en = {
         create: 'Absence entered',
         edit: 'Dates of an absence changed',
         withdraw: 'Absence withdrawn',
+        journal_substitute: 'Substitute for a journal during an absence',
+        return: 'Lessons returned by a shortened or withdrawn absence',
       },
       room_closure: {
         create: 'Room closure entered',
@@ -3404,6 +3411,8 @@ export const en = {
           'A one-day change (a cancel or a restore) changed your lessons. Your week before and after:',
         substitution_assigned:
           'You are the substitute for a lesson on {{date}}. Your week before and after:',
+        substitutions_assigned:
+          'You are the substitute for lessons from {{firstDate}} to {{lastDate}}. Your week before and after:',
         calendar_changed:
           'The calendar entry "{{name}}" changed your lessons. Your week before and after:',
         template_changed:
@@ -3492,6 +3501,12 @@ export const en = {
       state_held: 'Held',
       state_upcoming: 'Upcoming',
       state_cancelled: 'Cancelled',
+      kept: 'Kept with their substitute, because giving them back clashes with the teacher’s other lessons:',
+      substitute: 'Substitute',
+      noSubstitute: 'None',
+      actions: 'Actions',
+      substituteJournal: 'Substitute for the whole absence',
+      substituteJournalTitle: 'Substitute for {{subject}} while {{name}} is away',
     },
     // Room closures (task 5.7a-2b).
     roomClosures: {
@@ -3724,6 +3739,20 @@ export const en = {
       withdrawSubstitutionTitle: 'Withdraw the substitution of {{subject}} at {{time}}',
       withdrawSubstitutionSend: 'Withdraw the substitution',
       substitutionWithdrawn: 'The substitution was withdrawn.',
+    },
+    // The substitution per journal (task 5.7b-2).
+    journalSubstitute: {
+      dateLine: '{{date}}: {{text}}',
+      acting: 'acting teacher',
+      canTake: 'free on {{dates}} of {{all}} dates',
+      cannotTake: 'Cannot take these dates: {{dates}}',
+      from: 'From',
+      until: 'Until (the first day without the substitute)',
+      noDates: 'No lesson of this journal needs a substitute in this period.',
+      saved: 'Saved for: {{dates}}',
+      blocked: 'Not saved on these dates:',
+      taken: 'Already substituted, left as they are: {{dates}}',
+      close: 'Close',
     },
     bulk: {
       open: 'Bulk cancel',

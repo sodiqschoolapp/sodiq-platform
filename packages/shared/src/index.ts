@@ -1372,6 +1372,22 @@ export {
   type SubstitutesAnswer,
 } from './day-changes.js';
 export {
+  absenceJournalParamsSchema,
+  absenceJournalSubstituteBodySchema,
+  journalSubstituteAnswerSchema,
+  journalSubstitutesAnswerSchema,
+  vacancyJournalParamsSchema,
+  vacancyJournalSubstituteBodySchema,
+  vacancyJournalSubstitutesQuerySchema,
+  type AbsenceJournalParams,
+  type AbsenceJournalSubstituteBody,
+  type JournalSubstituteAnswer,
+  type JournalSubstitutesAnswer,
+  type VacancyJournalParams,
+  type VacancyJournalSubstituteBody,
+  type VacancyJournalSubstitutesQuery,
+} from './journal-substitutions.js';
+export {
   EXAM_RANGE_DAYS,
   EXAM_ROOMS_MAX,
   EXAM_TITLE_MAX,

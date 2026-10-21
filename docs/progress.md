@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 21 October 2026: task 5.7b-2 Substitution: from an absence or a vacancy
+
+- From an absence's panel the Academic Vice Principal substitutes one lesson or, per journal, every lesson of the absence in one action (`GET /api/timetable/absences/:id/journals/:journalId/substitutes`, `POST .../absences/:id/journal-substitute`): each date checked on its own, blocked dates listed, the rest saved in one record (source `absence`). A vacancy's journal is substituted the same way over a period from its record (`.../vacancies/:id/...`, source `journal`), its acting teacher chosen first.
+- Shortening or withdrawing an absence returns its future substituted lessons in every branch in the same transaction (`absence_substitution_branches`, `Transactions.joinAbsenceBranches`, 0102); a clashing return stays and is listed. The absence's lessons list shows substitutes. Handbook: "Substituting a lesson", From an absence or a vacancy. Browser test: `timetable-absence-substitution.spec.ts`.
+- Left out: substitutions sorted by a publish, a withdraw, a fill or a calendar change (5.7b-3); a bulk withdrawal of a per-journal substitution (decision 12, none planned); the substitute in the journal, plans and reports and the Free now board (From lines of 5.7b-1).
+
+The next sessions must know:
+
+- A substitution "made for an absence" is `substitutions.absence_id`; only those are returned by a shortening. `relaxed` is read from `substitution_lessons`, never from the record.
+- Every writer that links a substitution to an absence takes `PUBLISH_LOCK` first; the absence edit and withdraw take it before the absence row (decision 13).
+- `joinAbsenceBranches` is for the absence's shortening and withdraw only; one join per transaction.
+- The next task is 5.7b-3.
+
 ## 21 October 2026: task 5.7b-1 Substitution: the substitution of a lesson
 
 - 5.7b split in three (5.7b-1, 5.7b-2, 5.7b-3). The Academic Vice Principal substitutes one upcoming lesson from the class's day page (`GET /api/timetable/lessons/:id/substitutes`, `POST .../substitute`, `POST .../substitution/withdraw`; area `timetable` `edit`): suggestions by subject, department and language, the exception "no teacher of the subject is free" decided on each save, the substitute written into `lessons.teacher_id`, the record in `substitutions` and `substitution_lessons` (0101). The correction of kind `teacher` writes a record too.

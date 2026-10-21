@@ -203,6 +203,18 @@ export const NOTIFICATION_KINDS = {
     also: z.strictObject(teacherWeek).optional(),
   }),
   /**
+   * This teacher was made the substitute of a journal's lessons for a period
+   * (task 5.7b-2, decision 8): the first and last date, with the first
+   * week changed, in place of
+   * `timetable.day_changed` (one notice per person per event).
+   */
+  'timetable.substitutions_assigned': z.strictObject({
+    firstDate: schoolDateSchema,
+    lastDate: schoolDateSchema,
+    ...teacherWeek,
+    also: z.strictObject(teacherWeek).optional(),
+  }),
+  /**
    * A calendar entry saved over published dates changed this teacher's
    * lessons in the branch (task 5.6b-1, decision 8): the entry's name and
    * dates, and the week, with a second, later week as a one-day change shows

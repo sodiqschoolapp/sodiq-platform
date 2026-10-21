@@ -311,3 +311,69 @@ describe('the acting teacher of a vacancy’s journal', () => {
     expect(await within(panel).findByText(en.errors.acting_started)).toBeDefined();
   });
 });
+
+// Task 5.7b-2, pull request #192 (decision 7): the per-journal substitution
+// of a vacancy's journal, offered with its acting teacher in force.
+describe("the substitution of a vacancy's journal", () => {
+  const SUBSTITUTES = `GET /api/timetable/vacancies/${VACANCY.id}/journals/${JOURNAL}/substitutes`;
+  const SAVE = `POST /api/timetable/vacancies/${VACANCY.id}/journal-substitute`;
+
+  it('chooses the acting teacher first, sends the period and lists what was saved', async () => {
+    const calls = api('academic_vice_principal', [period({ state: 'current' })], {
+      [SUBSTITUTES]: () =>
+        json({
+          dates: ['2026-10-12'],
+          teachers: [
+            {
+              id: NODIRA.id,
+              name: 'Yusupova Nodira',
+              group: 'subject',
+              language: false,
+              acting: true,
+              dates: ['2026-10-12'],
+              blockedDates: [],
+            },
+          ],
+        }),
+      [SAVE]: () =>
+        json({
+          substitutionId: uid(401),
+          saved: [{ lessonId: uid(501), date: '2026-10-12', relaxed: false }],
+          blocked: [],
+          taken: [],
+        }),
+    });
+    const panel = await openVacancy();
+    fireEvent.click(await within(panel).findByRole('button', { name: texts.substitute }));
+    const dialog = await screen.findByRole('dialog');
+    const select = await within(dialog).findByLabelText<HTMLSelectElement>(
+      en.timetable.day.substitute,
+    );
+    await waitFor(() => {
+      expect(select.value).toBe(NODIRA.id);
+    });
+    expect(select.selectedOptions[0]?.textContent).toContain(en.timetable.journalSubstitute.acting);
+    fireEvent.change(within(dialog).getByLabelText(en.timetable.day.reason), {
+      target: { value: 'Nobody is hired yet' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.timetable.day.substituteSend }));
+    await within(dialog).findByText(
+      en.timetable.journalSubstitute.saved.replace('{{dates}}', '12 October'),
+    );
+    expect(calls.filter((call) => call.route === SAVE).map((call) => call.body)).toEqual([
+      {
+        journalId: JOURNAL,
+        teacherId: NODIRA.id,
+        reason: 'Nobody is hired yet',
+        from: TODAY,
+        until: null,
+      },
+    ]);
+  });
+
+  it('offers no substitution to the Principal', async () => {
+    api('principal', [period({ state: 'current' })]);
+    const panel = await openVacancy();
+    expect(within(panel).queryByRole('button', { name: texts.substitute })).toBeNull();
+  });
+});

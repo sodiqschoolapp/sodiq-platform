@@ -1062,12 +1062,15 @@ export interface SubstitutionLessons {
   id: Generated<string>;
   lesson_date: string;
   lesson_id: string | null;
+  relaxed: boolean;
   substitution_id: string;
 }
 
 export interface Substitutions {
+  absence_id: string | null;
   branch_id: string;
   id: Generated<string>;
+  journal_id: string | null;
   made_at: Timestamp;
   made_by: string;
   reason: string;

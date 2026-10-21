@@ -285,6 +285,29 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 21 October 2026: substitution from an absence or a vacancy (task 5.7b-2)
+
+Plan approved on pull request #192 with corrections 1 and 2; decisions 1 to 13 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (personal data across branches; a security definer function). A shortening or withdraw returns the future substituted lessons made for the absence in every branch, in the same transaction: `absence_substitution_branches` (0102, ids only, after the absence is checked against the branch of the request) names the branches, `Transactions.joinAbsenceBranches` adds them to the filter for that write only, each branch's lessons are returned and audited in that branch (`absence.return`), nothing of another branch is answered | Decision 1 with correction 1; `edge/timetable`, "Shortening the absence returns future lessons to the teacher" |
+| **Look first** (a reading of a timetable rule). "Returns future lessons": not started at the save, made for this absence, no longer covered; returned by the withdrawal's rule (5.7b-1 decision 12); a clash (`teacher_double`, `travel_time`) keeps the lesson with its substitute, listed, never refusing the shortening. The single withdrawal still refuses on a clash | Decision 2 with correction 2 |
+| **Look first** (a reading of "No teacher of the subject is free" in a per-journal action). Decided per date and stored per lesson (`substitution_lessons.relaxed`, 0102); the record's `relaxed` is true when any lesson's is; all warnings of the action are ticked once | Decision 3; `.claude/rules/timetable.md` |
+| A substitution "made for an absence" is stored (`absence_id`) whatever its start point; only those are returned; `source` stays the start point (`lesson`, `correction`, `absence`, `journal`) | Decision 4; spec review of the plan, should-fix 3 |
+| A lesson already substituted is `taken` and left as it is | Decision 5 |
+| One record per action, one row per saved lesson; 409 `journal_substitute_none` when no date passes | Decision 6 |
+| A vacancy's period: `from` today or later, `until` optional and half-open; the acting teacher in force on `from` first, marked and preselected, never required | Decision 7 |
+| `timetable.substitutions_assigned` (first and last date, the week) to the substitute, `timetable.day_changed` once to every other teacher whose week changed; not in `WEEK_KINDS` | Decision 8 |
+| Area `timetable`: `view` for the list, `edit` for suggestions and saves; no role widened | Decision 9 |
+| Audit actions `absence.journal_substitute`, `absence.return`, `vacancy.journal_substitute`; out of the personal-data report (`vacancy.journal_substitute` classified `none`) | Decision 10 |
+| Suggestions rank as for one lesson, each with the dates it can take; a teacher who can take none is not listed | Decision 11 |
+| No bulk withdrawal of a per-journal substitution | Decision 12 |
+| One lock order: `PUBLISH_LOCK`, then the years' publish chains (by branch and year), then the absence row. A save that links a substitution to an absence reads the absence under `PUBLISH_LOCK`, which the edit and withdraw take first, so no share lock of the absence row is needed | Decision 13 with correction 1 |
+| **Build decision.** The `absence.return` entry of another branch names the assignment of the request (the home branch's), the one that allowed the change; the caller needs no assignment in the other branch | Permission review, should-fix 7; decision 1 |
+| **Build decision.** The notice of a per-journal action carries no number of lessons: `data` holds only what the text needs, and a number in the text would need plural keys | `.claude/rules/api.md`, notices |
+| **Build decision.** The check routes of the plan's first draft are not built: the save answers the warnings by date (409 `substitution_needs_confirm`) and the suggestions give each teacher's blocked dates | Spec review of the plan, should-fix 1 |
+
 ## 21 October 2026: the substitution of a lesson (task 5.7b-1)
 
 Plan approved on pull request #191 with corrections 1 and 2; decisions 1 to 12 confirmed there. Flagged on issue #42.

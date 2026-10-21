@@ -63,6 +63,8 @@ const LESSONS: AbsenceLessons = {
       subject: { uz: 'Matematika', ru: 'Математика', en: 'Mathematics' },
       room: 'Room 12',
       state: 'needs_teacher',
+      substitute: null,
+      journalId: uid(900),
     },
   ],
 };
@@ -190,6 +192,8 @@ describe('the absences page', () => {
       'Mathematics',
       'Room 12',
       texts.state_needs_teacher,
+      texts.noSubstitute,
+      `${en.timetable.day.substitute}${texts.substituteJournal}`,
     ]);
 
     fireEvent.click(within(panel).getByRole('button', { name: texts.changeDates }));
@@ -234,7 +238,175 @@ describe('the absences page', () => {
     await within(panel).findByRole('region', { name: texts.lessons });
     expect(within(panel).queryByRole('button', { name: texts.changeDates })).toBeNull();
     expect(within(panel).queryByRole('button', { name: texts.withdraw })).toBeNull();
+    expect(within(panel).queryByRole('button', { name: texts.substituteJournal })).toBeNull();
+    expect(within(panel).queryByRole('button', { name: en.timetable.day.substitute })).toBeNull();
     expect(calls.some((call) => call.route === 'GET /api/people/staff')).toBe(false);
+  });
+
+  // Task 5.7b-2, pull request #192 (edge/timetable, After publishing: "One
+  // substitute can be assigned per journal for the whole absence in one
+  // action, each date still being checked. Shortening the absence returns
+  // future lessons to the teacher.").
+  describe('the substitution from the absence', () => {
+    const journalPath = `/api/timetable/absences/${uid(701)}/journal-substitute`;
+    const suggestions = {
+      dates: ['2026-10-19', '2026-10-26'],
+      teachers: [
+        {
+          id: BOBUR.id,
+          name: 'Aliyev Bobur',
+          group: 'subject',
+          language: false,
+          acting: false,
+          dates: ['2026-10-19'],
+          blockedDates: ['2026-10-26'],
+        },
+      ],
+    };
+    const needsTick = () =>
+      json(
+        {
+          error: {
+            code: 'substitution_needs_confirm',
+            message: 'ENGLISH TEXT FOR THE DEVELOPER',
+            requestId: 'test-request',
+            details: [
+              {
+                path: 'rules.teacher_unavailable',
+                code: 'teacher_unavailable',
+                message: 'x',
+                rule: { weekday: 1, lessonIds: [] },
+                day: '2026-10-19',
+              },
+            ],
+          },
+        },
+        409,
+      );
+
+    async function openJournalDialog(extra: Record<string, (body: unknown) => Response>) {
+      const calls = await openList({
+        extra: {
+          [`GET /api/timetable/absences/${uid(701)}/journals/${uid(900)}/substitutes`]: () =>
+            json(suggestions),
+          ...extra,
+        },
+      });
+      fireEvent.click(screen.getByText('Karimova Aziza', { selector: 'button' }));
+      const panel = await screen.findByRole('complementary', { name: 'Karimova Aziza' });
+      fireEvent.click(await within(panel).findByRole('button', { name: texts.substituteJournal }));
+      const dialog = await screen.findByRole('dialog');
+      return { calls, dialog };
+    }
+
+    it('substitutes one teacher for the journal, shows the dates the teacher cannot take, and lists what was saved and blocked', async () => {
+      const { calls, dialog } = await openJournalDialog({
+        [`POST ${journalPath}`]: () =>
+          json({
+            substitutionId: uid(950),
+            saved: [{ lessonId: uid(800), date: '2026-10-19', relaxed: false }],
+            blocked: [{ lessonIds: [uid(801)], date: '2026-10-26', rules: ['substitute_away'] }],
+            taken: [],
+          }),
+      });
+      const select = await within(dialog).findByLabelText(en.timetable.day.substitute);
+      fireEvent.change(select, { target: { value: BOBUR.id } });
+      expect(
+        within(dialog).getByText(
+          en.timetable.journalSubstitute.cannotTake.replace('{{dates}}', '26 October'),
+        ),
+      ).not.toBeNull();
+      fireEvent.change(within(dialog).getByLabelText(en.timetable.day.reason), {
+        target: { value: 'The teacher is ill' },
+      });
+      fireEvent.click(
+        within(dialog).getByRole('button', { name: en.timetable.day.substituteSend }),
+      );
+      const answer = await within(dialog).findByText(
+        en.timetable.journalSubstitute.saved.replace('{{dates}}', '19 October'),
+      );
+      expect(answer).not.toBeNull();
+      const blocked = dialog.querySelector('[data-blocked-date="2026-10-26"]');
+      expect(blocked?.textContent).toBe(`26 October: ${en.errors.substitute_away}`);
+      expect(
+        calls.filter((call) => call.route === `POST ${journalPath}`).map((call) => call.body),
+      ).toEqual([{ journalId: uid(900), teacherId: BOBUR.id, reason: 'The teacher is ill' }]);
+    });
+
+    it('asks a tick for the warnings by date and sends again with it; another teacher takes the tick away', async () => {
+      let sent = 0;
+      const { calls, dialog } = await openJournalDialog({
+        [`POST ${journalPath}`]: () => {
+          sent += 1;
+          return sent === 1
+            ? needsTick()
+            : json({
+                substitutionId: uid(950),
+                saved: [{ lessonId: uid(800), date: '2026-10-19', relaxed: true }],
+                blocked: [],
+                taken: [],
+              });
+        },
+      });
+      fireEvent.change(await within(dialog).findByLabelText(en.timetable.day.substitute), {
+        target: { value: BOBUR.id },
+      });
+      fireEvent.change(within(dialog).getByLabelText(en.timetable.day.reason), {
+        target: { value: 'The teacher is ill' },
+      });
+      fireEvent.click(
+        within(dialog).getByRole('button', { name: en.timetable.day.substituteSend }),
+      );
+      expect(await within(dialog).findByText(en.errors.substitution_needs_confirm)).not.toBeNull();
+      expect(
+        within(dialog).getByText(`19 October: ${en.timetable.rule.teacher_unavailable}`),
+      ).not.toBeNull();
+      fireEvent.click(within(dialog).getByLabelText(en.timetable.day.substituteConfirm));
+      fireEvent.click(
+        within(dialog).getByRole('button', { name: en.timetable.day.substituteSend }),
+      );
+      await within(dialog).findByText(
+        en.timetable.journalSubstitute.saved.replace('{{dates}}', '19 October'),
+      );
+      expect(
+        calls.filter((call) => call.route === `POST ${journalPath}`).map((call) => call.body),
+      ).toEqual([
+        { journalId: uid(900), teacherId: BOBUR.id, reason: 'The teacher is ill' },
+        { journalId: uid(900), teacherId: BOBUR.id, reason: 'The teacher is ill', confirm: true },
+      ]);
+    });
+
+    it('lists the lessons a shortening kept with their substitute', async () => {
+      await openList({
+        absences: [absence(1, { state: 'current', canWithdraw: false })],
+        extra: {
+          [`PATCH /api/timetable/absences/${uid(701)}`]: (body) =>
+            json({
+              ...absence(1, { state: 'current', canWithdraw: false }),
+              ...(body as object),
+              returns: {
+                returned: [],
+                kept: [{ lessonId: uid(801), date: '2026-10-26', rules: ['teacher_double'] }],
+              },
+            }),
+        },
+      });
+      fireEvent.click(screen.getByText('Karimova Aziza', { selector: 'button' }));
+      const panel = await screen.findByRole('complementary', { name: 'Karimova Aziza' });
+      fireEvent.click(within(panel).getByRole('button', { name: texts.changeDates }));
+      const form = within(panel).getByRole('form', { name: texts.changeDates });
+      fireEvent.click(within(form).getByLabelText(texts.openEnded));
+      fireEvent.change(within(form).getByLabelText(texts.lastDay), {
+        target: { value: '2026-10-23' },
+      });
+      fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+      const kept = await waitFor(() => {
+        const found = panel.querySelector(`[data-kept-lesson="${uid(801)}"]`);
+        expect(found).not.toBeNull();
+        return found;
+      });
+      expect(kept?.textContent).toBe(`26 October: ${en.timetable.rule.teacher_double}`);
+    });
   });
 
   it('shows the empty page with its first action when there is no absence', async () => {

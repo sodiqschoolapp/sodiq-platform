@@ -594,6 +594,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     substitution_not_in_force: 'У этого урока нет замены, которую можно отменить. Обновите день.',
     substitution_return_blocked:
       'У учителя, которому возвращается урок, в это время другой урок или экзамен либо не хватает времени на дорогу. Сначала измените тот урок.',
+    journal_substitute_none:
+      'Ни один урок журнала в этот период не может взять этого заменяющего. Даты и причины перечислены; выберите другого учителя.',
     vacancy_has_load:
       'Эта вакансия указана в черновике или в опубликованной нагрузке, которая ещё может действовать, или за ней есть будущий урок, поэтому её пока нельзя закрыть. Назначьте в этих строках другого учителя или закройте вакансию, когда эта нагрузка закончится.',
     vacancy_in_load:
@@ -2375,6 +2377,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       closesOn: '{{status}}, закрывается с {{date}}',
       acting: {
         title: 'Исполняющие обязанности учителя',
+        substitute: 'Замена по журналу',
+        substituteTitle: 'Замена: {{journal}}',
         none: 'С сегодняшнего дня ни один журнал этой вакансии не ведётся.',
         noTeacher: 'Исполняющего обязанности нет: у журнала нет учителя.',
         line: '{{person}}, с {{from}}',
@@ -3040,6 +3044,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         fill: 'Вакансия заполнена',
         acting_name: 'Назначен исполняющий обязанности учителя',
         acting_end: 'Период исполняющего обязанности завершён',
+        journal_substitute: 'Замена по журналу вакансии',
         delete: 'Вакансия удалена',
         export: 'Вакансии выгружены',
       },
@@ -3153,6 +3158,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         create: 'Отсутствие внесено',
         edit: 'Даты отсутствия изменены',
         withdraw: 'Отсутствие отозвано',
+        journal_substitute: 'Замена по журналу на время отсутствия',
+        return: 'Уроки возвращены после сокращения или отзыва отсутствия',
       },
       room_closure: {
         create: 'Закрытие кабинета внесено',
@@ -3582,6 +3589,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         day_changed:
           'Изменение на один день (отмена или восстановление) изменило ваши уроки. Ваша неделя до и после:',
         substitution_assigned: 'Вы заменяете урок {{date}}. Ваша неделя до и после:',
+        substitutions_assigned:
+          'Вы заменяете уроки с {{firstDate}} по {{lastDate}}. Ваша неделя до и после:',
         calendar_changed:
           'Запись календаря «{{name}}» изменила ваши уроки. Ваша неделя до и после:',
         template_changed:
@@ -3669,6 +3678,12 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       state_held: 'Проведён',
       state_upcoming: 'Предстоит',
       state_cancelled: 'Отменён',
+      kept: 'Остались у заменяющего, потому что возврат пересекается с другими уроками учителя:',
+      substitute: 'Заменяющий',
+      noSubstitute: 'Нет',
+      actions: 'Действия',
+      substituteJournal: 'Замена на всё отсутствие',
+      substituteJournalTitle: 'Замена: {{subject}}, пока {{name}} отсутствует',
     },
     // Room closures (task 5.7a-2b).
     roomClosures: {
@@ -3902,6 +3917,20 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       withdrawSubstitutionTitle: 'Отменить замену: {{subject}} в {{time}}',
       withdrawSubstitutionSend: 'Отменить замену',
       substitutionWithdrawn: 'Замена отменена.',
+    },
+    // The substitution per journal (task 5.7b-2).
+    journalSubstitute: {
+      dateLine: '{{date}}: {{text}}',
+      acting: 'исполняющий обязанности',
+      canTake: 'свободен в {{dates}} из {{all}} дат',
+      cannotTake: 'Не может взять эти даты: {{dates}}',
+      from: 'С',
+      until: 'До (первый день без заменяющего)',
+      noDates: 'Ни одному уроку этого журнала в этот период не нужна замена.',
+      saved: 'Сохранено на: {{dates}}',
+      blocked: 'Не сохранено на эти даты:',
+      taken: 'Уже заменены, оставлены как есть: {{dates}}',
+      close: 'Закрыть',
     },
     bulk: {
       open: 'Массовая отмена',
