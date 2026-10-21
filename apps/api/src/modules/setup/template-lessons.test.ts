@@ -18,7 +18,7 @@ import {
   type DayTemplatesKit,
 } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
-import { substitutedIn } from '../../testing/substitutions-kit.js';
+import { liveSubstitutionRowOf, substitutedIn } from '../../testing/substitutions-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 
 const refusedWith = (response: Response, status: number, code: string) => {
@@ -1878,6 +1878,12 @@ describe('template changes after publishing', () => {
     const audit = await t.auditCount();
 
     const choices: object[] = [
+      // Task 5.7b-3: a stored substitution of the other branch.
+      {
+        dayDecisions: [
+          { key: await liveSubstitutionRowOf(t.database.migrator, south.branch), choice: 'drop' },
+        ],
+      },
       { dayDecisions: [{ key: southChangeId, choice: 'drop' }] },
       { dayDecisions: [{ key: southLesson.id, choice: 'drop' }] },
       { dayDecisions: [{ key: UNKNOWN, choice: 'drop' }] },

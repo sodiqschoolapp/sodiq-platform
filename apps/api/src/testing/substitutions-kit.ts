@@ -105,3 +105,19 @@ export async function substitutionRowsOf(
   }
   return { substitutions: await records.execute(), substitution_lessons: await rows.execute() };
 }
+
+/**
+ * Task 5.7b-3 (permission review of the code, must-fix 1): a live row of
+ * `substitution_lessons` of a branch, the key a decision names a stored
+ * substitution by.
+ */
+export async function liveSubstitutionRowOf(migrator: Database, branch: string): Promise<string> {
+  const row = await migrator
+    .selectFrom('substitution_lessons')
+    .select('id')
+    .where('branch_id', '=', branch)
+    .where('ended_at', 'is', null)
+    .orderBy('id')
+    .executeTakeFirstOrThrow();
+  return row.id;
+}

@@ -1658,6 +1658,15 @@ describe('the substitution of a lesson', () => {
           away: false,
         }),
       ]);
+      // The preview names the substitute and the teacher replaced (permission review, should-fix 3).
+      const checked = await t.get(
+        `/api/timetable/versions/${fix}/publish-check?startsOn=2026-10-19`,
+        s.branch,
+      );
+      const named = (
+        checked.body as { impact: { names: { teachers: { id: string }[] } } }
+      ).impact.names.teachers.map((one) => one.id);
+      expect(named).toEqual(expect.arrayContaining([free.staffId, s.teacher.staffId]));
       const noticesBefore = await noticesOf(free.accountId, 'timetable.published');
       const published = await publishChecked(s.branch, fix, '2026-10-19');
       expect(published.status, JSON.stringify(published.body)).toBe(200);
@@ -1950,7 +1959,30 @@ describe('the substitution of a lesson', () => {
       const elsewhere = await scene();
       const foreign = await substituted(elsewhere);
       const fix = await fixOf(s);
-      const before = await substitutionRowsOf(t.database.migrator);
+      // Every table a publish writes, in both branches, and the audit log
+      // (permission review of the code, must-fix 2).
+      const everything = async () => {
+        const rows: unknown[] = [await t.auditCount()];
+        for (const branch of [s.branch, elsewhere.branch]) {
+          rows.push(await t.rowsOf(branch));
+          for (const table of [
+            'lessons',
+            'lesson_blocks',
+            'lesson_day_change_ends',
+            'timetable_versions',
+          ] as const) {
+            rows.push(
+              await t.database.migrator
+                .selectFrom(table)
+                .selectAll()
+                .where('branch_id', '=', branch)
+                .execute(),
+            );
+          }
+        }
+        return rows;
+      };
+      const before = await everything();
       for (const key of [foreign.row.id, UNKNOWN]) {
         refusedWith(
           await publishChecked(s.branch, fix, '2026-10-19', [{ key, choice: 'drop' }]),
@@ -1958,7 +1990,22 @@ describe('the substitution of a lesson', () => {
           'not_found',
         );
       }
-      expect(await substitutionRowsOf(t.database.migrator)).toEqual(before);
+      expect(await everything()).toEqual(before);
+      // An ended row of the branch passes the 404 and names no item.
+      const later = await lessonOf(s, '2026-10-26');
+      const other = await person(s.branch, { subjects: [{ subject: s.subject, grades: [7] }] });
+      changed(await substitute(s.branch, later.id, { teacherId: other.staffId }));
+      changed(await withdraw(s.branch, later.id));
+      const [ended] = await rowsBy(other.staffId);
+      expect(ended?.end_cause).toBe('withdrawn');
+      expect(
+        rulesOf(
+          await publishChecked(s.branch, fix, '2026-10-19', [
+            { key: ended?.id ?? '', choice: 'drop' },
+          ]),
+          'publish_blocked',
+        ),
+      ).toContain('day_decision_unknown');
     });
 
     it('drops the substitution of a lesson a withdraw removes, and keeps one the version running again leaves in place', async () => {

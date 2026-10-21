@@ -620,6 +620,7 @@ export async function settleSubstitutions(
     const rows = await transaction
       .updateTable('substitution_lessons')
       .set({ ended_at: input.moment, end_cause: 'dropped', ended_by: input.accountId })
+      .where('branch_id', '=', input.branchId)
       .where('id', 'in', toEnd)
       .where('ended_at', 'is', null)
       .returning('id')
@@ -631,6 +632,7 @@ export async function settleSubstitutions(
     await transaction
       .updateTable('substitution_lessons')
       .set({ ended_at: input.moment, end_cause: 'recorded_again', ended_by: input.accountId })
+      .where('branch_id', '=', input.branchId)
       .where(
         'id',
         'in',
