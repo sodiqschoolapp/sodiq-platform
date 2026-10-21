@@ -520,9 +520,8 @@ export class LessonForcedDeletes implements OnModuleInit {
     await snapshotWeek(transaction, branchId, lesson.lesson_date, lesson.lesson_date);
     // Another version in force on the date, or the block taken by a publish (decision 7).
     const inForce =
-      (
-        await versionOnDate(transaction, branchId, rows.place.academicYearId, lesson.lesson_date)
-      )?.id ?? null;
+      (await versionOnDate(transaction, branchId, rows.place.academicYearId, lesson.lesson_date))
+        ?.id ?? null;
     const blockNow = await transaction
       .selectFrom('lesson_blocks')
       .select(['id', 'lesson_date', 'starts_at', 'ends_at', 'double_pair_id'])

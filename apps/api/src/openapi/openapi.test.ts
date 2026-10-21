@@ -304,6 +304,11 @@ describe('OpenAPI document', () => {
         '/api/timetable/versions/{id}/up-to-date',
         '/api/timetable/versions/{id}/withdraw',
         '/api/timetable/versions/{id}/withdraw-check',
+        '/api/timetable/views/branch',
+        '/api/timetable/views/choices',
+        '/api/timetable/views/class',
+        '/api/timetable/views/room',
+        '/api/timetable/views/teacher',
       ]);
       expect(document.paths['/api/health']?.get?.responses).toEqual({
         '200': {

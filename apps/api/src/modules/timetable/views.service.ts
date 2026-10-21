@@ -470,7 +470,8 @@ export class TimetableViews {
       return {
         id: one.entryId,
         branchId: row.branch_id,
-        blockId: placement.blockId ?? one.entryId,
+        // A pattern block's id here is no stored block's (it carries the date): the entry's stands for it.
+        blockId: one.entryId,
         versionId: version.id,
         doublePairId: placement.doublePairId,
         date: one.date,
