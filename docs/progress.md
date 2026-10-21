@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 21 October 2026: task 5.7a-3b Teacher absence: vacancy fill, the screen
+
+- The vacancy's record has **Fill** (role with `timetable` `edit`, vacancy open with no planned close): a dialog with the person, the date (next Monday by default, quarter and later-version shortcuts, tomorrow at the earliest, from the server's today), all or chosen rows, then the check's rows filled and left, the publish's lists (`publish-check-parts.tsx`, shared with step 8), the later versions with "carry" fixed, the shortened days read only, the one-day changes and the impact preview, the close; Fill after the tick, the decisions and a confirmation; the result says how to take it back.
+- The record lists its fills ("Fills") and the list and record show a planned close ("Open, closes on …"); the server answers `units` on the check, `fillUnits` and `closesOn` on the vacancy (`unit-names.ts`). Handbook: "Filling a vacancy" in `05-teaching-load-and-timetable.md`. Browser test: `timetable-vacancy-fill.spec.ts`.
+- Left out: the acting teacher (5.7a-3c); substitutes (5.7b).
+
+The next sessions must know:
+
+- The fill's draft is rolled back after its check: nothing of its rows or lessons can be named in the dialog.
+- Locally the browser tests need a Playwright browser of the pinned version; the environment's is older, so a scratchpad `PLAYWRIGHT_BROWSERS_PATH` with links to `/opt/pw-browsers/chromium_headless_shell-1194` named as the pinned one ran them.
+- The next task is 5.7a-3c.
+
 ## 21 October 2026: task 5.7a-3a Teacher absence: vacancy fill, the fill and the close
 
 - A vacancy is filled with a person from a date (`POST /api/timetable/vacancy-fills`, its check `/check`; area `timetable` `edit`): a draft copied from the version in force (rows, pins, pattern, weights, the person on the rows filled) is published from the date with the chain answer "carry" and the fill's changes, or, on a published version's start, the change is carried in place (`TimetablePublish.carryInPlace`, the publish's writes moved into `writeRuns`).

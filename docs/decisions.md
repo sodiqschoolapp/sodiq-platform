@@ -285,6 +285,25 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 21 October 2026: vacancy fill, the screen (task 5.7a-3b)
+
+Plan approved on pull request #189 with correction 1; decisions 1 to 12 confirmed there, none of a Look first kind. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| The fill's date follows the start date of a permanent change: next Monday by default, tomorrow at the earliest, the coming quarters' first days and the later published versions' starts as shortcuts, all from the server's `today` | Decision 1; `06`, "It is a permanent change"; How surprises are prevented, Start date |
+| The fill opens from the vacancy's record (Fill among its actions), for a role with `timetable` `edit`, on a vacancy open today with no close planned | Decisions 2 and 3; `04`, "creates, edits, fills and closes it"; 5.7a-3a decision 9 |
+| The person is chosen from the branch's people whose status today is active or none yet (admitted later), not inactive or left; those with a subject of the vacancy first; the server decides the rest | Decision 4 with correction 1 |
+| The rows to choose are the rows of the check with all rows for the person and date; a chosen row no longer offered is dropped, and all rows come back when none of the chosen is left; every row unticked asks for one and checks nothing | Decision 5; spec review of the plan, must-fix 2 |
+| The check names its rows' classes and groups (`units`) and the record names its fills' (`fillUnits`, archived ones included); subjects come from the subject list with a fallback text | Decision 6 |
+| A planned close (`closesOn`) is the first day of a live `closed` status row after today; the empty row of a cancelled plan is skipped | Decision 7; spec review of the plan, should-fix 7 |
+| The later versions are shown with "carry" fixed (`PublishChainQuestion` `fixed`) | Decision 8; 5.7a-3a decision 2 |
+| The publish step's refusal, warning and lesson lists moved into `publish-check-parts.tsx`, drawn by the step and the fill alike | Decision 9; `06`, "with the impact preview and every rule of publishing" |
+| The dialog shows the fill's result and how to take it back (withdraw the version before it starts) | Decisions 10 and 11; `12`, "The last action can be undone" |
+| **Build decision.** The fill's draft is rolled back after the check, so the dialog names no lesson of it: dated refusals and warnings show their date and rule without the lessons, and a refusal of a row falls back to its text without the row | The draft's rows and pattern entries exist only inside the check's savepoint |
+| **Build decision.** The shortened days of the fill's publish are shown read only (`PublishShortened` with no draft): their choices are the version in force's, copied by the fill | A choice is saved on a draft, and the fill's draft is not kept |
+| **Build decision.** A row left with the vacancy is itself what keeps the vacancy open; `holders` lists versions and lessons only when every row was filled | The server's close check (5.7a-3a decision 5) |
+
 ## 21 October 2026: vacancy fill, the fill and the close (task 5.7a-3a)
 
 Plan approved on pull request #188 with corrections 1 to 3; decisions 1 to 16 confirmed there. Flagged on issue #42.
