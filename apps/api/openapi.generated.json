@@ -44628,6 +44628,228 @@
                                 "additionalProperties": false
                               }
                             },
+                            "substitutions": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "category": {
+                                    "type": "string",
+                                    "enum": [
+                                      "kept",
+                                      "decide",
+                                      "dropped"
+                                    ]
+                                  },
+                                  "unitId": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "subjectId": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "lessons": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "date": {
+                                          "type": "string",
+                                          "format": "date",
+                                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                                        },
+                                        "start": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 1440
+                                        },
+                                        "end": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 1440
+                                        }
+                                      },
+                                      "required": [
+                                        "date",
+                                        "start",
+                                        "end"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "replacedId": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "substituteId": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "reason": {
+                                    "type": "string"
+                                  },
+                                  "absenceId": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "carriedVersionId": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "blocked": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "rule": {
+                                          "type": "string",
+                                          "pattern": "^[a-z_]+$"
+                                        },
+                                        "severity": {
+                                          "type": "string",
+                                          "enum": [
+                                            "blocked",
+                                            "warning"
+                                          ]
+                                        },
+                                        "weekday": {
+                                          "nullable": true,
+                                          "anyOf": [
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                1
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                2
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                3
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                4
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                5
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                6
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                7
+                                              ]
+                                            }
+                                          ]
+                                        },
+                                        "lessonIds": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "detail": {
+                                          "type": "object",
+                                          "additionalProperties": {
+                                            "anyOf": [
+                                              {
+                                                "type": "number"
+                                              },
+                                              {
+                                                "type": "string"
+                                              }
+                                            ]
+                                          }
+                                        },
+                                        "date": {
+                                          "type": "string",
+                                          "format": "date",
+                                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                                        }
+                                      },
+                                      "required": [
+                                        "rule",
+                                        "severity",
+                                        "weekday",
+                                        "lessonIds"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "away": {
+                                    "type": "boolean"
+                                  },
+                                  "dropOffered": {
+                                    "type": "boolean"
+                                  },
+                                  "dropCause": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "enum": [
+                                      "gone",
+                                      "cancelled",
+                                      "teacher"
+                                    ]
+                                  },
+                                  "dependsOn": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "key",
+                                  "category",
+                                  "unitId",
+                                  "subjectId",
+                                  "lessons",
+                                  "replacedId",
+                                  "substituteId",
+                                  "reason",
+                                  "absenceId",
+                                  "carriedVersionId",
+                                  "blocked",
+                                  "away",
+                                  "dropOffered",
+                                  "dropCause",
+                                  "dependsOn"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
                             "absences": {
                               "type": "array",
                               "items": {
@@ -44715,6 +44937,7 @@
                             "dropped",
                             "bulk",
                             "exams",
+                            "substitutions",
                             "absences",
                             "closures"
                           ],
@@ -72081,6 +72304,228 @@
                                 "additionalProperties": false
                               }
                             },
+                            "substitutions": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "category": {
+                                    "type": "string",
+                                    "enum": [
+                                      "kept",
+                                      "decide",
+                                      "dropped"
+                                    ]
+                                  },
+                                  "unitId": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "subjectId": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "lessons": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "date": {
+                                          "type": "string",
+                                          "format": "date",
+                                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                                        },
+                                        "start": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 1440
+                                        },
+                                        "end": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 1440
+                                        }
+                                      },
+                                      "required": [
+                                        "date",
+                                        "start",
+                                        "end"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "replacedId": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "substituteId": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "reason": {
+                                    "type": "string"
+                                  },
+                                  "absenceId": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "carriedVersionId": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "blocked": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "rule": {
+                                          "type": "string",
+                                          "pattern": "^[a-z_]+$"
+                                        },
+                                        "severity": {
+                                          "type": "string",
+                                          "enum": [
+                                            "blocked",
+                                            "warning"
+                                          ]
+                                        },
+                                        "weekday": {
+                                          "nullable": true,
+                                          "anyOf": [
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                1
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                2
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                3
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                4
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                5
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                6
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                7
+                                              ]
+                                            }
+                                          ]
+                                        },
+                                        "lessonIds": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "detail": {
+                                          "type": "object",
+                                          "additionalProperties": {
+                                            "anyOf": [
+                                              {
+                                                "type": "number"
+                                              },
+                                              {
+                                                "type": "string"
+                                              }
+                                            ]
+                                          }
+                                        },
+                                        "date": {
+                                          "type": "string",
+                                          "format": "date",
+                                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                                        }
+                                      },
+                                      "required": [
+                                        "rule",
+                                        "severity",
+                                        "weekday",
+                                        "lessonIds"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "away": {
+                                    "type": "boolean"
+                                  },
+                                  "dropOffered": {
+                                    "type": "boolean"
+                                  },
+                                  "dropCause": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "enum": [
+                                      "gone",
+                                      "cancelled",
+                                      "teacher"
+                                    ]
+                                  },
+                                  "dependsOn": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "key",
+                                  "category",
+                                  "unitId",
+                                  "subjectId",
+                                  "lessons",
+                                  "replacedId",
+                                  "substituteId",
+                                  "reason",
+                                  "absenceId",
+                                  "carriedVersionId",
+                                  "blocked",
+                                  "away",
+                                  "dropOffered",
+                                  "dropCause",
+                                  "dependsOn"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
                             "absences": {
                               "type": "array",
                               "items": {
@@ -72168,6 +72613,7 @@
                             "dropped",
                             "bulk",
                             "exams",
+                            "substitutions",
                             "absences",
                             "closures"
                           ],
@@ -79241,6 +79687,228 @@
                                 "additionalProperties": false
                               }
                             },
+                            "substitutions": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "category": {
+                                    "type": "string",
+                                    "enum": [
+                                      "kept",
+                                      "decide",
+                                      "dropped"
+                                    ]
+                                  },
+                                  "unitId": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "subjectId": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "lessons": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "date": {
+                                          "type": "string",
+                                          "format": "date",
+                                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                                        },
+                                        "start": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 1440
+                                        },
+                                        "end": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 1440
+                                        }
+                                      },
+                                      "required": [
+                                        "date",
+                                        "start",
+                                        "end"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "replacedId": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "substituteId": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "reason": {
+                                    "type": "string"
+                                  },
+                                  "absenceId": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "carriedVersionId": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "blocked": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "rule": {
+                                          "type": "string",
+                                          "pattern": "^[a-z_]+$"
+                                        },
+                                        "severity": {
+                                          "type": "string",
+                                          "enum": [
+                                            "blocked",
+                                            "warning"
+                                          ]
+                                        },
+                                        "weekday": {
+                                          "nullable": true,
+                                          "anyOf": [
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                1
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                2
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                3
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                4
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                5
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                6
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                7
+                                              ]
+                                            }
+                                          ]
+                                        },
+                                        "lessonIds": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "detail": {
+                                          "type": "object",
+                                          "additionalProperties": {
+                                            "anyOf": [
+                                              {
+                                                "type": "number"
+                                              },
+                                              {
+                                                "type": "string"
+                                              }
+                                            ]
+                                          }
+                                        },
+                                        "date": {
+                                          "type": "string",
+                                          "format": "date",
+                                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                                        }
+                                      },
+                                      "required": [
+                                        "rule",
+                                        "severity",
+                                        "weekday",
+                                        "lessonIds"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "away": {
+                                    "type": "boolean"
+                                  },
+                                  "dropOffered": {
+                                    "type": "boolean"
+                                  },
+                                  "dropCause": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "enum": [
+                                      "gone",
+                                      "cancelled",
+                                      "teacher"
+                                    ]
+                                  },
+                                  "dependsOn": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "key",
+                                  "category",
+                                  "unitId",
+                                  "subjectId",
+                                  "lessons",
+                                  "replacedId",
+                                  "substituteId",
+                                  "reason",
+                                  "absenceId",
+                                  "carriedVersionId",
+                                  "blocked",
+                                  "away",
+                                  "dropOffered",
+                                  "dropCause",
+                                  "dependsOn"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
                             "absences": {
                               "type": "array",
                               "items": {
@@ -79328,6 +79996,7 @@
                             "dropped",
                             "bulk",
                             "exams",
+                            "substitutions",
                             "absences",
                             "closures"
                           ],
@@ -118285,6 +118954,228 @@
                                 "additionalProperties": false
                               }
                             },
+                            "substitutions": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "category": {
+                                    "type": "string",
+                                    "enum": [
+                                      "kept",
+                                      "decide",
+                                      "dropped"
+                                    ]
+                                  },
+                                  "unitId": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "subjectId": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "lessons": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "date": {
+                                          "type": "string",
+                                          "format": "date",
+                                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                                        },
+                                        "start": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 1440
+                                        },
+                                        "end": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 1440
+                                        }
+                                      },
+                                      "required": [
+                                        "date",
+                                        "start",
+                                        "end"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "replacedId": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "substituteId": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "reason": {
+                                    "type": "string"
+                                  },
+                                  "absenceId": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "carriedVersionId": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "blocked": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "rule": {
+                                          "type": "string",
+                                          "pattern": "^[a-z_]+$"
+                                        },
+                                        "severity": {
+                                          "type": "string",
+                                          "enum": [
+                                            "blocked",
+                                            "warning"
+                                          ]
+                                        },
+                                        "weekday": {
+                                          "nullable": true,
+                                          "anyOf": [
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                1
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                2
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                3
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                4
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                5
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                6
+                                              ]
+                                            },
+                                            {
+                                              "type": "number",
+                                              "enum": [
+                                                7
+                                              ]
+                                            }
+                                          ]
+                                        },
+                                        "lessonIds": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "detail": {
+                                          "type": "object",
+                                          "additionalProperties": {
+                                            "anyOf": [
+                                              {
+                                                "type": "number"
+                                              },
+                                              {
+                                                "type": "string"
+                                              }
+                                            ]
+                                          }
+                                        },
+                                        "date": {
+                                          "type": "string",
+                                          "format": "date",
+                                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                                        }
+                                      },
+                                      "required": [
+                                        "rule",
+                                        "severity",
+                                        "weekday",
+                                        "lessonIds"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "away": {
+                                    "type": "boolean"
+                                  },
+                                  "dropOffered": {
+                                    "type": "boolean"
+                                  },
+                                  "dropCause": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "enum": [
+                                      "gone",
+                                      "cancelled",
+                                      "teacher"
+                                    ]
+                                  },
+                                  "dependsOn": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "key",
+                                  "category",
+                                  "unitId",
+                                  "subjectId",
+                                  "lessons",
+                                  "replacedId",
+                                  "substituteId",
+                                  "reason",
+                                  "absenceId",
+                                  "carriedVersionId",
+                                  "blocked",
+                                  "away",
+                                  "dropOffered",
+                                  "dropCause",
+                                  "dependsOn"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
                             "absences": {
                               "type": "array",
                               "items": {
@@ -118372,6 +119263,7 @@
                             "dropped",
                             "bulk",
                             "exams",
+                            "substitutions",
                             "absences",
                             "closures"
                           ],
@@ -123729,6 +124621,228 @@
                             "additionalProperties": false
                           }
                         },
+                        "substitutions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "category": {
+                                "type": "string",
+                                "enum": [
+                                  "kept",
+                                  "decide",
+                                  "dropped"
+                                ]
+                              },
+                              "unitId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "subjectId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "lessons": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "date": {
+                                      "type": "string",
+                                      "format": "date",
+                                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                                    },
+                                    "start": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 1440
+                                    },
+                                    "end": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 1440
+                                    }
+                                  },
+                                  "required": [
+                                    "date",
+                                    "start",
+                                    "end"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "replacedId": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "substituteId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "reason": {
+                                "type": "string"
+                              },
+                              "absenceId": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "carriedVersionId": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "blocked": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "rule": {
+                                      "type": "string",
+                                      "pattern": "^[a-z_]+$"
+                                    },
+                                    "severity": {
+                                      "type": "string",
+                                      "enum": [
+                                        "blocked",
+                                        "warning"
+                                      ]
+                                    },
+                                    "weekday": {
+                                      "nullable": true,
+                                      "anyOf": [
+                                        {
+                                          "type": "number",
+                                          "enum": [
+                                            1
+                                          ]
+                                        },
+                                        {
+                                          "type": "number",
+                                          "enum": [
+                                            2
+                                          ]
+                                        },
+                                        {
+                                          "type": "number",
+                                          "enum": [
+                                            3
+                                          ]
+                                        },
+                                        {
+                                          "type": "number",
+                                          "enum": [
+                                            4
+                                          ]
+                                        },
+                                        {
+                                          "type": "number",
+                                          "enum": [
+                                            5
+                                          ]
+                                        },
+                                        {
+                                          "type": "number",
+                                          "enum": [
+                                            6
+                                          ]
+                                        },
+                                        {
+                                          "type": "number",
+                                          "enum": [
+                                            7
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    "lessonIds": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "detail": {
+                                      "type": "object",
+                                      "additionalProperties": {
+                                        "anyOf": [
+                                          {
+                                            "type": "number"
+                                          },
+                                          {
+                                            "type": "string"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    "date": {
+                                      "type": "string",
+                                      "format": "date",
+                                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                                    }
+                                  },
+                                  "required": [
+                                    "rule",
+                                    "severity",
+                                    "weekday",
+                                    "lessonIds"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "away": {
+                                "type": "boolean"
+                              },
+                              "dropOffered": {
+                                "type": "boolean"
+                              },
+                              "dropCause": {
+                                "nullable": true,
+                                "type": "string",
+                                "enum": [
+                                  "gone",
+                                  "cancelled",
+                                  "teacher"
+                                ]
+                              },
+                              "dependsOn": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              }
+                            },
+                            "required": [
+                              "key",
+                              "category",
+                              "unitId",
+                              "subjectId",
+                              "lessons",
+                              "replacedId",
+                              "substituteId",
+                              "reason",
+                              "absenceId",
+                              "carriedVersionId",
+                              "blocked",
+                              "away",
+                              "dropOffered",
+                              "dropCause",
+                              "dependsOn"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
                         "absences": {
                           "type": "array",
                           "items": {
@@ -123816,6 +124930,7 @@
                         "dropped",
                         "bulk",
                         "exams",
+                        "substitutions",
                         "absences",
                         "closures"
                       ],
@@ -227698,6 +228813,228 @@
                                     "additionalProperties": false
                                   }
                                 },
+                                "substitutions": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "key": {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                      },
+                                      "category": {
+                                        "type": "string",
+                                        "enum": [
+                                          "kept",
+                                          "decide",
+                                          "dropped"
+                                        ]
+                                      },
+                                      "unitId": {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                      },
+                                      "subjectId": {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                      },
+                                      "lessons": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "date": {
+                                              "type": "string",
+                                              "format": "date",
+                                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                                            },
+                                            "start": {
+                                              "type": "integer",
+                                              "minimum": 0,
+                                              "maximum": 1440
+                                            },
+                                            "end": {
+                                              "type": "integer",
+                                              "minimum": 0,
+                                              "maximum": 1440
+                                            }
+                                          },
+                                          "required": [
+                                            "date",
+                                            "start",
+                                            "end"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      },
+                                      "replacedId": {
+                                        "nullable": true,
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                      },
+                                      "substituteId": {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                      },
+                                      "reason": {
+                                        "type": "string"
+                                      },
+                                      "absenceId": {
+                                        "nullable": true,
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                      },
+                                      "carriedVersionId": {
+                                        "nullable": true,
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                      },
+                                      "blocked": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "rule": {
+                                              "type": "string",
+                                              "pattern": "^[a-z_]+$"
+                                            },
+                                            "severity": {
+                                              "type": "string",
+                                              "enum": [
+                                                "blocked",
+                                                "warning"
+                                              ]
+                                            },
+                                            "weekday": {
+                                              "nullable": true,
+                                              "anyOf": [
+                                                {
+                                                  "type": "number",
+                                                  "enum": [
+                                                    1
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "number",
+                                                  "enum": [
+                                                    2
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "number",
+                                                  "enum": [
+                                                    3
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "number",
+                                                  "enum": [
+                                                    4
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "number",
+                                                  "enum": [
+                                                    5
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "number",
+                                                  "enum": [
+                                                    6
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "number",
+                                                  "enum": [
+                                                    7
+                                                  ]
+                                                }
+                                              ]
+                                            },
+                                            "lessonIds": {
+                                              "type": "array",
+                                              "items": {
+                                                "type": "string"
+                                              }
+                                            },
+                                            "detail": {
+                                              "type": "object",
+                                              "additionalProperties": {
+                                                "anyOf": [
+                                                  {
+                                                    "type": "number"
+                                                  },
+                                                  {
+                                                    "type": "string"
+                                                  }
+                                                ]
+                                              }
+                                            },
+                                            "date": {
+                                              "type": "string",
+                                              "format": "date",
+                                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                                            }
+                                          },
+                                          "required": [
+                                            "rule",
+                                            "severity",
+                                            "weekday",
+                                            "lessonIds"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      },
+                                      "away": {
+                                        "type": "boolean"
+                                      },
+                                      "dropOffered": {
+                                        "type": "boolean"
+                                      },
+                                      "dropCause": {
+                                        "nullable": true,
+                                        "type": "string",
+                                        "enum": [
+                                          "gone",
+                                          "cancelled",
+                                          "teacher"
+                                        ]
+                                      },
+                                      "dependsOn": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string"
+                                        }
+                                      }
+                                    },
+                                    "required": [
+                                      "key",
+                                      "category",
+                                      "unitId",
+                                      "subjectId",
+                                      "lessons",
+                                      "replacedId",
+                                      "substituteId",
+                                      "reason",
+                                      "absenceId",
+                                      "carriedVersionId",
+                                      "blocked",
+                                      "away",
+                                      "dropOffered",
+                                      "dropCause",
+                                      "dependsOn"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
                                 "absences": {
                                   "type": "array",
                                   "items": {
@@ -227785,6 +229122,7 @@
                                 "dropped",
                                 "bulk",
                                 "exams",
+                                "substitutions",
                                 "absences",
                                 "closures"
                               ],

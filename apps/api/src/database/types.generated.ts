@@ -1056,13 +1056,21 @@ export interface Subjects {
 
 export interface SubstitutionLessons {
   branch_id: string;
+  class_id: string | null;
   end_cause: string | null;
   ended_at: Timestamp | null;
   ended_by: string | null;
+  ends_at: Timestamp | null;
+  group_id: string | null;
   id: Generated<string>;
   lesson_date: string;
   lesson_id: string | null;
+  load_row_id: string | null;
+  pattern_date: string | null;
+  pattern_entry_id: string | null;
   relaxed: boolean;
+  starts_at: Timestamp | null;
+  subject_id: string | null;
   substitution_id: string;
 }
 

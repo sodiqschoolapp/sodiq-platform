@@ -47,6 +47,12 @@ import { invigilatorsOf } from './exams-kept.js';
 import { datedCheck, type DatedFindings } from './dated-check.js';
 import { writeDatedLessons, type DatedWrite } from './dated-lessons.js';
 import {
+  settleSubstitutions,
+  sortSubstitutionsKept,
+  substitutionAuditOf,
+  substitutionKeyPartOf,
+} from './substitutions-kept.js';
+import {
   dayChangesKeyOf,
   settleDayChanges,
   retimed,
@@ -290,6 +296,7 @@ export const NO_LESSONS: CalendarLessons = {
     exams: [],
     absences: [],
     closures: [],
+    substitutions: [],
   },
   shortenedDays: [],
   keepRefusals: [],
@@ -828,10 +835,23 @@ export class TimetableCalendarLessons {
           examBlockedHere.push({ examId: one.exam.id, result });
         }
       }
+      // Task 5.7b-3: the stored substitutions of the stretch, sorted on the
+      // findings with the kept changes applied; the lessons the exams cover
+      // are cancelled by the write.
+      const substituted = await sortSubstitutionsKept(transaction, {
+        branchId,
+        sorting,
+        firstDate: part.first,
+        lastDate: part.last,
+        carriedVersionId: null,
+        exams: [],
+        examCovered: examsSorted.length === 0 ? new Set() : coveredOf(sorting.findings),
+        ...(input.retime === undefined ? {} : { retime: input.retime }),
+      });
       const bulk = sortBulkOf({
-        lessons: sorting.findings.dated.lessons,
-        movedAt: sorting.movedAt,
-        begins: sorting.findings.begins,
+        lessons: substituted.findings.dated.lessons,
+        movedAt: substituted.movedAt,
+        begins: substituted.findings.begins,
         records: await bulkRecordsOf(transaction, branchId, part.first, part.last, input.retime),
         carriedVersionId: null,
       });
@@ -841,13 +861,15 @@ export class TimetableCalendarLessons {
         lastDate: part.last,
         state,
         findings,
-        sorting,
+        sorting: substituted,
         bulk,
         key: dayChangesKeyOf(
           versionId,
           part.first,
-          sorting.items,
+          substituted.items,
           bulk.length === 0 ? null : bulkKeyPartOf(bulk),
+          null,
+          substitutionKeyPartOf(substituted.substitutions),
         ),
         exams: examsSorted,
         examBlocked: examBlockedHere,
@@ -904,7 +926,15 @@ export class TimetableCalendarLessons {
     if (!input.preview) {
       const details = [
         ...blocked.map(blockedDetail),
-        ...dayRefusalsOf({ key, items, bulk: bulkAll }, input.days).map(detailOf),
+        ...dayRefusalsOf(
+          {
+            key,
+            items,
+            bulk: bulkAll,
+            substitutions: stretches.flatMap((one) => one.sorting.substitutions),
+          },
+          input.days,
+        ).map(detailOf),
         // Task 5.6b-2c-1 (decision 10): an exam refused, and a shared block
         // newly under an exam with no choice (decision 5).
         ...refusedExams.map((one): ErrorDetail => ({
@@ -1007,7 +1037,13 @@ export class TimetableCalendarLessons {
       const keptStored = new Set<string>();
       for (const one of stretches) {
         const plan = withMovesBack(
-          planOfRun(one.sorting, one.bulk, decisions, bulkDecisions),
+          planOfRun(
+            one.sorting,
+            one.bulk,
+            decisions,
+            bulkDecisions,
+            input.preview ? undefined : input.days.dayDecisions,
+          ),
           backs,
         );
         for (const id of plan.keepStored) keptStored.add(id);
@@ -1040,7 +1076,7 @@ export class TimetableCalendarLessons {
         );
       }
       if (input.preview) return;
-      for (const one of stretches) {
+      for (const [index, one] of stretches.entries()) {
         // The changes not applied ended in the name of the stretch's version
         // (decision 5), those kept on a lesson created again recorded again;
         // the bulk cancels' choices on the blocks written. Task 5.6b-2c-2
@@ -1062,11 +1098,32 @@ export class TimetableCalendarLessons {
           items: one.bulk,
           decisions: bulkDecisions,
         });
-        if (own.length > 0 || one.bulk.length > 0) {
+        // Task 5.7b-3: the kept substitutions recorded again on lessons created again.
+        const written = writes[index];
+        if (written === undefined) throw new Error('Every stretch is written.');
+        const substitutionsSettled = await settleSubstitutions(transaction, {
+          branchId,
+          items: one.sorting.substitutions,
+          sent: input.days.dayDecisions,
+          placed: written.substitutesPlaced,
+          moment,
+          accountId: input.accountId,
+        });
+        if (own.length > 0 || one.bulk.length > 0 || one.sorting.substitutions.length > 0) {
           days.push({
             versionId: one.versionId,
             firstDate: one.firstDate,
-            ...dayAuditOf(own, decisions, settled, bulkAuditOf(one.bulk, recorded)),
+            ...dayAuditOf(
+              own,
+              decisions,
+              settled,
+              bulkAuditOf(one.bulk, recorded),
+              substitutionAuditOf(
+                one.sorting.substitutions,
+                input.days.dayDecisions,
+                substitutionsSettled,
+              ),
+            ),
           });
         }
       }
@@ -1104,8 +1161,17 @@ export class TimetableCalendarLessons {
       absences: [],
       // Task 5.7a-2b (decision 9): the room closures likewise.
       closures: [],
+      // Task 5.7b-3: the stored substitutions of the dates, once each.
+      substitutions: stretches.flatMap((one) =>
+        one.sorting.substitutions.map((item) => item.answer),
+      ),
     };
-    const named = dayChangeIdsOf(items, bulkAll);
+    const named = dayChangeIdsOf(
+      items,
+      bulkAll,
+      [],
+      stretches.flatMap((one) => one.sorting.substitutions),
+    );
     // Task 5.6b-2b: the dates written that are shortened for a class.
     const shortenedDays: CalendarLessons['shortenedDays'] = stretches
       .flatMap((one) => one.findings.dated.shortened)
@@ -1215,7 +1281,11 @@ export class TimetableCalendarLessons {
             one.blocks.flatMap((block) => block.lessons.map((lesson) => lesson.subjectId)),
           ),
         ],
-        teacherIds: [...shown.flatMap((one) => one.lesson.teacherIds), ...teacherIds],
+        teacherIds: [
+          ...shown.flatMap((one) => one.lesson.teacherIds),
+          ...teacherIds,
+          ...named.teacherIds,
+        ],
         roomIds: [
           ...shown.flatMap((one) => (one.lesson.roomId === null ? [] : [one.lesson.roomId])),
           ...named.roomIds,

@@ -21,6 +21,7 @@ import { dayBeginnings, type DatedFindings } from './dated-check.js';
 import { patternDateOf, placeKeyOf } from './dated-lessons.js';
 import type { PatternState } from './pattern.service.js';
 import { examsOn } from './stored-day.js';
+import type { SortedSubstitution, SubstituteWrite } from './substitutions-kept.js';
 
 /**
  * The stored one-day changes of the dates a publish writes, applied again
@@ -147,6 +148,12 @@ export interface DayWritePlan {
    * cancelled by that bulk cancel is held (`BulkHold`).
    */
   readonly bulkHolds: ReadonlyMap<string, BulkHold>;
+  /**
+   * Task 5.7b-3: the kept substitutions' lessons, by `placeKeyOf`: the write
+   * keeps the substitute on them and leaves their rows to
+   * `settleSubstitutions`.
+   */
+  readonly substitutes: ReadonlyMap<string, SubstituteWrite>;
 }
 
 /** The sorting of the dates of one write. */
@@ -158,6 +165,14 @@ export interface DaySorting {
   readonly keptStoredIds: ReadonlySet<string>;
   /** Task 5.6a-5b-1: the lessons of `findings` a kept move placed, with the moment of the move. */
   readonly movedAt: ReadonlyMap<DatedLesson, Date>;
+  /**
+   * Task 5.7b-3: every other lesson and claim of a date the check of a kept
+   * change met (the run with the kept changes applied, the stored lessons a
+   * kept move keeps, other branches' claims, the exams).
+   */
+  readonly othersOn: (date: string) => Promise<Placement[]>;
+  /** Task 5.7b-3: the stored substitutions sorted (`sortSubstitutionsKept`), none before. */
+  readonly substitutions: readonly SortedSubstitution[];
 }
 
 interface ChainRow {
@@ -957,7 +972,14 @@ export async function sortDayChanges(
       half: null,
     });
   }
-  return { items, findings: applied, keptStoredIds, movedAt };
+  return {
+    items,
+    findings: applied,
+    keptStoredIds,
+    movedAt,
+    othersOn: (date) => othersOn(date, new Set()),
+    substitutions: [],
+  };
 }
 
 /** The key of a sorting as the preview shows it (decision 9, review should-fix 7). */
@@ -969,6 +991,8 @@ export function dayChangesKeyOf(
   bulk: string | null = null,
   /** Task 5.6c-3a: the key of the exams sorted (`examKeyPartOf`), none when there are none. */
   exams: string | null = null,
+  /** Task 5.7b-3: the key of the substitutions sorted (`substitutionKeyPartOf`). */
+  substitutions: string | null = null,
 ): string {
   const shown = items
     .map((one) => [
@@ -986,6 +1010,7 @@ export function dayChangesKeyOf(
         shown,
         ...(bulk === null ? {} : { bulk }),
         ...(exams === null ? {} : { exams }),
+        ...(substitutions === null ? {} : { substitutions }),
       }),
     )
     .digest('hex');
@@ -1038,7 +1063,14 @@ export function writePlanOf(
       else if (choice === 'cancel') cancels.set(key, item.answer.reason);
     }
   }
-  return { cancels, keepStored, cancelStored, bulkCancels: new Map(), bulkHolds: new Map() };
+  return {
+    cancels,
+    keepStored,
+    cancelStored,
+    bulkCancels: new Map(),
+    bulkHolds: new Map(),
+    substitutes: new Map(),
+  };
 }
 
 /**

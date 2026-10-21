@@ -640,12 +640,16 @@ describe('the teaching load page: withdraw', () => {
         exams: [],
         absences: [],
         closures: [],
+        substitutions: [],
         ...dayChanges,
       },
       names: {
         units: [{ id: OXFORD.id, kind: 'class', name: 'Oxford', grades: [7] }],
         subjects: [{ id: MATHS.id, names: MATHS.names }],
-        teachers: [],
+        teachers: [
+          { id: uid(921), name: 'Karimova Aziza' },
+          { id: uid(922), name: 'Rahimov Bobur' },
+        ],
         rooms: [],
       },
     } satisfies WithdrawCheck);
@@ -789,6 +793,140 @@ describe('the teaching load page: withdraw', () => {
           ?.body,
       ).toEqual({ dayChangesKey: KEY, dayDecisions: [{ key: open, choice: 'cancel' }] });
     });
+  });
+
+  // Task 5.7b-3 (edge/timetable, Versions and drafts: "A substitution and a
+  // one-day move are already recorded for a date after the new version
+  // starts ... The preview sorts them into kept, needs a decision and
+  // dropped.").
+  const substitutionItem = (
+    key: string,
+    category: 'kept' | 'decide' | 'dropped',
+    extra: Partial<WithdrawCheck['dayChanges']['substitutions'][number]> = {},
+  ) => ({
+    key,
+    category,
+    unitId: OXFORD.id,
+    subjectId: MATHS.id,
+    lessons: [{ date: '2026-11-16', start: 480, end: 525 }],
+    replacedId: uid(921),
+    substituteId: uid(922),
+    reason: 'The teacher is ill',
+    absenceId: null,
+    carriedVersionId: null,
+    blocked: [],
+    away: false,
+    dropOffered: false,
+    dropCause: null,
+    dependsOn: [],
+    ...extra,
+  });
+
+  it('lists the substitutions of the withdrawn dates, and sends a choice with the typed reason for one that needs a decision', async () => {
+    const kept = uid(931);
+    const open = uid(932);
+    const dropped = uid(933);
+    const calls = await openPage({
+      versions: [later, earlier],
+      extra: {
+        ...checkRoute({
+          substitutions: [
+            substitutionItem(kept, 'kept'),
+            substitutionItem(open, 'decide', {
+              away: true,
+              blocked: [
+                {
+                  rule: 'teacher_double',
+                  severity: 'blocked',
+                  weekday: 1,
+                  lessonIds: [],
+                  date: '2026-11-16',
+                },
+              ],
+            }),
+            substitutionItem(dropped, 'dropped', { dropCause: 'gone', replacedId: null }),
+          ],
+        }),
+        [`POST /api/timetable/versions/${later.id}/withdraw`]: () =>
+          json({ ...later, status: 'archived' }),
+      },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: en.timetable.load.withdraw }));
+    const dialog = await screen.findByRole('alertdialog');
+    const keptLine = await waitFor(() => {
+      const found = dialog.querySelector<HTMLElement>(
+        `[data-day-changes="kept"] [data-kind="substitution"][data-key="${kept}"]`,
+      );
+      expect(found).not.toBeNull();
+      return found as HTMLElement;
+    });
+    expect(keptLine.textContent).toBe(
+      '7 Oxford, Mathematics, 16 November 2026 08:00–08:45: Rahimov Bobur in place of Karimova Aziza. Reason: The teacher is ill',
+    );
+    const droppedLine = dialog.querySelector<HTMLElement>(
+      `[data-day-changes="dropped"] [data-key="${dropped}"]`,
+    );
+    expect(droppedLine?.textContent).toContain('Rahimov Bobur in place of nobody');
+    expect(droppedLine?.textContent).toContain(
+      en.timetable.publish.dayChanges.substitutions.dropCause_gone,
+    );
+    const decide = dialog.querySelector<HTMLElement>(
+      `[data-day-changes="decide"] [data-key="${open}"]`,
+    ) as HTMLElement;
+    expect(
+      within(decide).getByText(en.timetable.publish.dayChanges.substitutions.away),
+    ).not.toBeNull();
+    expect(decide.querySelector('[data-blocked="true"]')).not.toBeNull();
+    // `drop` is not offered: the teacher of the new timetable is not free.
+    expect(
+      within(decide).queryByRole('radio', {
+        name: en.timetable.publish.dayChanges.substitutions.choice_drop,
+      }),
+    ).toBeNull();
+    const send = within(dialog).getByRole('button', { name: en.timetable.load.withdraw });
+    fireEvent.click(
+      within(decide).getByRole('radio', {
+        name: en.timetable.publish.dayChanges.substitutions.choice_cancel,
+      }),
+    );
+    // A cancel waits for its reason.
+    expect((send as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(
+      within(decide).getByLabelText(en.timetable.publish.dayChanges.substitutions.reason),
+      { target: { value: 'Nobody can take it' } },
+    );
+    await waitFor(() => {
+      expect((send as HTMLButtonElement).disabled).toBe(false);
+    });
+    fireEvent.click(send);
+    await waitFor(() => {
+      expect(
+        calls.find((call) => call.route === `POST /api/timetable/versions/${later.id}/withdraw`)
+          ?.body,
+      ).toEqual({
+        dayChangesKey: KEY,
+        dayDecisions: [{ key: open, choice: 'cancel', reason: 'Nobody can take it' }],
+      });
+    });
+  });
+
+  it('lists a kept substitution in Russian', async () => {
+    const kept = uid(934);
+    await openPage({
+      language: 'ru',
+      versions: [later, earlier],
+      extra: checkRoute({ substitutions: [substitutionItem(kept, 'kept')] }),
+    });
+    fireEvent.click(await screen.findByRole('button', { name: ru.timetable.load.withdraw }));
+    const dialog = await screen.findByRole('alertdialog');
+    const line = await waitFor(() => {
+      const found = dialog.querySelector<HTMLElement>(
+        `[data-day-changes="kept"] [data-key="${kept}"]`,
+      );
+      expect(found).not.toBeNull();
+      return found as HTMLElement;
+    });
+    expect(line.textContent).toContain('Rahimov Bobur вместо Karimova Aziza');
   });
 
   // Task 5.6c-3a (edge/timetable, Exams: "An exam is stored on its own like

@@ -71,7 +71,8 @@ import type { PatternState } from './pattern.service.js';
 
 /**
  * The invigilators of the branch's standing exams from `firstDate` to
- * `lastDate` linked to the branch: the run's facts take them as extra
+ * `lastDate` linked to the branch, and the substitutes in force there (task
+ * 5.7b-3): the run's facts take them as extra
  * teachers, as the exam's own check does (`exam-check.ts`; task 5.6c-1,
  * decision 12), so that the engine knows a person who teaches no row.
  */
@@ -97,7 +98,27 @@ export async function invigilatorsOf(
     .where('exams.cancel_cause', 'is', null)
     .orderBy('exam_invigilators.staff_id')
     .execute();
-  return rows.map((one) => one.staff_id);
+  // Task 5.7b-3: and the substitutes in force on the lessons of the dates,
+  // so that the sorting of a kept substitution checks a person who teaches
+  // no row (`substitutions-kept.ts`).
+  const substitutes = await transaction
+    .selectFrom('substitution_lessons')
+    .innerJoin('substitutions', 'substitutions.id', 'substitution_lessons.substitution_id')
+    .innerJoin('lessons', 'lessons.id', 'substitution_lessons.lesson_id')
+    .innerJoin('staff_branches', (join) =>
+      join
+        .onRef('staff_branches.staff_id', '=', 'substitutions.substitute_id')
+        .on('staff_branches.branch_id', '=', branchId),
+    )
+    .select('substitutions.substitute_id as staff_id')
+    .distinct()
+    .where('substitution_lessons.branch_id', '=', branchId)
+    .where('substitution_lessons.ended_at', 'is', null)
+    .whereRef('lessons.teacher_id', '=', 'substitutions.substitute_id')
+    .where('lessons.lesson_date', '>=', firstDate)
+    .where('lessons.lesson_date', '<=', lastDate)
+    .execute();
+  return [...new Set([...rows, ...substitutes].map((one) => one.staff_id))].sort();
 }
 
 /** A shared block of an exam as the sorting reads it, with the choice it carries. */

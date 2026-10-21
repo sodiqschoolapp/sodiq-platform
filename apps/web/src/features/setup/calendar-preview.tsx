@@ -143,6 +143,8 @@ export function useCalendarPreview(): {
   const { t } = useTranslation();
   const [question, setQuestion] = useState<Question | null>(null);
   const [choices, setChoices] = useState<Record<string, DayChangeChoice>>({});
+  // Task 5.7b-3: the reason typed for a substitution's cancel, by its key.
+  const [reasons, setReasons] = useState<Record<string, string>>({});
   const [ticks, setTicks] = useState<Record<string, number[]>>({});
   // Task 5.6b-2c-1: the choices for shared blocks newly under an exam.
   const [examChoices, setExamChoices] = useState<Record<string, 'cancel' | 'keep'>>({});
@@ -155,6 +157,7 @@ export function useCalendarPreview(): {
     const preview = await calendarPreviewOf(change);
     const days = await new Promise<CalendarDaysBody | null>((resolve) => {
       setChoices({});
+      setReasons({});
       setTicks({});
       setExamChoices({});
       setGroupChoices({});
@@ -172,7 +175,9 @@ export function useCalendarPreview(): {
     setQuestion(null);
   };
   const decided =
-    question === null ? null : dayDecisionsBodyOf(question.preview.lessons.dayChanges, choices);
+    question === null
+      ? null
+      : dayDecisionsBodyOf(question.preview.lessons.dayChanges, choices, reasons);
   const dayKeeps = dayKeepsOf(ticks);
   const examBlocks = examBlocksOf(examChoices);
   const groupBlocks =
@@ -255,6 +260,10 @@ export function useCalendarPreview(): {
             canEdit
             onChoose={(key, choice) => {
               setChoices({ ...choices, [key]: choice });
+            }}
+            reasons={reasons}
+            onReason={(key, reason) => {
+              setReasons({ ...reasons, [key]: reason });
             }}
           />
           <DialogFooter>

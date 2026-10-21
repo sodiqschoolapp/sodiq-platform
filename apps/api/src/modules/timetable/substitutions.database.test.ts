@@ -10,6 +10,21 @@ const NOW = '2026-10-15T10:00:00+05:00';
 const EARLY = '2026-09-07';
 const DAY = '2026-10-26';
 
+/**
+ * Task 5.7b-3 (0103): what a row records of its lesson; no foreign keys, so
+ * any ids do. Written with every live row.
+ */
+const PLACE = {
+  class_id: '01900000-0000-7000-8000-000000000001',
+  group_id: null,
+  subject_id: '01900000-0000-7000-8000-000000000002',
+  load_row_id: '01900000-0000-7000-8000-000000000003',
+  pattern_entry_id: '01900000-0000-7000-8000-000000000004',
+  pattern_date: DAY,
+  starts_at: new Date(`${DAY}T23:00:00+05:00`),
+  ends_at: new Date(`${DAY}T23:30:00+05:00`),
+};
+
 /** What a promise came to: `written`, or the constraint that refused it. */
 const outcome = (work: Promise<unknown>): Promise<string | undefined> =>
   work.then(
@@ -117,6 +132,7 @@ describe('the substitution record in the database', () => {
           lesson_id: lessonId,
           lesson_date: DAY,
           relaxed: false,
+          ...PLACE,
         })
         .execute();
       return record.id;
@@ -233,6 +249,7 @@ describe('the substitution record in the database', () => {
             lesson_id: theirs,
             lesson_date: DAY,
             relaxed: false,
+            ...PLACE,
           })
           .execute(),
       ),
@@ -248,6 +265,7 @@ describe('the substitution record in the database', () => {
             lesson_id: theirs,
             lesson_date: DAY,
             relaxed: false,
+            ...PLACE,
           })
           .execute(),
       ),
@@ -420,6 +438,72 @@ describe('the substitution record in the database', () => {
       expect(row?.end_cause).toBe('returned');
     });
 
+    // Task 5.7b-3 (0103): a live row knows its lesson; written once, ended as recorded again.
+    it('needs the place of its lesson on a live row, never updates it, and ends a row as recorded again', async () => {
+      const place = await fresh();
+      const lesson = await lessonOn(place, place.first, place.substitute.staffId, 0);
+      const id = await recordOf(place, lesson);
+      const bare = {
+        substitution_id: id,
+        branch_id: place.branch,
+        lesson_id: lesson,
+        lesson_date: DAY,
+        relaxed: false,
+      };
+      expect(
+        await outcome(
+          app().run([place.branch], (transaction) =>
+            transaction.insertInto('substitution_lessons').values(bare).execute(),
+          ),
+        ),
+      ).toBe('substitution_lessons_place_check');
+      expect(
+        await outcome(
+          app().run([place.branch], (transaction) =>
+            transaction
+              .insertInto('substitution_lessons')
+              .values({ ...bare, ...PLACE, class_id: null })
+              .execute(),
+          ),
+        ),
+      ).toBe('substitution_lessons_place_check');
+      // An ended row of a removed lesson, as 0101 wrote them, needs none.
+      await database.migrator
+        .insertInto('substitution_lessons')
+        .values({
+          ...bare,
+          lesson_id: null,
+          ended_at: new Date(NOW),
+          end_cause: 'dropped',
+          ended_by: account,
+        })
+        .execute();
+      expect(
+        await outcome(
+          app().run([place.branch], (transaction) =>
+            transaction
+              .updateTable('substitution_lessons')
+              .set({ subject_id: PLACE.load_row_id })
+              .where('lesson_id', '=', lesson)
+              .execute(),
+          ),
+        ),
+      ).toContain('permission denied');
+      await app().run([place.branch], (transaction) =>
+        transaction
+          .updateTable('substitution_lessons')
+          .set({ ended_at: new Date(NOW), end_cause: 'recorded_again', ended_by: account })
+          .where('lesson_id', '=', lesson)
+          .execute(),
+      );
+      const [row] = await database.migrator
+        .selectFrom('substitution_lessons')
+        .select('end_cause')
+        .where('lesson_id', '=', lesson)
+        .execute();
+      expect(row?.end_cause).toBe('recorded_again');
+    });
+
     it('names the branches of an absence’s substitutions in force, ids only, only to a branch of the person in the filter', async () => {
       const place = await fresh();
       const elsewhere = await fresh();
@@ -451,6 +535,7 @@ describe('the substitution record in the database', () => {
             lesson_id: lesson,
             lesson_date: DAY,
             relaxed: false,
+            ...PLACE,
           })
           .execute();
       });

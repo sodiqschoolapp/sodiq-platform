@@ -24,6 +24,7 @@ import { needKeyOf, patternDateOf, vacanciesOf, writtenTeacherOf } from './dated
 import type { SortedBulk } from './bulk-cancels-kept.js';
 import type { SortedDayChange } from './day-changes-kept.js';
 import type { KeptExam } from './exams-kept.js';
+import type { SortedSubstitution } from './substitutions-kept.js';
 import type { PatternState } from './pattern.service.js';
 import { hasStoredLessons, storedImpactLessons, storedLessonRows } from './stored-lessons.js';
 import type { VersionRow } from './timetable.service.js';
@@ -48,6 +49,8 @@ export interface ImpactDays {
   readonly keptStored: ReadonlyMap<string | null, ReadonlySet<string>>;
   /** Task 5.6c-3a: the standing exams of the runs, sorted. */
   readonly exams: readonly KeptExam[];
+  /** Task 5.7b-3: the stored substitutions of the runs, sorted. */
+  readonly substitutions: readonly SortedSubstitution[];
 }
 
 /** The impact preview and the key of its transition week, as the publish compares it. */
@@ -257,7 +260,7 @@ export async function impactOf(
 
   // The names of what the preview names (decision 12): records of the branch only.
   // A class reached only through a group lesson is in `classIds` alone (review of #142).
-  const named = dayChangeIdsOf(days.items, days.bulk, days.exams);
+  const named = dayChangeIdsOf(days.items, days.bulk, days.exams, days.substitutions);
   const unitIds = new Set<string>([
     ...named.unitIds,
     ...impact.classIds,
@@ -269,7 +272,11 @@ export async function impactOf(
     ...allChanges.map((one) => one.subjectId),
     ...(week?.rows ?? []).map((one) => one.subjectId),
   ]);
-  const teacherIds = new Set<string>([...impact.teacherIds, ...vacancies.keys()]);
+  const teacherIds = new Set<string>([
+    ...impact.teacherIds,
+    ...vacancies.keys(),
+    ...named.teacherIds,
+  ]);
   const roomIds = new Set<string>([...impact.roomIds, ...named.roomIds]);
   const units = new Map(
     [...states.values(), draft].flatMap((state) =>
@@ -329,6 +336,7 @@ export async function impactOf(
         dropped: days.items.filter((one) => one.category === 'dropped').map((one) => one.answer),
         bulk: days.bulk.map((one) => one.answer),
         exams: days.exams.map((one) => one.answer),
+        substitutions: days.substitutions.map((one) => one.answer),
         absences: await runAbsences(transaction, draft.version.branch_id, absenceLessons),
         // Task 5.7a-2b (decision 9): the same lessons, put under "needs a room".
         closures: await runClosures(transaction, draft.version.branch_id, absenceLessons),
@@ -345,7 +353,9 @@ export function dayChangeIdsOf(
   bulk: readonly SortedBulk[],
   /** Task 5.6c-3a: the exams of the sorting. */
   exams: readonly KeptExam[] = [],
-): { unitIds: string[]; subjectIds: string[]; roomIds: string[] } {
+  /** Task 5.7b-3: the substitutions of the sorting. */
+  substitutions: readonly SortedSubstitution[] = [],
+): { unitIds: string[]; subjectIds: string[]; roomIds: string[]; teacherIds: string[] } {
   const examLessons = exams.flatMap((one) => [
     ...one.answer.cancelled,
     ...one.answer.clashes,
@@ -368,6 +378,7 @@ export function dayChangeIdsOf(
       ...exams.flatMap((one) =>
         one.answer.blocks.flatMap((block) => [...block.sittingClassIds, ...block.otherClassIds]),
       ),
+      ...substitutions.map((one) => one.answer.unitId),
     ],
     subjectIds: [
       ...items.map((one) => one.answer.subjectId),
@@ -375,10 +386,15 @@ export function dayChangeIdsOf(
         one.answer.blocks.flatMap((block) => block.lessons.map((lesson) => lesson.subjectId)),
       ),
       ...examLessons.map((lesson) => lesson.subjectId),
+      ...substitutions.map((one) => one.answer.subjectId),
     ],
     roomIds: items
       .flatMap((one) => [one.answer.from.roomId, one.answer.to.roomId])
       .flatMap((id) => (id === null ? [] : [id])),
+    teacherIds: substitutions.flatMap((one) => [
+      one.answer.substituteId,
+      ...(one.answer.replacedId === null ? [] : [one.answer.replacedId]),
+    ]),
   };
 }
 

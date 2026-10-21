@@ -89,6 +89,17 @@ import {
   type ExamsAudit,
   type KeptExam,
 } from './exams-kept.js';
+import {
+  settleSubstitutions,
+  sortSubstitutionsKept,
+  substitutionAuditOf,
+  substitutionDecisionsOf,
+  substitutionKeyPartOf,
+  substitutionRefusalsOf,
+  substitutionWritePlanOf,
+  type SortedSubstitution,
+  type SubstitutionsAudit,
+} from './substitutions-kept.js';
 import type { ExamAudit } from './calendar-exams.js';
 import { impactOf, type Impact } from './impact.js';
 import { syncJournals } from './journals.js';
@@ -189,12 +200,23 @@ export function planOfRun(
   bulk: readonly SortedBulk[],
   decisions: ReadonlyMap<string, DayChangeChoice>,
   bulkDecisions: ReadonlyMap<string, DayChangeChoice>,
+  /** Task 5.7b-3: the decisions sent, which the substitutions read with their reasons. */
+  sent?: DayDecisions,
 ): DayWritePlan {
   const day = writePlanOf(sorting.items, sorting.keptStoredIds, decisions);
   const fromBulk = bulkWritePlanOf(bulk, bulkDecisions);
+  const fromSubstitutions = substitutionWritePlanOf(sorting.substitutions, sent);
   const cancels = new Map(day.cancels);
-  for (const [key, reason] of fromBulk.cancels) if (!cancels.has(key)) cancels.set(key, reason);
-  return { ...day, cancels, bulkCancels: fromBulk.bulkCancels, bulkHolds: fromBulk.holds };
+  for (const [key, reason] of [...fromBulk.cancels, ...fromSubstitutions.cancels]) {
+    if (!cancels.has(key)) cancels.set(key, reason);
+  }
+  return {
+    ...day,
+    cancels,
+    bulkCancels: fromBulk.bulkCancels,
+    bulkHolds: fromBulk.holds,
+    substitutes: fromSubstitutions.substitutes,
+  };
 }
 
 /**
@@ -222,7 +244,7 @@ export async function refuseUnknownKeys(
     if (blocks.length !== new Set(blockIds).size) throw new ApiException('not_found', 404);
   }
   if (keys.length === 0) return;
-  const [changes, lessons, bulks, exams] = await Promise.all([
+  const [changes, lessons, bulks, exams, substitutions] = await Promise.all([
     transaction
       .selectFrom('lesson_day_changes')
       .select('id')
@@ -249,8 +271,17 @@ export async function refuseUnknownKeys(
       .where('branch_id', '=', branchId)
       .where('id', 'in', keys)
       .execute(),
+    // Task 5.7b-3: or a substitution row of the branch.
+    transaction
+      .selectFrom('substitution_lessons')
+      .select('id')
+      .where('branch_id', '=', branchId)
+      .where('id', 'in', keys)
+      .execute(),
   ]);
-  const known = new Set([...changes, ...lessons, ...bulks, ...exams].map((one) => one.id));
+  const known = new Set(
+    [...changes, ...lessons, ...bulks, ...exams, ...substitutions].map((one) => one.id),
+  );
   if (keys.some((key) => !known.has(key))) {
     throw new ApiException('not_found', 404);
   }
@@ -265,6 +296,8 @@ export type DayAudit = {
   recordedAgain: string[];
   /** Task 5.6a-5b-1: the bulk cancels of the run by key, and the choices of their blocks. */
   bulk?: BulkAudit;
+  /** Task 5.7b-3: the substitutions of the run by key. */
+  substitutions?: SubstitutionsAudit;
 };
 
 type BulkChoiceAudit = BulkChoiceEntry;
@@ -302,6 +335,8 @@ export function dayRefusalsOf(
     readonly bulk: readonly SortedBulk[];
     /** Task 5.6c-3a: the exams of the sorting. */
     readonly exams?: readonly KeptExam[];
+    /** Task 5.7b-3: the substitutions of the sorting. */
+    readonly substitutions?: readonly SortedSubstitution[];
   },
   input: {
     readonly dayChangesKey?: string | undefined;
@@ -312,7 +347,12 @@ export function dayRefusalsOf(
   const exams = days.exams ?? [];
   // Task 5.6c-3a: a decision that names an exam of the sorting is the exams'.
   const { named } = examDecisionsOf(exams, input.dayDecisions);
-  const others = (input.dayDecisions ?? []).filter((one) => !named.has(one));
+  // Task 5.7b-3: and one that names a substitution, the substitutions'.
+  const substitutions = days.substitutions ?? [];
+  const forSubstitutions = substitutionDecisionsOf(substitutions, input.dayDecisions).named;
+  const others = (input.dayDecisions ?? []).filter(
+    (one) => !named.has(one) && !forSubstitutions.has(one),
+  );
   const { decisions } = dayDecisionsOf(others);
   const bulkSent = others.filter((one) => one.blockId !== undefined);
   const bulkDecisions = new Set(bulkSent.map((one) => dayDecisionKeyOf(one)));
@@ -321,6 +361,7 @@ export function dayRefusalsOf(
     (items.length > 0 ||
       bulk.length > 0 ||
       exams.length > 0 ||
+      substitutions.length > 0 ||
       input.dayChangesKey !== undefined) &&
     input.dayChangesKey !== key
   ) {
@@ -372,6 +413,7 @@ export function dayRefusalsOf(
     }
   }
   refusals.push(...examRefusalsOf(exams, input.dayDecisions));
+  refusals.push(...substitutionRefusalsOf(substitutions, input.dayDecisions));
   return refusals;
 }
 
@@ -393,6 +435,8 @@ export function dayAuditOf(
   decisions: ReadonlyMap<string, DayChangeChoice>,
   settled: { readonly ended: readonly string[]; readonly recordedAgain: readonly string[] },
   bulk: BulkAudit | null = null,
+  /** Task 5.7b-3: the substitutions of the run (`substitutionAuditOf`). */
+  substitutions: SubstitutionsAudit | null = null,
 ): DayAudit {
   const keysOf = (category: string) =>
     items
@@ -409,6 +453,7 @@ export function dayAuditOf(
     ended: [...settled.ended],
     recordedAgain: [...settled.recordedAgain],
     ...(bulk === null ? {} : { bulk }),
+    ...(substitutions === null ? {} : { substitutions }),
   };
 }
 
@@ -933,7 +978,9 @@ export class TimetablePublish {
       findings.written.findings,
       startsOn,
       findings.written.state.pattern.model.data.versionEnd,
-      ownSorting === null ? null : planOfRun(ownSorting, ownBulk, decisions, bulkDecisions),
+      ownSorting === null
+        ? null
+        : planOfRun(ownSorting, ownBulk, decisions, bulkDecisions, input.dayDecisions),
       examsWriteOf({
         branchId,
         items: ownExams,
@@ -953,6 +1000,18 @@ export class TimetablePublish {
             accountId: access.accountId,
             items: ownSorting.items,
             decisions,
+          });
+    // Task 5.7b-3: the kept substitutions recorded again on lessons created again.
+    const substitutionsSettled =
+      ownSorting === null
+        ? null
+        : await settleSubstitutions(transaction, {
+            branchId,
+            items: ownSorting.substitutions,
+            sent: input.dayDecisions,
+            placed: lessons.substitutesPlaced,
+            moment,
+            accountId: access.accountId,
           });
     // Task 5.6a-5b-1: the choices of the bulk cancels' blocks recorded on the blocks written.
     const bulkRecorded = await recordBulkBlocks(transaction, {
@@ -1035,6 +1094,13 @@ export class TimetablePublish {
               decisions,
               settled,
               bulkAuditOf(ownBulk, bulkRecorded),
+              substitutionsSettled === null
+                ? null
+                : substitutionAuditOf(
+                    ownSorting.substitutions,
+                    input.dayDecisions,
+                    substitutionsSettled,
+                  ),
             ),
           }),
       // Task 5.6c-3a: each standing exam of the run, kept or decided.
@@ -1205,7 +1271,7 @@ export class TimetablePublish {
               result.written.lastDate,
               sorting === null
                 ? null
-                : planOfRun(sorting, days.bulk, days.decisions, days.bulkDecisions),
+                : planOfRun(sorting, days.bulk, days.decisions, days.bulkDecisions, days.sent),
               examsWriteOf({
                 branchId: days.branchId,
                 items: days.exams,
@@ -1224,6 +1290,18 @@ export class TimetablePublish {
               accountId: days.accountId,
               items: sorting.items,
               decisions: days.decisions,
+            });
+      // Task 5.7b-3: inside the savepoint too.
+      const substitutionsSettled =
+        sorting === null || written === true
+          ? null
+          : await settleSubstitutions(transaction, {
+              branchId: days.branchId,
+              items: sorting.substitutions,
+              sent: days.sent,
+              placed: written.substitutesPlaced,
+              moment: days.moment,
+              accountId: days.accountId,
             });
       // Task 5.6a-5b-1: inside the savepoint too (decision 11).
       const bulkRecorded =
@@ -1251,6 +1329,9 @@ export class TimetablePublish {
                 days.decisions,
                 settled,
                 bulkRecorded === null ? null : bulkAuditOf(days.bulk, bulkRecorded),
+                substitutionsSettled === null
+                  ? null
+                  : substitutionAuditOf(sorting.substitutions, days.sent, substitutionsSettled),
               ),
       };
     } catch (error) {
@@ -1519,16 +1600,28 @@ export class TimetablePublish {
       carriedVersionId: null,
       ...(ownExamsBefore.forSorting === undefined ? {} : { exams: ownExamsBefore.forSorting }),
     });
-    sortings.set(null, ownDays);
-    examSortings.set(
+    const ownExamsKept = sortExamsKept({
+      branchId,
+      state,
+      findings: ownDays.findings,
+      before: ownExamsBefore,
+      carriedVersionId: null,
+      noTimetable: false,
+    });
+    examSortings.set(null, ownExamsKept);
+    // Task 5.7b-3: the substitutions after the exams, on the same findings.
+    sortings.set(
       null,
-      sortExamsKept({
+      await sortSubstitutionsKept(transaction, {
         branchId,
-        state,
-        findings: ownDays.findings,
-        before: ownExamsBefore,
+        sorting: ownDays,
+        firstDate: startsOn,
+        lastDate: state.pattern.model.data.versionEnd,
         carriedVersionId: null,
-        noTimetable: false,
+        exams: ownExamsKept,
+        ...(ownExamsBefore.forSorting === undefined
+          ? {}
+          : { examCovered: ownExamsBefore.forSorting.covered }),
       }),
     );
     const carriedSorted: CarryResult[] = [];
@@ -1551,19 +1644,32 @@ export class TimetablePublish {
         carriedVersionId: one.version.id,
         ...(examsBefore.forSorting === undefined ? {} : { exams: examsBefore.forSorting }),
       });
-      sortings.set(one.version.id, sorting);
-      examSortings.set(
-        one.version.id,
-        sortExamsKept({
-          branchId,
-          state: one.written.state,
-          findings: sorting.findings,
-          before: examsBefore,
-          carriedVersionId: one.version.id,
-          noTimetable: false,
-        }),
-      );
-      carriedSorted.push({ ...one, written: { ...one.written, findings: sorting.findings } });
+      const examsKept = sortExamsKept({
+        branchId,
+        state: one.written.state,
+        findings: sorting.findings,
+        before: examsBefore,
+        carriedVersionId: one.version.id,
+        noTimetable: false,
+      });
+      examSortings.set(one.version.id, examsKept);
+      // Task 5.7b-3: the carried run's substitutions, after its exams.
+      const withSubstitutions = await sortSubstitutionsKept(transaction, {
+        branchId,
+        sorting,
+        firstDate: one.version.starts_on,
+        lastDate: one.written.lastDate,
+        carriedVersionId: one.version.id,
+        exams: examsKept,
+        ...(examsBefore.forSorting === undefined
+          ? {}
+          : { examCovered: examsBefore.forSorting.covered }),
+      });
+      sortings.set(one.version.id, withSubstitutions);
+      carriedSorted.push({
+        ...one,
+        written: { ...one.written, findings: withSubstitutions.findings },
+      });
     }
     const items = [...sortings.values()].flatMap((one) => one.items);
     // Task 5.6a-5b-1: the bulk cancels of each run sorted, on its findings with
@@ -1599,6 +1705,7 @@ export class TimetablePublish {
       items,
       bulkItems.length === 0 ? null : bulkKeyPartOf(bulkItems),
       examKeyPartOf(examItems),
+      substitutionKeyPartOf([...sortings.values()].flatMap((one) => one.substitutions)),
     );
     const ownSorting = sortings.get(null);
     if (ownSorting === undefined) throw new Error('The run is always sorted.');
@@ -1618,6 +1725,7 @@ export class TimetablePublish {
         items,
         bulk: bulkItems,
         exams: examItems,
+        substitutions: [...sortings.values()].flatMap((one) => one.substitutions),
         keptStored: new Map([...sortings].map(([id, one]) => [id, one.keptStoredIds])),
       },
       carriedSorted.flatMap((one) =>
@@ -1792,6 +1900,7 @@ function refuseUnshown(findings: Findings, input: PublishBody): string | null {
           items: findings.days.items,
           bulk: [...findings.days.bulk.values()].flat(),
           exams: [...findings.days.exams.values()].flat(),
+          substitutions: [...findings.days.sortings.values()].flatMap((one) => one.substitutions),
         },
         input,
       ),

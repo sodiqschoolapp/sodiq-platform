@@ -12852,6 +12852,48 @@ export interface operations {
                                         end: number;
                                     }[];
                                 }[];
+                                substitutions: {
+                                    /** Format: uuid */
+                                    key: string;
+                                    /** @enum {string} */
+                                    category: "kept" | "decide" | "dropped";
+                                    /** Format: uuid */
+                                    unitId: string;
+                                    /** Format: uuid */
+                                    subjectId: string;
+                                    lessons: {
+                                        /** Format: date */
+                                        date: string;
+                                        start: number;
+                                        end: number;
+                                    }[];
+                                    /** Format: uuid */
+                                    replacedId: string | null;
+                                    /** Format: uuid */
+                                    substituteId: string;
+                                    reason: string;
+                                    /** Format: uuid */
+                                    absenceId: string | null;
+                                    /** Format: uuid */
+                                    carriedVersionId: string | null;
+                                    blocked: {
+                                        rule: string;
+                                        /** @enum {string} */
+                                        severity: "blocked" | "warning";
+                                        weekday: (1 | 2 | 3 | 4 | 5 | 6 | 7) | null;
+                                        lessonIds: string[];
+                                        detail?: {
+                                            [key: string]: number | string;
+                                        };
+                                        /** Format: date */
+                                        date?: string;
+                                    }[];
+                                    away: boolean;
+                                    dropOffered: boolean;
+                                    /** @enum {string|null} */
+                                    dropCause: "gone" | "cancelled" | "teacher" | null;
+                                    dependsOn: string[];
+                                }[];
                                 absences: {
                                     /** Format: uuid */
                                     id: string;
@@ -17907,6 +17949,48 @@ export interface operations {
                                         end: number;
                                     }[];
                                 }[];
+                                substitutions: {
+                                    /** Format: uuid */
+                                    key: string;
+                                    /** @enum {string} */
+                                    category: "kept" | "decide" | "dropped";
+                                    /** Format: uuid */
+                                    unitId: string;
+                                    /** Format: uuid */
+                                    subjectId: string;
+                                    lessons: {
+                                        /** Format: date */
+                                        date: string;
+                                        start: number;
+                                        end: number;
+                                    }[];
+                                    /** Format: uuid */
+                                    replacedId: string | null;
+                                    /** Format: uuid */
+                                    substituteId: string;
+                                    reason: string;
+                                    /** Format: uuid */
+                                    absenceId: string | null;
+                                    /** Format: uuid */
+                                    carriedVersionId: string | null;
+                                    blocked: {
+                                        rule: string;
+                                        /** @enum {string} */
+                                        severity: "blocked" | "warning";
+                                        weekday: (1 | 2 | 3 | 4 | 5 | 6 | 7) | null;
+                                        lessonIds: string[];
+                                        detail?: {
+                                            [key: string]: number | string;
+                                        };
+                                        /** Format: date */
+                                        date?: string;
+                                    }[];
+                                    away: boolean;
+                                    dropOffered: boolean;
+                                    /** @enum {string|null} */
+                                    dropCause: "gone" | "cancelled" | "teacher" | null;
+                                    dependsOn: string[];
+                                }[];
                                 absences: {
                                     /** Format: uuid */
                                     id: string;
@@ -19183,6 +19267,48 @@ export interface operations {
                                         start: number;
                                         end: number;
                                     }[];
+                                }[];
+                                substitutions: {
+                                    /** Format: uuid */
+                                    key: string;
+                                    /** @enum {string} */
+                                    category: "kept" | "decide" | "dropped";
+                                    /** Format: uuid */
+                                    unitId: string;
+                                    /** Format: uuid */
+                                    subjectId: string;
+                                    lessons: {
+                                        /** Format: date */
+                                        date: string;
+                                        start: number;
+                                        end: number;
+                                    }[];
+                                    /** Format: uuid */
+                                    replacedId: string | null;
+                                    /** Format: uuid */
+                                    substituteId: string;
+                                    reason: string;
+                                    /** Format: uuid */
+                                    absenceId: string | null;
+                                    /** Format: uuid */
+                                    carriedVersionId: string | null;
+                                    blocked: {
+                                        rule: string;
+                                        /** @enum {string} */
+                                        severity: "blocked" | "warning";
+                                        weekday: (1 | 2 | 3 | 4 | 5 | 6 | 7) | null;
+                                        lessonIds: string[];
+                                        detail?: {
+                                            [key: string]: number | string;
+                                        };
+                                        /** Format: date */
+                                        date?: string;
+                                    }[];
+                                    away: boolean;
+                                    dropOffered: boolean;
+                                    /** @enum {string|null} */
+                                    dropCause: "gone" | "cancelled" | "teacher" | null;
+                                    dependsOn: string[];
                                 }[];
                                 absences: {
                                     /** Format: uuid */
@@ -26163,6 +26289,48 @@ export interface operations {
                                         end: number;
                                     }[];
                                 }[];
+                                substitutions: {
+                                    /** Format: uuid */
+                                    key: string;
+                                    /** @enum {string} */
+                                    category: "kept" | "decide" | "dropped";
+                                    /** Format: uuid */
+                                    unitId: string;
+                                    /** Format: uuid */
+                                    subjectId: string;
+                                    lessons: {
+                                        /** Format: date */
+                                        date: string;
+                                        start: number;
+                                        end: number;
+                                    }[];
+                                    /** Format: uuid */
+                                    replacedId: string | null;
+                                    /** Format: uuid */
+                                    substituteId: string;
+                                    reason: string;
+                                    /** Format: uuid */
+                                    absenceId: string | null;
+                                    /** Format: uuid */
+                                    carriedVersionId: string | null;
+                                    blocked: {
+                                        rule: string;
+                                        /** @enum {string} */
+                                        severity: "blocked" | "warning";
+                                        weekday: (1 | 2 | 3 | 4 | 5 | 6 | 7) | null;
+                                        lessonIds: string[];
+                                        detail?: {
+                                            [key: string]: number | string;
+                                        };
+                                        /** Format: date */
+                                        date?: string;
+                                    }[];
+                                    away: boolean;
+                                    dropOffered: boolean;
+                                    /** @enum {string|null} */
+                                    dropCause: "gone" | "cancelled" | "teacher" | null;
+                                    dependsOn: string[];
+                                }[];
                                 absences: {
                                     /** Format: uuid */
                                     id: string;
@@ -27176,6 +27344,48 @@ export interface operations {
                                     start: number;
                                     end: number;
                                 }[];
+                            }[];
+                            substitutions: {
+                                /** Format: uuid */
+                                key: string;
+                                /** @enum {string} */
+                                category: "kept" | "decide" | "dropped";
+                                /** Format: uuid */
+                                unitId: string;
+                                /** Format: uuid */
+                                subjectId: string;
+                                lessons: {
+                                    /** Format: date */
+                                    date: string;
+                                    start: number;
+                                    end: number;
+                                }[];
+                                /** Format: uuid */
+                                replacedId: string | null;
+                                /** Format: uuid */
+                                substituteId: string;
+                                reason: string;
+                                /** Format: uuid */
+                                absenceId: string | null;
+                                /** Format: uuid */
+                                carriedVersionId: string | null;
+                                blocked: {
+                                    rule: string;
+                                    /** @enum {string} */
+                                    severity: "blocked" | "warning";
+                                    weekday: (1 | 2 | 3 | 4 | 5 | 6 | 7) | null;
+                                    lessonIds: string[];
+                                    detail?: {
+                                        [key: string]: number | string;
+                                    };
+                                    /** Format: date */
+                                    date?: string;
+                                }[];
+                                away: boolean;
+                                dropOffered: boolean;
+                                /** @enum {string|null} */
+                                dropCause: "gone" | "cancelled" | "teacher" | null;
+                                dependsOn: string[];
                             }[];
                             absences: {
                                 /** Format: uuid */
@@ -46469,6 +46679,48 @@ export interface operations {
                                             start: number;
                                             end: number;
                                         }[];
+                                    }[];
+                                    substitutions: {
+                                        /** Format: uuid */
+                                        key: string;
+                                        /** @enum {string} */
+                                        category: "kept" | "decide" | "dropped";
+                                        /** Format: uuid */
+                                        unitId: string;
+                                        /** Format: uuid */
+                                        subjectId: string;
+                                        lessons: {
+                                            /** Format: date */
+                                            date: string;
+                                            start: number;
+                                            end: number;
+                                        }[];
+                                        /** Format: uuid */
+                                        replacedId: string | null;
+                                        /** Format: uuid */
+                                        substituteId: string;
+                                        reason: string;
+                                        /** Format: uuid */
+                                        absenceId: string | null;
+                                        /** Format: uuid */
+                                        carriedVersionId: string | null;
+                                        blocked: {
+                                            rule: string;
+                                            /** @enum {string} */
+                                            severity: "blocked" | "warning";
+                                            weekday: (1 | 2 | 3 | 4 | 5 | 6 | 7) | null;
+                                            lessonIds: string[];
+                                            detail?: {
+                                                [key: string]: number | string;
+                                            };
+                                            /** Format: date */
+                                            date?: string;
+                                        }[];
+                                        away: boolean;
+                                        dropOffered: boolean;
+                                        /** @enum {string|null} */
+                                        dropCause: "gone" | "cancelled" | "teacher" | null;
+                                        dependsOn: string[];
                                     }[];
                                     absences: {
                                         /** Format: uuid */

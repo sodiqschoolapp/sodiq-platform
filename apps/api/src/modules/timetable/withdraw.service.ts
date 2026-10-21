@@ -55,6 +55,12 @@ import {
   sortExamsKept,
   type KeptExam,
 } from './exams-kept.js';
+import {
+  settleSubstitutions,
+  sortSubstitutionsKept,
+  substitutionAuditOf,
+  substitutionKeyPartOf,
+} from './substitutions-kept.js';
 import { dayChangeIdsOf, namesOf } from './impact.js';
 import { runsOf, syncJournals } from './journals.js';
 import { markWithdrawn, outOfDateColumn } from './out-of-date.js';
@@ -162,10 +168,15 @@ export class TimetableWithdraw {
     return this.transactions.run(access.branchIds, async (transaction) => {
       await this.timetable.findVersion(transaction, branchId, id);
       const found = await this.findingsOf(transaction, access, id);
-      const named = dayChangeIdsOf(found.sorting.items, found.bulk, found.exams);
+      const named = dayChangeIdsOf(
+        found.sorting.items,
+        found.bulk,
+        found.exams,
+        found.sorting.substitutions,
+      );
       const { names } = await namesOf(
         transaction,
-        { ...named, teacherIds: [] },
+        named,
         new Map(found.state.pattern.model.data.units.map((unit) => [unit.id, unit] as const)),
       );
       return {
@@ -184,6 +195,7 @@ export class TimetableWithdraw {
             .map((one) => one.answer),
           bulk: found.bulk.map((one) => one.answer),
           exams: found.exams.map((one) => one.answer),
+          substitutions: found.sorting.substitutions.map((one) => one.answer),
           // Task 5.7a-1 (decision 7): the absences over the lessons the
           // earlier version writes again.
           absences: await runAbsences(
@@ -292,7 +304,13 @@ export class TimetableWithdraw {
     const details = [
       ...found.blocked,
       ...dayRefusalsOf(
-        { key: found.key, items: found.sorting.items, bulk: found.bulk, exams: found.exams },
+        {
+          key: found.key,
+          items: found.sorting.items,
+          bulk: found.bulk,
+          exams: found.exams,
+          substitutions: found.sorting.substitutions,
+        },
         input,
       ).map(detailOf),
     ];
@@ -300,7 +318,7 @@ export class TimetableWithdraw {
       throw new ApiException('withdraw_blocked', 409, undefined, details);
     }
     const { decisions, bulkDecisions } = dayDecisionsOf(input.dayDecisions);
-    const plan = planOfRun(found.sorting, found.bulk, decisions, bulkDecisions);
+    const plan = planOfRun(found.sorting, found.bulk, decisions, bulkDecisions, input.dayDecisions);
 
     // Task 5.5c-3a: the lessons before the withdraw, read before its write.
     const week = await snapshotWeek(transaction, branchId, version.starts_on, runEnd);
@@ -366,6 +384,15 @@ export class TimetableWithdraw {
       items: found.sorting.items,
       decisions,
     });
+    // Task 5.7b-3: the kept substitutions recorded again on lessons created again.
+    const substitutionsSettled = await settleSubstitutions(transaction, {
+      branchId,
+      items: found.sorting.substitutions,
+      sent: input.dayDecisions,
+      placed: lessons.substitutesPlaced,
+      moment: await transactionMoment(transaction),
+      accountId: access.accountId,
+    });
     const bulkRecorded =
       earlier === null
         ? { decided: [], carried: [] }
@@ -414,6 +441,11 @@ export class TimetableWithdraw {
           decisions,
           settled,
           bulkAuditOf(found.bulk, bulkRecorded),
+          substitutionAuditOf(
+            found.sorting.substitutions,
+            input.dayDecisions,
+            substitutionsSettled,
+          ),
         ),
         ...(found.exams.length === 0
           ? {}
@@ -573,7 +605,7 @@ export class TimetableWithdraw {
       firstDate: version.starts_on,
       lastDate: runEnd,
     });
-    const sorting = await sortDayChanges(transaction, {
+    const days = await sortDayChanges(transaction, {
       state,
       findings: dated,
       firstDate: version.starts_on,
@@ -584,10 +616,23 @@ export class TimetableWithdraw {
     const exams = sortExamsKept({
       branchId,
       state,
-      findings: sorting.findings,
+      findings: days.findings,
       before: examsBefore,
       carriedVersionId: null,
       noTimetable: before === null,
+    });
+    // Task 5.7b-3: the substitutions of the dates, after the exams; with no
+    // version running again, every one is dropped.
+    const sorting = await sortSubstitutionsKept(transaction, {
+      branchId,
+      sorting: days,
+      firstDate: version.starts_on,
+      lastDate: runEnd,
+      carriedVersionId: null,
+      exams,
+      ...(examsBefore.forSorting === undefined
+        ? {}
+        : { examCovered: examsBefore.forSorting.covered }),
     });
     const bulk = sortBulkOf({
       lessons: sorting.findings.dated.lessons,
@@ -602,6 +647,7 @@ export class TimetableWithdraw {
       sorting.items,
       bulk.length === 0 ? null : bulkKeyPartOf(bulk),
       examKeyPartOf(exams),
+      substitutionKeyPartOf(sorting.substitutions),
     );
     return { version, earlier, runEnd, state, dated, blocked, sorting, bulk, exams, key };
   }

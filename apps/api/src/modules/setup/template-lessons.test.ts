@@ -1268,6 +1268,103 @@ describe('template changes after publishing', () => {
       expect([clock(after.starts_at), await roomOf(after.id)]).toEqual(['08:45', room]);
     });
 
+    // Task 5.7b-3 (spec review of the plan, must-fixes 1 and 2): a template
+    // change gives the lesson new times, so it is removed and written again;
+    // the substitution kept on it is recorded again, never dropped.
+    it('a substitution stays on the lesson at its new times, its row recorded again under the same record', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, OCT26, s.seniorId);
+      const stored = await t.database.migrator
+        .selectFrom('lessons')
+        .selectAll()
+        .where('id', '=', lesson.id)
+        .executeTakeFirstOrThrow();
+      // A person with no subject, saved under the exception "no teacher of the subject is free".
+      const substitute = await load.teacher(s.branch, { subjects: [] });
+      const account = await t.database.migrator
+        .selectFrom('accounts')
+        .select('id')
+        .orderBy('id')
+        .executeTakeFirstOrThrow();
+      const record = await t.database.migrator
+        .insertInto('substitutions')
+        .values({
+          branch_id: s.branch,
+          source: 'lesson',
+          replaced_id: stored.teacher_id,
+          substitute_id: substitute.staffId,
+          relaxed: true,
+          reason: 'The teacher is ill',
+          made_at: new Date('2026-10-10T12:00:00+05:00'),
+          made_by: account.id,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ teacher_id: substitute.staffId })
+        .where('id', '=', lesson.id)
+        .execute();
+      const row = await t.database.migrator
+        .insertInto('substitution_lessons')
+        .values({
+          substitution_id: record.id,
+          branch_id: s.branch,
+          lesson_id: lesson.id,
+          lesson_date: OCT26,
+          relaxed: true,
+          class_id: stored.class_id,
+          group_id: stored.group_id,
+          subject_id: stored.subject_id,
+          load_row_id: stored.load_row_id,
+          pattern_entry_id: stored.pattern_entry_id,
+          pattern_date: OCT26,
+          starts_at: stored.starts_at,
+          ends_at: stored.ends_at,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+
+      const { shown, saved } = await lengthFollowed(s, OCT19);
+      const sorted = (
+        shown.lessons.dayChanges as unknown as {
+          substitutions: { key: string; category: string; lessons: { start: number }[] }[];
+        }
+      ).substitutions;
+      expect(sorted).toEqual([
+        expect.objectContaining({
+          key: row.id,
+          category: 'kept',
+          lessons: [expect.objectContaining({ start: 530 })],
+        }),
+      ]);
+      okay(saved);
+      const moved = await lessonOf(s, OCT26, s.seniorId);
+      expect(moved.id).not.toBe(lesson.id);
+      const rows = await t.database.migrator
+        .selectFrom('substitution_lessons')
+        .select(['id', 'substitution_id', 'lesson_id', 'end_cause', 'relaxed', 'starts_at'])
+        .where('substitution_id', '=', record.id)
+        .orderBy('id')
+        .execute();
+      expect(rows).toEqual([
+        expect.objectContaining({ id: row.id, lesson_id: null, end_cause: 'recorded_again' }),
+        expect.objectContaining({
+          substitution_id: record.id,
+          lesson_id: moved.id,
+          end_cause: null,
+          relaxed: true,
+        }),
+      ]);
+      expect(clock(rows[1]?.starts_at ?? new Date(0))).toBe('08:50');
+      const teacher = await t.database.migrator
+        .selectFrom('lessons')
+        .select('teacher_id')
+        .where('id', '=', moved.id)
+        .executeTakeFirstOrThrow();
+      expect(teacher.teacher_id).toBe(substitute.staffId);
+    });
+
     it('a move inside a written date goes to the new times of its lesson number', async () => {
       const s = await scene();
       const lesson = await lessonOf(s, OCT26, s.classId);

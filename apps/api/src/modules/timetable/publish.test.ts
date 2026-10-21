@@ -2068,9 +2068,18 @@ describe('publish', () => {
         expect(substituted).toBeGreaterThan(0);
       }
       const theirsBefore = await written([theirs.fix]);
-      const chain = await laterKey(s.branch, s.fix, '2026-10-19', 'replace');
+      const checked = checkOf(await checkChain(s.branch, s.fix, '2026-10-19', 'replace'));
+      const chain = checked.chain;
+      if (chain === null) throw new Error('A later version is shown.');
       const key = randomUUID();
-      versionOf(await publishChain(s.branch, s.fix, '2026-10-19', 'replace', chain.key, key));
+      // Task 5.7b-3: the substitutions the replace rewrites are shown, so the
+      // publish sends the key of its sorting.
+      const dayChangesKey = checked.impact?.dayChanges.key;
+      versionOf(
+        await publishChain(s.branch, s.fix, '2026-10-19', 'replace', chain.key, key, {
+          ...(dayChangesKey === undefined ? {} : { dayChangesKey }),
+        }),
+      );
       const after = await written([s.fix, theirs.fix]);
       for (const id of [theirs.fix, UNKNOWN]) {
         refusedWith(
@@ -2105,8 +2114,20 @@ describe('publish', () => {
         theirEntries,
       ]);
       const ownBefore = (await written([s.fix])).slice(0, 3);
-      const carry = await laterKey(theirs.branch, theirs.fix, '2026-10-19', 'carry');
-      versionOf(await publishChain(theirs.branch, theirs.fix, '2026-10-19', 'carry', carry.key));
+      const carried = checkOf(await checkChain(theirs.branch, theirs.fix, '2026-10-19', 'carry'));
+      if (carried.chain === null) throw new Error('A later version is shown.');
+      const carryDays = carried.impact?.dayChanges.key;
+      versionOf(
+        await publishChain(
+          theirs.branch,
+          theirs.fix,
+          '2026-10-19',
+          'carry',
+          carried.chain.key,
+          randomUUID(),
+          carryDays === undefined ? {} : { dayChangesKey: carryDays },
+        ),
+      );
       expect((await rowsOf(theirs.b)).map((one) => one.teacher_id)).toEqual([theirs.second]);
       expect((await written([s.fix])).slice(0, 3)).toEqual(ownBefore);
     });

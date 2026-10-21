@@ -2891,6 +2891,8 @@ describe('calendar entries after publishing', () => {
         absences: [],
         // Task 5.7a-2b (decision 9): nor room closures.
         closures: [],
+        // Task 5.7b-3: no substitution stands on the dates.
+        substitutions: [],
       });
       expect(await storedRowsOf(s.branch)).toEqual(rows[0]);
       expect(await storedRowsOf(other.branch)).toEqual(rows[1]);

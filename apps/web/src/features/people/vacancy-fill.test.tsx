@@ -157,6 +157,7 @@ const IMPACT = {
     dropped: [],
     absences: [],
     closures: [],
+    substitutions: [],
     bulk: [],
     exams: [],
   },
