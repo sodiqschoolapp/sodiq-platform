@@ -11,6 +11,9 @@ import { examPlacementOf, type StandingExam } from './calendar-exams.js';
 import { closedSpansOn } from './rooms-out-read.js';
 import { claimsElsewhere, teacherStatesOf } from './dated-check.js';
 import { dayStateOf, examsOn, storedLessonsOn, type Services } from './stored-day.js';
+import { versionOnDate } from './version-on-date.js';
+
+export { versionOnDate };
 
 /**
  * The rule check of an exam on its date before the exam save writes it
@@ -53,26 +56,6 @@ export interface ExamCandidate {
 export interface ExamDay {
   readonly begins: Date;
   readonly dayOf: (grade: number) => EngineDay;
-}
-
-/** The version in force on a date of the year, or `null`. */
-export async function versionOnDate(
-  transaction: Transaction,
-  branchId: string,
-  yearId: string,
-  date: string,
-): Promise<string | null> {
-  const found = await transaction
-    .selectFrom('timetable_versions')
-    .select('id')
-    .where('branch_id', '=', branchId)
-    .where('academic_year_id', '=', yearId)
-    .where('status', '=', 'published')
-    .where('starts_on', '<=', date)
-    .orderBy('starts_on', 'desc')
-    .orderBy('number', 'desc')
-    .executeTakeFirst();
-  return found?.id ?? null;
 }
 
 /** The facts of the version on the date, with the people named added. */

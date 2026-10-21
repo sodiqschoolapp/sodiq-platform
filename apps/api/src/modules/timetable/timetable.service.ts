@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import {
   academicYearName,
   academicYearStatusSchema,
+  leftBlockSchema,
   loadProblemSchema,
   readinessCellKeySchema,
   schoolDateOf,
@@ -9,6 +10,7 @@ import {
   type DraftReadiness,
   type ErrorCode,
   type ErrorDetail,
+  type LeftBlock,
   type Load,
   type LoadRow,
   type LoadRowEdit,
@@ -23,9 +25,14 @@ import {
   type TimetableVersionCreate,
   type TimetableVersionEdit,
   type TimetableVersionList,
+  type TimetableHistory,
+  type TimetableHistoryQuery,
+  type VersionComparison,
 } from '@sodiq/shared';
 import {
   BLOCK_PROBLEM_ORDER,
+  versionDifferences,
+  type DiffVersion,
   blockOf,
   blockProblems,
   classWeekLessons,
@@ -80,6 +87,8 @@ import {
 } from './load-facts.js';
 import { blockRowOf, readBlockGroups } from './load-blocks.js';
 import { copyCauses, outOfDateColumn } from './out-of-date.js';
+import { versionOnDate } from './version-on-date.js';
+import { planPatternCopy, writePatternCopy, type PatternCopy } from './copy-pattern.js';
 import { auditOf, followChanged, followVersion } from './tutor-lessons.js';
 import { checkPins, pinRowsOf, readPins, type StoredPin } from './pins-check.js';
 import { blockedRefusal } from './rule-answers.js';
@@ -170,6 +179,10 @@ type LeftRow = z.infer<typeof leftRowSchema>;
 
 const leftRowsOf = (stored: unknown): LeftRow[] => z.array(leftRowSchema).parse(stored);
 
+/** The blocks a copy left (task 5.8a, 0104). */
+export const leftBlocksOf = (stored: unknown): LeftBlock[] =>
+  z.array(leftBlockSchema).parse(stored);
+
 const storedOfLeft = (left: LeftRow): StoredLoadRow => ({
   id: left.sourceRowId,
   class_id: left.classId,
@@ -193,6 +206,7 @@ export interface VersionRow extends WeightColumns {
   starts_on: string;
   from_version_id: string | null;
   left_rows: unknown;
+  left_blocks: unknown;
   templates_confirmed: unknown;
   rules_confirmed: unknown;
   edit_holder_id: string | null;
@@ -331,6 +345,155 @@ export class Timetable {
   }
 
   /**
+   * The history of a year's versions (task 5.8a, decisions 2 and 3; `06`,
+   * Protection): every version of the year by start date, then number, and
+   * the published version in force on the first day of each quarter with
+   * dates (`versionOnDate`). Another branch's or an unknown year: 404.
+   */
+  history(access: Access, query: TimetableHistoryQuery): Promise<TimetableHistory> {
+    const branchId = branchOf(access);
+    return this.transactions.run(access.branchIds, async (transaction) => {
+      const year = await transaction
+        .selectFrom('academic_years')
+        .select('id')
+        .where('id', '=', query.academicYearId)
+        .where('branch_id', '=', branchId)
+        .executeTakeFirst();
+      if (year === undefined) {
+        throw notFound();
+      }
+      const rows = await this.versionsIn(transaction)
+        .where('timetable_versions.academic_year_id', '=', year.id)
+        .orderBy('timetable_versions.starts_on')
+        .orderBy('timetable_versions.number')
+        .execute();
+      const versions = await this.answersOf(transaction, rows, access.accountId);
+      const quarters = await transaction
+        .selectFrom('quarters')
+        .select(['number', sql<string | null>`start_date::text`.as('start_date')])
+        .where('academic_year_id', '=', year.id)
+        .orderBy('number')
+        .execute();
+      const named = [];
+      for (const quarter of quarters) {
+        if (quarter.start_date === null) continue;
+        const inForce = await versionOnDate(transaction, branchId, year.id, quarter.start_date);
+        const version = versions.find((one) => one.id === inForce);
+        named.push({
+          number: quarter.number,
+          startsOn: quarter.start_date,
+          version: version === undefined ? null : { id: version.id, number: version.number },
+        });
+      }
+      return { versions, quarters: named, today: await this.todayIn(transaction, branchId) };
+    });
+  }
+
+  /**
+   * Two versions of one year compared (task 5.8a, decision 4; `06`,
+   * Protection: "compares two versions"): the differences of `withId`
+   * against `id` (`versionDifferences`), the rows of both named and the
+   * rooms named. Either of another branch or unknown: 404; two years:
+   * `version_compare_year`.
+   */
+  compare(access: Access, id: string, withId: string): Promise<VersionComparison> {
+    const branchId = branchOf(access);
+    return this.transactions.run(access.branchIds, async (transaction) => {
+      const before = await this.findVersion(transaction, branchId, id);
+      const after = await this.findVersion(transaction, branchId, withId);
+      if (before.academic_year_id !== after.academic_year_id) {
+        throw new ApiException('version_compare_year', 422);
+      }
+      const sides = await Promise.all(
+        [before, after].map(async (version) => {
+          const context = await this.contextOf(transaction, version);
+          const rows = await this.rowsOf(transaction, version.id);
+          const facts = await LoadFacts.of(transaction, context, rows, { versionRows: rows });
+          const entries = await transaction
+            .selectFrom('pattern_entries')
+            .innerJoin('pattern_blocks', 'pattern_blocks.id', 'pattern_entries.block_id')
+            .select([
+              'pattern_entries.id',
+              'pattern_entries.load_row_id',
+              'pattern_entries.room_id',
+              'pattern_blocks.weekday',
+              'pattern_blocks.slot_position',
+              'pattern_blocks.start_minutes',
+              'pattern_blocks.end_minutes',
+              'pattern_blocks.double_pair_id',
+            ])
+            .where('pattern_entries.version_id', '=', version.id)
+            .orderBy('pattern_blocks.weekday')
+            .orderBy('pattern_blocks.start_minutes')
+            .orderBy('pattern_entries.id')
+            .execute();
+          return { rows, facts, entries };
+        }),
+      );
+      const subjects = await readSubjectFacts(transaction, [
+        ...new Set(sides.flatMap((side) => side.rows.map((row) => row.subject_id))),
+      ]);
+      const diffOf = (side: (typeof sides)[number]): DiffVersion => ({
+        rows: side.rows.map((row) => ({
+          id: row.id,
+          classId: row.class_id,
+          groupId: row.group_id,
+          subjectId: row.subject_id,
+          teacherId: row.teacher_id,
+          roomId: row.room_id,
+          lessonsPerWeek: row.lessons_per_week,
+          roomType: row.room_type,
+          doubleLessons: row.double_lessons,
+          mixedBlock: row.mixed_block,
+          shortReason: row.short_reason ?? null,
+          tutorRow: row.class_id !== null && subjects.get(row.subject_id)?.tutorSubject === true,
+        })),
+        entries: side.entries.map((entry) => ({
+          id: entry.id,
+          loadRowId: entry.load_row_id,
+          weekday: entry.weekday,
+          slotPosition: entry.slot_position,
+          roomId: entry.room_id,
+          start: entry.start_minutes,
+          end: entry.end_minutes,
+          double: entry.double_pair_id !== null,
+        })),
+      });
+      const [first, second] = sides;
+      if (first === undefined || second === undefined) {
+        throw new Error('Two versions are compared.');
+      }
+      const roomIds = [
+        ...new Set(
+          sides.flatMap((side) => [
+            ...side.rows.map((row) => row.room_id),
+            ...side.entries.map((entry) => entry.room_id),
+          ]),
+        ),
+      ].filter((one): one is string => one !== null);
+      const rooms =
+        roomIds.length === 0
+          ? []
+          : await transaction
+              .selectFrom('rooms')
+              .select(['id', 'name'])
+              .where('id', 'in', roomIds)
+              .orderBy('name')
+              .orderBy('id')
+              .execute();
+      return {
+        before: await this.answerOf(transaction, before.id, access.accountId),
+        after: await this.answerOf(transaction, after.id, access.accountId),
+        rows: sides.flatMap((side) =>
+          side.rows.map((row) => side.facts.answerOf(row, side.facts.problemsOf(row))),
+        ),
+        rooms,
+        differences: versionDifferences(diffOf(first), diffOf(second)),
+      };
+    });
+  }
+
+  /**
    * A new draft (decisions 5 and 10): empty, or a copy of a version of the
    * same branch and year whose rows are checked again by the engine on the
    * draft's start date; the rows that pass are copied, the others kept in
@@ -403,6 +566,7 @@ export class Timetable {
           };
           const copied: StoredLoadRow[] = [];
           const left: LeftRow[] = [];
+          let patternCopy: PatternCopy = { blocks: [], left: [] };
           if (source !== undefined) {
             // Task 3.6c-2, decision 5: a Tutor row is copied with the class's
             // Tutor of the new draft; with none it keeps its teacher and is
@@ -430,6 +594,30 @@ export class Timetable {
               transaction,
               rows.map((row) => row.subject_id),
             );
+            // Task 5.8a (plan rule 2): the rooms of the source's entries FOR KEY
+            // SHARE in the order of their id before their statuses are read, so
+            // a room closed at the same moment is seen closed or marks the
+            // committed draft out of date.
+            const entryRooms = await transaction
+              .selectFrom('pattern_entries')
+              .select('room_id')
+              .distinct()
+              .where('version_id', '=', source.id)
+              .where('room_id', 'is not', null)
+              .execute();
+            const roomIds = entryRooms
+              .map((one) => one.room_id)
+              .filter((id): id is string => id !== null)
+              .sort();
+            if (roomIds.length > 0) {
+              await transaction
+                .selectFrom('rooms')
+                .select('id')
+                .where('id', 'in', roomIds)
+                .orderBy('id')
+                .forKeyShare()
+                .execute();
+            }
             const facts = await LoadFacts.of(transaction, context, rows);
             const leave = (row: StoredLoadRow, problems: readonly LoadProblem[]) => {
               left.push({
@@ -449,6 +637,14 @@ export class Timetable {
             for (const row of copiedRows(rows, facts, leave)) {
               copied.push(row);
             }
+            patternCopy = await planPatternCopy(
+              transaction,
+              context,
+              source.id,
+              rows,
+              copied,
+              new Map(left.map((one) => [one.sourceRowId, one.problems])),
+            );
           }
           const created = await transaction
             .insertInto('timetable_versions')
@@ -459,6 +655,7 @@ export class Timetable {
               starts_on: input.startsOn,
               from_version_id: source?.id ?? null,
               left_rows: JSON.stringify(left),
+              left_blocks: JSON.stringify(patternCopy.left),
               // Decision 5 of 5.3b-1: a copy takes its source's weights, not their confirmation.
               ...(source === undefined ? {} : weightColumnsOf(weightsOf(source))),
             })
@@ -481,6 +678,7 @@ export class Timetable {
             weekday: number;
             slotPosition: number;
           }[] = [];
+          const copiedIds = new Map<string, { id: string; teacherId: string }>();
           for (const row of copied) {
             const inserted = await transaction
               .insertInto('teaching_load_rows')
@@ -501,6 +699,7 @@ export class Timetable {
               })
               .returning('id')
               .executeTakeFirstOrThrow();
+            copiedIds.set(row.id, { id: inserted.id, teacherId: row.teacher_id });
             for (const pin of sourcePins.filter((one) => one.load_row_id === row.id)) {
               await transaction
                 .insertInto('timetable_pins')
@@ -520,6 +719,13 @@ export class Timetable {
               });
             }
           }
+          // Task 5.8a: the source's pattern, as `planPatternCopy` decided it.
+          const copiedBlocks = await writePatternCopy(
+            transaction,
+            { id: created.id, branch_id: branchId },
+            patternCopy,
+            copiedIds,
+          );
           // Task 5.5a-2b-2, decision 12: the choices of the lessons kept on a
           // shortened day, for the classes the copy's load still has; the
           // others are left behind and named in the audit entry.
@@ -586,6 +792,8 @@ export class Timetable {
                 .filter((keep) => !copiedClasses.has(keep.class_id))
                 .map(keepOf),
               leftRows: left as unknown as JsonValue,
+              copiedBlocks,
+              leftBlocks: patternCopy.left as unknown as JsonValue,
               weights: source === undefined ? null : weightsOf(source),
               ...(copiedCauses === 0 ? {} : { outOfDateCauses: copiedCauses }),
             },
@@ -609,13 +817,16 @@ export class Timetable {
       () =>
         this.transactions.run(access.branchIds, async (transaction) => {
           const version = await this.lockDraft(transaction, access, id, requestId);
+          // Task 5.8a: the left blocks are dismissed with the left rows.
           const before = {
             startsOn: version.starts_on,
             leftRows: leftRowsOf(version.left_rows).length,
+            leftBlocks: leftBlocksOf(version.left_blocks).length,
           };
           const after = {
             startsOn: input.startsOn ?? version.starts_on,
             leftRows: input.dismissLeftRows === true ? 0 : before.leftRows,
+            leftBlocks: input.dismissLeftRows === true ? 0 : before.leftBlocks,
           };
           const changes = changesOf(before, after);
           if (changes === null) {
@@ -633,6 +844,9 @@ export class Timetable {
             .set({
               starts_on: after.startsOn,
               ...(after.leftRows === before.leftRows ? {} : { left_rows: JSON.stringify([]) }),
+              ...(after.leftBlocks === before.leftBlocks
+                ? {}
+                : { left_blocks: JSON.stringify([]) }),
             })
             .where('id', '=', id)
             .execute();
@@ -651,6 +865,9 @@ export class Timetable {
               ...(after.leftRows === before.leftRows
                 ? {}
                 : { leftRows: version.left_rows as JsonValue }),
+              ...(after.leftBlocks === before.leftBlocks
+                ? {}
+                : { leftBlocks: version.left_blocks as JsonValue }),
             },
             newValue: {
               ...changes.newValue,
@@ -2205,6 +2422,7 @@ export class Timetable {
         'timetable_versions.starts_on',
         'timetable_versions.from_version_id',
         'timetable_versions.left_rows',
+        'timetable_versions.left_blocks',
         'timetable_versions.templates_confirmed',
         'timetable_versions.rules_confirmed',
         'timetable_versions.edit_holder_id',
@@ -2272,6 +2490,7 @@ export class Timetable {
         'timetable_versions.starts_on',
         'timetable_versions.from_version_id',
         'timetable_versions.left_rows',
+        'timetable_versions.left_blocks',
         'timetable_versions.edit_holder_id',
         'timetable_versions.edit_seen_at',
         outOfDateColumn,
@@ -2310,6 +2529,7 @@ export class Timetable {
       starts_on: string;
       from_version_id: string | null;
       left_rows: unknown;
+      left_blocks: unknown;
       edit_holder_id: string | null;
       edit_seen_at: Date | null;
       out_of_date: boolean;
@@ -2358,6 +2578,7 @@ export class Timetable {
             : { id: row.from_version_id, number: fromNumber },
         rows: row.rows,
         leftRows: leftRowsOf(row.left_rows).length,
+        leftBlocks: leftBlocksOf(row.left_blocks).length,
         outOfDate: row.out_of_date,
         editLock: ((holder) =>
           holder === null || row.edit_seen_at === null

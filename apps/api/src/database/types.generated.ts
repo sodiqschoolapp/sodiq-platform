@@ -1182,6 +1182,7 @@ export interface TimetableVersions {
   edit_seen_at: Timestamp | null;
   from_version_id: string | null;
   id: Generated<string>;
+  left_blocks: Generated<Json>;
   left_rows: Generated<Json>;
   number: number;
   rules_confirmed: Json | null;

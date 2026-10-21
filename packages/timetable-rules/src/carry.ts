@@ -101,59 +101,244 @@ function entriesByKey(version: CarryVersion): Map<string, CarryEntry> | null {
   return byKey;
 }
 
-/** Whether carry is offered for a draft, and its changes. */
+/**
+ * A pattern entry as the comparison of two versions reads it (task 5.8a):
+ * with the clock time of its block and whether the block is half of a double
+ * lesson. The times and the pair are compared only when both sides give them.
+ */
+export interface DiffEntry extends CarryEntry {
+  readonly start?: number;
+  readonly end?: number;
+  readonly double?: boolean;
+}
+
+export interface DiffVersion {
+  readonly rows: readonly CarryRow[];
+  readonly entries: readonly DiffEntry[];
+}
+
+/** A field of a load row other than its teacher and room. */
+export type RowField =
+  | 'lessonsPerWeek'
+  | 'roomType'
+  | 'doubleLessons'
+  | 'mixedBlock'
+  | 'shortReason'
+  | 'tutorRow';
+
+const ROW_FIELDS: readonly RowField[] = [
+  'lessonsPerWeek',
+  'roomType',
+  'doubleLessons',
+  'mixedBlock',
+  'shortReason',
+  'tutorRow',
+];
+
+interface PlacementUnit extends ChangeUnit {
+  readonly weekday: number;
+  readonly slotPosition: number;
+}
+
+/** One difference of a version against another. */
+export type VersionDifference =
+  | (ChangeUnit & {
+      readonly kind: 'row_added' | 'row_removed';
+      readonly teacherId: string;
+      readonly lessonsPerWeek: number;
+    })
+  | (ChangeUnit & {
+      readonly kind: 'teacher';
+      readonly before: string;
+      readonly after: string;
+      /** A Tutor row: its teacher follows the class's Tutor, so carry never takes it. */
+      readonly tutorRow: boolean;
+    })
+  | (ChangeUnit & {
+      readonly kind: 'row_room';
+      readonly before: string | null;
+      readonly after: string | null;
+    })
+  | (ChangeUnit & {
+      readonly kind: 'row_field';
+      readonly field: RowField;
+      readonly before: string | number | boolean | null;
+      readonly after: string | number | boolean | null;
+    })
+  | (PlacementUnit & {
+      readonly kind: 'placement_added' | 'placement_removed';
+      readonly roomId: string | null;
+    })
+  | (PlacementUnit & {
+      readonly kind: 'entry_room';
+      readonly before: string | null;
+      readonly after: string | null;
+    })
+  | (PlacementUnit & {
+      readonly kind: 'placement_time';
+      readonly before: { readonly start: number; readonly end: number };
+      readonly after: { readonly start: number; readonly end: number };
+    })
+  | (PlacementUnit & {
+      readonly kind: 'placement_double';
+      readonly before: boolean;
+      readonly after: boolean;
+    });
+
+/** The entries of a version with their row, by key; a second entry of one key is dropped. */
+function placementsOf(version: DiffVersion): Map<string, { entry: DiffEntry; row: CarryRow }> {
+  const rowOf = new Map(version.rows.map((one) => [one.id, one]));
+  const byKey = new Map<string, { entry: DiffEntry; row: CarryRow }>();
+  for (const one of version.entries) {
+    const owner = rowOf.get(one.loadRowId);
+    if (owner === undefined) continue;
+    const key = entryKey(rowKey(owner), one);
+    if (!byKey.has(key)) byKey.set(key, { entry: one, row: owner });
+  }
+  return byKey;
+}
+
+/**
+ * The differences of `after` against `before` (task 5.8a; `06`, Protection:
+ * "compares two versions"): rows matched by class or group and subject,
+ * placements by that row, weekday and slot position, as carry matches them.
+ * The rows in the order of `after`, then the rows removed; the same for
+ * placements.
+ */
+export function versionDifferences(before: DiffVersion, after: DiffVersion): VersionDifference[] {
+  const differences: VersionDifference[] = [];
+  const beforeRows = new Map(before.rows.map((one) => [rowKey(one), one]));
+  const afterKeys = new Set(after.rows.map(rowKey));
+  for (const now of after.rows) {
+    const was = beforeRows.get(rowKey(now));
+    if (was === undefined) {
+      differences.push({
+        kind: 'row_added',
+        ...unitOf(now),
+        teacherId: now.teacherId,
+        lessonsPerWeek: now.lessonsPerWeek,
+      });
+      continue;
+    }
+    for (const field of ROW_FIELDS) {
+      if (was[field] !== now[field]) {
+        differences.push({
+          kind: 'row_field',
+          ...unitOf(now),
+          field,
+          before: was[field],
+          after: now[field],
+        });
+      }
+    }
+    if (was.teacherId !== now.teacherId) {
+      differences.push({
+        kind: 'teacher',
+        ...unitOf(now),
+        before: was.teacherId,
+        after: now.teacherId,
+        tutorRow: was.tutorRow && now.tutorRow,
+      });
+    }
+    if (was.roomId !== now.roomId) {
+      differences.push({ kind: 'row_room', ...unitOf(now), before: was.roomId, after: now.roomId });
+    }
+  }
+  for (const was of before.rows) {
+    if (!afterKeys.has(rowKey(was))) {
+      differences.push({
+        kind: 'row_removed',
+        ...unitOf(was),
+        teacherId: was.teacherId,
+        lessonsPerWeek: was.lessonsPerWeek,
+      });
+    }
+  }
+  const beforePlaces = placementsOf(before);
+  const afterPlaces = placementsOf(after);
+  const placeOf = (row: CarryRow, entry: DiffEntry): PlacementUnit => ({
+    ...unitOf(row),
+    weekday: entry.weekday,
+    slotPosition: entry.slotPosition,
+  });
+  for (const [key, now] of afterPlaces) {
+    const was = beforePlaces.get(key);
+    const unit = placeOf(now.row, now.entry);
+    if (was === undefined) {
+      differences.push({ kind: 'placement_added', ...unit, roomId: now.entry.roomId });
+      continue;
+    }
+    if (was.entry.roomId !== now.entry.roomId) {
+      differences.push({
+        kind: 'entry_room',
+        ...unit,
+        before: was.entry.roomId,
+        after: now.entry.roomId,
+      });
+    }
+    const [a, b] = [was.entry, now.entry];
+    if (
+      a.start !== undefined &&
+      a.end !== undefined &&
+      b.start !== undefined &&
+      b.end !== undefined &&
+      (a.start !== b.start || a.end !== b.end)
+    ) {
+      differences.push({
+        kind: 'placement_time',
+        ...unit,
+        before: { start: a.start, end: a.end },
+        after: { start: b.start, end: b.end },
+      });
+    }
+    if (a.double !== undefined && b.double !== undefined && a.double !== b.double) {
+      differences.push({ kind: 'placement_double', ...unit, before: a.double, after: b.double });
+    }
+  }
+  for (const [key, was] of beforePlaces) {
+    if (!afterPlaces.has(key)) {
+      differences.push({
+        kind: 'placement_removed',
+        ...placeOf(was.row, was.entry),
+        roomId: was.entry.roomId,
+      });
+    }
+  }
+  return differences;
+}
+
+/**
+ * Whether carry is offered for a draft, and its changes: read from
+ * `versionDifferences` (task 5.8a), offered when every difference is a
+ * teacher (a Tutor row's never counts) or a room.
+ */
 export function carryChanges(source: CarryVersion | null, draft: CarryVersion): CarryOffer {
   if (source === null) return { offered: false, reason: 'no_source' };
   const before = new Map(source.rows.map((one) => [rowKey(one), one]));
   if (before.size !== source.rows.length || draft.rows.length !== source.rows.length) {
     return { offered: false, reason: 'other_changes' };
   }
-  const changes: CarryChange[] = [];
-  for (const after of draft.rows) {
-    const was = before.get(rowKey(after));
-    if (
-      was === undefined ||
-      was.lessonsPerWeek !== after.lessonsPerWeek ||
-      was.roomType !== after.roomType ||
-      was.doubleLessons !== after.doubleLessons ||
-      was.mixedBlock !== after.mixedBlock ||
-      was.shortReason !== after.shortReason ||
-      was.tutorRow !== after.tutorRow
-    ) {
-      return { offered: false, reason: 'other_changes' };
-    }
-    if (!after.tutorRow && was.teacherId !== after.teacherId) {
-      changes.push({
-        kind: 'teacher',
-        ...unitOf(after),
-        before: was.teacherId,
-        after: after.teacherId,
-      });
-    }
-    if (was.roomId !== after.roomId) {
-      changes.push({ kind: 'row_room', ...unitOf(after), before: was.roomId, after: after.roomId });
-    }
-  }
   const sourceEntries = entriesByKey(source);
   const draftEntries = entriesByKey(draft);
   if (sourceEntries === null || draftEntries === null || sourceEntries.size !== draftEntries.size) {
     return { offered: false, reason: 'other_changes' };
   }
-  const draftRows = new Map(draft.rows.map((one) => [one.id, one]));
-  for (const [key, after] of draftEntries) {
-    const was = sourceEntries.get(key);
-    if (was === undefined) return { offered: false, reason: 'other_changes' };
-    if (was.roomId !== after.roomId) {
-      const owner = draftRows.get(after.loadRowId);
-      if (owner === undefined) return { offered: false, reason: 'other_changes' };
-      changes.push({
-        kind: 'entry_room',
-        ...unitOf(owner),
-        weekday: after.weekday,
-        slotPosition: after.slotPosition,
-        before: was.roomId,
-        after: after.roomId,
-      });
+  const changes: CarryChange[] = [];
+  for (const difference of versionDifferences(source, draft)) {
+    switch (difference.kind) {
+      case 'teacher': {
+        const { tutorRow, ...change } = difference;
+        if (!tutorRow) changes.push(change);
+        break;
+      }
+      case 'row_room':
+        changes.push(difference);
+        break;
+      case 'entry_room':
+        changes.push(difference);
+        break;
+      default:
+        return { offered: false, reason: 'other_changes' };
     }
   }
   return changes.length === 0

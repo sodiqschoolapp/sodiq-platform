@@ -48,6 +48,14 @@ import {
   pinRecordSchema,
   preferenceWeightsBodySchema,
   rulesConfirmBodySchema,
+  timetableHistoryQuerySchema,
+  timetableHistorySchema,
+  versionCompareQuerySchema,
+  versionComparisonSchema,
+  type TimetableHistory,
+  type TimetableHistoryQuery,
+  type VersionCompareQuery,
+  type VersionComparison,
   timetableVersionCreateSchema,
   timetableVersionEditSchema,
   timetableVersionListSchema,
@@ -109,6 +117,29 @@ export class TimetableController {
   @Returns(timetableVersionListSchema)
   list(@CurrentAccess() access: Access): Promise<TimetableVersionList> {
     return this.timetable.list(access);
+  }
+
+  /** The versions of a year by start date and the version in force on each quarter's first day (task 5.8a). */
+  @Get('history')
+  @Requires('timetable', 'view')
+  @Returns(timetableHistorySchema)
+  history(
+    @CurrentAccess() access: Access,
+    @ValidQuery(timetableHistoryQuerySchema) query: TimetableHistoryQuery,
+  ): Promise<TimetableHistory> {
+    return this.timetable.history(access, query);
+  }
+
+  /** Two versions of one year compared (task 5.8a). */
+  @Get('versions/:id/compare')
+  @Requires('timetable', 'view')
+  @Returns(versionComparisonSchema)
+  compare(
+    @CurrentAccess() access: Access,
+    @ValidParams(timetableVersionParamsSchema) params: TimetableVersionParams,
+    @ValidQuery(versionCompareQuerySchema) query: VersionCompareQuery,
+  ): Promise<VersionComparison> {
+    return this.timetable.compare(access, params.id, query.with);
   }
 
   @Post('versions')

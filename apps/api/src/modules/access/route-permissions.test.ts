@@ -505,6 +505,15 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     branch: 'request',
     roles: ['super_admin', 'academic_vice_principal'],
   },
+  // Task 5.8a: the version history of a year and two versions compared, reads of `timetable`.
+  'GET /api/timetable/history': {
+    branch: 'request',
+    roles: ['super_admin', 'principal', 'academic_vice_principal'],
+  },
+  'GET /api/timetable/versions/:id/compare': {
+    branch: 'request',
+    roles: ['super_admin', 'principal', 'academic_vice_principal'],
+  },
   'GET /api/timetable/versions/:id/load': {
     branch: 'request',
     roles: ['super_admin', 'principal', 'academic_vice_principal'],

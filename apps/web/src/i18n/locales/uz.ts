@@ -451,6 +451,7 @@ export const uz: Texts<'one' | 'other'> = {
       'Boshlanish sanasi oʻquv yilidan tashqarida. Yil ichidagi sanani tanlang.',
     version_copy_year:
       'Bu versiya boshqa oʻquv yiliga tegishli. Shu yilning versiyasidan nusxa oling yoki boʻsh boshlang.',
+    version_compare_year: 'Faqat bitta oʻquv yilining ikki versiyasini solishtirish mumkin.',
     preferences_changed:
       'Siz ochganingizdan keyin vaznlar oʻzgardi. Ularni qayta oʻqing va tasdiqlang.',
     pins_changed:

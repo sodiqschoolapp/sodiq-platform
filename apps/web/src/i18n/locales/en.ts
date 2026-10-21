@@ -442,6 +442,7 @@ export const en = {
       'The start date is outside the academic year. Choose a date inside the year.',
     version_copy_year:
       'That version is of another academic year. Copy a version of the same year, or start empty.',
+    version_compare_year: 'Only two versions of the same academic year can be compared.',
     preferences_changed: 'The weights changed since you opened them. Read them again and confirm.',
     pins_changed: 'The pinned lessons changed since you opened them. Read them again and confirm.',
     pin_taken: 'This lesson is already pinned to that day and slot.',

@@ -171,7 +171,13 @@ describe('publish', () => {
       copyFrom,
     });
     expect(created.status, JSON.stringify(created.body)).toBe(201);
-    return (created.body as { id: string }).id;
+    const id = (created.body as { id: string }).id;
+    // Task 5.8a: a copy takes its source's pattern; these tests place the
+    // copy's lessons themselves, so it starts with none.
+    if (copyFrom !== null) {
+      await t.database.migrator.deleteFrom('pattern_blocks').where('version_id', '=', id).execute();
+    }
+    return id;
   };
 
   const placeAt = async (branch: string, version: string, loadRowId: string, weekday: number) => {

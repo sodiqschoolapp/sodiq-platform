@@ -704,8 +704,9 @@ export class VacancyFills {
    * The draft a fill publishes (decision 2): a copy of the version in force,
    * starting on the date, its rows the same but the person on the rows filled
    * (a Tutor row with the class's Tutor of the date, as a copy takes it), its
-   * pins, the shortened-day choices from the date, its pattern (a copy takes
-   * the load and pins only, so the fill copies the blocks itself), its
+   * pins, the shortened-day choices from the date, its whole pattern with its
+   * times (task 5.8a, plan rule 8: the fill keeps its own copy, which leaves
+   * nothing, rather than the new-draft copy of `copy-pattern.ts`), its
    * weights, and the templates confirmed as they are on the date.
    */
   private async copyDraft(

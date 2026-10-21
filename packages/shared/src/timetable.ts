@@ -55,6 +55,48 @@ export const loadProblemSchema = z.enum(LOAD_PROBLEMS);
 
 export type LoadProblem = z.infer<typeof loadProblemSchema>;
 
+/**
+ * Why a copy of a version did not keep a block of its weekly pattern (task
+ * 5.8a, decision 7): a load problem of a row the copy left, or one of its own
+ * (`edge/timetable`, Versions and drafts; `edge/academic-year`: "Entries
+ * whose teacher, room, subject or class is no longer active go to the 'to
+ * place' list with the reason").
+ */
+export const COPY_LEFT_REASONS = [
+  'copy_part_left',
+  'copy_room_inactive',
+  'copy_slot_missing',
+  'copy_pair_left',
+  'copy_clash',
+] as const;
+
+export const leftBlockReasonSchema = z.enum([...LOAD_PROBLEMS, ...COPY_LEFT_REASONS]);
+
+export type LeftBlockReason = z.infer<typeof leftBlockReasonSchema>;
+
+/** A block of the source's pattern that a copy did not keep (`timetable_versions.left_blocks`, 0104). */
+export const leftBlockSchema = z.object({
+  sourceBlockId: z.uuid(),
+  weekday: z.int().min(1).max(7),
+  slotPosition: z.int().min(1),
+  reason: leftBlockReasonSchema,
+  lessons: z.array(
+    z.object({
+      sourceRowId: z.uuid(),
+      /** Whether the copy kept the lesson's row (the row is in the draft's load). */
+      copied: z.boolean(),
+      classId: z.uuid().nullable(),
+      groupId: z.uuid().nullable(),
+      subjectId: z.uuid(),
+      teacherId: z.uuid(),
+      roomId: z.uuid().nullable(),
+      reason: leftBlockReasonSchema,
+    }),
+  ),
+});
+
+export type LeftBlock = z.infer<typeof leftBlockSchema>;
+
 /** "The edit lock is released after 5 minutes without activity" (edge/timetable, Generator and editing; task 5.4c-1). */
 export const DRAFT_EDIT_LOCK_MINUTES = 5;
 
@@ -181,6 +223,8 @@ export const timetableVersionSchema = z.object({
   fromVersion: z.object({ id: z.uuid(), number: z.int().min(1) }).nullable(),
   rows: z.int().min(0),
   leftRows: z.int().min(0),
+  /** Task 5.8a: the blocks of the pattern the copy did not keep, until dismissed with the left rows. */
+  leftBlocks: z.int().min(0),
   /**
    * A publish marked the draft out of date (task 5.5a-1, decision 4): another
    * version of the branch and year was published after it was started, and
@@ -362,6 +406,131 @@ export const loadSchema = z.object({
 });
 
 export type Load = z.infer<typeof loadSchema>;
+
+/** The history of a year's versions (task 5.8a): asked for one academic year of the branch. */
+export const timetableHistoryQuerySchema = z.strictObject({ academicYearId: z.uuid() });
+
+export type TimetableHistoryQuery = z.infer<typeof timetableHistoryQuerySchema>;
+
+/**
+ * `06`, Protection: "Version history shows every version in the order of
+ * their start dates, names the version in force on the first day of each
+ * quarter" (task 5.8a, decisions 2 and 3): every version of the year by start
+ * date, then number; each quarter with dates, with the published version in
+ * force on its first day, or none.
+ */
+export const timetableHistorySchema = z.object({
+  versions: z.array(timetableVersionSchema),
+  quarters: z.array(
+    z.object({
+      number: z.int().min(1).max(4),
+      startsOn: schoolDateSchema,
+      version: z.object({ id: z.uuid(), number: z.int().min(1) }).nullable(),
+    }),
+  ),
+  today: schoolDateSchema,
+});
+
+export type TimetableHistory = z.infer<typeof timetableHistorySchema>;
+
+/** The version a comparison reads against `:id` (task 5.8a). */
+export const versionCompareQuerySchema = z.strictObject({ with: z.uuid() });
+
+export type VersionCompareQuery = z.infer<typeof versionCompareQuerySchema>;
+
+const differenceUnit = {
+  classId: z.uuid().nullable(),
+  groupId: z.uuid().nullable(),
+  subjectId: z.uuid(),
+};
+
+const differencePlace = {
+  ...differenceUnit,
+  weekday: z.int().min(1).max(7),
+  slotPosition: z.int().min(1),
+};
+
+const differenceTime = z.object({ start: z.int().min(0), end: z.int().min(1) });
+
+/** The fields of a load row a comparison lists apart from its teacher and room. */
+export const ROW_DIFFERENCE_FIELDS = [
+  'lessonsPerWeek',
+  'roomType',
+  'doubleLessons',
+  'mixedBlock',
+  'shortReason',
+  'tutorRow',
+] as const;
+
+/** One difference of a version against another (`versionDifferences` of packages/timetable-rules). */
+export const versionDifferenceSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.enum(['row_added', 'row_removed']),
+    ...differenceUnit,
+    teacherId: z.uuid(),
+    lessonsPerWeek: z.int().min(0),
+  }),
+  z.object({
+    kind: z.literal('teacher'),
+    ...differenceUnit,
+    before: z.uuid(),
+    after: z.uuid(),
+    tutorRow: z.boolean(),
+  }),
+  z.object({
+    kind: z.literal('row_room'),
+    ...differenceUnit,
+    before: z.uuid().nullable(),
+    after: z.uuid().nullable(),
+  }),
+  z.object({
+    kind: z.literal('row_field'),
+    ...differenceUnit,
+    field: z.enum(ROW_DIFFERENCE_FIELDS),
+    before: z.union([z.string(), z.number(), z.boolean()]).nullable(),
+    after: z.union([z.string(), z.number(), z.boolean()]).nullable(),
+  }),
+  z.object({
+    kind: z.enum(['placement_added', 'placement_removed']),
+    ...differencePlace,
+    roomId: z.uuid().nullable(),
+  }),
+  z.object({
+    kind: z.literal('entry_room'),
+    ...differencePlace,
+    before: z.uuid().nullable(),
+    after: z.uuid().nullable(),
+  }),
+  z.object({
+    kind: z.literal('placement_time'),
+    ...differencePlace,
+    before: differenceTime,
+    after: differenceTime,
+  }),
+  z.object({
+    kind: z.literal('placement_double'),
+    ...differencePlace,
+    before: z.boolean(),
+    after: z.boolean(),
+  }),
+]);
+
+export type VersionDifferenceAnswer = z.infer<typeof versionDifferenceSchema>;
+
+/**
+ * `06`, Protection: "compares two versions" (task 5.8a, decision 4): the
+ * differences of `after` against `before`, with the rows of both versions
+ * (their class or group, subject and teacher named) and the rooms named.
+ */
+export const versionComparisonSchema = z.object({
+  before: timetableVersionSchema,
+  after: timetableVersionSchema,
+  rows: z.array(loadRowSchema),
+  rooms: z.array(z.object({ id: z.uuid(), name: z.string() })),
+  differences: z.array(versionDifferenceSchema),
+});
+
+export type VersionComparison = z.infer<typeof versionComparisonSchema>;
 
 /** The unit and subject whose possible teachers are asked for. */
 export const loadTeachersQuerySchema = z
@@ -913,6 +1082,14 @@ export const gridSchema = z.object({
   locks: z.array(timetableLockSchema),
   /** Every result of the draft's pattern now (the conflict panel of 5.4b lists them). */
   results: z.array(ruleResultSchema),
+  /**
+   * Task 5.8a: the blocks the copy did not keep, with the rows of the version
+   * copied they name (`id` is that version's row, as the load's left rows).
+   */
+  left: z.object({
+    blocks: z.array(leftBlockSchema),
+    rows: z.array(loadRowSchema),
+  }),
 });
 
 export type GridAnswer = z.infer<typeof gridSchema>;

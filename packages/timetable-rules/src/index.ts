@@ -257,12 +257,17 @@ export {
 export {
   carryChanges,
   carryInto,
+  versionDifferences,
   type CarriedInto,
   type CarryChange,
   type CarryEntry,
   type CarryOffer,
   type CarryRow,
   type CarryVersion,
+  type DiffEntry,
+  type DiffVersion,
+  type RowField,
+  type VersionDifference,
 } from './carry.js';
 // Task 5.5a-3b-2: bringing a draft up to date after a publish.
 export {

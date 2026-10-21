@@ -41,10 +41,10 @@ import { notFound, refusingConstraints } from '../setup/setup-refusals.js';
 import { LOAD_REFUSALS, LoadFacts, type StoredLoadRow } from './load-facts.js';
 import { readPatternFacts, type PatternFacts } from './pattern-facts.js';
 import { readVersionDays } from './version-days.js';
-import { deferPatternClashes, readBlocks, readLocks } from './pattern-queries.js';
+import { deferPatternClashes, readBlocks, readLocks, writeBlock } from './pattern-queries.js';
 import { readPins } from './pins-check.js';
 import { blockedRefusal, resultAnswerOf } from './rule-answers.js';
-import { Timetable, type VersionRow } from './timetable.service.js';
+import { leftBlocksOf, Timetable, type VersionRow } from './timetable.service.js';
 
 const DEADLOCK = '40P01';
 
@@ -127,51 +127,6 @@ function blockAt(
     start: first.start,
     end: first.end,
   };
-}
-
-/**
- * A block and its lessons written in a draft, with no audit entry: the grid's
- * `insertBlock` records `pattern_block.create`, and bringing a draft up to
- * date (task 5.5a-3b-2, review correction 2) records every block it writes in
- * its own entry.
- */
-export async function writeBlock(
-  transaction: Transaction,
-  version: { readonly id: string; readonly branch_id: string },
-  model: Pick<PatternModel, 'rowOf'>,
-  placed: PatternBlock,
-): Promise<{ block: { id: string }; entries: { id: string; load_row_id: string }[] }> {
-  const block = await transaction
-    .insertInto('pattern_blocks')
-    .values({
-      branch_id: version.branch_id,
-      version_id: version.id,
-      weekday: placed.weekday,
-      slot_position: placed.slotPosition,
-      start_minutes: placed.start,
-      end_minutes: placed.end,
-      double_pair_id: placed.doublePairId,
-    })
-    .returning('id')
-    .executeTakeFirstOrThrow();
-  const entries = await transaction
-    .insertInto('pattern_entries')
-    .values(
-      placed.lessons.map((lesson) => ({
-        branch_id: version.branch_id,
-        version_id: version.id,
-        block_id: block.id,
-        weekday: placed.weekday,
-        start_minutes: placed.start,
-        end_minutes: placed.end,
-        load_row_id: lesson.loadRowId,
-        teacher_id: model.rowOf(lesson.loadRowId).teacherId,
-        room_id: lesson.roomId,
-      })),
-    )
-    .returning(['id', 'load_row_id'])
-    .execute();
-  return { block, entries };
 }
 
 /** The two halves of a double, the earlier first (task 5.4c-3a). */
@@ -947,15 +902,40 @@ export class TimetablePattern {
     return this.gridOf(transaction, await this.stateOf(transaction, version, accountId));
   }
 
+  /**
+   * The blocks a copy left (task 5.8a, decision 7) with the rows of the
+   * version copied that they name, as the load's left rows answer them.
+   */
+  private async leftOf(
+    transaction: Transaction,
+    version: VersionRow,
+  ): Promise<GridAnswer['left']> {
+    const blocks = leftBlocksOf(version.left_blocks);
+    const ids = [...new Set(blocks.flatMap((block) => block.lessons.map((one) => one.sourceRowId)))];
+    if (ids.length === 0 || version.from_version_id === null) {
+      return { blocks, rows: [] };
+    }
+    const sourceRows = (await this.timetable.rowsOf(transaction, version.from_version_id)).filter(
+      (row) => ids.includes(row.id),
+    );
+    const context = await this.timetable.contextOf(transaction, version);
+    const facts = await LoadFacts.of(transaction, context, sourceRows, { versionRows: sourceRows });
+    return { blocks, rows: sourceRows.map((row) => facts.answerOf(row, [])) };
+  }
+
   private async gridOf(transaction: Transaction, state: PatternState): Promise<GridAnswer> {
     const { accountId, version, rows, load, pattern, blocks, locks } = state;
     const pins = await readPins(transaction, version.id);
     const answers = rows.map((row) => load.answerOf(row, []));
+    const left = await this.leftOf(transaction, version);
     const classIds = [...new Set(pattern.data.classStudents.map((one) => one.classId))];
     const roomIds = [
       ...new Set([
         ...pattern.data.rooms.map((room) => room.id),
         ...blocks.flatMap((block) =>
+          block.lessons.map((one) => one.roomId).filter((id): id is string => id !== null),
+        ),
+        ...left.blocks.flatMap((block) =>
           block.lessons.map((one) => one.roomId).filter((id): id is string => id !== null),
         ),
       ]),
@@ -994,6 +974,7 @@ export class TimetablePattern {
     return gridSchema.parse({
       version: await this.timetable.answerOf(transaction, version.id, accountId),
       editable: version.status === 'draft' && version.year_status !== 'closed',
+      left,
       classes,
       rows: answers.map((answer) => ({
         id: answer.id,

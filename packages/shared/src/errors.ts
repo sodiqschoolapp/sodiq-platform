@@ -569,6 +569,8 @@ export const ERROR_CODES = [
   'version_start_outside_year',
   /** The version copied is of another academic year (task 3.4a, decision 10). */
   'version_copy_year',
+  /** The two versions compared are of different academic years (task 5.8a, decision 4). */
+  'version_compare_year',
   /** The weights confirmed are not the weights stored now (task 5.3b-1, decision 9). */
   'preferences_changed',
   /** The pins confirmed are not the pins stored now (task 5.3b-2, decision 7). */

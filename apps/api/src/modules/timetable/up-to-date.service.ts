@@ -44,9 +44,9 @@ import {
 import {
   refusingPattern,
   TimetablePattern,
-  writeBlock,
   type PatternState,
 } from './pattern.service.js';
+import { writeBlock } from './pattern-queries.js';
 import { readPins } from './pins-check.js';
 import { PUBLISH_LOCK } from './publish.service.js';
 import { resultAnswerOf } from './rule-answers.js';
