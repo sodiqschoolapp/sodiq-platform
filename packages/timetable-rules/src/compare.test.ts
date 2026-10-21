@@ -170,8 +170,22 @@ describe('versionDifferences', () => {
       entries: (one) => (one.id === 'b-e3' ? { ...one, weekday: 5 } : one),
     });
     expect(versionDifferences(before, after)).toEqual([
-      { kind: 'placement_added', ...unit, subjectId: 'art', weekday: 5, slotPosition: 3, roomId: 'room-2' },
-      { kind: 'placement_removed', ...unit, subjectId: 'art', weekday: 3, slotPosition: 3, roomId: 'room-2' },
+      {
+        kind: 'placement_added',
+        ...unit,
+        subjectId: 'art',
+        weekday: 5,
+        slotPosition: 3,
+        roomId: 'room-2',
+      },
+      {
+        kind: 'placement_removed',
+        ...unit,
+        subjectId: 'art',
+        weekday: 3,
+        slotPosition: 3,
+        roomId: 'room-2',
+      },
     ]);
   });
 
@@ -238,7 +252,13 @@ describe('versionDifferences', () => {
 
   it('compares no times or pairs when a side does not give them', () => {
     const bare = copyOf({
-      entries: ({ start: _start, end: _end, double: _double, ...one }) => one,
+      entries: (one) => ({
+        id: one.id,
+        loadRowId: one.loadRowId,
+        weekday: one.weekday,
+        slotPosition: one.slotPosition,
+        roomId: one.roomId,
+      }),
     });
     expect(versionDifferences(before, bare)).toEqual([]);
   });

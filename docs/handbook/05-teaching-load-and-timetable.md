@@ -376,3 +376,32 @@ Not built yet: the substitute in the journal and the plan (tasks 6.3, 7.1b, 8.4,
 | The subject has no rating exam | The tick is not offered; a save that sends it is refused. |
 | No journal is linked | The exam saves; the list says no journal is linked. |
 | The tick is taken off in a change | The journals are no longer linked. |
+
+## Version history
+
+<!-- Sources: spec 06 (Protection, "Version history shows every version in the order of their start dates, names the version in force on the first day of each quarter, compares two versions, and can reopen an old one as a new draft"), edge/timetable (Versions and drafts, "A published version must be taken back"), edge/academic-year ("An old timetable version with an archived teacher and a closed room is copied as a draft"); task 5.8a, decisions 1 to 10 and plan review corrections 1 and 2 -->
+
+**What it is.** One page lists every timetable version of a year, in the order of the dates they start from: drafts, published versions and archived ones. Beside each published version it says on the first day of which quarters it is the timetable in force. Any two versions of the year can be compared, and any version can be restored as a new draft.
+
+**Who can do it.** The Super Admin, the Principal and the Academic Vice Principal open the history and compare versions. The Super Admin and the Academic Vice Principal restore a version.
+
+**How to do it.**
+
+1. Open Timetable, then "Version history". Choose the year when the branch has more than one.
+2. Open a version. "Compare with" shows what changed from the version chosen to the one opened, by class or group and subject: a row added or removed, its teacher, lessons per week, room or other settings, a lesson added, removed or moved to another slot, a lesson's room or clock time, and a lesson joined to or parted from a double lesson.
+3. "Restore as a new draft" asks for the start date of the new draft and opens it in the builder, on its grid.
+
+**Rules.**
+
+- The version in force on a day is the published version with the latest start on or before that day. An archived version is never in force: a version is archived only before it starts (a withdraw, or a later publish that replaces it). A draft is never in force.
+- Only two versions of the same year are compared; their classes and groups are the year's own.
+- A restore is a copy into a new draft; the version restored, the published versions and their lessons do not change. Only a version of the same year can be copied.
+- Every copy of a version, not only a restore, takes its weekly pattern: each lesson at the same weekday and slot, with the times of the day template in force on the new draft's start date. A double lesson is copied with both halves or not at all.
+
+**What happens if…**
+
+- *A lesson's teacher, subject, class or group is no longer active.* Its load row is not copied (it is listed under the rows the copy left on the Teaching load page) and its lessons are listed in the grid's "To place" under "Not copied from version N", with the reason.
+- *A lesson's room is closed.* The lesson is not copied and is listed in "To place" with the reason "its room is closed". Its row is copied, so it shows under the row's entry too.
+- *The new start date's day template has no such slot, or the lesson would clash with another one copied before it (a class's new Tutor, a template that moved its times).* The lesson is not copied and is listed with that reason. A lesson of a block of several groups is copied only with the whole block.
+- *The person dismisses the rows the copy left.* The lessons listed under "Not copied" are dismissed with them.
+

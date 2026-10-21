@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 21 October 2026: task 5.8a Version history and restore
+
+- Version history (`/timetable/versions`, `GET /api/timetable/history`): every version of a year by start date with the quarters it is in force on; the side panel compares it with another version (`GET /api/timetable/versions/:id/compare`, `versionDifferences`) and restores it as a new draft.
+- Every copy of a version now takes its pattern (`copy-pattern.ts`); what it cannot keep is stored on the draft (`left_blocks`, 0104) and listed in the grid's "To place" with the reason. Handbook: "Version history". Browser test: `timetable-versions.spec.ts`.
+- 5.8 is split: 5.8b (protection of dated lessons, forced delete of a lesson) and 5.8c (forced delete of a building, floor or room) are next.
+
+The next sessions must know:
+
+- A test that copies a version and places its lessons itself removes the copied pattern first (`draft` of `publish.test.ts`).
+- `writeBlock` lives in `pattern-queries.ts`; `versionOnDate` in `version-on-date.ts` (`exam-check.ts` re-exports it).
+- The next task is 5.8b.
+
 ## 21 October 2026: task 5.7b-3 Substitution: substitutions kept after a publish
 
 - A publish, a carry, a vacancy fill, a withdraw and a calendar, template or quarter save sort the substitutions in force on the dates they rewrite (`substitutions-kept.ts`): kept when the lesson stays with the teacher replaced and the substitute passes the rules there (the substitute written on the lesson, its row recorded again when the lesson is created again), needs a decision (`drop` when offered, `cancel` with a reason), dropped otherwise. The items join the key of the sorting and every preview (`dayChanges.substitutions`).

@@ -119,12 +119,7 @@ export interface DiffVersion {
 
 /** A field of a load row other than its teacher and room. */
 export type RowField =
-  | 'lessonsPerWeek'
-  | 'roomType'
-  | 'doubleLessons'
-  | 'mixedBlock'
-  | 'shortReason'
-  | 'tutorRow';
+  'lessonsPerWeek' | 'roomType' | 'doubleLessons' | 'mixedBlock' | 'shortReason' | 'tutorRow';
 
 const ROW_FIELDS: readonly RowField[] = [
   'lessonsPerWeek',

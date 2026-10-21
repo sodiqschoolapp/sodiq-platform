@@ -186,7 +186,9 @@ function VersionPanel({
   const others = history.versions.filter((one) => one.id !== version.id);
   const [otherId, setOtherId] = useState<string>('');
   const chosen = others.find((one) => one.id === otherId) ?? null;
-  const comparison = useQuery(comparisonQuery(branchId, chosen?.id ?? '', chosen === null ? null : version.id));
+  const comparison = useQuery(
+    comparisonQuery(branchId, chosen?.id ?? '', chosen === null ? null : version.id),
+  );
   const [restoring, setRestoring] = useState(false);
   const [opened, setOpened] = useState<string | null>(null);
   useEffect(() => {

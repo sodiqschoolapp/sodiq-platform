@@ -285,6 +285,24 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 21 October 2026: version history and restore (task 5.8a)
+
+Plan approved on pull request #194 with corrections 1 and 2; decisions 1 to 10 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (task split). 5.8 is split into 5.8a (version history and restore), 5.8b (protection of dated lessons and their forced delete) and 5.8c (forced delete of a building, floor or room, on 5.8b's store); 5.8a carries Protection rule 3, 5.8b rules 1, 2 and 4 | Decision 1; two kinds of work, each a session's |
+| **Look first** (tests changed). The test helpers of `publish.test.ts`, `vacancy-fills.test.ts` and `up-to-date.test.ts` that copy a version and place its lessons themselves now remove the copied pattern first | Decision 6: every copy takes its pattern, so placing the same lessons again clashed; the tests keep what they test |
+| History per academic year: every version (draft, published, archived) by start date, then number | Decision 2; `06`, Protection |
+| The version in force on a quarter's first day is the published version with the latest start on or before it (`versionOnDate`, moved to `version-on-date.ts`); an archived version never ran (`version_archive_started`), a draft is never in force | Decision 3 |
+| A comparison is of two versions of one year (`version_compare_year`); rows matched by class or group and subject, placements by row, weekday and slot position, clock times and double pairs compared; one diff (`versionDifferences`) that `carryChanges` now reads | Decision 4; plan review should-fix 2 |
+| "Reopen as a new draft" is the existing copy (`POST versions` with `copyFrom`), any state, same year | Decision 5 |
+| Every copy takes its pattern: each block at its weekday and slot, times of the template on the draft's `statusOn`, a new pair id per double; a block is left whole with its first reason (the row's own load problem, `copy_part_left`, `copy_room_inactive`, `copy_slot_missing`, `copy_pair_left`, `copy_clash`), both halves of a double together; the vacancy fill keeps its own whole copy | Decisions 6 to 8; corrections 2 |
+| The blocks left are kept on the draft (`left_blocks`, 0104: written once at the insert, only emptied, only on a draft) and shown in "To place", those of rows the copy left included; dismissed with the left rows | Decision 7; correction 1 |
+| The copy locks the rooms of the source's entries `for key share` in id order before reading their status | Plan review must-fix 7 |
+| No new area: history and comparison under `timetable` `view`, restore under `create`; the two reads write no audit entry, the copy's entry names `copiedBlocks` and `leftBlocks` | Decisions 9 and 10 |
+| **Build decision.** The page's restore opens the builder once the form is gone (an effect on the created id), so leaving it asks nothing | The guard of unsent changes held a navigation made inside the save |
+
 ## 21 October 2026: substitutions kept after a publish (task 5.7b-3)
 
 Plan approved on pull request #193 with corrections 1 to 3; decisions 1 to 13 confirmed there. Flagged on issue #42.

@@ -903,15 +903,24 @@ How to read the task lines:
   - From 5.7b-2 (pull request #192, decisions 3 and 4): a record now carries `absence_id` (the absence it was made for) and `journal_id` (sources `absence` and `journal`), and `relaxed` is kept per lesson on `substitution_lessons` (0102); a substitution kept by a publish keeps its row's `relaxed` and its absence link, so a later shortening of the absence still returns it.
   - From 5.6a-5a (pull request #164, decision 3): `edge/timetable`, Versions and drafts, "A substitution and a one-day move are already recorded for a date after the new version starts": the substitution record joins the sorting of 5.6a-5a (`sortDayChanges`) as an item (kept when the new version has the lesson and the substitute passes the rules there, needs a decision, dropped), with the test of the substitution half of that row.
 
-- [ ] **5.8 Protection and version history**
-  - Read: `06` (Protection), `03` (Quarters), `edge/timetable` (Versions and drafts).
-  - Build: a dated lesson with data cannot be deleted or change its class, group or subject; forced delete by the Super Admin with a reason and 30-day restore; version history, comparison of two versions, reopening an old version as a new draft; the version in force on the first day of each quarter.
-  - Done when: each of the four Protection rules has a test.
-  - From 2.7 (pull request #77, decision 2; issue #39, item 6): the same forced delete for a building, floor or room that nothing references (`03`, Building, floor, room; spec change of 13 October 2026), with a reason, an audit entry and 30 days to restore; a referenced one stays archive-only.
-  - From 5.1a (pull request #107, correction 6): the forced delete of a dated lesson needs a delete grant on `lessons` and `lesson_blocks` (0058 gives none), added with its guard in a migration of its own.
+- [x] **5.8a Version history and restore** (5.8 split in three, pull request #194, decision 1, Look first)
+  - Read: `06` (Protection), `03` (Quarters), `edge/timetable` (Versions and drafts), `edge/academic-year`.
+  - Build: the version history of a year in the order of start dates with the version in force on the first day of each quarter; the comparison of two versions; reopening an old version as a new draft, every copy taking its pattern.
+  - Done when: Protection rule 3 ("Version history shows every version in the order of their start dates, names the version in force on the first day of each quarter, compares two versions, and can reopen an old one as a new draft") has a test of each of its four parts, and a restored version with an archived teacher and a closed room lists those entries in "To place" with their reason (`edge/academic-year`).
   - From 5.4b-2a (pull request #133, decision 3): reopening an old version as a new draft ("Restore an earlier version") copies its pattern too; entries whose teacher, room, subject or class is no longer active go to the "to place" list with the reason (`edge/timetable`, Versions and drafts; `edge/academic-year`). The panel is `GridToPlace` (`apps/web/src/features/timetable/grid-to-place.tsx`); today a copy takes the load and the pins only.
   - From 5.4c-3a (pull request #137, decision 12): a pattern copied into a new draft gives each double pair a new `double_pair_id` (0058 `pattern_blocks_double` counts a pair across all versions, so a copied id is refused).
   - From 5.5a-3a (pull request #145, decision 4): every copy of a version, not only a restore, takes its pattern, so that a fix drafted from a version keeps its placement and "carry the change into them" is offered (`carryChanges`, `packages/timetable-rules/src/carry.ts`, compares entries by load row, weekday and slot position).
+
+- [ ] **5.8b Protection of dated lessons and their forced delete** (5.8 split in three, pull request #194, decision 1, Look first)
+  - Read: `06` (Protection, What a change does to existing data), `edge/timetable` (After publishing), `edge/00-definitions` (Data on a lesson).
+  - Build: a dated lesson's class, group and subject never change and a lesson with data is never deleted (tested in the database and through every writer of dated lessons); a teacher, room or time change of a lesson logged with who, when, before and after; the Super Admin's forced delete of a dated lesson with a typed reason, kept 30 days and restorable. Until 6.1 adds the cells no lesson holds data (`edge/00-definitions`, Data on a lesson): this task plans one place that answers "the lesson holds data", which 6.1 fills, and adds a From line to 6.1 for the cells kept by a forced delete.
+  - Done when: Protection rules 1, 2 and 4 each have a test.
+  - From 5.1a (pull request #107, correction 6): the forced delete of a dated lesson needs a delete grant on `lessons` and `lesson_blocks` (0058 gives none), added with its guard in a migration of its own.
+
+- [ ] **5.8c Forced delete of a building, floor or room** (5.8 split in three, pull request #194, decision 1, Look first)
+  - Read: `03` (Building, floor, room), `06` (Protection).
+  - Build: the Super Admin's forced delete of a building, floor or room that nothing references, with a reason, an audit entry and 30 days to restore, on the store and restore of 5.8b (not a second mechanism); a referenced one stays archive-only.
+  - From 2.7 (pull request #77, decision 2; issue #39, item 6): the same forced delete for a building, floor or room that nothing references (`03`, Building, floor, room; spec change of 13 October 2026), with a reason, an audit entry and 30 days to restore; a referenced one stays archive-only.
 
 - [ ] **5.9 Timetable views, print and export**
   - Read: `06` (Views and outputs), `edge/system-behaviour`.

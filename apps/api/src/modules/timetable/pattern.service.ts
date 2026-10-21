@@ -906,12 +906,11 @@ export class TimetablePattern {
    * The blocks a copy left (task 5.8a, decision 7) with the rows of the
    * version copied that they name, as the load's left rows answer them.
    */
-  private async leftOf(
-    transaction: Transaction,
-    version: VersionRow,
-  ): Promise<GridAnswer['left']> {
+  private async leftOf(transaction: Transaction, version: VersionRow): Promise<GridAnswer['left']> {
     const blocks = leftBlocksOf(version.left_blocks);
-    const ids = [...new Set(blocks.flatMap((block) => block.lessons.map((one) => one.sourceRowId)))];
+    const ids = [
+      ...new Set(blocks.flatMap((block) => block.lessons.map((one) => one.sourceRowId))),
+    ];
     if (ids.length === 0 || version.from_version_id === null) {
       return { blocks, rows: [] };
     }
