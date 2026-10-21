@@ -431,6 +431,7 @@ const MESSAGE: Record<ErrorCode, string> = {
   forced_delete_restored: 'The record was restored already.',
   forced_delete_version: 'Another timetable is in force on the date of the lesson.',
   forced_delete_parent_changed: 'A record the lesson was tied to changed since.',
+  forced_delete_block_gone: 'The block of the deleted lesson is gone since.',
   forced_delete_restore_blocked: 'The restored lesson would break a timetable rule.',
   vacancy_has_load: 'A load row that can still run, or a future lesson, names the vacancy.',
   vacancy_in_load: 'A load row names the vacancy, so it cannot be deleted.',

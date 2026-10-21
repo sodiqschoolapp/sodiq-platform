@@ -54,6 +54,8 @@ export interface StoreKind {
   ) => Promise<void>;
   /** The constraints the restore meets, by name, with the refusal each gives. */
   readonly refusals: Readonly<Record<string, ErrorCode>>;
+  /** The refusal of a deadlock or a serialisation failure (40P01, 40001); without it they stay a 500. */
+  readonly busy?: ErrorCode;
   /** Takes the locks of the record's year and checks it is open, before the store row. */
   readonly lock?: (transaction: Transaction, branchId: string, row: StoreRow) => Promise<void>;
 }
@@ -191,45 +193,47 @@ export class ForcedDeleteStore {
         throw notFound();
       }
       const kind = this.kindOf(found.record_type);
-      return refusingConstraints(async () => {
-        const once = await this.requestKeys.runOnce(
-          transaction,
-          {
-            key,
-            scope: 'forced_deletes.restore',
-            accountId: access.accountId,
-            input: { forcedDeleteId: id },
-          },
-          async () => {
-            await kind.lock?.(transaction, branchId, storeRowOf(found));
-            // The store row read again after the locks.
-            const row = await transaction
-              .selectFrom('forced_deletes')
-              .select([
-                'id',
-                'branch_id',
-                'record_type',
-                'record_id',
-                'rows',
-                'restored_at',
-                'restore_until',
-              ])
-              .where('id', '=', id)
-              .forUpdate()
-              .executeTakeFirstOrThrow();
-            if (row.restored_at !== null) {
-              throw refusal('forced_delete_restored');
-            }
-            const moment = await transactionMoment(transaction);
-            if (moment.getTime() >= row.restore_until.getTime()) {
-              throw refusal('forced_delete_expired');
-            }
-            await kind.restore(transaction, access, storeRowOf(row), requestId);
-            return await this.answerOf(transaction, branchId, id);
-          },
-        );
-        return forcedDeleteSchema.parse(once.result);
-      }, kind.refusals);
+      return busyAs(kind.busy, () =>
+        refusingConstraints(async () => {
+          const once = await this.requestKeys.runOnce(
+            transaction,
+            {
+              key,
+              scope: 'forced_deletes.restore',
+              accountId: access.accountId,
+              input: { forcedDeleteId: id },
+            },
+            async () => {
+              await kind.lock?.(transaction, branchId, storeRowOf(found));
+              // The store row read again after the locks.
+              const row = await transaction
+                .selectFrom('forced_deletes')
+                .select([
+                  'id',
+                  'branch_id',
+                  'record_type',
+                  'record_id',
+                  'rows',
+                  'restored_at',
+                  'restore_until',
+                ])
+                .where('id', '=', id)
+                .forUpdate()
+                .executeTakeFirstOrThrow();
+              if (row.restored_at !== null) {
+                throw refusal('forced_delete_restored');
+              }
+              const moment = await transactionMoment(transaction);
+              if (moment.getTime() >= row.restore_until.getTime()) {
+                throw refusal('forced_delete_expired');
+              }
+              await kind.restore(transaction, access, storeRowOf(row), requestId);
+              return await this.answerOf(transaction, branchId, id);
+            },
+          );
+          return forcedDeleteSchema.parse(once.result);
+        }, kind.refusals),
+      );
     });
   }
 }
@@ -248,6 +252,20 @@ function storeRowOf(row: {
     recordId: row.record_id,
     rows: row.rows,
   };
+}
+
+const BUSY_CODES = new Set(['40P01', '40001']);
+
+/** Runs the work and answers a deadlock or a serialisation failure with the kind's refusal. */
+async function busyAs<T>(busy: ErrorCode | undefined, work: () => Promise<T>): Promise<T> {
+  try {
+    return await work();
+  } catch (error) {
+    if (busy !== undefined && BUSY_CODES.has(String((error as { code?: unknown }).code))) {
+      throw new ApiException(busy, 409);
+    }
+    throw error;
+  }
 }
 
 function refusal(code: ErrorCode): ApiException {

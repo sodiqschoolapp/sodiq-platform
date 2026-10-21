@@ -17,6 +17,7 @@ import {
   UNKNOWN,
   type DayTemplatesKit,
 } from '../../testing/day-templates-kit.js';
+import { standingExamOver } from '../../testing/exams-kit.js';
 import { heldEntry } from '../../testing/held-entry.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
@@ -622,6 +623,159 @@ describe('the forced delete of a dated lesson and its restore', () => {
       expect(await rowOf(lesson.id)).toBeUndefined();
     });
 
+    it('puts back the change mark, the one-day change link and the absence-taught record', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, NEXT_MONDAY);
+      const moved = await keyed(
+        `/api/timetable/lessons/${lesson.id}/move`,
+        s.branch,
+        { date: NEXT_MONDAY, lessonNumber: 2, reason: 'The class is at the theatre' },
+        t.admin,
+        randomUUID(),
+      );
+      expect(moved.status, JSON.stringify(moved.body)).toBe(200);
+      const placed = await rowOf(lesson.id);
+      await t.database.migrator
+        .insertInto('lesson_absence_taught')
+        .values({
+          branch_id: s.branch,
+          lesson_id: lesson.id,
+          recorded_by: adminAccount,
+          recorded_at: at('2026-10-10', '12:00'),
+        })
+        .execute();
+      const kept = async () => ({
+        mark: await t.database.migrator
+          .selectFrom('lesson_changes')
+          .select('changed_at')
+          .where('lesson_id', '=', lesson.id)
+          .execute(),
+        dayChanges: await t.database.migrator
+          .selectFrom('lesson_day_changes')
+          .select('id')
+          .where('lesson_id', '=', lesson.id)
+          .orderBy('id')
+          .execute(),
+        taught: await t.database.migrator
+          .selectFrom('lesson_absence_taught')
+          .select(['recorded_by', 'recorded_at'])
+          .where('lesson_id', '=', lesson.id)
+          .execute(),
+      });
+      const before = await kept();
+      expect(before.mark).toHaveLength(1);
+      expect(before.dayChanges).toHaveLength(1);
+      expect(before.taught).toHaveLength(1);
+      const store = storeOf(await forceDelete(s.branch, lesson.id));
+      expect(await kept()).toEqual({ mark: [], dayChanges: [], taught: [] });
+      done(await restore(s.branch, store));
+      expect(await kept()).toEqual(before);
+      // Every stored value back; `created_at` is bookkeeping only.
+      expect({ ...(await rowOf(lesson.id)), created_at: null }).toEqual({
+        ...placed,
+        created_at: null,
+      });
+    });
+
+    it('puts back the exam cancel while its exam still stands over the lesson', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, NEXT_MONDAY);
+      const exam = await standingExamOver(t.database.migrator, {
+        lessonId: lesson.id,
+        roomId: s.room,
+        staffId: s.teacher.staffId,
+      });
+      const store = storeOf(await forceDelete(s.branch, lesson.id));
+      done(await restore(s.branch, store));
+      expect((await rowOf(lesson.id))?.cancel_cause).toBe('exam');
+      expect(
+        await t.database.migrator
+          .selectFrom('lesson_exam_cancels')
+          .select('exam_id')
+          .where('lesson_id', '=', lesson.id)
+          .execute(),
+      ).toEqual([{ exam_id: exam }]);
+    });
+
+    it('is refused when the exam that cancelled the lesson stands but no longer meets it', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, NEXT_MONDAY);
+      const exam = await standingExamOver(t.database.migrator, {
+        lessonId: lesson.id,
+        roomId: s.room,
+        staffId: s.teacher.staffId,
+      });
+      const store = storeOf(await forceDelete(s.branch, lesson.id));
+      await t.database.migrator
+        .updateTable('exams')
+        .set({
+          starts_at: at(NEXT_MONDAY, '11:00'),
+          ends_at: at(NEXT_MONDAY, '11:45'),
+          first_slot: 4,
+          last_slot: 4,
+        })
+        .where('id', '=', exam)
+        .execute();
+      const refused = await restore(s.branch, store);
+      refusedWith(refused, 409, 'forced_delete_parent_changed');
+      expect(detailsOf(refused)).toEqual([
+        expect.objectContaining({ path: 'exams', code: 'exam_moved' }),
+      ]);
+      expect(await rowOf(lesson.id)).toBeUndefined();
+    });
+
+    /** Puts the other class's lesson into the block of the class's lesson: one block, two lessons. */
+    const LATER_MONDAY = '2026-11-30';
+    const sharedBlock = async (s: Scene) => {
+      const lesson = await lessonOf(s, LATER_MONDAY);
+      const other = await lessonOf(s, LATER_MONDAY, s.otherClass);
+      await t.database.migrator.transaction().execute(async (transaction) => {
+        await sql`set constraints time_claims_class_excl deferred`.execute(transaction);
+        // The clock of the scene, so the guard of the past lets the empty block go.
+        await sql`select set_config('app.now', '2026-10-10T23:55:00+05:00', true)`.execute(
+          transaction,
+        );
+        await transaction
+          .updateTable('lessons')
+          .set({ block_id: lesson.block_id })
+          .where('id', '=', other.id)
+          .execute();
+        await transaction.deleteFrom('lesson_blocks').where('id', '=', other.block_id).execute();
+      });
+      return { lesson, other };
+    };
+
+    it('checks a lesson whose block stayed at the block’s times when the block was retimed since, refused with the findings, never a 500', async () => {
+      const s = await scene();
+      const { lesson } = await sharedBlock(s);
+      const store = storeOf(await forceDelete(s.branch, lesson.id));
+      expect(await blockOf(lesson.block_id)).toBeDefined();
+      await t.database.migrator
+        .updateTable('lesson_blocks')
+        .set({ starts_at: at(LATER_MONDAY, '08:05'), ends_at: at(LATER_MONDAY, '08:50') })
+        .where('id', '=', lesson.block_id)
+        .execute();
+      // The stored times no longer meet the block's key (23503 before the fix):
+      // the lesson is put at the block's times and checked there, where 08:05
+      // starts no slot of the day.
+      const refused = await restore(s.branch, store);
+      refusedWith(refused, 409, 'forced_delete_restore_blocked');
+      expect(detailsOf(refused)).toContainEqual(
+        expect.objectContaining({ code: 'not_a_slot', day: LATER_MONDAY }),
+      );
+      expect(await rowOf(lesson.id)).toBeUndefined();
+    });
+
+    it('is refused when the block the lesson stayed in is gone since', async () => {
+      const s = await scene();
+      const { lesson, other } = await sharedBlock(s);
+      const store = storeOf(await forceDelete(s.branch, lesson.id));
+      storeOf(await forceDelete(s.branch, other.id));
+      expect(await blockOf(lesson.block_id)).toBeUndefined();
+      refusedWith(await restore(s.branch, store), 409, 'forced_delete_block_gone');
+      expect(await rowOf(lesson.id)).toBeUndefined();
+    });
+
     it('is refused after its 30 days', async () => {
       const s = await scene();
       const lesson = await lessonOf(s, '2027-01-25');
@@ -693,7 +847,7 @@ describe('the forced delete of a dated lesson and its restore', () => {
       refusedWith(await restore(s.branch, store), 409, 'forced_delete_parent_changed');
     });
 
-    it('is refused when another branch 19s lesson of the teacher is committed between the check and the write (23P01)', async () => {
+    it('is refused when another branch’s lesson of the teacher is committed between the check and the write (23P01)', async () => {
       const s = await scene();
       const lesson = await lessonOf(s, NEXT_MONDAY);
       const store = storeOf(await forceDelete(s.branch, lesson.id));

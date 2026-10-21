@@ -608,6 +608,8 @@ export const en = {
       'Another timetable is in force on the date of this lesson now, so it cannot come back. Add the lesson in that timetable instead.',
     forced_delete_parent_changed:
       'Something the lesson was tied to changed since it was deleted (the exam that cancelled it was cancelled, or its substitution was withdrawn), so it cannot come back as it was.',
+    forced_delete_block_gone:
+      'The other lessons this lesson was taught with are gone since it was deleted, so it cannot come back. Restore them first, if they were deleted for good too.',
     forced_delete_restore_blocked:
       'The lesson cannot come back: it would break a timetable rule, listed below. Change the lesson that took its place first.',
     journal_substitute_none:

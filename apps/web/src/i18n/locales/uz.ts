@@ -623,6 +623,8 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu dars sanasida endi boshqa dars jadvali amalda, shuning uchun u qaytmaydi. Darsni oʻsha jadvalga qoʻshing.',
     forced_delete_parent_changed:
       'Dars oʻchirilgandan beri unga bogʻliq narsa oʻzgardi (uni bekor qilgan imtihon bekor qilindi yoki uning oʻrinbosari bekor qilindi), shuning uchun u avvalgidek qaytmaydi.',
+    forced_delete_block_gone:
+      'Bu dars birga oʻtilgan boshqa darslar endi yoʻq, shuning uchun u qaytmaydi. Agar ular ham butunlay oʻchirilgan boʻlsa, avval ularni tiklang.',
     forced_delete_restore_blocked:
       'Dars qaytmaydi: u quyidagi jadval qoidasini buzadi. Avval uning oʻrnini egallagan darsni oʻzgartiring.',
     journal_substitute_none:

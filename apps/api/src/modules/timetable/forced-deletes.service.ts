@@ -112,6 +112,12 @@ export const RESTORE_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   room_shared_capacity: 'forced_delete_restore_blocked',
   lesson_block_student_twice: 'forced_delete_restore_blocked',
   lesson_double_pair: 'forced_delete_restore_blocked',
+  // The guards of a standing exam (0060) that the lesson put back meets: the
+  // restored lesson breaks a rule, never "try again" (spec review of the code,
+  // should-fix 4).
+  exam_group_slots: 'forced_delete_restore_blocked',
+  exam_incomplete: 'forced_delete_restore_blocked',
+  lesson_block_class_out_exam: 'forced_delete_parent_changed',
   forced_delete_expired: 'forced_delete_expired',
   forced_delete_restored: 'forced_delete_restored',
 };
@@ -138,6 +144,7 @@ export class LessonForcedDeletes implements OnModuleInit {
         this.restoreLocked(transaction, access, row, requestId),
       yearOf: (row) => (row.rows as unknown as LessonRows).place.academicYearId,
       refusals: RESTORE_REFUSALS,
+      busy: 'timetable_busy',
       lock: async (transaction, branchId, row) => {
         const yearId = (row.rows as unknown as LessonRows).place.academicYearId;
         await sql`select pg_advisory_xact_lock(${PUBLISH_LOCK})`.execute(transaction);
@@ -504,11 +511,30 @@ export class LessonForcedDeletes implements OnModuleInit {
     );
     const blockNow = await transaction
       .selectFrom('lesson_blocks')
-      .select('id')
+      .select(['id', 'lesson_date', 'starts_at', 'ends_at', 'double_pair_id'])
       .where('id', '=', lesson.block_id)
       .executeTakeFirst();
-    if (inForce !== rows.place.versionId || (rows.block === null) !== (blockNow !== undefined)) {
+    if (inForce !== rows.place.versionId || (rows.block !== null && blockNow !== undefined)) {
       throw new ApiException('forced_delete_version', 409);
+    }
+    // The block that stayed with the block's other lessons is gone since (they
+    // went too, or a write of the date removed it): nothing to come back into.
+    if (rows.block === null && blockNow === undefined) {
+      throw new ApiException('forced_delete_block_gone', 409);
+    }
+    // A lesson comes back at its block's times: a block that stayed may have
+    // been retimed since (a template or calendar change moves it in place).
+    const placed =
+      blockNow === undefined
+        ? lesson
+        : {
+            ...lesson,
+            lesson_date: blockNow.lesson_date,
+            starts_at: blockNow.starts_at.toISOString(),
+            ends_at: blockNow.ends_at.toISOString(),
+          };
+    if (placed.lesson_date !== lesson.lesson_date) {
+      await snapshotWeek(transaction, branchId, placed.lesson_date, placed.lesson_date);
     }
     // An exam that cancelled the lesson must still stand (decision 9).
     const examIds = [...new Set([...rows.examCancels, ...rows.classOuts.map((one) => one.examId)])];
@@ -583,6 +609,12 @@ export class LessonForcedDeletes implements OnModuleInit {
         );
       }
     }
+    await refuseExamsMoved(
+      transaction,
+      rows,
+      placed,
+      rows.block?.double_pair_id ?? blockNow?.double_pair_id ?? null,
+    );
     // The store row first: the database lets the same ids back in only then.
     await transaction
       .updateTable('forced_deletes')
@@ -592,7 +624,7 @@ export class LessonForcedDeletes implements OnModuleInit {
     if (rows.block !== null) {
       await transaction.insertInto('lesson_blocks').values(rows.block).execute();
     }
-    await transaction.insertInto('lessons').values(lesson).execute();
+    await transaction.insertInto('lessons').values(placed).execute();
     if (rows.changedAt !== null) {
       await transaction
         .insertInto('lesson_changes')
@@ -662,7 +694,7 @@ export class LessonForcedDeletes implements OnModuleInit {
           substitution_id: rows.substitution.substitutionId,
           branch_id: branchId,
           lesson_id: lesson.id,
-          lesson_date: lesson.lesson_date,
+          lesson_date: placed.lesson_date,
           relaxed: rows.substitution.relaxed,
           ...placeOf(places, lesson.id),
         })
@@ -670,7 +702,7 @@ export class LessonForcedDeletes implements OnModuleInit {
     }
     // Every rule checked again for a lesson held (edge/timetable, After publishing).
     if (lesson.cancel_cause === null) {
-      const [restored] = await storedLessonsOn(transaction, branchId, lesson.lesson_date, {
+      const [restored] = await storedLessonsOn(transaction, branchId, placed.lesson_date, {
         lessonIds: [lesson.id],
       });
       if (restored === undefined) throw new Error('The restored lesson is not stored.');
@@ -700,7 +732,7 @@ export class LessonForcedDeletes implements OnModuleInit {
     }
     await sql`set constraints all immediate`.execute(transaction);
     const notices = {
-      notified: await this.tell(transaction, access, branchId, lesson, 'timetable.lesson_restored'),
+      notified: await this.tell(transaction, access, branchId, placed, 'timetable.lesson_restored'),
     };
     await this.audit.record(transaction, {
       branchId,
@@ -712,6 +744,78 @@ export class LessonForcedDeletes implements OnModuleInit {
       newValue: { ...(rows as unknown as Record<string, JsonValue>), notices: { ...notices } },
       requestId,
     });
+  }
+}
+
+/**
+ * Refuses a restore whose exam cancel no longer holds (decision 9; spec review
+ * of the code, should-fix 4): a link is kept only while its exam still meets
+ * the lesson's block or the other half of its double on the date and seats a
+ * class or group of those blocks, the rule of 0094 for every link.
+ */
+async function refuseExamsMoved(
+  transaction: Transaction,
+  rows: LessonRows,
+  placed: LessonRows['lesson'],
+  pairId: string | null,
+): Promise<void> {
+  if (rows.examCancels.length === 0) return;
+  const blocks =
+    pairId === null
+      ? []
+      : await transaction
+          .selectFrom('lesson_blocks')
+          .select(['id', 'starts_at', 'ends_at'])
+          .where('id', '!=', placed.block_id)
+          .where('double_pair_id', '=', pairId)
+          .execute();
+  const spans = [
+    { from: new Date(placed.starts_at), until: new Date(placed.ends_at) },
+    ...blocks.map((one) => ({ from: one.starts_at, until: one.ends_at })),
+  ];
+  const units = await transaction
+    .selectFrom('lessons')
+    .select(['class_id', 'group_id'])
+    .where('block_id', 'in', [placed.block_id, ...blocks.map((one) => one.id)])
+    .execute();
+  const classIds = [placed.class_id, ...units.map((one) => one.class_id)].filter(
+    (one): one is string => one !== null,
+  );
+  const groupIds = [placed.group_id, ...units.map((one) => one.group_id)].filter(
+    (one): one is string => one !== null,
+  );
+  const exams = await transaction
+    .selectFrom('exams')
+    .select(['id', 'exam_date', 'starts_at', 'ends_at'])
+    .where('id', 'in', rows.examCancels)
+    .execute();
+  const seated = new Set(
+    (
+      await transaction
+        .selectFrom('exam_room_classes')
+        .select('exam_id')
+        .where('exam_id', 'in', rows.examCancels)
+        .where((where) =>
+          where.or([
+            ...(classIds.length === 0 ? [] : [where('class_id', 'in', classIds)]),
+            ...(groupIds.length === 0 ? [] : [where('group_id', 'in', groupIds)]),
+          ]),
+        )
+        .execute()
+    ).map((one) => one.exam_id),
+  );
+  const holds = (exam: (typeof exams)[number]) =>
+    exam.exam_date === placed.lesson_date &&
+    seated.has(exam.id) &&
+    spans.some((one) => exam.starts_at < one.until && one.from < exam.ends_at);
+  if (exams.length !== rows.examCancels.length || !exams.every(holds)) {
+    throw new ApiException('forced_delete_parent_changed', 409, undefined, [
+      {
+        path: 'exams',
+        code: 'exam_moved',
+        message: 'An exam that cancelled the lesson no longer meets it.',
+      },
+    ]);
   }
 }
 
