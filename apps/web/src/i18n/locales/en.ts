@@ -3754,7 +3754,8 @@ export const en = {
       by: '{{name}}, {{moment}}',
       system: 'The system',
       kind_changed: 'Changed',
-      kind_removed: 'Removed by a new timetable',
+      kind_removed:
+        'Removed by a change of the timetable, the calendar, the lesson times or the quarter dates',
       kind_forced_delete: 'Deleted for good',
       kind_restored: 'Restored',
     },

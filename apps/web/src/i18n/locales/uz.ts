@@ -3795,7 +3795,8 @@ export const uz: Texts<'one' | 'other'> = {
       by: '{{name}}, {{moment}}',
       system: 'Tizim',
       kind_changed: 'Oʻzgartirildi',
-      kind_removed: 'Yangi jadval bilan olib tashlandi',
+      kind_removed:
+        'Jadval, taqvim, dars vaqtlari yoki chorak sanalari oʻzgarishi bilan olib tashlandi',
       kind_forced_delete: 'Butunlay oʻchirildi',
       kind_restored: 'Tiklandi',
     },

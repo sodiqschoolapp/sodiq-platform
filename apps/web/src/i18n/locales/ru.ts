@@ -3941,7 +3941,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       by: '{{name}}, {{moment}}',
       system: 'Система',
       kind_changed: 'Изменён',
-      kind_removed: 'Удалён новым расписанием',
+      kind_removed: 'Удалён изменением расписания, календаря, времени уроков или дат четвертей',
       kind_forced_delete: 'Удалён окончательно',
       kind_restored: 'Восстановлен',
     },
