@@ -235,6 +235,8 @@ export function useQuartersPreview(): {
   const { t } = useTranslation();
   const [question, setQuestion] = useState<Question | null>(null);
   const [choices, setChoices] = useState<Record<string, DayChangeChoice>>({});
+  // Task 5.7b-3: the reason typed for a substitution's cancel, by its key.
+  const [reasons, setReasons] = useState<Record<string, string>>({});
   const [ticks, setTicks] = useState<Record<string, number[]>>({});
   const [examChoices, setExamChoices] = useState<Record<string, 'cancel' | 'keep'>>({});
   const [refreshing, setRefreshing] = useState(false);
@@ -247,6 +249,7 @@ export function useQuartersPreview(): {
     }
     const days = await new Promise<TemplateDaysBody | null>((resolve) => {
       setChoices({});
+      setReasons({});
       setTicks({});
       setExamChoices({});
       setRefreshError(null);
@@ -263,7 +266,9 @@ export function useQuartersPreview(): {
     setQuestion(null);
   };
   const decided =
-    question === null ? null : dayDecisionsBodyOf(question.preview.lessons.dayChanges, choices);
+    question === null
+      ? null
+      : dayDecisionsBodyOf(question.preview.lessons.dayChanges, choices, reasons);
   const dayKeeps = dayKeepsOf(ticks);
   const examBlocks = examBlocksOf(examChoices);
   const days: TemplateDaysBody | null =
@@ -363,6 +368,10 @@ export function useQuartersPreview(): {
             canEdit
             onChoose={(key, choice) => {
               setChoices({ ...choices, [key]: choice });
+            }}
+            reasons={reasons}
+            onReason={(key, reason) => {
+              setReasons({ ...reasons, [key]: reason });
             }}
           />
           <DialogFooter>

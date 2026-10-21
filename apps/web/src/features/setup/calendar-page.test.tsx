@@ -106,6 +106,7 @@ const NO_LESSONS: CalendarPreview['lessons'] = {
     exams: [],
     absences: [],
     closures: [],
+    substitutions: [],
   },
   shortenedDays: [],
   keepRefusals: [],
@@ -549,6 +550,7 @@ describe('the calendar page', () => {
           exams: [],
           absences: [],
           closures: [],
+          substitutions: [],
         },
         names: {
           units: [{ id: OXFORD, kind: 'class', name: 'Oxford', grades: [7] }],

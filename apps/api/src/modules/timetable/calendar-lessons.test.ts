@@ -18,7 +18,7 @@ import {
   START,
 } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
-import { substitutedIn } from '../../testing/substitutions-kit.js';
+import { liveSubstitutionRowOf, substitutedIn } from '../../testing/substitutions-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 
 const refusedWith = (response: Response, status: number, code: string) => {
@@ -2891,6 +2891,8 @@ describe('calendar entries after publishing', () => {
         absences: [],
         // Task 5.7a-2b (decision 9): nor room closures.
         closures: [],
+        // Task 5.7b-3: no substitution stands on the dates.
+        substitutions: [],
       });
       expect(await storedRowsOf(s.branch)).toEqual(rows[0]);
       expect(await storedRowsOf(other.branch)).toEqual(rows[1]);
@@ -3211,6 +3213,8 @@ describe('calendar entries after publishing', () => {
         [{ key: changeOf[south.branch] ?? '', choice: 'drop' }],
         [{ key: southLesson.id, choice: 'drop' }],
         [{ key: bulkOf[south.branch] ?? '', choice: 'drop' }],
+        // Task 5.7b-3: or a stored substitution.
+        [{ key: await liveSubstitutionRowOf(t.database.migrator, south.branch), choice: 'drop' }],
         [{ key: UNKNOWN, choice: 'drop' }],
         ...[southBlock.id, UNKNOWN].map((blockId) => [
           {

@@ -212,7 +212,7 @@ Not built yet: what the acting teacher does in the plan and the journal (tasks 7
 | --- | --- |
 | The teacher replaced has another lesson at that time when the substitution is withdrawn | Refused: "The teacher replaced has another lesson or exam at that time." |
 | The teacher replaced is absent when the substitution is withdrawn | The lesson goes back to them and needs a teacher again. |
-| A new timetable version, a vacancy fill or a calendar change rewrites the lesson | The substitution ends (task 5.7b-3 will list it in the preview instead). |
+| A new timetable version, a vacancy fill or a calendar change rewrites the lesson | The preview lists the substitution as kept, needing a decision or dropped (see "After a new timetable is published" below). |
 
 **What the person sees.** "Aliyev Bekzod · substitute for Geometry vacancy 2". "The substitution was saved."
 
@@ -254,7 +254,32 @@ For a vacancy: open the vacancy in People, then Vacancies. Each journal under "A
 
 **What the person sees.** "Saved for: 19 October, 26 October". "Not saved on these dates: 2 November: The substitute cannot teach at that time."
 
-Not built yet: substitutions kept by a new version (task 5.7b-3); the substitute in the journal and the plan (tasks 6.3, 7.1b, 8.4, 8.7, 8.8); the Free now board (task 5.7c).
+Not built yet: the substitute in the journal and the plan (tasks 6.3, 7.1b, 8.4, 8.7, 8.8); the Free now board (task 5.7c).
+
+### After a new timetable is published
+
+<!-- Sources: edge/timetable (Versions and drafts: "A substitution and a one-day move are already recorded for a date after the new version starts. One-day changes, absences, room closures and exams are stored on their own and applied again after a publish. The preview sorts them into kept, needs a decision and dropped. Publish waits until every 'needs a decision' item is settled."), spec 06 (Changes after publishing, Filling a vacancy); task 5.7b-3, decisions 1 to 13 -->
+
+**What it is.** A substitution stays when a new timetable version is published, a version is withdrawn, a vacancy is filled, or the calendar, a day template or the quarter dates change, as long as the lesson is still there with the same teacher. The preview of each of these lists every substitution of the dates it rewrites under **Kept**, **Needs a decision** or **Dropped**.
+
+**Who can do it.** Whoever may publish, withdraw, fill or change the calendar: the Super Admin and the Academic Vice Principal. The Principal sees the previews.
+
+**How it works.**
+
+- **Kept**: the new timetable has the lesson at the same time, with the teacher who was replaced, and the substitute can still take it. The substitute stays on the lesson, with the same record and reason; a shortening of the absence it was made for still gives it back. Nobody is told, since nothing changed.
+- **Needs a decision**: the lesson is still there, but the substitute now has another lesson at that time, is away, or no longer passes a rule. Choose **Give the lesson to the teacher of the new timetable** (offered when that teacher is free) or **Cancel the lesson that day** (type a reason). The save waits for a choice.
+- **Dropped**: the new timetable moves or removes the lesson, cancels it, or gives it another teacher. The lesson goes to the teacher of the new timetable; the substitution ends.
+
+**Rules.**
+
+- A vacancy filled from a date gives its later substituted lessons to the hired teacher: they are dropped. Lessons already held stay recorded under the substitute.
+- Both halves of a double lesson are one line and are decided together.
+- A teacher replaced on one lesson who substitutes on another at the same time is counted once: both substitutions are kept.
+- A substitution saved under "no teacher of the subject is free" is checked the same way again.
+- A substitution on a lesson that another line under "Needs a decision" may cancel says so; if that line is cancelled, the substitution is dropped.
+- If a substitution is saved or withdrawn after the preview was read, the save is refused: read the preview again.
+
+**What the person sees.** "7 Oxford, Mathematics, 19 October 2026 08:00–08:45: Aliyev Bekzod in place of Karimova Aziza. Reason: The teacher is ill".
 
 ## Exams after a publish or a withdraw
 

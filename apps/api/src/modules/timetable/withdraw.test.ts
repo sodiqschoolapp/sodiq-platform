@@ -22,7 +22,7 @@ import {
 import { LessonsKit, at } from '../../testing/lessons-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { standingExamOver } from '../../testing/exams-kit.js';
-import { substitutedIn } from '../../testing/substitutions-kit.js';
+import { liveSubstitutionRowOf, substitutedIn } from '../../testing/substitutions-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 
 const refusedWith = (response: Response, status: number, code: string) => {
@@ -1119,6 +1119,23 @@ describe('withdraw', () => {
       for (const cookie of [t.admin, t.vicePrincipal]) {
         for (const id of [theirs.b, UNKNOWN]) {
           refusedWith(await withdraw(s.branch, id, cookie), 404, 'not_found');
+        }
+        // Task 5.7b-3 (permission review of the code, must-fix 1): a decision
+        // naming another branch's stored substitution, or an unknown key.
+        for (const key of [
+          await liveSubstitutionRowOf(t.database.migrator, theirs.branch),
+          UNKNOWN,
+        ]) {
+          refusedWith(
+            await request(t.kit.server)
+              .post(`/api/timetable/versions/${s.b}/withdraw`)
+              .set('Cookie', cookie)
+              .set(BRANCH_HEADER, s.branch)
+              .set(REQUEST_KEY_HEADER, randomUUID())
+              .send({ dayDecisions: [{ key, choice: 'drop' }] }),
+            404,
+            'not_found',
+          );
         }
       }
       expect(await written([s.b, theirs.b])).toEqual(before);

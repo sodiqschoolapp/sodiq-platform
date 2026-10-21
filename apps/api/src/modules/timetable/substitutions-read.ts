@@ -1,3 +1,4 @@
+import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
 
 /**
@@ -74,16 +75,24 @@ export async function endSubstitutionRows(
     readonly cause: 'withdrawn' | 'replaced' | 'corrected' | 'dropped' | 'returned';
     readonly accountId: string;
     readonly moment: Date;
+    /**
+     * Task 5.7b-3: rows a publish keeps (`DayWritePlan.substitutes`), left
+     * for `settleSubstitutions`, which records them again (spec review of the
+     * plan, must-fix 1).
+     */
+    readonly exceptRowIds?: ReadonlySet<string>;
   },
 ): Promise<{ readonly lessonId: string; readonly substitutionId: string }[]> {
   const ended: { lessonId: string; substitutionId: string }[] = [];
   const ROWS = 500;
+  const except = [...(input.exceptRowIds ?? [])];
   for (let at = 0; at < input.lessonIds.length; at += ROWS) {
     const rows = await transaction
       .updateTable('substitution_lessons')
       .set({ ended_at: input.moment, end_cause: input.cause, ended_by: input.accountId })
       .where('lesson_id', 'in', input.lessonIds.slice(at, at + ROWS))
       .where('ended_at', 'is', null)
+      .$if(except.length > 0, (query) => query.where('id', 'not in', except))
       .returning(['lesson_id', 'substitution_id'])
       .execute();
     for (const row of rows) {
@@ -141,6 +150,10 @@ export async function writeRecord(
     })
     .returning('id')
     .executeTakeFirstOrThrow();
+  const places = await lessonPlacesOf(
+    transaction,
+    input.lessons.map((one) => one.id),
+  );
   await transaction
     .insertInto('substitution_lessons')
     .values(
@@ -150,8 +163,73 @@ export async function writeRecord(
         lesson_id: one.id,
         lesson_date: one.date,
         relaxed: one.relaxed,
+        ...placeOf(places, one.id),
       })),
     )
     .execute();
   return record.id;
+}
+
+/**
+ * What a lesson is, as a row of `substitution_lessons` records it when it is
+ * written (task 5.7b-3, 0103): its class or group, subject, load row, pattern
+ * entry, the date of its pattern block and its times. The date of the pattern
+ * block is its date, or the date the oldest move in force took it from (as
+ * `patternDateOf` reads a lesson moved by a one-day change).
+ */
+export interface LessonPlace {
+  readonly class_id: string | null;
+  readonly group_id: string | null;
+  readonly subject_id: string;
+  readonly load_row_id: string;
+  readonly pattern_entry_id: string;
+  readonly pattern_date: string;
+  readonly starts_at: Date;
+  readonly ends_at: Date;
+}
+
+/** The places of the lessons named, by lesson id. */
+export async function lessonPlacesOf(
+  transaction: Transaction,
+  lessonIds: readonly string[],
+): Promise<Map<string, LessonPlace>> {
+  const found = new Map<string, LessonPlace>();
+  const ROWS = 500;
+  for (let at = 0; at < lessonIds.length; at += ROWS) {
+    const rows = await transaction
+      .selectFrom('lessons as l')
+      .select([
+        'l.id',
+        'l.class_id',
+        'l.group_id',
+        'l.subject_id',
+        'l.load_row_id',
+        'l.pattern_entry_id',
+        'l.starts_at',
+        'l.ends_at',
+        sql<string>`coalesce((
+          select c.from_date::text
+          from lesson_day_changes c
+          where c.lesson_id = l.id
+            and c.kind = 'move'
+            and not exists (select 1 from lesson_day_change_ends e where e.change_id = c.id)
+          order by c.changed_at, c.id
+          limit 1
+        ), l.lesson_date::text)`.as('pattern_date'),
+      ])
+      .where('l.id', 'in', lessonIds.slice(at, at + ROWS))
+      .execute();
+    for (const row of rows) {
+      const { id, ...place } = row;
+      found.set(id, place);
+    }
+  }
+  return found;
+}
+
+/** The place of a lesson for its row; it throws for a lesson not read. */
+export function placeOf(places: ReadonlyMap<string, LessonPlace>, lessonId: string): LessonPlace {
+  const place = places.get(lessonId);
+  if (place === undefined) throw new Error(`No lesson ${lessonId} to record.`);
+  return place;
 }

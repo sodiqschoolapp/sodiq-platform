@@ -1377,6 +1377,53 @@ export const examItemSchema = z.object({
 export type ExamItemAnswer = z.infer<typeof examItemSchema>;
 
 /**
+ * Task 5.7b-3: why a stored substitution is dropped by a write of dated
+ * lessons: its lesson is gone or moved (`gone`), cancelled by the write or by
+ * another item (`cancelled`), given another teacher than the one replaced,
+ * or the substitute, by the new version (`teacher`).
+ */
+export const SUBSTITUTION_DROP_CAUSES = ['gone', 'cancelled', 'teacher'] as const;
+
+/** A lesson of a substitution item: its date and minutes of the day. */
+export const substitutionLessonSchema = z.object({
+  date: schoolDateSchema,
+  start: z.int().min(0).max(1440),
+  end: z.int().min(0).max(1440),
+});
+
+/**
+ * Task 5.7b-3 (`edge/timetable`, Versions and drafts, "A substitution and a
+ * one-day move are already recorded for a date after the new version
+ * starts"): a substitution in force on a lesson of the dates written, sorted.
+ * `key` is its smallest `substitution_lessons` id; one item per lesson, or
+ * per double whose halves carry rows of one record (decision 4). A "needs a
+ * decision" item offers `cancel` (with a reason) and, when the version's
+ * teacher passes the time rules there, `drop` (`dropOffered`; decisions 6
+ * and 7). `dependsOn`: the keys of other "needs a decision" items whose
+ * `cancel` cancels its lesson and drops it (decision 11).
+ */
+export const substitutionItemSchema = z.object({
+  key: z.uuid(),
+  category: z.enum(['kept', 'decide', 'dropped']),
+  unitId: z.uuid(),
+  subjectId: z.uuid(),
+  lessons: z.array(substitutionLessonSchema),
+  replacedId: z.uuid().nullable(),
+  substituteId: z.uuid(),
+  reason: z.string(),
+  absenceId: z.uuid().nullable(),
+  carriedVersionId: z.uuid().nullable(),
+  blocked: z.array(ruleResultSchema),
+  /** The substitute is away at the lesson's start (absent, inactive, left, locked). */
+  away: z.boolean(),
+  dropOffered: z.boolean(),
+  dropCause: z.enum(SUBSTITUTION_DROP_CAUSES).nullable(),
+  dependsOn: z.array(z.string()),
+});
+
+export type SubstitutionItemAnswer = z.infer<typeof substitutionItemSchema>;
+
+/**
  * The stored one-day changes of the dates written, sorted into kept, needs a
  * decision and dropped (task 5.6a-5a; `edge/timetable`, Versions and drafts,
  * "A substitution and a one-day move are already recorded for a date after
@@ -1392,6 +1439,8 @@ export const dayChangesAnswerSchema = z.object({
   bulk: z.array(bulkItemSchema),
   /** Task 5.6c-3a: the standing exams of the dates, once each. */
   exams: z.array(examItemSchema),
+  /** Task 5.7b-3: the substitutions in force on the dates, once each. */
+  substitutions: z.array(substitutionItemSchema),
   /**
    * Task 5.7a-1 (decision 7): the live absences of the teachers of the run's
    * new lessons that meet its dates, always kept, each with the number of

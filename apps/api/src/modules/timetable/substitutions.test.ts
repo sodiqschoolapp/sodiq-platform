@@ -7,6 +7,8 @@ import {
   dayAnswerSchema,
   dayChangeAnswerSchema,
   substitutesAnswerSchema,
+  type DayDecisions,
+  type SubstitutionItemAnswer,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
 import request, { type Response } from 'supertest';
@@ -1184,7 +1186,7 @@ describe('the substitution of a lesson', () => {
       expect((await rowOf(lesson.id)).teacher_id).toBe(free.staffId);
     });
 
-    it("ends the substitution of a vacancy's lesson that its fill gives the person (until 5.7b-3)", async () => {
+    it("ends the substitution of a vacancy's lesson that its fill gives the person, listed dropped in the fill's check", async () => {
       const s = await scene({ vacancy: true });
       const lesson = await lessonOf(s, MONDAY, s.otherClass);
       const free = await person(s.branch, { subjects: [{ subject: s.subject, grades: [7] }] });
@@ -1199,9 +1201,16 @@ describe('the substitution of a lesson', () => {
         rowsKey: string;
         publish: {
           chain: { key: string } | null;
-          impact: { transition: { key: string | null } | null; dayChanges: { key: string } } | null;
+          impact: {
+            transition: { key: string | null } | null;
+            dayChanges: { key: string; substitutions: SubstitutionItemAnswer[] };
+          } | null;
         } | null;
       };
+      // Task 5.7b-3 (decision 2): the hired person takes the lesson.
+      expect(found.publish?.impact?.dayChanges.substitutions).toEqual([
+        expect.objectContaining({ category: 'dropped', dropCause: 'teacher' }),
+      ]);
       const filled = await keyed(
         '/api/timetable/vacancy-fills',
         s.branch,
@@ -1527,13 +1536,51 @@ describe('the substitution of a lesson', () => {
     });
   });
 
-  describe('a publish over a substituted lesson (decision 6, review correction 1)', () => {
-    it("ends the substitution of a kept lesson it gives the row's teacher, and lists it", async () => {
-      const s = await scene();
-      const lesson = await lessonOf(s, '2026-10-19');
-      const free = await person(s.branch, { subjects: [{ subject: s.subject, grades: [7] }] });
-      changed(await substitute(s.branch, lesson.id, { teacherId: free.staffId }));
-      // A fix from Monday 19 October that keeps the lesson where it is.
+  // Task 5.7b-3, pull request #193 (edge/timetable, Versions and drafts: "A
+  // substitution and a one-day move are already recorded for a date after
+  // the new version starts. ... The preview sorts them into kept, needs a
+  // decision and dropped. Publish waits until every 'needs a decision' item
+  // is settled."). Each test publishes a fix from Monday 19 October; the
+  // first class's maths on Monday is the lesson substituted.
+  describe('a publish over a substituted lesson (task 5.7b-3)', () => {
+    type Days = { key: string; substitutions: SubstitutionItemAnswer[] };
+
+    /** The publish check of `version` from `startsOn`: its sorting of the stored changes. */
+    const daysOf = async (branch: string, version: string, startsOn: string): Promise<Days> => {
+      const checked = await t.get(
+        `/api/timetable/versions/${version}/publish-check?startsOn=${startsOn}`,
+        branch,
+      );
+      expect(checked.status, JSON.stringify(checked.body)).toBe(200);
+      const days = (checked.body as { impact: { dayChanges: Days } | null }).impact?.dayChanges;
+      if (days === undefined) throw new Error('The check has no impact.');
+      return days;
+    };
+
+    /** A publish of `version` with the key of its check and the decisions sent. */
+    const publishChecked = async (
+      branch: string,
+      version: string,
+      startsOn: string,
+      dayDecisions?: DayDecisions,
+    ) => {
+      const days = await daysOf(branch, version, startsOn);
+      return publish(branch, version, startsOn, {
+        dayChangesKey: days.key,
+        ...(dayDecisions === undefined ? {} : { dayDecisions }),
+      });
+    };
+
+    /**
+     * A fix of the scene's version from Monday 19 October: every row placed
+     * on the weekday `weekdayOf` gives it, after `edit` changed its rows.
+     */
+    const fixOf = async (
+      s: Scene,
+      weekdayOf: (row: { id: string; class_id: string | null }) => number = () => 1,
+      edit?: (rows: readonly { id: string; class_id: string | null }[]) => Promise<void>,
+      after?: (fix: string) => Promise<void>,
+    ) => {
       const copied = await t.post('/api/timetable/versions', s.branch, {
         academicYearId: s.year,
         startsOn: '2026-10-19',
@@ -1545,35 +1592,19 @@ describe('the substitution of a lesson', () => {
         .deleteFrom('pattern_blocks')
         .where('version_id', '=', fix)
         .execute();
-      const fixRows = await t.database.migrator
+      const rows = await t.database.migrator
         .selectFrom('teaching_load_rows')
-        .select('id')
+        .select(['id', 'class_id'])
         .where('version_id', '=', fix)
         .execute();
-      for (const row of fixRows) await placeAt(s.branch, fix, row.id, 1);
+      await edit?.(rows);
+      for (const row of rows) await placeAt(s.branch, fix, row.id, weekdayOf(row));
+      await after?.(fix);
       const confirmed = await t.post(`/api/timetable/versions/${fix}/templates/confirm`, s.branch);
       expect(confirmed.status, JSON.stringify(confirmed.body)).toBe(200);
       await load.freeEditLock(fix);
-      const published = await publish(s.branch, fix, '2026-10-19');
-      expect(published.status, JSON.stringify(published.body)).toBe(200);
-      // The fix names the teacher of the row on the kept lesson: the
-      // substitute is taken off, and the record is ended, never in force
-      // against another teacher (5.7b-3 sorts it instead).
-      expect((await rowOf(lesson.id)).teacher_id).toBe(s.teacher.staffId);
-      expect(await recordsOf(lesson.id)).toEqual([
-        expect.objectContaining({ end_cause: 'dropped' }),
-      ]);
-      const entry = await t.database.migrator
-        .selectFrom('audit_log')
-        .select('new_value')
-        .where('action', '=', 'timetable_version.publish')
-        .where('record_id', '=', fix)
-        .executeTakeFirstOrThrow();
-      expect(
-        (entry.new_value as { datedLessons: { substitutionsDropped: unknown } }).datedLessons
-          .substitutionsDropped,
-      ).toEqual([{ lessonId: lesson.id, substitutionId: expect.any(String) as unknown }]);
-    });
+      return fix;
+    };
 
     /** The rows of the records whose substitute is `staffId`, with their lesson ids. */
     const rowsBy = (staffId: string) =>
@@ -1581,42 +1612,112 @@ describe('the substitution of a lesson', () => {
         .selectFrom('substitution_lessons')
         .innerJoin('substitutions', 'substitutions.id', 'substitution_lessons.substitution_id')
         .select([
+          'substitution_lessons.id',
           'substitution_lessons.lesson_id',
           'substitution_lessons.end_cause',
           'substitution_lessons.ended_by',
         ])
         .where('substitutions.substitute_id', '=', staffId)
+        .orderBy('substitution_lessons.id')
         .execute();
 
-    it('ends the substitution of a lesson a publish removes before the lesson goes (review correction 1)', async () => {
-      const s = await scene();
+    const publishEntryOf = async (version: string) =>
+      (
+        await t.database.migrator
+          .selectFrom('audit_log')
+          .select('new_value')
+          .where('action', '=', 'timetable_version.publish')
+          .where('record_id', '=', version)
+          .executeTakeFirstOrThrow()
+      ).new_value as {
+        datedLessons: { substitutionsDropped?: unknown };
+        dayChanges?: { substitutions?: unknown };
+      };
+
+    /** A person with the lessons' subject, the substitute of the first class's Monday 19 October. */
+    const substituted = async (s: Scene) => {
       const lesson = await lessonOf(s, '2026-10-19');
       const free = await person(s.branch, { subjects: [{ subject: s.subject, grades: [7] }] });
       changed(await substitute(s.branch, lesson.id, { teacherId: free.staffId }));
-      // A fix from Monday 19 October that places the first class's maths on Tuesday.
-      const copied = await t.post('/api/timetable/versions', s.branch, {
-        academicYearId: s.year,
-        startsOn: '2026-10-19',
-        copyFrom: s.version,
+      const [row] = await rowsBy(free.staffId);
+      if (row === undefined) throw new Error('The substitution has a row.');
+      return { lesson, free, row };
+    };
+
+    it('keeps a substitution the new version leaves in place, the same row in force, and names it in the audit (Done when)', async () => {
+      const s = await scene();
+      const { lesson, free, row } = await substituted(s);
+      const fix = await fixOf(s);
+      const days = await daysOf(s.branch, fix, '2026-10-19');
+      expect(days.substitutions).toEqual([
+        expect.objectContaining({
+          key: row.id,
+          category: 'kept',
+          replacedId: s.teacher.staffId,
+          substituteId: free.staffId,
+          dropCause: null,
+          blocked: [],
+          away: false,
+        }),
+      ]);
+      // The preview names the substitute and the teacher replaced (permission review, should-fix 3).
+      const checked = await t.get(
+        `/api/timetable/versions/${fix}/publish-check?startsOn=2026-10-19`,
+        s.branch,
+      );
+      const named = (
+        checked.body as { impact: { names: { teachers: { id: string }[] } } }
+      ).impact.names.teachers.map((one) => one.id);
+      expect(named).toEqual(expect.arrayContaining([free.staffId, s.teacher.staffId]));
+      const noticesBefore = await noticesOf(free.accountId, 'timetable.published');
+      const teacherBefore = await noticesOf(s.teacher.accountId, 'timetable.published');
+      const published = await publishChecked(s.branch, fix, '2026-10-19');
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      expect((await rowOf(lesson.id)).teacher_id).toBe(free.staffId);
+      expect(await rowsBy(free.staffId)).toEqual([
+        { id: row.id, lesson_id: lesson.id, end_cause: null, ended_by: null },
+      ]);
+      const entry = await publishEntryOf(fix);
+      expect(entry.datedLessons.substitutionsDropped).toBeUndefined();
+      expect(entry.dayChanges?.substitutions).toEqual({
+        kept: [row.id],
+        dropped: [],
+        decided: [],
+        recordedAgain: [],
       });
-      expect(copied.status, JSON.stringify(copied.body)).toBe(201);
-      const fix = (copied.body as { id: string }).id;
-      await t.database.migrator
-        .deleteFrom('pattern_blocks')
-        .where('version_id', '=', fix)
-        .execute();
-      const fixRows = await t.database.migrator
-        .selectFrom('teaching_load_rows')
-        .select(['id', 'class_id'])
-        .where('version_id', '=', fix)
-        .execute();
-      for (const row of fixRows) {
-        await placeAt(s.branch, fix, row.id, row.class_id === s.classId ? 2 : 1);
-      }
-      const confirmed = await t.post(`/api/timetable/versions/${fix}/templates/confirm`, s.branch);
-      expect(confirmed.status, JSON.stringify(confirmed.body)).toBe(200);
-      await load.freeEditLock(fix);
-      const published = await publish(s.branch, fix, '2026-10-19');
+      // Neither week changed: no notice of the publish to either teacher.
+      expect(await noticesOf(free.accountId, 'timetable.published')).toEqual(noticesBefore);
+      expect(await noticesOf(s.teacher.accountId, 'timetable.published')).toEqual(teacherBefore);
+    });
+
+    it('refuses a publish sent without the key that shows the substitution, and one whose key a later substitution changed', async () => {
+      const s = await scene();
+      await substituted(s);
+      const fix = await fixOf(s);
+      expect(rulesOf(await publish(s.branch, fix, '2026-10-19'), 'publish_blocked')).toContain(
+        'day_changes_changed',
+      );
+      const days = await daysOf(s.branch, fix, '2026-10-19');
+      const later = await lessonOf(s, '2026-10-26');
+      const other = await person(s.branch, { subjects: [{ subject: s.subject, grades: [7] }] });
+      changed(await substitute(s.branch, later.id, { teacherId: other.staffId }));
+      expect(
+        rulesOf(
+          await publish(s.branch, fix, '2026-10-19', { dayChangesKey: days.key }),
+          'publish_blocked',
+        ),
+      ).toContain('day_changes_changed');
+    });
+
+    it('drops the substitution of a lesson the new version removes, ended before the lesson goes', async () => {
+      const s = await scene();
+      const { lesson, free, row } = await substituted(s);
+      // The first class's maths moves to Tuesday.
+      const fix = await fixOf(s, (one) => (one.class_id === s.classId ? 2 : 1));
+      expect((await daysOf(s.branch, fix, '2026-10-19')).substitutions).toEqual([
+        expect.objectContaining({ key: row.id, category: 'dropped', dropCause: 'gone' }),
+      ]);
+      const published = await publishChecked(s.branch, fix, '2026-10-19');
       expect(published.status, JSON.stringify(published.body)).toBe(200);
       expect(
         await t.database.migrator
@@ -1625,48 +1726,516 @@ describe('the substitution of a lesson', () => {
           .where('id', '=', lesson.id)
           .executeTakeFirst(),
       ).toBeUndefined();
-      // Ended before the delete set its lesson to null: never a row with no end.
       expect(await rowsBy(free.staffId)).toEqual([
-        { lesson_id: null, end_cause: 'dropped', ended_by: expect.any(String) as unknown },
+        {
+          id: row.id,
+          lesson_id: null,
+          end_cause: 'dropped',
+          ended_by: expect.any(String) as unknown,
+        },
       ]);
-      const entry = await t.database.migrator
-        .selectFrom('audit_log')
-        .select('new_value')
-        .where('action', '=', 'timetable_version.publish')
-        .where('record_id', '=', fix)
-        .executeTakeFirstOrThrow();
-      expect(
-        (entry.new_value as { datedLessons: { substitutionsDropped: unknown } }).datedLessons
-          .substitutionsDropped,
-      ).toEqual([{ lessonId: lesson.id, substitutionId: expect.any(String) as unknown }]);
+      const entry = await publishEntryOf(fix);
+      expect(entry.datedLessons.substitutionsDropped).toEqual([
+        { lessonId: lesson.id, substitutionId: expect.any(String) as unknown },
+      ]);
+      expect(entry.dayChanges?.substitutions).toMatchObject({ kept: [], dropped: [row.id] });
     });
 
-    it('ends the substitution of a lesson a withdraw removes before the lesson goes (review correction 1)', async () => {
+    it('drops the substitution of a lesson the new version gives another teacher, and of one it gives the substitute', async () => {
+      const s = await scene();
+      const { lesson, free, row } = await substituted(s);
+      const third = await person(s.branch, { subjects: [{ subject: s.subject, grades: [7] }] });
+      const fix = await fixOf(s, undefined, async (rows) => {
+        for (const one of rows.filter((each) => each.class_id === s.classId)) {
+          await t.database.migrator
+            .updateTable('teaching_load_rows')
+            .set({ teacher_id: third.staffId })
+            .where('id', '=', one.id)
+            .execute();
+        }
+      });
+      expect((await daysOf(s.branch, fix, '2026-10-19')).substitutions).toEqual([
+        expect.objectContaining({ key: row.id, category: 'dropped', dropCause: 'teacher' }),
+      ]);
+      const published = await publishChecked(s.branch, fix, '2026-10-19');
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      expect((await rowOf(lesson.id)).teacher_id).toBe(third.staffId);
+      expect(await rowsBy(free.staffId)).toEqual([
+        expect.objectContaining({ id: row.id, end_cause: 'dropped' }),
+      ]);
+
+      // A version that names the substitute as the teacher ends the row too:
+      // the substitution no longer stands for anyone.
+      const t2 = await scene();
+      const second = await substituted(t2);
+      const named = await fixOf(t2, undefined, async (rows) => {
+        for (const one of rows.filter((each) => each.class_id === t2.classId)) {
+          await t.database.migrator
+            .updateTable('teaching_load_rows')
+            .set({ teacher_id: second.free.staffId })
+            .where('id', '=', one.id)
+            .execute();
+        }
+      });
+      expect((await daysOf(t2.branch, named, '2026-10-19')).substitutions).toEqual([
+        expect.objectContaining({ category: 'dropped', dropCause: 'teacher' }),
+      ]);
+      expect((await publishChecked(t2.branch, named, '2026-10-19')).status).toBe(200);
+      expect((await rowOf(second.lesson.id)).teacher_id).toBe(second.free.staffId);
+      expect(await rowsBy(second.free.staffId)).toEqual([
+        expect.objectContaining({ id: second.row.id, end_cause: 'dropped' }),
+      ]);
+    });
+
+    it('needs a decision when the new version gives the substitute another lesson at that time: drop gives the teacher back, cancel cancels the lesson', async () => {
+      const giveOther =
+        (s: Scene, staffId: string) =>
+        async (rows: readonly { id: string; class_id: string | null }[]) => {
+          for (const one of rows.filter((each) => each.class_id === s.otherClass)) {
+            await t.database.migrator
+              .updateTable('teaching_load_rows')
+              .set({ teacher_id: staffId })
+              .where('id', '=', one.id)
+              .execute();
+          }
+        };
+      const s = await scene();
+      const { lesson, free, row } = await substituted(s);
+      const fix = await fixOf(s, undefined, giveOther(s, free.staffId));
+      const days = await daysOf(s.branch, fix, '2026-10-19');
+      expect(days.substitutions).toEqual([
+        expect.objectContaining({ key: row.id, category: 'decide', dropOffered: true }),
+      ]);
+      expect(days.substitutions[0]?.blocked.map((one) => one.rule)).toContain('teacher_double');
+      expect(
+        rulesOf(await publishChecked(s.branch, fix, '2026-10-19'), 'publish_blocked'),
+      ).toContain('day_change_undecided');
+      expect(
+        rulesOf(
+          await publishChecked(s.branch, fix, '2026-10-19', [{ key: row.id, choice: 'keep' }]),
+          'publish_blocked',
+        ),
+      ).toContain('day_choice_not_offered');
+      expect(
+        rulesOf(
+          await publishChecked(s.branch, fix, '2026-10-19', [{ key: row.id, choice: 'cancel' }]),
+          'publish_blocked',
+        ),
+      ).toContain('day_choice_not_offered');
+      const dropped = await publishChecked(s.branch, fix, '2026-10-19', [
+        { key: row.id, choice: 'drop' },
+      ]);
+      expect(dropped.status, JSON.stringify(dropped.body)).toBe(200);
+      expect((await rowOf(lesson.id)).teacher_id).toBe(s.teacher.staffId);
+      expect(await rowsBy(free.staffId)).toEqual([
+        expect.objectContaining({ id: row.id, end_cause: 'dropped' }),
+      ]);
+      expect((await publishEntryOf(fix)).dayChanges?.substitutions).toMatchObject({
+        decided: [{ key: row.id, choice: 'drop' }],
+      });
+
+      const c = await scene();
+      const other = await substituted(c);
+      const cancelFix = await fixOf(c, undefined, giveOther(c, other.free.staffId));
+      const cancelled = await publishChecked(c.branch, cancelFix, '2026-10-19', [
+        { key: other.row.id, choice: 'cancel', reason: 'Nobody can take it' },
+      ]);
+      expect(cancelled.status, JSON.stringify(cancelled.body)).toBe(200);
+      const after = await t.database.migrator
+        .selectFrom('lessons')
+        .select(['teacher_id', 'cancel_cause', 'cancel_reason'])
+        .where('branch_id', '=', c.branch)
+        .where('class_id', '=', c.classId)
+        .where('lesson_date', '=', '2026-10-19')
+        .executeTakeFirstOrThrow();
+      expect(after).toEqual({
+        teacher_id: c.teacher.staffId,
+        cancel_cause: 'reason',
+        cancel_reason: 'Nobody can take it',
+      });
+      expect(await rowsBy(other.free.staffId)).toEqual([
+        expect.objectContaining({ id: other.row.id, end_cause: 'dropped' }),
+      ]);
+    });
+
+    it('needs a decision when the substitute is away at the lesson', async () => {
+      const s = await scene();
+      const { free, row } = await substituted(s);
+      await load.status(free.staffId, 'inactive', '2026-10-19');
+      const fix = await fixOf(s);
+      expect((await daysOf(s.branch, fix, '2026-10-19')).substitutions).toEqual([
+        expect.objectContaining({ key: row.id, category: 'decide', away: true }),
+      ]);
+    });
+
+    it('keeps two substitutions that swap a teacher at one time: the teacher replaced on one substitutes on the other (spec review of the plan, must-fix 4)', async () => {
+      const s = await scene();
+      const { lesson, free, row } = await substituted(s);
+      // The teacher replaced substitutes the other class's lesson at that time.
+      const other = await lessonOf(s, '2026-10-19', s.otherClass);
+      changed(await substitute(s.branch, other.id, { teacherId: s.teacher.staffId }));
+      const [otherRow] = await rowsBy(s.teacher.staffId);
+      const fix = await fixOf(s);
+      const days = await daysOf(s.branch, fix, '2026-10-19');
+      expect(days.substitutions.map((one) => [one.key, one.category]).sort()).toEqual(
+        [
+          [row.id, 'kept'],
+          [otherRow?.id, 'kept'],
+        ].sort(),
+      );
+      const published = await publishChecked(s.branch, fix, '2026-10-19');
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      expect((await rowOf(lesson.id)).teacher_id).toBe(free.staffId);
+      expect((await rowOf(other.id)).teacher_id).toBe(s.teacher.staffId);
+    });
+
+    it("reads the exception of each row, never the record's: a relaxed row is kept, the other needs a decision (.claude/rules/database.md)", async () => {
+      const s = await scene();
+      // A person without the lessons' subject, put on two of the first
+      // class's lessons by one record saved relaxed, one row relaxed and one not.
+      const noSubject = await person(s.branch, {
+        subjects: [{ subject: s.otherSubject, grades: [7] }],
+      });
+      const first = await lessonOf(s, '2026-10-19');
+      const second = await lessonOf(s, '2026-10-26');
+      const account = await t.database.migrator
+        .selectFrom('accounts')
+        .select('id')
+        .orderBy('id')
+        .executeTakeFirstOrThrow();
+      const made = await t.database.migrator
+        .insertInto('substitutions')
+        .values({
+          branch_id: s.branch,
+          source: 'lesson',
+          replaced_id: s.teacher.staffId,
+          substitute_id: noSubject.staffId,
+          relaxed: true,
+          reason: 'No teacher of the subject was free',
+          made_at: at(TUESDAY, '09:00'),
+          made_by: account.id,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      const rowIds: Record<string, string> = {};
+      for (const [lesson, relaxed] of [
+        [first, true],
+        [second, false],
+      ] as const) {
+        await t.database.migrator
+          .updateTable('lessons')
+          .set({ teacher_id: noSubject.staffId })
+          .where('id', '=', lesson.id)
+          .execute();
+        const inserted = await t.database.migrator
+          .insertInto('substitution_lessons')
+          .values({
+            substitution_id: made.id,
+            branch_id: s.branch,
+            lesson_id: lesson.id,
+            lesson_date: lesson.lesson_date,
+            relaxed,
+            class_id: lesson.class_id,
+            group_id: lesson.group_id,
+            subject_id: lesson.subject_id,
+            load_row_id: lesson.load_row_id,
+            pattern_entry_id: lesson.pattern_entry_id,
+            pattern_date: lesson.lesson_date,
+            starts_at: lesson.starts_at,
+            ends_at: lesson.ends_at,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        rowIds[relaxed ? 'relaxed' : 'strict'] = inserted.id;
+      }
+      const fix = await fixOf(s);
+      const days = await daysOf(s.branch, fix, '2026-10-19');
+      const byKey = new Map(days.substitutions.map((one) => [one.key, one]));
+      expect(byKey.get(rowIds.relaxed ?? '')).toMatchObject({ category: 'kept', blocked: [] });
+      const strict = byKey.get(rowIds.strict ?? '');
+      expect(strict?.category).toBe('decide');
+      expect(strict?.blocked.map((one) => one.rule)).toContain('teacher_subject');
+    });
+
+    it("answers 404 for a decision naming another branch's or an unknown key, and changes nothing", async () => {
+      const s = await scene();
+      await substituted(s);
+      const elsewhere = await scene();
+      const foreign = await substituted(elsewhere);
+      const fix = await fixOf(s);
+      // Every table a publish writes, in both branches, and the audit log
+      // (permission review of the code, must-fix 2).
+      const everything = async () => {
+        const rows: unknown[] = [await t.auditCount()];
+        for (const branch of [s.branch, elsewhere.branch]) {
+          rows.push(await t.rowsOf(branch));
+          for (const table of [
+            'lessons',
+            'lesson_blocks',
+            'lesson_day_change_ends',
+            'timetable_versions',
+          ] as const) {
+            rows.push(
+              await t.database.migrator
+                .selectFrom(table)
+                .selectAll()
+                .where('branch_id', '=', branch)
+                .execute(),
+            );
+          }
+        }
+        return rows;
+      };
+      const before = await everything();
+      for (const key of [foreign.row.id, UNKNOWN]) {
+        refusedWith(
+          await publishChecked(s.branch, fix, '2026-10-19', [{ key, choice: 'drop' }]),
+          404,
+          'not_found',
+        );
+      }
+      expect(await everything()).toEqual(before);
+      // An ended row of the branch passes the 404 and names no item.
+      const later = await lessonOf(s, '2026-10-26');
+      const other = await person(s.branch, { subjects: [{ subject: s.subject, grades: [7] }] });
+      changed(await substitute(s.branch, later.id, { teacherId: other.staffId }));
+      changed(await withdraw(s.branch, later.id));
+      const [ended] = await rowsBy(other.staffId);
+      expect(ended?.end_cause).toBe('withdrawn');
+      expect(
+        rulesOf(
+          await publishChecked(s.branch, fix, '2026-10-19', [
+            { key: ended?.id ?? '', choice: 'drop' },
+          ]),
+          'publish_blocked',
+        ),
+      ).toContain('day_decision_unknown');
+    });
+
+    it('drops the substitution of a lesson a withdraw removes, and keeps one the version running again leaves in place', async () => {
       const s = await scene();
       const lesson = await lessonOf(s, MONDAY);
       const free = await person(s.branch, { subjects: [{ subject: s.subject, grades: [7] }] });
       changed(await substitute(s.branch, lesson.id, { teacherId: free.staffId }));
+      const [row] = await rowsBy(free.staffId);
+      const withdrawCheck = async (branch: string, version: string) => {
+        const checked = await t.get(`/api/timetable/versions/${version}/withdraw-check`, branch);
+        expect(checked.status, JSON.stringify(checked.body)).toBe(200);
+        return (checked.body as { dayChanges: Days }).dayChanges;
+      };
+      const withdrawWith = (branch: string, version: string, key: string) =>
+        request(t.kit.server)
+          .post(`/api/timetable/versions/${version}/withdraw`)
+          .set('Cookie', t.admin)
+          .set(BRANCH_HEADER, branch)
+          .set(REQUEST_KEY_HEADER, randomUUID())
+          .send({ dayChangesKey: key });
       // The only version, not started yet: its withdraw removes its lessons.
-      const withdrawn = await request(t.kit.server)
-        .post(`/api/timetable/versions/${s.version}/withdraw`)
-        .set('Cookie', t.admin)
-        .set(BRANCH_HEADER, s.branch)
-        .set(REQUEST_KEY_HEADER, randomUUID())
-        .send();
-      expect(withdrawn.status, JSON.stringify(withdrawn.body)).toBe(200);
-      expect(await rowsBy(free.staffId)).toEqual([
-        { lesson_id: null, end_cause: 'dropped', ended_by: expect.any(String) as unknown },
+      const days = await withdrawCheck(s.branch, s.version);
+      expect(days.substitutions).toEqual([
+        expect.objectContaining({ key: row?.id, category: 'dropped', dropCause: 'gone' }),
       ]);
-      const entry = await t.database.migrator
-        .selectFrom('audit_log')
-        .select('new_value')
-        .where('action', '=', 'timetable_version.withdraw')
-        .where('record_id', '=', s.version)
+      const withdrawn = await withdrawWith(s.branch, s.version, days.key);
+      expect(withdrawn.status, JSON.stringify(withdrawn.body)).toBe(200);
+      const withdrawEntryOf = async (version: string) =>
+        (
+          await t.database.migrator
+            .selectFrom('audit_log')
+            .select('new_value')
+            .where('action', '=', 'timetable_version.withdraw')
+            .where('record_id', '=', version)
+            .executeTakeFirstOrThrow()
+        ).new_value as {
+          datedLessons: { substitutionsDropped?: unknown };
+          dayChanges?: { substitutions?: unknown };
+        };
+      const entry = await withdrawEntryOf(s.version);
+      expect(entry.datedLessons.substitutionsDropped).toEqual([
+        { lessonId: lesson.id, substitutionId: expect.any(String) as unknown },
+      ]);
+      expect(entry.dayChanges?.substitutions).toMatchObject({ kept: [], dropped: [row?.id] });
+      expect(await rowsBy(free.staffId)).toEqual([
+        {
+          id: row?.id,
+          lesson_id: null,
+          end_cause: 'dropped',
+          ended_by: expect.any(String) as unknown,
+        },
+      ]);
+
+      // A fix withdrawn before its start: the version running again keeps the lesson.
+      const k = await scene();
+      const kept = await substituted(k);
+      const fix = await fixOf(k);
+      expect((await publishChecked(k.branch, fix, '2026-10-19')).status).toBe(200);
+      const again = await withdrawCheck(k.branch, fix);
+      expect(again.substitutions).toEqual([
+        expect.objectContaining({ key: kept.row.id, category: 'kept' }),
+      ]);
+      const back = await withdrawWith(k.branch, fix, again.key);
+      expect(back.status, JSON.stringify(back.body)).toBe(200);
+      expect((await rowOf(kept.lesson.id)).teacher_id).toBe(kept.free.staffId);
+      expect(await rowsBy(kept.free.staffId)).toEqual([
+        expect.objectContaining({ id: kept.row.id, end_cause: null }),
+      ]);
+      const keptEntry = await withdrawEntryOf(fix);
+      expect(keptEntry.datedLessons.substitutionsDropped).toBeUndefined();
+      expect(keptEntry.dayChanges?.substitutions).toMatchObject({
+        kept: [kept.row.id],
+        dropped: [],
+      });
+    });
+
+    it('sorts both halves of a double as one item: kept together, dropped together', async () => {
+      // A fix with the double where it was, or on Tuesday.
+      const doubleFix = async (s: Scene, weekday: number) =>
+        fixOf(
+          s,
+          (one) => (one.class_id === s.classId ? weekday : 1),
+          undefined,
+          async (fix) => {
+            const own = await t.database.migrator
+              .selectFrom('teaching_load_rows')
+              .select('id')
+              .where('version_id', '=', fix)
+              .where('class_id', '=', s.classId)
+              .executeTakeFirstOrThrow();
+            await placeAt(s.branch, fix, own.id, weekday, 3);
+          },
+        );
+      /** The two Monday 19 October lessons made one double pair, as the 5.7b-1 test does. */
+      const paired = async (one: Scene) => {
+        const blocks = await t.database.migrator
+          .selectFrom('lessons')
+          .select('block_id')
+          .where('class_id', '=', one.classId)
+          .where('lesson_date', '=', '2026-10-19')
+          .execute();
+        await t.database.migrator
+          .updateTable('lesson_blocks')
+          .set({ double_pair_id: randomUUID() })
+          .where(
+            'id',
+            'in',
+            blocks.map((block) => block.block_id),
+          )
+          .execute();
+      };
+      const s = await scene({ twoLessons: true });
+      await paired(s);
+      const { free, row } = await substituted(s);
+      const rows = await rowsBy(free.staffId);
+      expect(rows).toHaveLength(2);
+      const days = await daysOf(s.branch, await doubleFix(s, 1), '2026-10-19');
+      expect(days.substitutions).toEqual([
+        expect.objectContaining({ key: row.id, category: 'kept' }),
+      ]);
+      expect(days.substitutions[0]?.lessons).toHaveLength(2);
+
+      const d = await scene({ twoLessons: true });
+      await paired(d);
+      const moved = await substituted(d);
+      const fix = await doubleFix(d, 2);
+      const dropped = await daysOf(d.branch, fix, '2026-10-19');
+      expect(dropped.substitutions).toEqual([
+        expect.objectContaining({ key: moved.row.id, category: 'dropped', dropCause: 'gone' }),
+      ]);
+      expect((await publishChecked(d.branch, fix, '2026-10-19')).status).toBe(200);
+      expect((await rowsBy(moved.free.staffId)).map((one) => one.end_cause)).toEqual([
+        'dropped',
+        'dropped',
+      ]);
+    });
+
+    it('a lesson needing a decision gives its time back to the teacher replaced: the lesson that teacher substitutes then needs a decision too', async () => {
+      const s = await scene();
+      const { lesson, free, row } = await substituted(s);
+      // The teacher replaced substitutes the other class at that time, and the
+      // first lesson's substitute becomes inactive from that day.
+      const other = await lessonOf(s, '2026-10-19', s.otherClass);
+      changed(await substitute(s.branch, other.id, { teacherId: s.teacher.staffId }));
+      await load.status(free.staffId, 'inactive', '2026-10-19');
+      const fix = await fixOf(s);
+      const days = await daysOf(s.branch, fix, '2026-10-19');
+      const [otherRow] = await rowsBy(s.teacher.staffId);
+      const byKey = new Map(days.substitutions.map((one) => [one.key, one]));
+      expect(byKey.get(row.id)).toMatchObject({
+        category: 'decide',
+        away: true,
+        dropOffered: true,
+      });
+      const second = byKey.get(otherRow?.id ?? '');
+      expect(second).toMatchObject({ category: 'decide', dropOffered: true });
+      expect(second?.blocked.map((one) => one.rule)).toContain('teacher_double');
+      // The first cancelled, the second given back to its own teacher, in one save.
+      const published = await publishChecked(s.branch, fix, '2026-10-19', [
+        { key: row.id, choice: 'cancel', reason: 'Nobody can take it' },
+        { key: otherRow?.id ?? '', choice: 'drop' },
+      ]);
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      expect((await rowOf(other.id)).teacher_id).toBe(s.otherTeacher.staffId);
+      const after = await t.database.migrator
+        .selectFrom('lessons')
+        .select('cancel_cause')
+        .where('branch_id', '=', s.branch)
+        .where('class_id', '=', s.classId)
+        .where('lesson_date', '=', lesson.lesson_date)
         .executeTakeFirstOrThrow();
-      expect(
-        (entry.new_value as { datedLessons: { substitutionsDropped: unknown } }).datedLessons
-          .substitutionsDropped,
-      ).toEqual([{ lessonId: lesson.id, substitutionId: expect.any(String) as unknown }]);
+      expect(after.cancel_cause).toBe('reason');
+    });
+
+    it('drops a kept substitution when a one-day change that needs a decision is cancelled on its lesson (decision 12)', async () => {
+      const s = await scene();
+      const { lesson, free, row } = await substituted(s);
+      // A room change of the lesson to a free room, which the fix gives the
+      // other class at that time: the room change needs a decision.
+      const painted = await load.classes.room(s.branch);
+      const moved = await keyed(
+        `/api/timetable/lessons/${lesson.id}/room`,
+        s.branch,
+        { roomId: painted, reason: 'The room is painted' },
+        t.admin,
+        randomUUID(),
+      );
+      expect(moved.status, JSON.stringify(moved.body)).toBe(200);
+      const change = await t.database.migrator
+        .selectFrom('lesson_day_changes')
+        .select('id')
+        .where('lesson_id', '=', lesson.id)
+        .executeTakeFirstOrThrow();
+      const fix = await fixOf(s, undefined, async (rows) => {
+        for (const one of rows.filter((each) => each.class_id === s.otherClass)) {
+          await t.database.migrator
+            .updateTable('teaching_load_rows')
+            .set({ room_id: painted })
+            .where('id', '=', one.id)
+            .execute();
+        }
+      });
+      const checked = await t.get(
+        `/api/timetable/versions/${fix}/publish-check?startsOn=2026-10-19`,
+        s.branch,
+      );
+      const sorted = (
+        checked.body as { impact: { dayChanges: Days & { decide: { key: string }[] } } }
+      ).impact.dayChanges;
+      expect(sorted.decide.map((one) => one.key)).toEqual([change.id]);
+      expect(sorted.substitutions).toEqual([
+        expect.objectContaining({ key: row.id, category: 'kept', dependsOn: [change.id] }),
+      ]);
+      const published = await publish(s.branch, fix, '2026-10-19', {
+        dayChangesKey: sorted.key,
+        dayDecisions: [{ key: change.id, choice: 'cancel' }],
+      });
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      expect(await rowsBy(free.staffId)).toEqual([
+        expect.objectContaining({ id: row.id, end_cause: 'dropped' }),
+      ]);
+      expect((await rowOf(lesson.id)).teacher_id).toBe(s.teacher.staffId);
+      expect((await publishEntryOf(fix)).dayChanges?.substitutions).toMatchObject({
+        kept: [],
+        dropped: [row.id],
+      });
     });
   });
 

@@ -63,6 +63,7 @@ test('an Academic Vice Principal substitutes a lesson of a vacancy and withdraws
   await page.goto('/timetable/day');
   await expect(heading(page, day.title)).toBeVisible();
   const geometry = page.locator('tbody tr').filter({ hasText: 'Geometry' }).first();
+  let lessonDate = '';
   for (const date of schoolDaysAhead()) {
     const answered = page.waitForResponse(
       (response) => response.url().includes('/api/timetable/day') && response.url().includes(date),
@@ -70,7 +71,10 @@ test('an Academic Vice Principal substitutes a lesson of a vacancy and withdraws
     await page.getByLabel(day.date, { exact: true }).fill(date);
     await answered;
     await expect(page.locator('tbody tr').or(page.getByText(day.empty)).first()).toBeVisible();
-    if ((await geometry.count()) > 0) break;
+    if ((await geometry.count()) > 0) {
+      lessonDate = date;
+      break;
+    }
   }
   await expect(geometry).toContainText('Geometry vacancy 2');
 
@@ -93,6 +97,26 @@ test('an Academic Vice Principal substitutes a lesson of a vacancy and withdraws
   await expect(page.getByRole('status').filter({ hasText: day.substituted })).toBeVisible();
   await expect(geometry).toContainText('Aliyev Bekzod');
   await expect(geometry).toContainText(day.substituteFor.replace('{{name}}', 'Geometry vacancy 2'));
+
+  // Task 5.7b-3: the question before a withdraw of the version lists the
+  // substitution as dropped (no version runs again over its dates); the
+  // question is closed without withdrawing.
+  await page.goto('/timetable/load');
+  await page.getByRole('button', { name: en.timetable.load.withdraw, exact: true }).click();
+  const question = page.getByRole('alertdialog');
+  await expect(
+    question.locator('[data-day-changes="dropped"] [data-kind="substitution"]'),
+  ).toContainText('Aliyev Bekzod in place of Geometry vacancy 2');
+  await question.getByRole('button', { name: en.confirm.cancel, exact: true }).click();
+  await page.goto('/timetable/day');
+  await expect(heading(page, day.title)).toBeVisible();
+  const again = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/timetable/day') && response.url().includes(lessonDate),
+  );
+  await page.getByLabel(day.date, { exact: true }).fill(lessonDate);
+  await again;
+  await expect(geometry).toContainText('Aliyev Bekzod');
 
   await geometry.getByRole('button', { name: day.withdrawSubstitution, exact: true }).click();
   const withdrawing = page.getByRole('dialog');

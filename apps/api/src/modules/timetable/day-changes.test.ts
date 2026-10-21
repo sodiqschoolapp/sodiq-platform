@@ -2782,6 +2782,15 @@ describe('one-day changes: cancel and restore', () => {
           lesson_id: lessonId,
           lesson_date: lesson.lesson_date,
           relaxed: false,
+          // Task 5.7b-3 (0103): what the lesson is.
+          class_id: lesson.class_id,
+          group_id: lesson.group_id,
+          subject_id: lesson.subject_id,
+          load_row_id: lesson.load_row_id,
+          pattern_entry_id: lesson.pattern_entry_id,
+          pattern_date: lesson.lesson_date,
+          starts_at: lesson.starts_at,
+          ends_at: lesson.ends_at,
         })
         .execute();
     }

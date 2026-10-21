@@ -21,7 +21,11 @@ import {
   type DayTemplatesKit,
 } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
-import { substitutedIn, substitutionRowsOf } from '../../testing/substitutions-kit.js';
+import {
+  liveSubstitutionRowOf,
+  substitutedIn,
+  substitutionRowsOf,
+} from '../../testing/substitutions-kit.js';
 import { unitNamesOf } from '../classes/unit-names.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 
@@ -1024,6 +1028,8 @@ describe('vacancy fill', () => {
       const decisions = [
         [{ key: UNKNOWN, choice: 'drop' }],
         [{ key: theirLesson.id, choice: 'drop' }],
+        // Task 5.7b-3: a stored substitution of the other branch.
+        [{ key: await liveSubstitutionRowOf(t.database.migrator, theirs.branch), choice: 'drop' }],
         [{ key: ownLesson.id, blockId: theirBlock.id, blockDate: OCTOBER_19, choice: 'keep' }],
         [{ key: ownLesson.id, blockId: UNKNOWN, blockDate: OCTOBER_19, choice: 'keep' }],
       ];

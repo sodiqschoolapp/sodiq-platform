@@ -58,6 +58,12 @@ export interface DatedWrite {
    * sorts them instead).
    */
   readonly substitutionsDropped: readonly { lessonId: string; substitutionId: string }[];
+  /**
+   * Task 5.7b-3: the lesson each kept substitution's place has after the
+   * write, by `placeKeyOf` (`DayWritePlan.substitutes`), for
+   * `settleSubstitutions`.
+   */
+  readonly substitutesPlaced: ReadonlyMap<string, string>;
 }
 
 /** A lesson removed, with every value it held. */
@@ -119,6 +125,8 @@ interface Wanted {
   readonly bulkCancel: string | null;
   /** Task 5.6a-5b-1: a part of a block decided `keep` (`BulkHold`); `null` for none. */
   readonly bulkHold: BulkHold | null;
+  /** Task 5.7b-3: its `placeKeyOf` when a kept substitution names it, `null` otherwise. */
+  readonly substitutedAt: string | null;
 }
 
 /** A stored lesson as the writer and the preview read it (task 5.5b-2). */
@@ -514,12 +522,18 @@ export async function writeDatedLessons(
   const kept = new Set([...pairOf.values()].map((one) => one.id));
   const removedRows = stored.filter((one) => !kept.has(one.id));
   const endedAt = await transactionMoment(transaction);
+  // Task 5.7b-3: the rows of the kept substitutions are settled after the
+  // write (spec review of the plan, must-fix 1).
+  const exceptRowIds = new Set(
+    [...(plan?.substitutes.values() ?? [])].filter((one) => one.apply).map((one) => one.rowId),
+  );
   // Task 5.7b-1: a substitution of a removed lesson ends before the lesson goes.
   const substitutionsDropped = await endSubstitutionRows(transaction, {
     lessonIds: removedRows.map((one) => one.id),
     cause: 'dropped',
     accountId: state.accountId,
     moment: endedAt,
+    exceptRowIds,
   });
   for (let index = 0; index < removedRows.length; index += BATCH) {
     await transaction
@@ -625,7 +639,12 @@ export async function writeDatedLessons(
     cause: 'dropped',
     accountId: state.accountId,
     moment: endedAt,
+    exceptRowIds,
   });
+  const substitutesPlaced = new Map<string, string>();
+  for (const [lesson, found] of pairOf) {
+    if (lesson.substitutedAt !== null) substitutesPlaced.set(lesson.substitutedAt, found.id);
+  }
 
   // The new blocks and lessons.
   const quarters = await transaction
@@ -734,11 +753,29 @@ export async function writeDatedLessons(
         };
       }),
   );
+  // A block holds one lesson of each class or group (`lessons_block_class_key`,
+  // `lessons_block_group_key`, 0058), and a pattern entry is one lesson of its
+  // block, so `block|entry` names one inserted lesson.
+  const insertedAt = new Map(
+    wantedBlocks.flatMap((block) =>
+      block.lessons
+        .filter((lesson) => !pairOf.has(lesson) && lesson.substitutedAt !== null)
+        .map((lesson) => [
+          `${block.reused ?? blockIds.get(block) ?? ''}|${lesson.entryId}`,
+          lesson.substitutedAt ?? '',
+        ]),
+    ),
+  );
   for (let index = 0; index < inserts.length; index += BATCH) {
-    await transaction
+    const written = await transaction
       .insertInto('lessons')
       .values(inserts.slice(index, index + BATCH))
+      .returning(['id', 'block_id', 'pattern_entry_id'])
       .execute();
+    for (const one of written) {
+      const place = insertedAt.get(`${one.block_id}|${one.pattern_entry_id}`);
+      if (place !== undefined) substitutesPlaced.set(place, one.id);
+    }
   }
 
   // The stored blocks no new block reuses, empty now.
@@ -759,6 +796,7 @@ export async function writeDatedLessons(
 
   return {
     substitutionsDropped: [...substitutionsDropped, ...substitutionsRestaffed],
+    substitutesPlaced,
     firstDate,
     lastDate,
     created: inserts.length,
@@ -873,6 +911,11 @@ async function wantedOf(
   for (const lesson of findings.dated.lessons) {
     const { placement } = lesson;
     const dated = patternIdOf(placement.blockId ?? '');
+    const place = placeKeyOf(lesson.entryId, dated?.date ?? lesson.date, lesson.date);
+    // Task 5.7b-3: a kept substitution keeps its substitute (the findings
+    // carry it); one whose lesson another item cancels gets the version's
+    // teacher back.
+    const substitute = plan?.substitutes.get(place);
     const patternBlockId = dated?.id ?? '';
     const loadRowId = placement.loadRowId ?? '';
     // Task 5.6a-5a: a block moved by a one-day change applied again is on
@@ -895,11 +938,17 @@ async function wantedOf(
       groupId: placement.groupId,
       unitId: placement.classId ?? placement.groupId ?? '',
       subjectId: placement.subjectId ?? '',
-      teacherId: writtenTeacherOf(needs, vacancies, {
-        entryId: lesson.entryId,
-        date: dated?.date ?? lesson.date,
-        teacherId: placement.teacherIds[0] ?? null,
-      }),
+      teacherId:
+        substitute?.apply === true
+          ? substitute.substituteId
+          : writtenTeacherOf(needs, vacancies, {
+              entryId: lesson.entryId,
+              date: dated?.date ?? lesson.date,
+              teacherId:
+                substitute === undefined
+                  ? (placement.teacherIds[0] ?? null)
+                  : substitute.versionTeacherId,
+            }),
       roomId: placement.roomId,
       cause: null,
       oneDayCancel:
@@ -912,6 +961,7 @@ async function wantedOf(
       bulkHold:
         plan?.bulkHolds.get(placeKeyOf(lesson.entryId, dated?.date ?? lesson.date, lesson.date)) ??
         null,
+      substitutedAt: substitute?.apply === true ? place : null,
     });
   }
   for (const cancelled of findings.dated.cancelled) {
@@ -941,6 +991,7 @@ async function wantedOf(
         oneDayCancel: null,
         bulkCancel: null,
         bulkHold: null,
+        substitutedAt: null,
       });
     }
   }
@@ -1066,6 +1117,7 @@ export async function removeDatedLessons(
   await sql`set constraints all immediate`.execute(transaction);
   return {
     substitutionsDropped,
+    substitutesPlaced: new Map(),
     firstDate,
     lastDate,
     created: 0,

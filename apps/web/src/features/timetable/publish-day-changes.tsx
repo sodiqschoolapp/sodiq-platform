@@ -10,6 +10,7 @@ import {
   type ExamItemAnswer,
   type ExamLessonAnswer,
   type PublishImpactAnswer,
+  type SubstitutionItemAnswer,
 } from '@sodiq/shared';
 import { useTranslation } from 'react-i18next';
 import { TextAreaField } from '@/components/field';
@@ -46,6 +47,17 @@ const needsWhole = (item: ExamItemAnswer): boolean =>
 /** Whether a choice of an exam needs a typed reason (decision 2, plan review correction 1). */
 export const examNeedsReason = (item: ExamItemAnswer, choice: DayChangeChoice | undefined) =>
   choice === 'cancel' || (choice === 'drop' && item.dropBlocked.length > 0);
+
+/**
+ * Task 5.7b-3: the choices a substitution that needs a decision offers, as
+ * the server offers them (`substitutionRefusalsOf`): `drop` when the
+ * teacher of the new timetable passes the time rules, `cancel` always.
+ */
+export function substitutionChoicesOf(
+  item: SubstitutionItemAnswer,
+): readonly ('drop' | 'cancel')[] {
+  return item.dropOffered ? ['drop', 'cancel'] : ['cancel'];
+}
 
 /**
  * The body that settles a sorting with the choices made (task 5.6a-5b-2; a
@@ -98,6 +110,21 @@ export function dayDecisionsBodyOf(
       dayDecisions.push({ ...at, choice: picked });
     }
   }
+  // Task 5.7b-3: each substitution that needs a decision, `cancel` with its typed reason.
+  for (const item of dayChanges.substitutions) {
+    if (item.category !== 'decide') continue;
+    const choice = choices[item.key];
+    if (choice === undefined || !substitutionChoicesOf(item).some((one) => one === choice)) {
+      return null;
+    }
+    if (choice === 'cancel') {
+      const reason = (reasons[item.key] ?? '').trim();
+      if (reason === '') return null;
+      dayDecisions.push({ key: item.key, choice, reason });
+    } else {
+      dayDecisions.push({ key: item.key, choice });
+    }
+  }
   return { dayChangesKey: dayChanges.key, dayDecisions };
 }
 
@@ -145,12 +172,16 @@ export function PublishDayChanges({
     dayChanges.bulk.length === 0 &&
     dayChanges.exams.length === 0 &&
     dayChanges.absences.length === 0 &&
-    dayChanges.closures.length === 0
+    dayChanges.closures.length === 0 &&
+    dayChanges.substitutions.length === 0
   ) {
     return null;
   }
   const examsKept = dayChanges.exams.filter((one) => one.category === 'kept');
   const examsDecide = dayChanges.exams.filter((one) => one.category === 'decide');
+  const substitutionsOf = (category: SubstitutionItemAnswer['category']) =>
+    dayChanges.substitutions.filter((one) => one.category === category);
+  const substitutionsDecide = substitutionsOf('decide');
 
   const unitName = (id: string): string => {
     const unit = names.units.find((one) => one.id === id);
@@ -198,6 +229,98 @@ export function PublishDayChanges({
   };
 
   const classesText = (ids: readonly string[]): string => ids.map(unitName).join(', ');
+
+  // Task 5.7b-3: a stored substitution, its lessons and who replaces whom.
+  const teacherName = (id: string | null): string =>
+    id === null
+      ? t('timetable.publish.dayChanges.substitutions.nobody')
+      : (names.teachers.find((one) => one.id === id)?.name ??
+        t('timetable.publish.impact.unknownTeacher'));
+  const substitutionText = (item: SubstitutionItemAnswer): string => {
+    const number = versionNumber(item.carriedVersionId);
+    return [
+      t('timetable.publish.dayChanges.substitutions.line', {
+        unit: unitName(item.unitId),
+        subject: subjectName(item.subjectId),
+        lessons: item.lessons
+          .map((one) =>
+            t('timetable.publish.dayChanges.substitutions.lesson', {
+              date: schoolDateText(one.date, language),
+              time: rangeText(t, one.start, one.end),
+            }),
+          )
+          .join('; '),
+        substitute: teacherName(item.substituteId),
+        replaced: teacherName(item.replacedId),
+      }),
+      item.dropCause === null
+        ? null
+        : t(`timetable.publish.dayChanges.substitutions.dropCause_${item.dropCause}`),
+      t('timetable.publish.dayChanges.reason', { reason: item.reason }),
+      number === null ? null : t('timetable.publish.dayChanges.inVersion', { number }),
+    ]
+      .filter(Boolean)
+      .join('. ');
+  };
+  const substitutionLine = (item: SubstitutionItemAnswer): React.JSX.Element => (
+    <li key={`substitution-${item.key}`} data-key={item.key} data-kind="substitution">
+      {substitutionText(item)}
+      {item.dependsOn.length > 0 && (
+        <p>{t('timetable.publish.dayChanges.substitutions.dependsOn')}</p>
+      )}
+    </li>
+  );
+  const substitutionDecideLine = (item: SubstitutionItemAnswer): React.JSX.Element => {
+    const choice = choices[item.key];
+    return (
+      <li
+        key={`substitution-${item.key}`}
+        data-key={item.key}
+        data-kind="substitution"
+        className="grid gap-2"
+      >
+        <fieldset className="grid gap-1">
+          <legend>{substitutionText(item)}</legend>
+          {item.blocked.length > 0 && (
+            <p data-blocked="true">
+              {t('timetable.publish.dayChanges.substitutions.blocked', {
+                rules: item.blocked.map((one) => ruleText(t, one.rule)).join('; '),
+              })}
+            </p>
+          )}
+          {item.away && <p>{t('timetable.publish.dayChanges.substitutions.away')}</p>}
+          {substitutionChoicesOf(item).map((one) => (
+            <label key={one} className={CHECKBOX_TARGET}>
+              <input
+                type="radio"
+                name={`substitution-${item.key}`}
+                className={CHECKBOX}
+                value={one}
+                disabled={!canEdit}
+                checked={choice === one}
+                onChange={() => {
+                  onChoose(item.key, one);
+                }}
+              />
+              <span>{t(`timetable.publish.dayChanges.substitutions.choice_${one}`)}</span>
+            </label>
+          ))}
+        </fieldset>
+        {choice === 'cancel' && (
+          <TextAreaField
+            label={t('timetable.publish.dayChanges.substitutions.reason')}
+            rows={2}
+            maxLength={500}
+            value={reasons[item.key] ?? ''}
+            disabled={!canEdit}
+            onChange={(event) => {
+              onReason?.(item.key, event.target.value);
+            }}
+          />
+        )}
+      </li>
+    );
+  };
   const bulkText = (item: BulkItemAnswer): string => {
     const number = versionNumber(item.carriedVersionId);
     return [
@@ -383,12 +506,13 @@ export function PublishDayChanges({
     items: readonly DayChangeItemAnswer[],
     bulk: readonly BulkItemAnswer[] = [],
     exams: readonly ExamItemAnswer[] = [],
+    substitutions: readonly SubstitutionItemAnswer[] = [],
   ): React.JSX.Element | null =>
-    items.length + bulk.length + exams.length === 0 ? null : (
+    items.length + bulk.length + exams.length + substitutions.length === 0 ? null : (
       <div className="grid gap-1">
         <h4 className={SUBSECTION_TITLE}>
           {t(`timetable.publish.dayChanges.${category}Title`, {
-            count: items.length + bulk.length + exams.length,
+            count: items.length + bulk.length + exams.length + substitutions.length,
           })}
         </h4>
         <ul className="grid gap-1 text-sm" data-day-changes={category}>
@@ -399,6 +523,7 @@ export function PublishDayChanges({
           ))}
           {bulk.map(bulkLine)}
           {exams.map(examKeptLine)}
+          {substitutions.map(substitutionLine)}
         </ul>
       </div>
     );
@@ -408,11 +533,19 @@ export function PublishDayChanges({
       <h3 id="publish-day-changes" className={SECTION_TITLE}>
         {t('timetable.publish.dayChanges.title')}
       </h3>
-      {dayChanges.decide.length + bulkDecide.length + examsDecide.length > 0 && (
+      {dayChanges.decide.length +
+        bulkDecide.length +
+        examsDecide.length +
+        substitutionsDecide.length >
+        0 && (
         <div className="grid gap-2">
           <h4 className={SUBSECTION_TITLE}>
             {t('timetable.publish.dayChanges.decideTitle', {
-              count: dayChanges.decide.length + bulkDecide.length + examsDecide.length,
+              count:
+                dayChanges.decide.length +
+                bulkDecide.length +
+                examsDecide.length +
+                substitutionsDecide.length,
             })}
           </h4>
           <ul className="grid gap-3 text-sm" data-day-changes="decide">
@@ -483,10 +616,11 @@ export function PublishDayChanges({
               </li>
             ))}
             {examsDecide.map(examDecideLine)}
+            {substitutionsDecide.map(substitutionDecideLine)}
           </ul>
         </div>
       )}
-      {list('kept', dayChanges.kept, bulkKept, examsKept)}
+      {list('kept', dayChanges.kept, bulkKept, examsKept, substitutionsOf('kept'))}
       {/* Task 5.7a-1 (decision 7): the absences of the dates, always kept. */}
       {dayChanges.absences.length > 0 && (
         <div className="grid gap-1">
@@ -543,7 +677,7 @@ export function PublishDayChanges({
           </ul>
         </div>
       )}
-      {list('dropped', dayChanges.dropped)}
+      {list('dropped', dayChanges.dropped, [], [], substitutionsOf('dropped'))}
     </section>
   );
 }

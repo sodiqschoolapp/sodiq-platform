@@ -1044,6 +1044,7 @@ describe('pinSlots', () => {
                   dropped: [],
                   absences: [],
                   closures: [],
+                  substitutions: [],
                   bulk: [],
                   exams: [],
                 },
@@ -1182,6 +1183,7 @@ describe('pinSlots', () => {
                   dropped: [item(uid(623), 'cancel')],
                   absences: [],
                   closures: [],
+                  substitutions: [],
                   bulk: [],
                   exams: [],
                 },
@@ -1275,6 +1277,7 @@ describe('pinSlots', () => {
                   dropped: [],
                   absences: [],
                   closures: [],
+                  substitutions: [],
                   bulk: [],
                   exams: [
                     {
@@ -1416,6 +1419,7 @@ describe('pinSlots', () => {
                   exams: [],
                   absences: [],
                   closures: [],
+                  substitutions: [],
                   bulk: [
                     {
                       key: bulkKept,
@@ -1525,6 +1529,7 @@ describe('pinSlots', () => {
                   dropped: [],
                   absences: [],
                   closures: [],
+                  substitutions: [],
                   bulk: [],
                   exams: [],
                 },
