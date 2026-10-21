@@ -1482,6 +1482,7 @@ export {
   vacancyFillBodySchema,
   vacancyFillRowAnswerSchema,
   vacancyFillHolderSchema,
+  vacancyFillUnitSchema,
   vacancyFillCheckSchema,
   vacancyFillSchema,
   vacancyFillHistorySchema,
@@ -1492,4 +1493,5 @@ export {
   type VacancyFillCheck,
   type VacancyFill,
   type VacancyFillHistory,
+  type VacancyFillUnit,
 } from './vacancy-fills.js';

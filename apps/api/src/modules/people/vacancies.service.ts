@@ -34,6 +34,7 @@ import {
   type ExportColumn,
   type SchoolNames,
 } from '../audit/export-list.js';
+import { unitNamesOf } from '../classes/unit-names.js';
 import { changesOf, notFound, refusingConstraints } from '../setup/setup-refusals.js';
 
 /** The refusals of the database for a vacancy (db/migrations/0024, 0025), by the name of the constraint. */
@@ -866,6 +867,15 @@ export class Vacancies {
         weeklyLessons: row.weekly_lessons,
         dailyLessons: row.daily_lessons,
         status: current?.status ?? 'open',
+        // Task 5.7a-3b: a close planned from a later day, read by date; an
+        // empty row (a planned close a reopen cancelled) is not live.
+        closesOn:
+          today === null
+            ? null
+            : (own.find(
+                (status) =>
+                  isLive(status) && status.status === 'closed' && status.validFrom > today,
+              )?.validFrom ?? null),
       };
     });
   }
@@ -883,7 +893,18 @@ export class Vacancies {
     const statuses: VacancyStatusRow[] = (await this.statusesOf(transaction, id, false)).map(
       (row) => ({ id: row.id, status: row.status, from: row.validFrom, until: row.validUntil }),
     );
-    return { ...item, statuses, fills: await this.fillsOf(transaction, id), today };
+    const fills = await this.fillsOf(transaction, id);
+    // Task 5.7a-3b (decision 6): the classes and groups of the fills, archived ones included.
+    const fillUnits = await unitNamesOf(
+      transaction,
+      fills.flatMap((one) =>
+        one.rows.flatMap((row) => (row.classId === null ? [] : [row.classId])),
+      ),
+      fills.flatMap((one) =>
+        one.rows.flatMap((row) => (row.groupId === null ? [] : [row.groupId])),
+      ),
+    );
+    return { ...item, statuses, fills, fillUnits, today };
   }
 
   /**

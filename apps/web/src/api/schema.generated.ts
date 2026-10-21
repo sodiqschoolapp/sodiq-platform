@@ -44670,6 +44670,14 @@ export interface operations {
                             /** Format: date */
                             lessonDate: string | null;
                         }[];
+                        units: {
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            kind: "class" | "group";
+                            name: string;
+                            grades: number[];
+                        }[];
                     };
                 };
             };
@@ -52252,6 +52260,8 @@ export interface operations {
                             dailyLessons: number | null;
                             /** @enum {string} */
                             status: "open" | "closed";
+                            /** Format: date */
+                            closesOn: string | null;
                         }[];
                         /** Format: date */
                         today: string;
@@ -52472,6 +52482,8 @@ export interface operations {
                         dailyLessons: number | null;
                         /** @enum {string} */
                         status: "open" | "closed";
+                        /** Format: date */
+                        closesOn: string | null;
                         statuses: {
                             /** Format: uuid */
                             id: string;
@@ -52502,6 +52514,14 @@ export interface operations {
                             }[];
                             versionNumber: number | null;
                             withdrawn: boolean;
+                        }[];
+                        fillUnits: {
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            kind: "class" | "group";
+                            name: string;
+                            grades: number[];
                         }[];
                         /** Format: date */
                         today: string;
@@ -52906,6 +52926,8 @@ export interface operations {
                         dailyLessons: number | null;
                         /** @enum {string} */
                         status: "open" | "closed";
+                        /** Format: date */
+                        closesOn: string | null;
                         statuses: {
                             /** Format: uuid */
                             id: string;
@@ -52936,6 +52958,14 @@ export interface operations {
                             }[];
                             versionNumber: number | null;
                             withdrawn: boolean;
+                        }[];
+                        fillUnits: {
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            kind: "class" | "group";
+                            name: string;
+                            grades: number[];
                         }[];
                         /** Format: date */
                         today: string;
@@ -53158,6 +53188,8 @@ export interface operations {
                         dailyLessons: number | null;
                         /** @enum {string} */
                         status: "open" | "closed";
+                        /** Format: date */
+                        closesOn: string | null;
                         statuses: {
                             /** Format: uuid */
                             id: string;
@@ -53188,6 +53220,14 @@ export interface operations {
                             }[];
                             versionNumber: number | null;
                             withdrawn: boolean;
+                        }[];
+                        fillUnits: {
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            kind: "class" | "group";
+                            name: string;
+                            grades: number[];
                         }[];
                         /** Format: date */
                         today: string;
@@ -53394,6 +53434,8 @@ export interface operations {
                         dailyLessons: number | null;
                         /** @enum {string} */
                         status: "open" | "closed";
+                        /** Format: date */
+                        closesOn: string | null;
                         statuses: {
                             /** Format: uuid */
                             id: string;
@@ -53424,6 +53466,14 @@ export interface operations {
                             }[];
                             versionNumber: number | null;
                             withdrawn: boolean;
+                        }[];
+                        fillUnits: {
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            kind: "class" | "group";
+                            name: string;
+                            grades: number[];
                         }[];
                         /** Format: date */
                         today: string;
@@ -53630,6 +53680,8 @@ export interface operations {
                         dailyLessons: number | null;
                         /** @enum {string} */
                         status: "open" | "closed";
+                        /** Format: date */
+                        closesOn: string | null;
                         statuses: {
                             /** Format: uuid */
                             id: string;
@@ -53660,6 +53712,14 @@ export interface operations {
                             }[];
                             versionNumber: number | null;
                             withdrawn: boolean;
+                        }[];
+                        fillUnits: {
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            kind: "class" | "group";
+                            name: string;
+                            grades: number[];
                         }[];
                         /** Format: date */
                         today: string;
