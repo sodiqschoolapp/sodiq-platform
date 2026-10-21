@@ -189,14 +189,14 @@ describe('the version history page', () => {
         '1 September 2026',
         en.timetable.load.statuses.published,
         '—',
-        'the first day of quarter 1, 2',
+        'the first days of quarters 1, 2',
       ],
       [
         'Version 2',
         '16 November 2026',
         en.timetable.load.statuses.published,
         'Version 1',
-        'the first day of quarter 3, 4',
+        'the first days of quarters 3, 4',
       ],
       ['Version 3', '11 January 2027', en.timetable.load.statuses.draft, 'Version 2', ''],
     ]);
@@ -226,6 +226,75 @@ describe('the version history page', () => {
     expect(
       calls.find((one) => one.route === `GET /api/timetable/versions/${V1.id}/compare`)?.query,
     ).toBe(`?with=${V2.id}`);
+  });
+
+  it('draws every kind of difference', async () => {
+    const unit = { classId: OXFORD, groupId: null, subjectId: MATHS };
+    await openList({
+      comparison: {
+        ...COMPARISON,
+        differences: [
+          { kind: 'row_added', ...unit, teacherId: TOSHEV.id, lessonsPerWeek: 2 },
+          { kind: 'row_removed', ...unit, teacherId: KARIMOVA.id, lessonsPerWeek: 1 },
+          { kind: 'row_room', ...unit, before: null, after: ROOM.id },
+          { kind: 'row_field', ...unit, field: 'roomType', before: null, after: 'laboratory' },
+          { kind: 'row_field', ...unit, field: 'doubleLessons', before: false, after: true },
+          { kind: 'row_field', ...unit, field: 'lessonsPerWeek', before: 2, after: 3 },
+          { kind: 'placement_added', ...unit, weekday: 3, slotPosition: 5, roomId: null },
+          { kind: 'placement_removed', ...unit, weekday: 4, slotPosition: 1, roomId: ROOM.id },
+          {
+            kind: 'placement_double',
+            ...unit,
+            weekday: 5,
+            slotPosition: 1,
+            before: false,
+            after: true,
+          },
+          {
+            kind: 'placement_double',
+            ...unit,
+            weekday: 5,
+            slotPosition: 3,
+            before: true,
+            after: false,
+          },
+        ],
+      },
+    });
+    const panel = await openPanel('Version 2');
+    fireEvent.change(within(panel).getByLabelText(texts.compareWith), {
+      target: { value: V1.id },
+    });
+    await waitFor(() => {
+      expect(panel.querySelectorAll('[data-difference]')).toHaveLength(10);
+    });
+    expect([...panel.querySelectorAll('[data-difference]')].map((one) => one.textContent)).toEqual([
+      'Added: Toshev Bekzod, 2 lessons a week',
+      'Removed: Karimova Aziza, 1 lesson a week',
+      'Room: no room → Room 12',
+      'Room type: — → Laboratory',
+      'Double lessons: no → yes',
+      'Lessons per week: 2 → 3',
+      'Lesson added: Wednesday, slot 5, no room',
+      'Lesson removed: Thursday, slot 1, Room 12',
+      'The lesson on Friday, slot 1 became part of a double lesson',
+      'The lesson on Friday, slot 3 is no longer part of a double lesson',
+    ]);
+  });
+
+  it('compares only once a second version is chosen', async () => {
+    const calls = await openList();
+    const panel = await openPanel('Version 2');
+    expect(within(panel).getByLabelText<HTMLSelectElement>(texts.compareWith).value).toBe('');
+    expect(calls.some((one) => one.route.endsWith('/compare'))).toBe(false);
+    expect(panel.querySelector('[data-comparison-of]')).toBeNull();
+  });
+
+  it('says when the year has no other version to compare with', async () => {
+    await openList({ history: { ...HISTORY, versions: [V1] } });
+    const panel = await openPanel('Version 1');
+    expect(within(panel).getByText(texts.nothingToCompare)).toBeTruthy();
+    expect(within(panel).queryByLabelText(texts.compareWith)).toBeNull();
   });
 
   it('says when two versions have no differences', async () => {

@@ -11,9 +11,6 @@ import { examPlacementOf, type StandingExam } from './calendar-exams.js';
 import { closedSpansOn } from './rooms-out-read.js';
 import { claimsElsewhere, teacherStatesOf } from './dated-check.js';
 import { dayStateOf, examsOn, storedLessonsOn, type Services } from './stored-day.js';
-import { versionOnDate } from './version-on-date.js';
-
-export { versionOnDate };
 
 /**
  * The rule check of an exam on its date before the exam save writes it

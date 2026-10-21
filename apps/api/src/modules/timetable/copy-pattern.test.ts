@@ -242,6 +242,17 @@ describe('the pattern of a copied version', () => {
     const maths = await s.row({ lessons: 2 });
     await s.placeIn(maths, 1, 1);
     await s.placeIn(maths, 2, 3);
+    // A pin of the row (task 5.3b-2): still copied beside the pattern.
+    await t.database.migrator
+      .insertInto('timetable_pins')
+      .values({
+        branch_id: s.branch,
+        version_id: s.version,
+        load_row_id: maths,
+        weekday: 1,
+        slot_position: 1,
+      })
+      .execute();
     const source = await blocksOf(s.version);
     const copy = await draft(s.branch, s.year, s.version);
     expect(copy.leftBlocks).toBe(0);
@@ -257,6 +268,17 @@ describe('the pattern of a copied version', () => {
     expect(await blocksOf(s.version)).toEqual(source);
     const [entry] = await t.entries('timetable_version.create', copy.id);
     expect(entry?.new_value).toMatchObject({ copiedBlocks: 2, leftBlocks: [] });
+    const pins = await t.database.migrator
+      .selectFrom('timetable_pins')
+      .innerJoin('teaching_load_rows', 'teaching_load_rows.id', 'timetable_pins.load_row_id')
+      .select([
+        'timetable_pins.weekday',
+        'timetable_pins.slot_position',
+        'teaching_load_rows.subject_id',
+      ])
+      .where('timetable_pins.version_id', '=', copy.id)
+      .execute();
+    expect(pins).toEqual([{ weekday: 1, slot_position: 1, subject_id: s.subject }]);
   });
 
   it('gives a double lesson a new pair id in each of two copies of one source', async () => {
@@ -312,6 +334,8 @@ describe('the pattern of a copied version', () => {
       [3, 'load_teacher_status'],
       [5, 'copy_room_inactive'],
     ]);
+    const [created] = await t.entries('timetable_version.create', copy.id);
+    expect(created?.new_value).toMatchObject({ leftBlocks: await leftBlocksOf(copy.id) });
     expect(
       left.map((one) => one.lessons.map((lesson) => [lesson.sourceRowId, lesson.copied])),
     ).toEqual([[[art, false]], [[physics, true]]]);
@@ -372,6 +396,45 @@ describe('the pattern of a copied version', () => {
     return { ...s, junior };
   }
 
+  it("leaves a two-grade group's lesson in a slot whose times its grades no longer share (copy_slot_missing)", async () => {
+    const s = await scene();
+    // From 1 November grade 5 has a longer second break: its slot 5 starts
+    // 10 minutes later than grade 7's, slots 1 and 3 stay shared.
+    const longPause = await t.createSlotType(s.branch, 'Long break', 'break', 20);
+    const later = await t.createTemplate(s.branch, 'Later', [
+      s.lesson,
+      s.pause,
+      s.lesson,
+      longPause,
+      s.lesson,
+      s.pause,
+      s.lesson,
+    ]);
+    await t.assign(
+      s.branch,
+      later,
+      { level: 'grades', gradeFrom: 5, gradeTo: 5 },
+      NEW_TEMPLATE_FROM,
+    );
+    const junior = await load.classes.schoolClass(s.branch, s.year, { grade: 5 });
+    const sport = await load.classes.subject({ grades: [5, 7], journalType: 'attendance_only' });
+    const group = await load.classes.group(s.branch, s.year, sport, [s.classId, junior]);
+    const coach = await s.teacherOf([5, 7], sport);
+    const together = await s.row({ groupId: group, subjectId: sport, teacherId: coach });
+    const maths = await s.row({});
+    await s.placeIn(together, 1, 5);
+    await s.placeIn(maths, 1, 1);
+    const copy = await draft(s.branch, s.year, s.version, NOVEMBER);
+    // The row is copied (slots 1 and 3 are shared); its lesson in slot 5 is not.
+    expect(copy.leftRows).toBe(0);
+    expect((await blocksOf(copy.id)).map((one) => one.slot_position)).toEqual([1]);
+    expect((await leftBlocksOf(copy.id)).map((one) => [one.slotPosition, one.reason])).toEqual([
+      [5, 'copy_slot_missing'],
+    ]);
+    const [created] = await t.entries('timetable_version.create', copy.id);
+    expect(created?.new_value).toMatchObject({ leftBlocks: await leftBlocksOf(copy.id) });
+  });
+
   it('leaves both halves of a double when its later half would clash, the earlier one with copy_pair_left', async () => {
     const s = await retimedScene();
     const senior = await s.row({});
@@ -388,6 +451,8 @@ describe('the pattern of a copied version', () => {
       [1, 'copy_pair_left'],
       [3, 'copy_clash'],
     ]);
+    const [created] = await t.entries('timetable_version.create', copy.id);
+    expect(created?.new_value).toMatchObject({ leftBlocks: await leftBlocksOf(copy.id) });
     // Nothing of the pair was written: no lone half.
     const pairs = await t.database.migrator
       .selectFrom('pattern_blocks')
@@ -419,6 +484,8 @@ describe('the pattern of a copied version', () => {
       (await blocksOf(copy.id)).flatMap((one) => one.entries.map((entry) => entry.class_id)).sort(),
     ).toEqual([s.classId, parallel].sort());
     expect((await leftBlocksOf(copy.id)).map((one) => one.reason)).toEqual(['copy_clash']);
+    const [created] = await t.entries('timetable_version.create', copy.id);
+    expect(created?.new_value).toMatchObject({ leftBlocks: await leftBlocksOf(copy.id) });
   });
 
   it('leaves a split block whole when one group row is left', async () => {
@@ -436,6 +503,8 @@ describe('the pattern of a copied version', () => {
     expect(await blocksOf(copy.id)).toEqual([]);
     const [left] = await leftBlocksOf(copy.id);
     expect(left?.reason).toBe('load_teacher_status');
+    const [created] = await t.entries('timetable_version.create', copy.id);
+    expect(created?.new_value).toMatchObject({ leftBlocks: await leftBlocksOf(copy.id) });
     const reasons = new Map(left?.lessons.map((one) => [one.sourceRowId, one.reason]));
     expect(reasons.get(b)).toBe('load_teacher_status');
     expect(reasons.get(a)).toBe('copy_part_left');
@@ -554,48 +623,14 @@ describe('the pattern of a copied version', () => {
     expect(entry?.old_value).toMatchObject({ leftBlocks: left });
   });
 
-  it('a room closed while the copy waits for it is seen closed (the copy locks the rooms)', async () => {
-    const s = await scene();
-    const maths = await s.row({});
-    const lab = await load.classes.room(s.branch);
-    await s.placeIn(maths, 1, 1, { roomId: lab });
-    // The room edit's side: the room locked and closed, not yet committed.
-    const held = t.database.migrator.transaction().execute(async (transaction) => {
-      await transaction
-        .selectFrom('rooms')
-        .select('id')
-        .where('id', '=', lab)
-        .forUpdate()
-        .execute();
-      await transaction
-        .updateTable('rooms')
-        .set({ status: 'closed' })
-        .where('id', '=', lab)
-        .execute();
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-    });
-    await new Promise((resolve) => setTimeout(resolve, 200));
-    const copy = draft(s.branch, s.year, s.version, NOVEMBER);
-    await held;
-    const created = await copy;
-    expect((await leftBlocksOf(created.id)).map((one) => one.reason)).toEqual([
-      'copy_room_inactive',
-    ]);
-  });
-
-  it('a room closed after the copy committed marks the new draft out of date', async () => {
-    const s = await scene();
-    const maths = await s.row({});
-    const lab = await load.classes.room(s.branch);
-    await s.placeIn(maths, 1, 1, { roomId: lab });
-    const copy = await draft(s.branch, s.year, s.version, NOVEMBER);
-    expect(copy.leftBlocks).toBe(0);
+  /** The room edit's route: the lab closed (`PUT /api/setup/rooms/:id`). */
+  const closeRoom = async (branch: string, roomId: string) => {
     const room = await t.database.migrator
       .selectFrom('rooms')
       .select(['name', 'floor_id', 'type', 'capacity'])
-      .where('id', '=', lab)
+      .where('id', '=', roomId)
       .executeTakeFirstOrThrow();
-    const edited = await t.put(`/api/setup/rooms/${lab}`, s.branch, {
+    return t.put(`/api/setup/rooms/${roomId}`, branch, {
       name: room.name,
       floorId: room.floor_id,
       type: room.type,
@@ -604,12 +639,89 @@ describe('the pattern of a copied version', () => {
       shared: false,
       maxSimultaneousLessons: null,
     });
-    expect(edited.status, JSON.stringify(edited.body)).toBe(200);
+  };
+
+  /** Waits until `count` statements of the database wait for a lock. */
+  const lockWaits = async (count: number) => {
+    for (let tries = 0; tries < 200; tries += 1) {
+      const waiting = await sql<{ n: number }>`
+        select count(*)::int as n from pg_locks l
+        join pg_stat_activity a on a.pid = l.pid
+        where not l.granted and a.datname = current_database()
+      `.execute(t.database.migrator);
+      if ((waiting.rows[0]?.n ?? 0) >= count) return;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    throw new Error('Nothing waits for a lock.');
+  };
+
+  /**
+   * A transaction that holds a row FOR UPDATE until `release` is called, so
+   * the first route waits on it with its own locks taken.
+   */
+  const holdRow = async (table: 'classes' | 'timetable_versions', id: string) => {
+    let release = () => undefined as void;
+    const released = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let locked = () => undefined as void;
+    const isLocked = new Promise<void>((resolve) => {
+      locked = resolve;
+    });
+    const done = t.database.migrator.transaction().execute(async (transaction) => {
+      await transaction.selectFrom(table).select('id').where('id', '=', id).forUpdate().execute();
+      locked();
+      await released;
+    });
+    await isLocked;
+    return { release, done };
+  };
+
+  // .claude/rules/api.md: each pair that meets on a row is tested in both
+  // directions, both routes real (`inOrder`). Plan rule 2: the copy takes the
+  // rooms of its source's entries FOR KEY SHARE before it reads their status.
+  it('a room edit that holds the room first: the copy waits and sees the room closed', async () => {
+    const s = await scene();
+    const maths = await s.row({});
+    const lab = await load.classes.room(s.branch);
+    await s.placeIn(maths, 1, 1, { roomId: lab });
+    // Another draft of the branch, held, so the edit waits on its mark with the room locked.
+    const other = await draft(s.branch, s.year);
+    const hold = await holdRow('timetable_versions', other.id);
+    const editing = closeRoom(s.branch, lab).then((answer) => answer);
+    await lockWaits(1);
+    const copying = draft(s.branch, s.year, s.version, NOVEMBER);
+    await lockWaits(2);
+    hold.release();
+    await hold.done;
+    expect((await editing).status).toBe(200);
+    const created = await copying;
+    expect((await leftBlocksOf(created.id)).map((one) => one.reason)).toEqual([
+      'copy_room_inactive',
+    ]);
+  });
+
+  it('a copy that holds the room first: the room edit waits, then marks the new draft out of date', async () => {
+    const s = await scene();
+    const maths = await s.row({});
+    const lab = await load.classes.room(s.branch);
+    await s.placeIn(maths, 1, 1, { roomId: lab });
+    // The class, held, so the copy waits on its row's key with the room locked.
+    const hold = await holdRow('classes', s.classId);
+    const copying = draft(s.branch, s.year, s.version, NOVEMBER);
+    await lockWaits(1);
+    const editing = closeRoom(s.branch, lab).then((answer) => answer);
+    await lockWaits(2);
+    hold.release();
+    await hold.done;
+    const created = await copying;
+    expect(created.leftBlocks).toBe(0);
+    expect((await editing).status).toBe(200);
     const causes = await t.database.migrator
       .selectFrom('timetable_version_out_of_date_causes')
-      .select('version_id')
-      .where('version_id', '=', copy.id)
+      .select(['action', 'record_id'])
+      .where('version_id', '=', created.id)
       .execute();
-    expect(causes.length).toBeGreaterThan(0);
+    expect(causes).toEqual([{ action: 'room.edit', record_id: lab }]);
   });
 });

@@ -1,5 +1,6 @@
 import {
   classDisplayName,
+  timeText,
   weekdaySchema,
   type LoadRow,
   type VersionComparison,
@@ -9,10 +10,6 @@ import { useTranslation } from 'react-i18next';
 import { SUBSECTION_TITLE } from '@/components/ui/control';
 import { nameOf } from '@/features/setup/setup-api';
 import { weekdayName } from '@/lib/dates';
-
-/** A clock time of the day from its minutes: "08:55". */
-const clockOf = (minutes: number): string =>
-  `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
 
 /** The class or group of a row as a person reads it. */
 const unitOf = (row: LoadRow): string =>
@@ -109,8 +106,8 @@ export function VersionsCompare({ comparison }: { comparison: VersionComparison 
       case 'placement_time':
         return t('timetable.history.diff.placement_time', {
           place: placeOf(one),
-          before: `${clockOf(one.before.start)}–${clockOf(one.before.end)}`,
-          after: `${clockOf(one.after.start)}–${clockOf(one.after.end)}`,
+          before: `${timeText(one.before.start)}–${timeText(one.before.end)}`,
+          after: `${timeText(one.after.start)}–${timeText(one.after.end)}`,
         });
       case 'placement_double':
         return one.after

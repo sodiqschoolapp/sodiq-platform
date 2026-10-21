@@ -302,6 +302,9 @@ Plan approved on pull request #194 with corrections 1 and 2; decisions 1 to 10 c
 | The copy locks the rooms of the source's entries `for key share` in id order before reading their status | Plan review must-fix 7 |
 | No new area: history and comparison under `timetable` `view`, restore under `create`; the two reads write no audit entry, the copy's entry names `copiedBlocks` and `leftBlocks` | Decisions 9 and 10 |
 | **Build decision.** The page's restore opens the builder once the form is gone (an effect on the created id), so leaving it asks nothing | The guard of unsent changes held a navigation made inside the save |
+| **Build decision.** The "Not copied" lines name each lesson by the row of the version copied as it is now; a row deleted from a source draft afterwards shows as "no longer available" | The stored lesson keeps the ids, the page names them from one read; a source is rarely a draft edited after its copy (permission review S3, spec review should-fix 3) |
+| **Build decision.** The history's year picker offers closed years too (read only); "Restore as a new draft" is not offered in a closed year | `06`, Protection: "Version history shows every version"; a closed year takes no draft (spec review should-fix 2) |
+| **Build decision.** The dismissal on the Teaching load page shows when rows or lessons were left, and its question names both | Spec review must-fix 5; `.claude/rules/web.md`: a confirmation names what it touches |
 
 ## 21 October 2026: substitutions kept after a publish (task 5.7b-3)
 

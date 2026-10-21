@@ -578,6 +578,32 @@ describe('the teaching load page', () => {
     });
   });
 
+  // Task 5.8a (spec review of the code, must-fix 5): the lessons a copy did
+  // not keep are dismissed with the rows, also when no row was left, and the
+  // question names them.
+  it('dismisses the lessons a copy did not keep when it left no row, naming them', async () => {
+    const copy = version(2, { fromVersion: { id: uid(501), number: 1 }, leftBlocks: 2 });
+    const calls = await openPage({
+      versions: [copy, version(1)],
+      extra: {
+        [`PATCH /api/timetable/versions/${copy.id}`]: () => json({ ...copy, leftBlocks: 0 }),
+      },
+    });
+    const left = await screen.findByRole('region', { name: en.timetable.load.leftTitle });
+    expect(left.querySelector('[data-left-lessons]')?.textContent).toBe(
+      '2 lessons of the grid not copied',
+    );
+    fireEvent.click(within(left).getByRole('button', { name: en.timetable.load.dismiss }));
+    const dialog = await screen.findByRole('alertdialog');
+    expect(within(dialog).getByText('2 lessons of the grid not copied')).not.toBeNull();
+    fireEvent.click(within(dialog).getByRole('button', { name: en.timetable.load.dismiss }));
+    await waitFor(() => {
+      expect(
+        calls.find((call) => call.route === `PATCH /api/timetable/versions/${copy.id}`)?.body,
+      ).toEqual({ dismissLeftRows: true });
+    });
+  });
+
   it('lets the Principal read and change nothing (decision 4)', async () => {
     setWindowWidth(1440);
     const calls = await openPage({ session: principal(), load: { rows: [row(1)] } });

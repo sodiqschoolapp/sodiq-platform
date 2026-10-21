@@ -16,7 +16,7 @@ import { type Column, type ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
-import { SUBSECTION_TITLE } from '@/components/ui/control';
+import { SECTION_TITLE } from '@/components/ui/control';
 import { useView } from '@/features/access/use-view';
 import { yearsQuery } from '@/features/setup/setup-api';
 import { schoolDateText } from '@/lib/dates';
@@ -45,10 +45,7 @@ export function VersionsPage() {
   const { role, branchId } = useView();
   const canCreate = role !== null && permits(PERMISSIONS, role, 'timetable', 'create');
   const years = useQuery(yearsQuery(branchId));
-  const offered = useMemo(
-    () => (years.data?.years ?? []).filter((year) => year.status !== 'closed'),
-    [years.data],
-  );
+  const offered = useMemo(() => years.data?.years ?? [], [years.data]);
   const [chosenYear, setChosenYear] = useState<string | null>(null);
   // A year no longer offered falls back to the current one, else the first.
   const yearId =
@@ -98,7 +95,10 @@ export function VersionsPage() {
           const numbers = history.data === undefined ? [] : quartersOf(history.data, row.id);
           return numbers.length === 0
             ? ''
-            : t('timetable.history.inForce', { quarters: numbers.join(', ') });
+            : t('timetable.history.inForce', {
+                count: numbers.length,
+                quarters: numbers.join(', '),
+              });
         },
       },
     ];
@@ -224,12 +224,15 @@ function VersionPanel({
         <dd data-in-force="">
           {quarters.length === 0
             ? t('timetable.history.none')
-            : t('timetable.history.inForce', { quarters: quarters.join(', ') })}
+            : t('timetable.history.inForce', {
+                count: quarters.length,
+                quarters: quarters.join(', '),
+              })}
         </dd>
       </dl>
 
       <section aria-labelledby={`compare-${version.id}`} className="grid gap-3">
-        <h3 id={`compare-${version.id}`} className={SUBSECTION_TITLE}>
+        <h3 id={`compare-${version.id}`} className={SECTION_TITLE}>
           {t('timetable.history.compareTitle')}
         </h3>
         {others.length === 0 ? (
@@ -272,9 +275,9 @@ function VersionPanel({
         )}
       </section>
 
-      {canCreate && year !== undefined && (
+      {canCreate && year !== undefined && year.status !== 'closed' && (
         <section aria-labelledby={`restore-${version.id}`} className="grid gap-3">
-          <h3 id={`restore-${version.id}`} className={SUBSECTION_TITLE}>
+          <h3 id={`restore-${version.id}`} className={SECTION_TITLE}>
             {t('timetable.history.restoreTitle')}
           </h3>
           {restoring ? (
