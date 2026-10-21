@@ -21,5 +21,6 @@ export const restoreForcedDelete = (id: string, key: string) =>
   answerOf(
     api.POST('/api/forced-deletes/{id}/restore', {
       params: { header: { ...branchHeader(), 'Idempotency-Key': key }, path: { id } },
+      body: {},
     }),
   ).then((answer) => forcedDeleteSchema.parse(answer));
