@@ -74,21 +74,33 @@ export const MENU: Readonly<Record<Role, readonly MenuItem[]>> = Object.freeze({
 });
 
 /**
+ * The areas whose view opens an item, where they are more than the area of
+ * the item's name: "Timetable" leads to the read-only views of
+ * `timetable_views` for the roles that see no draft (task 5.9a, pull request
+ * #197, decision 2).
+ */
+export const MENU_AREAS: Readonly<Partial<Record<MenuItem, readonly string[]>>> = Object.freeze({
+  timetable: ['timetable', 'timetable_views'],
+});
+
+/**
  * The menu a role sees now: the items of its row that are built (`built`
  * lists the pages that exist) and, where the permission table has an area of
- * the item's name, only those the table lets the role view. The table is the
- * only source of rights; this function can never add an item to it.
+ * the item (its name, or those of `MENU_AREAS`), only those the table lets
+ * the role view in one of them. The table is the only source of rights; this
+ * function can never add an item to it.
  */
 export function visibleMenu(
   role: Role,
   built: ReadonlySet<MenuItem>,
   table: PermissionTable,
 ): MenuItem[] {
-  return MENU[role].filter(
-    (item) =>
-      item === 'home' ||
-      (built.has(item) && (!Object.hasOwn(table, item) || permits(table, role, item, 'view'))),
-  );
+  return MENU[role].filter((item) => {
+    if (item === 'home') return true;
+    if (!built.has(item)) return false;
+    const areas = (MENU_AREAS[item] ?? [item]).filter((area) => Object.hasOwn(table, area));
+    return areas.length === 0 || areas.some((area) => permits(table, role, area, 'view'));
+  });
 }
 
 /** The kinds of home page (`08`, Home pages by role). */

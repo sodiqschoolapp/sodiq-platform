@@ -472,6 +472,26 @@ export const PERMISSIONS = freezeTable({
     principal: ['view'],
     academic_vice_principal: ['view', 'create', 'edit', 'archive'],
   }),
+  /**
+   * The read-only timetable views by class, teacher, room and the whole branch
+   * (task 5.9a, pull request #197, decisions 2 and 3): 06, Views and outputs.
+   * The route decides the scope of each role for every request: the whole
+   * branch for the Super Admin, the Principal and both Vice Principals; the
+   * school and every class for the Head Tutor; the school and own classes for
+   * the Tutor; the teachers of their subjects, in those subjects, for the Head
+   * Teachers; and everyone's own teacher view.
+   */
+  timetable_views: rows({
+    super_admin: ['view'],
+    principal: ['view'],
+    academic_vice_principal: ['view'],
+    spiritual_vice_principal: ['view'],
+    head_tutor: ['view'],
+    tutor: ['view'],
+    senior_head_teacher: ['view'],
+    head_teacher: ['view'],
+    teacher: ['view'],
+  }),
   relatives: rows({
     super_admin: ['view', 'create', 'edit'],
     principal: ['view'],

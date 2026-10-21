@@ -358,6 +358,30 @@ describe('a frozen permission table', () => {
     }
   });
 
+  // Task 5.9a, decisions 2 and 3 of pull request #197: 06, Views and outputs,
+  // "Tutors see the school timetable and their class; Head Tutors the school
+  // timetable and every class of the branch; Head Teachers and Senior Head
+  // Teachers the teachers of their subjects; Principal and Vice Principals the
+  // whole branch"; 02, Teacher: "Own timetable". The scope inside is the route's.
+  it('gives the timetable views to the nine roles that see lessons, view only', () => {
+    const readers = [
+      'super_admin',
+      'principal',
+      'academic_vice_principal',
+      'spiritual_vice_principal',
+      'head_tutor',
+      'tutor',
+      'senior_head_teacher',
+      'head_teacher',
+      'teacher',
+    ];
+    for (const role of ROLES) {
+      expect(PERMISSIONS.timetable_views[role], role).toEqual(
+        readers.includes(role) ? ['view'] : [],
+      );
+    }
+  });
+
   it('gives the personal data report to the Super Admin alone, as an export (task 2.6b)', () => {
     for (const role of ROLES) {
       expect(PERMISSIONS.personal_data_report[role], role).toEqual(
@@ -400,6 +424,7 @@ describe('a frozen permission table', () => {
       'students',
       'subjects',
       'timetable',
+      'timetable_views',
       'vacancies',
     ]);
     expect(PERMISSIONS.branches.super_admin).toEqual(['view', 'create', 'edit']);
