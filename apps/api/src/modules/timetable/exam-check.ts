@@ -55,26 +55,6 @@ export interface ExamDay {
   readonly dayOf: (grade: number) => EngineDay;
 }
 
-/** The version in force on a date of the year, or `null`. */
-export async function versionOnDate(
-  transaction: Transaction,
-  branchId: string,
-  yearId: string,
-  date: string,
-): Promise<string | null> {
-  const found = await transaction
-    .selectFrom('timetable_versions')
-    .select('id')
-    .where('branch_id', '=', branchId)
-    .where('academic_year_id', '=', yearId)
-    .where('status', '=', 'published')
-    .where('starts_on', '<=', date)
-    .orderBy('starts_on', 'desc')
-    .orderBy('number', 'desc')
-    .executeTakeFirst();
-  return found?.id ?? null;
-}
-
 /** The facts of the version on the date, with the people named added. */
 async function stateOn(
   transaction: Transaction,

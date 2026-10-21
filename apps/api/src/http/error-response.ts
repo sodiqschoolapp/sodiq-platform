@@ -328,6 +328,7 @@ const MESSAGE: Record<ErrorCode, string> = {
   version_start_past: 'The start date is before today.',
   version_start_outside_year: 'The start date is outside the academic year.',
   version_copy_year: 'The version copied is of another academic year.',
+  version_compare_year: 'The two versions are of different academic years.',
   preferences_changed: 'The weights changed since they were read.',
   pins_changed: 'The pinned lessons changed since they were read.',
   pin_taken: 'The row is already pinned to that weekday and slot.',

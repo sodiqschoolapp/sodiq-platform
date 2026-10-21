@@ -8,7 +8,8 @@ import { useView } from '@/features/access/use-view';
 /**
  * The entry of the menu item "Timetable" (task 3.4a): a title and its links.
  * The teaching load, the draft builder (task 5.3a) and the day changes (task
- * 5.6a-1), the exams of a date (task 5.6c-2), the absences (task 5.7a-1); the grid and the
+ * 5.6a-1), the exams of a date (task 5.6c-2), the absences (task 5.7a-1), the version
+ * history (task 5.8a); the grid and the
  * views come with phase 5.
  */
 export function TimetablePage() {
@@ -69,6 +70,14 @@ export function TimetablePage() {
               className="font-semibold text-link underline-offset-4 hover:underline"
             >
               {t('timetable.roomClosuresLink')}
+            </Link>
+          </li>
+          <li className={PANEL}>
+            <Link
+              to="/timetable/versions"
+              className="font-semibold text-link underline-offset-4 hover:underline"
+            >
+              {t('timetable.versionsLink')}
             </Link>
           </li>
         </ul>

@@ -4150,6 +4150,53 @@ try {
     password: absenceSubstitutionVice.firstPassword,
   };
 
+  // Version history (task 5.8a): the publishable scene in a branch of its
+  // own, 7 Princeton's Geometry in Room 31, then the version published and
+  // Room 31 closed: the browser test sees the quarter it is in force on,
+  // restores it as a new draft whose "To place" lists that lesson ("its room
+  // is closed"), and compares the two versions.
+  const historyVice = await gridScene({
+    branch: 'Version history browser test branch',
+    vice: ['Feruza', 'Usmonova'],
+    staffId: 'S-269363',
+    phone: '+998935557353',
+    rooms: ['Room 31'],
+    publishable: true,
+  });
+  const historyBranch = await migrator
+    .selectFrom('branches')
+    .select('id')
+    .where('name', '=', 'Version history browser test branch')
+    .executeTakeFirstOrThrow();
+  const room31 = await migrator
+    .selectFrom('rooms')
+    .select('id')
+    .where('branch_id', '=', historyBranch.id)
+    .where('name', '=', 'Room 31')
+    .executeTakeFirstOrThrow();
+  const historyVersion = await migrator
+    .selectFrom('timetable_versions')
+    .select('id')
+    .where('branch_id', '=', historyBranch.id)
+    .executeTakeFirstOrThrow();
+  await migrator
+    .updateTable('pattern_entries')
+    .set({ room_id: room31.id })
+    .where('version_id', '=', historyVersion.id)
+    .where('start_minutes', '=', 525)
+    .execute();
+  await migrator
+    .updateTable('timetable_versions')
+    .set({ status: 'published' })
+    .where('id', '=', historyVersion.id)
+    .execute();
+  await migrator
+    .updateTable('rooms')
+    .set({ status: 'closed' })
+    .where('id', '=', room31.id)
+    .execute();
+  seeded.versionHistory = { login: historyVice.login, password: historyVice.firstPassword };
+
   // The department move (task 3.4c): a branch of its own with a year around
   // today, 7 Oxford, the attendance-only subject Cosmology of STEAM and a
   // draft whose row of it names a STEAM teacher who no longer has it in the

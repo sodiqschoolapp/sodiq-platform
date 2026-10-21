@@ -25,6 +25,7 @@ const VERSION: TimetableVersion = {
   fromVersion: null,
   rows: 3,
   leftRows: 0,
+  leftBlocks: 0,
   outOfDate: false,
   editLock: null,
 };
@@ -290,6 +291,7 @@ const GRID: GridAnswer = {
   pins: [],
   locks: [],
   results: [],
+  left: { blocks: [], rows: [] },
 };
 
 // Task 5.4c-3b: Oxford's English and mathematics split into boys (3001) and
@@ -414,6 +416,7 @@ async function openGrid(
           rows: 3,
           problemRows: [],
           leftRows: 0,
+          leftBlocks: 0,
           classesOver: [],
           tutorPinClashes: [],
         },
@@ -825,6 +828,96 @@ const conflicts = () => [...document.querySelectorAll<HTMLElement>('[data-confli
 // draft, with a button that jumps to the lesson"; step 7, "The conflict panel
 // shows no errors".
 describe('the panels of the grid', () => {
+  // Task 5.8a, decision 7 (edge/academic-year: "Entries whose teacher, room,
+  // subject or class is no longer active go to the 'to place' list with the
+  // reason"): a restored draft lists what its copy did not keep.
+  it("lists the lessons a copy did not keep with their reasons, a copied row's under its entry too", async () => {
+    const leftRow = (id: string, unitId: string, name: string, subjectId: string) => ({
+      id,
+      unit: {
+        kind: 'class' as const,
+        id: unitId,
+        name,
+        grades: [7],
+        language: 'uz' as const,
+        archived: false,
+      },
+      subject: { id: subjectId, names: { uz: 'Fizika', ru: 'Физика', en: 'Physics' } },
+      teacher: { id: KARIMOVA, kind: 'person' as const, name: 'Karimova Aziza' },
+      lessonsPerWeek: 1,
+      room: null,
+      roomType: null,
+      doubleLessons: false,
+      mixedBlock: false,
+      shortReason: null,
+      block: [],
+      unplaced: 0,
+      problems: [],
+    });
+    const lesson = (
+      sourceRowId: string,
+      classId: string,
+      subjectId: string,
+      copied: boolean,
+      reason: 'load_teacher_status' | 'copy_room_inactive',
+    ) => ({
+      sourceRowId,
+      copied,
+      classId,
+      groupId: null,
+      subjectId,
+      teacherId: KARIMOVA,
+      roomId: null,
+      reason,
+    });
+    const physics = uid(9100);
+    const grid: GridAnswer = {
+      ...GRID,
+      version: { ...GRID.version, fromVersion: { id: uid(9000), number: 3 } },
+      left: {
+        blocks: [
+          {
+            sourceBlockId: uid(9001),
+            weekday: 1,
+            slotPosition: 3,
+            reason: 'load_teacher_status',
+            lessons: [lesson(uid(9002), OXFORD, physics, false, 'load_teacher_status')],
+          },
+          {
+            sourceBlockId: uid(9003),
+            weekday: 2,
+            slotPosition: 5,
+            reason: 'copy_room_inactive',
+            lessons: [lesson(uid(9004), OXFORD, MATH, true, 'copy_room_inactive')],
+          },
+        ],
+        rows: [
+          leftRow(uid(9002), OXFORD, 'Oxford', physics),
+          {
+            ...leftRow(uid(9004), OXFORD, 'Oxford', MATH),
+            subject: { id: MATH, names: { uz: 'Matematika', ru: 'Математика', en: 'Mathematics' } },
+          },
+        ],
+      },
+    };
+    await openGrid({ grid });
+    const list = panel();
+    if (list === null) throw new Error('No panel.');
+    const section = list.querySelector<HTMLElement>('[data-left-blocks]');
+    expect(section?.querySelector('h4')?.textContent).toBe('Not copied from version 3');
+    expect(
+      [...(section?.querySelectorAll('[data-left-block]') ?? [])].map((one) => one.textContent),
+    ).toEqual([
+      `7 Oxford, Physics, Monday, slot 3: ${en.timetable.load.problems.load_teacher_status}`,
+      `7 Oxford, Mathematics, Tuesday, slot 5: ${en.timetable.history.left.copy_room_inactive}`,
+    ]);
+    // The copied row's lesson under its entry too; the row the copy left has none.
+    const oxford = list.querySelector<HTMLElement>(`[data-to-place="${ROW_OXFORD}"]`);
+    expect(oxford?.querySelector('[data-left-reason]')?.textContent).toBe(
+      `7 Oxford, Mathematics, Tuesday, slot 5: ${en.timetable.history.left.copy_room_inactive}`,
+    );
+  });
+
   it('lists what is left to place by class, and places an entry by keyboard with the slot marks', async () => {
     const calls = await openGrid();
     const list = panel();

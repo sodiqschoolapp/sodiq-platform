@@ -466,6 +466,12 @@ export function LoadPage(): React.JSX.Element {
         })();
   const rowName = (row: LoadRow) => `${unitText(row)}, ${nameOf(row.subject.names, language)}`;
   const leftRows = load.data?.leftRows ?? [];
+  // Task 5.8a: the lessons a copy did not keep go with the rows it left.
+  const leftBlocks = load.data?.version.leftBlocks ?? 0;
+  const leftNames = [
+    ...leftRows.map((row) => rowName(row)),
+    ...(leftBlocks === 0 ? [] : [t('timetable.load.leftLessons', { count: leftBlocks })]),
+  ];
 
   return (
     <>
@@ -565,7 +571,7 @@ export function LoadPage(): React.JSX.Element {
           </div>
         )}
       </section>
-      {leftRows.length > 0 && (
+      {(leftRows.length > 0 || leftBlocks > 0) && (
         <section aria-labelledby="left-rows" className={`${PANEL} grid gap-3 p-6`}>
           <h2 id="left-rows" className={SECTION_TITLE}>
             {t('timetable.load.leftTitle')}
@@ -581,6 +587,11 @@ export function LoadPage(): React.JSX.Element {
               </li>
             ))}
           </ul>
+          {leftBlocks > 0 && (
+            <p className="text-sm" data-left-lessons="">
+              {t('timetable.load.leftLessons', { count: leftBlocks })}
+            </p>
+          )}
           {canEdit && (
             <div>
               <Button
@@ -592,7 +603,7 @@ export function LoadPage(): React.JSX.Element {
                       await confirm({
                         title: t('timetable.load.dismissTitle'),
                         text: t('timetable.load.dismissText'),
-                        names: leftRows.map(rowName),
+                        names: leftNames,
                         action: t('timetable.load.dismiss'),
                       })
                     ) {

@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { nameOf } from '@/features/setup/setup-api';
 import { SubjectSwatch } from '@/features/setup/subject-colour';
 import { cn } from '@/lib/utils';
+import { GridLeft, leftLines } from './grid-left';
 import { unitText } from './grid-tile';
 
 type Row = GridAnswer['rows'][number];
@@ -115,6 +116,7 @@ function Entry({
   onBoard,
   editable,
   highlighted,
+  left,
   onPlace,
   onSuggest,
 }: {
@@ -123,6 +125,8 @@ function Entry({
   onBoard: boolean;
   editable: boolean;
   highlighted: boolean;
+  /** Task 5.8a: the lessons of the entry's rows a copy did not keep, with their reasons. */
+  left: readonly string[];
   onPlace: (double: boolean, partnerRowId: string | undefined) => void;
   onSuggest: (partnerRowId: string | undefined) => void;
 }): React.JSX.Element {
@@ -176,6 +180,11 @@ function Entry({
         highlighted && 'outline-2 outline-offset-2 outline-ring',
       )}
     >
+      {left.map((line, index) => (
+        <span key={`left-${String(index)}`} className="text-muted-foreground" data-left-reason="">
+          {line}
+        </span>
+      ))}
       {entry.rows.map(({ row, placed }) => (
         <span key={row.id} className="inline-flex items-center gap-1">
           <SubjectSwatch colour={row.subject.colour} />
@@ -272,8 +281,29 @@ export function GridToPlace({
   /** "Suggest a place" for the entry's block (task 5.4b-2b), a pairing with its partner (5.4c-3b). */
   onSuggest: (entry: ToPlaceEntry, partnerRowId: string | undefined) => void;
 }): React.JSX.Element {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { entries, complete } = toPlace(grid, model);
+  // Task 5.8a: a left block of a copied row is told under that row's entry too.
+  const leftOf = (entry: ToPlaceEntry): string[] =>
+    leftLines(
+      t,
+      i18n.language,
+      grid.left,
+      grid.left.blocks
+        .map((block) => ({
+          ...block,
+          lessons: block.lessons.filter(
+            (lesson) =>
+              lesson.copied &&
+              entry.rows.some(
+                ({ row }) =>
+                  row.subject.id === lesson.subjectId &&
+                  row.unit.id === (lesson.groupId ?? lesson.classId),
+              ),
+          ),
+        }))
+        .filter((block) => block.lessons.length > 0),
+    );
   const classes = [
     ...grid.classes.filter((one) => one.id === classId),
     ...grid.classes.filter((one) => one.id !== classId),
@@ -299,6 +329,7 @@ export function GridToPlace({
                   onBoard={entry.classIds.includes(classId)}
                   editable={editable}
                   highlighted={entry.rows.some(({ row }) => row.id === highlightRowId)}
+                  left={leftOf(entry)}
                   onPlace={(double, partnerRowId) => {
                     onPlace(entry, double, partnerRowId);
                   }}
@@ -311,6 +342,7 @@ export function GridToPlace({
           </div>
         );
       })}
+      <GridLeft grid={grid} />
       {complete > 0 && (
         <p className="text-sm text-muted-foreground">
           {t('timetable.grid.placedInFull', { count: complete })}

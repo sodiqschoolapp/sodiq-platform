@@ -7,6 +7,8 @@ import {
   gridSchema,
   loadRowSchema,
   loadSchema,
+  timetableHistorySchema,
+  versionComparisonSchema,
   loadTeachersSchema,
   loadTotalsSchema,
   outOfDateAnswerSchema,
@@ -85,6 +87,36 @@ export const versionsQuery = (branchId: string | null) =>
         await answerOf(api.GET('/api/timetable/versions', { params: { header: branchHeader() } })),
       ),
     enabled: branchId !== null,
+  });
+
+/** The versions of a year by start date and the version in force on each quarter's first day (task 5.8a). */
+export const historyQuery = (branchId: string | null, yearId: string | null) =>
+  queryOptions({
+    queryKey: [...timetableKey(branchId), 'history', yearId],
+    queryFn: async () =>
+      timetableHistorySchema.parse(
+        await answerOf(
+          api.GET('/api/timetable/history', {
+            params: { header: branchHeader(), query: { academicYearId: yearId ?? '' } },
+          }),
+        ),
+      ),
+    enabled: branchId !== null && yearId !== null,
+  });
+
+/** Version `withId` compared with version `id` (task 5.8a). */
+export const comparisonQuery = (branchId: string | null, id: string, withId: string | null) =>
+  queryOptions({
+    queryKey: [...timetableKey(branchId), 'compare', id, withId],
+    queryFn: async () =>
+      versionComparisonSchema.parse(
+        await answerOf(
+          api.GET('/api/timetable/versions/{id}/compare', {
+            params: { header: branchHeader(), path: { id }, query: { with: withId ?? '' } },
+          }),
+        ),
+      ),
+    enabled: branchId !== null && withId !== null,
   });
 
 /** The rows of a version with their problems today, and the rows a copy left. */

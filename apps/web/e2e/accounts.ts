@@ -83,6 +83,7 @@ export type AccountKey =
   | 'actingTeacher'
   | 'substitution'
   | 'absenceSubstitution'
+  | 'versionHistory'
   | 'whoTeacher'
   | 'whoHeadTutor'
   | 'whoHeadTeacher';

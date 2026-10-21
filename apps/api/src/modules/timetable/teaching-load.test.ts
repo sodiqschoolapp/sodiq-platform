@@ -105,6 +105,15 @@ describe('draft versions and the teaching load', () => {
       t.database.migrator.selectFrom('timetable_pins').selectAll().orderBy('id').execute(),
       // Task 5.5a-2b-2: the copy writes the choices of the lessons kept on a shortened day.
       t.database.migrator.selectFrom('timetable_day_keeps').selectAll().orderBy('id').execute(),
+      // Task 5.8a: the copy writes its source's pattern.
+      t.database.migrator.selectFrom('pattern_blocks').selectAll().orderBy('id').execute(),
+      t.database.migrator.selectFrom('pattern_entries').selectAll().orderBy('id').execute(),
+      t.database.migrator
+        .selectFrom('pattern_block_classes')
+        .selectAll()
+        .orderBy('block_id')
+        .orderBy('class_id')
+        .execute(),
       // Task 5.5a-3b-1: the copy takes its source's marks out of date.
       t.database.migrator
         .selectFrom('timetable_version_out_of_date_causes')
@@ -285,16 +294,57 @@ describe('draft versions and the teaching load', () => {
       // Task 5.3b-2 (permission review, M1): a pinned row on the source, so a copy across branches would write pins.
       const southClass = await load.classes.schoolClass(t.south, southYear);
       const southTeacher = await load.teacher(t.south, { subjects: [{ subject, grades: [7] }] });
-      await pinRow(
-        t.south,
-        southern,
+      const southRow = await load.row({
+        branch_id: t.south,
+        version_id: southern,
+        class_id: southClass,
+        subject_id: subject,
+        teacher_id: southTeacher.staffId,
+      });
+      await pinRow(t.south, southern, southRow);
+      // Task 5.8a: a placed lesson on the source and on an own version, so a
+      // copy across branches would write a pattern.
+      const placeOn = async (branch: string, version: string, row: string, teacher: string) => {
+        const block = await t.database.migrator
+          .insertInto('pattern_blocks')
+          .values({
+            branch_id: branch,
+            version_id: version,
+            weekday: 1,
+            slot_position: 1,
+            start_minutes: 480,
+            end_minutes: 525,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await t.database.migrator
+          .insertInto('pattern_entries')
+          .values({
+            branch_id: branch,
+            version_id: version,
+            block_id: block.id,
+            weekday: 1,
+            start_minutes: 480,
+            end_minutes: 525,
+            load_row_id: row,
+            teacher_id: teacher,
+          })
+          .execute();
+      };
+      await placeOn(t.south, southern, southRow, southTeacher.staffId);
+      const northVersion = await load.version(t.north, year);
+      const northTeacher = await load.teacher(t.north, { subjects: [{ subject, grades: [7] }] });
+      await placeOn(
+        t.north,
+        northVersion,
         await load.row({
-          branch_id: t.south,
-          version_id: southern,
-          class_id: southClass,
+          branch_id: t.north,
+          version_id: northVersion,
+          class_id: await load.classes.schoolClass(t.north, year),
           subject_id: subject,
-          teacher_id: southTeacher.staffId,
+          teacher_id: northTeacher.staffId,
         }),
+        northTeacher.staffId,
       );
       // Task 5.5a-2b-2 (permission review, must-fix 1): a stored choice on the
       // source and on an own version, so a copy across branches would write one.
@@ -580,10 +630,39 @@ describe('draft versions and the teaching load', () => {
       });
       // Task 5.3b-2 (permission review, M1): pinned rows in both branches, so a wrong cascade would remove pins.
       await pinRow(t.north, version.id, row.id);
+      const attempts: (() => Promise<Response>)[] = [];
       await pinRow(t.south, southVersion, southRow);
+      // Task 5.8a (permission review, S1): a draft of the other branch with a
+      // block its copy left, so a dismissal across branches would empty it.
+      const southNumbers = await t.database.migrator
+        .selectFrom('timetable_versions')
+        .select((eb) => eb.fn.max('number').as('number'))
+        .where('academic_year_id', '=', southYear)
+        .executeTakeFirst();
+      const leftSouth = (
+        await t.database.migrator
+          .insertInto('timetable_versions')
+          .values({
+            branch_id: t.south,
+            academic_year_id: southYear,
+            number: (southNumbers?.number ?? 0) + 1,
+            starts_on: '2026-10-19',
+            left_blocks: JSON.stringify([
+              {
+                sourceBlockId: UNKNOWN,
+                weekday: 1,
+                slotPosition: 1,
+                reason: 'copy_clash',
+                lessons: [],
+              },
+            ]),
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow()
+      ).id;
+      attempts.push(() => patch(`/api/timetable/versions/${leftSouth}`, { dismissLeftRows: true }));
       const other = await fitting();
       const base = { classId: other.classId, teacherId: other.teacher };
-      const attempts: (() => Promise<Response>)[] = [];
       for (const id of [southVersion, UNKNOWN]) {
         attempts.push(
           () => get(`/api/timetable/versions/${id}/load`),

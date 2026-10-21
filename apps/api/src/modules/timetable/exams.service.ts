@@ -43,7 +43,8 @@ import {
   type StandingExam,
 } from './calendar-exams.js';
 import { classSlotsOn, dayLessonsOf } from './day-changes.service.js';
-import { examCheck, examDayOf, versionOnDate } from './exam-check.js';
+import { examCheck, examDayOf } from './exam-check.js';
+import { versionOnDate } from './version-on-date.js';
 import {
   ratingJournalsOf,
   ratingNamesOf,
