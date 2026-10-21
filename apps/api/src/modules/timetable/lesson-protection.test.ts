@@ -246,6 +246,41 @@ describe('the protection of dated lessons through their writers', () => {
     expect(gone.map((one) => one.actors)).toEqual([[adminAccount], [adminAccount], [adminAccount]]);
   });
 
+  it('refuses a publish that would remove a lesson holding data, and changes nothing (6.1 keeps and lists it)', async () => {
+    const s = await publishedScene(t, load);
+    const created = await t.post('/api/timetable/versions', s.branch, {
+      academicYearId: s.year,
+      startsOn: '2026-11-09',
+      copyFrom: s.version,
+    });
+    expect(created.status, JSON.stringify(created.body)).toBe(201);
+    const draft = (created.body as { id: string }).id;
+    // The class's maths is taken out of the draft: its lessons from the start go.
+    const row = await t.database.migrator
+      .selectFrom('teaching_load_rows')
+      .select('id')
+      .where('version_id', '=', draft)
+      .where('class_id', '=', s.classId)
+      .executeTakeFirstOrThrow();
+    const archived = await request(t.kit.server)
+      .delete(`/api/timetable/versions/${draft}/load/${row.id}`)
+      .set('Cookie', t.admin)
+      .set(BRANCH_HEADER, s.branch)
+      .set(REQUEST_KEY_HEADER, randomUUID());
+    expect(archived.status, JSON.stringify(archived.body)).toBeLessThan(300);
+    const confirmed = await t.post(`/api/timetable/versions/${draft}/templates/confirm`, s.branch);
+    expect(confirmed.status, JSON.stringify(confirmed.body)).toBe(200);
+    await load.freeEditLock(draft);
+    const held = await lessonOf(s, '2026-11-16');
+    await holdData([held.id]);
+    const before = await unitsOf(s.branch);
+    const published = await publishOf(t)(s.branch, draft, '2026-11-09');
+    expect(published.status, JSON.stringify(published.body)).toBe(409);
+    expect(errorCode(published)).toBe('lesson_holds_data');
+    expect(await unitsOf(s.branch)).toEqual(before);
+    expect(await linesOf([held.id])).toEqual([]);
+  });
+
   it('refuses a withdraw that would remove a lesson holding data, and changes nothing (6.1 keeps and lists it)', async () => {
     const other = await publishedScene(t, load);
     const draft = await draftFrom(other, '2026-11-09');

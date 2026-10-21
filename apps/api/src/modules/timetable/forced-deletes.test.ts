@@ -280,6 +280,8 @@ describe('the forced delete of a dated lesson and its restore', () => {
     branch: string,
     first: () => Promise<Response>,
     second: () => Promise<Response>,
+    hold: (transaction: Transaction) => Promise<unknown> = (transaction) =>
+      sql`select pg_advisory_xact_lock(550001)`.execute(transaction),
   ): Promise<[Response, Response]> {
     let release: () => void = () => undefined;
     const released = new Promise<void>((resolve) => {
@@ -292,7 +294,7 @@ describe('the forced delete of a dated lesson and its restore', () => {
     const held = t.app
       .get(Transactions)
       .run([branch], async (transaction: Transaction) => {
-        await sql`select pg_advisory_xact_lock(550001)`.execute(transaction);
+        await hold(transaction);
         ready();
         await released;
       })
@@ -1041,6 +1043,38 @@ describe('the forced delete of a dated lesson and its restore', () => {
     });
   });
 
+  describe('at the same moment, a class held', () => {
+    it('a forced delete and an archive of the lesson’s class: neither waits on the other in a cycle; the archive is refused while the class has lessons ahead', async () => {
+      for (const deleteFirst of [true, false]) {
+        const s = await scene();
+        const lesson = await lessonOf(s, NEXT_MONDAY);
+        const archive = () =>
+          request(t.kit.server)
+            .post(`/api/classes/${s.classId}/archive`)
+            .set('Cookie', t.admin)
+            .set(BRANCH_HEADER, s.branch)
+            .send({});
+        const [one, two] = await inOrder(
+          s.branch,
+          deleteFirst ? () => forceDelete(s.branch, lesson.id) : archive,
+          deleteFirst ? archive : () => forceDelete(s.branch, lesson.id),
+          // The class row held for update, as the archive holds it.
+          (transaction) =>
+            transaction
+              .selectFrom('classes')
+              .select('id')
+              .where('id', '=', s.classId)
+              .forUpdate()
+              .execute(),
+        );
+        const [deleted, archived] = deleteFirst ? [one, two] : [two, one];
+        done(deleted);
+        refusedWith(archived, 409, 'class_has_lessons');
+        expect(await rowOf(lesson.id)).toBeUndefined();
+      }
+    });
+  });
+
   describe('the history of a lesson', () => {
     it('lists who changed what, when, before and after, for the Principal too', async () => {
       const s = northScene;
@@ -1071,6 +1105,26 @@ describe('the forced delete of a dated lesson and its restore', () => {
         (await history(s.branch, lesson.id, t.principal)).body,
       );
       expect(principal.lines.map((one) => one.kind)).toEqual(['changed', 'forced_delete']);
+    });
+
+    it('names "the system" for a change whose entry has no actor, as a job writes it', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, NEXT_MONDAY);
+      await t.app.get(Transactions).run([s.branch], async (transaction: Transaction) => {
+        await transaction
+          .updateTable('lessons')
+          .set({ teacher_id: s.spareTeacher.staffId })
+          .where('id', '=', lesson.id)
+          .execute();
+        await heldEntry(transaction, s.branch);
+      });
+      const answer = lessonHistorySchema.parse((await history(s.branch, lesson.id)).body);
+      expect(answer.lines).toHaveLength(1);
+      expect(answer.lines[0]).toMatchObject({
+        kind: 'changed',
+        who: null,
+        teacher: { before: { id: s.teacher.staffId }, after: { id: s.spareTeacher.staffId } },
+      });
     });
 
     it('is refused to a Teacher and answers 404 for another branch’s and an unknown lesson', async () => {

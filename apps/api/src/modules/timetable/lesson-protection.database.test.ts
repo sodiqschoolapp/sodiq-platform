@@ -358,6 +358,69 @@ describe('the protection of dated lessons in the database', () => {
       expect(lines[0]?.starts_after?.toISOString()).toBe(at(MONDAY, '10:00').toISOString());
     });
 
+    it('writes a line for a change of the room, the date or the end alone, and none for a re-point to another block', async () => {
+      const { lesson: id, block } = await lesson(north);
+      const room = await kit.room(north);
+      await inBranch(north, async (transaction) => {
+        await audited(transaction, north);
+        await transaction
+          .updateTable('lessons')
+          .set({ room_id: room })
+          .where('id', '=', id)
+          .execute();
+      });
+      await inBranch(north, async (transaction) => {
+        await audited(transaction, north);
+        await transaction
+          .updateTable('lesson_blocks')
+          .set({ ends_at: at(MONDAY, '09:50') })
+          .where('id', '=', block)
+          .execute();
+      });
+      const NEXT = '2026-10-20';
+      await inBranch(north, async (transaction) => {
+        await audited(transaction, north);
+        await transaction
+          .updateTable('lesson_blocks')
+          .set({ lesson_date: NEXT, starts_at: at(NEXT, '09:00'), ends_at: at(NEXT, '09:50') })
+          .where('id', '=', block)
+          .execute();
+      });
+      const lines = await historyOf(id);
+      expect(lines).toHaveLength(3);
+      expect(lines[0]).toMatchObject({ room_before: null, room_after: room });
+      expect(lines[1]?.ends_before?.toISOString()).toBe(at(MONDAY, '09:45').toISOString());
+      expect(lines[1]?.ends_after?.toISOString()).toBe(at(MONDAY, '09:50').toISOString());
+      expect(lines[1]?.starts_before?.toISOString()).toBe(lines[1]?.starts_after?.toISOString());
+      expect(lines[2]).toMatchObject({ date_before: MONDAY, date_after: NEXT });
+      // The block and the lesson re-pointed to another version's rows, as a
+      // publish does it: no column of the history changes, so no line.
+      const unit = await database.migrator
+        .selectFrom('lessons')
+        .select('class_id')
+        .where('id', '=', id)
+        .executeTakeFirstOrThrow();
+      const target = await kit.source(north, years.get(north)?.year ?? '', [
+        { classId: unit.class_id ?? '', groupId: null, subjectId: subject },
+      ]);
+      await inBranch(north, async (transaction) => {
+        await transaction
+          .updateTable('lesson_blocks')
+          .set({ version_id: target.versionId, pattern_block_id: target.patternBlockId })
+          .where('id', '=', block)
+          .execute();
+        await transaction
+          .updateTable('lessons')
+          .set({
+            load_row_id: target.lessons[0]?.loadRowId ?? '',
+            pattern_entry_id: target.lessons[0]?.patternEntryId ?? '',
+          })
+          .where('id', '=', id)
+          .execute();
+      });
+      expect(await historyOf(id)).toHaveLength(3);
+    });
+
     it('refuses a change with no audit entry of its transaction in the lesson’s branch', async () => {
       const { lesson: id } = await lesson(north);
       const smith = await teacher();
@@ -511,6 +574,138 @@ describe('the protection of dated lessons in the database', () => {
         ),
       );
       expect(failed.constraint).toBe('forced_restore_link');
+    });
+
+    it('refuses a link that was not emptied changed to another lesson or emptied while its lesson stays', async () => {
+      const { lesson: id } = await lesson(north);
+      const { lesson: other } = await lesson(north);
+      const change = await database.migrator
+        .insertInto('lesson_day_changes')
+        .values({
+          branch_id: north,
+          lesson_id: id,
+          kind: 'room',
+          class_id: await kit.load.classes.schoolClass(north, years.get(north)?.year ?? '', {
+            grade: 7,
+          }),
+          subject_id: subject,
+          from_date: MONDAY,
+          from_starts_at: at(MONDAY, '09:00'),
+          from_ends_at: at(MONDAY, '09:45'),
+          to_date: MONDAY,
+          to_starts_at: at(MONDAY, '09:00'),
+          to_ends_at: at(MONDAY, '09:45'),
+          reason: 'Room repainted',
+          changed_at: new Date(NOW),
+          changed_by: account,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      for (const to of [other, null]) {
+        const failed = await refusal(
+          inBranch(north, (transaction) =>
+            transaction
+              .updateTable('lesson_day_changes')
+              .set({ lesson_id: to })
+              .where('id', '=', change.id)
+              .execute(),
+          ),
+        );
+        expect(failed.constraint, String(to)).toBe('forced_restore_link');
+      }
+    });
+
+    it('guards the block link of a bulk cancel the same way, and lets it back on a restore of its block', async () => {
+      const { lesson: id, block } = await lesson(north);
+      const { block: other } = await lesson(north);
+      const bulk = await database.migrator
+        .insertInto('bulk_cancels')
+        .values({
+          branch_id: north,
+          cancel_date: MONDAY,
+          lesson_numbers: [1],
+          reason: 'Concert in the hall',
+          changed_at: new Date(NOW),
+          changed_by: account,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await database.migrator
+        .insertInto('bulk_cancel_blocks')
+        .values({
+          branch_id: north,
+          bulk_cancel_id: bulk.id,
+          block_id: block,
+          choice: 'keep',
+          lesson_date: MONDAY,
+          starts_at: at(MONDAY, '09:00'),
+          ends_at: at(MONDAY, '09:45'),
+        })
+        .execute();
+      const moved = await refusal(
+        inBranch(north, (transaction) =>
+          transaction
+            .updateTable('bulk_cancel_blocks')
+            .set({ block_id: other })
+            .where('bulk_cancel_id', '=', bulk.id)
+            .execute(),
+        ),
+      );
+      expect(moved.constraint).toBe('forced_restore_link');
+      const kept = await database.migrator
+        .selectFrom('lesson_blocks')
+        .selectAll()
+        .where('id', '=', block)
+        .executeTakeFirstOrThrow();
+      const keptLesson = await database.migrator
+        .selectFrom('lessons')
+        .selectAll()
+        .where('id', '=', id)
+        .executeTakeFirstOrThrow();
+      // The forced delete takes the lesson and its block; the key empties the link.
+      const store = await inBranch(north, async (transaction) => {
+        const row = await storeRow(transaction, north, id, block);
+        await audited(transaction, north);
+        await transaction.deleteFrom('lessons').where('id', '=', id).execute();
+        await transaction.deleteFrom('lesson_blocks').where('id', '=', block).execute();
+        return row;
+      });
+      const linkOf = async () =>
+        (
+          await database.migrator
+            .selectFrom('bulk_cancel_blocks')
+            .select('block_id')
+            .where('bulk_cancel_id', '=', bulk.id)
+            .executeTakeFirstOrThrow()
+        ).block_id;
+      expect(await linkOf()).toBeNull();
+      const { created_at: _block, ...blockValues } = kept;
+      const { created_at: _lesson, ...lessonValues } = keptLesson;
+      void _block;
+      void _lesson;
+      // A stored block id is refused outside a restore.
+      const outside = await refusal(
+        inBranch(north, (transaction) =>
+          transaction.insertInto('lesson_blocks').values(blockValues).execute(),
+        ),
+      );
+      expect(outside.constraint).toBe('forced_delete_id');
+      await inBranch(north, async (transaction) => {
+        await transaction
+          .updateTable('forced_deletes')
+          .set({ restored_by: account, restored_at: new Date(0) })
+          .where('id', '=', store.id)
+          .execute();
+        await audited(transaction, north);
+        await transaction.insertInto('lesson_blocks').values(blockValues).execute();
+        await transaction.insertInto('lessons').values(lessonValues).execute();
+        await transaction
+          .updateTable('bulk_cancel_blocks')
+          .set({ block_id: block })
+          .where('bulk_cancel_id', '=', bulk.id)
+          .execute();
+      });
+      expect(await linkOf()).toBe(block);
     });
 
     it('refuses the delete of a record that a vacancy lesson was taught outside a forced delete', async () => {
