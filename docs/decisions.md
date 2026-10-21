@@ -304,6 +304,8 @@ Plan approved on pull request #193 with corrections 1 to 3; decisions 1 to 13 co
 | **Build decision.** `day_decisions_clash` (decision 4) is not built: `drop` is offered only when it passes in the state where every other undecided item is dropped too, and `cancel` only takes claims away, so no set of choices makes two teachers meet; a clash the database meets at the commit still answers `timetable_busy` | No path reaches the refusal; a code that no test can reach is not kept |
 | **Build decision.** `invigilatorsOf` also gives the substitutes in force on the dates, so the run's facts know a substitute who teaches no row | The engine fails on a teacher it does not know (5.6c-3a build decision) |
 | **Build decision.** A substitution on a stored lesson that is cancelled is dropped by a rewrite | A cancelled lesson has no teacher claim (decision 9) |
+| **Build decision.** A "needs a decision" item gives its time back to the teacher replaced in the check of the next one, so a substitution whose substitute is that teacher needs a decision too; `drop` is then offered on both (giving both lessons back clashes with nothing) | Spec review of the code; the test "a lesson needing a decision gives its time back" |
+| **Build decision.** `invigilatorsOf` is renamed `extraTeachersOf`: it gives the invigilators and the substitutes in force | Spec review of the code, should-fix 8 |
 
 ## 21 October 2026: substitution from an absence or a vacancy (task 5.7b-2)
 
