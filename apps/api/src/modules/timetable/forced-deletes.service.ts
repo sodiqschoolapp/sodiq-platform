@@ -4,7 +4,6 @@ import {
   forcedDeleteSchema,
   lessonHistorySchema,
   listName,
-  schoolDateOf,
   type ErrorCode,
   type ForcedDelete,
   type ForcedDeleteBody,
@@ -34,7 +33,7 @@ import { storedDayCheck, storedLessonsOn } from './stored-day.js';
 import { endSubstitutionRows, lessonPlacesOf, placeOf } from './substitutions-read.js';
 import { Timetable } from './timetable.service.js';
 import { versionOnDate } from './version-on-date.js';
-import { sendWeekChanges, snapshotWeek } from './week-changes.js';
+import { snapshotWeek } from './week-changes.js';
 
 /**
  * The Super Admin's forced delete of a dated lesson and its restore (task
@@ -224,7 +223,8 @@ export class LessonForcedDeletes implements OnModuleInit {
     if (dated === undefined) {
       throw notFound();
     }
-    const week = await snapshotWeek(transaction, branchId, dated.date, dated.date);
+    // The blocks and lessons of the date, locked in the writers' order.
+    await snapshotWeek(transaction, branchId, dated.date, dated.date);
     const lesson = await transaction
       .selectFrom('lessons')
       .select([
@@ -378,13 +378,15 @@ export class LessonForcedDeletes implements OnModuleInit {
     if (blockGoes) {
       await transaction.deleteFrom('lesson_blocks').where('id', '=', block.id).execute();
     }
-    const today = await todayOf(transaction, branchId, moment);
-    const notices =
-      lesson.lesson_date >= today
-        ? await sendWeekChanges(transaction, this.notifications, week, {
-            kind: 'timetable.day_changed',
-          })
-        : { notified: 0, marked: 0 };
+    const notices = {
+      notified: await this.tell(
+        transaction,
+        access,
+        branchId,
+        lesson,
+        'timetable.lesson_force_deleted',
+      ),
+    };
     await this.audit.record(transaction, {
       branchId,
       actorId: access.accountId,
@@ -399,6 +401,90 @@ export class LessonForcedDeletes implements OnModuleInit {
     return this.store.answerOf(transaction, branchId, stored.id);
   }
 
+  /**
+   * The notice of a forced delete or a restore (task 5.8b;
+   * edge/people-roles-accounts: "It notifies the branch's Academic Vice
+   * Principal, the Principal and the teacher."): the Academic Vice Principals
+   * and the Principals of the branch in force at the moment, and the
+   * lesson's teacher with an account (never a vacancy), past lessons
+   * included; the author left out. `assignments` has no row filter, so the
+   * branch is named here. Answers the number of accounts told.
+   */
+  private async tell(
+    transaction: Transaction,
+    access: Access,
+    branchId: string,
+    lesson: {
+      readonly teacher_id: string | null;
+      readonly class_id: string | null;
+      readonly group_id: string | null;
+      readonly lesson_date: string;
+      readonly starts_at: Date | string;
+    },
+    kind: 'timetable.lesson_force_deleted' | 'timetable.lesson_restored',
+  ): Promise<number> {
+    const moment = await transactionMoment(transaction);
+    const leaders = await transaction
+      .selectFrom('assignments')
+      .select('account_id')
+      .where('role', 'in', ['academic_vice_principal', 'principal'])
+      .where('branch_id', '=', branchId)
+      .where('valid_from', '<=', moment)
+      .where((eb) => eb.or([eb('valid_until', 'is', null), eb('valid_until', '>', moment)]))
+      .execute();
+    const teacher =
+      lesson.teacher_id === null
+        ? undefined
+        : await transaction
+            .selectFrom('staff')
+            .select(['kind', 'account_id'])
+            .where('id', '=', lesson.teacher_id)
+            .executeTakeFirst();
+    const accountIds = [
+      ...new Set([
+        ...leaders.map((one) => one.account_id),
+        ...(teacher === undefined || teacher.kind === 'vacancy' || teacher.account_id === null
+          ? []
+          : [teacher.account_id]),
+      ]),
+    ]
+      .filter((one) => one !== access.accountId)
+      .sort();
+    if (accountIds.length === 0) return 0;
+    const unit =
+      lesson.class_id !== null
+        ? await transaction
+            .selectFrom('classes')
+            .select(['grade', 'name'])
+            .where('id', '=', lesson.class_id)
+            .executeTakeFirstOrThrow()
+            .then((one) => classDisplayName(one.grade, one.name))
+        : await transaction
+            .selectFrom('groups')
+            .select('name')
+            .where('id', '=', lesson.group_id ?? '')
+            .executeTakeFirstOrThrow()
+            .then((one) => one.name);
+    const branch = await transaction
+      .selectFrom('branches')
+      .select('time_zone')
+      .where('id', '=', branchId)
+      .executeTakeFirstOrThrow();
+    const start = new Intl.DateTimeFormat('en-GB', {
+      timeZone: branch.time_zone,
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    }).format(new Date(lesson.starts_at));
+    await this.notifications.send(transaction, {
+      kind,
+      data: { unit, date: lesson.lesson_date, start },
+      branchId,
+      accountIds,
+    });
+    return accountIds.length;
+  }
+
   private async restoreLocked(
     transaction: Transaction,
     access: Access,
@@ -408,7 +494,7 @@ export class LessonForcedDeletes implements OnModuleInit {
     const branchId = branchOf(access);
     const rows = row.rows as unknown as LessonRows;
     const { lesson } = rows;
-    const week = await snapshotWeek(transaction, branchId, lesson.lesson_date, lesson.lesson_date);
+    await snapshotWeek(transaction, branchId, lesson.lesson_date, lesson.lesson_date);
     // Another version in force on the date, or the block taken by a publish (decision 7).
     const inForce = await versionOnDate(
       transaction,
@@ -560,14 +646,9 @@ export class LessonForcedDeletes implements OnModuleInit {
       await refuseBlocked(transaction, branchId, 'forced_delete_restore_blocked', checked);
     }
     await sql`set constraints all immediate`.execute(transaction);
-    const moment = await transactionMoment(transaction);
-    const today = await todayOf(transaction, branchId, moment);
-    const notices =
-      lesson.lesson_date >= today
-        ? await sendWeekChanges(transaction, this.notifications, week, {
-            kind: 'timetable.day_changed',
-          })
-        : { notified: 0, marked: 0 };
+    const notices = {
+      notified: await this.tell(transaction, access, branchId, lesson, 'timetable.lesson_restored'),
+    };
     await this.audit.record(transaction, {
       branchId,
       actorId: access.accountId,
@@ -591,15 +672,6 @@ export async function refuseClosedYear(transaction: Transaction, yearId: string)
   if (year.status === 'closed') {
     throw new ApiException('timetable_year_closed', 409);
   }
-}
-
-async function todayOf(transaction: Transaction, branchId: string, moment: Date): Promise<string> {
-  const branch = await transaction
-    .selectFrom('branches')
-    .select('time_zone')
-    .where('id', '=', branchId)
-    .executeTakeFirstOrThrow();
-  return schoolDateOf(moment, branch.time_zone);
 }
 
 /** The lessons of store rows as the list shows them, by store id, names read now. */

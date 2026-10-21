@@ -27,6 +27,11 @@ export const forcedDeleteBodySchema = z.strictObject({
 
 export type ForcedDeleteBody = z.infer<typeof forcedDeleteBodySchema>;
 
+/** A restore sends nothing; a field of its own is refused. */
+export const forcedDeleteRestoreBodySchema = z.strictObject({});
+
+export type ForcedDeleteRestoreBody = z.infer<typeof forcedDeleteRestoreBodySchema>;
+
 export const forcedDeleteParamsSchema = z.object({ id: z.uuid() });
 
 export type ForcedDeleteParams = z.infer<typeof forcedDeleteParamsSchema>;

@@ -3469,6 +3469,10 @@ export const en = {
         exam_day_off:
           'The calendar entry "{{name}}" made {{date}} a day off: the exam "{{title}}" is cancelled.',
         exam_changed: 'Exam "{{title}}" on {{date}}: your lessons or invigilation changed.',
+        lesson_force_deleted:
+          'The lesson of {{unit}} on {{date}} at {{start}} was deleted for good by the Super Admin. It can be restored for 30 days.',
+        lesson_restored:
+          'The lesson of {{unit}} on {{date}} at {{start}} was restored by the Super Admin.',
       },
     },
     // What an exam's notice says beyond its text (task 5.6c-2).

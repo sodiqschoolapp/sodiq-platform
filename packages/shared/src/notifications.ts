@@ -320,6 +320,23 @@ export const NOTIFICATION_KINDS = {
     after: teacherWeek.after.optional(),
     also: z.strictObject(teacherWeek).optional(),
   }),
+  /**
+   * The Super Admin deleted a lesson for good, or restored one (task 5.8b;
+   * edge/people-roles-accounts: "A Super Admin force-deletes a lesson with
+   * marks. ... It notifies the branch's Academic Vice Principal, the
+   * Principal and the teacher."): the class or group, the date and the start
+   * of the lesson in branch time.
+   */
+  'timetable.lesson_force_deleted': z.strictObject({
+    unit: z.string().min(1).max(120),
+    date: schoolDateSchema,
+    start: clockTime,
+  }),
+  'timetable.lesson_restored': z.strictObject({
+    unit: z.string().min(1).max(120),
+    date: schoolDateSchema,
+    start: clockTime,
+  }),
 } as const satisfies Record<string, z.ZodType>;
 
 export type NotificationKind = keyof typeof NOTIFICATION_KINDS;

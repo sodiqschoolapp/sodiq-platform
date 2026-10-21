@@ -3508,6 +3508,9 @@ export const uz: Texts<'one' | 'other'> = {
           '«{{name}}» taqvim yozuvi {{date}} sanasini dam olish kuni qildi: «{{title}}» imtihoni bekor qilindi.',
         exam_changed:
           '«{{title}}» imtihoni, {{date}}: darslaringiz yoki imtihondagi navbatchiligingiz oʻzgardi.',
+        lesson_force_deleted:
+          '{{unit}}, {{date}}, soat {{start}}: dars Super Admin tomonidan butunlay oʻchirildi. Uni 30 kun ichida tiklash mumkin.',
+        lesson_restored: '{{unit}}, {{date}}, soat {{start}}: dars Super Admin tomonidan tiklandi.',
       },
     },
     // What an exam's notice says beyond its text (task 5.6c-2).

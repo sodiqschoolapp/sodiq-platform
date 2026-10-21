@@ -3647,6 +3647,9 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
           'Запись календаря «{{name}}» сделала {{date}} выходным: экзамен «{{title}}» отменён.',
         exam_changed:
           'Экзамен «{{title}}» {{date}}: изменились ваши уроки или дежурство на экзамене.',
+        lesson_force_deleted:
+          'Урок {{unit}} {{date}} в {{start}} окончательно удалён Суперадминистратором. Его можно восстановить в течение 30 дней.',
+        lesson_restored: 'Урок {{unit}} {{date}} в {{start}} восстановлен Суперадминистратором.',
       },
     },
     // What an exam's notice says beyond its text (task 5.6c-2).
