@@ -410,7 +410,7 @@ Not built yet: the substitute in the journal and the plan (tasks 6.3, 7.1b, 8.4,
 
 <!-- Sources: spec 06 (Protection: "A dated lesson that already has attendance or marks cannot be deleted and cannot change its class, group or subject. Its teacher, room and time can change, with a log entry." "Forced delete is for Super Admin only, with a typed reason. The attendance and marks are kept for 30 days and can be restored." "Every change records who, when, the value before and the value after."), edge/00-definitions (Data on a lesson), edge/timetable (After publishing, "Every rule is checked again"); task 5.8b, decisions 1 to 12 and plan review corrections 1 and 2 -->
 
-**What it is.** A dated lesson is never moved to another class, group or subject, and a lesson that holds attendance or marks is never removed by a new timetable. Only the Super Admin can delete a lesson for good, with a typed reason; the lesson is kept for 30 days on the page "Deleted lessons" and can be restored there. Every change of a lesson's teacher, room, time or cancel is written in the lesson's history: who, when, before and after.
+**What it is.** A dated lesson is never moved to another class, group or subject, and a lesson that holds attendance or marks is never removed by a new timetable. Only the Super Admin can delete a lesson for good, with a typed reason; the lesson is kept for 30 days on the page "Deleted for good" and can be restored there. Every change of a lesson's teacher, room, time or cancel is written in the lesson's history: who, when, before and after.
 
 **Who can do it.** The Super Admin deletes a lesson for good and restores it. The Super Admin, the Principal and the Academic Vice Principal read the history of a lesson.
 
@@ -418,7 +418,7 @@ Not built yet: the substitute in the journal and the plan (tasks 6.3, 7.1b, 8.4,
 
 1. Open Timetable, then the day of a class. "History" on a lesson lists its changes.
 2. As the Super Admin, "Delete for good" on a lesson asks for the reason and deletes it. The lesson's teacher, the Academic Vice Principal and the Principal of the branch are told, also for a past lesson; they are told again when it is restored.
-3. School setup, then "Deleted lessons": open the lesson and press "Restore" while its 30 days last.
+3. School setup, then "Deleted for good": open the lesson and press "Restore" while its 30 days last.
 
 **Rules.**
 

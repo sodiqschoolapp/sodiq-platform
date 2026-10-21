@@ -10,7 +10,9 @@ const uid = (n: number): string => `0199a000-0000-7000-8000-${String(n).padStart
 // All names are invented. Task 5.8b, pull request #195: the lessons the Super
 // Admin deleted for good, and their restore within 30 days (06, Protection:
 // "The attendance and marks are kept for 30 days and can be restored.").
-const record = (n: number, fields: Partial<ForcedDelete> = {}): ForcedDelete => ({
+type LessonRecord = Extract<ForcedDelete, { recordType: 'lesson' }>;
+
+const record = (n: number, fields: Partial<LessonRecord> = {}): LessonRecord => ({
   id: uid(900 + n),
   recordType: 'lesson',
   lesson: {
@@ -36,6 +38,30 @@ const record = (n: number, fields: Partial<ForcedDelete> = {}): ForcedDelete => 
   ...fields,
 });
 
+/** A room, floor or building of the store (task 5.8c). */
+const placeRecord = (
+  n: number,
+  recordType: 'building' | 'floor' | 'room',
+  name: string,
+): ForcedDelete => ({
+  id: uid(950 + n),
+  recordType,
+  place: {
+    id: uid(500 + n),
+    name,
+    building: recordType === 'building' ? null : { id: uid(510), name: 'Annex' },
+    floor: recordType === 'room' ? { id: uid(520), name: 'Upper' } : null,
+    floors: recordType === 'building' ? [{ id: uid(521), name: 'Lower' }] : [],
+  },
+  reason: 'Added by mistake',
+  deletedBy: { id: uid(700), name: 'Yusupova Nodira' },
+  deletedAt: '2026-10-10T18:55:00.000Z',
+  restoreUntil: '2026-11-09T18:55:00.000Z',
+  restoredAt: null,
+  restoredBy: null,
+  restorable: true,
+});
+
 const session = (language: 'en' | 'ru' = 'en') =>
   sessionOf({
     assignments: [{ role: 'super_admin', branchId: null }],
@@ -49,7 +75,7 @@ const cellsOf = (): string[][] =>
   );
 
 /** Opens the record of the row named in the side panel. */
-async function openRow(name: string) {
+async function openRow(name: string, panelName = `${name}, Mathematics`) {
   await waitFor(() => {
     expect(cellsOf().some((row) => row.some((cell) => cell.includes(name)))).toBe(true);
   });
@@ -59,7 +85,7 @@ async function openRow(name: string) {
   const button = row?.querySelector('button');
   if (!(button instanceof HTMLElement)) throw new Error(`No row ${name}`);
   fireEvent.click(button);
-  return screen.findByRole('complementary', { name: `${name}, Mathematics` });
+  return screen.findByRole('complementary', { name: panelName });
 }
 
 describe('the deleted lessons', () => {
@@ -156,6 +182,34 @@ describe('the deleted lessons', () => {
     expect(await within(panel).findByText(en.forcedDeletes.restoredMessage)).not.toBeNull();
     const sent = calls.filter((call) => call.route.endsWith('/restore'));
     expect(sent).toHaveLength(2);
+  });
+
+  it('lists a room and a building with where they were, and restores the room (task 5.8c)', async () => {
+    const calls = fakeApi({
+      'GET /api/auth/session': () => json(session()),
+      'GET /api/forced-deletes': () =>
+        json({
+          entries: [placeRecord(1, 'room', 'Workshop 4'), placeRecord(2, 'building', 'Pavilion')],
+        }),
+      [`POST /api/forced-deletes/${uid(951)}/restore`]: () =>
+        json({ ...placeRecord(1, 'room', 'Workshop 4'), restorable: false }),
+    });
+    renderApp('/forced-deletes', 'en');
+    await waitFor(() => {
+      expect(cellsOf().filter((row) => row.join('') !== '')).toHaveLength(2);
+    });
+    const room = cellsOf().find((row) => row.some((cell) => cell.includes('Workshop 4')));
+    expect(room?.[0]).toBe(`${en.forcedDeletes.kind_room}: Workshop 4`);
+    expect(room?.[1]).toBe('Annex, Upper');
+    const building = await openRow('Pavilion', 'Pavilion');
+    const floors = [...building.querySelectorAll('dt')].find(
+      (one) => one.textContent === en.forcedDeletes.floors,
+    );
+    expect(floors?.nextElementSibling?.textContent).toBe('Lower');
+    const panel = await openRow('Workshop 4', 'Workshop 4');
+    fireEvent.click(await within(panel).findByRole('button', { name: en.forcedDeletes.restore }));
+    expect(await within(panel).findByText(en.forcedDeletes.restoredMessage)).not.toBeNull();
+    expect(calls.filter((call) => call.route.endsWith('/restore'))).toHaveLength(1);
   });
 
   it('offers no restore on a record past its 30 days', async () => {

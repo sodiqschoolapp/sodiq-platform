@@ -7,6 +7,7 @@ import {
   type ErrorCode,
   type ForcedDelete,
   type ForcedDeleteBody,
+  type ForcedLesson,
   type LessonHistory,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
@@ -16,7 +17,11 @@ import type { JsonValue } from '../../database/types.generated.js';
 import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
-import { ForcedDeleteStore, type StoreRow } from '../audit/forced-deletes.service.js';
+import {
+  ForcedDeleteStore,
+  type StoreDescription,
+  type StoreRow,
+} from '../audit/forced-deletes.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { Notifications } from '../notifications/notifications.service.js';
 import { notFound } from '../setup/setup-refusals.js';
@@ -142,7 +147,6 @@ export class LessonForcedDeletes implements OnModuleInit {
       describe: (transaction, rows) => describeLessons(transaction, rows),
       restore: (transaction, access, row, requestId) =>
         this.restoreLocked(transaction, access, row, requestId),
-      yearOf: (row) => (row.rows as unknown as LessonRows).place.academicYearId,
       refusals: RESTORE_REFUSALS,
       busy: 'timetable_busy',
       lock: async (transaction, branchId, row) => {
@@ -223,12 +227,24 @@ export class LessonForcedDeletes implements OnModuleInit {
     await refuseClosedYear(transaction, yearId);
     const dated = await transaction
       .selectFrom('lessons')
-      .select(sql<string>`lesson_date::text`.as('date'))
+      .select([sql<string>`lesson_date::text`.as('date'), 'room_id'])
       .where('id', '=', id)
       .where('branch_id', '=', branchId)
       .executeTakeFirst();
     if (dated === undefined) {
       throw notFound();
+    }
+    // The store row names the lesson's room, which no key holds once the
+    // lesson is gone: the room is held until the commit, before the lessons,
+    // so its forced delete (task 5.8c, pull request #196, database point 4)
+    // waits and then finds the store row.
+    if (dated.room_id !== null) {
+      await transaction
+        .selectFrom('rooms')
+        .select('id')
+        .where('id', '=', dated.room_id)
+        .forKeyShare()
+        .execute();
     }
     // The blocks and lessons of the date, locked in the writers' order.
     await snapshotWeek(transaction, branchId, dated.date, dated.date);
@@ -521,6 +537,25 @@ export class LessonForcedDeletes implements OnModuleInit {
     // went too, or a write of the date removed it): nothing to come back into.
     if (rows.block === null && blockNow === undefined) {
       throw new ApiException('forced_delete_block_gone', 409);
+    }
+    // The lesson's room deleted for good since (task 5.8c): its store row
+    // refuses that while it can be restored, so this is the second line.
+    if (lesson.room_id !== null) {
+      const room = await transaction
+        .selectFrom('rooms')
+        .select('id')
+        .where('id', '=', lesson.room_id)
+        .forKeyShare()
+        .executeTakeFirst();
+      if (room === undefined) {
+        throw new ApiException('forced_delete_parent_changed', 409, undefined, [
+          {
+            path: 'room',
+            code: 'not_found',
+            message: 'The room of the lesson was deleted for good since.',
+          },
+        ]);
+      }
     }
     // A lesson comes back at its block's times: a block that stayed may have
     // been retimed since (a template or calendar change moves it in place).
@@ -835,12 +870,12 @@ export async function refuseClosedYear(transaction: Transaction, yearId: string)
 async function describeLessons(
   transaction: Transaction,
   stored: readonly StoreRow[],
-): Promise<Map<string, ForcedDelete['lesson']>> {
+): Promise<Map<string, StoreDescription>> {
   const lessons = stored.map((one) => ({
     storeId: one.id,
     ...(one.rows as unknown as LessonRows).lesson,
   }));
-  const described = new Map<string, ForcedDelete['lesson']>();
+  const described = new Map<string, StoreDescription>();
   if (lessons.length === 0) return described;
   const uniq = (values: readonly (string | null)[]) => [
     ...new Set(values.filter((one): one is string => one !== null)),
@@ -910,7 +945,7 @@ async function describeLessons(
   const minutesOf = (date: string, moment: string) =>
     Math.round((new Date(moment).getTime() - begins(date).getTime()) / 60_000);
   for (const one of lessons) {
-    described.set(one.storeId, {
+    const lesson: ForcedLesson = {
       id: one.id,
       date: one.lesson_date,
       startsAt: one.starts_at,
@@ -930,8 +965,9 @@ async function describeLessons(
           ? null
           : { id: one.teacher_id, name: teacherOf.get(one.teacher_id) ?? '' },
       room: one.room_id === null ? null : { id: one.room_id, name: roomOf.get(one.room_id) ?? '' },
-      cancelCause: one.cancel_cause as ForcedDelete['lesson']['cancelCause'],
-    });
+      cancelCause: one.cancel_cause as ForcedLesson['cancelCause'],
+    };
+    described.set(one.storeId, { lesson });
   }
   return described;
 }

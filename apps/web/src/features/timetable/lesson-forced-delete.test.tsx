@@ -166,13 +166,13 @@ describe('the forced delete of a lesson on the day page', () => {
     });
     fireEvent.click(await screen.findByRole('button', { name: en.timetable.day.forcedDelete }));
     const dialog = await screen.findByRole('dialog');
-    fireEvent.click(within(dialog).getByRole('button', { name: en.timetable.forcedDelete.send }));
-    expect(await within(dialog).findByText(en.timetable.day.reasonNeeded)).not.toBeNull();
+    fireEvent.click(within(dialog).getByRole('button', { name: en.forcedDeletes.send }));
+    expect(await within(dialog).findByText(en.forcedDeletes.reasonNeeded)).not.toBeNull();
     expect(page.calls.filter((call) => call.route.endsWith('/forced-delete'))).toHaveLength(0);
-    fireEvent.change(within(dialog).getByLabelText(en.timetable.day.reason), {
+    fireEvent.change(within(dialog).getByLabelText(en.forcedDeletes.reason), {
       target: { value: 'Entered for the wrong class' },
     });
-    fireEvent.click(within(dialog).getByRole('button', { name: en.timetable.forcedDelete.send }));
+    fireEvent.click(within(dialog).getByRole('button', { name: en.forcedDeletes.send }));
     expect(await screen.findByText(en.timetable.forcedDelete.done)).not.toBeNull();
     const sent = page.calls.filter((call) => call.route.endsWith('/forced-delete'));
     expect(sent.map((call) => call.body)).toEqual([{ reason: 'Entered for the wrong class' }]);

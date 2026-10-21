@@ -25,6 +25,20 @@ const MAIN: Building = {
 
 const ANNEX: Building = { id: uid(2), name: 'Annex', archivedAt: ARCHIVED_AT, floors: [] };
 
+/** The answer of a forced delete: the record of the store (task 5.8c). */
+const forcedAnswer = (id: string, name: string) => ({
+  id: uid(990),
+  recordType: 'floor',
+  place: { id, name, building: null, floor: null, floors: [] },
+  reason: 'Added twice',
+  deletedBy: { id: uid(700), name: 'Yusupova Nodira' },
+  deletedAt: '2026-10-10T18:55:00.000Z',
+  restoreUntil: '2026-11-09T18:55:00.000Z',
+  restoredAt: null,
+  restoredBy: null,
+  restorable: true,
+});
+
 const superAdmin = () =>
   sessionOf({ assignments: [{ role: 'super_admin', branchId: null }], branches: [NORTH] });
 
@@ -196,7 +210,10 @@ describe('the buildings page', () => {
     await openList();
     fireEvent.click(rowButton('Annex'));
     const panel = await screen.findByRole('complementary', { name: 'Annex' });
-    expect(panelActionNames(panel)).toEqual([en.setup.buildings.restoreBuilding]);
+    expect(panelActionNames(panel)).toEqual([
+      en.setup.buildings.restoreBuilding,
+      en.forcedDeletes.deletePlace,
+    ]);
     expect(
       within(panel).getByRole('button', { name: en.setup.buildings.restoreBuilding }).dataset
         .variant,
@@ -417,6 +434,52 @@ describe('the buildings page', () => {
     expect(within(panel).queryByRole('button', { name: en.form.edit })).toBeNull();
     expect(within(panel).queryByRole('button', { name: en.setup.buildings.addFloor })).toBeNull();
     expect(panelActions(panel)).toBeNull();
+    expect(within(panel).queryByRole('button', { name: /Delete .* for good/ })).toBeNull();
+  });
+
+  // Task 5.8c: the Super Admin deletes a building or a floor that nothing uses
+  // for good (`03`, Building, floor, room); the server decides.
+  it('deletes a floor with no room for good with its reason, and offers it only on a floor with no room', async () => {
+    const { calls } = await openList(superAdmin(), [MAIN, ANNEX], {
+      [`POST /api/setup/floors/${uid(13)}/forced-delete`]: () =>
+        json(forcedAnswer(uid(13), 'Attic')),
+    });
+    fireEvent.click(rowButton('Main'));
+    const panel = await screen.findByRole('complementary', { name: 'Main' });
+    const named = (name: string) => en.forcedDeletes.deletePlaceNamed.replace('{{name}}', name);
+    expect(within(panel).queryByRole('button', { name: named('Ground') })).toBeNull();
+    // Main has rooms: no forced delete of the building.
+    expect(panelActionNames(panel)).not.toContain(en.forcedDeletes.deletePlace);
+    fireEvent.click(within(panel).getByRole('button', { name: named('Attic') }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: en.forcedDeletes.send }));
+    expect(await within(dialog).findByText(en.forcedDeletes.reasonNeeded)).toBeDefined();
+    type(within(dialog).getByLabelText(en.forcedDeletes.reason), 'Added twice');
+    fireEvent.click(within(dialog).getByRole('button', { name: en.forcedDeletes.send }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+    const sent = calls.filter((call) => call.route.endsWith('/forced-delete'));
+    expect(sent.map((call) => [call.route, call.body])).toEqual([
+      [`POST /api/setup/floors/${uid(13)}/forced-delete`, { reason: 'Added twice' }],
+    ]);
+    expect(
+      await within(panel).findByText(en.forcedDeletes.placeDone.replace('{{name}}', 'Attic')),
+    ).toBeDefined();
+  });
+
+  it('shows the refusal of a building in use as its text', async () => {
+    await openList(superAdmin(), [MAIN, ANNEX], {
+      [`POST /api/setup/buildings/${ANNEX.id}/forced-delete`]: () =>
+        refusal('place_referenced', 409),
+    });
+    fireEvent.click(rowButton('Annex'));
+    const panel = await screen.findByRole('complementary', { name: 'Annex' });
+    fireEvent.click(within(panel).getByRole('button', { name: en.forcedDeletes.deletePlace }));
+    const dialog = await screen.findByRole('dialog');
+    type(within(dialog).getByLabelText(en.forcedDeletes.reason), 'Never built');
+    fireEvent.click(within(dialog).getByRole('button', { name: en.forcedDeletes.send }));
+    expect(await within(dialog).findByText(en.errors.place_referenced)).toBeDefined();
   });
 
   it('shows an archived building without its rename form, with a way to restore it', async () => {

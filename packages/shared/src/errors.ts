@@ -805,6 +805,8 @@ export const ERROR_CODES = [
   'forced_delete_block_gone',
   /** The restored lesson would break a timetable rule (its room or teacher is taken); the details list why (edge/timetable, After publishing; task 5.8b). */
   'forced_delete_restore_blocked',
+  /** A building, floor or room is referenced (a room on it, a lesson, a timetable entry, a closure, the lesson history), so it is archived or closed, never deleted for good (03, Building, floor, room; task 5.8c). */
+  'place_referenced',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

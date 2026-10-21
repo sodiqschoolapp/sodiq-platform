@@ -612,6 +612,8 @@ export const en = {
       'The other lessons this lesson was taught with are gone since it was deleted, so it cannot come back. Restore them first, if they were deleted for good too.',
     forced_delete_restore_blocked:
       'The lesson cannot come back: it would break a timetable rule, listed below. Change the lesson that took its place first.',
+    place_referenced:
+      'This is still in use (a room on it, a lesson, a timetable entry or the history of a lesson), so it cannot be deleted for good. Archive a building or floor, or close a room, instead.',
     journal_substitute_none:
       'No lesson of the journal in this period can take this substitute. The dates and their reasons are listed; choose another teacher.',
     vacancy_has_load:
@@ -956,7 +958,7 @@ export const en = {
     settingsLink: 'Settings',
     travelTimesLink: 'Travel time',
     subjectsLink: 'Subjects',
-    forcedDeletesLink: 'Deleted lessons',
+    forcedDeletesLink: 'Deleted for good',
     branches: {
       title: 'Branches',
       caption: 'Branches of the school',
@@ -2678,14 +2680,26 @@ export const en = {
     branch: 'Branch',
   },
   forcedDeletes: {
-    title: 'Deleted lessons',
-    caption: 'Lessons deleted for good',
-    lesson: 'Lesson',
-    unit: 'Class or group',
+    title: 'Deleted for good',
+    caption: 'Records deleted for good',
+    record: 'What was deleted',
+    about: 'Class, group or place',
+    kind_lesson: 'Lesson',
+    kind_building: 'Building',
+    kind_floor: 'Floor',
+    kind_room: 'Room',
+    recordText: '{{kind}}: {{name}}',
     subject: 'Subject',
     teacher: 'Teacher',
     room: 'Room',
+    building: 'Building',
+    floor: 'Floor',
+    floors: 'Floors',
+    noFloors: 'No floors',
     reason: 'Reason',
+    reasonNeeded: 'Write the reason for the delete.',
+    keep: 'Keep it',
+    send: 'Delete for good',
     deleted: 'Deleted',
     deletedBy: '{{name}}, {{moment}}',
     state: 'State',
@@ -2695,9 +2709,20 @@ export const en = {
     restoreUntil: 'Can be restored until',
     restored: 'Restored',
     restore: 'Restore',
-    restoredMessage: 'The lesson was restored.',
-    emptyTitle: 'No deleted lessons',
-    empty: 'A lesson deleted for good from the day of a class is listed here for 30 days.',
+    restoredMessage: 'It was restored.',
+    emptyTitle: 'Nothing deleted for good',
+    empty: 'A lesson, building, floor or room deleted for good is listed here for 30 days.',
+    deletePlace: 'Delete for good',
+    deletePlaceNamed: 'Delete {{name}} for good',
+    placeTitle_building: 'Delete the building {{name}} for good',
+    placeTitle_floor: 'Delete the floor {{name}} for good',
+    placeTitle_room: 'Delete the room {{name}} for good',
+    placeKept_one:
+      'It is kept for {{count}} day and can be restored from Deleted for good. Only what nothing uses can be deleted for good.',
+    placeKept_other:
+      'It is kept for {{count}} days and can be restored from Deleted for good. Only what nothing uses can be deleted for good.',
+    placeDone:
+      '{{name}} was deleted for good. It can be restored from Deleted for good for 30 days.',
   },
   audit: {
     title: 'Audit log',
@@ -2845,17 +2870,20 @@ export const en = {
         archive: 'Building archived',
         restore: 'Building restored',
         export: 'Buildings exported',
+        forced_delete: 'Building deleted for good',
       },
       floor: {
         create: 'Floor created',
         edit: 'Floor changed',
         archive: 'Floor archived',
         restore: 'Floor restored',
+        forced_delete: 'Floor deleted for good',
       },
       room: {
         create: 'Room created',
         edit: 'Room changed',
         export: 'Rooms exported',
+        forced_delete: 'Room deleted for good',
       },
       division: {
         create: 'Division created',
@@ -3736,11 +3764,10 @@ export const en = {
     forcedDelete: {
       title: 'Delete for good: {{subject}}, {{unit}}, {{time}}',
       kept_one:
-        'The lesson and what it holds are kept for {{count}} day and can be restored from Deleted lessons.',
+        'The lesson and what it holds are kept for {{count}} day and can be restored from Deleted for good.',
       kept_other:
-        'The lesson and what it holds are kept for {{count}} days and can be restored from Deleted lessons.',
-      send: 'Delete for good',
-      done: 'The lesson was deleted for good. It can be restored from Deleted lessons for 30 days.',
+        'The lesson and what it holds are kept for {{count}} days and can be restored from Deleted for good.',
+      done: 'The lesson was deleted for good. It can be restored from Deleted for good for 30 days.',
     },
     lessonHistory: {
       title: 'History: {{subject}}, {{unit}}, {{time}}',

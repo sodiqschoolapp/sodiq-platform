@@ -1,4 +1,4 @@
-import { timeText, type ForcedDelete } from '@sodiq/shared';
+import { timeText, type ForcedDelete, type ForcedPlace } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useMemo, useRef } from 'react';
@@ -13,6 +13,7 @@ import { useView } from '@/features/access/use-view';
 import { BlockedRules } from '@/features/timetable/blocked-rules';
 import { timetableKey } from '@/features/timetable/timetable-api';
 import { formatMoment, schoolDateText } from '@/lib/dates';
+import { SETUP_KEY } from '@/features/setup/setup-api';
 import { FORCED_DELETES_KEY, forcedDeletesQuery, restoreForcedDelete } from './forced-deletes-api';
 
 type Language = 'uz' | 'ru' | 'en';
@@ -21,12 +22,13 @@ const languageOf = (language: string): Language =>
   language === 'ru' || language === 'en' ? language : 'uz';
 
 /**
- * The lessons the Super Admin deleted for good (task 5.8b, pull request #195;
+ * The records the Super Admin deleted for good (task 5.8b, pull request #195;
  * `06`, Protection: "Forced delete is for Super Admin only, with a typed
  * reason. The attendance and marks are kept for 30 days and can be
- * restored."): the store of the branch, newest first, and in the side panel
- * the restore while its 30 days last. The server decides what can be
- * restored; a refusal lists the rules the lesson would break.
+ * restored."): lessons, and buildings, floors and rooms (task 5.8c, pull
+ * request #196). The store of the branch, newest first, and in the side
+ * panel the restore while its 30 days last. The server decides what can be
+ * restored; a refusal lists the rules a lesson would break.
  */
 export function ForcedDeletesPage() {
   const { t, i18n } = useTranslation();
@@ -37,29 +39,33 @@ export function ForcedDeletesPage() {
   const language = languageOf(i18n.language);
 
   const columns = useMemo((): Column<ForcedDelete>[] => {
-    const lessonText = (row: ForcedDelete) =>
-      `${schoolDateText(row.lesson.date, i18n.language)}, ${timeText(row.lesson.start)}–${timeText(row.lesson.end)}`;
+    const recordText = (row: ForcedDelete) =>
+      t('forcedDeletes.recordText', {
+        kind: t(`forcedDeletes.kind_${row.recordType}`),
+        name:
+          row.recordType === 'lesson'
+            ? `${schoolDateText(row.lesson.date, i18n.language)}, ${timeText(row.lesson.start)}–${timeText(row.lesson.end)}`
+            : row.place.name,
+      });
+    const aboutText = (row: ForcedDelete) =>
+      row.recordType === 'lesson'
+        ? `${row.lesson.unit.name}, ${row.lesson.subject.names[language]}`
+        : placePath(row.place);
     return [
       {
-        key: 'lesson',
-        header: t('forcedDeletes.lesson'),
-        cell: (row) => lessonText(row),
-        sortValue: (row) => row.lesson.startsAt,
-        searchText: (row) => lessonText(row),
+        key: 'record',
+        header: t('forcedDeletes.record'),
+        cell: (row) => recordText(row),
+        sortValue: (row) => (row.recordType === 'lesson' ? row.lesson.startsAt : row.place.name),
+        searchText: (row) => recordText(row),
         opens: true,
       },
       {
-        key: 'unit',
-        header: t('forcedDeletes.unit'),
-        cell: (row) => row.lesson.unit.name,
-        sortValue: (row) => row.lesson.unit.name,
-        searchText: (row) => row.lesson.unit.name,
-      },
-      {
-        key: 'subject',
-        header: t('forcedDeletes.subject'),
-        cell: (row) => row.lesson.subject.names[language],
-        searchText: (row) => row.lesson.subject.names[language],
+        key: 'about',
+        header: t('forcedDeletes.about'),
+        cell: (row) => aboutText(row),
+        sortValue: (row) => aboutText(row),
+        searchText: (row) => aboutText(row),
       },
       {
         key: 'reason',
@@ -123,7 +129,11 @@ export function ForcedDeletesPage() {
           void records.refetch();
         }}
         rowId={(row) => row.id}
-        rowName={(row) => `${row.lesson.unit.name}, ${row.lesson.subject.names[language]}`}
+        rowName={(row) =>
+          row.recordType === 'lesson'
+            ? `${row.lesson.unit.name}, ${row.lesson.subject.names[language]}`
+            : row.place.name
+        }
         columns={columns}
         filters={filters}
         search={search}
@@ -140,7 +150,14 @@ function stateOf(row: ForcedDelete): 'restorable' | 'restored' | 'expired' {
   return row.restoredAt !== null ? 'restored' : row.restorable ? 'restorable' : 'expired';
 }
 
-/** One record of the store: what the lesson was, and the restore while it can be. */
+/** Where a place was: its building and floor, or nothing for a building. */
+function placePath(place: ForcedPlace): string {
+  return [place.building?.name, place.floor?.name]
+    .filter((one): one is string => one !== undefined)
+    .join(', ');
+}
+
+/** One record of the store: what it was, and the restore while it can be. */
 function ForcedDeletePanel({ record, language }: { record: ForcedDelete; language: Language }) {
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
@@ -151,19 +168,48 @@ function ForcedDeletePanel({ record, language }: { record: ForcedDelete; languag
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: FORCED_DELETES_KEY });
       await queryClient.invalidateQueries({ queryKey: timetableKey(branchId) });
+      await queryClient.invalidateQueries({ queryKey: SETUP_KEY });
     },
   });
   const details = restore.error instanceof ApiFailure ? (restore.error.details ?? []) : [];
-  const { lesson } = record;
   return (
     <div className="grid gap-4">
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
-        <dt className="font-semibold">{t('forcedDeletes.teacher')}</dt>
-        <dd>{lesson.teacher?.name ?? t('timetable.day.needsTeacher')}</dd>
-        <dt className="font-semibold">{t('forcedDeletes.room')}</dt>
-        <dd>{lesson.room?.name ?? t('timetable.day.needsRoom')}</dd>
-        <dt className="font-semibold">{t('forcedDeletes.subject')}</dt>
-        <dd>{lesson.subject.names[language]}</dd>
+        {record.recordType === 'lesson' ? (
+          <>
+            <dt className="font-semibold">{t('forcedDeletes.teacher')}</dt>
+            <dd>{record.lesson.teacher?.name ?? t('timetable.day.needsTeacher')}</dd>
+            <dt className="font-semibold">{t('forcedDeletes.room')}</dt>
+            <dd>{record.lesson.room?.name ?? t('timetable.day.needsRoom')}</dd>
+            <dt className="font-semibold">{t('forcedDeletes.subject')}</dt>
+            <dd>{record.lesson.subject.names[language]}</dd>
+          </>
+        ) : (
+          <>
+            {record.place.building !== null && (
+              <>
+                <dt className="font-semibold">{t('forcedDeletes.building')}</dt>
+                <dd>{record.place.building.name}</dd>
+              </>
+            )}
+            {record.place.floor !== null && (
+              <>
+                <dt className="font-semibold">{t('forcedDeletes.floor')}</dt>
+                <dd>{record.place.floor.name}</dd>
+              </>
+            )}
+            {record.recordType === 'building' && (
+              <>
+                <dt className="font-semibold">{t('forcedDeletes.floors')}</dt>
+                <dd>
+                  {record.place.floors.length === 0
+                    ? t('forcedDeletes.noFloors')
+                    : record.place.floors.map((one) => one.name).join(', ')}
+                </dd>
+              </>
+            )}
+          </>
+        )}
         <dt className="font-semibold">{t('forcedDeletes.reason')}</dt>
         <dd>{record.reason}</dd>
         <dt className="font-semibold">{t('forcedDeletes.restoreUntil')}</dt>

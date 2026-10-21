@@ -57,6 +57,20 @@ const ROOMS: Room[] = [
   }),
 ];
 
+/** The answer of a forced delete: the record of the store (task 5.8c). */
+const forcedAnswer = (id: string, name: string) => ({
+  id: uid(990),
+  recordType: 'room',
+  place: { id, name, building: null, floor: null, floors: [] },
+  reason: 'Added twice',
+  deletedBy: { id: uid(700), name: 'Yusupova Nodira' },
+  deletedAt: '2026-10-10T18:55:00.000Z',
+  restoreUntil: '2026-11-09T18:55:00.000Z',
+  restoredAt: null,
+  restoredBy: null,
+  restorable: true,
+});
+
 const superAdmin = () =>
   sessionOf({ assignments: [{ role: 'super_admin', branchId: null }], branches: [NORTH] });
 
@@ -189,9 +203,10 @@ describe('the room list', () => {
 
     fireEvent.click(rowButton('101'));
     const panel = await screen.findByRole('complementary', { name: '101' });
-    // Task 2.7c-2b-1: read first, Edit at the bottom; a room has no archive.
+    // Task 2.7c-2b-1: read first, Edit at the bottom; a room has no archive,
+    // only the forced delete of the Super Admin (task 5.8c).
     expect(within(panel).queryByRole('form')).toBeNull();
-    expect(panelActionNames(panel)).toEqual([en.form.edit]);
+    expect(panelActionNames(panel)).toEqual([en.form.edit, en.forcedDeletes.deletePlace]);
     expect(actionsAreLast(panel)).toBe(true);
     const form = await edit(panel, '101');
     expect(field(form, en.setup.rooms.name).value).toBe('101');
@@ -401,6 +416,38 @@ describe('the room list', () => {
     expect(within(panel).queryByRole('form')).toBeNull();
     expect(within(panel).getByText('2 lessons at once')).toBeDefined();
     expect(within(panel).queryByRole('button', { name: en.form.edit })).toBeNull();
+    expect(within(panel).queryByRole('button', { name: en.forcedDeletes.deletePlace })).toBeNull();
+  });
+
+  // Task 5.8c: the Super Admin deletes a room that nothing uses for good
+  // (`03`, Building, floor, room); a room in use is refused, closed instead.
+  it('deletes a room for good with its reason, and shows the refusal of a room in use as its text', async () => {
+    let refuse = true;
+    const { calls } = await openList(superAdmin(), ROOMS, [MAIN, ANNEX], {
+      [`POST /api/setup/rooms/${uid(101)}/forced-delete`]: () =>
+        refuse ? refusal('place_referenced', 409) : json(forcedAnswer(uid(101), '101')),
+    });
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(3);
+    });
+    fireEvent.click(rowButton('101'));
+    const panel = await screen.findByRole('complementary', { name: '101' });
+    fireEvent.click(within(panel).getByRole('button', { name: en.forcedDeletes.deletePlace }));
+    const dialog = await screen.findByRole('dialog');
+    type(within(dialog).getByLabelText(en.forcedDeletes.reason), 'Never used');
+    fireEvent.click(within(dialog).getByRole('button', { name: en.forcedDeletes.send }));
+    expect(await within(dialog).findByText(en.errors.place_referenced)).toBeDefined();
+    refuse = false;
+    fireEvent.click(within(dialog).getByRole('button', { name: en.forcedDeletes.send }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+    expect(
+      await within(panel).findByText(en.forcedDeletes.placeDone.replace('{{name}}', '101')),
+    ).toBeDefined();
+    const sent = calls.filter((call) => call.route.endsWith('/forced-delete'));
+    expect(sent).toHaveLength(2);
+    expect(sent[1]?.body).toEqual({ reason: 'Never used' });
   });
 });
 

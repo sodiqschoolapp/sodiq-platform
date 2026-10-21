@@ -17,8 +17,13 @@ export const FORCED_DELETE_REASON_MAX = 500;
 /** The days a forced delete can be restored, as `forced_deletes_write` (0105) writes them. */
 export const FORCED_DELETE_RESTORE_DAYS = 30;
 
-/** The kinds of record the store keeps (5.8c adds buildings, floors and rooms). */
-export const FORCED_DELETE_RECORD_TYPES = ['lesson'] as const;
+/** The kinds of record the store keeps (task 5.8c added buildings, floors and rooms). */
+export const FORCED_DELETE_RECORD_TYPES = ['lesson', 'building', 'floor', 'room'] as const;
+
+/** The kinds of place the store keeps (task 5.8c). */
+export const FORCED_PLACE_KINDS = ['building', 'floor', 'room'] as const;
+
+export type ForcedPlaceKind = (typeof FORCED_PLACE_KINDS)[number];
 
 /** A forced delete of a lesson with its reason, trimmed. */
 export const forcedDeleteBodySchema = z.strictObject({
@@ -58,11 +63,23 @@ export const forcedLessonSchema = z.object({
 
 export type ForcedLesson = z.infer<typeof forcedLessonSchema>;
 
-/** One record of the store (`GET /api/forced-deletes`). */
-export const forcedDeleteSchema = z.object({
+/**
+ * What a building, floor or room of the store was when it was deleted (task
+ * 5.8c): its name, and the names of the building and floor it was in; a
+ * building lists the floors that went with it.
+ */
+export const forcedPlaceSchema = z.object({
   id: z.uuid(),
-  recordType: z.enum(FORCED_DELETE_RECORD_TYPES),
-  lesson: forcedLessonSchema,
+  name: z.string(),
+  building: z.object({ id: z.uuid(), name: z.string() }).nullable(),
+  floor: z.object({ id: z.uuid(), name: z.string() }).nullable(),
+  floors: z.array(z.object({ id: z.uuid(), name: z.string() })),
+});
+
+export type ForcedPlace = z.infer<typeof forcedPlaceSchema>;
+
+const storeFields = {
+  id: z.uuid(),
   reason: z.string(),
   deletedBy: person,
   deletedAt: z.iso.datetime({ offset: true }),
@@ -71,7 +88,13 @@ export const forcedDeleteSchema = z.object({
   restoredBy: person.nullable(),
   /** Not restored and before `restoreUntil` at the moment of the request. */
   restorable: z.boolean(),
-});
+};
+
+/** One record of the store (`GET /api/forced-deletes`), by the kind of record. */
+export const forcedDeleteSchema = z.discriminatedUnion('recordType', [
+  z.object({ ...storeFields, recordType: z.literal('lesson'), lesson: forcedLessonSchema }),
+  z.object({ ...storeFields, recordType: z.enum(FORCED_PLACE_KINDS), place: forcedPlaceSchema }),
+]);
 
 export type ForcedDelete = z.infer<typeof forcedDeleteSchema>;
 

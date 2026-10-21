@@ -441,6 +441,20 @@ export class TimetableDayChanges {
             }
           }
           await sql`select pg_advisory_xact_lock(${PUBLISH_LOCK})`.execute(transaction);
+          // The rooms read again behind the lock and held: a forced delete of
+          // one (task 5.8c, which takes the same lock first) may have removed it
+          // while this request waited.
+          for (const roomId of options.rooms ?? []) {
+            const room = await transaction
+              .selectFrom('rooms')
+              .select('id')
+              .where('id', '=', roomId)
+              .forKeyShare()
+              .executeTakeFirst();
+            if (room === undefined) {
+              throw notFound();
+            }
+          }
           const once = await this.requestKeys.runOnce(
             transaction,
             { key, scope, accountId: access.accountId, input: { lessonId: id, ...input } },

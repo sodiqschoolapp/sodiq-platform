@@ -1558,6 +1558,7 @@ export {
 export {
   FORCED_DELETE_REASON_MAX,
   FORCED_DELETE_RECORD_TYPES,
+  FORCED_PLACE_KINDS,
   FORCED_DELETE_RESTORE_DAYS,
   LESSON_HISTORY_KINDS,
   forcedDeleteAnswerSchema,
@@ -1567,6 +1568,7 @@ export {
   forcedDeleteRestoreBodySchema,
   forcedDeleteSchema,
   forcedLessonSchema,
+  forcedPlaceSchema,
   lessonHistoryLineSchema,
   lessonHistorySchema,
   type ForcedDelete,
@@ -1576,6 +1578,8 @@ export {
   type ForcedDeleteParams,
   type ForcedDeleteRestoreBody,
   type ForcedLesson,
+  type ForcedPlace,
+  type ForcedPlaceKind,
   type LessonHistory,
   type LessonHistoryLine,
 } from './forced-deletes.js';

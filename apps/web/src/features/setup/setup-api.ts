@@ -6,8 +6,11 @@ import {
   divisionListSchema,
   isLanguage,
   buildingListSchema,
+  forcedDeleteSchema,
   roomListSchema,
   type Building,
+  type ForcedDeleteBody,
+  type ForcedPlaceKind,
   type Names,
 } from '@sodiq/shared';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
@@ -156,3 +159,23 @@ export const invalidateYears = (queryClient: QueryClient): Promise<unknown> =>
     queryClient.invalidateQueries({ queryKey: periodKey() }),
     queryClient.invalidateQueries({ queryKey: [...SETUP_KEY, 'branch'] }),
   ]);
+
+/**
+ * The Super Admin's forced delete of a building, floor or room that nothing
+ * references (task 5.8c); `key` makes a repeat harmless.
+ */
+export const forceDeletePlace = (
+  kind: ForcedPlaceKind,
+  id: string,
+  body: ForcedDeleteBody,
+  key: string,
+) => {
+  const params = { header: { ...branchHeader(), 'Idempotency-Key': key }, path: { id } };
+  const sent =
+    kind === 'building'
+      ? api.POST('/api/setup/buildings/{id}/forced-delete', { params, body })
+      : kind === 'floor'
+        ? api.POST('/api/setup/floors/{id}/forced-delete', { params, body })
+        : api.POST('/api/setup/rooms/{id}/forced-delete', { params, body });
+  return answerOf(sent).then((answer) => forcedDeleteSchema.parse(answer));
+};
