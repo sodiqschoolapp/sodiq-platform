@@ -1858,6 +1858,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -3043,6 +3045,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -4509,6 +4513,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -5615,6 +5621,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -6731,6 +6739,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -7934,6 +7944,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -9071,6 +9083,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -10165,6 +10179,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -11265,6 +11281,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -12353,6 +12371,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -13465,6 +13485,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -14557,6 +14579,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -15649,6 +15673,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -16732,6 +16758,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -17815,6 +17843,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -18878,6 +18908,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -19941,6 +19973,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -21050,6 +21084,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -22208,6 +22244,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -23299,6 +23337,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -24469,6 +24509,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -25631,6 +25673,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -26784,6 +26828,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -27872,6 +27918,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -29038,6 +29086,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -30164,6 +30214,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -31290,6 +31342,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -32400,6 +32454,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -33510,6 +33566,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -34580,6 +34638,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -35650,6 +35710,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -36755,6 +36817,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -37872,6 +37936,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -39001,6 +39067,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -40104,6 +40172,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -41372,6 +41442,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -46111,6 +46183,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -47247,6 +47321,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -48357,6 +48433,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -49481,6 +49559,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -50603,6 +50683,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -51855,6 +51937,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -52957,6 +53041,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -54059,6 +54145,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -55148,6 +55236,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -56342,6 +56432,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -57522,6 +57614,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -58710,6 +58804,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -60040,6 +60136,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -61210,6 +61308,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -62380,6 +62480,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -63525,6 +63627,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -64872,6 +64976,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -66153,6 +66259,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -67352,6 +67460,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -71777,6 +71887,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -72945,6 +73057,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -74414,6 +74528,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -78763,6 +78879,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -80244,6 +80362,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -81536,6 +81656,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -82912,6 +83034,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -84110,6 +84234,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -85177,6 +85303,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -86264,6 +86392,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -87369,6 +87499,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -88457,6 +88589,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -89568,6 +89702,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -90672,6 +90808,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -91751,6 +91889,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -92810,6 +92950,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -93893,6 +94035,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -95108,6 +95252,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -96436,6 +96582,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -97529,6 +97677,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -98869,6 +99019,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -100110,6 +100262,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -101319,6 +101473,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -102528,6 +102684,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -103670,6 +103828,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -104851,6 +105011,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -106003,6 +106165,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -107174,6 +107338,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -108358,6 +108524,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -109544,6 +109712,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -111747,6 +111917,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -112957,6 +113129,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -117071,6 +117245,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -118169,6 +118345,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -119425,6 +119603,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -121899,6 +122079,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -123132,6 +123314,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -124780,6 +124964,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -126124,6 +126310,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -127287,6 +127475,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -129847,6 +130037,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -132407,6 +132599,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -135039,6 +135233,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -137681,6 +137877,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -138844,6 +139042,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -141707,6 +141907,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -144444,6 +144646,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -147078,6 +147282,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -149648,6 +149854,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -152375,6 +152583,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -155214,6 +155424,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -157976,6 +158188,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -160833,6 +161047,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -163638,6 +163854,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -166403,6 +166621,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -169140,6 +169360,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -170306,6 +170528,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -171641,6 +171865,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -172677,6 +172903,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -174090,6 +174318,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -175468,6 +175698,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -176848,6 +177080,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -178232,6 +178466,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -179627,6 +179863,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -181105,6 +181343,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -182167,6 +182407,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -184185,6 +184427,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -185335,6 +185579,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -186690,6 +186936,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -188175,6 +188423,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -189508,6 +189758,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -191017,6 +191269,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -194796,6 +195050,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -196182,6 +196438,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -197297,6 +197555,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -198425,6 +198685,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -199553,6 +199815,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -200653,6 +200917,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -201770,6 +202036,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -203235,6 +203503,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -204355,6 +204625,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -205481,6 +205753,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -206607,6 +206881,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -207706,6 +207982,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -208827,6 +209105,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -209900,6 +210180,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -211165,6 +211447,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -212803,6 +213087,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -213897,6 +214183,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -215407,6 +215695,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -217055,6 +217345,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -218221,6 +218513,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -219785,6 +220079,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -221325,6 +221621,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -222896,6 +223194,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -223947,6 +224247,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -225213,6 +225515,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -226293,6 +226597,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -227340,6 +227646,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -228606,6 +228914,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -229923,6 +230233,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -231219,6 +231531,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -232525,6 +232839,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -233550,6 +233866,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -234591,6 +234909,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -235784,6 +236104,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -236997,6 +237319,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -238190,6 +238514,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -239252,6 +239578,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -240314,6 +240642,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -241399,6 +241729,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -242551,6 +242883,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -244078,6 +244412,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -245104,6 +245440,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -246144,6 +246482,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -247517,6 +247857,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -248878,6 +249220,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -250002,6 +250346,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -251231,6 +251577,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -252322,6 +252670,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -253483,6 +253833,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -254722,6 +255074,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -255883,6 +256237,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -257044,6 +257400,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -258072,6 +258430,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -259443,6 +259803,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -262020,6 +262382,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -263056,6 +263420,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -264171,6 +264537,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -265281,6 +265649,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -267444,6 +267814,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -269781,6 +270153,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -271974,6 +272348,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -273067,6 +273443,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -275263,6 +275641,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -277447,6 +277827,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -279637,6 +280019,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -281867,6 +282251,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -284051,6 +284437,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -286253,6 +286641,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -287308,6 +287698,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -289503,6 +289895,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -291702,6 +292096,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -293886,6 +294282,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -296076,6 +296474,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -298268,6 +298668,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -300458,6 +300860,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -302633,6 +303037,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -304817,6 +305223,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -306395,6 +306803,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -308591,6 +309001,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -310766,6 +311178,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -311818,6 +312232,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -312929,6 +313345,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -314038,6 +314456,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -316250,6 +316670,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -317392,6 +317814,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -319069,6 +319493,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -321289,6 +321715,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -322334,6 +322762,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -323360,6 +323790,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -324400,6 +324832,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -325554,6 +325988,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -326590,6 +327026,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -327689,6 +328127,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -328868,6 +329308,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -330107,6 +330549,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -331333,6 +331777,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -332383,6 +332829,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -333511,6 +333959,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -334867,6 +335317,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -336048,6 +336500,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -337208,6 +337662,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -338967,6 +339423,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -340792,6 +341250,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -342237,6 +342697,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -343362,6 +343824,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -344447,6 +344911,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -345525,6 +345991,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -346835,6 +347303,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -348280,6 +348750,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -349413,6 +349885,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -350484,6 +350958,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -351576,6 +352052,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -352979,6 +353457,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -354438,6 +354918,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -355841,6 +356323,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -357244,6 +357728,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -358688,6 +359174,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -359936,6 +360424,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -361369,6 +361859,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -362483,6 +362975,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -363672,6 +364166,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -364796,6 +365292,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -366027,6 +366525,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -367397,6 +367897,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -368526,6 +369028,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -369728,6 +370232,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -370820,6 +371326,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -371911,6 +372419,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -373230,6 +373740,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -374604,6 +375116,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -375923,6 +376437,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -377258,6 +377774,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -378407,6 +378925,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -379595,6 +380115,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -380754,6 +381276,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -381913,6 +382437,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -382990,6 +383516,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -384082,6 +384610,8 @@
                             "room_closure_withdrawn",
                             "room_closure_room",
                             "room_closure_nothing",
+                            "room_closure_days",
+                            "room_move_same",
                             "room_move_blocked",
                             "request_refused",
                             "internal_error"
@@ -385138,6 +385668,8 @@
                   "room_closure_withdrawn",
                   "room_closure_room",
                   "room_closure_nothing",
+                  "room_closure_days",
+                  "room_move_same",
                   "room_move_blocked",
                   "request_refused",
                   "internal_error"
