@@ -3189,6 +3189,13 @@ try {
      * no lessons to invigilate (the staff id and phone given).
      */
     examShared?: { readonly staffId: string; readonly phone: string };
+    /**
+     * Task 5.7a-3b: both Geometry rows are under "Geometry vacancy 2" (Uzbek
+     * and Russian), 7 Princeton is taught in Russian, so Aliyeva (Uzbek only)
+     * fits 7 Oxford's row only, and a second person (the staff id and phone
+     * given; Russian) fits 7 Princeton's.
+     */
+    vacancyFill?: { readonly staffId: string; readonly phone: string };
   }) => {
     const gridBranch = await insertBranch(migrator, scene.branch);
     const gridVice = await create(scene.vice[0], scene.vice[1]);
@@ -3239,7 +3246,7 @@ try {
               academic_year_id: year.id,
               grade: 7,
               name,
-              language: 'uz',
+              language: scene.vacancyFill !== undefined && name === 'Princeton' ? 'ru' : 'uz',
               max_size: 25,
             })
             .returning('id')
@@ -3394,6 +3401,86 @@ try {
           )
           .execute();
       }
+      // Task 5.7a-3b: the vacancy that holds both rows, and the second person.
+      let rowTeacher = person.id;
+      if (scene.vacancyFill !== undefined) {
+        const vacancy = await transaction
+          .insertInto('staff')
+          .values({ kind: 'vacancy', vacancy_name: 'Geometry vacancy 2' })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        rowTeacher = vacancy.id;
+        const second = await transaction
+          .insertInto('staff')
+          .values({
+            kind: 'person',
+            staff_id: scene.vacancyFill.staffId,
+            first_name: 'Bekzod',
+            last_name: 'Aliyev',
+            sex: 'male',
+            birth_date: '1989-06-02',
+            phone: scene.vacancyFill.phone,
+            admission_date: '2026-09-01',
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        for (const [id, languages, status] of [
+          [vacancy.id, ['uz', 'ru'], 'open'],
+          [second.id, ['ru'], 'active'],
+        ] as const) {
+          await transaction
+            .insertInto('staff_branches')
+            .values({ staff_id: id, branch_id: gridBranch, is_main: true })
+            .execute();
+          await transaction
+            .insertInto('staff_divisions')
+            .values({
+              staff_id: id,
+              division_id: academic.id,
+              department_id: steam.id,
+              is_main: true,
+            })
+            .execute();
+          for (const language of languages) {
+            await transaction
+              .insertInto('staff_languages')
+              .values({ staff_id: id, language })
+              .execute();
+          }
+          await transaction
+            .insertInto('staff_subjects')
+            .values({ staff_id: id, subject_id: geometry.id, grades: [7] })
+            .execute();
+          await transaction
+            .insertInto('staff_statuses')
+            .values({
+              staff_id: id,
+              status,
+              valid_from: status === 'open' ? startDate : '2026-09-01',
+            })
+            .execute();
+          const own = await transaction
+            .insertInto('staff_availability')
+            .values({ branch_id: gridBranch, staff_id: id, valid_from: startDate })
+            .returning(['id', 'valid_until'])
+            .executeTakeFirstOrThrow();
+          await transaction
+            .insertInto('staff_availability_ranges')
+            .values(
+              [1, 2, 3, 4, 5].map((weekday) => ({
+                entry_id: own.id,
+                branch_id: gridBranch,
+                staff_id: id,
+                weekday,
+                start_minutes: 0,
+                end_minutes: 1440,
+                valid_from: startDate,
+                valid_until: own.valid_until,
+              })),
+            )
+            .execute();
+        }
+      }
       // Task 5.4b-2a: rooms of the branch for the room picker.
       if (scene.rooms.length > 0) {
         const building = await transaction
@@ -3438,7 +3525,7 @@ try {
             version_id: draft.id,
             class_id: one.id,
             subject_id: geometry.id,
-            teacher_id: person.id,
+            teacher_id: rowTeacher,
             lessons_per_week: scene.publishable === true ? 1 : 3,
             double_lessons: scene.doubleLessons ?? false,
           })
@@ -3468,7 +3555,7 @@ try {
             start_minutes: start,
             end_minutes: start + 45,
             load_row_id: row.id,
-            teacher_id: person.id,
+            teacher_id: rowTeacher,
           })
           .execute();
       }
@@ -3926,6 +4013,21 @@ try {
     publishable: true,
   });
   seeded.roomClosures = { login: closureVice.login, password: closureVice.firstPassword };
+
+  // Vacancy fill (task 5.7a-3b): the publishable scene again, in a branch of
+  // its own, with both Geometry rows under a vacancy; the browser test
+  // publishes, fills the vacancy with Aliyeva (7 Princeton's row is left:
+  // taught in Russian), then with Aliyev, and the vacancy is closed.
+  const fillVice = await gridScene({
+    branch: 'Vacancy fill browser test branch',
+    vice: ['Malika', 'Karimova'],
+    staffId: 'S-269345',
+    phone: '+998935557345',
+    rooms: [],
+    publishable: true,
+    vacancyFill: { staffId: 'S-269346', phone: '+998935557346' },
+  });
+  seeded.vacancyFill = { login: fillVice.login, password: fillVice.firstPassword };
 
   // The department move (task 3.4c): a branch of its own with a year around
   // today, 7 Oxford, the attendance-only subject Cosmology of STEAM and a
