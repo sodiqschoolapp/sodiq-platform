@@ -3310,6 +3310,19 @@ describe('one-day changes: cancel and restore', () => {
       for (const cookie of [t.vicePrincipal, t.admin]) {
         refusedWith(await correct(t.north, foreign, { kind: 'cancel' }, cookie), 404, 'not_found');
         refusedWith(await correct(t.north, UNKNOWN, { kind: 'cancel' }, cookie), 404, 'not_found');
+        // Task 5.7b-1 (permission review, should-fix 3): the kind that writes substitutions.
+        for (const target of [foreign, UNKNOWN]) {
+          refusedWith(
+            await correct(
+              t.north,
+              target,
+              { kind: 'teacher', teacherId: s.otherTeacher.staffId, confirm: true },
+              cookie,
+            ),
+            404,
+            'not_found',
+          );
+        }
         for (const teacherId of [other.teacher.staffId, UNKNOWN]) {
           refusedWith(
             await correct(t.north, lesson, { kind: 'teacher', teacherId }, cookie),

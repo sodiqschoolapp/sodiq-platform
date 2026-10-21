@@ -307,6 +307,10 @@ Plan approved on pull request #191 with corrections 1 and 2; decisions 1 to 12 c
 | **Build decision.** The rule engine's `Placement` takes `relaxed` (`false` keeps the blocked rules of a substitute saved while a teacher of the subject was free, in a call that relaxes another substitute's lesson), with its test first | `.claude/rules/timetable.md`: an exception applies to the lesson it is for only |
 | **Build decision.** A vacancy fill drops a substitution of the vacancy's lesson, as a publish does (its publish or carry rewrites the kept lesson); so a withdrawal can never return a closed vacancy, and `lesson_vacancy_closed` is not mapped. 5.7b-3 sorts the fill too | The plan said the fill never meets a substituted lesson; the route test showed its carry does |
 | **Build decision.** "The subject's department" of a candidate is the department of the person's record now, as the department move writes it (3.4c decision 2) | No dated department is stored |
+| **Look first** (a pinned list widened). \`WEEK_KINDS\` (\`packages/shared/src/notifications.ts\`) takes \`timetable.substitution_assigned\`, and its pinned test with it | Decision 7: the substitute's notice carries the week like every one-day change; code review must-fix 2 |
+| **Build decision.** A withdrawal whose teacher replaced no longer works in the branch gives the lesson to nobody ("needs a teacher"); the day answer shows that teacher's id with no name | Permission review, notes 7 and 9; decision 12 |
+| **Build decision.** The substitution, the withdrawal and the correction defer the three claim checks until after their records are written, so a claim taken at the same moment refuses the whole change | Code review must-fixes 8 and 9; \`.claude/rules/api.md\`, a refusal after the writes ran |
+| **Build decision.** The live index of \`substitution_lessons\` stays on \`lesson_id\` alone: a lesson id is unique and the composite key ties the row to the lesson's branch | Permission review, note 8; a change of the applied migration would mean resetting the local database |
 
 ## 21 October 2026: the acting teacher of a vacancy's journal (task 5.7a-3c)
 

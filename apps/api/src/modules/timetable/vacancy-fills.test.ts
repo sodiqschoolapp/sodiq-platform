@@ -21,6 +21,7 @@ import {
   type DayTemplatesKit,
 } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
+import { substitutedIn, substitutionRowsOf } from '../../testing/substitutions-kit.js';
 import { unitNamesOf } from '../classes/unit-names.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 
@@ -785,12 +786,19 @@ describe('vacancy fill', () => {
       const theirs = await scene();
       const ours = await filled(s, bodyOf(s, OCTOBER_19));
       const their = await filled(theirs, bodyOf(theirs, OCTOBER_19));
+      // Task 5.7b-1 (permission review, must-fix 1): substitutions in force on
+      // the fill's lessons in both branches, which a withdraw would end.
+      for (const one of [s, theirs]) {
+        expect(await substitutedIn(t.database.migrator, one.branch, OCTOBER_19)).toBeGreaterThan(0);
+      }
       const before = await Promise.all([
         statusesOf(s.vacancy),
         statusesOf(theirs.vacancy),
         lessonsOf(s.branch),
         lessonsOf(theirs.branch),
         t.auditCount(),
+        substitutionRowsOf(t.database.migrator, s.branch),
+        substitutionRowsOf(t.database.migrator, theirs.branch),
       ]);
       for (const id of [their.versionId ?? '', UNKNOWN]) {
         refusedWith(await withdraw(s.branch, id), 404, 'not_found');
@@ -803,6 +811,8 @@ describe('vacancy fill', () => {
           lessonsOf(s.branch),
           lessonsOf(theirs.branch),
           t.auditCount(),
+          substitutionRowsOf(t.database.migrator, s.branch),
+          substitutionRowsOf(t.database.migrator, theirs.branch),
         ]),
       ).toEqual(before);
     });
@@ -941,6 +951,10 @@ describe('vacancy fill', () => {
             'bulk_cancel_blocks',
             'lesson_exam_cancels',
             'lesson_block_class_outs',
+            // Task 5.7b-1 (permission review, must-fix 1): the substitutions
+            // the publish of a fill ends with the lessons it rewrites.
+            'substitutions',
+            'substitution_lessons',
           ] as const
         ).map((table) =>
           t.database.migrator
@@ -986,6 +1000,11 @@ describe('vacancy fill', () => {
         .select('id')
         .where('branch_id', '=', s.branch)
         .executeTakeFirstOrThrow();
+      // Task 5.7b-1 (permission review, must-fix 1): substitutions in force on
+      // the lessons a fill from 19 October would rewrite, in both branches.
+      for (const one of [s, theirs]) {
+        expect(await substitutedIn(t.database.migrator, one.branch, OCTOBER_19)).toBeGreaterThan(0);
+      }
       const before = await written([s.branch, theirs.branch]);
       const bodies = [
         { ...bodyOf(s, OCTOBER_19), vacancyId: theirs.vacancy },

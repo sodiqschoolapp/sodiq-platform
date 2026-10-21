@@ -25,6 +25,7 @@ import {
 import { LessonsKit, at } from '../../testing/lessons-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { standingExamOver } from '../../testing/exams-kit.js';
+import { substitutedIn } from '../../testing/substitutions-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 import { datedLessonsOf } from './dated-check.js';
 import { TimetablePattern } from './pattern.service.js';
@@ -454,6 +455,20 @@ describe('publish', () => {
         .where('branch_id', 'in', branches)
         .orderBy('block_id')
         .orderBy('class_id')
+        .execute(),
+      // Task 5.7b-1 (permission review, must-fix 1): the substitutions a
+      // publish or withdraw ends with the lessons it rewrites or removes.
+      t.database.migrator
+        .selectFrom('substitutions')
+        .selectAll()
+        .where('branch_id', 'in', branches)
+        .orderBy('id')
+        .execute(),
+      t.database.migrator
+        .selectFrom('substitution_lessons')
+        .selectAll()
+        .where('branch_id', 'in', branches)
+        .orderBy('id')
         .execute(),
     ]);
   };
@@ -2012,6 +2027,12 @@ describe('publish', () => {
       const theirs = await chainScene();
       await viceIn(s.branch);
       await load.freeEditLock(s.fix);
+      // Task 5.7b-1 (permission review, must-fix 1): substitutions in force on
+      // the lessons a replace or a carry would rewrite, in both branches.
+      for (const one of [s, theirs]) {
+        const substituted = await substitutedIn(t.database.migrator, one.branch, '2026-10-19');
+        expect(substituted).toBeGreaterThan(0);
+      }
       const before = await written([s.fix, theirs.fix]);
       for (const cookie of [t.admin, t.vicePrincipal]) {
         for (const id of [theirs.fix, UNKNOWN]) {
@@ -2040,6 +2061,12 @@ describe('publish', () => {
     it('replaces and carries in its own branch only, and checks a repeat again before the stored answer', async () => {
       const s = await chainScene();
       const theirs = await chainScene();
+      // Task 5.7b-1 (permission review, must-fix 1): substitutions in force in
+      // both branches, which the refused repeats must leave in force.
+      for (const one of [s, theirs]) {
+        const substituted = await substitutedIn(t.database.migrator, one.branch, '2026-10-19');
+        expect(substituted).toBeGreaterThan(0);
+      }
       const theirsBefore = await written([theirs.fix]);
       const chain = await laterKey(s.branch, s.fix, '2026-10-19', 'replace');
       const key = randomUUID();
@@ -2132,6 +2159,10 @@ describe('publish', () => {
       await load.freeEditLock(s.version);
       const key = randomUUID();
       versionOf(await publish(s.branch, s.version, MONDAY, t.admin, key));
+      // Task 5.7b-1 (permission review, must-fix 1): substitutions in force on
+      // the lessons just published (the other scene has no lessons yet).
+      expect(await substitutedIn(t.database.migrator, s.branch, MONDAY)).toBeGreaterThan(0);
+      await substitutedIn(t.database.migrator, theirs.branch, MONDAY);
       const after = await written([s.version, theirs.version]);
       for (const id of [theirs.version, UNKNOWN]) {
         refusedWith(await publish(s.branch, id, MONDAY, t.admin, key), 404, 'not_found');
@@ -2275,7 +2306,16 @@ describe('publish', () => {
           staffId: one.teacherId,
         });
       }
+      // Task 5.7b-1 (permission review, must-fix 1): substitutions in force on
+      // the lessons a publish from 19 October would rewrite, in both branches.
+      for (const one of [s, theirs]) {
+        const substituted = await substitutedIn(t.database.migrator, one.branch, '2026-10-19');
+        expect(substituted).toBeGreaterThan(0);
+      }
       const before = await written([s.version, theirs.version]);
+      for (const index of [22, 23] as const) {
+        expect(new Set(before[index].map((one) => one.branch_id)).size).toBe(2);
+      }
       expect(new Set(before[15].map((one) => one.branch_id)).size).toBe(2);
       expect(new Set(before[18].map((one) => one.branch_id)).size).toBe(2);
       expect(new Set(before[13].map((one) => one.branch_id)).size).toBe(2);

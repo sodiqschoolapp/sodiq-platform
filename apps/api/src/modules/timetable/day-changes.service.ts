@@ -1036,6 +1036,12 @@ export class TimetableDayChanges {
       if (input.kind === 'restore') cancelCause = null;
     }
 
+    // The claims are checked at the end of the change (`set constraints all
+    // immediate` below), after its records are written, so a race refuses the
+    // whole change (task 5.7b-1, code review must-fix 9).
+    await sql`set constraints time_claims_teacher_excl, time_claims_room_excl, time_claims_class_excl deferred`.execute(
+      transaction,
+    );
     await transaction
       .updateTable('lessons')
       .set({

@@ -121,6 +121,10 @@ export function SubstituteDialog({
       one.name,
       t(GROUP_TEXT[one.group]),
       ...(one.language ? [t('timetable.day.substituteLanguage')] : []),
+      // The other warnings a choice of the teacher would give (code review should-fix 4).
+      ...one.warnings
+        .filter((rule) => rule !== 'substitute_language')
+        .map((rule) => ruleText(t, rule)),
     ].join(' · ');
 
   return (

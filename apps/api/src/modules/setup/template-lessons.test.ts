@@ -18,6 +18,7 @@ import {
   type DayTemplatesKit,
 } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
+import { substitutedIn } from '../../testing/substitutions-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 
 const refusedWith = (response: Response, status: number, code: string) => {
@@ -1762,8 +1763,16 @@ describe('template changes after publishing', () => {
       201,
     );
     const late = await templateAt(north, 'Later', '09:30');
+    // Task 5.7b-1 (permission review, must-fix 1): substitutions in force on
+    // the lessons from 19 October in each branch, which a rewrite of those
+    // dates would end (`t.rowsOf` holds both tables).
+    for (const one of [north, south]) {
+      expect(await substitutedIn(t.database.migrator, one.branch, OCT19)).toBeGreaterThan(0);
+    }
     const rows = [await storedRowsOf(north.branch), await storedRowsOf(south.branch)];
     for (const one of rows) {
+      expect(one.substitutions?.length).toBeGreaterThan(0);
+      expect(one.substitution_lessons?.length).toBeGreaterThan(0);
       expect(one.bulk_cancel_blocks?.length).toBeGreaterThan(0);
       expect(one.bulk_cancel_spans?.length).toBeGreaterThan(0);
       expect(one.lesson_day_changes?.length).toBeGreaterThan(0);

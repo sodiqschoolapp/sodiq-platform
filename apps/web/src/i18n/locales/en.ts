@@ -1239,7 +1239,7 @@ export const en = {
       journalType: 'Journal type',
       journalTypes: { graded: 'Graded', attendance_only: 'Attendance only' },
       ratingExam: 'Rating exam',
-      substituteOfSubject: 'Group subject',
+      groupSubject: 'Group subject',
       languageRule: 'Language rule',
       demanding: 'Demanding',
       switches: 'Switches',

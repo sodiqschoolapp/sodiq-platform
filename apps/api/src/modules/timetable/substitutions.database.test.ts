@@ -208,7 +208,58 @@ describe('the substitution record in the database', () => {
     }));
     expect(seen.records).toEqual([]);
     expect(seen.rows).toEqual([]);
-    expect(await outcome(recordOf(place, lesson, elsewhere.branch))).not.toBe('written');
+    // The row filter refuses a row of another branch than the transaction's.
+    expect(await outcome(recordOf(place, lesson, elsewhere.branch))).toContain(
+      'row-level security',
+    );
+  });
+
+  it('ties a row to its record and its lesson in its own branch (the composite keys), and an end to its moment', async () => {
+    const place = await fresh();
+    const elsewhere = await fresh();
+    const lesson = await lessonOn(place, place.first, place.substitute.staffId, 0);
+    const record = await recordOf(place, lesson);
+    const theirs = await lessonOn(elsewhere, elsewhere.first, elsewhere.substitute.staffId, 0);
+    // A row of the other branch naming this branch's record.
+    expect(
+      await outcome(
+        database.migrator
+          .insertInto('substitution_lessons')
+          .values({
+            substitution_id: record,
+            branch_id: elsewhere.branch,
+            lesson_id: theirs,
+            lesson_date: DAY,
+          })
+          .execute(),
+      ),
+    ).toBe('substitution_lessons_substitution_fkey');
+    // A row of this branch's record naming the other branch's lesson.
+    expect(
+      await outcome(
+        database.migrator
+          .insertInto('substitution_lessons')
+          .values({
+            substitution_id: record,
+            branch_id: place.branch,
+            lesson_id: theirs,
+            lesson_date: DAY,
+          })
+          .execute(),
+      ),
+    ).toBe('substitution_lessons_lesson_fkey');
+    // A cause without its moment.
+    expect(
+      await outcome(
+        app().run([place.branch], (transaction) =>
+          transaction
+            .updateTable('substitution_lessons')
+            .set({ end_cause: 'withdrawn', ended_by: account })
+            .where('lesson_id', '=', lesson)
+            .execute(),
+        ),
+      ),
+    ).toBe('substitution_lessons_end_check');
   });
 
   it('is insert only for the application, but for the end of a row', async () => {

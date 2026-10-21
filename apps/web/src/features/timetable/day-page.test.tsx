@@ -982,7 +982,7 @@ describe('the substitution of a lesson', () => {
   const suggestions = (noSubjectTeacherFree = false) => ({
     noSubjectTeacherFree,
     teachers: [
-      { ...FREE, group: 'subject', language: false, warnings: [] },
+      { ...FREE, group: 'subject', language: false, warnings: ['teacher_day_load'] },
       { ...RUSSIAN, group: 'department', language: true, warnings: ['substitute_language'] },
     ],
   });
@@ -1065,7 +1065,7 @@ describe('the substitution of a lesson', () => {
     const options = [...field.querySelectorAll('option')].map((one) => one.textContent);
     expect(options).toEqual([
       en.timetable.day.teacherChoose,
-      `${FREE.name} · ${en.timetable.day.substituteOfSubject}`,
+      `${FREE.name} · ${en.timetable.day.substituteOfSubject} · ${en.timetable.rule.teacher_day_load}`,
       `${RUSSIAN.name} · ${en.timetable.day.substituteOfDepartment} · ${en.timetable.day.substituteLanguage}`,
     ]);
     fireEvent.change(field, { target: { value: RUSSIAN.id } });

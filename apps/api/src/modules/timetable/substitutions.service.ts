@@ -233,7 +233,7 @@ export class TimetableSubstitutions {
     }
     const substitute = await transaction
       .selectFrom('staff')
-      .select(['kind', 'account_id'])
+      .select('account_id')
       .where('id', '=', input.teacherId)
       .executeTakeFirstOrThrow();
     // Decision 2: relaxed only when no teacher of the subject is free.
@@ -275,6 +275,12 @@ export class TimetableSubstitutions {
     }
 
     const lessonIds = lessons.map((one) => one.id);
+    // The claims are checked at the end of the change (`set constraints all
+    // immediate` below), after its records are written, so a race refuses the
+    // whole change (code review must-fix 8).
+    await sql`set constraints time_claims_teacher_excl, time_claims_room_excl, time_claims_class_excl deferred`.execute(
+      transaction,
+    );
     await transaction
       .updateTable('lessons')
       .set({ teacher_id: input.teacherId })
@@ -375,12 +381,30 @@ export class TimetableSubstitutions {
       throw new ApiException('substitution_not_in_force', 409);
     }
     const lessons = pair.filter((one) => inForce.has(one.id));
+    // A teacher replaced who no longer works in the branch is not put back:
+    // the lesson goes to nobody and needs a teacher (decision 12; permission
+    // review, note 9).
+    const replacedIds = [
+      ...new Set(lessons.flatMap((one) => inForce.get(one.id)?.replacedId ?? [])),
+    ];
+    const linked = new Set(
+      replacedIds.length === 0
+        ? []
+        : (
+            await transaction
+              .selectFrom('staff_branches')
+              .select('staff_id')
+              .where('staff_id', 'in', replacedIds)
+              .where('branch_id', '=', branchId)
+              .execute()
+          ).map((one) => one.staff_id),
+    );
     // Each half with its teacher replaced, no substitute: a Tutor lesson
     // follows the class's Tutor in the check (decision 12).
-    const returned = lessons.map((one) => ({
-      ...one,
-      teacherId: inForce.get(one.id)?.replacedId ?? null,
-    }));
+    const returned = lessons.map((one) => {
+      const replaced = inForce.get(one.id)?.replacedId ?? null;
+      return { ...one, teacherId: replaced !== null && linked.has(replaced) ? replaced : null };
+    });
     const checked = await storedDayCheck(transaction, this.services, {
       accountId: access.accountId,
       lessons: returned,
@@ -395,6 +419,12 @@ export class TimetableSubstitutions {
       blocked: clashes,
       freeRooms: [],
     });
+    // The claims are checked at the end of the change (`set constraints all
+    // immediate` below), after its records are written, so a race refuses the
+    // whole change (code review must-fix 8).
+    await sql`set constraints time_claims_teacher_excl, time_claims_room_excl, time_claims_class_excl deferred`.execute(
+      transaction,
+    );
     for (const one of returned) {
       await transaction
         .updateTable('lessons')

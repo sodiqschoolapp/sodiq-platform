@@ -1287,7 +1287,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       journalType: 'Тип журнала',
       journalTypes: { graded: 'С оценками', attendance_only: 'Только посещаемость' },
       ratingExam: 'Рейтинговый экзамен',
-      substituteOfSubject: 'Предмет по группам',
+      groupSubject: 'Предмет по группам',
       languageRule: 'Правило языка',
       demanding: 'Трудный предмет',
       switches: 'Признаки',

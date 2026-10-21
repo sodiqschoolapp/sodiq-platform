@@ -22,6 +22,7 @@ import {
 import { LessonsKit, at } from '../../testing/lessons-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { standingExamOver } from '../../testing/exams-kit.js';
+import { substitutedIn } from '../../testing/substitutions-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 
 const refusedWith = (response: Response, status: number, code: string) => {
@@ -404,6 +405,20 @@ describe('withdraw', () => {
       // Task 5.7a-3a (permission review of the code, must-fix 1): a withdraw
       // reopens a vacancy a fill closed from a later day.
       t.database.migrator.selectFrom('staff_statuses').selectAll().orderBy('id').execute(),
+      // Task 5.7b-1 (permission review, must-fix 1): the substitutions a
+      // withdraw ends with the lessons it rewrites or removes.
+      t.database.migrator
+        .selectFrom('substitutions')
+        .selectAll()
+        .where('branch_id', 'in', branches)
+        .orderBy('id')
+        .execute(),
+      t.database.migrator
+        .selectFrom('substitution_lessons')
+        .selectAll()
+        .where('branch_id', 'in', branches)
+        .orderBy('id')
+        .execute(),
     ]);
   };
 
@@ -992,6 +1007,11 @@ describe('withdraw', () => {
       const key = randomUUID();
       versionOf(await withdraw(s.branch, s.b, t.admin, key));
       await storedChanges(s);
+      // Task 5.7b-1 (permission review, must-fix 1): substitutions in force on
+      // the lessons from 9 November in both branches, which a withdraw would end.
+      for (const one of [s, theirs]) {
+        expect(await substitutedIn(t.database.migrator, one.branch, NOVEMBER)).toBeGreaterThan(0);
+      }
       const after = await written([s.b, theirs.b]);
       for (const id of [theirs.b, UNKNOWN]) {
         refusedWith(await withdraw(s.branch, id, t.admin, key), 404, 'not_found');
@@ -1081,7 +1101,14 @@ describe('withdraw', () => {
         .where('id', '=', t.viceAssignment)
         .executeTakeFirstOrThrow();
       await load.classes.role(vice.account_id, s.branch, 'academic_vice_principal');
+      // Task 5.7b-1 (permission review, must-fix 1): substitutions in force on
+      // B's lessons in both branches, which a withdraw of B would end.
+      for (const one of [s, theirs]) {
+        expect(await substitutedIn(t.database.migrator, one.branch, NOVEMBER)).toBeGreaterThan(0);
+      }
       const before = await written([s.b, theirs.b]);
+      expect(new Set(before[16].map((one) => one.branch_id)).size).toBe(2);
+      expect(new Set(before[17].map((one) => one.branch_id)).size).toBe(2);
       expect(new Set(before[3].map((one) => one.branch_id)).size).toBe(2);
       expect(new Set(before[5].map((one) => one.branch_id)).size).toBe(2);
       expect(new Set(before[8].map((one) => one.branch_id)).size).toBe(2);

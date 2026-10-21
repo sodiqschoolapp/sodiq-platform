@@ -19,6 +19,7 @@ import {
   type DayTemplatesKit,
 } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
+import { substitutedIn } from '../../testing/substitutions-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 
 const refusedWith = (response: Response, status: number, code: string) => {
@@ -1005,7 +1006,17 @@ describe('quarter and year dates after lessons exist', () => {
         lessonIds: [(await lessonOf(south, NOV16, south.classId)).id],
       }),
     );
+    // Task 5.7b-1 (permission review, must-fix 1): substitutions in force on
+    // the lessons from 9 November in each branch, which a save removing that
+    // week would end (`t.rowsOf` holds both tables).
+    for (const one of [north, south]) {
+      expect(await substitutedIn(t.database.migrator, one.branch, NOV09)).toBeGreaterThan(0);
+    }
     const rows = [await storedRowsOf(north.branch), await storedRowsOf(south.branch)];
+    for (const one of rows) {
+      expect(one.substitutions?.length).toBeGreaterThan(0);
+      expect(one.substitution_lessons?.length).toBeGreaterThan(0);
+    }
     const dates = withQuarters({ 2: [NOV16, '2026-12-28'] });
 
     const choices: object[] = [

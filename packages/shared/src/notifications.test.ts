@@ -89,11 +89,13 @@ describe('the notices of a timetable change', () => {
     // task 5.6b-1 (decision 8, Look first: the calendar change's kind) and
     // task 5.6b-4a (decision 6, Look first: the template change's kind),
     // task 5.6b-5a (decision 9, Look first: the quarter change's kind) and
-    // task 5.6c-1 (decision 2, Look first: the exam's kind).
+    // task 5.6c-1 (decision 2, Look first: the exam's kind) and
+    // task 5.7b-1 (decision 7 build note, Look first: the substitute's kind).
     expect(WEEK_KINDS).toEqual([
       ...WEEK_CHANGE_KINDS,
       'timetable.tutor_changed',
       'timetable.day_changed',
+      'timetable.substitution_assigned',
       'timetable.calendar_changed',
       'timetable.template_changed',
       'timetable.quarters_changed',

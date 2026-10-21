@@ -1260,7 +1260,7 @@ export const uz: Texts<'one' | 'other'> = {
       journalType: 'Jurnal turi',
       journalTypes: { graded: 'Baholanadi', attendance_only: 'Faqat davomat' },
       ratingExam: 'Reyting imtihoni',
-      substituteOfSubject: 'Guruhli fan',
+      groupSubject: 'Guruhli fan',
       languageRule: 'Til qoidasi',
       demanding: 'Murakkab fan',
       switches: 'Xususiyatlar',
