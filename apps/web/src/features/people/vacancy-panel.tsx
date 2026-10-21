@@ -102,6 +102,8 @@ export function VacancyPanel({
     return <LoadingOutline />;
   }
   const vacancy = detail.data;
+  // Task 5.7a-3b: the server refuses a closed vacancy or one with a close planned (`fill_vacancy`).
+  const showFill = canFill && vacancy.status === 'open' && vacancy.closesOn === null;
   // A close or reopen, or a delete refused, is not shown beside a form opened after it.
   const forget = () => {
     status.reset();
@@ -165,33 +167,35 @@ export function VacancyPanel({
             )
           }
           secondary={
-            <>
-              {canFill && vacancy.status === 'open' && vacancy.closesOn === null && (
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    forget();
-                    setFilling(true);
-                  }}
-                >
-                  {t('people.vacancies.fill.open')}
-                </Button>
-              )}
-              {canArchive && (
-                <Button
-                  variant="secondary"
-                  disabled={status.isPending}
-                  onClick={() => {
-                    remove.reset();
-                    status.mutate(vacancy.status === 'open' ? 'close' : 'reopen');
-                  }}
-                >
-                  {vacancy.status === 'open'
-                    ? t('people.vacancies.close')
-                    : t('people.vacancies.reopen')}
-                </Button>
-              )}
-            </>
+            (showFill || canArchive) && (
+              <>
+                {showFill && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      forget();
+                      setFilling(true);
+                    }}
+                  >
+                    {t('people.vacancies.fill.open')}
+                  </Button>
+                )}
+                {canArchive && (
+                  <Button
+                    variant="secondary"
+                    disabled={status.isPending}
+                    onClick={() => {
+                      remove.reset();
+                      status.mutate(vacancy.status === 'open' ? 'close' : 'reopen');
+                    }}
+                  >
+                    {vacancy.status === 'open'
+                      ? t('people.vacancies.close')
+                      : t('people.vacancies.reopen')}
+                  </Button>
+                )}
+              </>
+            )
           }
           danger={
             canArchive && (
