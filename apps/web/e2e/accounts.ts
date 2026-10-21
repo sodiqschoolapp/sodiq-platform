@@ -84,6 +84,7 @@ export type AccountKey =
   | 'substitution'
   | 'absenceSubstitution'
   | 'versionHistory'
+  | 'timetableViews'
   | 'whoTeacher'
   | 'whoHeadTutor'
   | 'whoHeadTeacher';
