@@ -8,7 +8,7 @@ import {
 import { Returns, ValidQuery } from '../../http/schemas.js';
 import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
-import { TimetableViews } from './views.service.js';
+import { HOME_REQUIREMENT, TimetableViews } from './views.service.js';
 
 /**
  * The home page of a person who teaches (task 5.9b, pull request #198): the
@@ -21,7 +21,7 @@ export class TeachingHomeController {
   constructor(private readonly views: TimetableViews) {}
 
   @Get()
-  @Requires('timetable_views', 'view')
+  @Requires(HOME_REQUIREMENT.area, HOME_REQUIREMENT.action)
   @Returns(teachingHomeSchema)
   home(
     // Strict and empty: a field naming a person is refused (spec review should-fix 4).

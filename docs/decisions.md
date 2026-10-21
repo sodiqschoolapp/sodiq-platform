@@ -285,6 +285,19 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 21 October 2026: the teacher home page (task 5.9b)
+
+Plan approved on pull request #198 with corrections 1 and 2; decisions 1 to 7 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a Build line read differently; personal data across branches; a departure from `.claude/rules/api.md`, "passes `access.branchIds` to `Transactions.run`"). `GET /api/timetable/home` reads each branch where a current assignment of the session permits `timetable_views` (the guard's `permitting`, correction 1) in a transaction of its own with that branch's filter only, with the 5.9a teacher-view code; no `SECURITY DEFINER` function, no migration | Decision 1: one place reads dated lessons with their changes; nothing is read that a branch switch would not show |
+| **Look first** (narrows the Build line). A branch where the person has lessons but no current permitting role gives busy blocks only: moments, the day and minutes in that branch's time, the branch name (correction 2) | Decision 2; `06`, "The Teacher role is given per branch" |
+| Each branch reads its own today and week in its own time zone; items are ordered by start moment | Decision 3; `edge/00-definitions`, Branch time |
+| The route is under `timetable_views`, own lessons only, with a strict empty query; the page shows it on the home kinds `teaching` and `tutor` | Decisions 4 and 6 |
+| Cancelled and replaced-away lessons are listed as on the views | Decision 5 |
+| The journal button and the rest of `08` come with 6.2 and 9.4b (From lines) | Decision 7 |
+
 ## 21 October 2026: timetable views (task 5.9a)
 
 Plan approved on pull request #197 with corrections 1 to 5; decisions 1 to 15 confirmed there. Flagged on issue #42.

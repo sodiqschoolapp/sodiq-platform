@@ -422,6 +422,51 @@ describe('the teaching home page', () => {
     });
   });
 
+  // Permission review should-fixes 1 and 4: the area decides which branch is read in full.
+  it('reads in full a branch whose role permits the views, and gives a branch whose role does not as busy blocks', async () => {
+    const browser = await account();
+    const here = await publishedScene(t, load, { accounts: { teacher: browser.account.id } });
+    const staffId = here.teacher.staffId;
+    // A Head Teacher in one other branch: the role permits the views there.
+    const headed = await publishedScene(t, load, { startTime: '06:00' });
+    await link(staffId, headed.branch);
+    const headedLesson = await lessonOf(headed, DATE);
+    await teach(headedLesson.id, staffId);
+    // HR in another: the role does not. The person invigilates an exam there.
+    const other = await publishedScene(t, load, { startTime: '09:00' });
+    await link(staffId, other.branch);
+    const otherLesson = await lessonOf(other, DATE);
+    await teach(otherLesson.id, staffId);
+    const examId = await standingExamOver(t.database.migrator, {
+      lessonId: otherLesson.id,
+      roomId: other.room,
+      staffId,
+    });
+    await at(
+      browser,
+      [
+        { role: 'teacher', branchId: here.branch },
+        { role: 'head_teacher', branchId: headed.branch },
+        { role: 'hr', branchId: other.branch },
+      ],
+      async (home) => {
+        const read = homeOf(await home(here.branch));
+        expect(read.lessons.map((one) => [one.id, one.branch.id])).toEqual([
+          [headedLesson.id, headed.branch],
+          [(await lessonOf(here, DATE)).id, here.branch],
+        ]);
+        expect(read.exams).toEqual([]);
+        expect(read.busy.map((one) => [one.branch.id, one.start, one.end])).toEqual([
+          [other.branch, 540, 585],
+        ]);
+        const text = JSON.stringify(read);
+        for (const id of [examId, otherLesson.id, other.room, other.classId, other.subject]) {
+          expect(text).not.toContain(id);
+        }
+      },
+    );
+  });
+
   it('refuses a query that names a person (spec review should-fix 4)', async () => {
     const browser = await account();
     const here = await publishedScene(t, load, { accounts: { teacher: browser.account.id } });

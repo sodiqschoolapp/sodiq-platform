@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 21 October 2026: task 5.9b Teacher home page
+
+- The home page of the Teacher, both Head Teachers and the Tutor lists the person's own lessons and invigilated exams of today from every branch in time order, each with its branch once there are two, and the week as a table by clock time (`GET /api/timetable/home`, `TeachingHome`).
+- Each branch where a current assignment permits `timetable_views` is read in its own transaction with the 5.9a teacher-view code; a branch with no such role gives busy blocks (time and branch name). No migration: the planned `SECURITY DEFINER` function was not needed (decision 1, Look first).
+- Left out: the journal button (6.2, From line); status, reminders, early warning, requests and the Tutor's class timetable of `08` (9.4b, From line; reminders 6.x). No browser test with a lesson today: the e2e servers run on the real clock and publish from next Monday; the route and page tests cover it.
+
+The next sessions must know:
+
+- `publishedScene` takes `startTime`; `teaching-home.test.ts` moves the clock to a Monday and refreshes the session moments (`created_at`, `last_used_at`) of the account it reads with.
+- `SHELL_ANSWERS` of `render-app.tsx` answers `GET /api/timetable/home` with an empty week, since the default session is a Teacher's.
+- The next task is 5.9c.
+
 ## 21 October 2026: task 5.9a Timetable views
 
 - A read-only page Timetable views (`/timetable/views`) shows the school, a class, a teacher or a room by day or by week, from the dated lessons with every one-day change: the "changed" mark, "Cancelled: <reason>", substitutes and "Replaced by", exams marked "Exam", busy blocks of other branches, the version and its "valid from" on each day.

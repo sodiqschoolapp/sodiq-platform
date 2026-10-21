@@ -624,8 +624,12 @@ export class TimetableViews {
   }
 }
 
-/** The guard's requirement of the home page, for the branches read in full (correction 1). */
-const HOME_REQUIREMENT: Requirement = {
+/**
+ * The requirement of the home page: the route declares it and the service
+ * reads every branch it permits in full (correction 1), from one constant so
+ * the two never disagree (permission review should-fix 2).
+ */
+export const HOME_REQUIREMENT: Requirement = {
   area: 'timetable_views',
   action: 'view',
   branch: 'request',
