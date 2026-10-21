@@ -527,7 +527,12 @@ export async function storedDayCheck(
   for (const one of input.lessons) {
     const substitute = substitutes.get(one.id);
     let teacherId = substitute?.teacherId ?? input.teacherId ?? one.teacherId;
-    if (!kept && substitute === undefined && tutorSubjects.has(one.subjectId) && one.classId !== null) {
+    if (
+      !kept &&
+      substitute === undefined &&
+      tutorSubjects.has(one.subjectId) &&
+      one.classId !== null
+    ) {
       teacherId = tutorOn(one.classId, date, minutesOf(one.startsAt));
       if (teacherId !== null && teacherId !== model.rowOf(one.loadRowId).teacherId) {
         followed.add(one.id);

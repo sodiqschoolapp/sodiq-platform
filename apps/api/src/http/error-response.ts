@@ -418,7 +418,8 @@ const MESSAGE: Record<ErrorCode, string> = {
   acting_ended: 'The period has ended or is withdrawn.',
   acting_started: 'The period has started; end it instead.',
   substitute_away: "The substitute cannot teach at the lesson's start.",
-  substitute_is_replaced: 'The teacher replaced takes the lesson back by withdrawing the substitution.',
+  substitute_is_replaced:
+    'The teacher replaced takes the lesson back by withdrawing the substitution.',
   substitution_blocked: 'The substitution meets a blocked rule.',
   substitution_needs_confirm: 'The substitution meets warnings that need a tick.',
   substitution_not_in_force: 'The lesson has no substitution in force.',

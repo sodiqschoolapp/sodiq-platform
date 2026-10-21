@@ -396,9 +396,9 @@ async function followLessons(
     transaction,
     lessons.rows.map((one) => ({ id: one.id, teacherId: one.teacher_id })),
   );
-  const ordered = [...lessons.rows].filter((one) => !substituted.has(one.id)).sort(
-    (a, b) => a.starts_at.getTime() - b.starts_at.getTime() || a.id.localeCompare(b.id),
-  );
+  const ordered = [...lessons.rows]
+    .filter((one) => !substituted.has(one.id))
+    .sort((a, b) => a.starts_at.getTime() - b.starts_at.getTime() || a.id.localeCompare(b.id));
   for (const lesson of ordered) {
     const target = tutorAt(tutors.get(lesson.class_id) ?? [], lesson.starts_at);
     if (target === lesson.teacher_id) continue;

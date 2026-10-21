@@ -4044,6 +4044,25 @@ try {
   });
   seeded.actingTeacher = { login: actingVice.login, password: actingVice.firstPassword };
 
+  // The substitution of a lesson (task 5.7b-1): the vacancy fill's scene
+  // again, in a branch of its own; the browser test publishes, substitutes
+  // 7 Oxford's Geometry lesson of the vacancy with Aliyev (who cannot teach
+  // in Uzbek, so it asks the tick), finds the lesson no longer needing a
+  // teacher, and withdraws the substitution.
+  const substitutionVice = await gridScene({
+    branch: 'Substitution browser test branch',
+    vice: ['Mohira', 'Sobirova'],
+    staffId: 'S-269349',
+    phone: '+998935557349',
+    rooms: [],
+    publishable: true,
+    vacancyFill: { staffId: 'S-269350', phone: '+998935557350' },
+  });
+  seeded.substitution = {
+    login: substitutionVice.login,
+    password: substitutionVice.firstPassword,
+  };
+
   // The department move (task 3.4c): a branch of its own with a year around
   // today, 7 Oxford, the attendance-only subject Cosmology of STEAM and a
   // draft whose row of it names a STEAM teacher who no longer has it in the

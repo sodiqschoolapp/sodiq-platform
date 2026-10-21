@@ -588,6 +588,16 @@ export const en = {
       "The end cannot be after the period's own end. Name a new period for later days.",
     acting_ended: 'This period has already ended or was withdrawn. Reload to see it.',
     acting_started: 'This period has started, so it cannot be withdrawn. End it instead.',
+    substitute_away:
+      'This teacher cannot teach at that time: absent, inactive, left or locked. Choose another teacher.',
+    substitute_is_replaced:
+      'This is the teacher who was replaced. To give the lesson back to them, withdraw the substitution.',
+    substitution_blocked: 'The substitution breaks a rule of the timetable. See the list below.',
+    substitution_needs_confirm:
+      'The substitution needs a tick for the warnings below. Check them and save again.',
+    substitution_not_in_force: 'This lesson has no substitution to withdraw. Reload the day.',
+    substitution_return_blocked:
+      'The teacher replaced has another lesson or exam at that time. Move or change that one first.',
     vacancy_has_load:
       'A draft or published teaching load that can still run, or a future lesson, names this vacancy, so it cannot be closed yet. Give those rows another teacher, or close it once that load has ended.',
     vacancy_in_load:
@@ -1229,7 +1239,7 @@ export const en = {
       journalType: 'Journal type',
       journalTypes: { graded: 'Graded', attendance_only: 'Attendance only' },
       ratingExam: 'Rating exam',
-      groupSubject: 'Group subject',
+      substituteOfSubject: 'Group subject',
       languageRule: 'Language rule',
       demanding: 'Demanding',
       switches: 'Switches',
@@ -3025,6 +3035,8 @@ export const en = {
         move: 'Lesson moved for one day',
         bulk_cancel: 'Lessons cancelled for an event (bulk cancel)',
         correct: 'Past lesson corrected',
+        substitute: 'Substitute put on a lesson',
+        substitute_withdraw: 'Substitution withdrawn',
       },
       teaching_load: {
         create: 'Teaching load row added',
@@ -3390,6 +3402,8 @@ export const en = {
           "A change of a class's Tutor changed your Tutor lessons. Your week before and after:",
         day_changed:
           'A one-day change (a cancel or a restore) changed your lessons. Your week before and after:',
+        substitution_assigned:
+          'You are the substitute for a lesson on {{date}}. Your week before and after:',
         calendar_changed:
           'The calendar entry "{{name}}" changed your lessons. Your week before and after:',
         template_changed:
@@ -3692,6 +3706,24 @@ export const en = {
       confirm: 'I have checked these and save the correction',
       correctSend: 'Save the correction',
       corrected: 'The correction was saved.',
+      substitute: 'Substitute',
+      substituteTitle: 'Substitute for {{subject}} at {{time}}',
+      substituteOfSubject: 'teaches the subject',
+      substituteOfDepartment: 'same department',
+      substituteOfOther: 'another department',
+      substituteLanguage: "cannot teach in the class's language",
+      substituteNone: 'No teacher is free at this time.',
+      substituteNoneOfSubject: 'No teacher of the subject is free: any choice needs a tick.',
+      substituteNeeded: 'Choose the substitute.',
+      substituteConfirm: 'I have checked these and save the substitution',
+      substituteSend: 'Save the substitution',
+      substituteFor: 'substitute for {{name}}',
+      substituteMark: 'substitute',
+      substituted: 'The substitution was saved.',
+      withdrawSubstitution: 'Withdraw the substitution',
+      withdrawSubstitutionTitle: 'Withdraw the substitution of {{subject}} at {{time}}',
+      withdrawSubstitutionSend: 'Withdraw the substitution',
+      substitutionWithdrawn: 'The substitution was withdrawn.',
     },
     bulk: {
       open: 'Bulk cancel',

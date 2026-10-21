@@ -222,7 +222,10 @@ describe('the substitution of a lesson', () => {
     await t.assign(branch, regular);
     const subject = await load.classes.subject({ grades: [7], journalType: 'attendance_only' });
     // A subject of nobody's lessons, so a teacher of it is a teacher without the lessons' subject.
-    const otherSubject = await load.classes.subject({ grades: [7], journalType: 'attendance_only' });
+    const otherSubject = await load.classes.subject({
+      grades: [7],
+      journalType: 'attendance_only',
+    });
     const room = await load.classes.room(branch);
     const otherRoom = await load.classes.room(branch);
     const classId = await load.classes.schoolClass(branch, year, { grade: 7, room });
@@ -416,7 +419,10 @@ describe('the substitution of a lesson', () => {
     t.clock.set(moment);
     try {
       const browser = await t.kit.completeSession('Dilnoza', 'Saidova');
-      await t.kit.giveRole(browser.account.id, { role: 'academic_vice_principal', branchId: branch });
+      await t.kit.giveRole(browser.account.id, {
+        role: 'academic_vice_principal',
+        branchId: branch,
+      });
       await work(browser.cookie);
     } finally {
       t.clock.set(START);
@@ -494,12 +500,9 @@ describe('the substitution of a lesson', () => {
         }),
       ]);
       // Decision 7: the substitute is told by its own kind, the teacher replaced as for any one-day change.
-      expect(await noticesOf(free.accountId, 'timetable.substitution_assigned')).toEqual([
-        expect.objectContaining({
-          branch_id: s.branch,
-          data: expect.objectContaining({ date: MONDAY }),
-        }),
-      ]);
+      const assigned = await noticesOf(free.accountId, 'timetable.substitution_assigned');
+      expect(assigned.map((one) => one.branch_id)).toEqual([s.branch]);
+      expect(assigned[0]?.data).toMatchObject({ date: MONDAY });
       expect(await noticesOf(free.accountId, 'timetable.day_changed')).toEqual([]);
       expect(await noticesOf(s.teacher.accountId, 'timetable.day_changed')).toHaveLength(1);
       const [entry] = await auditOf(lesson.id, 'lesson.substitute');
@@ -654,7 +657,9 @@ describe('the substitution of a lesson', () => {
     it('refuses a teacher without the subject while one of the subject is free, and takes them with a tick when none is (decision 2)', async () => {
       const s = await scene();
       const lesson = await lessonOf(s, MONDAY);
-      const outsider = await person(s.branch, { subjects: [{ subject: s.otherSubject, grades: [7] }] });
+      const outsider = await person(s.branch, {
+        subjects: [{ subject: s.otherSubject, grades: [7] }],
+      });
       const free = await person(s.branch, { subjects: [{ subject: s.subject, grades: [7] }] });
       expect(
         rulesOf(
@@ -685,7 +690,9 @@ describe('the substitution of a lesson', () => {
       const lesson = await lessonOf(s, MONDAY);
       // The lesson's teacher is present and the other teacher of the subject
       // teaches the other class at that time: no teacher of the subject is free.
-      const outsider = await person(s.branch, { subjects: [{ subject: s.otherSubject, grades: [7] }] });
+      const outsider = await person(s.branch, {
+        subjects: [{ subject: s.otherSubject, grades: [7] }],
+      });
       const found = await suggestions(s.branch, lesson.id);
       expect(found.noSubjectTeacherFree).toBe(true);
       expect(found.teachers.map((one) => one.id)).not.toContain(s.teacher.staffId);
@@ -836,7 +843,9 @@ describe('the substitution of a lesson', () => {
         .catch((error: unknown) => error);
       await isReady;
       const before = await everything();
-      const pending = substitute(s.branch, lesson.id, { teacherId: free.staffId }).then((one) => one);
+      const pending = substitute(s.branch, lesson.id, { teacherId: free.staffId }).then(
+        (one) => one,
+      );
       await expect
         .poll(
           async () =>
@@ -869,7 +878,9 @@ describe('the substitution of a lesson', () => {
         subjects: [{ subject: s.subject, grades: [7] }],
         languages: ['ru'],
       });
-      const department = await person(s.branch, { subjects: [{ subject: s.otherSubject, grades: [7] }] });
+      const department = await person(s.branch, {
+        subjects: [{ subject: s.otherSubject, grades: [7] }],
+      });
       // No subject in the profile: not a teacher, never suggested.
       const clerk = await load.teacher(s.branch);
       const ill = await person(s.branch, { subjects: [{ subject: s.subject, grades: [7] }] });
@@ -974,7 +985,7 @@ describe('the substitution of a lesson', () => {
       expect((await rowOf(lesson.id)).teacher_id).toBe(free.staffId);
     });
 
-    it('ends the substitution of a vacancy\'s lesson that its fill gives the person (until 5.7b-3)', async () => {
+    it("ends the substitution of a vacancy's lesson that its fill gives the person (until 5.7b-3)", async () => {
       const s = await scene({ vacancy: true });
       const lesson = await lessonOf(s, MONDAY, s.otherClass);
       const free = await person(s.branch, { subjects: [{ subject: s.subject, grades: [7] }] });
@@ -1011,7 +1022,9 @@ describe('the substitution of a lesson', () => {
       );
       expect(filled.status, JSON.stringify(filled.body)).toBe(201);
       expect((await rowOf(lesson.id)).teacher_id).toBe(s.otherTeacher.staffId);
-      expect(await recordsOf(lesson.id)).toEqual([expect.objectContaining({ end_cause: 'dropped' })]);
+      expect(await recordsOf(lesson.id)).toEqual([
+        expect.objectContaining({ end_cause: 'dropped' }),
+      ]);
       refusedWith(await withdraw(s.branch, lesson.id), 409, 'substitution_not_in_force');
     });
 
@@ -1062,7 +1075,9 @@ describe('the substitution of a lesson', () => {
     it('moves a substitute saved under the exception without refusing it for the subject', async () => {
       const s = await scene();
       const lesson = await lessonOf(s, MONDAY);
-      const outsider = await person(s.branch, { subjects: [{ subject: s.otherSubject, grades: [7] }] });
+      const outsider = await person(s.branch, {
+        subjects: [{ subject: s.otherSubject, grades: [7] }],
+      });
       changed(
         await substitute(s.branch, lesson.id, { teacherId: outsider.staffId, confirm: true }),
       );
@@ -1180,7 +1195,10 @@ describe('the substitution of a lesson', () => {
       });
       expect(copied.status, JSON.stringify(copied.body)).toBe(201);
       const fix = (copied.body as { id: string }).id;
-      await t.database.migrator.deleteFrom('pattern_blocks').where('version_id', '=', fix).execute();
+      await t.database.migrator
+        .deleteFrom('pattern_blocks')
+        .where('version_id', '=', fix)
+        .execute();
       const fixRows = await t.database.migrator
         .selectFrom('teaching_load_rows')
         .select('id')

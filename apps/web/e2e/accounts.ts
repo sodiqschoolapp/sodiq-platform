@@ -81,6 +81,7 @@ export type AccountKey =
   | 'roomClosures'
   | 'vacancyFill'
   | 'actingTeacher'
+  | 'substitution'
   | 'whoTeacher'
   | 'whoHeadTutor'
   | 'whoHeadTeacher';

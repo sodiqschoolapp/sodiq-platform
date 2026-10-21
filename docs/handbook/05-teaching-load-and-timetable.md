@@ -178,6 +178,46 @@ Not built yet: substitutes for its lessons (task 5.7b).
 
 Not built yet: what the acting teacher does in the plan and the journal (tasks 7.1b, 8.1, 8.2, 8.7) and the closing checklist's "no teacher" (task 9.2a).
 
+## Substituting a lesson
+
+<!-- Sources: spec 06 (Changes after publishing, Substitution; How surprises are prevented), spec 05 (Substitution), edge/timetable (After publishing: "No teacher of the subject is free", "A substitute wants to finish the numbers two days later"; Structure, "Double lessons"), spec 10 (Substitution assigned); task 5.7b-1, decisions 1 to 12, plan review corrections 1 and 2 -->
+
+**What it is.** A substitution is the one way to put another teacher on a lesson. The Academic Vice Principal picks a substitute for one lesson from the class's day. The substitute becomes the lesson's teacher, so the lesson no longer needs a teacher, and a record keeps who was replaced, by whom, for which lessons and why.
+
+**Who can do it.** The Super Admin and the Academic Vice Principal. The Principal sees the day and the marks, but no buttons.
+
+**How to do it.**
+
+1. Open Timetable, then Day changes, and choose the date and the class.
+2. On a lesson that has not started, press **Substitute** (**Oʻrinbosar**).
+3. Choose the substitute. The list holds only teachers who can take the lesson: teachers of the subject first, then the same department, then the others. Teachers who cannot teach in the class's language come last, marked.
+4. Type the reason and press **Save the substitution**. If the dialog lists warnings, check them, tick the box and save again.
+5. The lesson now shows the substitute, with "substitute for" the teacher replaced. **Withdraw the substitution** gives the lesson back while it has not started.
+
+**Rules.**
+
+- Both halves of a double lesson take the same substitute. One group of a split class can be substituted alone.
+- The substitute must be free at that time in every branch, with the travel time, and not absent, inactive, left or locked.
+- While a teacher of the subject is free, only teachers of the subject can be chosen. When none is, another teacher can take the lesson: the missing subject, grade or hours are warnings that need a tick. A teacher busy at that time is never offered.
+- A teacher who cannot teach in the class's language needs a tick too.
+- A vacancy is never a substitute. A substitute can be set on a vacancy's lesson; the record names the vacancy as replaced.
+- A substitution of a substitution keeps the first teacher replaced. The teacher replaced cannot be chosen as the substitute: withdraw the substitution instead.
+- The substitute receives a notice "You are the substitute for a lesson on …" with the week before and after. The teacher replaced receives the usual notice of a one-day change.
+- A lesson that has started is not substituted: correct it ("Someone else taught it"). That correction is kept as a substitution record too.
+- A room change, a move, a cancel and its restore keep the substitute.
+
+**What happens if…**
+
+| Case | What happens |
+| --- | --- |
+| The teacher replaced has another lesson at that time when the substitution is withdrawn | Refused: "The teacher replaced has another lesson or exam at that time." |
+| The teacher replaced is absent when the substitution is withdrawn | The lesson goes back to them and needs a teacher again. |
+| A new timetable version, a vacancy fill or a calendar change rewrites the lesson | The substitution ends (task 5.7b-3 will list it in the preview instead). |
+
+**What the person sees.** "Aliyev Bekzod · substitute for Geometry vacancy 2". "The substitution was saved."
+
+Not built yet: substituting all of an absent teacher's lessons of a journal at once, and an absence that gives substituted lessons back (task 5.7b-2); substitutions kept by a new version (task 5.7b-3); the substitute in the journal and the plan (tasks 6.3, 7.1b, 8.4, 8.7, 8.8); the Free now board (task 5.7c).
+
 ## Exams after a publish or a withdraw
 
 <!-- Sources: spec 06 (Changes after publishing, Exam), edge/timetable (Exams: "An exam is stored on its own like a one-day change and kept after a later publish"; Versions and drafts: "The preview sorts them into kept, needs a decision and dropped. Publish waits until every 'needs a decision' item is settled"); task 5.6c-3a, decisions 2 to 9 and plan review correction 1 -->

@@ -547,7 +547,6 @@ export class TimetableSubstitutions {
       .map(({ id, name, group, language, warnings }) => ({ id, name, group, language, warnings }));
     return { noSubjectTeacherFree, teachers };
   }
-
 }
 
 /** A lesson of a closed year is not substituted (decision 8). */
