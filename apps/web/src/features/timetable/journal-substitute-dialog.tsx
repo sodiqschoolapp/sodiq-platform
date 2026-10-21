@@ -108,11 +108,7 @@ export function JournalSubstituteDialog({
     save: async (body) => {
       const saved =
         target.kind === 'absence'
-          ? await substituteAbsenceJournal(
-              target.absenceId,
-              body,
-              key.current,
-            )
+          ? await substituteAbsenceJournal(target.absenceId, body, key.current)
           : await substituteVacancyJournal(
               target.vacancyId,
               body as VacancyJournalSubstituteBody,

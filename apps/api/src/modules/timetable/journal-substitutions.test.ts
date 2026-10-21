@@ -1243,6 +1243,52 @@ describe('the substitution from an absence or a vacancy', () => {
       expect(await everything()).toEqual(before);
     });
 
+    it("answers 404 to a shortening and a withdraw of another branch's or an unknown absence that holds substitutions, and changes nothing (.claude/rules/api.md: a route that starts writing more tables)", async () => {
+      const s = await scene();
+      const elsewhere = await scene();
+      const substitute = await person(elsewhere.branch, [
+        { subject: elsewhere.subject, grades: [7] },
+      ]);
+      const theirAbsence = await absent(
+        elsewhere.branch,
+        elsewhere.teacher.staffId,
+        MONDAY,
+        '2026-10-30',
+      );
+      savedOf(
+        await journalSubstitute(elsewhere.branch, theirAbsence, {
+          journalId: elsewhere.journal,
+          teacherId: substitute.staffId,
+        }),
+      );
+      // And one of the branch of the request, which a wrong id must not reach.
+      const ownSubstitute = await person(s.branch, [{ subject: s.subject, grades: [7] }]);
+      const own = await absent(s.branch, s.teacher.staffId, SECOND, '2026-10-30');
+      savedOf(
+        await journalSubstitute(s.branch, own, {
+          journalId: s.journal,
+          teacherId: ownSubstitute.staffId,
+        }),
+      );
+      const vice = await viceOf(s.branch);
+      const before = await everything();
+      for (const cookie of [t.admin, vice]) {
+        for (const id of [theirAbsence, UNKNOWN]) {
+          refusedWith(
+            await editAbsence(s.branch, id, { startsOn: MONDAY, endsOn: '2026-10-16' }, cookie),
+            404,
+            'not_found',
+          );
+          refusedWith(
+            await t.post(`/api/timetable/absences/${id}/withdraw`, s.branch, {}, cookie),
+            404,
+            'not_found',
+          );
+        }
+      }
+      expect(await everything()).toEqual(before);
+    });
+
     it('is refused to the Principal of the branch on the four routes, and nothing changes', async () => {
       const s = await scene({ vacancy: true });
       const absenceId = await absent(s.branch, s.teacher.staffId, MONDAY, '2026-10-30');

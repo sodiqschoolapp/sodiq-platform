@@ -207,7 +207,7 @@ export function AbsencePanel({ absence, columns, canEdit }: AbsencePanelProps) {
             </TableHeader>
             <TableBody>
               {lessons.data.lessons.map((lesson) => (
-                <TableRow key={lesson.id} data-lesson={lesson.id}>
+                <TableRow key={lesson.id} data-lesson={lesson.id} data-date={lesson.date}>
                   <TableCell>{schoolDateText(lesson.date, i18n.language, false)}</TableCell>
                   <TableCell>
                     {timeText(lesson.start)}–{timeText(lesson.end)}

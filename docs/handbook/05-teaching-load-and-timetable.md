@@ -36,7 +36,7 @@ Not written yet for most of the teaching load and the timetable: task 3.7 descri
 **What happens if…**
 
 - *The teacher came after all and taught a lesson.* Correct the past lesson: "Someone else taught it" and choose the same teacher. The lesson is held.
-- *The absence is shortened.* Its later lessons go back to the teacher at once, in every branch.
+- *The absence is shortened.* Its later lessons go back to the teacher at once, in every branch, also those that had a substitute for this absence (see "Substituting a lesson", From an absence or a vacancy).
 - *The teacher works in two branches.* Each branch sees its own lessons; the absence is the same record.
 
 **Messages.** "This person already has an absence on some of these days." "This change would touch a day before today or a lesson that has already started." "This absence was withdrawn and cannot be changed." "A vacancy cannot be absent."
@@ -138,7 +138,7 @@ Not written yet for most of the teaching load and the timetable: task 3.7 descri
 
 **What the person sees.** "The vacancy will be closed from 19 October 2026." "The vacancy stays open." "To take it back, withdraw the version before 19 October 2026." "This person cannot take the vacancy from that date. Choose a staff member who is active on it."
 
-Not built yet: substitutes for its lessons (task 5.7b).
+Its lessons are substituted per journal from the vacancy's record (see "Substituting a lesson", From an absence or a vacancy).
 
 ## The acting teacher of a vacancy's journal
 
@@ -163,7 +163,7 @@ Not built yet: substitutes for its lessons (task 5.7b).
 - The person must be active in the branch and teach the subject in the class's grade. A vacancy cannot be an acting teacher.
 - The period counts only on the days the vacancy holds the journal. When the vacancy is filled, the hired teacher owns the journal from the fill date, and the record says "until" that date, "when the vacancy no longer holds the journal". If the fill is taken back, the acting teacher owns it again.
 - If the acting teacher leaves or becomes inactive, the journal has no teacher on those days.
-- Naming an acting teacher does not put them on the lessons. The lessons still need a teacher until a substitute is set (task 5.7b).
+- Naming an acting teacher does not put them on the lessons. The lessons still need a teacher until a substitute is set: **Substitute per journal** on the vacancy's record chooses the acting teacher first.
 
 **What happens if…**
 
@@ -216,7 +216,45 @@ Not built yet: what the acting teacher does in the plan and the journal (tasks 7
 
 **What the person sees.** "Aliyev Bekzod · substitute for Geometry vacancy 2". "The substitution was saved."
 
-Not built yet: substituting all of an absent teacher's lessons of a journal at once, and an absence that gives substituted lessons back (task 5.7b-2); substitutions kept by a new version (task 5.7b-3); the substitute in the journal and the plan (tasks 6.3, 7.1b, 8.4, 8.7, 8.8); the Free now board (task 5.7c).
+### From an absence or a vacancy
+
+<!-- Sources: spec 06 (Changes after publishing, Substitution; Teachers who work in several branches, Absence), edge/timetable (After publishing: "A teacher is ill for weeks with no return date", "A vacancy lasts a quarter: who writes the plan and grades?"); task 5.7b-2, decisions 1 to 13, plan review corrections 1 and 2 -->
+
+**What it is.** When a teacher is absent, their lessons can be substituted from the absence itself: one lesson at a time, or one substitute for every lesson of a class's subject (a journal) for the whole absence in one action. A vacancy's journal can be substituted the same way for a period. Shortening or withdrawing an absence gives its future substituted lessons back to the teacher.
+
+**Who can do it.** The Super Admin and the Academic Vice Principal. The Principal sees the absence's lessons with their substitutes, but no buttons.
+
+**How to do it.**
+
+1. Open Timetable, then Absences, and open the absence. Its lessons in this branch are listed with their state and substitute.
+2. On a lesson that has not started, press **Substitute** for that lesson alone, or **Substitute for the whole absence** for every lesson of that class's subject in the absence.
+3. Choose the substitute. Each teacher shows on how many of the dates they are free; the dates a teacher cannot take are listed under the choice.
+4. Type the reason and press **Save the substitution**. If the dialog lists warnings by date, check them, tick the box and save again.
+5. The answer lists the dates saved, the dates not saved with the reason, and the lessons that already had a substitute.
+
+For a vacancy: open the vacancy in People, then Vacancies. Each journal under "Acting teachers" has **Substitute per journal**: choose the period (from, and until the first day without the substitute, or no end), then the teacher. The acting teacher in force is chosen first; any other teacher can be chosen.
+
+**Rules.**
+
+- Every date is checked on its own, as for one lesson. A date where the substitute is busy, absent or blocked by a rule is not saved and is listed; the other dates are saved.
+- "No teacher of the subject is free" is decided for each date: on a date where a teacher of the subject is free, a teacher without the subject is refused for that date.
+- A lesson that already has a substitute is left as it is.
+- Shortening the absence, or withdrawing it before it starts, gives back to the teacher every lesson substituted for this absence that has not started and that the absence no longer covers, in every branch of the teacher. A lesson that has started keeps its substitute. A lesson substituted before the absence was entered is not given back.
+- A lesson whose return would clash with another lesson of the teacher keeps its substitute and is listed after the save.
+- In another branch, the lessons are given back in the same step, and that branch's audit log records it.
+- The substitute receives one notice "You are the substitute for lessons from … to …" with the week before and after. A substitute who loses lessons by a shortening receives the usual notice of a one-day change.
+
+**What happens if…**
+
+| Case | What happens |
+| --- | --- |
+| No date can take the chosen substitute | Refused: "No lesson of the journal in this period can take this substitute." with the dates and their reasons. |
+| The absence is shortened while a substitution is being saved | One waits for the other: a lesson the absence no longer covers is either not substituted or given back. |
+| The teacher is not linked to the other branch any more | The lessons there are given back to nobody and need a teacher. |
+
+**What the person sees.** "Saved for: 19 October, 26 October". "Not saved on these dates: 2 November: The substitute cannot teach at that time."
+
+Not built yet: substitutions kept by a new version (task 5.7b-3); the substitute in the journal and the plan (tasks 6.3, 7.1b, 8.4, 8.7, 8.8); the Free now board (task 5.7c).
 
 ## Exams after a publish or a withdraw
 
