@@ -21,6 +21,7 @@ import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { Notifications } from '../notifications/notifications.service.js';
 import { notFound } from '../setup/setup-refusals.js';
+import { absenceAt, absenceSpans } from './absences-read.js';
 import { awayAt, awaySpans } from './away-read.js';
 import {
   CORRECTION_REFUSALS,
@@ -37,6 +38,7 @@ import {
   type Services,
   type StoredDayLesson,
 } from './stored-day.js';
+import { returnCheck } from './substitution-returns.js';
 import { endSubstitutionRows, substitutionsInForce, writeRecord } from './substitutions-read.js';
 import { Timetable } from './timetable.service.js';
 import { sendWeekChanges } from './week-changes.js';
@@ -74,9 +76,6 @@ export const WITHDRAW_REFUSALS: Readonly<Record<string, ErrorCode>> = {
  * Substitution: "Choosing one needs a confirmation").
  */
 const TICKED: readonly RuleCode[] = [...RELAXED_WHEN_NO_TEACHER_FREE, 'substitute_language'];
-
-/** The rules a withdrawal is refused by (decision 12): a clash of time of the teacher returned. */
-const RETURN_RULES: readonly RuleCode[] = ['teacher_double', 'travel_time', 'travel_time_not_set'];
 
 /** The rules that tell a teacher without the subject or a grade of the lesson. */
 const SUBJECT_RULES: readonly RuleCode[] = ['teacher_subject', 'teacher_grade'];
@@ -236,6 +235,10 @@ export class TimetableSubstitutions {
       .select('account_id')
       .where('id', '=', input.teacherId)
       .executeTakeFirstOrThrow();
+    // Task 5.7b-2 (decision 4): the absence of the teacher replaced at the
+    // lesson's start, read under the publish lock that a shortening of the
+    // absence takes first (decision 13), so the link names days it covers.
+    const absenceOf = await absenceLinks(transaction, lessons, replacedOf);
     // Decision 2: relaxed only when no teacher of the subject is free.
     const { noSubjectTeacherFree } = await this.choicesOf(
       transaction,
@@ -306,11 +309,11 @@ export class TimetableSubstitutions {
           source: 'lesson',
           replacedId: replaced,
           substituteId: input.teacherId,
-          relaxed: noSubjectTeacherFree,
           reason: input.reason,
           moment,
           accountId: access.accountId,
-          lessons: group,
+          absenceId: absenceOf.get(group[0]?.id ?? '') ?? null,
+          lessons: group.map((one) => ({ ...one, relaxed: noSubjectTeacherFree })),
         }),
       );
     }
@@ -341,6 +344,7 @@ export class TimetableSubstitutions {
         substituteId: input.teacherId,
         replacedIds: Object.fromEntries(lessons.map((one) => [one.id, replacedOf(one)])),
         relaxed: noSubjectTeacherFree,
+        ...(absenceOf.size === 0 ? {} : { absenceIds: Object.fromEntries(absenceOf) }),
         reason: input.reason,
         ...(input.confirm === true ? { confirmed: true } : {}),
         warnings: checked.warnings.map((one) => one.rule),
@@ -381,39 +385,15 @@ export class TimetableSubstitutions {
       throw new ApiException('substitution_not_in_force', 409);
     }
     const lessons = pair.filter((one) => inForce.has(one.id));
-    // A teacher replaced who no longer works in the branch is not put back:
-    // the lesson goes to nobody and needs a teacher (decision 12; permission
-    // review, note 9).
-    const replacedIds = [
-      ...new Set(lessons.flatMap((one) => inForce.get(one.id)?.replacedId ?? [])),
-    ];
-    const linked = new Set(
-      replacedIds.length === 0
-        ? []
-        : (
-            await transaction
-              .selectFrom('staff_branches')
-              .select('staff_id')
-              .where('staff_id', 'in', replacedIds)
-              .where('branch_id', '=', branchId)
-              .execute()
-          ).map((one) => one.staff_id),
-    );
-    // Each half with its teacher replaced, no substitute: a Tutor lesson
-    // follows the class's Tutor in the check (decision 12).
-    const returned = lessons.map((one) => {
-      const replaced = inForce.get(one.id)?.replacedId ?? null;
-      return { ...one, teacherId: replaced !== null && linked.has(replaced) ? replaced : null };
-    });
-    const checked = await storedDayCheck(transaction, this.services, {
+    // A teacher replaced who no longer works in the branch is not put back;
+    // a Tutor lesson follows the class's Tutor in the check (decision 12).
+    const { returned, checked, clashes } = await returnCheck(transaction, this.services, {
       accountId: access.accountId,
-      lessons: returned,
-      substitutes: new Map(),
+      branchId,
+      lessons,
+      replacedOf: new Map(lessons.map((one) => [one.id, inForce.get(one.id)?.replacedId ?? null])),
     });
     const lessonIds = new Set(lessons.map((one) => one.id));
-    const clashes = checked.blocked.filter(
-      (one) => RETURN_RULES.includes(one.rule) && one.lessonIds.some((at) => lessonIds.has(at)),
-    );
     await refuseBlocked(transaction, branchId, 'substitution_return_blocked', {
       ...checked,
       blocked: clashes,
@@ -472,7 +452,7 @@ export class TimetableSubstitutions {
    * lesson's start, `excluded` (the lessons' teachers and the teachers
    * replaced) left out, each checked with the engine as the substitute.
    */
-  private async choicesOf(
+  async choicesOf(
     transaction: Transaction,
     accountId: string,
     branchId: string,
@@ -579,8 +559,35 @@ export class TimetableSubstitutions {
   }
 }
 
+/**
+ * Task 5.7b-2 (decision 4): the absence each lesson's teacher replaced is
+ * away for at the lesson's start, by lesson id; none for a lesson of nobody
+ * or of a teacher not absent then.
+ */
+export async function absenceLinks(
+  transaction: Transaction,
+  lessons: readonly StoredDayLesson[],
+  replacedOf: (one: StoredDayLesson) => string | null,
+): Promise<Map<string, string>> {
+  const links = new Map<string, string>();
+  const replaced = lessons.flatMap((one) => replacedOf(one) ?? []);
+  if (replaced.length === 0) return links;
+  const starts = lessons.map((one) => one.startsAt.getTime());
+  const spans = await absenceSpans(
+    transaction,
+    replaced,
+    new Date(Math.min(...starts)),
+    new Date(Math.max(...starts) + 1),
+  );
+  for (const one of lessons) {
+    const span = absenceAt(spans, replacedOf(one), one.startsAt);
+    if (span !== null) links.set(one.id, span.absenceId);
+  }
+  return links;
+}
+
 /** A lesson of a closed year is not substituted (decision 8). */
-async function refuseClosedYear(transaction: Transaction, blockId: string): Promise<void> {
+export async function refuseClosedYear(transaction: Transaction, blockId: string): Promise<void> {
   const year = await transaction
     .selectFrom('lesson_blocks')
     .innerJoin('academic_years', 'academic_years.id', 'lesson_blocks.academic_year_id')

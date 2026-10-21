@@ -28,6 +28,13 @@ import { Notifications } from '../notifications/notifications.service.js';
 import { loadCalendarSettings } from '../setup/calendar-state.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { absenceSpans } from './absences-read.js';
+import { substitutionsInForce } from './substitutions-read.js';
+import { TimetablePattern } from './pattern.service.js';
+import { PUBLISH_LOCK, lockPublishChain, refusingPublish } from './publish.service.js';
+import { returnLessons, type Returned } from './substitution-returns.js';
+import { WITHDRAW_REFUSALS } from './substitutions.service.js';
+import { Timetable } from './timetable.service.js';
+import { sendWeekChanges, snapshotDates } from './week-changes.js';
 import { awayAt, awayLessons, awaySpans } from './away-read.js';
 import { dayBeginnings } from './dated-check.js';
 import { examsNeedingRoom, lessonsNeedingRoom } from './rooms-attention.js';
@@ -80,6 +87,25 @@ function valuesOf(row: AbsenceRow) {
   };
 }
 
+/** The audit entry's part of a return (task 5.7b-2). */
+function returnsAudit(returns: Returned | null) {
+  if (returns === null) return {};
+  return {
+    returned: [...returns.returned],
+    returnedTo: { ...returns.teacherIds },
+    returnedSubstitutions: [...returns.substitutionIds],
+    kept: returns.kept.map((one) => ({ ...one, rules: [...one.rules] })),
+  };
+}
+
+/** The answer's part of a return (task 5.7b-2). */
+function returnsAnswer(returns: Returned | null): NonNullable<Absence['returns']> {
+  return {
+    returned: returns === null ? [] : [...returns.returned],
+    kept: returns === null ? [] : returns.kept.map((one) => ({ ...one, rules: [...one.rules] })),
+  };
+}
+
 function stateOf(row: AbsenceRow, moment: Date): Absence['state'] {
   if (row.withdrawn_at !== null) return 'withdrawn';
   if (row.applies_until !== null && row.applies_until.getTime() <= moment.getTime()) {
@@ -94,6 +120,8 @@ export class TimetableAbsences {
     private readonly transactions: Transactions,
     private readonly audit: Audit,
     private readonly notifications: Notifications,
+    private readonly timetable: Timetable,
+    private readonly pattern: TimetablePattern,
   ) {}
 
   /** The absences of the persons linked to the branch of the request, newest first. */
@@ -227,7 +255,8 @@ export class TimetableAbsences {
   /** Changes the days of an absence (decision 5; review corrections 1 and 2). */
   edit(access: Access, id: string, input: AbsenceEdit, requestId: string): Promise<Absence> {
     const branchId = branchOf(access);
-    return this.transactions.run(access.branchIds, async (transaction) => {
+    return this.returning(access, async (transaction) => {
+      const branches = await this.returnLocks(transaction, branchId, id);
       const before = await this.lockedRow(transaction, branchId, id);
       const person = await this.personOf(transaction, branchId, before.staff_id);
       const { moment, today, beginsOf } = await this.timesOf(
@@ -307,6 +336,7 @@ export class TimetableAbsences {
         reach.from,
         reach.until,
       );
+      const returns = await this.returnUncovered(transaction, access, branches, row, requestId);
       await this.audit.record(transaction, {
         branchId,
         actorId: access.accountId,
@@ -314,17 +344,18 @@ export class TimetableAbsences {
         action: 'absence.edit',
         record: { type: 'absence', id },
         oldValue: valuesOf(before),
-        newValue: { ...valuesOf(row), notified },
+        newValue: { ...valuesOf(row), notified, ...returnsAudit(returns) },
         requestId,
       });
-      return this.answerOf(row, person.name, moment);
+      return { ...this.answerOf(row, person.name, moment), returns: returnsAnswer(returns) };
     });
   }
 
   /** Withdraws an absence that has not started (decision 5); final. */
   withdraw(access: Access, id: string, requestId: string): Promise<Absence> {
     const branchId = branchOf(access);
-    return this.transactions.run(access.branchIds, async (transaction) => {
+    return this.returning(access, async (transaction) => {
+      const branches = await this.returnLocks(transaction, branchId, id);
       const before = await this.lockedRow(transaction, branchId, id);
       const person = await this.personOf(transaction, branchId, before.staff_id);
       const moment = await transactionMoment(transaction);
@@ -346,6 +377,7 @@ export class TimetableAbsences {
           'withdrawn_at',
         ])
         .executeTakeFirstOrThrow();
+      const returns = await this.returnUncovered(transaction, access, branches, row, requestId);
       const notified = await this.tell(
         transaction,
         access,
@@ -363,17 +395,21 @@ export class TimetableAbsences {
         action: 'absence.withdraw',
         record: { type: 'absence', id },
         oldValue: valuesOf(before),
-        newValue: { withdrawnAt: moment.toISOString(), notified },
+        newValue: { withdrawnAt: moment.toISOString(), notified, ...returnsAudit(returns) },
         requestId,
       });
-      return this.answerOf(row, person.name, moment);
+      return { ...this.answerOf(row, person.name, moment), returns: returnsAnswer(returns) };
     });
   }
 
   /**
    * The branch's own lessons of the person inside the absence, not
    * cancelled, with their state: "the list of own affected lessons" (`06`,
-   * Teachers who work in several branches, Absence).
+   * Teachers who work in several branches, Absence). Task 5.7b-2: also the
+   * lessons whose substitution in force replaces the person, with their
+   * substitute, whatever the substitution was made for ("lists all their
+   * lessons in the period"; spec review should-fix 4), and each lesson's
+   * journal for the per-journal action.
    */
   lessons(access: Access, id: string): Promise<AbsenceLessons> {
     const branchId = branchOf(access);
@@ -383,6 +419,19 @@ export class TimetableAbsences {
       if (absence.withdrawn_at !== null) return { lessons: [] };
       let query = transaction
         .selectFrom('lessons')
+        .innerJoin('lesson_blocks', 'lesson_blocks.id', 'lessons.block_id')
+        .leftJoin('journals', (join) =>
+          join
+            .onRef('journals.branch_id', '=', 'lessons.branch_id')
+            .onRef('journals.academic_year_id', '=', 'lesson_blocks.academic_year_id')
+            .onRef('journals.subject_id', '=', 'lessons.subject_id')
+            .on((eb) =>
+              eb.or([
+                eb('journals.class_id', '=', eb.ref('lessons.class_id')),
+                eb('journals.group_id', '=', eb.ref('lessons.group_id')),
+              ]),
+            ),
+        )
         .leftJoin('classes', 'classes.id', 'lessons.class_id')
         .leftJoin('groups', 'groups.id', 'lessons.group_id')
         .innerJoin('subjects', 'subjects.id', 'lessons.subject_id')
@@ -400,9 +449,28 @@ export class TimetableAbsences {
           'subjects.name_ru',
           'subjects.name_en',
           'rooms.name as room_name',
+          'journals.id as journal_id',
         ])
         .where('lessons.branch_id', '=', branchId)
-        .where('lessons.teacher_id', '=', absence.staff_id)
+        .where((eb) =>
+          eb.or([
+            eb('lessons.teacher_id', '=', absence.staff_id),
+            eb.exists(
+              eb
+                .selectFrom('substitution_lessons')
+                .innerJoin(
+                  'substitutions',
+                  'substitutions.id',
+                  'substitution_lessons.substitution_id',
+                )
+                .select('substitution_lessons.id')
+                .whereRef('substitution_lessons.lesson_id', '=', 'lessons.id')
+                .where('substitution_lessons.ended_at', 'is', null)
+                .where('substitutions.replaced_id', '=', absence.staff_id)
+                .whereRef('substitutions.substitute_id', '=', 'lessons.teacher_id'),
+            ),
+          ]),
+        )
         .where('lessons.cancel_cause', 'is', null)
         .where('lessons.starts_at', '>=', absence.applies_from);
       if (absence.applies_until !== null) {
@@ -413,6 +481,24 @@ export class TimetableAbsences {
       const away = await awayLessons(
         transaction,
         rows.map((row) => ({ id: row.id, teacherId: row.teacher_id, startsAt: row.starts_at })),
+      );
+      const inForce = await substitutionsInForce(
+        transaction,
+        rows.map((row) => ({ id: row.id, teacherId: row.teacher_id })),
+      );
+      const substituteIds = [...new Set([...inForce.values()].map((one) => one.substituteId))];
+      const substitutes = new Map(
+        (substituteIds.length === 0
+          ? []
+          : await transaction
+              .selectFrom('staff')
+              .select(['id', 'first_name', 'last_name'])
+              .where('id', 'in', substituteIds)
+              .execute()
+        ).map((one) => [
+          one.id,
+          listName({ firstName: one.first_name ?? '', lastName: one.last_name ?? '' }),
+        ]),
       );
       const branch = await transaction
         .selectFrom('branches')
@@ -449,6 +535,13 @@ export class TimetableAbsences {
             },
             moment,
           ),
+          substitute: ((found) =>
+            found === undefined
+              ? null
+              : { id: found.substituteId, name: substitutes.get(found.substituteId) ?? '' })(
+            inForce.get(row.id),
+          ),
+          journalId: row.journal_id,
         })),
       };
     });
@@ -790,6 +883,142 @@ export class TimetableAbsences {
       .executeTakeFirst();
     if (found === undefined) throw notFound();
     return found;
+  }
+
+  /**
+   * A shortening or a withdraw (task 5.7b-2): in one transaction of the
+   * branch of the request, with the refusals of a race on the claims of a
+   * lesson returned and of a busy publish lock.
+   */
+  private returning<T>(access: Access, work: (transaction: Transaction) => Promise<T>): Promise<T> {
+    return refusingPublish(() => this.transactions.run(access.branchIds, work), {
+      time_claims_teacher_excl:
+        WITHDRAW_REFUSALS.time_claims_teacher_excl ?? 'substitution_return_blocked',
+    });
+  }
+
+  /**
+   * The locks before the absence row (task 5.7b-2, decision 13 with review
+   * correction 1): the absence checked against the branch of the request
+   * (404 before any lock), the publish lock, which every writer that links a
+   * substitution to an absence takes first, the branches holding a
+   * substitution in force made for the absence joined to the transaction
+   * (decision 1), and the publish chain of each year of their lessons not
+   * started, in the order of the branch and the year. Answers the branches.
+   */
+  private async returnLocks(
+    transaction: Transaction,
+    branchId: string,
+    id: string,
+  ): Promise<string[]> {
+    await this.visibleRow(transaction, branchId, id);
+    await sql`select pg_advisory_xact_lock(${PUBLISH_LOCK})`.execute(transaction);
+    const branches = await this.transactions.joinAbsenceBranches(transaction, id, branchId);
+    if (branches.length === 0) return branches;
+    const moment = await transactionMoment(transaction);
+    const years = await transaction
+      .selectFrom('substitution_lessons')
+      .innerJoin('substitutions', 'substitutions.id', 'substitution_lessons.substitution_id')
+      .innerJoin('lessons', 'lessons.id', 'substitution_lessons.lesson_id')
+      .innerJoin('lesson_blocks', 'lesson_blocks.id', 'lessons.block_id')
+      .select(['lesson_blocks.branch_id', 'lesson_blocks.academic_year_id'])
+      .distinct()
+      .where('substitutions.absence_id', '=', id)
+      .where('substitution_lessons.ended_at', 'is', null)
+      .where('lessons.starts_at', '>', moment)
+      .orderBy('lesson_blocks.branch_id')
+      .orderBy('lesson_blocks.academic_year_id')
+      .execute();
+    for (const year of years) {
+      await lockPublishChain(transaction, year.branch_id, year.academic_year_id);
+    }
+    return branches;
+  }
+
+  /**
+   * "Shortening the absence returns future lessons to the teacher"
+   * (`edge/timetable`, After publishing; task 5.7b-2, decisions 1 and 2):
+   * the lessons not started whose substitution in force was made for the
+   * absence and that it no longer covers (all of them once withdrawn), in
+   * every branch joined, each branch's lessons with its own notices and,
+   * outside the branch of the request, its own audit entry. Answers what was
+   * done in the branch of the request.
+   */
+  private async returnUncovered(
+    transaction: Transaction,
+    access: Access,
+    branches: readonly string[],
+    row: AbsenceRow,
+    requestId: string,
+  ): Promise<Returned | null> {
+    if (branches.length === 0) return null;
+    const branchId = branchOf(access);
+    const moment = await transactionMoment(transaction);
+    const found = await transaction
+      .selectFrom('substitution_lessons')
+      .innerJoin('substitutions', 'substitutions.id', 'substitution_lessons.substitution_id')
+      .innerJoin('lessons', 'lessons.id', 'substitution_lessons.lesson_id')
+      .select([
+        'lessons.branch_id',
+        'lessons.id',
+        'lessons.starts_at',
+        sql<string>`lessons.lesson_date::text`.as('date'),
+      ])
+      .where('substitutions.absence_id', '=', row.id)
+      .where('substitution_lessons.ended_at', 'is', null)
+      .whereRef('lessons.teacher_id', '=', 'substitutions.substitute_id')
+      .where('lessons.starts_at', '>', moment)
+      .where('lessons.branch_id', 'in', [...branches])
+      .orderBy('lessons.id')
+      .execute();
+    const uncovered = found.filter(
+      (one) =>
+        row.withdrawn_at !== null ||
+        one.starts_at.getTime() < row.applies_from.getTime() ||
+        (row.applies_until !== null && one.starts_at.getTime() >= row.applies_until.getTime()),
+    );
+    let own: Returned | null = null;
+    for (const branch of [...branches].sort()) {
+      const lessons = uncovered.filter((one) => one.branch_id === branch);
+      if (lessons.length === 0) continue;
+      const week = await snapshotDates(
+        transaction,
+        branch,
+        lessons.map((one) => one.date),
+      );
+      // The claims at the end of the change, after its records are written.
+      await sql`set constraints time_claims_teacher_excl, time_claims_room_excl, time_claims_class_excl deferred`.execute(
+        transaction,
+      );
+      const result = await returnLessons(
+        transaction,
+        { timetable: this.timetable, pattern: this.pattern },
+        {
+          accountId: access.accountId,
+          branchId: branch,
+          moment,
+          lessonIds: lessons.map((one) => one.id),
+        },
+      );
+      await sql`set constraints all immediate`.execute(transaction);
+      const notices = await sendWeekChanges(transaction, this.notifications, week, {
+        kind: 'timetable.day_changed',
+      });
+      if (branch === branchId) {
+        own = result;
+        continue;
+      }
+      await this.audit.record(transaction, {
+        branchId: branch,
+        actorId: access.accountId,
+        assignmentId: access.assignmentId,
+        action: 'absence.return',
+        record: { type: 'absence', id: row.id },
+        newValue: { ...returnsAudit(result), notices: { ...notices } },
+        requestId,
+      });
+    }
+    return own;
   }
 
   /**

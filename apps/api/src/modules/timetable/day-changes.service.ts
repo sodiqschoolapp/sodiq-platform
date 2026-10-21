@@ -1091,11 +1091,10 @@ export class TimetableDayChanges {
           source: 'correction',
           replacedId: inForce?.replacedId ?? lesson.teacherId,
           substituteId: input.teacherId,
-          relaxed: true,
           reason: input.reason,
           moment,
           accountId: access.accountId,
-          lessons: [lesson],
+          lessons: [{ ...lesson, relaxed: true }],
         });
       }
     }

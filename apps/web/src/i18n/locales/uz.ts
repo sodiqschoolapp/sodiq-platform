@@ -614,6 +614,8 @@ export const uz: Texts<'one' | 'other'> = {
     substitution_not_in_force: 'Bu darsda bekor qilinadigan oʻrinbosar yoʻq. Kunni qayta yuklang.',
     substitution_return_blocked:
       'Dars qaytariladigan oʻqituvchining shu vaqtda boshqa darsi yoki imtihoni bor yoki yoʻlga vaqti yetmaydi. Avval oʻsha darsni oʻzgartiring.',
+    journal_substitute_none:
+      'Bu davrda jurnalning hech bir darsi bu oʻrinbosarni ololmaydi. Sanalar va sabablari koʻrsatilgan; boshqa oʻqituvchini tanlang.',
     vacancy_has_load:
       'Bu vakansiya qoralamada yoki hali amal qilishi mumkin boʻlgan eʼlon qilingan yuklamada koʻrsatilgan yoki unga kelgusi dars biriktirilgan, shuning uchun uni hozircha yopib boʻlmaydi. Shu qatorlarga boshqa oʻqituvchini tayinlang yoki yuklama tugagach, vakansiyani yoping.',
     vacancy_in_load:
@@ -2273,6 +2275,8 @@ export const uz: Texts<'one' | 'other'> = {
       closesOn: '{{status}}, {{date}} dan yopiladi',
       acting: {
         title: 'Vaqtincha oʻqituvchilar',
+        substitute: 'Jurnal boʻyicha oʻrinbosar',
+        substituteTitle: '{{journal}} uchun oʻrinbosar',
         none: 'Bugundan bu vakansiyaning hech bir jurnali ishlamaydi.',
         noTeacher: 'Vaqtincha oʻqituvchi yoʻq: jurnalning oʻqituvchisi yoʻq.',
         line: '{{person}}, {{from}} dan',
@@ -2935,6 +2939,7 @@ export const uz: Texts<'one' | 'other'> = {
         fill: 'Boʻsh oʻrin toʻldirildi',
         acting_name: 'Vaqtincha oʻqituvchi tayinlandi',
         acting_end: 'Vaqtincha oʻqituvchi davri tugatildi',
+        journal_substitute: 'Vakansiya jurnali boʻyicha oʻrinbosar',
         delete: 'Boʻsh oʻrin oʻchirildi',
         export: 'Boʻsh oʻrinlar eksport qilindi',
       },
@@ -3048,6 +3053,8 @@ export const uz: Texts<'one' | 'other'> = {
         create: 'Kelmaslik qaydi kiritildi',
         edit: 'Kelmaslik sanalari oʻzgartirildi',
         withdraw: 'Kelmaslik qaydi bekor qilindi',
+        journal_substitute: 'Yoʻqlik davrida jurnal boʻyicha oʻrinbosar',
+        return: 'Qisqartirilgan yoki bekor qilingan yoʻqlik qaytargan darslar',
       },
       room_closure: {
         create: 'Xonaning yopilishi kiritildi',
@@ -3442,6 +3449,8 @@ export const uz: Texts<'one' | 'other'> = {
         day_changed:
           'Bir kunlik oʻzgarish (bekor qilish yoki tiklash) darslaringizni oʻzgartirdi. Haftangiz oldin va keyin:',
         substitution_assigned: 'Siz {{date}} kuni darsga oʻrinbosarsiz. Haftangiz oldin va keyin:',
+        substitutions_assigned:
+          'Siz {{firstDate}} dan {{lastDate}} gacha darslarga oʻrinbosarsiz. Haftangiz oldin va keyin:',
         calendar_changed:
           '«{{name}}» taqvim yozuvi darslaringizni oʻzgartirdi. Haftangiz oldin va keyin:',
         template_changed:
@@ -3532,6 +3541,12 @@ export const uz: Texts<'one' | 'other'> = {
       state_held: 'Oʻtilgan',
       state_upcoming: 'Kutilmoqda',
       state_cancelled: 'Bekor qilingan',
+      kept: 'Oʻrinbosarda qoldi, chunki oʻqituvchining bu vaqtda boshqa darsi bor:',
+      substitute: 'Oʻrinbosar',
+      noSubstitute: 'Yoʻq',
+      actions: 'Amallar',
+      substituteJournal: 'Butun yoʻqlik uchun oʻrinbosar',
+      substituteJournalTitle: '{{name}} yoʻqligida {{subject}} uchun oʻrinbosar',
     },
     // Room closures (task 5.7a-2b).
     roomClosures: {
@@ -3768,6 +3783,20 @@ export const uz: Texts<'one' | 'other'> = {
       withdrawSubstitutionTitle: '{{subject}}, {{time}} darsidagi oʻrinbosarni bekor qilish',
       withdrawSubstitutionSend: 'Oʻrinbosarni bekor qilish',
       substitutionWithdrawn: 'Oʻrinbosar bekor qilindi.',
+    },
+    // The substitution per journal (task 5.7b-2).
+    journalSubstitute: {
+      dateLine: '{{date}}: {{text}}',
+      acting: 'vazifasini bajaruvchi',
+      canTake: '{{all}} sanadan {{dates}} tasida boʻsh',
+      cannotTake: 'Bu sanalarni ololmaydi: {{dates}}',
+      from: 'Dan',
+      until: 'Gacha (oʻrinbosarsiz birinchi kun)',
+      noDates: 'Bu davrda jurnalning hech bir darsiga oʻrinbosar kerak emas.',
+      saved: 'Saqlandi: {{dates}}',
+      blocked: 'Bu sanalarda saqlanmadi:',
+      taken: 'Oʻrinbosari bor, oʻzgartirilmadi: {{dates}}',
+      close: 'Yopish',
     },
     bulk: {
       open: 'Ommaviy bekor qilish',

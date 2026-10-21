@@ -787,6 +787,8 @@ export const ERROR_CODES = [
   'substitution_not_in_force',
   /** Task 5.7b-1 (decision 12): the teacher returned by a withdrawal has another lesson or exam at that time; `details` lists each. */
   'substitution_return_blocked',
+  /** Task 5.7b-2 (decision 6): no lesson of the journal in the run can take the substitute; `details` lists the dates blocked. */
+  'journal_substitute_none',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

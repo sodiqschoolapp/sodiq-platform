@@ -424,6 +424,7 @@ const MESSAGE: Record<ErrorCode, string> = {
   substitution_needs_confirm: 'The substitution meets warnings that need a tick.',
   substitution_not_in_force: 'The lesson has no substitution in force.',
   substitution_return_blocked: 'The teacher returned has another lesson or exam at that time.',
+  journal_substitute_none: 'No lesson of the journal in the period can take this substitute.',
   vacancy_has_load: 'A load row that can still run, or a future lesson, names the vacancy.',
   vacancy_in_load: 'A load row names the vacancy, so it cannot be deleted.',
   request_refused: 'The request was refused.',

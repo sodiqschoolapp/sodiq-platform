@@ -65,6 +65,7 @@ export async function substitutedIn(
         branch_id: branch,
         lesson_id: lesson.id,
         lesson_date: lesson.lesson_date,
+        relaxed: false,
       })
       .execute();
   }

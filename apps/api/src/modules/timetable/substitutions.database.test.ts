@@ -115,6 +115,7 @@ describe('the substitution record in the database', () => {
           branch_id: place.branch,
           lesson_id: lessonId,
           lesson_date: DAY,
+          relaxed: false,
         })
         .execute();
       return record.id;
@@ -230,6 +231,7 @@ describe('the substitution record in the database', () => {
             branch_id: elsewhere.branch,
             lesson_id: theirs,
             lesson_date: DAY,
+            relaxed: false,
           })
           .execute(),
       ),
@@ -244,6 +246,7 @@ describe('the substitution record in the database', () => {
             branch_id: place.branch,
             lesson_id: theirs,
             lesson_date: DAY,
+            relaxed: false,
           })
           .execute(),
       ),

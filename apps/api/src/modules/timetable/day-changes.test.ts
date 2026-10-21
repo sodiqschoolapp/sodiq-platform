@@ -2781,6 +2781,7 @@ describe('one-day changes: cancel and restore', () => {
           branch_id: s.branch,
           lesson_id: lessonId,
           lesson_date: lesson.lesson_date,
+          relaxed: false,
         })
         .execute();
     }

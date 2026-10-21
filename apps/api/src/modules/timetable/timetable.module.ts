@@ -5,6 +5,8 @@ import { TimetableCalendarLessons } from './calendar-lessons.js';
 import { TimetableBulkCancels } from './bulk-cancels.service.js';
 import { DayChangesController } from './day-changes.controller.js';
 import { TimetableDayChanges } from './day-changes.service.js';
+import { JournalSubstitutionsController } from './journal-substitutions.controller.js';
+import { TimetableJournalSubstitutions } from './journal-substitutions.service.js';
 import { SubstitutionsController } from './substitutions.controller.js';
 import { TimetableSubstitutions } from './substitutions.service.js';
 import { AbsencesController } from './absences.controller.js';
@@ -31,6 +33,7 @@ import { ActingTeachers } from './acting-teachers.service.js';
     TimetableController,
     DayChangesController,
     SubstitutionsController,
+    JournalSubstitutionsController,
     BulkCancelsController,
     ExamsController,
     AbsencesController,
@@ -46,6 +49,7 @@ import { ActingTeachers } from './acting-teachers.service.js';
     TimetableWithdraw,
     TimetableDayChanges,
     TimetableSubstitutions,
+    TimetableJournalSubstitutions,
     TimetableBulkCancels,
     TimetableCalendarLessons,
     TimetableExams,

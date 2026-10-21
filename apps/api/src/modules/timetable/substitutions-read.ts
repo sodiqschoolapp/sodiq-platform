@@ -14,7 +14,10 @@ export interface SubstitutionInForce {
   readonly rowId: string;
   readonly replacedId: string | null;
   readonly substituteId: string;
+  /** The lesson's own value (task 5.7b-2, decision 3: decided per date). */
   readonly relaxed: boolean;
+  /** Task 5.7b-2 (decision 4): the absence the substitution was made for, or `null`. */
+  readonly absenceId: string | null;
 }
 
 /** The substitution in force of each lesson named that has one, by lesson id. */
@@ -33,7 +36,8 @@ export async function substitutionsInForce(
       'substitutions.id',
       'substitutions.replaced_id',
       'substitutions.substitute_id',
-      'substitutions.relaxed',
+      'substitution_lessons.relaxed',
+      'substitutions.absence_id',
     ])
     .where(
       'substitution_lessons.lesson_id',
@@ -51,6 +55,7 @@ export async function substitutionsInForce(
       replacedId: row.replaced_id,
       substituteId: row.substitute_id,
       relaxed: row.relaxed,
+      absenceId: row.absence_id,
     });
   }
   return found;
@@ -66,7 +71,7 @@ export async function endSubstitutionRows(
   transaction: Transaction,
   input: {
     readonly lessonIds: readonly string[];
-    readonly cause: 'withdrawn' | 'replaced' | 'corrected' | 'dropped';
+    readonly cause: 'withdrawn' | 'replaced' | 'corrected' | 'dropped' | 'returned';
     readonly accountId: string;
     readonly moment: Date;
   },
@@ -96,20 +101,28 @@ export async function endSubstitutionRows(
 /**
  * Writes a substitution record and its rows (0101), at the transaction's
  * moment; answers the record's id. The correction of a past lesson (task
- * 5.6a-4) writes one of source `correction`.
+ * 5.6a-4) writes one of source `correction`; the per-journal actions of
+ * task 5.7b-2 `absence` and `journal`, with the journal (0102). Each
+ * lesson keeps its own `relaxed` (decision 3); the record's is true when
+ * any lesson's is.
  */
 export async function writeRecord(
   transaction: Transaction,
   input: {
     readonly branchId: string;
-    readonly source: 'lesson' | 'correction';
+    readonly source: 'lesson' | 'correction' | 'absence' | 'journal';
     readonly replacedId: string | null;
     readonly substituteId: string;
-    readonly relaxed: boolean;
     readonly reason: string;
     readonly moment: Date;
     readonly accountId: string;
-    readonly lessons: readonly { readonly id: string; readonly date: string }[];
+    readonly absenceId?: string | null;
+    readonly journalId?: string | null;
+    readonly lessons: readonly {
+      readonly id: string;
+      readonly date: string;
+      readonly relaxed: boolean;
+    }[];
   },
 ): Promise<string> {
   const record = await transaction
@@ -119,8 +132,10 @@ export async function writeRecord(
       source: input.source,
       replaced_id: input.replacedId,
       substitute_id: input.substituteId,
-      relaxed: input.relaxed,
+      relaxed: input.lessons.some((one) => one.relaxed),
       reason: input.reason,
+      absence_id: input.absenceId ?? null,
+      journal_id: input.journalId ?? null,
       made_at: input.moment,
       made_by: input.accountId,
     })
@@ -134,6 +149,7 @@ export async function writeRecord(
         branch_id: input.branchId,
         lesson_id: one.id,
         lesson_date: one.date,
+        relaxed: one.relaxed,
       })),
     )
     .execute();

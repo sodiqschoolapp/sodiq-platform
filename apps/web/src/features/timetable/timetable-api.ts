@@ -63,6 +63,10 @@ import {
   type RoomClosureRecord,
   type AbsenceEdit,
   type AbsenceRecord,
+  journalSubstituteAnswerSchema,
+  journalSubstitutesAnswerSchema,
+  type AbsenceJournalSubstituteBody,
+  type VacancyJournalSubstituteBody,
 } from '@sodiq/shared';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { api, branchHeader } from '@/api/client';
@@ -747,6 +751,84 @@ export const withdrawAbsence = (id: string) =>
       params: { header: branchHeader(), path: { id } },
     }),
   ).then((answer) => absenceSchema.parse(answer));
+
+/** The suggested substitutes for a journal's lessons of an absence (task 5.7b-2, decision 11). */
+export const absenceJournalSubstitutesQuery = (
+  branchId: string | null,
+  absenceId: string,
+  journalId: string,
+) =>
+  queryOptions({
+    queryKey: [...timetableKey(branchId), 'absences', absenceId, 'journals', journalId],
+    queryFn: async () =>
+      journalSubstitutesAnswerSchema.parse(
+        await answerOf(
+          api.GET('/api/timetable/absences/{id}/journals/{journalId}/substitutes', {
+            params: { header: branchHeader(), path: { id: absenceId, journalId } },
+          }),
+        ),
+      ),
+    enabled: branchId !== null,
+  });
+
+/** One substitute for a journal's lessons of an absence (task 5.7b-2); `key` makes a repeat harmless. */
+export const substituteAbsenceJournal = (
+  absenceId: string,
+  body: AbsenceJournalSubstituteBody,
+  key: string,
+) =>
+  answerOf(
+    api.POST('/api/timetable/absences/{id}/journal-substitute', {
+      params: { header: { ...branchHeader(), 'Idempotency-Key': key }, path: { id: absenceId } },
+      body,
+    }),
+  ).then((answer) => journalSubstituteAnswerSchema.parse(answer));
+
+/** The suggested substitutes for a vacancy's journal over a period (task 5.7b-2, decision 7). */
+export const vacancyJournalSubstitutesQuery = (
+  branchId: string | null,
+  vacancyId: string,
+  journalId: string,
+  from: string,
+  until: string | null,
+) =>
+  queryOptions({
+    queryKey: [
+      ...timetableKey(branchId),
+      'vacancies',
+      vacancyId,
+      'journals',
+      journalId,
+      from,
+      until,
+    ],
+    queryFn: async () =>
+      journalSubstitutesAnswerSchema.parse(
+        await answerOf(
+          api.GET('/api/timetable/vacancies/{id}/journals/{journalId}/substitutes', {
+            params: {
+              header: branchHeader(),
+              path: { id: vacancyId, journalId },
+              query: { from, ...(until === null ? {} : { until }) },
+            },
+          }),
+        ),
+      ),
+    enabled: branchId !== null && from !== '',
+  });
+
+/** One substitute for a vacancy's journal over a period (task 5.7b-2); `key` makes a repeat harmless. */
+export const substituteVacancyJournal = (
+  vacancyId: string,
+  body: VacancyJournalSubstituteBody,
+  key: string,
+) =>
+  answerOf(
+    api.POST('/api/timetable/vacancies/{id}/journal-substitute', {
+      params: { header: { ...branchHeader(), 'Idempotency-Key': key }, path: { id: vacancyId } },
+      body,
+    }),
+  ).then((answer) => journalSubstituteAnswerSchema.parse(answer));
 
 /** The closures of the branch's rooms (task 5.7a-2b), every state. */
 export const roomClosuresQuery = (branchId: string | null) =>
