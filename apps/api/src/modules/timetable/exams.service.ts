@@ -421,7 +421,7 @@ export class TimetableExams {
     if (input.date < (await this.timetable.todayIn(transaction, branchId))) {
       throw new ApiException('exam_started', 409);
     }
-    const versionId = await versionOnDate(transaction, branchId, yearId, input.date);
+    const versionId = (await versionOnDate(transaction, branchId, yearId, input.date))?.id ?? null;
     if (versionId === null) throw new ApiException('exam_no_timetable', 409);
 
     // Task 5.6c-3b: the journals of a rating exam, from the memberships on
