@@ -477,6 +477,15 @@ export const PERMISSIONS = freezeTable({
     principal: ['view'],
     academic_vice_principal: ['view', 'create', 'edit'],
   }),
+  /**
+   * The Super Admin's forced delete of a dated lesson and its restore within
+   * 30 days, and the store of forced deletes (task 5.8b, pull request #195,
+   * decision 10): 06, Protection: "Forced delete is for Super Admin only, with
+   * a typed reason." 5.8c adds buildings, floors and rooms.
+   */
+  forced_deletes: rows({
+    super_admin: ['view', 'edit'],
+  }),
   audit_log: rows({
     super_admin: ['view'],
     principal: ['view'],

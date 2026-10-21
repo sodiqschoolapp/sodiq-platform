@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
+import { heldEntry } from '../../testing/held-entry.js';
 import { at, LessonsKit } from '../../testing/lessons-kit.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
 
@@ -182,9 +183,10 @@ describe('dated lessons and their time claims in the database', () => {
       cancel_reason?: string | null;
     },
   ) =>
-    inBranch(branch, (transaction) =>
-      transaction.updateTable('lessons').set(values).where('id', '=', id).execute(),
-    );
+    inBranch(branch, async (transaction) => {
+      await transaction.updateTable('lessons').set(values).where('id', '=', id).execute();
+      await heldEntry(transaction, branch);
+    });
 
   const cancel = (branch: string, id: string) =>
     updateLesson(branch, id, { cancel_cause: 'reason', cancel_reason: 'Excursion to the museum' });
@@ -194,13 +196,14 @@ describe('dated lessons and their time claims in the database', () => {
 
   /** A block moved whole to another date and clock time. */
   const moveBlock = (branch: string, id: string, date: string, start: string, end: string) =>
-    inBranch(branch, (transaction) =>
-      transaction
+    inBranch(branch, async (transaction) => {
+      await transaction
         .updateTable('lesson_blocks')
         .set({ lesson_date: date, starts_at: at(date, start), ends_at: at(date, end) })
         .where('id', '=', id)
-        .execute(),
-    );
+        .execute();
+      await heldEntry(transaction, branch);
+    });
 
   /** How many connections to the test database wait for a lock right now. */
   async function waitingForALock(): Promise<number> {
@@ -593,12 +596,14 @@ describe('dated lessons and their time claims in the database', () => {
         { groupId: m.girls, subjectId: m.technology, cancel: true },
         { groupId: choir, subjectId: music },
       ]);
-      const restoreIn = (transaction: Transaction, id: string) =>
-        transaction
+      const restoreIn = async (transaction: Transaction, id: string) => {
+        await transaction
           .updateTable('lessons')
           .set({ cancel_cause: null, cancel_reason: null })
           .where('id', '=', id)
           .execute();
+        await heldEntry(transaction, north);
+      };
       const held = holding(
         (work) => inBranch(north, work),
         async (transaction) => {
@@ -668,6 +673,7 @@ describe('dated lessons and their time claims in the database', () => {
             .where('id', '=', id)
             .execute();
         }
+        await heldEntry(transaction, north);
       });
     });
 

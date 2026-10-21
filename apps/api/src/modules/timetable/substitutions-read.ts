@@ -72,7 +72,14 @@ export async function endSubstitutionRows(
   transaction: Transaction,
   input: {
     readonly lessonIds: readonly string[];
-    readonly cause: 'withdrawn' | 'replaced' | 'corrected' | 'dropped' | 'returned';
+    readonly cause:
+      | 'withdrawn'
+      | 'replaced'
+      | 'corrected'
+      | 'dropped'
+      | 'returned'
+      /** Task 5.8b (decision 9): the lesson was force-deleted. */
+      | 'forced_delete';
     readonly accountId: string;
     readonly moment: Date;
     /**

@@ -599,6 +599,19 @@ export const en = {
     substitution_not_in_force: 'This lesson has no substitution to withdraw. Reload the day.',
     substitution_return_blocked:
       'The teacher the lesson goes back to has another lesson or exam at that time, or too little time to travel to it. Change that lesson first.',
+    lesson_holds_data:
+      'The lesson holds attendance or marks, so it cannot be removed. Only the Super Admin can delete it for good, with a reason.',
+    forced_delete_expired:
+      'The 30 days to restore this lesson have passed, so it can no longer be restored.',
+    forced_delete_restored: 'This lesson was restored already. Reload the list to see it.',
+    forced_delete_version:
+      'Another timetable is in force on the date of this lesson now, so it cannot come back. Add the lesson in that timetable instead.',
+    forced_delete_parent_changed:
+      'Something the lesson was tied to changed since it was deleted (the exam that cancelled it was cancelled, or its substitution was withdrawn), so it cannot come back as it was.',
+    forced_delete_block_gone:
+      'The other lessons this lesson was taught with are gone since it was deleted, so it cannot come back. Restore them first, if they were deleted for good too.',
+    forced_delete_restore_blocked:
+      'The lesson cannot come back: it would break a timetable rule, listed below. Change the lesson that took its place first.',
     journal_substitute_none:
       'No lesson of the journal in this period can take this substitute. The dates and their reasons are listed; choose another teacher.',
     vacancy_has_load:
@@ -943,6 +956,7 @@ export const en = {
     settingsLink: 'Settings',
     travelTimesLink: 'Travel time',
     subjectsLink: 'Subjects',
+    forcedDeletesLink: 'Deleted lessons',
     branches: {
       title: 'Branches',
       caption: 'Branches of the school',
@@ -2663,6 +2677,28 @@ export const en = {
     roleHint: 'Your rights stay those of all your roles.',
     branch: 'Branch',
   },
+  forcedDeletes: {
+    title: 'Deleted lessons',
+    caption: 'Lessons deleted for good',
+    lesson: 'Lesson',
+    unit: 'Class or group',
+    subject: 'Subject',
+    teacher: 'Teacher',
+    room: 'Room',
+    reason: 'Reason',
+    deleted: 'Deleted',
+    deletedBy: '{{name}}, {{moment}}',
+    state: 'State',
+    state_restorable: 'Can be restored',
+    state_restored: 'Restored',
+    state_expired: 'Past 30 days',
+    restoreUntil: 'Can be restored until',
+    restored: 'Restored',
+    restore: 'Restore',
+    restoredMessage: 'The lesson was restored.',
+    emptyTitle: 'No deleted lessons',
+    empty: 'A lesson deleted for good from the day of a class is listed here for 30 days.',
+  },
   audit: {
     title: 'Audit log',
     caption: 'Entries of the audit log',
@@ -3045,6 +3081,10 @@ export const en = {
         correct: 'Past lesson corrected',
         substitute: 'Substitute put on a lesson',
         substitute_withdraw: 'Substitution withdrawn',
+        forced_delete: 'Lesson deleted for good',
+      },
+      forced_delete: {
+        restore: 'Deleted lesson restored',
       },
       teaching_load: {
         create: 'Teaching load row added',
@@ -3431,6 +3471,10 @@ export const en = {
         exam_day_off:
           'The calendar entry "{{name}}" made {{date}} a day off: the exam "{{title}}" is cancelled.',
         exam_changed: 'Exam "{{title}}" on {{date}}: your lessons or invigilation changed.',
+        lesson_force_deleted:
+          'The lesson of {{unit}} on {{date}} at {{start}} was deleted for good by the Super Admin. It can be restored for 30 days.',
+        lesson_restored:
+          'The lesson of {{unit}} on {{date}} at {{start}} was restored by the Super Admin.',
       },
     },
     // What an exam's notice says beyond its text (task 5.6c-2).
@@ -3689,6 +3733,32 @@ export const en = {
       cancelSend: 'Cancel the exam',
       cancelKeeping: 'Cancel the exam and keep these lessons cancelled',
     },
+    forcedDelete: {
+      title: 'Delete for good: {{subject}}, {{unit}}, {{time}}',
+      kept_one:
+        'The lesson and what it holds are kept for {{count}} day and can be restored from Deleted lessons.',
+      kept_other:
+        'The lesson and what it holds are kept for {{count}} days and can be restored from Deleted lessons.',
+      send: 'Delete for good',
+      done: 'The lesson was deleted for good. It can be restored from Deleted lessons for 30 days.',
+    },
+    lessonHistory: {
+      title: 'History: {{subject}}, {{unit}}, {{time}}',
+      empty: 'Nothing about this lesson has changed.',
+      none: 'none',
+      teacher: 'Teacher: {{before}} → {{after}}',
+      room: 'Room: {{before}} → {{after}}',
+      time: 'Time: {{before}} → {{after}}',
+      cancelled: 'Cancelled: {{reason}}',
+      uncancelled: 'Restored after a cancel',
+      by: '{{name}}, {{moment}}',
+      system: 'The system',
+      kind_changed: 'Changed',
+      kind_removed:
+        'Removed by a change of the timetable, the calendar, the lesson times or the quarter dates',
+      kind_forced_delete: 'Deleted for good',
+      kind_restored: 'Restored',
+    },
     day: {
       // The class's exams of the date (task 5.6c-2).
       exam: 'Exam',
@@ -3805,6 +3875,9 @@ export const en = {
       withdrawSubstitutionTitle: 'Withdraw the substitution of {{subject}} at {{time}}',
       withdrawSubstitutionSend: 'Withdraw the substitution',
       substitutionWithdrawn: 'The substitution was withdrawn.',
+      historyColumn: 'Changes',
+      history: 'History',
+      forcedDelete: 'Delete for good',
     },
     // The substitution per journal (task 5.7b-2).
     journalSubstitute: {

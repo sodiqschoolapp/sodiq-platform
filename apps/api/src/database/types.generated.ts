@@ -117,6 +117,7 @@ export interface AuditLog {
   record_id: string | null;
   record_type: string | null;
   request_id: string | null;
+  written_xact: Generated<string | null>;
 }
 
 export interface AuditLogSchool {
@@ -422,6 +423,22 @@ export interface Floors {
   name: string;
 }
 
+export interface ForcedDeletes {
+  branch_id: string;
+  created_xact: Generated<string>;
+  deleted_at: Timestamp;
+  deleted_by: string;
+  id: Generated<string>;
+  reason: string;
+  record_id: string;
+  record_type: string;
+  restore_until: Timestamp;
+  restored_at: Timestamp | null;
+  restored_by: string | null;
+  restored_xact: string | null;
+  rows: Json;
+}
+
 export interface GroupClasses {
   branch_id: string;
   class_id: string;
@@ -569,6 +586,29 @@ export interface LessonExamCancels {
   created_at: Generated<Timestamp>;
   exam_id: string;
   lesson_id: string;
+}
+
+export interface LessonHistory {
+  branch_id: string;
+  cancel_after: string | null;
+  cancel_before: string | null;
+  cancel_reason_after: string | null;
+  cancel_reason_before: string | null;
+  changed_at: Timestamp;
+  date_after: string | null;
+  date_before: string | null;
+  ends_after: Timestamp | null;
+  ends_before: Timestamp | null;
+  id: Generated<string>;
+  kind: string;
+  lesson_id: string;
+  room_after: string | null;
+  room_before: string | null;
+  starts_after: Timestamp | null;
+  starts_before: Timestamp | null;
+  teacher_after: string | null;
+  teacher_before: string | null;
+  written_xact: Generated<string>;
 }
 
 export interface Lessons {
@@ -1262,6 +1302,7 @@ export interface DB {
   exams: Exams;
   feedback_reports: FeedbackReports;
   floors: Floors;
+  forced_deletes: ForcedDeletes;
   group_classes: GroupClasses;
   group_memberships: GroupMemberships;
   groups: Groups;
@@ -1275,6 +1316,7 @@ export interface DB {
   lesson_day_change_ends: LessonDayChangeEnds;
   lesson_day_changes: LessonDayChanges;
   lesson_exam_cancels: LessonExamCancels;
+  lesson_history: LessonHistory;
   lessons: Lessons;
   notifications: Notifications;
   password_reset_links: PasswordResetLinks;

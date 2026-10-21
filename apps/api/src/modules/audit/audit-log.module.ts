@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AuditEntries } from './audit-entries.service.js';
 import { AuditLogController, SignInHistoryController } from './audit-log.controller.js';
+import { ForcedDeletesController } from './forced-deletes.controller.js';
 import { SignInHistoryReader } from './sign-in-history.service.js';
 
 /**
@@ -9,7 +10,7 @@ import { SignInHistoryReader } from './sign-in-history.service.js';
  * through and the first-account command loads without any route.
  */
 @Module({
-  controllers: [AuditLogController, SignInHistoryController],
+  controllers: [AuditLogController, SignInHistoryController, ForcedDeletesController],
   providers: [AuditEntries, SignInHistoryReader],
 })
 export class AuditLogModule {}

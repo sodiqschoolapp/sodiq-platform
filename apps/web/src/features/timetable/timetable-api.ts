@@ -1,4 +1,7 @@
 import {
+  forcedDeleteSchema,
+  lessonHistorySchema,
+  type ForcedDeleteBody,
   dayAnswerSchema,
   correctionTeachersAnswerSchema,
   dayChangeAnswerSchema,
@@ -920,3 +923,33 @@ export const moveRoomClosure = (id: string, body: RoomClosureMove) =>
       body,
     }),
   ).then((answer) => roomClosureMoveAnswerSchema.parse(answer));
+
+/**
+ * The Super Admin's forced delete of a dated lesson with its reason (task
+ * 5.8b); `key` makes a repeat harmless.
+ */
+export const forceDeleteLesson = (lessonId: string, body: ForcedDeleteBody, key: string) =>
+  answerOf(
+    api.POST('/api/timetable/lessons/{id}/forced-delete', {
+      params: {
+        header: { ...branchHeader(), 'Idempotency-Key': key },
+        path: { id: lessonId },
+      },
+      body,
+    }),
+  ).then((answer) => forcedDeleteSchema.parse(answer));
+
+/** Who changed a lesson's teacher, room, time or cancel, when, before and after (task 5.8b). */
+export const lessonHistoryQuery = (branchId: string | null, lessonId: string | null) =>
+  queryOptions({
+    queryKey: [...timetableKey(branchId), 'lesson-history', lessonId],
+    queryFn: async () =>
+      lessonHistorySchema.parse(
+        await answerOf(
+          api.GET('/api/timetable/lessons/{id}/history', {
+            params: { header: branchHeader(), path: { id: lessonId ?? '' } },
+          }),
+        ),
+      ),
+    enabled: branchId !== null && lessonId !== null,
+  });

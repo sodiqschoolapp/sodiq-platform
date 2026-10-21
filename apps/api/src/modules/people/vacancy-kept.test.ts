@@ -9,6 +9,7 @@ import {
   type DayTemplatesKit,
 } from '../../testing/day-templates-kit.js';
 import { at, LessonsKit, QUARTER_DATES, type LessonSource } from '../../testing/lessons-kit.js';
+import { heldEntry } from '../../testing/held-entry.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 
@@ -261,6 +262,7 @@ describe('a vacancy closed and kept', () => {
           .set({ teacher_id: moved })
           .where('id', '=', lesson)
           .execute();
+        await heldEntry(transaction, t.north);
         ready();
         await released;
       },

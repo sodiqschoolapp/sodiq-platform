@@ -405,3 +405,34 @@ Not built yet: the substitute in the journal and the plan (tasks 6.3, 7.1b, 8.4,
 - *The new start date's day template has no such slot, or the lesson would clash with another one copied before it (a class's new Tutor, a template that moved its times).* The lesson is not copied and is listed with that reason. A lesson of a block of several groups is copied only with the whole block.
 - *The person dismisses the rows the copy left.* The lessons listed under "Not copied" are dismissed with them.
 
+
+## Deleting a lesson for good, and the history of a lesson
+
+<!-- Sources: spec 06 (Protection: "A dated lesson that already has attendance or marks cannot be deleted and cannot change its class, group or subject. Its teacher, room and time can change, with a log entry." "Forced delete is for Super Admin only, with a typed reason. The attendance and marks are kept for 30 days and can be restored." "Every change records who, when, the value before and the value after."), edge/00-definitions (Data on a lesson), edge/timetable (After publishing, "Every rule is checked again"); task 5.8b, decisions 1 to 12 and plan review corrections 1 and 2 -->
+
+**What it is.** A dated lesson is never moved to another class, group or subject, and a lesson that holds attendance or marks is never removed by a new timetable. Only the Super Admin can delete a lesson for good, with a typed reason; the lesson is kept for 30 days on the page "Deleted lessons" and can be restored there. Every change of a lesson's teacher, room, time or cancel is written in the lesson's history: who, when, before and after.
+
+**Who can do it.** The Super Admin deletes a lesson for good and restores it. The Super Admin, the Principal and the Academic Vice Principal read the history of a lesson.
+
+**How to do it.**
+
+1. Open Timetable, then the day of a class. "History" on a lesson lists its changes.
+2. As the Super Admin, "Delete for good" on a lesson asks for the reason and deletes it. The lesson's teacher, the Academic Vice Principal and the Principal of the branch are told, also for a past lesson; they are told again when it is restored.
+3. School setup, then "Deleted lessons": open the lesson and press "Restore" while its 30 days last.
+
+**Rules.**
+
+- One lesson is deleted at a time. The other half of a double lesson stays.
+- A restore brings the same lesson back, with its teacher, room and cancel, and a substitute it had with the same substitution. A lesson taught together with others comes back at the times of that block now. Every timetable rule is checked again.
+- A lesson of a closed year cannot be deleted or restored.
+- The history is written by the database for every change, whatever page or job made it; a change made by the system (a job) shows "The system".
+
+**What happens if…**
+
+- *The 30 days have passed.* The lesson stays listed but can no longer be restored.
+- *A new timetable is in force on the lesson's date now.* The lesson cannot come back; add it in that timetable.
+- *Its room or teacher was taken by another lesson meanwhile.* The restore is refused and the rule is named; change the other lesson first.
+- *The exam that cancelled the lesson was cancelled or moved since.* The lesson cannot come back as it was.
+- *Its substitution was withdrawn since, or the absence it covered was withdrawn.* The lesson cannot come back as it was.
+- *The lessons it was taught together with are gone since.* The lesson cannot come back; restore them first if they were deleted for good too.
+- *A new timetable or a withdraw would remove a lesson that holds attendance or marks.* It is refused for now; when the journal arrives (task 6.1) such a lesson is kept and listed instead.

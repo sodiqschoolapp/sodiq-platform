@@ -791,6 +791,20 @@ export const ERROR_CODES = [
   'substitution_return_blocked',
   /** Task 5.7b-2 (decision 6): no lesson of the journal in the run can take the substitute; `details` lists the dates blocked. */
   'journal_substitute_none',
+  /** A lesson holds data (attendance, marks, a comment) and is never deleted; only the Super Admin's forced delete removes it (06, Protection; task 5.8b). */
+  'lesson_holds_data',
+  /** The forced delete can no longer be restored: its 30 days have passed (06, Protection; task 5.8b). */
+  'forced_delete_expired',
+  /** The forced delete was restored already (task 5.8b). */
+  'forced_delete_restored',
+  /** A later timetable is in force on the lesson's date, so the deleted lesson cannot come back (task 5.8b, decision 7). */
+  'forced_delete_version',
+  /** A record the deleted lesson was tied to changed since (an exam cancelled), so it cannot come back as it was (task 5.8b, decision 9). */
+  'forced_delete_parent_changed',
+  /** The block the deleted lesson stayed in is gone since (its other lessons went too), so the lesson has nothing to come back into (task 5.8b, spec review of the code). */
+  'forced_delete_block_gone',
+  /** The restored lesson would break a timetable rule (its room or teacher is taken); the details list why (edge/timetable, After publishing; task 5.8b). */
+  'forced_delete_restore_blocked',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

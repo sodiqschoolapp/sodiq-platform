@@ -43,6 +43,8 @@ export const SETUP_PAGES: readonly (IndexedPage & { area?: string; action?: Acti
   { titleKey: 'setup.settings.title', to: '/setup/settings' },
   { titleKey: 'setup.travelTimes.title', to: '/setup/travel-times' },
   { titleKey: 'setup.subjects.title', to: '/setup/subjects' },
+  // Task 5.8b: the Super Admin's deleted lessons.
+  { titleKey: 'forcedDeletes.title', to: '/forced-deletes', area: 'forced_deletes' },
 ];
 
 /** The pages under "People" (task 2.2a), each with the area the role must view. */

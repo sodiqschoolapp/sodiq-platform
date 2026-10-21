@@ -4197,6 +4197,23 @@ try {
     .execute();
   seeded.versionHistory = { login: historyVice.login, password: historyVice.firstPassword };
 
+  // The forced delete of a lesson (task 5.8b): the publishable scene in a
+  // branch of its own. The forced delete is the Super Admin's only, and the
+  // seed holds no fourth Super Admin (at most three, correction 1 of the
+  // review of #87): the first setup test's Super Admin, at the end of its
+  // session, publishes, deletes 7 Oxford's Monday lesson for good, restores
+  // it from Deleted lessons and reads both lines in the lesson's history
+  // (apps/web/e2e/timetable-forced-delete.ts). The scene's Academic Vice
+  // Principal signs in to nothing.
+  await gridScene({
+    branch: 'Forced delete browser test branch',
+    vice: ['Shoira', 'Abdullayeva'],
+    staffId: 'S-269364',
+    phone: '+998935557354',
+    rooms: [],
+    publishable: true,
+  });
+
   // The department move (task 3.4c): a branch of its own with a year around
   // today, 7 Oxford, the attendance-only subject Cosmology of STEAM and a
   // draft whose row of it names a STEAM teacher who no longer has it in the

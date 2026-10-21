@@ -108,6 +108,13 @@ export function SetupPage() {
       title: t('setup.subjectsLink'),
       area: 'subjects',
     },
+    {
+      // The lessons deleted for good, the Super Admin's (task 5.8b).
+      key: 'forcedDeletes',
+      to: '/forced-deletes',
+      title: t('setup.forcedDeletesLink'),
+      area: 'forced_deletes',
+    },
   ];
   const showsChecklist = role !== null && permits(PERMISSIONS, role, 'settings', 'view');
   const links = all.filter(

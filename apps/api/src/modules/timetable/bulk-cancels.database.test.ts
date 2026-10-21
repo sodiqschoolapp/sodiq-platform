@@ -4,6 +4,7 @@ import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
 import { at, LessonsKit } from '../../testing/lessons-kit.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
+import { heldEntry } from '../../testing/held-entry.js';
 
 /** Thursday 15 October 2026, 10:00 in Tashkent. */
 const NOW = '2026-10-15T10:00:00+05:00';
@@ -211,6 +212,7 @@ describe('the record of a bulk cancel in the database', () => {
     await app().run([place.branch], async (transaction) => {
       await transaction.deleteFrom('lessons').where('id', '=', place.lesson.id).execute();
       await transaction.deleteFrom('lesson_blocks').where('id', '=', place.block.id).execute();
+      await heldEntry(transaction, place.branch);
     });
     const kept = await database.migrator
       .selectFrom('bulk_cancel_blocks')

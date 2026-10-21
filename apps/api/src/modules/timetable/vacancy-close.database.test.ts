@@ -5,6 +5,7 @@ import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
 import { at, LessonsKit, type LessonSource } from '../../testing/lessons-kit.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
+import { heldEntry } from '../../testing/held-entry.js';
 
 /** Thursday 15 October 2026, 10:00 in Tashkent. */
 const NOW = '2026-10-15T10:00:00+05:00';
@@ -462,6 +463,7 @@ describe('the close of a vacancy in the database', () => {
             .set({ teacher_id: place.vacancy })
             .where('id', '=', lesson)
             .execute();
+          await heldEntry(transaction, place.branch);
         },
       );
       await held.ready;

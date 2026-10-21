@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 21 October 2026: task 5.8b Protection of dated lessons and their forced delete
+
+- The database keeps a lesson's class, group and subject (grants) and refuses the delete of a lesson that holds data (`lesson_holds_data`, 0105, answers no until 6.1); every teacher, room, time and cancel change is written to `lesson_history` by triggers, and `Transactions.run` refuses a commit whose lesson change has no audit entry of its transaction in the lesson's branch.
+- The Super Admin deletes a lesson for good from the day page and restores it within 30 days from "Deleted lessons" (`forced_deletes`, the store 5.8c reuses); every lesson has "History" on the day page. Handbook: "Deleting a lesson for good, and the history of a lesson".
+- Left out: the cells kept by a forced delete and "kept and listed" (6.1); the closed-quarter refusal (9.2b); the purge of stores older than 30 days (9.2c, its nightly job).
+
+The next sessions must know:
+
+- A test transaction that changes a lesson as the application writes an audit entry in the lesson's branch (`heldEntry`, `apps/api/src/testing/held-entry.ts`), or `Transactions.run` throws `lesson_change_unaudited`; a migrator write writes no history.
+- A new writer of dated lessons needs nothing more than its audit entry in the lesson's branch: the history comes from the trigger.
+- The published scene of the route tests of dated lessons is `apps/api/src/testing/published-scene.ts`.
+- The next task is 5.8c.
+
 ## 21 October 2026: task 5.8a Version history and restore
 
 - Version history (`/timetable/versions`, `GET /api/timetable/history`): every version of a year by start date with the quarters it is in force on; the side panel compares it with another version (`GET /api/timetable/versions/:id/compare`, `versionDifferences`) and restores it as a new draft.

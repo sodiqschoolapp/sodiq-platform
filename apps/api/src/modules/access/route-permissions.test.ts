@@ -616,6 +616,15 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     branch: 'request',
     roles: ['super_admin', 'academic_vice_principal'],
   },
+  // Task 5.8b: the forced delete of a lesson and the store, the Super Admin's
+  // (forced_deletes); the history of a lesson under timetable view.
+  'POST /api/timetable/lessons/:id/forced-delete': { branch: 'request', roles: ['super_admin'] },
+  'GET /api/forced-deletes': { branch: 'request', roles: ['super_admin'] },
+  'POST /api/forced-deletes/:id/restore': { branch: 'request', roles: ['super_admin'] },
+  'GET /api/timetable/lessons/:id/history': {
+    branch: 'request',
+    roles: ['super_admin', 'principal', 'academic_vice_principal'],
+  },
   // Task 5.7b-2: the substitution per journal from an absence or a vacancy, under timetable edit.
   'GET /api/timetable/absences/:id/journals/:journalId/substitutes': {
     branch: 'request',

@@ -2042,6 +2042,9 @@ export const PUBLISH_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   exam_group_slots: 'timetable_busy',
   exam_incomplete: 'timetable_busy',
   lesson_block_class_out_exam: 'timetable_busy',
+  // Task 5.8b (decision 2): a write that would remove a lesson holding data
+  // (0105, `lessons_delete_data`); from 6.1 the writers keep and list it.
+  lesson_holds_data: 'lesson_holds_data',
 };
 
 const BUSY_CODES = new Set(['40P01', '40001']);

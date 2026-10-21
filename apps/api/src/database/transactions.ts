@@ -37,6 +37,25 @@ export async function transactionMoment(transaction: Transaction): Promise<Date>
 }
 
 /**
+ * Task 5.8b (decision 4, correction 2 of pull request #195): every line of
+ * the lesson history this transaction wrote has an audit entry of this
+ * transaction in the lesson's branch, which names who. Asked of the database
+ * (`lesson_history_unaudited`, 0105, read past the branch filter) before the
+ * commit; a writer that fails it writes the missing entry, the check is never
+ * relaxed.
+ */
+export async function assertLessonChangesAudited(transaction: Transaction): Promise<void> {
+  const found = await sql<{ unaudited: boolean }>`
+    select lesson_history_unaudited(pg_current_xact_id_if_assigned()) as unaudited
+  `.execute(transaction);
+  if (found.rows[0]?.unaudited !== false) {
+    throw new Error(
+      'A change of a dated lesson has no audit entry in its branch (lesson_change_unaudited).',
+    );
+  }
+}
+
+/**
  * The value of `app.branch_ids` for a list of branch ids: a PostgreSQL array
  * of uuids. Each id is checked first, so nothing else can reach the setting.
  */
@@ -105,7 +124,9 @@ export class Transactions {
         select set_config(${BRANCH_SETTING}, ${filter}, true),
           set_config(${MOMENT_SETTING}, ${this.clock.now().toISOString()}, true)
       `.execute(transaction);
-      return work(transaction);
+      const result = await work(transaction);
+      await assertLessonChangesAudited(transaction);
+      return result;
     });
   }
 

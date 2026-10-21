@@ -14,6 +14,7 @@ import {
   refusal,
 } from '../../testing/claims-harness.js';
 import { at } from '../../testing/lessons-kit.js';
+import { heldEntry } from '../../testing/held-entry.js';
 
 /** Wednesday 21 October 2026, a school day of quarter 1 after the moment of the tests. */
 const WEDNESDAY = '2026-10-21';
@@ -421,13 +422,14 @@ describe('exams and their time claims in the database', () => {
       ).toMatchObject({ constraint: 'exam_group_slots' });
       expect(
         await refusal(
-          h.inBranch(north(), (transaction) =>
-            transaction
+          h.inBranch(north(), async (transaction) => {
+            await transaction
               .updateTable('lesson_blocks')
               .set({ starts_at: at('2026-10-29', '11:00'), ends_at: at('2026-10-29', '11:45') })
               .where('id', '=', s.block.block)
-              .execute(),
-          ),
+              .execute();
+            await heldEntry(transaction, north());
+          }),
         ),
       ).toMatchObject({ constraint: 'exam_group_slots' });
     });
@@ -480,6 +482,7 @@ describe('exams and their time claims in the database', () => {
             await moveBlock(transaction);
             await moveExam(transaction);
           }
+          await heldEntry(transaction, north());
         });
         const group = (await h.examClaims(written.exam)).find((c) => c.kind === 'exam_group_class');
         expect(group?.during).toContain(examFirst ? '05:00:00+00' : '07:00:00+00');
@@ -880,13 +883,14 @@ describe('exams and their time claims in the database', () => {
         ],
         outs: [{ blockId: s.block.block, classId: s.brown }],
       });
-      await h.inBranch(north(), (transaction) =>
-        transaction
+      await h.inBranch(north(), async (transaction) => {
+        await transaction
           .updateTable('lesson_blocks')
           .set({ starts_at: at('2026-11-09', '11:00'), ends_at: at('2026-11-09', '11:45') })
           .where('id', '=', s.block.block)
-          .execute(),
-      );
+          .execute();
+        await heldEntry(transaction, north());
+      });
       expect((await h.blockClasses(s.block.block)).sort()).toEqual([s.brown, s.green].sort());
     });
 
@@ -1274,13 +1278,14 @@ describe('exams and their time claims in the database', () => {
       const lessonId = placed.lessons[0] ?? '';
       expect(
         await refusal(
-          h.inBranch(north(), (transaction) =>
-            transaction
+          h.inBranch(north(), async (transaction) => {
+            await transaction
               .updateTable('lessons')
               .set({ cancel_cause: 'exam' })
               .where('id', '=', lessonId)
-              .execute(),
-          ),
+              .execute();
+            await heldEntry(transaction, north());
+          }),
         ),
       ).toMatchObject({ code: CHECK_VIOLATION, constraint: 'lessons_exam_link' });
       const p = await plain('15:00', '15:45', LINK_DATE);

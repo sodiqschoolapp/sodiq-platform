@@ -11,6 +11,7 @@ import {
   refusal,
 } from '../../testing/claims-harness.js';
 import { groupMemberValues, memberValues } from '../../testing/members-kit.js';
+import { heldEntry } from '../../testing/held-entry.js';
 
 /** Wednesday 14 October 2026, before the moment of the tests: its lessons have started. */
 const PAST = '2026-10-14';
@@ -112,13 +113,14 @@ describe('the claims of future lessons after a change elsewhere', () => {
       await h.inBranch(north(), (transaction) => addClass(transaction, team, cambridge));
       // A correction of the past lesson (its teacher recorded) is not refused.
       const smith = await h.teacher(north());
-      await h.inBranch(north(), (transaction) =>
-        transaction
+      await h.inBranch(north(), async (transaction) => {
+        await transaction
           .updateTable('lessons')
           .set({ teacher_id: smith })
           .where('id', '=', past.lessons[0] ?? '')
-          .execute(),
-      );
+          .execute();
+        await heldEntry(transaction, north());
+      });
       expect(await h.blockClasses(past.block)).toEqual([oxford]);
     });
 
