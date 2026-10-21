@@ -131,6 +131,20 @@ export const dayLessonSchema = z.object({
    * with review correction 2).
    */
   canCorrect: z.boolean(),
+  /**
+   * Task 5.7b-1: the substitution in force on the lesson, with the teacher
+   * replaced (`null` when the lesson had nobody); `null` when none is.
+   */
+  substitution: z
+    .object({
+      id: z.uuid(),
+      replaced: z
+        .object({ id: z.uuid(), kind: z.enum(['person', 'vacancy']), name: z.string() })
+        .nullable(),
+    })
+    .nullable(),
+  /** Task 5.7b-1 (decision 8): not cancelled, not started (nor the earlier half of its double), in a year not closed. */
+  canSubstitute: z.boolean(),
 });
 
 export type DayLesson = z.infer<typeof dayLessonSchema>;
@@ -235,3 +249,57 @@ export const correctionTeachersAnswerSchema = z.object({
 });
 
 export type CorrectionTeachersAnswer = z.infer<typeof correctionTeachersAnswerSchema>;
+
+/**
+ * The substitution of a lesson (task 5.7b-1, pull request #191; `06`,
+ * Changes after publishing: "Substitution. The one way to put another
+ * teacher on a lesson. ... one substitution record is kept: who was
+ * replaced, by whom, for which lessons and why"). `confirm` is the tick of
+ * the warnings a save answered with `substitution_needs_confirm`: the rules
+ * relaxed when no teacher of the subject is free, and the language
+ * (`05`, Substitution: "Choosing one needs a confirmation").
+ */
+export const lessonSubstituteBodySchema = z.strictObject({
+  teacherId: z.uuid(),
+  reason,
+  confirm: z.boolean().optional(),
+});
+
+export type LessonSubstituteBody = z.infer<typeof lessonSubstituteBodySchema>;
+
+/** The withdrawal of a substitution in force, with its reason (task 5.7b-1). */
+export const substitutionWithdrawBodySchema = z.strictObject({ reason });
+
+export type SubstitutionWithdrawBody = z.infer<typeof substitutionWithdrawBodySchema>;
+
+/**
+ * How a suggested substitute stands to the lesson (task 5.7b-1, decision 3):
+ * the subject and every grade, the subject's department, or neither.
+ */
+export const SUBSTITUTE_GROUPS = ['subject', 'department', 'other'] as const;
+
+/**
+ * The suggested substitutes of a lesson (task 5.7b-1, decision 3; `06`,
+ * Substitution: "same subject first, then same department. Teachers who
+ * cannot teach in the class's language are listed last and marked"), in
+ * their order: only teachers a save would take. `noSubjectTeacherFree`:
+ * no teacher of the subject is free, so the subject, grades and
+ * availability are warnings that need a tick (`edge/timetable`, After
+ * publishing; decision 2). `warnings` are the rules a choice of the
+ * teacher answers with a warning; `language` marks one who cannot teach in
+ * the class's language.
+ */
+export const substitutesAnswerSchema = z.object({
+  noSubjectTeacherFree: z.boolean(),
+  teachers: z.array(
+    z.object({
+      id: z.uuid(),
+      name: z.string(),
+      group: z.enum(SUBSTITUTE_GROUPS),
+      language: z.boolean(),
+      warnings: z.array(z.string().regex(/^[a-z_]+$/)),
+    }),
+  ),
+});
+
+export type SubstitutesAnswer = z.infer<typeof substitutesAnswerSchema>;

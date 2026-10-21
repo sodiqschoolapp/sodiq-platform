@@ -1004,6 +1004,42 @@ describe('the teacher, the subject and the room', () => {
     ).toBe(true);
   });
 
+  it('keeps the blocked rules of a substitute saved without the exception in a call that relaxes another', () => {
+    // Task 5.7b-1: a one-day change checks two substitutes of one block; only
+    // the one saved when no teacher of the subject was free is relaxed
+    // (`.claude/rules/timetable.md`: never every lesson of the call).
+    const narrow = teacher('t9', {
+      subjects: [{ subjectId: 'english', grades: [5] }],
+      availability: [
+        { branchId: A, validFrom: '2026-09-01', validUntil: null, ranges: week(600, 900) },
+      ],
+    });
+    const f = facts({ mode: 'dated', teachers: new Map([['t9', narrow]]) });
+    const day = '2026-11-10';
+    const placements = [
+      place({ id: 'a', day, teacherIds: ['t9'], substitute: true, relaxed: true }),
+      place({
+        id: 'c',
+        day,
+        teacherIds: ['t9'],
+        classId: '9a',
+        roomId: 'r2',
+        subjectId: 'english',
+        substitute: true,
+        relaxed: false,
+        ...L3,
+      }),
+    ];
+    const view = (results: RuleResult[]) =>
+      results.map((one) => `${one.severity} ${one.rule} ${one.lessonIds.join('+')}`);
+    expect(view(checkTimetable(placements, f, { noSubjectTeacherFree: true }))).toEqual([
+      'warning teacher_subject a',
+      'blocked teacher_grade c',
+      'warning teacher_unavailable a',
+      'blocked teacher_unavailable c',
+    ]);
+  });
+
   it('reads availability in force on the start date of a pattern, and lists later entries by date', () => {
     // Fridays end at 10:00 from 7 December (edge/timetable, "A part-time teacher stops working Fridays").
     const partTime = teacher('t9', {

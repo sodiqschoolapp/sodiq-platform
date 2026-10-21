@@ -526,6 +526,9 @@ describe('one-day changes: cancel and restore', () => {
         .selectAll()
         .orderBy('change_id')
         .execute(),
+      // Task 5.7b-1 (spec review of the plan, must-fix 5): the correction and the writers of dated lessons write them.
+      t.database.migrator.selectFrom('substitutions').selectAll().orderBy('id').execute(),
+      t.database.migrator.selectFrom('substitution_lessons').selectAll().orderBy('id').execute(),
       t.database.migrator.selectFrom('notifications').select('id').orderBy('id').execute(),
       sql<{ id: string }>`select id from pgboss.job order by id`
         .execute(t.database.migrator)
@@ -2749,6 +2752,39 @@ describe('one-day changes: cancel and restore', () => {
     }
 
     /** The one copy of a class's Monday lesson on Friday, the templates moved back first. */
+    /**
+     * Task 5.7b-1 (spec review of the plan, must-fix 5): a substitution in
+     * force on a lesson, written by the migrator, which a correction of kind
+     * `teacher` would end.
+     */
+    async function substitutedBy(s: Scene, lessonId: string, replacedId: string) {
+      const lesson = await rowOf(lessonId);
+      if (lesson?.teacher_id == null) throw new Error('The lesson has no teacher.');
+      const record = await t.database.migrator
+        .insertInto('substitutions')
+        .values({
+          branch_id: s.branch,
+          source: 'lesson',
+          replaced_id: replacedId,
+          substitute_id: lesson.teacher_id,
+          relaxed: false,
+          reason: 'The teacher was ill',
+          made_at: at('2026-10-08', '12:00'),
+          made_by: await load.classes.account(),
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await t.database.migrator
+        .insertInto('substitution_lessons')
+        .values({
+          substitution_id: record.id,
+          branch_id: s.branch,
+          lesson_id: lessonId,
+          lesson_date: lesson.lesson_date,
+        })
+        .execute();
+    }
+
     async function pastOne(s: Scene, input: Parameters<typeof past>[1] = {}) {
       await fromSeptember(s);
       const [id] = await past(s, input);
@@ -3261,6 +3297,9 @@ describe('one-day changes: cancel and restore', () => {
       const lesson = await pastOne(s);
       const other = await scene();
       const foreign = await pastOne(other);
+      // Substitutions in force on both lessons, in both branches.
+      await substitutedBy(s, lesson, s.otherTeacher.staffId);
+      await substitutedBy(other, foreign, other.otherTeacher.staffId);
       const before = await everything();
       refusedWith(
         await correct(s.branch, lesson, { kind: 'cancel' }, t.principal),

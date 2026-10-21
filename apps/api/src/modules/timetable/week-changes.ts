@@ -329,7 +329,15 @@ export async function sendWeekChanges(
         /** Task 5.6c-3a (decision 7): the exams the event dropped, by the account told. */
         readonly examsCancelled?: ReadonlyMap<string, readonly { title: string; date: string }[]>;
       }
-    | { readonly kind: 'timetable.day_changed' }
+    | {
+        readonly kind: 'timetable.day_changed';
+        /**
+         * Task 5.7b-1 (decision 7): the substitute's account and the lesson's
+         * date; that account gets `timetable.substitution_assigned` in place
+         * of this kind.
+         */
+        readonly substitute?: { readonly accountId: string; readonly date: string };
+      }
     | {
         readonly kind: 'timetable.calendar_changed';
         readonly name: string;
@@ -417,6 +425,14 @@ export async function sendWeekChanges(
             },
           });
         case 'timetable.day_changed':
+          if (event.substitute?.accountId === accountId) {
+            return notifications.send(transaction, {
+              kind: 'timetable.substitution_assigned',
+              branchId: snapshot.branchId,
+              accountIds: [accountId],
+              data: { date: event.substitute.date, ...week },
+            });
+          }
           return notifications.send(transaction, {
             kind: event.kind,
             branchId: snapshot.branchId,

@@ -607,6 +607,19 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     branch: 'request',
     roles: ['super_admin', 'academic_vice_principal'],
   },
+  // Task 5.7b-1: the substitution of a lesson, its suggestions and its withdrawal, under timetable edit.
+  'GET /api/timetable/lessons/:id/substitutes': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'POST /api/timetable/lessons/:id/substitute': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'POST /api/timetable/lessons/:id/substitution/withdraw': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
   // Task 5.6a-3: the check and the save of a bulk cancel, under timetable edit.
   'POST /api/timetable/bulk-cancels/check': {
     branch: 'request',

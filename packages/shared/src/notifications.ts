@@ -192,6 +192,17 @@ export const NOTIFICATION_KINDS = {
     also: z.strictObject(teacherWeek).optional(),
   }),
   /**
+   * This teacher was made the substitute of a lesson (task 5.7b-1, decision
+   * 7; `10`: "Substitution assigned | The substitute teacher | In the app"):
+   * the lesson's date and the week, in place of `timetable.day_changed`
+   * (one notice per person per event).
+   */
+  'timetable.substitution_assigned': z.strictObject({
+    date: schoolDateSchema,
+    ...teacherWeek,
+    also: z.strictObject(teacherWeek).optional(),
+  }),
+  /**
    * A calendar entry saved over published dates changed this teacher's
    * lessons in the branch (task 5.6b-1, decision 8): the entry's name and
    * dates, and the week, with a second, later week as a one-day change shows
@@ -322,6 +333,7 @@ export const WEEK_KINDS = [
   ...WEEK_CHANGE_KINDS,
   'timetable.tutor_changed',
   'timetable.day_changed',
+  'timetable.substitution_assigned',
   'timetable.calendar_changed',
   'timetable.template_changed',
   'timetable.quarters_changed',

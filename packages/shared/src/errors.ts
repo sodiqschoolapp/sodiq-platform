@@ -775,6 +775,18 @@ export const ERROR_CODES = [
   'acting_ended',
   /** Task 5.7a-3c: a period that has started is ended, not withdrawn. */
   'acting_started',
+  /** Task 5.7b-1 (decision 4): the substitute cannot teach at the lesson's start (absent, inactive, left or locked). */
+  'substitute_away',
+  /** Task 5.7b-1 (decision 5): the teacher replaced by the substitution in force takes the lesson back by its withdrawal. */
+  'substitute_is_replaced',
+  /** Task 5.7b-1: a substitution meets a blocked rule on the lesson's date; `details` lists each. */
+  'substitution_blocked',
+  /** Task 5.7b-1: a substitution meets warnings that need a tick; `details` lists each, and it is sent again with `confirm`. */
+  'substitution_needs_confirm',
+  /** Task 5.7b-1: the lesson has no substitution in force to withdraw. */
+  'substitution_not_in_force',
+  /** Task 5.7b-1 (decision 12): the teacher returned by a withdrawal has another lesson or exam at that time; `details` lists each. */
+  'substitution_return_blocked',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

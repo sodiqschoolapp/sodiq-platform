@@ -1363,6 +1363,13 @@ export {
   type LessonCorrectionBody,
   type CorrectionTeachersAnswer,
   type DaySlot,
+  SUBSTITUTE_GROUPS,
+  lessonSubstituteBodySchema,
+  substitutionWithdrawBodySchema,
+  substitutesAnswerSchema,
+  type LessonSubstituteBody,
+  type SubstitutionWithdrawBody,
+  type SubstitutesAnswer,
 } from './day-changes.js';
 export {
   EXAM_RANGE_DAYS,

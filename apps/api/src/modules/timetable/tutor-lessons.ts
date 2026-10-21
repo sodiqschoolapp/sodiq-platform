@@ -21,6 +21,7 @@ import { checkTeacherTime, tutorAt, type Placement } from '@sodiq/timetable-rule
 import { sql } from 'kysely';
 import { transactionMoment, type Transaction } from '../../database/transactions.js';
 import { readTutorRows, versionTutorMoment } from './load-facts.js';
+import { substitutionsInForce } from './substitutions-read.js';
 
 /** A busy time of the new Tutor that keeps a lesson from following (moments and branch only). */
 export interface TutorClash {
@@ -390,7 +391,12 @@ async function followLessons(
   // After the locks, in a statement of its own.
   const tutors = await readTutorRows(transaction, classIds);
   const travel = await readTravel(transaction);
-  const ordered = [...lessons.rows].sort(
+  // Task 5.7b-1 (From 3.6c-2): a lesson with a substitution in force keeps its substitute.
+  const substituted = await substitutionsInForce(
+    transaction,
+    lessons.rows.map((one) => ({ id: one.id, teacherId: one.teacher_id })),
+  );
+  const ordered = [...lessons.rows].filter((one) => !substituted.has(one.id)).sort(
     (a, b) => a.starts_at.getTime() - b.starts_at.getTime() || a.id.localeCompare(b.id),
   );
   for (const lesson of ordered) {
