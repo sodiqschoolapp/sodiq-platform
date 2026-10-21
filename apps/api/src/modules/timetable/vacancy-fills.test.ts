@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import {
   BRANCH_HEADER,
   REQUEST_KEY_HEADER,
+  publishCheckSchema,
   timetableVersionSchema,
   vacancyDetailSchema,
   vacancyFillCheckSchema,
@@ -736,6 +737,362 @@ describe('vacancy fill', () => {
         409,
         'fill_rows',
       );
+    });
+  });
+  describe('a withdraw and a replace', () => {
+    const withdraw = (branch: string, version: string) =>
+      keyed(`/api/timetable/versions/${version}/withdraw`, branch, {});
+
+    it("a withdraw of the fill's version before its start reopens the vacancy from the date, and its lessons come back (decision 7)", async () => {
+      const s = await scene();
+      const fill = await filled(s, bodyOf(s, OCTOBER_19));
+      const answer = await withdraw(s.branch, fill.versionId ?? '');
+      expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+      expect((await liveStatusesOf(s.vacancy)).map((one) => one.status)).toEqual(['open', 'open']);
+      expect(await liveStatusesOf(s.vacancy)).toEqual([
+        { status: 'open', from: '2026-09-01', until: OCTOBER_19 },
+        { status: 'open', from: OCTOBER_19, until: null },
+      ]);
+      expect(new Set((await lessonsOf(s.branch)).map((one) => one.teacher_id))).toEqual(
+        new Set([s.vacancy]),
+      );
+      const [reopen] = await t.entries('vacancy.reopen', s.vacancy);
+      expect(reopen).toMatchObject({
+        new_value: { status: 'open', from: OCTOBER_19, byWithdraw: true },
+      });
+      const [entry] = await t.entries('timetable_version.withdraw', fill.versionId ?? '');
+      expect(entry).toMatchObject({ new_value: { vacanciesReopened: [s.vacancy] } });
+      const detail = vacancyDetailSchema.parse(
+        (await t.get(`/api/people/vacancies/${s.vacancy}`, s.branch)).body,
+      );
+      expect(detail.fills.map((one) => one.withdrawn)).toEqual([true]);
+    });
+
+    it('a withdraw whose run ends before the close day reopens nothing (spec review of the plan, should-fix 2)', async () => {
+      const s = await scene();
+      const b = await laterCopy(s, s.a, NOVEMBER);
+      const fill = await filled(s, bodyOf(s, DECEMBER));
+      expect(fill.closed).toBe(true);
+      // A runs again from 9 November until the fill's version starts.
+      const answer = await withdraw(s.branch, b);
+      expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+      expect(await liveStatusesOf(s.vacancy)).toEqual([
+        { status: 'open', from: '2026-09-01', until: DECEMBER },
+        { status: 'closed', from: DECEMBER, until: null },
+      ]);
+      expect(await t.entries('vacancy.reopen', s.vacancy)).toEqual([]);
+      const lessons = await lessonsOf(s.branch);
+      expect(
+        new Set(lessons.filter((one) => one.date < DECEMBER).map((one) => one.teacher_id)),
+      ).toEqual(new Set([s.vacancy]));
+      expect(
+        new Set(lessons.filter((one) => one.date >= DECEMBER).map((one) => one.teacher_id)),
+      ).toEqual(new Set([s.person]));
+    });
+
+    it("a replace of the fill's version by a draft naming the vacancy is refused load_vacancy_closed; one that does not name it publishes, the vacancy still closed (review correction 1)", async () => {
+      const s = await scene();
+      const fill = await filled(s, bodyOf(s, OCTOBER_19));
+      expect(fill.closed).toBe(true);
+      const naming = await laterDraft(s, s.vacancy);
+      const shown = await publishCheck(s.branch, naming, OCTOBER_19);
+      const refused = await publish(s.branch, naming, OCTOBER_19, {
+        chain: 'replace',
+        laterKey: shown.chain?.key,
+      });
+      refusedWith(refused, 409, 'publish_blocked');
+      expect(
+        (refused.body as { error: { details: { code: string }[] } }).error.details.map(
+          (one) => one.code,
+        ),
+      ).toContain('load_vacancy_closed');
+      const other = await laterDraft(s, s.person);
+      const otherShown = await publishCheck(s.branch, other, OCTOBER_19);
+      await published(s.branch, other, OCTOBER_19, {
+        chain: 'replace',
+        laterKey: otherShown.chain?.key,
+        dayChangesKey: otherShown.impact?.dayChanges.key,
+      });
+      expect(await liveStatusesOf(s.vacancy)).toEqual([
+        { status: 'open', from: '2026-09-01', until: OCTOBER_19 },
+        { status: 'closed', from: OCTOBER_19, until: null },
+      ]);
+    });
+  });
+
+  /** A draft of the year from 12 October with one row of maths for 7A taught by `teacherId`, Monday slot 1. */
+  async function laterDraft(s: Scene, teacherId: string) {
+    const version = await draft(s.branch, s.year);
+    const rowId = await load.row({
+      branch_id: s.branch,
+      version_id: version,
+      class_id: s.classA,
+      subject_id: s.subject,
+      teacher_id: teacherId,
+      lessons_per_week: 1,
+    });
+    await placeAt(s.branch, version, rowId, 1);
+    await ready(s.branch, version);
+    return version;
+  }
+
+  const publishCheck = async (branch: string, version: string, startsOn: string) => {
+    const answer = await t.get(
+      `/api/timetable/versions/${version}/publish-check?startsOn=${startsOn}&chain=replace`,
+      branch,
+    );
+    expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+    return publishCheckSchema.parse(answer.body);
+  };
+
+  describe('the close and the reopen by hand with a planned close (spec review of the plan, must-fix 5)', () => {
+    it('a reopen by hand cancels the close a fill planned', async () => {
+      const s = await scene();
+      await filled(s, bodyOf(s, OCTOBER_19));
+      const answer = await post(`/api/people/vacancies/${s.vacancy}/reopen`, s.branch);
+      expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+      expect(await liveStatusesOf(s.vacancy)).toEqual([
+        { status: 'open', from: '2026-09-01', until: OCTOBER_19 },
+        { status: 'open', from: OCTOBER_19, until: null },
+      ]);
+      const [reopen] = await t.entries('vacancy.reopen', s.vacancy);
+      expect(reopen).toMatchObject({
+        old_value: { plannedClose: OCTOBER_19 },
+        new_value: { status: 'open', from: OCTOBER_19 },
+      });
+    });
+
+    it('a close by hand empties the planned close and closes from today', async () => {
+      const s = await scene();
+      // In place from A's start: nothing holds the vacancy from today on.
+      const fill = await filled(s, bodyOf(s, MONDAY));
+      expect(fill.closed).toBe(true);
+      const answer = await post(`/api/people/vacancies/${s.vacancy}/close`, s.branch);
+      expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+      expect(await liveStatusesOf(s.vacancy)).toEqual([
+        { status: 'open', from: '2026-09-01', until: '2026-10-10' },
+        { status: 'closed', from: '2026-10-10', until: null },
+      ]);
+    });
+  });
+
+  describe('the check', () => {
+    /** Every row a fill writes, in the branches named. */
+    const written = async (branches: readonly string[]) =>
+      Promise.all([
+        ...(
+          [
+            'timetable_versions',
+            'teaching_load_rows',
+            'pattern_blocks',
+            'pattern_entries',
+            'timetable_pins',
+            'timetable_day_keeps',
+            'timetable_version_out_of_date_causes',
+            'lesson_blocks',
+            'lessons',
+            'time_claims',
+            'journals',
+            'vacancy_fills',
+            'vacancy_fill_rows',
+          ] as const
+        ).map((table) =>
+          t.database.migrator
+            .selectFrom(table)
+            .selectAll()
+            .where('branch_id', 'in', branches)
+            .execute()
+            .then((rows) => rows.map((row) => JSON.stringify(row)).sort()),
+        ),
+        t.database.migrator.selectFrom('staff_statuses').selectAll().orderBy('id').execute(),
+        t.database.migrator.selectFrom('notifications').selectAll().orderBy('id').execute(),
+        t.database.migrator.selectFrom('request_keys').selectAll().orderBy('key').execute(),
+        t.auditCount(),
+      ]);
+
+    it('writes nothing', async () => {
+      const s = await scene();
+      await laterCopy(s, s.a, NOVEMBER);
+      const before = await written([s.branch]);
+      await checked(s.branch, bodyOf(s, OCTOBER_19));
+      await checked(s.branch, bodyOf(s, NOVEMBER));
+      expect(await written([s.branch])).toEqual(before);
+    });
+
+    it("answers 404 for another branch's or an unknown vacancy, person, class or subject, and changes nothing", async () => {
+      const s = await scene();
+      const theirs = await scene();
+      const before = await written([s.branch, theirs.branch]);
+      const bodies = [
+        { ...bodyOf(s, OCTOBER_19), vacancyId: theirs.vacancy },
+        { ...bodyOf(s, OCTOBER_19), vacancyId: UNKNOWN },
+        { ...bodyOf(s, OCTOBER_19), personId: theirs.person },
+        { ...bodyOf(s, OCTOBER_19), personId: UNKNOWN },
+        bodyOf(s, OCTOBER_19, { rows: [{ classId: theirs.classA, subjectId: s.subject }] }),
+        bodyOf(s, OCTOBER_19, { rows: [{ classId: UNKNOWN, subjectId: s.subject }] }),
+        bodyOf(s, OCTOBER_19, { rows: [{ groupId: UNKNOWN, subjectId: s.subject }] }),
+        bodyOf(s, OCTOBER_19, { rows: [{ classId: s.classA, subjectId: UNKNOWN }] }),
+      ];
+      for (const body of bodies) {
+        refusedWith(await checkFill(s.branch, body), 404, 'not_found');
+        refusedWith(await fillOf(s.branch, { ...body, rowsKey: '0'.repeat(64) }), 404, 'not_found');
+      }
+      refusedWith(
+        await fillOf(s.branch, {
+          ...bodyOf(s, OCTOBER_19),
+          rowsKey: '0'.repeat(64),
+          dayDecisions: [{ key: UNKNOWN, choice: 'drop' }],
+        }),
+        404,
+        'not_found',
+      );
+      expect(await written([s.branch, theirs.branch])).toEqual(before);
+    });
+  });
+
+  describe('the request key', () => {
+    it('answers a repeat of the same key once and refuses it from another account', async () => {
+      const s = await scene();
+      const check = await checked(s.branch, bodyOf(s, OCTOBER_19));
+      const key = randomUUID();
+      const body = { ...bodyOf(s, OCTOBER_19), ...keysOf(check) };
+      const first = await fillOf(s.branch, body, key);
+      expect(first.status, JSON.stringify(first.body)).toBe(201);
+      const again = await fillOf(s.branch, body, key);
+      expect(again.status).toBe(201);
+      expect(again.body).toEqual(first.body);
+      expect(await t.entries('vacancy.fill', s.vacancy)).toHaveLength(1);
+      const vice = await t.database.migrator
+        .selectFrom('assignments')
+        .select('account_id')
+        .where('id', '=', t.viceAssignment)
+        .executeTakeFirstOrThrow();
+      await load.classes.role(vice.account_id, s.branch, 'academic_vice_principal');
+      refusedWith(await fillOf(s.branch, body, key, t.vicePrincipal), 409, 'request_key_reused');
+    });
+
+    it('checks the branch and the permission again on a repeat, before the stored answer', async () => {
+      const s = await scene();
+      const theirs = await scene();
+      const check = await checked(s.branch, bodyOf(s, OCTOBER_19));
+      const key = randomUUID();
+      const body = { ...bodyOf(s, OCTOBER_19), ...keysOf(check) };
+      expect((await fillOf(s.branch, body, key)).status).toBe(201);
+      for (const vacancyId of [theirs.vacancy, UNKNOWN]) {
+        refusedWith(await fillOf(s.branch, { ...body, vacancyId }, key), 404, 'not_found');
+      }
+      const principal = await t.database.migrator
+        .selectFrom('assignments')
+        .select('account_id')
+        .where('role', '=', 'principal')
+        .where('branch_id', '=', t.north)
+        .executeTakeFirstOrThrow();
+      await load.classes.role(principal.account_id, s.branch, 'principal');
+      expect((await fillOf(s.branch, body, key, t.principal)).status).toBe(403);
+      expect((await checkFill(s.branch, bodyOf(s, OCTOBER_19), t.principal)).status).toBe(403);
+    });
+  });
+
+  // .claude/rules/api.md: a test of two changes at the same moment runs the
+  // real routes in a fixed order, behind a third transaction that holds the
+  // row both wait on, in both directions.
+  describe('at the same moment', () => {
+    async function waitingForALock(): Promise<number> {
+      const found = await sql<{ waiting: number }>`
+        select count(distinct l.pid)::int as waiting
+        from pg_locks l join pg_stat_activity a on a.pid = l.pid
+        where a.datname = current_database() and not l.granted
+      `.execute(t.database.migrator);
+      return found.rows[0]?.waiting ?? 0;
+    }
+
+    /** `first`, then `second`, both waiting behind a hold of the staff row `staffId` FOR UPDATE. */
+    async function inOrder(
+      staffId: string,
+      first: () => Promise<Response>,
+      second: () => Promise<Response>,
+    ): Promise<[Response, Response]> {
+      let release: () => void = () => undefined;
+      const released = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let ready: () => void = () => undefined;
+      const isReady = new Promise<void>((resolve) => {
+        ready = resolve;
+      });
+      const done = t.database.migrator
+        .transaction()
+        .execute(async (transaction) => {
+          await transaction
+            .selectFrom('staff')
+            .select('id')
+            .where('id', '=', staffId)
+            .forUpdate()
+            .execute();
+          ready();
+          await released;
+        })
+        .catch((error: unknown) => error);
+      await Promise.race([isReady, done]);
+      const one = first().then((response) => response);
+      await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBeGreaterThan(0);
+      const two = second().then((response) => response);
+      await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBeGreaterThan(1);
+      release();
+      expect(await done).toBeUndefined();
+      return [await one, await two];
+    }
+
+    it('meets a fill and a reopen by hand of the vacancy, both directions', async () => {
+      for (const order of [0, 1]) {
+        const s = await scene();
+        const check = await checked(s.branch, bodyOf(s, OCTOBER_19));
+        const fill = () => fillOf(s.branch, { ...bodyOf(s, OCTOBER_19), ...keysOf(check) });
+        const reopen = () => post(`/api/people/vacancies/${s.vacancy}/reopen`, s.branch);
+        if (order === 0) {
+          const [filling, reopening] = await inOrder(s.vacancy, fill, reopen);
+          expect(filling.status, JSON.stringify(filling.body)).toBe(201);
+          // The reopen comes after the fill and cancels the close it planned.
+          expect(reopening.status, JSON.stringify(reopening.body)).toBe(200);
+          expect((await liveStatusesOf(s.vacancy)).map((one) => one.status)).toEqual([
+            'open',
+            'open',
+          ]);
+        } else {
+          const [reopening, filling] = await inOrder(s.vacancy, reopen, fill);
+          // The vacancy is open: nothing to reopen; the fill then plans its close.
+          refusedWith(reopening, 409, 'status_unchanged');
+          expect(filling.status, JSON.stringify(filling.body)).toBe(201);
+          expect((await liveStatusesOf(s.vacancy)).map((one) => one.status)).toEqual([
+            'open',
+            'closed',
+          ]);
+        }
+      }
+    });
+
+    it("meets a fill and the person's status change, both directions", async () => {
+      for (const order of [0, 1]) {
+        const s = await scene();
+        const check = await checked(s.branch, bodyOf(s, OCTOBER_19));
+        const fill = () => fillOf(s.branch, { ...bodyOf(s, OCTOBER_19), ...keysOf(check) });
+        const leave = () =>
+          post(`/api/people/staff/${s.person}/status`, s.branch, {
+            status: 'inactive',
+            from: '2026-10-15',
+          });
+        if (order === 0) {
+          const [filling, leaving] = await inOrder(s.person, fill, leave);
+          expect(filling.status, JSON.stringify(filling.body)).toBe(201);
+          expect(leaving.status, JSON.stringify(leaving.body)).toBe(200);
+          expect(await t.entries('vacancy.fill', s.vacancy)).toHaveLength(1);
+        } else {
+          const [leaving, filling] = await inOrder(s.person, leave, fill);
+          expect(leaving.status, JSON.stringify(leaving.body)).toBe(200);
+          refusedWith(filling, 409, 'fill_person');
+          expect(await t.entries('vacancy.fill', s.vacancy)).toEqual([]);
+        }
+      }
     });
   });
 });
