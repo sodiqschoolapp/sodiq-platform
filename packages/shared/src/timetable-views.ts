@@ -177,3 +177,67 @@ export function viewAxisOf(templates: readonly SlotTimes[], busy: boolean): 'slo
   );
   return distinct.size > 1 ? 'clock' : 'slots';
 }
+
+/**
+ * The home page of a person who teaches (task 5.9b, pull request #198; `06`,
+ * Teachers who work in several branches: "Today's lessons from all branches
+ * appear together in time order, each labelled with its branch. Teaching
+ * needs no branch switching"; Views and outputs: "Teacher home page: today's
+ * lessons as a list ... and the week as a table"). Own lessons only: the
+ * query is strict, so a field naming a person is refused, never dropped
+ * (spec review should-fix 4).
+ */
+export const teachingHomeQuerySchema = z.strictObject({});
+
+export type TeachingHomeQuery = z.infer<typeof teachingHomeQuerySchema>;
+
+/**
+ * Where and when an item of the home page is: its branch, its moments (the
+ * sort is by real start moment across branches, correction 2) and whether it
+ * is on today in its own branch (decision 3).
+ */
+const homeAt = {
+  branch: named,
+  startsAt: z.iso.datetime(),
+  endsAt: z.iso.datetime(),
+  today: z.boolean(),
+};
+
+export const homeLessonSchema = viewLessonSchema.extend(homeAt);
+
+export type HomeLesson = z.infer<typeof homeLessonSchema>;
+
+export const homeExamSchema = viewExamSchema.extend(homeAt);
+
+export type HomeExam = z.infer<typeof homeExamSchema>;
+
+/**
+ * A lesson or exam in a branch where the account holds no role that reads it
+ * (decision 2): its time in that branch and the branch name only.
+ */
+export const homeBusySchema = viewBusySchema.extend(homeAt);
+
+export type HomeBusy = z.infer<typeof homeBusySchema>;
+
+/** A day of the week of one branch read in full. */
+export const homeDaySchema = viewDaySchema
+  .pick({ date: true, dayOff: true, version: true, fromPattern: true })
+  .extend({ branch: named });
+
+export type HomeDay = z.infer<typeof homeDaySchema>;
+
+export const teachingHomeSchema = z.object({
+  /** Today in the branch of the request. */
+  today: schoolDateSchema,
+  /** Monday and Sunday of the week of `today`. */
+  week: z.object({ from: schoolDateSchema, to: schoolDateSchema }),
+  /** The branches read in full, by name. */
+  branches: z.array(named),
+  days: z.array(homeDaySchema),
+  /** Every item in order of its start moment. */
+  lessons: z.array(homeLessonSchema),
+  exams: z.array(homeExamSchema),
+  busy: z.array(homeBusySchema),
+});
+
+export type TeachingHome = z.infer<typeof teachingHomeSchema>;

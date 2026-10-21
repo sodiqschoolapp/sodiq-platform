@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import {
   classDisplayName,
   listName,
   schoolDateOf,
+  teachingHomeSchema,
   timetableViewSchema,
   viewAxisOf,
   viewChoicesSchema,
@@ -10,9 +11,15 @@ import {
   type BranchViewQuery,
   type ClassViewQuery,
   type DaySlot,
+  type HomeBusy,
+  type HomeDay,
+  type HomeExam,
+  type HomeLesson,
+  type PermissionTable,
   type Role,
   type RoomViewQuery,
   type TeacherViewQuery,
+  type TeachingHome,
   type TimetableView,
   type ViewBusy,
   type ViewChoices,
@@ -30,6 +37,8 @@ import { ApiException } from '../../http/api-exception.js';
 import { tutorClassesAt } from '../access/class-scope.js';
 import type { CurrentAssignment } from '../access/current-assignments.js';
 import type { Access } from '../access/permission.guard.js';
+import { permitting, type Requirement } from '../access/permission-check.js';
+import { PERMISSION_TABLE } from '../access/permission-table.token.js';
 import { branchOf } from '../classes/classes.service.js';
 import { loadCalendarSettings, loadEntries } from '../setup/calendar-state.js';
 import { notFound } from '../setup/setup-refusals.js';
@@ -99,6 +108,7 @@ export class TimetableViews {
     private readonly transactions: Transactions,
     private readonly timetable: Timetable,
     private readonly pattern: TimetablePattern,
+    @Inject(PERMISSION_TABLE) private readonly table: PermissionTable,
   ) {}
 
   /** What the caller may open on the date. */
@@ -258,6 +268,127 @@ export class TimetableViews {
     });
   }
 
+  /**
+   * The home page of a person who teaches (task 5.9b, pull request #198): the
+   * caller's own lessons and exams of the week of today from every branch a
+   * current assignment of the session permits `timetable_views` in, decided
+   * by the guard's own rule `permitting` (decision 1, correction 1). Each such
+   * branch is read in a transaction of its own with that branch's filter
+   * only, by the code of the teacher view and with no busy block, so no
+   * lesson comes twice (spec review must-fix 4). The caller's lessons and
+   * exams in any other branch come as busy blocks with their time and branch
+   * only (decision 2), read from a branch the staff record is linked to.
+   */
+  async home(access: Access): Promise<TeachingHome> {
+    const requestBranch = branchOf(access);
+    const { branches, today } = await this.transactions.run(
+      access.branchIds,
+      async (transaction) => ({
+        branches: await transaction
+          .selectFrom('branches')
+          .select(['id', 'name', 'time_zone'])
+          .orderBy('name')
+          .orderBy('id')
+          .execute(),
+        today: await todayOf(transaction, requestBranch),
+      }),
+    );
+    const week = viewDates(today, 'week');
+    const full = branches.filter(
+      (branch) =>
+        permitting(HOME_REQUIREMENT, access.assignments, branch.id, this.table).length > 0,
+    );
+    const fullIds = new Set(full.map((one) => one.id));
+
+    const days: HomeDay[] = [];
+    const lessons: HomeLesson[] = [];
+    const exams: HomeExam[] = [];
+    const elsewhere: { busy: HomeBusy[] | null } = { busy: null };
+    for (const branch of full) {
+      const named = { id: branch.id, name: branch.name };
+      await this.transactions.run([branch.id], async (transaction) => {
+        // Read through this branch's filter: a record not linked to the branch is not found.
+        const own = await transaction
+          .selectFrom('staff')
+          .select('id')
+          .where('account_id', '=', access.accountId)
+          .executeTakeFirst();
+        if (own === undefined) return;
+        const moment = await transactionMoment(transaction);
+        // Each branch reads its own today and week (decision 3).
+        const branchToday = schoolDateOf(moment, branch.time_zone);
+        const view = await this.viewOf(
+          transaction,
+          access,
+          branch.id,
+          'teacher',
+          branchToday,
+          'week',
+          {
+            subject: { id: own.id, name: '' },
+            busyOf: null,
+            replacedOf: own.id,
+            quietOutside: true,
+            pick: () => ({
+              lesson: (lesson) => lesson.teacher?.id === own.id || lesson.replacedHere,
+              examRooms: (exam) =>
+                exam.rooms.filter((room) => room.invigilatorIds.includes(own.id)),
+            }),
+          },
+        );
+        const at = await momentsOf(transaction, branch.time_zone, [...view.lessons, ...view.exams]);
+        const placed = (index: number, date: string) => {
+          const found = at[index];
+          if (found === undefined) throw new Error('Every item has its moments.');
+          return { branch: named, ...found, today: date === branchToday };
+        };
+        view.lessons.forEach((one, index) => lessons.push({ ...one, ...placed(index, one.date) }));
+        view.exams.forEach((one, index) =>
+          exams.push({ ...one, ...placed(view.lessons.length + index, one.date) }),
+        );
+        for (const day of view.days) {
+          if (day.outsideYear) continue;
+          days.push({
+            date: day.date,
+            dayOff: day.dayOff,
+            version: day.version,
+            fromPattern: day.fromPattern,
+            branch: named,
+          });
+        }
+        // Decision 2: from the first branch read where the record is linked
+        // (`teacher_claims_elsewhere` refuses any other), the claims of the
+        // branches not read in full.
+        elsewhere.busy ??= (
+          await claimsOfWeek(
+            transaction,
+            branch.id,
+            branch.time_zone,
+            own.id,
+            viewDates(branchToday, 'week'),
+            moment,
+          )
+        ).filter((one) => !fullIds.has(one.branch.id));
+      });
+    }
+
+    const byStart = <T extends { startsAt: string; branch: { name: string } }>(a: T, b: T) =>
+      a.startsAt.localeCompare(b.startsAt) || a.branch.name.localeCompare(b.branch.name);
+    return teachingHomeSchema.parse({
+      today,
+      week: { from: week[0], to: week[week.length - 1] },
+      branches: full
+        .filter((branch) => days.some((day) => day.branch.id === branch.id))
+        .map((branch) => ({ id: branch.id, name: branch.name })),
+      days: days.sort(
+        (a, b) => a.date.localeCompare(b.date) || a.branch.name.localeCompare(b.branch.name),
+      ),
+      lessons: lessons.sort((a, b) => byStart(a, b) || a.id.localeCompare(b.id)),
+      exams: exams.sort((a, b) => byStart(a, b) || a.id.localeCompare(b.id)),
+      busy: (elsewhere.busy ?? []).sort(byStart),
+    });
+  }
+
   private async viewOf(
     transaction: Transaction,
     access: Access,
@@ -274,6 +405,8 @@ export class TimetableViews {
       readonly busyOf?: string | null;
       /** The teacher whose lessons a substitute took, marked on a teacher view. */
       readonly replacedOf?: string;
+      /** A span wholly outside the years answers its days marked, not 422 (the home page, task 5.9b). */
+      readonly quietOutside?: boolean;
     },
   ): Promise<TimetableView> {
     const dates = viewDates(date, span);
@@ -290,7 +423,7 @@ export class TimetableViews {
       .execute();
     const yearOn = (day: string) =>
       years.find((one) => one.start_date <= day && day <= one.end_date) ?? null;
-    if (dates.every((day) => yearOn(day) === null)) {
+    if (input.quietOutside !== true && dates.every((day) => yearOn(day) === null)) {
       throw new ApiException('calendar_outside_year', 422);
     }
     const [settings, entries] = await Promise.all([
@@ -489,6 +622,88 @@ export class TimetableViews {
       };
     });
   }
+}
+
+/** The guard's requirement of the home page, for the branches read in full (correction 1). */
+const HOME_REQUIREMENT: Requirement = {
+  area: 'timetable_views',
+  action: 'view',
+  branch: 'request',
+};
+
+/** The moments of items given by a date and clock minutes in the branch's time zone. */
+async function momentsOf(
+  transaction: Transaction,
+  timeZone: string,
+  items: readonly { readonly date: string; readonly start: number; readonly end: number }[],
+): Promise<{ startsAt: string; endsAt: string }[]> {
+  if (items.length === 0) return [];
+  const { rows } = await sql<{ starts_at: Date; ends_at: Date }>`
+    select ((x.day::timestamp + make_interval(mins => x.start_minutes)) at time zone ${timeZone}) as starts_at,
+      ((x.day::timestamp + make_interval(mins => x.end_minutes)) at time zone ${timeZone}) as ends_at
+    from unnest(
+      ${items.map((one) => one.date)}::date[],
+      ${items.map((one) => one.start)}::int[],
+      ${items.map((one) => one.end)}::int[]
+    ) with ordinality as x(day, start_minutes, end_minutes, position)
+    order by x.position
+  `.execute(transaction);
+  return rows.map((one) => ({
+    startsAt: one.starts_at.toISOString(),
+    endsAt: one.ends_at.toISOString(),
+  }));
+}
+
+/**
+ * The person's lessons and exams in every branch but the reading one over
+ * the dates, as busy blocks: moments, the day and minutes in their own
+ * branch's time (correction 2), the branch's name; no class, subject or room.
+ */
+async function claimsOfWeek(
+  transaction: Transaction,
+  branchId: string,
+  timeZone: string,
+  staffId: string,
+  dates: readonly string[],
+  moment: Date,
+): Promise<HomeBusy[]> {
+  const first = dates[0];
+  const last = dates[dates.length - 1];
+  if (first === undefined || last === undefined) return [];
+  const { rows } = await sql<{
+    starts_at: Date;
+    ends_at: Date;
+    branch_id: string;
+    name: string;
+    time_zone: string;
+    day: string;
+    start_minutes: number;
+    end_minutes: number;
+  }>`
+    select c.starts_at, c.ends_at, c.branch_id, b.name, b.time_zone,
+      (c.starts_at at time zone b.time_zone)::date::text as day,
+      (extract(epoch from (c.starts_at at time zone b.time_zone)
+        - (c.starts_at at time zone b.time_zone)::date::timestamp) / 60)::int as start_minutes,
+      (extract(epoch from (c.ends_at at time zone b.time_zone)
+        - (c.starts_at at time zone b.time_zone)::date::timestamp) / 60)::int as end_minutes
+    from teacher_claims_elsewhere(
+      ${branchId}::uuid, ${staffId}::uuid,
+      (${first}::date::timestamp at time zone ${timeZone}),
+      ((${last}::date + 1)::timestamp at time zone ${timeZone})
+    ) c
+    join branches b on b.id = c.branch_id
+    where c.branch_id <> ${branchId}::uuid
+    order by c.starts_at, c.ends_at, c.branch_id
+  `.execute(transaction);
+  return rows.map((one) => ({
+    date: one.day,
+    start: one.start_minutes,
+    end: one.end_minutes,
+    branch: { id: one.branch_id, name: one.name },
+    startsAt: one.starts_at.toISOString(),
+    endsAt: one.ends_at.toISOString(),
+    today: one.day === schoolDateOf(moment, one.time_zone),
+  }));
 }
 
 const scopeRefusal = () => new ApiException('timetable_view_scope', 403);

@@ -93,6 +93,8 @@ async function teacherOf(
  * with `double`, the first class's maths a double lesson in the first and
  * second slots. `accounts` links the teacher or the spare teacher to a
  * signed-in account (task 5.9a: a teacher reading their own timetable).
+ * `startTime` starts the day elsewhere than 08:00 (task 5.9b: two branches
+ * whose lesson numbers and clock times do not agree).
  */
 export async function publishedScene(
   t: DayTemplatesKit,
@@ -101,6 +103,7 @@ export async function publishedScene(
     branch?: string;
     double?: boolean;
     accounts?: { readonly teacher?: string; readonly spare?: string };
+    startTime?: string;
   } = {},
 ) {
   const branch = input.branch ?? (await t.newBranch());
@@ -115,7 +118,12 @@ export async function publishedScene(
   }
   const lesson = await t.createSlotType(branch, 'Lesson', 'lesson', 45);
   const pause = await t.createSlotType(branch, 'Break', 'break', 10);
-  const regular = await t.createTemplate(branch, 'Regular', [lesson, pause, lesson, pause, lesson]);
+  const regular = await t.createTemplate(
+    branch,
+    'Regular',
+    [lesson, pause, lesson, pause, lesson],
+    input.startTime,
+  );
   await t.assign(branch, regular);
   const subject = await load.classes.subject({ grades: [7], journalType: 'attendance_only' });
   const room = await load.classes.room(branch);
