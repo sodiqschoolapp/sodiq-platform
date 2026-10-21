@@ -629,11 +629,11 @@ export class TimetableViews {
  * reads every branch it permits in full (correction 1), from one constant so
  * the two never disagree (permission review should-fix 2).
  */
-export const HOME_REQUIREMENT: Requirement = {
+export const HOME_REQUIREMENT = {
   area: 'timetable_views',
   action: 'view',
   branch: 'request',
-};
+} as const satisfies Requirement;
 
 /** The moments of items given by a date and clock minutes in the branch's time zone. */
 async function momentsOf(
