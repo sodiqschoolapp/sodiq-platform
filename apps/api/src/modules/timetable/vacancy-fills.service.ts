@@ -154,6 +154,7 @@ export class VacancyFills {
             // Task 5.7a-3b (decision 6): the classes and groups of the rows, named.
             const units = await unitNamesOf(
               transaction,
+              branchId,
               prepared.rows.flatMap((one) => (one.classId === null ? [] : [one.classId])),
               prepared.rows.flatMap((one) => (one.groupId === null ? [] : [one.groupId])),
             );

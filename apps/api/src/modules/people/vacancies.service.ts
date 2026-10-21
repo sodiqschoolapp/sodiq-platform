@@ -893,10 +893,11 @@ export class Vacancies {
     const statuses: VacancyStatusRow[] = (await this.statusesOf(transaction, id, false)).map(
       (row) => ({ id: row.id, status: row.status, from: row.validFrom, until: row.validUntil }),
     );
-    const fills = await this.fillsOf(transaction, id);
+    const fills = await this.fillsOf(transaction, id, branchId);
     // Task 5.7a-3b (decision 6): the classes and groups of the fills, archived ones included.
     const fillUnits = await unitNamesOf(
       transaction,
+      branchId,
       fills.flatMap((one) =>
         one.rows.flatMap((row) => (row.classId === null ? [] : [row.classId])),
       ),
@@ -915,7 +916,11 @@ export class Vacancies {
    * chain still names (a replace archives a version that never started too,
    * and is read the same way: the fill's version no longer runs).
    */
-  private async fillsOf(transaction: Transaction, id: string): Promise<VacancyFillHistory[]> {
+  private async fillsOf(
+    transaction: Transaction,
+    id: string,
+    branchId: string,
+  ): Promise<VacancyFillHistory[]> {
     const fills = await transaction
       .selectFrom('vacancy_fills')
       .innerJoin('staff', 'staff.id', 'vacancy_fills.person_id')
@@ -930,6 +935,8 @@ export class Vacancies {
         'timetable_versions.status',
       ])
       .where('vacancy_fills.vacancy_id', '=', id)
+      // Permission review of the code, should-fix 2: the branch named, the row filter aside.
+      .where('vacancy_fills.branch_id', '=', branchId)
       .orderBy('vacancy_fills.fills_from', 'desc')
       .orderBy('vacancy_fills.id', 'desc')
       .execute();
@@ -937,6 +944,7 @@ export class Vacancies {
     const rows = await transaction
       .selectFrom('vacancy_fill_rows')
       .select(['fill_id', 'class_id', 'group_id', 'subject_id'])
+      .where('branch_id', '=', branchId)
       .where(
         'fill_id',
         'in',

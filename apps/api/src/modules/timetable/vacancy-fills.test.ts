@@ -1372,6 +1372,45 @@ describe('vacancy fill', () => {
       expect((await listed())?.closesOn).toBeNull();
     });
 
+    it("the Principal reads the same names and planned close; another branch's vacancy is 404 with no names (permission review of the code, should-fix 3)", async () => {
+      const s = await scene();
+      const theirs = await scene();
+      await filled(s, bodyOf(s, OCTOBER_19));
+      await filled(theirs, bodyOf(theirs, OCTOBER_19));
+      const principal = await t.database.migrator
+        .selectFrom('assignments')
+        .select('account_id')
+        .where('role', '=', 'principal')
+        .where('branch_id', '=', t.north)
+        .executeTakeFirstOrThrow();
+      await load.classes.role(principal.account_id, s.branch, 'principal');
+      const asAdmin = vacancyDetailSchema.parse(
+        (await t.get(`/api/people/vacancies/${s.vacancy}`, s.branch)).body,
+      );
+      const read = await t.get(`/api/people/vacancies/${s.vacancy}`, s.branch, t.principal);
+      expect(read.status, JSON.stringify(read.body)).toBe(200);
+      const asPrincipal = vacancyDetailSchema.parse(read.body);
+      expect(asPrincipal.fillUnits).toEqual(asAdmin.fillUnits);
+      expect(asPrincipal.fillUnits.map((one) => one.id)).toEqual([s.classA]);
+      expect(asPrincipal.closesOn).toBe(OCTOBER_19);
+      const list = vacancyListSchema.parse(
+        (await t.get('/api/people/vacancies', s.branch, t.principal)).body,
+      );
+      expect(list.vacancies.find((one) => one.id === s.vacancy)?.closesOn).toBe(OCTOBER_19);
+      // Another branch's filled vacancy, read with the own branch, as the Super Admin.
+      const other = await t.get(`/api/people/vacancies/${theirs.vacancy}`, s.branch);
+      refusedWith(other, 404, 'not_found');
+      const theirName = (
+        await t.database.migrator
+          .selectFrom('classes')
+          .select('name')
+          .where('id', '=', theirs.classA)
+          .executeTakeFirstOrThrow()
+      ).name;
+      expect(JSON.stringify(other.body)).not.toContain(theirs.classA);
+      expect(JSON.stringify(other.body)).not.toContain(`"${theirName}"`);
+    });
+
     it('a close by hand from today gives no planned close', async () => {
       const s = await scene();
       // In place from A's start: nothing holds the vacancy from today on.

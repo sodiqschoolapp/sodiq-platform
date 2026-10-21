@@ -3,11 +3,13 @@ import type { Transaction } from '../../database/transactions.js';
 
 /**
  * The classes and groups named by id, as a person reads them (task 5.7a-3b,
- * decision 6): archived ones included, under the branch filter of the
- * transaction. A group's grades are those of its classes. Ordered by id.
+ * decision 6): archived ones included, of the branch named only (the row
+ * filter aside: a transaction may hold several branches). A group's grades
+ * are those of its classes. Ordered by id.
  */
 export async function unitNamesOf(
   transaction: Transaction,
+  branchId: string,
   classIds: readonly string[],
   groupIds: readonly string[],
 ): Promise<VacancyFillUnit[]> {
@@ -20,6 +22,7 @@ export async function unitNamesOf(
           .selectFrom('classes')
           .select(['id', 'name', 'grade'])
           .where('id', 'in', classList)
+          .where('branch_id', '=', branchId)
           .execute();
   const groups =
     groupList.length === 0
@@ -28,6 +31,7 @@ export async function unitNamesOf(
           .selectFrom('groups')
           .select(['id', 'name'])
           .where('id', 'in', groupList)
+          .where('branch_id', '=', branchId)
           .execute();
   const groupGrades =
     groupList.length === 0
@@ -37,6 +41,8 @@ export async function unitNamesOf(
           .innerJoin('classes', 'classes.id', 'group_classes.class_id')
           .select(['group_classes.group_id', 'classes.grade'])
           .where('group_classes.group_id', 'in', groupList)
+          .where('group_classes.branch_id', '=', branchId)
+          .where('classes.branch_id', '=', branchId)
           .execute();
   return [
     ...classes.map((one) => ({
