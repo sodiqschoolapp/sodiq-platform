@@ -612,6 +612,8 @@ export const en = {
       'The other lessons this lesson was taught with are gone since it was deleted, so it cannot come back. Restore them first, if they were deleted for good too.',
     forced_delete_restore_blocked:
       'The lesson cannot come back: it would break a timetable rule, listed below. Change the lesson that took its place first.',
+    timetable_view_scope:
+      'The timetable of this class, teacher or room is not among those your role can see. Choose one from the list.',
     place_referenced:
       'This is still in use (a room on it, a lesson, a timetable entry, the history of a lesson, or a floor, room or lesson of it deleted for good in the last 30 days), so it cannot be deleted for good. Archive a building or floor, or close a room, instead.',
     forced_delete_place_parent:
@@ -3537,6 +3539,32 @@ export const en = {
     absencesLink: 'Absences',
     roomClosuresLink: 'Room closures',
     versionsLink: 'Version history',
+    // Task 5.9a.
+    viewsLink: 'Timetable views',
+    views: {
+      title: 'Timetable views',
+      nothing: 'Your role has no timetable to view in this branch.',
+      empty: 'No school days in this period.',
+      kind: 'View',
+      kind_branch: 'School',
+      kind_class: 'Class',
+      kind_teacher: 'Teacher',
+      kind_room: 'Room',
+      date: 'Date',
+      span: 'Period',
+      span_day: 'Day',
+      span_week: 'Week',
+      version: 'Version {{number}}, valid from {{date}}',
+      noVersion: 'No published timetable',
+      outsideYear: 'Outside the academic year',
+      dayOff: 'Day off: {{name}}',
+      fromPattern: 'From the weekly pattern; one-day changes not included',
+      replacedBy: 'Replaced by {{name}}',
+      busyIn: 'Busy in {{branch}}',
+      noLessons: 'No lessons',
+      lessonNumber: 'Lesson {{number}}',
+      lesson: 'Lesson',
+    },
     // Version history (task 5.8a).
     history: {
       title: 'Version history',

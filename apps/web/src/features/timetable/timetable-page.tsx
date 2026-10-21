@@ -9,8 +9,7 @@ import { useView } from '@/features/access/use-view';
  * The entry of the menu item "Timetable" (task 3.4a): a title and its links.
  * The teaching load, the draft builder (task 5.3a) and the day changes (task
  * 5.6a-1), the exams of a date (task 5.6c-2), the absences (task 5.7a-1), the version
- * history (task 5.8a); the grid and the
- * views come with phase 5.
+ * history (task 5.8a) and the timetable views (task 5.9a).
  */
 export function TimetablePage() {
   const { t } = useTranslation();
@@ -24,6 +23,15 @@ export function TimetablePage() {
       />
       {views && (
         <ul aria-label={t('timetable.title')} className="grid max-w-3xl gap-6">
+          {/* Task 5.9a: the read-only views by class, teacher, room and school. */}
+          <li className={PANEL}>
+            <Link
+              to="/timetable/views"
+              className="font-semibold text-link underline-offset-4 hover:underline"
+            >
+              {t('timetable.viewsLink')}
+            </Link>
+          </li>
           <li className={PANEL}>
             <Link
               to="/timetable/load"

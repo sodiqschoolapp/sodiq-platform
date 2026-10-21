@@ -116,7 +116,8 @@ export class TimetableViews {
         .orderBy('classes.grade')
         .orderBy('classes.name')
         .execute();
-      const teachers = await teachersOf(transaction, branchId, scope, query.date);
+      const today = await todayOf(transaction, branchId);
+      const teachers = await teachersOf(transaction, branchId, scope, query.date ?? today);
       const rooms = scope.whole
         ? await transaction
             .selectFrom('rooms')
@@ -126,7 +127,7 @@ export class TimetableViews {
             .execute()
         : [];
       return viewChoicesSchema.parse({
-        today: await todayOf(transaction, branchId),
+        today,
         branch: scope.school,
         classes: classes
           .filter((one) => scope.classes === 'all' || scope.classes.has(one.id))

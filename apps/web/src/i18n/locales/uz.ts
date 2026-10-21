@@ -627,6 +627,8 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu dars birga oʻtilgan boshqa darslar endi yoʻq, shuning uchun u qaytmaydi. Agar ular ham butunlay oʻchirilgan boʻlsa, avval ularni tiklang.',
     forced_delete_restore_blocked:
       'Dars qaytmaydi: u quyidagi jadval qoidasini buzadi. Avval uning oʻrnini egallagan darsni oʻzgartiring.',
+    timetable_view_scope:
+      'Bu sinf, oʻqituvchi yoki xona jadvali rolingizga ochiq emas. Roʻyxatdan tanlang.',
     place_referenced:
       'Bu hali ishlatilmoqda (undagi xona, dars, jadval yozuvi, dars tarixi yoki soʻnggi 30 kunda butunlay oʻchirilgan qavati, xonasi yoki darsi), shuning uchun butunlay oʻchirib boʻlmaydi. Buning oʻrniga bino yoki qavatni arxivlang yoxud xonani yoping.',
     forced_delete_place_parent:
@@ -3575,6 +3577,32 @@ export const uz: Texts<'one' | 'other'> = {
     absencesLink: 'Kelmasliklar',
     roomClosuresLink: 'Xonalarning yopilishi',
     versionsLink: 'Versiyalar tarixi',
+    // Task 5.9a.
+    viewsLink: 'Dars jadvalini koʻrish',
+    views: {
+      title: 'Dars jadvalini koʻrish',
+      nothing: 'Bu filialda rolingiz uchun koʻriladigan dars jadvali yoʻq.',
+      empty: 'Bu davrda oʻquv kunlari yoʻq.',
+      kind: 'Koʻrinish',
+      kind_branch: 'Maktab',
+      kind_class: 'Sinf',
+      kind_teacher: 'Oʻqituvchi',
+      kind_room: 'Xona',
+      date: 'Sana',
+      span: 'Davr',
+      span_day: 'Kun',
+      span_week: 'Hafta',
+      version: '{{number}}-versiya, {{date}} dan amal qiladi',
+      noVersion: 'Eʼlon qilingan dars jadvali yoʻq',
+      outsideYear: 'Oʻquv yilidan tashqari',
+      dayOff: 'Dam olish kuni: {{name}}',
+      fromPattern: 'Haftalik shablondan; bir kunlik oʻzgarishlar kiritilmagan',
+      replacedBy: 'Oʻrniga {{name}} dars oʻtadi',
+      busyIn: '{{branch}} filialida band',
+      noLessons: 'Darslar yoʻq',
+      lessonNumber: '{{number}}-dars',
+      lesson: 'Dars',
+    },
     // Version history (task 5.8a).
     history: {
       title: 'Versiyalar tarixi',

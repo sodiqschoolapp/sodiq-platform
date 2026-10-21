@@ -20,7 +20,8 @@ export type ViewSpan = (typeof VIEW_SPANS)[number];
 
 const span = z.enum(VIEW_SPANS);
 
-export const viewChoicesQuerySchema = z.object({ date: schoolDateSchema });
+/** Without a date: today in the branch, which the answer names (`today`). */
+export const viewChoicesQuerySchema = z.object({ date: schoolDateSchema.optional() });
 
 export type ViewChoicesQuery = z.infer<typeof viewChoicesQuerySchema>;
 
