@@ -597,7 +597,7 @@ export const en = {
       'The substitution needs a tick for the warnings below. Check them and save again.',
     substitution_not_in_force: 'This lesson has no substitution to withdraw. Reload the day.',
     substitution_return_blocked:
-      'The teacher the lesson goes back to has another lesson or exam at that time, or too little time to travel to it. See the list below and change that one first.',
+      'The teacher the lesson goes back to has another lesson or exam at that time, or too little time to travel to it. Change that lesson first.',
     vacancy_has_load:
       'A draft or published teaching load that can still run, or a future lesson, names this vacancy, so it cannot be closed yet. Give those rows another teacher, or close it once that load has ended.',
     vacancy_in_load:
