@@ -285,6 +285,40 @@ describe('the forced delete of a building, floor or room in the database', () =>
       expect(await exists('room', ids.room)).toBe(true);
     });
 
+    it.each(['from_room_id', 'to_room_id'] as const)(
+      'refuses a room a one-day change names in %s after its lesson was deleted for good (correction 2)',
+      async (column) => {
+        const ids = await place();
+        const other = await place();
+        const classId = await kit.load.classes.schoolClass(north, year.year, { grade: 7 });
+        // The day change stays with its lesson's id emptied (0085, on delete set null).
+        await database.migrator
+          .insertInto('lesson_day_changes')
+          .values({
+            branch_id: north,
+            lesson_id: null,
+            kind: 'room',
+            class_id: classId,
+            subject_id: subject,
+            from_date: MONDAY,
+            from_starts_at: at(MONDAY, '09:00'),
+            from_ends_at: at(MONDAY, '09:45'),
+            from_room_id: column === 'from_room_id' ? ids.room : other.room,
+            to_date: MONDAY,
+            to_starts_at: at(MONDAY, '09:00'),
+            to_ends_at: at(MONDAY, '09:45'),
+            to_room_id: column === 'to_room_id' ? ids.room : other.room,
+            reason: 'Projector broken',
+            changed_at: new Date(NOW),
+            changed_by: account,
+          })
+          .execute();
+        const failed = await refusal(forceDelete('room', ids.room));
+        expect(failed.code).toBe(FOREIGN_KEY_VIOLATION);
+        expect(await exists('room', ids.room)).toBe(true);
+      },
+    );
+
     it.each(['room_before', 'room_after'] as const)(
       'refuses a room the lesson history names in %s',
       async (column) => {
@@ -364,7 +398,7 @@ describe('the forced delete of a building, floor or room in the database', () =>
       expect(await exists('room', ids.room)).toBe(false);
     });
 
-    it('refuses the floor and the building of a room deleted for good in its 30 days', async () => {
+    it('refuses the floor of a room deleted for good in its 30 days', async () => {
       const ids = await place();
       await forceDelete('room', ids.room, { room: { id: ids.room, floor_id: ids.floor } });
       expect((await refusal(forceDelete('floor', ids.floor))).constraint).toBe('place_referenced');
@@ -490,6 +524,23 @@ describe('the forced delete of a building, floor or room in the database', () =>
   });
 
   describe('the catalog', () => {
+    it('has every key to a building, floor or room refuse the delete (no action), so each refuses a forced delete', async () => {
+      const keys = await sql<{ name: string; action: string }>`
+        select k.conname::text as name, k.confdeltype::text as action
+        from pg_constraint k
+        join pg_class ref on ref.oid = k.confrelid
+        join pg_class src on src.oid = k.conrelid
+        where k.contype = 'f' and ref.relname in ('rooms', 'floors', 'buildings')
+          and not src.relispartition
+        order by 1
+      `.execute(database.migrator);
+      // Among them the keys of the time claims (0058) and the exam rooms (0060).
+      expect(keys.rows.map((one) => one.name)).toEqual(
+        expect.arrayContaining(['time_claims_room_fkey', 'exam_rooms_room_fkey']),
+      );
+      expect(keys.rows.filter((one) => one.action !== 'a' && one.action !== 'r')).toEqual([]);
+    });
+
     /**
      * The uuid columns that name a building, floor or room without a key, each
      * read by `place_referenced` (0106); `exam_room_id` has a key to `exam_rooms`.

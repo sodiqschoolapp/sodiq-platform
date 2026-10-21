@@ -232,7 +232,9 @@ function ForcedDeletePanel({ record, language }: { record: ForcedDelete; languag
         </p>
       )}
       <FailureAlert error={restore.error} />
-      {details.length > 0 && <BlockedRules details={details} intoText={() => ''} />}
+      {record.recordType === 'lesson' && details.length > 0 && (
+        <BlockedRules details={details} intoText={() => ''} />
+      )}
       {record.restorable && !restore.isSuccess && (
         <div>
           <Button

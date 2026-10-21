@@ -98,7 +98,7 @@ const parentChanged = (
   message: string,
   code: ErrorCode = 'not_found',
 ): ApiException =>
-  new ApiException('forced_delete_parent_changed', 409, undefined, [{ path, code, message }]);
+  new ApiException('forced_delete_place_parent', 409, undefined, [{ path, code, message }]);
 
 /** Runs the deletes of a place; a key that still names it refuses the delete. */
 async function refusingReferences<T>(work: () => Promise<T>): Promise<T> {

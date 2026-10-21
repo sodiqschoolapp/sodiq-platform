@@ -212,6 +212,31 @@ describe('the deleted lessons', () => {
     expect(calls.filter((call) => call.route.endsWith('/restore'))).toHaveLength(1);
   });
 
+  it('shows the refusal of a place whose floor was archived as its own text, with no timetable rules', async () => {
+    fakeApi({
+      'GET /api/auth/session': () => json(session()),
+      'GET /api/forced-deletes': () => json({ entries: [placeRecord(1, 'room', 'Workshop 4')] }),
+      [`POST /api/forced-deletes/${uid(951)}/restore`]: () =>
+        json(
+          {
+            error: {
+              code: 'forced_delete_place_parent',
+              message: 'Refused.',
+              requestId: 'r1',
+              details: [{ path: 'floor', code: 'floor_archived', message: 'Archived.' }],
+            },
+          },
+          409,
+        ),
+    });
+    renderApp('/forced-deletes', 'en');
+    const panel = await openRow('Workshop 4', 'Workshop 4');
+    fireEvent.click(await within(panel).findByRole('button', { name: en.forcedDeletes.restore }));
+    expect(await within(panel).findByText(en.errors.forced_delete_place_parent)).not.toBeNull();
+    expect(within(panel).queryByText(en.errors.forced_delete_parent_changed)).toBeNull();
+    expect(within(panel).queryAllByRole('listitem')).toHaveLength(0);
+  });
+
   it('offers no restore on a record past its 30 days', async () => {
     fakeApi({
       'GET /api/auth/session': () => json(session()),

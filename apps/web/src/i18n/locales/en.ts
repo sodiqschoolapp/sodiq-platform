@@ -613,7 +613,9 @@ export const en = {
     forced_delete_restore_blocked:
       'The lesson cannot come back: it would break a timetable rule, listed below. Change the lesson that took its place first.',
     place_referenced:
-      'This is still in use (a room on it, a lesson, a timetable entry or the history of a lesson), so it cannot be deleted for good. Archive a building or floor, or close a room, instead.',
+      'This is still in use (a room on it, a lesson, a timetable entry, the history of a lesson, or a floor, room or lesson of it deleted for good in the last 30 days), so it cannot be deleted for good. Archive a building or floor, or close a room, instead.',
+    forced_delete_place_parent:
+      'It cannot come back: the building or floor it was in was archived or deleted for good since. Restore that building or floor first, then this.',
     journal_substitute_none:
       'No lesson of the journal in this period can take this substitute. The dates and their reasons are listed; choose another teacher.',
     vacancy_has_load:

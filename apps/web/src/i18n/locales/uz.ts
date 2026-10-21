@@ -628,7 +628,9 @@ export const uz: Texts<'one' | 'other'> = {
     forced_delete_restore_blocked:
       'Dars qaytmaydi: u quyidagi jadval qoidasini buzadi. Avval uning oʻrnini egallagan darsni oʻzgartiring.',
     place_referenced:
-      'Bu hali ishlatilmoqda (undagi xona, dars, jadval yozuvi yoki dars tarixi), shuning uchun butunlay oʻchirib boʻlmaydi. Buning oʻrniga bino yoki qavatni arxivlang yoxud xonani yoping.',
+      'Bu hali ishlatilmoqda (undagi xona, dars, jadval yozuvi, dars tarixi yoki soʻnggi 30 kunda butunlay oʻchirilgan qavati, xonasi yoki darsi), shuning uchun butunlay oʻchirib boʻlmaydi. Buning oʻrniga bino yoki qavatni arxivlang yoxud xonani yoping.',
+    forced_delete_place_parent:
+      'Qaytarib boʻlmaydi: u joylashgan bino yoki qavat shundan beri arxivlangan yoki butunlay oʻchirilgan. Avval oʻsha bino yoki qavatni tiklang.',
     journal_substitute_none:
       'Bu davrda jurnalning hech bir darsi bu oʻrinbosarni ololmaydi. Sanalar va sabablari koʻrsatilgan; boshqa oʻqituvchini tanlang.',
     vacancy_has_load:

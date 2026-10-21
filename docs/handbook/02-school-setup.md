@@ -201,5 +201,5 @@ Not built yet: the mark on the timetable itself (task 5.4a).
 
 **What the person sees.**
 
-- When the record is in use: "This is still in use (a room on it, a lesson, a timetable entry or the history of a lesson), so it cannot be deleted for good. Archive a building or floor, or close a room, instead."
-- When the floor or building it belonged to was archived or deleted since: the restore is refused and says so.
+- When the record is in use: "This is still in use (a room on it, a lesson, a timetable entry, the history of a lesson, or a floor, room or lesson of it deleted for good in the last 30 days), so it cannot be deleted for good. Archive a building or floor, or close a room, instead."
+- When the building or floor it was in was archived or deleted since: "It cannot come back: the building or floor it was in was archived or deleted for good since. Restore that building or floor first, then this."

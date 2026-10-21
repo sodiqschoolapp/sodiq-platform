@@ -128,6 +128,21 @@ describe('the forced delete of a building, floor or room and its restore', () =>
     return (await place(branch)).room;
   }
 
+  /** The store row of a record put past its 30 days; answers its end before. */
+  async function expire(recordId: string): Promise<Date> {
+    const row = await t.database.migrator
+      .selectFrom('forced_deletes')
+      .select('restore_until')
+      .where('record_id', '=', recordId)
+      .executeTakeFirstOrThrow();
+    await t.database.migrator
+      .updateTable('forced_deletes')
+      .set({ restore_until: new Date(START) })
+      .where('record_id', '=', recordId)
+      .execute();
+    return row.restore_until;
+  }
+
   const rowOf = (kind: Kind, id: string) =>
     t.database.migrator.selectFrom(PATHS[kind]).selectAll().where('id', '=', id).executeTakeFirst();
 
@@ -526,7 +541,7 @@ describe('the forced delete of a building, floor or room and its restore', () =>
         .where('id', '=', ids.building)
         .execute();
       const refused = await restore(t.north, active);
-      refusedWith(refused, 409, 'forced_delete_parent_changed');
+      refusedWith(refused, 409, 'forced_delete_place_parent');
       expect(detailsOf(refused)).toMatchObject([{ path: 'building', code: 'archived_record' }]);
       expect(await rowOf('floor', ids.floor)).toBeUndefined();
       done(await restore(t.north, archived));
@@ -542,10 +557,42 @@ describe('the forced delete of a building, floor or room and its restore', () =>
         .where('id', '=', ids.floor)
         .execute();
       const refused = await restore(t.north, store);
-      refusedWith(refused, 409, 'forced_delete_parent_changed');
+      refusedWith(refused, 409, 'forced_delete_place_parent');
       expect(detailsOf(refused)).toMatchObject([{ path: 'floor', code: 'floor_archived' }]);
       expect(await rowOf('room', ids.room)).toBeUndefined();
     });
+
+    it.each(['room', 'floor'] as const)(
+      'is refused for a %s whose parent was deleted for good since',
+      async (kind) => {
+        const ids = await place();
+        if (kind === 'floor') {
+          done(await forceDelete(t.north, 'room', ids.room));
+          await expire(ids.room);
+        }
+        const child = kind === 'room' ? ids.room : ids.floor;
+        const store = done(await forceDelete(t.north, kind, child)).id;
+        // The child's store row names its parent for 30 days (decision 2); the
+        // fixture lets the parent go and gives the row its days back.
+        const until = await expire(child);
+        if (kind === 'room') {
+          done(await forceDelete(t.north, 'floor', ids.floor));
+        } else {
+          done(await forceDelete(t.north, 'building', ids.building));
+        }
+        await t.database.migrator
+          .updateTable('forced_deletes')
+          .set({ restore_until: until })
+          .where('id', '=', store)
+          .execute();
+        const refused = await restore(t.north, store);
+        refusedWith(refused, 409, 'forced_delete_place_parent');
+        expect(detailsOf(refused)).toMatchObject([
+          { path: kind === 'room' ? 'floor' : 'building', code: 'not_found' },
+        ]);
+        expect(await rowOf(kind, child)).toBeUndefined();
+      },
+    );
 
     it('is refused when a closed room took the name since', async () => {
       const ids = await place();
@@ -609,6 +656,41 @@ describe('the forced delete of a building, floor or room and its restore', () =>
   });
 
   describe('at the same moment (database point 4)', () => {
+    it("a lesson's forced delete holds its room: it waits for a room held for update, without the publish lock (4b and lessons_hold_room)", async () => {
+      const s = await publishedScene(t, load);
+      const ids = await place(s.branch);
+      const lesson = await lessonIn(s, '2026-10-19', ids.room);
+      let release: () => void = () => undefined;
+      const released = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let ready: () => void = () => undefined;
+      const isReady = new Promise<void>((resolve) => {
+        ready = resolve;
+      });
+      // The room held as its forced delete holds it, without the publish lock.
+      const held = t.app
+        .get(Transactions)
+        .run([s.branch], async (transaction: Transaction) => {
+          await sql`select id from rooms where id = ${ids.room} for update`.execute(transaction);
+          ready();
+          await released;
+        })
+        .catch((error: unknown) => error);
+      await isReady;
+      const deleting = keyed(
+        `/api/timetable/lessons/${lesson}/forced-delete`,
+        s.branch,
+        { reason: 'Entered twice' },
+        t.admin,
+        randomUUID(),
+      ).then((response) => response);
+      await expect.poll(() => waiting(), { timeout: 20_000, interval: 25 }).toBe(1);
+      release();
+      expect(await held).toBeUndefined();
+      expect((await deleting).status).toBe(200);
+    });
+
     it('a room and a lesson in it deleted for good: either order leaves the room, refused', async () => {
       for (const roomFirst of [true, false]) {
         const s = await publishedScene(t, load);

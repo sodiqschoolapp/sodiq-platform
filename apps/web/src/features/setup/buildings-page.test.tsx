@@ -468,6 +468,25 @@ describe('the buildings page', () => {
     ).toBeDefined();
   });
 
+  it('deletes a building with no room for good and says so in its panel', async () => {
+    await openList(superAdmin(), [MAIN, ANNEX], {
+      [`POST /api/setup/buildings/${ANNEX.id}/forced-delete`]: () =>
+        json(forcedAnswer(ANNEX.id, 'Annex')),
+    });
+    fireEvent.click(rowButton('Annex'));
+    const panel = await screen.findByRole('complementary', { name: 'Annex' });
+    fireEvent.click(within(panel).getByRole('button', { name: en.forcedDeletes.deletePlace }));
+    const dialog = await screen.findByRole('dialog');
+    type(within(dialog).getByLabelText(en.forcedDeletes.reason), 'Never built');
+    fireEvent.click(within(dialog).getByRole('button', { name: en.forcedDeletes.send }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+    expect(
+      await screen.findByText(en.forcedDeletes.placeDone.replace('{{name}}', 'Annex')),
+    ).toBeDefined();
+  });
+
   it('shows the refusal of a building in use as its text', async () => {
     await openList(superAdmin(), [MAIN, ANNEX], {
       [`POST /api/setup/buildings/${ANNEX.id}/forced-delete`]: () =>
