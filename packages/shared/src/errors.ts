@@ -809,6 +809,8 @@ export const ERROR_CODES = [
   'place_referenced',
   /** The building or floor a deleted place belonged to was archived or deleted for good since, so it has nothing to come back into; the details name which (task 5.8c, spec review of the code). */
   'forced_delete_place_parent',
+  /** The class, teacher or room is of the branch but outside what the role may see of the timetable (06, Views and outputs; task 5.9a, decision 4). */
+  'timetable_view_scope',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

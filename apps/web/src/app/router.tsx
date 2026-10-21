@@ -60,6 +60,8 @@ import { RoomsPage, roomsSearch } from '@/features/setup/rooms-page';
 import { SetupPage } from '@/features/setup/setup-page';
 import { listSearch } from '@/components/list/list-state';
 import { SignInPage } from '@/features/auth/sign-in-page';
+import { ViewsPage } from '@/features/timetable/views-page';
+import { viewsSearch } from '@/features/timetable/views-search';
 import { AppLayout } from './app-layout';
 import { useMayView } from '@/features/access/use-view';
 import { AuthPendingPage, ErrorPage, NoAccessPage, NotFoundPage, PendingPage } from './pages';
@@ -338,6 +340,14 @@ const roomClosuresRoute = createRoute({
   component: guarded('timetable', RoomClosuresPage),
 });
 
+/** The read-only timetable views by class, teacher, room and school (task 5.9a). */
+const viewsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/timetable/views',
+  validateSearch: viewsSearch,
+  component: guarded('timetable_views', ViewsPage),
+});
+
 /** Version history (task 5.8a). */
 const versionsRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -537,6 +547,7 @@ const routeTree = rootRoute.addChildren([
     absencesRoute,
     roomClosuresRoute,
     versionsRoute,
+    viewsRoute,
     loadRoute,
     peopleRoute,
     staffRoute,

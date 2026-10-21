@@ -152,4 +152,17 @@ describe('the menu a role sees', () => {
     expect(visibleMenu('tutor', EVERYTHING, table)).not.toContain('journal');
     expect(visibleMenu('tutor', EVERYTHING, table)).toContain('timetable');
   });
+
+  // Task 5.9a, decision 2 of pull request #197: the views of lessons open
+  // "Timetable" for the roles that see no draft.
+  it('shows an item to a role that views one of its areas only', () => {
+    const table = freezeTable({
+      timetable: rowsWith(['principal']),
+      timetable_views: rowsWith(['teacher']),
+    } as const satisfies PermissionTable);
+
+    expect(visibleMenu('teacher', EVERYTHING, table)).toContain('timetable');
+    expect(visibleMenu('principal', EVERYTHING, table)).toContain('timetable');
+    expect(visibleMenu('tutor', EVERYTHING, table)).not.toContain('timetable');
+  });
 });

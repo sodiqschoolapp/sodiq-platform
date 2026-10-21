@@ -434,6 +434,8 @@ const MESSAGE: Record<ErrorCode, string> = {
   forced_delete_block_gone: 'The block of the deleted lesson is gone since.',
   forced_delete_restore_blocked: 'The restored lesson would break a timetable rule.',
   place_referenced: 'The building, floor or room is in use; archive or close it instead.',
+  timetable_view_scope:
+    'The timetable of this class, teacher or room is outside what the role may see.',
   forced_delete_place_parent:
     'The building or floor of the deleted place was archived or deleted since.',
   vacancy_has_load: 'A load row that can still run, or a future lesson, names the vacancy.',

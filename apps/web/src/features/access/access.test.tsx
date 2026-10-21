@@ -46,8 +46,11 @@ vi.mock('./menu-pages', async (importOriginal) => {
   return { ...actual, BUILT_PAGES: pages, BUILT_ITEMS: new Set(MENU_ITEMS) };
 });
 
-/** The roles whose menu row has "Timetable" without the area (task 3.4a, decision 4). */
-const WITHOUT_TIMETABLE: ReadonlySet<Role> = new Set([
+/**
+ * The roles whose menu row has "Timetable" without the area `timetable` (task
+ * 3.4a, decision 4): since task 5.9a (decision 2) their item opens the views.
+ */
+const VIEWS_ONLY: ReadonlySet<Role> = new Set([
   'spiritual_vice_principal',
   'head_tutor',
   'tutor',
@@ -89,14 +92,17 @@ describe('the menu and the home page of each role', () => {
 
     await heading(en.home.title);
     const links = side().getAllByRole('link');
-    // The row of the table, less "Timetable" for the six roles whose views of
-    // lessons come with 5.9: the area `timetable` (task 3.4a, decision 4) is
-    // the Super Admin's, the Principal's and the Academic Vice Principal's.
-    expect(links.map((link) => link.textContent)).toEqual(
-      MENU[role]
-        .filter((item) => item !== 'timetable' || !WITHOUT_TIMETABLE.has(role))
-        .map((item) => en.menu[item]),
-    );
+    // The row of the table. "Timetable" of the six roles that see no draft
+    // opens the timetable views (task 5.9a, decision 2): the area `timetable`
+    // (task 3.4a, decision 4) is the Super Admin's, the Principal's and the
+    // Academic Vice Principal's.
+    expect(links.map((link) => link.textContent)).toEqual(MENU[role].map((item) => en.menu[item]));
+    const timetable = links.find((link) => link.textContent === en.menu.timetable);
+    // The pages of this test stand in for the built ones; the views of a role
+    // with no draft are its own address.
+    if (VIEWS_ONLY.has(role)) {
+      expect(timetable?.getAttribute('href')).toBe('/timetable/views');
+    }
     // The current page is marked for a screen reader as well as by its fill
     // (docs/design-system.md, Layout shell, Menu; pull request #61, decision 9).
     expect(links.filter((link) => link.getAttribute('aria-current') === 'page')).toEqual([

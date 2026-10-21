@@ -70,8 +70,17 @@ const placeAt = async (
   expect(placed.status, JSON.stringify(placed.body)).toBe(201);
 };
 
-async function teacherOf(t: DayTemplatesKit, load: LoadKit, branch: string, subject: string) {
-  const teacher = await load.teacher(branch, { subjects: [{ subject, grades: [7] }] });
+async function teacherOf(
+  t: DayTemplatesKit,
+  load: LoadKit,
+  branch: string,
+  subject: string,
+  accountId?: string,
+) {
+  const teacher = await load.teacher(branch, {
+    subjects: [{ subject, grades: [7] }],
+    ...(accountId === undefined ? {} : { accountId }),
+  });
   await hoursOf(t, branch, teacher.staffId);
   return teacher;
 }
@@ -82,12 +91,17 @@ async function teacherOf(t: DayTemplatesKit, load: LoadKit, branch: string, subj
  * with a home room, and a version published from Monday 12 October: maths
  * of each class on Monday in the first slot with a teacher of its own;
  * with `double`, the first class's maths a double lesson in the first and
- * second slots.
+ * second slots. `accounts` links the teacher or the spare teacher to a
+ * signed-in account (task 5.9a: a teacher reading their own timetable).
  */
 export async function publishedScene(
   t: DayTemplatesKit,
   load: LoadKit,
-  input: { branch?: string; double?: boolean } = {},
+  input: {
+    branch?: string;
+    double?: boolean;
+    accounts?: { readonly teacher?: string; readonly spare?: string };
+  } = {},
 ) {
   const branch = input.branch ?? (await t.newBranch());
   const year = await load.classes.year(branch);
@@ -108,9 +122,9 @@ export async function publishedScene(
   const otherRoom = await load.classes.room(branch);
   const classId = await load.classes.schoolClass(branch, year, { grade: 7, room });
   const otherClass = await load.classes.schoolClass(branch, year, { grade: 7, room: otherRoom });
-  const teacher = await teacherOf(t, load, branch, subject);
+  const teacher = await teacherOf(t, load, branch, subject, input.accounts?.teacher);
   const otherTeacher = await teacherOf(t, load, branch, subject);
-  const spareTeacher = await teacherOf(t, load, branch, subject);
+  const spareTeacher = await teacherOf(t, load, branch, subject, input.accounts?.spare);
   const created = await t.post('/api/timetable/versions', branch, {
     academicYearId: year,
     startsOn: MONDAY,

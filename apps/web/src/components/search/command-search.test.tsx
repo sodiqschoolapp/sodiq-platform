@@ -60,8 +60,10 @@ describe('the search of pages', () => {
     await waitFor(() => {
       expect(document.activeElement).toBe(box());
     });
+    // The teacher's "Timetable" opens the timetable views (task 5.9a, decision 2).
     expect(optionNames()).toEqual([
       en.home.title,
+      en.menu.timetable,
       en.account.title,
       en.password.titleOwn,
       en.sample.title,
@@ -199,10 +201,13 @@ describe('the search of pages', () => {
     await dialog();
 
     fireEvent.keyDown(box(), { key: 'ArrowDown' });
-    const second = screen.getByRole('option', { name: en.account.title });
+    // The teacher's second page is "Timetable" (task 5.9a, decision 2).
+    const second = screen.getByRole('option', { name: en.menu.timetable });
     expect(second.getAttribute('aria-selected')).toBe('true');
     expect(box().getAttribute('aria-activedescendant')).toBe(second.id);
     // Not past the last page, not before the first.
+    fireEvent.keyDown(box(), { key: 'ArrowDown' });
+    fireEvent.keyDown(box(), { key: 'ArrowDown' });
     fireEvent.keyDown(box(), { key: 'ArrowDown' });
     fireEvent.keyDown(box(), { key: 'ArrowDown' });
     expect(
@@ -212,9 +217,11 @@ describe('the search of pages', () => {
     fireEvent.keyDown(box(), { key: 'ArrowUp' });
     fireEvent.keyDown(box(), { key: 'ArrowUp' });
     fireEvent.keyDown(box(), { key: 'ArrowUp' });
+    fireEvent.keyDown(box(), { key: 'ArrowUp' });
     expect(screen.getByRole('option', { name: en.home.title }).getAttribute('aria-selected')).toBe(
       'true',
     );
+    fireEvent.keyDown(box(), { key: 'ArrowDown' });
     fireEvent.keyDown(box(), { key: 'ArrowDown' });
     fireEvent.keyDown(box(), { key: 'ArrowDown' });
 
@@ -242,7 +249,7 @@ describe('the search of pages', () => {
     pressShortcut();
     await dialog();
     expect(box().value).toBe('');
-    expect(optionNames()).toHaveLength(4);
+    expect(optionNames()).toHaveLength(5);
   });
 
   // The side panel of a list closes on Escape unless a dialog took the key (0.8b-1).

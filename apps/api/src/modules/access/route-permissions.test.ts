@@ -120,6 +120,19 @@ const HISTORY_READERS: readonly Role[] = [
   'head_teacher',
 ];
 
+/** The nine roles of the area `timetable_views` (task 5.9a, decision 2). */
+const VIEW_READERS: readonly Role[] = [
+  'super_admin',
+  'principal',
+  'academic_vice_principal',
+  'spiritual_vice_principal',
+  'head_tutor',
+  'tutor',
+  'senior_head_teacher',
+  'head_teacher',
+  'teacher',
+];
+
 const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'GET /api/health': 'public',
   'POST /api/auth/sign-in': 'public',
@@ -629,6 +642,13 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     branch: 'request',
     roles: ['super_admin', 'principal', 'academic_vice_principal'],
   },
+  // Task 5.9a: the read-only timetable views (timetable_views); the scope of
+  // each role is the route's own, tested in views.test.ts.
+  'GET /api/timetable/views/choices': { branch: 'request', roles: VIEW_READERS },
+  'GET /api/timetable/views/branch': { branch: 'request', roles: VIEW_READERS },
+  'GET /api/timetable/views/class': { branch: 'request', roles: VIEW_READERS },
+  'GET /api/timetable/views/teacher': { branch: 'request', roles: VIEW_READERS },
+  'GET /api/timetable/views/room': { branch: 'request', roles: VIEW_READERS },
   // Task 5.7b-2: the substitution per journal from an absence or a vacancy, under timetable edit.
   'GET /api/timetable/absences/:id/journals/:journalId/substitutes': {
     branch: 'request',

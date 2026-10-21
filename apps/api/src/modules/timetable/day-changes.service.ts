@@ -1298,7 +1298,7 @@ export async function longestDayOn(
 }
 
 /** The lesson slots of the day of each grade on a date, in the order of the grades. */
-async function gradeSlotsOn(
+export async function gradeSlotsOn(
   transaction: Transaction,
   branchId: string,
   grades: readonly number[],

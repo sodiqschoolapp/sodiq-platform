@@ -27,8 +27,10 @@ import { ActingTeachersController } from './acting-teachers.controller.js';
 import { ActingTeachers } from './acting-teachers.service.js';
 import { LessonForcedDeletesController } from './forced-deletes.controller.js';
 import { LessonForcedDeletes, LessonHistoryReader } from './forced-deletes.service.js';
+import { TimetableViewsController } from './views.controller.js';
+import { TimetableViews } from './views.service.js';
 
-/** Draft timetable versions, their teaching load (task 3.4a) and the grid of their pattern (task 5.4a) publish (task 5.5a-1) bringing a draft up to date (tasks 5.5a-3b-1 and 5.5a-3b-2) one-day changes (task 5.6a-1), the bulk cancel (task 5.6a-3) exams (task 5.6c-1) the vacancy fill (task 5.7a-3a) and the acting teacher (task 5.7a-3c). */
+/** Draft timetable versions, their teaching load (task 3.4a) and the grid of their pattern (task 5.4a) publish (task 5.5a-1) bringing a draft up to date (tasks 5.5a-3b-1 and 5.5a-3b-2) one-day changes (task 5.6a-1), the bulk cancel (task 5.6a-3) exams (task 5.6c-1) the vacancy fill (task 5.7a-3a) and the acting teacher (task 5.7a-3c), and the read-only views (task 5.9a). */
 @Module({
   imports: [NotificationsModule],
   controllers: [
@@ -43,9 +45,11 @@ import { LessonForcedDeletes, LessonHistoryReader } from './forced-deletes.servi
     VacancyFillsController,
     ActingTeachersController,
     LessonForcedDeletesController,
+    TimetableViewsController,
   ],
   providers: [
     Timetable,
+    TimetableViews,
     TimetablePattern,
     TimetablePublish,
     TimetableUpToDate,

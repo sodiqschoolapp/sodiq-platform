@@ -377,7 +377,8 @@ export class Timetable {
       const named = [];
       for (const quarter of quarters) {
         if (quarter.start_date === null) continue;
-        const inForce = await versionOnDate(transaction, branchId, year.id, quarter.start_date);
+        const inForce = (await versionOnDate(transaction, branchId, year.id, quarter.start_date))
+          ?.id;
         const version = versions.find((one) => one.id === inForce);
         named.push({
           number: quarter.number,

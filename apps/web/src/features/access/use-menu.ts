@@ -19,6 +19,10 @@ export function useMenuPages(): MenuPage[] {
       ) {
         return [];
       }
+      // Task 5.9a (decision 2): "Timetable" of a role that sees no draft opens the views.
+      if (item === 'timetable' && !permits(PERMISSIONS, role, 'timetable', 'view')) {
+        return [{ ...page, to: '/timetable/views' as const }];
+      }
       return [page];
     });
   }, [role]);

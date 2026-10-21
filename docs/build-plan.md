@@ -922,12 +922,23 @@ How to read the task lines:
   - Build: the Super Admin's forced delete of a building, floor or room that nothing references, with a reason, an audit entry and 30 days to restore, on the store and restore of 5.8b (not a second mechanism); a referenced one stays archive-only.
   - From 2.7 (pull request #77, decision 2; issue #39, item 6): the same forced delete for a building, floor or room that nothing references (`03`, Building, floor, room; spec change of 13 October 2026), with a reason, an audit entry and 30 days to restore; a referenced one stays archive-only.
 
-- [ ] **5.9 Timetable views, print and export**
-  - Read: `06` (Views and outputs), `edge/system-behaviour`.
-  - Build: teacher, class, room and branch views; the teacher home page with today's lessons from all branches; the version number and "valid from" on prints; PDF and Excel export.
-  - Done when: exported PDFs show Uzbek Latin and Cyrillic correctly.
+- [x] **5.9a Timetable views** (5.9 split in three, pull request #197, decision 1, Look first)
+  - Read: `06` (Views and outputs, Teachers who work in several branches, How surprises are prevented), `02`, `edge/timetable` (Structure, Exams).
+  - Build: class, teacher, room and branch views by day and by week from the dated lessons, in the scope of each role; the "changed" mark; exams marked "exam"; the version in force and its "valid from"; a teacher's lessons in other branches as grey blocks; a clock axis on teacher and room views when more than one template is in force.
+  - Done when: each role's scope of `06`, Views and outputs, has an allow and a refuse test, and the changed mark and an exam are shown on every view that holds the lesson or exam.
   - From 5.5c-3a (pull request #158, decision 2): the "changed" mark shown on the class, teacher, room and branch views and on the teacher home page (`06`, How surprises are prevented: "Changed lessons carry a 'changed' mark on every timetable view for a week"): a lesson is marked while `isMarkedChanged` (`packages/shared/src/timetable.ts`) is true for its `lesson_changes.changed_at` (0084) and the clock of the request.
-  - From 5.6c-1 (pull request #181, decision 15): `06`, Exam: "It is shown on every timetable view and printout, marked 'exam'"; `edge/timetable`, Exams, "Who sees exams, and what they count for": "Every timetable view and print shows exams for its class, teacher or room ... Invigilations are listed in the load report apart from lessons and count for no journal, no plan and no discipline figure." The exams are read by `GET timetable/exams` (`examsOf`, `exams.service.ts`); 5.6c-2 shows them on the class day page only.
+  - From 5.6c-1 (pull request #181, decision 15): `06`, Exam: "It is shown on every timetable view and printout, marked 'exam'"; `edge/timetable`, Exams, "Who sees exams, and what they count for": "Every timetable view and print shows exams for its class, teacher or room ... Invigilations are listed in the load report apart from lessons and count for no journal, no plan and no discipline figure." The exams are read by `GET timetable/exams` (`examsOf`, `exams.service.ts`); 5.6c-2 shows them on the class day page only. The print half goes to 5.9c; the load report half to 9.3b (pull request #197, decision 3, Look first).
+
+- [ ] **5.9b Teacher home page** (5.9 split in three, pull request #197, decision 1)
+  - Read: `06` (Views and outputs, Teachers who work in several branches: Home page), `08` (Home pages by role).
+  - Build: the home page of every role that teaches (Teacher, Head Teacher, Senior Head Teacher, Tutor): today's lessons from all branches together in time order, each labelled with its branch (period, time, class or group, subject, room, the journal button once 6.2 exists), and the week as a table; the changed mark; exams the person invigilates. Needs one cross-branch read of the person's own lessons, which carries class, subject and room names of another branch (a `SECURITY DEFINER` function in a migration of its own).
+  - Done when: a teacher of two branches sees both branches' lessons of today in time order, each with its branch, with no branch switch.
+
+- [ ] **5.9c Print, PDF and Excel** (5.9 split in three, pull request #197, decision 1)
+  - Read: `06` (Views and outputs, How surprises are prevented: One source), `edge/timetable` ("The wall timetable is out of date"), `edge/system-behaviour`.
+  - Build: print, PDF and Excel of one class, one teacher, one room or the whole school, in the scope of 5.9a; a printed pattern carries the version, "valid from", the print time and "one-day changes not included"; a printed day or week includes them with an "as of" time; a draft print is marked DRAFT; every export logged and following the role; PDFs made on the server. Only the PDF library is a new dependency (Look first): the font is decided already, the Golos Text files (`docs/decisions.md`, "Decided ahead for tasks 2.2d and 2.7", approval 1: "The PDFs made on the server later use the same Golos Text files").
+  - Done when: exported PDFs show Uzbek Latin and Cyrillic correctly.
+  - From 5.6c-1 (pull request #181, decision 15; the print half, pull request #197): `06`, Exam: "It is shown on every timetable view and printout, marked 'exam'"; `edge/timetable`, Exams, "Who sees exams": "Every timetable view and print shows exams for its class, teacher or room".
 
 - [ ] **5.12 Timetable end-to-end tests**
   - Read: `14` (Timetable).
@@ -1219,6 +1230,7 @@ Decided by the owner on 20 October 2026: automatic generation (5.10 and 5.11) is
   - Read: `08` (Analytics in Release 1).
   - Build: each report in the table with its filters and export; prepared totals with "updated at".
   - Done when: a report that is behind the journal shows "updating" and then the right figure.
+  - From 5.9a (pull request #197, decision 3, Look first; the load report half of the From line of 5.6c-1): `edge/timetable`, Exams, "Who sees exams, and what they count for": "Invigilations are listed in the load report apart from lessons and count for no journal, no plan and no discipline figure." The exams are read by `GET timetable/exams` (`examsOf`, `exams.service.ts`).
 
 - [ ] **9.5a Closing the year**
   - Read: `edge/academic-year`.

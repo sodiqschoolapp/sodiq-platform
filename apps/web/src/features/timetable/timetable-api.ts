@@ -72,6 +72,10 @@ import {
   journalSubstitutesAnswerSchema,
   type AbsenceJournalSubstituteBody,
   type VacancyJournalSubstituteBody,
+  timetableViewSchema,
+  viewChoicesSchema,
+  type ViewKind,
+  type ViewSpan,
 } from '@sodiq/shared';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { api, branchHeader } from '@/api/client';
@@ -952,4 +956,52 @@ export const lessonHistoryQuery = (branchId: string | null, lessonId: string | n
         ),
       ),
     enabled: branchId !== null && lessonId !== null,
+  });
+
+/** What the role may open in the timetable views on a date, today without one (task 5.9a). */
+export const viewChoicesQuery = (branchId: string | null, date: string | null) =>
+  queryOptions({
+    queryKey: [...timetableKey(branchId), 'view-choices', date],
+    queryFn: async () =>
+      viewChoicesSchema.parse(
+        await answerOf(
+          api.GET('/api/timetable/views/choices', {
+            params: { header: branchHeader(), query: date === null ? {} : { date } },
+          }),
+        ),
+      ),
+    enabled: branchId !== null,
+  });
+
+/** A timetable view of the school, a class, a teacher or a room, by day or week (task 5.9a). */
+export const timetableViewQuery = (
+  branchId: string | null,
+  input: { kind: ViewKind; id: string | null; date: string | null; span: ViewSpan },
+) =>
+  queryOptions({
+    queryKey: [...timetableKey(branchId), 'view', input.kind, input.id, input.date, input.span],
+    queryFn: async () => {
+      const date = input.date ?? '';
+      const id = input.id ?? '';
+      const header = branchHeader();
+      const answer =
+        input.kind === 'branch'
+          ? api.GET('/api/timetable/views/branch', {
+              params: { header, query: { date, span: input.span } },
+            })
+          : input.kind === 'class'
+            ? api.GET('/api/timetable/views/class', {
+                params: { header, query: { date, span: input.span, classId: id } },
+              })
+            : input.kind === 'teacher'
+              ? api.GET('/api/timetable/views/teacher', {
+                  params: { header, query: { date, span: input.span, staffId: id } },
+                })
+              : api.GET('/api/timetable/views/room', {
+                  params: { header, query: { date, span: input.span, roomId: id } },
+                });
+      return timetableViewSchema.parse(await answerOf(answer));
+    },
+    enabled:
+      branchId !== null && input.date !== null && (input.kind === 'branch' || input.id !== null),
   });

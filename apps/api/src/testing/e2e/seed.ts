@@ -4197,6 +4197,20 @@ try {
     .execute();
   seeded.versionHistory = { login: historyVice.login, password: historyVice.firstPassword };
 
+  // The timetable views (task 5.9a): the publishable scene in a branch of its
+  // own; the browser test publishes, cancels 7 Oxford's Monday lesson for the
+  // day with a reason, and finds it in the class's week and on the school
+  // view of Timetable views, "Cancelled" and "Changed".
+  const viewsVice = await gridScene({
+    branch: 'Timetable views browser test branch',
+    vice: ['Lola', 'Ahmedova'],
+    staffId: 'S-269365',
+    phone: '+998935557355',
+    rooms: [],
+    publishable: true,
+  });
+  seeded.timetableViews = { login: viewsVice.login, password: viewsVice.firstPassword };
+
   // The forced delete of a lesson (task 5.8b): the publishable scene in a
   // branch of its own. The forced delete is the Super Admin's only, and the
   // seed holds no fourth Super Admin (at most three, correction 1 of the
