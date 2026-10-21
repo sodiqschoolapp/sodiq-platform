@@ -51320,8 +51320,8 @@ export interface operations {
     };
     TimetableViewsController_choices: {
         parameters: {
-            query: {
-                date: string;
+            query?: {
+                date?: string;
             };
             header: {
                 "X-Branch-Id": string;
