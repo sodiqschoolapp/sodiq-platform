@@ -172,3 +172,34 @@ Not built yet: the mark on the timetable itself (task 5.4a).
 - In the preview, under what stops the save: "The new dates cannot be saved: a held lesson keeps its quarter, an exam is cancelled or moved first, and a one-day move keeps its two dates in one quarter."
 - Over held lessons in the way: "These quarter dates would move lessons of today or earlier to another quarter, or out of every quarter. Only future dates can change quarter: keep the dates of the lessons listed."
 - Over exams outside the year: "An exam of this year would lie outside the new dates. Keep the year around the exam, or change the exam first."
+
+## Deleting a building, floor or room for good
+
+<!-- Sources: spec 03 (Building, floor, room: "The Super Admin's forced delete (06) also removes a building, floor or room that no lesson, timetable entry or other record references, with a reason, an audit entry and 30 days to restore; a referenced one stays archive-only."), 06 (Protection: "Forced delete is for Super Admin only, with a typed reason."); task 5.8c, pull request #196, decisions 1 to 11 and plan review corrections 1 to 3 -->
+
+**What it is.** A building, floor or room added by mistake can be deleted for good when nothing uses it. It is kept for 30 days on the page **Deleted for good** (**Butunlay oʻchirilganlar**) and can be restored there, with the same name and values. Anything in use is archived instead (a building or a floor) or closed (a room).
+
+**Who can use it.**
+
+| Role | What the role may do | Where |
+| --- | --- | --- |
+| Super Admin | Delete a building, floor or room for good; restore it | Every branch |
+| Every other role | Nothing | |
+
+**How it works.**
+
+1. School setup → **Rooms** (**Xonalar**), open the room, press **Delete for good** (**Butunlay oʻchirish**), type the reason and press **Delete for good**.
+2. For a building or a floor: School setup → **Buildings** (**Binolar**), open the building. **Delete for good** is at the bottom when no room is on any of its floors, and beside each floor that has no room. A building takes its floors with it.
+3. To bring it back: School setup → **Deleted for good**, open the record and press **Restore** (**Tiklash**) while its 30 days last.
+
+**Rules.**
+
+- "In use" means a room on it, a lesson (today's, a past one or a future one), a timetable entry of any version, a class's home room, a room closure, an exam, a one-day room change, the history of a lesson, or a lesson deleted for good in the last 30 days. A room that ever held a lesson stays in its history and can only be closed.
+- A building or floor cannot be deleted for good within 30 days of deleting one of its floors or rooms for good: the deleted floor or room still names it.
+- A restore checks again what adding the record checks: the name is free, the building of a floor is in use when the floor comes back in use, and the floor of a room is in use. An archived building or floor comes back archived.
+- Nobody is told: no lesson, teacher or class changes. The audit log records the delete with its reason, and the restore.
+
+**What the person sees.**
+
+- When the record is in use: "This is still in use (a room on it, a lesson, a timetable entry, the history of a lesson, or a floor, room or lesson of it deleted for good in the last 30 days), so it cannot be deleted for good. Archive a building or floor, or close a room, instead."
+- When the building or floor it was in was archived or deleted since: "It cannot come back: the building or floor it was in was archived or deleted for good since. Restore that building or floor first, then this."

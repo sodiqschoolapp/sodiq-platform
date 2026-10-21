@@ -621,6 +621,10 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'POST /api/timetable/lessons/:id/forced-delete': { branch: 'request', roles: ['super_admin'] },
   'GET /api/forced-deletes': { branch: 'request', roles: ['super_admin'] },
   'POST /api/forced-deletes/:id/restore': { branch: 'request', roles: ['super_admin'] },
+  // Task 5.8c: the forced delete of a building, floor or room (forced_deletes).
+  'POST /api/setup/buildings/:id/forced-delete': { branch: 'request', roles: ['super_admin'] },
+  'POST /api/setup/floors/:id/forced-delete': { branch: 'request', roles: ['super_admin'] },
+  'POST /api/setup/rooms/:id/forced-delete': { branch: 'request', roles: ['super_admin'] },
   'GET /api/timetable/lessons/:id/history': {
     branch: 'request',
     roles: ['super_admin', 'principal', 'academic_vice_principal'],

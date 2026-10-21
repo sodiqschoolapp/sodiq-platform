@@ -52,6 +52,7 @@ export function BuildingsPage() {
   const newRecord = useNewRecord();
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const canEdit = role !== null && permits(PERMISSIONS, role, 'rooms', 'edit');
+  const canForce = role !== null && permits(PERMISSIONS, role, 'forced_deletes', 'edit');
   const canCreate = role !== null && permits(PERMISSIONS, role, 'rooms', 'create');
   const canArchive = role !== null && permits(PERMISSIONS, role, 'rooms', 'archive');
   const canExport = role !== null && permits(PERMISSIONS, role, 'rooms', 'export');
@@ -261,7 +262,13 @@ export function BuildingsPage() {
               }
         }
         panel={(row) => (
-          <BuildingPanel key={row.id} building={row} canEdit={canEdit} branchId={branchId} />
+          <BuildingPanel
+            key={row.id}
+            building={row}
+            canEdit={canEdit}
+            canForce={canForce}
+            branchId={branchId}
+          />
         )}
       />
     </>

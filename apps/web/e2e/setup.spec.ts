@@ -310,6 +310,37 @@ test('the Super Admin edits the branch, adds a building, a floor and a room, and
   await roomForm.getByRole('button', { name: en.form.save, exact: true }).click();
   await expect(saved(roomPanel)).toBeVisible();
 
+  // Task 5.8c (`03`, Building, floor, room): room 101, closed and used by
+  // nothing (before its floor is archived), is deleted for good with a reason, found on Deleted for good and
+  // restored there; it is back on the room list.
+  await test.step('deletes a room nothing uses for good and restores it from Deleted for good', async () => {
+    const deleted = en.forcedDeletes;
+    await openSetupPage(page, en.setup.roomsLink, en.setup.rooms.title);
+    await page.getByRole('button', { name: '101', exact: true }).click();
+    const room = page.getByRole('complementary', { name: '101' });
+    await room.getByRole('button', { name: deleted.deletePlace, exact: true }).click();
+    const dialog = page.getByRole('dialog');
+    await dialog.getByLabel(deleted.reason, { exact: true }).fill('Added by mistake');
+    await dialog.getByRole('button', { name: deleted.send, exact: true }).click();
+    await expect(
+      room.getByText(deleted.placeDone.replace('{{name}}', '101'), { exact: true }),
+    ).toBeVisible();
+
+    await openSetupPage(page, en.setup.forcedDeletesLink, deleted.title);
+    const row = page.locator('tbody tr').filter({ hasText: 'Added by mistake' });
+    await expect(row).toHaveCount(1);
+    await expect(row).toContainText(`${deleted.kind_room}: 101`);
+    await expect(row).toContainText(deleted.state_restorable);
+    await row.getByRole('button').first().click();
+    const stored = page.getByRole('complementary', { name: '101' });
+    await stored.getByRole('button', { name: deleted.restore, exact: true }).click();
+    await expect(stored.getByText(deleted.restoredMessage, { exact: true })).toBeVisible();
+    await expect(row).toContainText(deleted.state_restored);
+
+    await openSetupPage(page, en.setup.roomsLink, en.setup.rooms.title);
+    await expect(page.getByRole('button', { name: '101', exact: true })).toBeVisible();
+  });
+
   await openSetupPage(page, en.setup.buildingsLink, en.setup.buildings.title);
   await page.getByRole('button', { name: 'Main building', exact: true }).click();
   await panel

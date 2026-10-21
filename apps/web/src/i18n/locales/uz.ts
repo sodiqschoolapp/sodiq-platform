@@ -627,6 +627,10 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu dars birga oʻtilgan boshqa darslar endi yoʻq, shuning uchun u qaytmaydi. Agar ular ham butunlay oʻchirilgan boʻlsa, avval ularni tiklang.',
     forced_delete_restore_blocked:
       'Dars qaytmaydi: u quyidagi jadval qoidasini buzadi. Avval uning oʻrnini egallagan darsni oʻzgartiring.',
+    place_referenced:
+      'Bu hali ishlatilmoqda (undagi xona, dars, jadval yozuvi, dars tarixi yoki soʻnggi 30 kunda butunlay oʻchirilgan qavati, xonasi yoki darsi), shuning uchun butunlay oʻchirib boʻlmaydi. Buning oʻrniga bino yoki qavatni arxivlang yoxud xonani yoping.',
+    forced_delete_place_parent:
+      'Qaytarib boʻlmaydi: u joylashgan bino yoki qavat shundan beri arxivlangan yoki butunlay oʻchirilgan. Avval oʻsha bino yoki qavatni tiklang.',
     journal_substitute_none:
       'Bu davrda jurnalning hech bir darsi bu oʻrinbosarni ololmaydi. Sanalar va sabablari koʻrsatilgan; boshqa oʻqituvchini tanlang.',
     vacancy_has_load:
@@ -977,7 +981,7 @@ export const uz: Texts<'one' | 'other'> = {
     settingsLink: 'Sozlamalar',
     travelTimesLink: 'Yoʻl vaqti',
     subjectsLink: 'Fanlar',
-    forcedDeletesLink: 'Oʻchirilgan darslar',
+    forcedDeletesLink: 'Butunlay oʻchirilganlar',
     branches: {
       title: 'Filiallar',
       caption: 'Maktab filiallari',
@@ -2709,14 +2713,26 @@ export const uz: Texts<'one' | 'other'> = {
     branch: 'Filial',
   },
   forcedDeletes: {
-    title: 'Oʻchirilgan darslar',
-    caption: 'Butunlay oʻchirilgan darslar',
-    lesson: 'Dars',
-    unit: 'Sinf yoki guruh',
+    title: 'Butunlay oʻchirilganlar',
+    caption: 'Butunlay oʻchirilgan yozuvlar',
+    record: 'Nima oʻchirildi',
+    about: 'Sinf, guruh yoki joy',
+    kind_lesson: 'Dars',
+    kind_building: 'Bino',
+    kind_floor: 'Qavat',
+    kind_room: 'Xona',
+    recordText: '{{kind}}: {{name}}',
     subject: 'Fan',
     teacher: 'Oʻqituvchi',
     room: 'Xona',
+    building: 'Bino',
+    floor: 'Qavat',
+    floors: 'Qavatlar',
+    noFloors: 'Qavatlar yoʻq',
     reason: 'Sabab',
+    reasonNeeded: 'Oʻchirish sababini yozing.',
+    keep: 'Qoldirish',
+    send: 'Butunlay oʻchirish',
     deleted: 'Oʻchirildi',
     deletedBy: '{{name}}, {{moment}}',
     state: 'Holati',
@@ -2726,9 +2742,20 @@ export const uz: Texts<'one' | 'other'> = {
     restoreUntil: 'Tiklash mumkin boʻlgan sana',
     restored: 'Tiklangan',
     restore: 'Tiklash',
-    restoredMessage: 'Dars tiklandi.',
-    emptyTitle: 'Oʻchirilgan darslar yoʻq',
-    empty: 'Sinf kunidan butunlay oʻchirilgan dars bu yerda 30 kun koʻrinadi.',
+    restoredMessage: 'Tiklandi.',
+    emptyTitle: 'Butunlay oʻchirilgan yozuvlar yoʻq',
+    empty: 'Butunlay oʻchirilgan dars, bino, qavat yoki xona bu yerda 30 kun koʻrinadi.',
+    deletePlace: 'Butunlay oʻchirish',
+    deletePlaceNamed: 'Butunlay oʻchirish: {{name}}',
+    placeTitle_building: '{{name}} binosini butunlay oʻchirish',
+    placeTitle_floor: '{{name}} qavatini butunlay oʻchirish',
+    placeTitle_room: '{{name}} xonasini butunlay oʻchirish',
+    placeKept_one:
+      'Yozuv {{count}} kun saqlanadi va «Butunlay oʻchirilganlar» boʻlimidan tiklanishi mumkin. Faqat hech qayerda ishlatilmayotgani butunlay oʻchiriladi.',
+    placeKept_other:
+      'Yozuv {{count}} kun saqlanadi va «Butunlay oʻchirilganlar» boʻlimidan tiklanishi mumkin. Faqat hech qayerda ishlatilmayotgani butunlay oʻchiriladi.',
+    placeDone:
+      '{{name}} butunlay oʻchirildi. Uni 30 kun ichida «Butunlay oʻchirilganlar» boʻlimidan tiklash mumkin.',
   },
   audit: {
     title: 'Audit jurnali',
@@ -2876,17 +2903,20 @@ export const uz: Texts<'one' | 'other'> = {
         archive: 'Bino arxivlandi',
         restore: 'Bino tiklandi',
         export: 'Binolar eksport qilindi',
+        forced_delete: 'Bino butunlay oʻchirildi',
       },
       floor: {
         create: 'Qavat yaratildi',
         edit: 'Qavat oʻzgartirildi',
         archive: 'Qavat arxivlandi',
         restore: 'Qavat tiklandi',
+        forced_delete: 'Qavat butunlay oʻchirildi',
       },
       room: {
         create: 'Xona yaratildi',
         edit: 'Xona oʻzgartirildi',
         export: 'Xonalar eksport qilindi',
+        forced_delete: 'Xona butunlay oʻchirildi',
       },
       division: {
         create: 'Boʻlinma yaratildi',
@@ -3777,11 +3807,10 @@ export const uz: Texts<'one' | 'other'> = {
     forcedDelete: {
       title: 'Butunlay oʻchirish: {{subject}}, {{unit}}, {{time}}',
       kept_one:
-        'Dars va undagi maʼlumotlar {{count}} kun saqlanadi va «Oʻchirilgan darslar» boʻlimidan tiklanishi mumkin.',
+        'Dars va undagi maʼlumotlar {{count}} kun saqlanadi va «Butunlay oʻchirilganlar» boʻlimidan tiklanishi mumkin.',
       kept_other:
-        'Dars va undagi maʼlumotlar {{count}} kun saqlanadi va «Oʻchirilgan darslar» boʻlimidan tiklanishi mumkin.',
-      send: 'Butunlay oʻchirish',
-      done: 'Dars butunlay oʻchirildi. Uni 30 kun ichida «Oʻchirilgan darslar» boʻlimidan tiklash mumkin.',
+        'Dars va undagi maʼlumotlar {{count}} kun saqlanadi va «Butunlay oʻchirilganlar» boʻlimidan tiklanishi mumkin.',
+      done: 'Dars butunlay oʻchirildi. Uni 30 kun ichida «Butunlay oʻchirilganlar» boʻlimidan tiklash mumkin.',
     },
     lessonHistory: {
       title: 'Tarix: {{subject}}, {{unit}}, {{time}}',

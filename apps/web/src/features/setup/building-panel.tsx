@@ -1,4 +1,5 @@
 import {
+  FORCED_DELETE_RESTORE_DAYS,
   buildingRecordSchema,
   floorRecordSchema,
   type Building,
@@ -7,11 +8,13 @@ import {
   type FloorRecord,
 } from '@sodiq/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { ApiFailure, answerOf } from '@/api/failure';
 import { useConfirm } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
+import { ForcedDeleteDialog } from '@/components/forced-delete-dialog';
 import { Field } from '@/components/field';
 import { RecordForm } from '@/components/form/record-form';
 import { useRecordForm } from '@/components/form/use-record-form';
@@ -26,7 +29,8 @@ import {
 } from '@/components/ui/table';
 import { PanelActions } from '@/components/list/panel-actions';
 import { usePanelEditing } from '@/components/list/use-panel-editing';
-import { SETUP_KEY } from './setup-api';
+import { FORCED_DELETES_KEY } from '@/features/audit/forced-deletes-api';
+import { SETUP_KEY, forceDeletePlace } from './setup-api';
 import { SECTION_TITLE, SUBSECTION_TITLE } from '@/components/ui/control';
 
 interface BuildingFormProps {
@@ -79,6 +83,8 @@ interface BuildingPanelProps {
   building: Building;
   /** The Super Admin edits, archives and restores; the other roles read. */
   canEdit: boolean;
+  /** The Super Admin deletes a building or floor that nothing uses for good (task 5.8c). */
+  canForce: boolean;
   branchId: string | null;
 }
 
@@ -87,15 +93,23 @@ interface BuildingPanelProps {
  * are added, renamed, archived and restored here ("Rooms are added floor by
  * floor"). A building or a floor is archived only once every room on it is
  * closed (decided by the owner, pull request #37); the refusal is shown as
- * its text.
+ * its text. The Super Admin deletes the building or a floor for good when
+ * nothing uses it (task 5.8c; `03`, Building, floor, room).
  */
-export function BuildingPanel({ building, canEdit, branchId }: BuildingPanelProps) {
+export function BuildingPanel({ building, canEdit, canForce, branchId }: BuildingPanelProps) {
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   // One form open at a time: the name, a floor's name or a new floor (task 2.7c-2b-1).
   const panel = usePanelEditing();
   const number = new Intl.NumberFormat(i18n.language);
+  // The building or floor whose forced delete is asked, and the answer once sent.
+  const [forcing, setForcing] = useState<{
+    kind: 'building' | 'floor';
+    id: string;
+    name: string;
+  } | null>(null);
+  const [forced, setForced] = useState<{ kind: 'building' | 'floor'; name: string } | null>(null);
 
   const refresh = () =>
     queryClient.invalidateQueries({ queryKey: [...SETUP_KEY, 'buildings', branchId] });
@@ -273,6 +287,19 @@ export function BuildingPanel({ building, canEdit, branchId }: BuildingPanelProp
                               {t('setup.buildings.rename')}
                             </Button>
                           )}
+                          {canForce && floor.roomCount === 0 && (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              aria-label={t('forcedDeletes.deletePlaceNamed', { name: floor.name })}
+                              onClick={() => {
+                                setForced(null);
+                                setForcing({ kind: 'floor', id: floor.id, name: floor.name });
+                              }}
+                            >
+                              {t('forcedDeletes.deletePlace')}
+                            </Button>
+                          )}
                           {!archived && (
                             <Button
                               variant={floor.archivedAt === null ? 'destructive' : 'secondary'}
@@ -362,20 +389,57 @@ export function BuildingPanel({ building, canEdit, branchId }: BuildingPanelProp
             )
           }
           danger={
-            !archived && (
-              <Button
-                variant="destructive"
-                disabled={archiveBuilding.isPending}
-                onClick={() => {
-                  void askBuilding();
-                }}
-              >
-                {t('setup.buildings.archiveBuilding')}
-              </Button>
+            (!archived || canForce) && (
+              <>
+                {!archived && (
+                  <Button
+                    variant="destructive"
+                    disabled={archiveBuilding.isPending}
+                    onClick={() => {
+                      void askBuilding();
+                    }}
+                  >
+                    {t('setup.buildings.archiveBuilding')}
+                  </Button>
+                )}
+                {canForce && building.floors.every((floor) => floor.roomCount === 0) && (
+                  <Button
+                    variant="destructive"
+                    onClick={() => {
+                      setForced(null);
+                      setForcing({ kind: 'building', id: building.id, name: building.name });
+                    }}
+                  >
+                    {t('forcedDeletes.deletePlace')}
+                  </Button>
+                )}
+              </>
             )
           }
           error={archiveBuilding.error}
           saved={panel.saved}
+        />
+      )}
+      {forced !== null && (
+        <p role="status" className="text-sm">
+          {t('forcedDeletes.placeDone', { name: forced.name })}
+        </p>
+      )}
+      {forcing !== null && (
+        <ForcedDeleteDialog
+          key={forcing.id}
+          title={t(`forcedDeletes.placeTitle_${forcing.kind}`, { name: forcing.name })}
+          text={t('forcedDeletes.placeKept', { count: FORCED_DELETE_RESTORE_DAYS })}
+          send={(body, key) => forceDeletePlace(forcing.kind, forcing.id, body, key)}
+          onClose={() => {
+            setForcing(null);
+          }}
+          onDeleted={async () => {
+            setForced(forcing);
+            setForcing(null);
+            await refresh();
+            await queryClient.invalidateQueries({ queryKey: FORCED_DELETES_KEY });
+          }}
         />
       )}
     </div>

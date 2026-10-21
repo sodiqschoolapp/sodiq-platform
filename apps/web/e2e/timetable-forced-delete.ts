@@ -20,7 +20,7 @@ function mondaysAhead(count: number): string[] {
  * can be restored." and "Every change records who, when, the value before and
  * the value after" (task 5.8b, pull request #195). The seed's publishable
  * scene in a branch of its own: the Super Admin publishes, deletes 7 Oxford's
- * Monday Geometry for good with a reason, finds it on Deleted lessons,
+ * Monday Geometry for good with a reason, finds it on Deleted for good,
  * restores it, and reads both lines in the lesson's history. The seed holds no
  * fourth Super Admin (correction 1 of the review of #87), so this runs at the
  * end of the first setup test's session (Nodira Ergasheva). All names are
@@ -81,14 +81,16 @@ export async function forceDeleteAndRestore(page: Page): Promise<void> {
   await geometry.getByRole('button', { name: day.forcedDelete, exact: true }).click();
   const deleting = page.getByRole('dialog');
   await expect(deleting.getByRole('heading')).toHaveText(/^Delete for good: Geometry, 7 Oxford, /);
-  await deleting.getByRole('button', { name: forced.send, exact: true }).click();
-  await expect(deleting.getByText(day.reasonNeeded, { exact: true })).toBeVisible();
-  await deleting.getByLabel(day.reason, { exact: true }).fill('Entered twice by mistake');
-  await deleting.getByRole('button', { name: forced.send, exact: true }).click();
+  await deleting.getByRole('button', { name: en.forcedDeletes.send, exact: true }).click();
+  await expect(deleting.getByText(en.forcedDeletes.reasonNeeded, { exact: true })).toBeVisible();
+  await deleting
+    .getByLabel(en.forcedDeletes.reason, { exact: true })
+    .fill('Entered twice by mistake');
+  await deleting.getByRole('button', { name: en.forcedDeletes.send, exact: true }).click();
   await expect(page.getByText(forced.done, { exact: true })).toBeVisible();
   await expect(geometry).toHaveCount(0);
 
-  // Deleted lessons, from the Setup page.
+  // Deleted for good, from the Setup page.
   const deleted = en.forcedDeletes;
   await page.goto('/setup');
   await page.getByRole('link', { name: en.setup.forcedDeletesLink, exact: true }).click();

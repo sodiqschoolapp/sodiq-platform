@@ -12,6 +12,8 @@ import { DayTemplates } from './day-templates.service.js';
 import { Buildings } from './buildings.service.js';
 import { DivisionsController } from './divisions.controller.js';
 import { Divisions } from './divisions.service.js';
+import { PlaceForcedDeletesController } from './place-forced-deletes.controller.js';
+import { PlaceForcedDeletes } from './place-forced-deletes.service.js';
 import { RoomsController } from './rooms.controller.js';
 import { SettingsController } from './settings.controller.js';
 import { Settings } from './settings.service.js';
@@ -28,7 +30,8 @@ import { TemplateLessons } from './template-lessons.js';
  * floors and rooms (task 1.1); divisions and departments (task 1.2); academic
  * years, quarters and the go-live date (task 1.3); slot types and day
  * templates (task 1.5); the calendar (task 1.4); the settings, travel time
- * and the setup checklist (task 1.6); subjects and their weights (task 2.1).
+ * and the setup checklist (task 1.6); subjects and their weights (task 2.1);
+ * the forced delete of a building, floor or room (task 5.8c).
  */
 @Module({
   imports: [TimetableModule],
@@ -36,6 +39,7 @@ import { TemplateLessons } from './template-lessons.js';
     BranchesController,
     BuildingsController,
     RoomsController,
+    PlaceForcedDeletesController,
     DivisionsController,
     AcademicYearsController,
     DayTemplatesController,
@@ -48,6 +52,7 @@ import { TemplateLessons } from './template-lessons.js';
     Branches,
     Buildings,
     Rooms,
+    PlaceForcedDeletes,
     Divisions,
     AcademicYears,
     QuarterLessons,

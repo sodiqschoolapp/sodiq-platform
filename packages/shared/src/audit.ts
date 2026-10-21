@@ -236,6 +236,10 @@ export const AUDIT_ACTION_GROUPS = {
     // Task 5.8b: the Super Admin's forced delete of a dated lesson, and its restore.
     'lesson.forced_delete',
     'forced_delete.restore',
+    // Task 5.8c: the Super Admin's forced delete of a building, floor or room.
+    'building.forced_delete',
+    'floor.forced_delete',
+    'room.forced_delete',
     // Task 5.6c-1: an exam created, changed or cancelled.
     'exam.create',
     'exam.change',

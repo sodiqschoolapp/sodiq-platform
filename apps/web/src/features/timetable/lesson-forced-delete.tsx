@@ -1,17 +1,12 @@
 import {
   FORCED_DELETE_RESTORE_DAYS,
-  forcedDeleteBodySchema,
   timeText,
   type DayLesson,
-  type ForcedDeleteBody,
   type LessonHistoryLine,
 } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
-import { useRef, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FailureAlert } from '@/components/failure-alert';
-import { TextAreaField } from '@/components/field';
-import { useRecordForm } from '@/components/form/use-record-form';
+import { ForcedDeleteDialog as ReasonDialog } from '@/components/forced-delete-dialog';
 import { EmptyState, ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import {
@@ -29,8 +24,7 @@ import { forceDeleteLesson, lessonHistoryQuery } from './timetable-api';
  * The Super Admin's forced delete of one lesson with a typed reason (task
  * 5.8b; `06`, Protection: "Forced delete is for Super Admin only, with a typed
  * reason. The attendance and marks are kept for 30 days and can be
- * restored."): a dialog that sends once (`.claude/rules/web.md`), its field
- * checked with the shared schema, its key made when it opens.
+ * restored."), in the dialog every forced delete shares (task 5.8c).
  */
 export function ForcedDeleteDialog({
   lesson,
@@ -44,71 +38,18 @@ export function ForcedDeleteDialog({
   onDeleted: () => Promise<void>;
 }) {
   const { t } = useTranslation();
-  const done = useRef(false);
-  const key = useRef(crypto.randomUUID());
-  const form = useRecordForm<'reason', ForcedDeleteBody>({
-    schema: forcedDeleteBodySchema,
-    initial: { reason: '' },
-    save: async (body) => {
-      await forceDeleteLesson(lesson.id, body, key.current);
-      done.current = true;
-    },
-    message: (field) => (field === 'reason' ? t('timetable.day.reasonNeeded') : undefined),
-  });
-  const element = useRef<HTMLFormElement>(null);
-  const title = t('timetable.forcedDelete.title', {
-    subject,
-    unit: lesson.unit.name,
-    time: timeText(lesson.start),
-  });
-
-  const send = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
-    event.preventDefault();
-    const checked = await form.submit();
-    if (!checked) {
-      element.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
-      return;
-    }
-    if (done.current) {
-      await onDeleted();
-    }
-  };
-
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) {
-          onClose();
-        }
-      }}
-    >
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-        </DialogHeader>
-        <form
-          ref={element}
-          aria-label={title}
-          className="grid gap-4"
-          onSubmit={(event) => {
-            void send(event);
-          }}
-        >
-          <p className="text-sm">
-            {t('timetable.forcedDelete.kept', { count: FORCED_DELETE_RESTORE_DAYS })}
-          </p>
-          <TextAreaField label={t('timetable.day.reason')} rows={3} {...form.bind('reason')} />
-          <FailureAlert error={form.failure} />
-          <DialogFooter>
-            <DialogClose render={<Button variant="ghost" />}>{t('timetable.day.keep')}</DialogClose>
-            <Button type="submit" variant="destructive" disabled={form.status === 'saving'}>
-              {t('timetable.forcedDelete.send')}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <ReasonDialog
+      title={t('timetable.forcedDelete.title', {
+        subject,
+        unit: lesson.unit.name,
+        time: timeText(lesson.start),
+      })}
+      text={t('timetable.forcedDelete.kept', { count: FORCED_DELETE_RESTORE_DAYS })}
+      send={(body, key) => forceDeleteLesson(lesson.id, body, key)}
+      onClose={onClose}
+      onDeleted={onDeleted}
+    />
   );
 }
 

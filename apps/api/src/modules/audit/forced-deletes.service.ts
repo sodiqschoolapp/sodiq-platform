@@ -6,6 +6,8 @@ import {
   type ErrorCode,
   type ForcedDelete,
   type ForcedDeleteList,
+  type ForcedLesson,
+  type ForcedPlace,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { ApiException } from '../../http/api-exception.js';
@@ -19,10 +21,14 @@ import { notFound, refusingConstraints } from '../setup/setup-refusals.js';
 /**
  * The store of forced deletes (task 5.8b, pull request #195; `forced_deletes`,
  * 0105): the list of the branch and the restore within 30 days, one mechanism
- * for every kind of record (decision 10; 5.8c adds buildings, floors and
- * rooms). Each kind registers what it knows: how its rows are shown, its
- * year, and its restore, which runs under the store's locks and checks.
+ * for every kind of record (decision 10): lessons (5.8b), and buildings,
+ * floors and rooms (task 5.8c, pull request #196). Each kind registers what
+ * it knows: how its rows are shown, its locks, and its restore, which runs
+ * under the store's locks and checks.
  */
+
+/** What a kind shows of a record of the store. */
+export type StoreDescription = { readonly lesson: ForcedLesson } | { readonly place: ForcedPlace };
 
 /** A row of the store as a kind reads it. */
 export interface StoreRow {
@@ -39,9 +45,7 @@ export interface StoreKind {
   readonly describe: (
     transaction: Transaction,
     rows: readonly StoreRow[],
-  ) => Promise<ReadonlyMap<string, ForcedDelete['lesson']>>;
-  /** The academic year whose locks the restore takes. */
-  readonly yearOf: (row: StoreRow) => string;
+  ) => Promise<ReadonlyMap<string, StoreDescription>>;
   /**
    * Puts the record back, its locks taken, the checks of the store passed:
    * writes `restored_by` first, then the rows, then its audit entry.
@@ -56,7 +60,7 @@ export interface StoreKind {
   readonly refusals: Readonly<Record<string, ErrorCode>>;
   /** The refusal of a deadlock or a serialisation failure (40P01, 40001); without it they stay a 500. */
   readonly busy?: ErrorCode;
-  /** Takes the locks of the record's year and checks it is open, before the store row. */
+  /** Takes the locks of the record (a lesson: its year, checked open) before the store row. */
   readonly lock?: (transaction: Transaction, branchId: string, row: StoreRow) => Promise<void>;
 }
 
@@ -141,7 +145,7 @@ export class ForcedDeleteStore {
         );
       }
     }
-    const described = new Map<string, ForcedDelete['lesson']>();
+    const described = new Map<string, StoreDescription>();
     const byType = new Map<string, StoreRow[]>();
     for (const one of rows) {
       const list = byType.get(one.record_type) ?? [];
@@ -149,20 +153,20 @@ export class ForcedDeleteStore {
       byType.set(one.record_type, list);
     }
     for (const [recordType, list] of byType) {
-      for (const [id, lesson] of await this.kindOf(recordType).describe(transaction, list)) {
-        described.set(id, lesson);
+      for (const [id, description] of await this.kindOf(recordType).describe(transaction, list)) {
+        described.set(id, description);
       }
     }
     const byId = new Map(rows.map((one) => [one.id, one]));
     return ids.flatMap((id) => {
       const one = byId.get(id);
-      const lesson = described.get(id);
-      if (one === undefined || lesson === undefined) return [];
+      const description = described.get(id);
+      if (one === undefined || description === undefined) return [];
       return [
         forcedDeleteSchema.parse({
           id: one.id,
           recordType: one.record_type,
-          lesson,
+          ...description,
           reason: one.reason,
           deletedBy: { id: one.deleted_by, name: names.get(one.deleted_by) ?? '' },
           deletedAt: one.deleted_at.toISOString(),

@@ -35,7 +35,9 @@ const detailsOf = (response: Response) =>
 
 const done = (response: Response) => {
   expect(response.status, JSON.stringify(response.body)).toBe(200);
-  return forcedDeleteSchema.parse(response.body);
+  const answer = forcedDeleteSchema.parse(response.body);
+  if (answer.recordType !== 'lesson') throw new Error('A lesson was expected.');
+  return answer;
 };
 
 /** A moment of a school date at a clock time in Tashkent (+05:00). */

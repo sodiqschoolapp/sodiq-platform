@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 21 October 2026: task 5.8c Forced delete of a building, floor or room
+
+- The Super Admin deletes a room, a floor or a building (with its empty floors) for good when nothing references it, with a reason, from the Rooms and Buildings panels; it goes into the store of 5.8b and is restored from "Deleted for good" (the page renamed) within 30 days with the same ids and values.
+- The database is the guard (0106): a place is deleted only for a store row of its transaction; every key to it, the lesson history, a draft's left rows and blocks and a restorable store row refuse the delete (`place_referenced`). A lesson that leaves its room holds it until its commit (`lessons_hold_room`); 5.8b's lesson forced delete holds its room too. Handbook: "Deleting a building, floor or room for good".
+- Left out: the purge of store rows older than 30 days (9.2c); the writers of a room's key outside dated lessons answering 404 when the room was deleted for good while they ran (From line on 5.12).
+
+The next sessions must know:
+
+- A new table that names a room, floor or building without a key is read by `place_referenced` (0106), or the catalog test of `places-forced-delete.database.test.ts` fails.
+- The store's `describe` answers `{ lesson }` or `{ place }`; `forcedDeleteSchema` is a union on `recordType`. The reason dialog is `apps/web/src/components/forced-delete-dialog.tsx`.
+- The one-day room change reads its rooms again behind the publish lock (`day-changes.service.ts`, `keyed`).
+- The next task is 5.9.
+
 ## 21 October 2026: task 5.8b Protection of dated lessons and their forced delete
 
 - The database keeps a lesson's class, group and subject (grants) and refuses the delete of a lesson that holds data (`lesson_holds_data`, 0105, answers no until 6.1); every teacher, room, time and cancel change is written to `lesson_history` by triggers, and `Transactions.run` refuses a commit whose lesson change has no audit entry of its transaction in the lesson's branch.

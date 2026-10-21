@@ -285,6 +285,26 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 21 October 2026: forced delete of a building, floor or room (task 5.8c)
+
+Plan approved on pull request #196 with corrections 1 to 3; decisions 1 to 11 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (pinned list widened). `forced_deletes_record_type_check` is dropped and created again in 0106 with `building`, `floor`, `room`; `FORCED_DELETE_RECORD_TYPES` likewise | Decision 1; `03`, Building, floor, room; 0105 named the widening |
+| **Look first** (reading of "other record"). A place is referenced by every key to it and by the ids kept outside keys: the lesson history, a restorable store row of another record, a draft's left rows and left blocks; the audit log and `notifications.data` are not. A building's empty floors go with it. A room that ever held a lesson stays referenced by its history; a building or floor is referenced for 30 days by the store row of its deleted floor or room | Decision 2, the floors part marked Look first by the review |
+| **Look first** (spec text). "Archive-only" for a room means closed; proposed `/spec-change` of `03`: "a referenced building or floor stays archive-only, and a referenced room can only be closed" | Decision 3; rooms are never archived (0014) |
+| Active and archived buildings and floors can be deleted for good; a restore brings them back as they were | Decision 4 |
+| A restore re-checks the rules of a create under the parent's lock: the parent present, a floor's building active when the floor comes back active, a room's floor active whatever its status, the name free (`already_exists`); a parent gone or archived answers `forced_delete_place_parent` (a code of its own, spec review of the code: the lesson's text is false for a place) with the create's code in the details | Decision 5 |
+| No notification | Decision 6 |
+| The routes are `POST /api/setup/{buildings,floors,rooms}/:id/forced-delete` in the area `forced_deletes` `edit` | Decision 7 |
+| The page "Deleted lessons" is "Deleted for good" and lists every kind | Decision 8 |
+| The store answer is a union on `recordType` (`lesson` or `place`); `StoreKind.yearOf` is dropped | Decision 9 |
+| A key violation of the place's own delete answers `place_referenced` | Decision 10 |
+| The writers of a reference kept outside a key hold the place until their commit: `lessons_hold_room` (0106) takes the room a lesson leaves `for key share`; 5.8b's lesson forced delete takes its room before its store row; the copy of 5.8a already holds the rooms of its left rows | Spec review of the plan, must-fix 1; correction 3 |
+| **Build decision.** A room's forced delete takes the publish lock first, as every writer of dated lessons does, so the two never meet in the other order; the one-day room change reads its rooms again behind that lock (`for key share`) and answers 404 for a room deleted while it waited | The same-moment test found a 500 there |
+| **Build decision.** The reason dialog is one component (`apps/web/src/components/forced-delete-dialog.tsx`) with its own texts (`forcedDeletes.reason`, `reasonNeeded`, `keep`, `send`); the lesson's dialog uses it | Plan, screens |
+
 ## 21 October 2026: protection of dated lessons and their forced delete (task 5.8b)
 
 Plan approved on pull request #195 with corrections 1 and 2; decisions 1 to 12 confirmed there. Flagged on issue #42.

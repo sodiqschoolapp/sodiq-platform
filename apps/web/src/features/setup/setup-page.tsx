@@ -109,7 +109,7 @@ export function SetupPage() {
       area: 'subjects',
     },
     {
-      // The lessons deleted for good, the Super Admin's (task 5.8b).
+      // The records deleted for good, the Super Admin's (tasks 5.8b and 5.8c).
       key: 'forcedDeletes',
       to: '/forced-deletes',
       title: t('setup.forcedDeletesLink'),

@@ -88,6 +88,7 @@ export function RoomsPage() {
   const newRecord = useNewRecord();
   const [changed, setChanged] = useState<{ done: number; refused: string[] } | null>(null);
   const canEdit = role !== null && permits(PERMISSIONS, role, 'rooms', 'edit');
+  const canForce = role !== null && permits(PERMISSIONS, role, 'forced_deletes', 'edit');
   const canCreate = role !== null && permits(PERMISSIONS, role, 'rooms', 'create');
   const canExport = role !== null && permits(PERMISSIONS, role, 'rooms', 'export');
   const exporter = useExport<Room>('rooms', (row) => row.id);
@@ -489,6 +490,7 @@ export function RoomsPage() {
             floors={floors}
             columns={columns}
             canEdit={canEdit}
+            canForce={canForce}
             onSave={async (record) => {
               await edit.mutateAsync({ id: row.id, record });
             }}

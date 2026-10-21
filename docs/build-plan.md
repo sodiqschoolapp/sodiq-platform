@@ -917,7 +917,7 @@ How to read the task lines:
   - Done when: Protection rules 1, 2 and 4 each have a test.
   - From 5.1a (pull request #107, correction 6): the forced delete of a dated lesson needs a delete grant on `lessons` and `lesson_blocks` (0058 gives none), added with its guard in a migration of its own.
 
-- [ ] **5.8c Forced delete of a building, floor or room** (5.8 split in three, pull request #194, decision 1, Look first)
+- [x] **5.8c Forced delete of a building, floor or room** (5.8 split in three, pull request #194, decision 1, Look first)
   - Read: `03` (Building, floor, room), `06` (Protection).
   - Build: the Super Admin's forced delete of a building, floor or room that nothing references, with a reason, an audit entry and 30 days to restore, on the store and restore of 5.8b (not a second mechanism); a referenced one stays archive-only.
   - From 2.7 (pull request #77, decision 2; issue #39, item 6): the same forced delete for a building, floor or room that nothing references (`03`, Building, floor, room; spec change of 13 October 2026), with a reason, an audit entry and 30 days to restore; a referenced one stays archive-only.
@@ -935,6 +935,7 @@ How to read the task lines:
   - Done when: all named cases pass in CI.
   - From the owner (15 October 2026): one run at the real school's size on invented data (3 branches, about 80 classes, 200 teachers and 2,000 students, with groups, splits and teachers shared between branches): generate, check with the rule engine, publish a version and open the board; the report gives the solver's time, the lessons it could not place, and the time of the board, the publish and a journal page.
   - From the owner (20 October 2026): generation (5.10, 5.11) moved after the release of 25 October. Until then the real-size run places its timetable with a seed script on the same invented data, checks it with the rule engine and goes on from the publish; 5.11 adds the generate step and the solver's time to this run.
+  - From 5.8c (pull request #196, not sure): a room's forced delete takes the publish lock first, so the writers of dated lessons and the one-day room change wait and then read the room again (404). The other writers that name a room (a room closure, an exam room, a load row, a class's home room, a pattern entry) read the room without a lock before they write its key: a forced delete of that room committed in between gives them a foreign-key error (500). A simultaneous-actions case of this task runs each against a room's forced delete and maps the error to `not_found`.
 
 ## Phase 6. Journal: model, grid and attendance
 
