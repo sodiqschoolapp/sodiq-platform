@@ -92,12 +92,21 @@ interface NewDraftFormProps {
   /** The versions of the branch, to copy one of the same year (decision 10). */
   versions: readonly TimetableVersion[];
   today: string;
+  /** Task 5.8a: the version a restore copies, chosen when the form opens. */
+  copyFrom?: string;
   onSave: (record: TimetableVersionCreate) => Promise<void>;
   onCancel: () => void;
 }
 
 /** A new draft: its year, its intended start date, and empty or a copy (`06`, step 1 and 2). */
-export function NewDraftForm({ years, versions, today, onSave, onCancel }: NewDraftFormProps) {
+export function NewDraftForm({
+  years,
+  versions,
+  today,
+  copyFrom,
+  onSave,
+  onCancel,
+}: NewDraftFormProps) {
   const { t } = useTranslation();
   const current = years.find((year) => year.status === 'current') ?? years[0];
   const form = useRecordForm({
@@ -105,7 +114,7 @@ export function NewDraftForm({ years, versions, today, onSave, onCancel }: NewDr
     initial: {
       academicYearId: current?.id ?? '',
       startsOn: defaultStart(today, current),
-      copyFrom: '',
+      copyFrom: copyFrom ?? '',
     },
     read: (typed) => ({
       academicYearId: typed.academicYearId,

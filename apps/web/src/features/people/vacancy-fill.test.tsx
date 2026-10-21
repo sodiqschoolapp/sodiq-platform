@@ -101,6 +101,7 @@ const version = (n: number, number: number, startsOn: string): TimetableVersion 
   fromVersion: null,
   rows: 2,
   leftRows: 0,
+  leftBlocks: 0,
   outOfDate: false,
   editLock: null,
 });
