@@ -1,4 +1,10 @@
-import { timeText, type AttentionExam, type AttentionGroup } from '@sodiq/shared';
+import {
+  timeText,
+  type AttentionExam,
+  type AttentionExamRoom,
+  type AttentionGroup,
+  type AttentionRoom,
+} from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useMemo } from 'react';
@@ -19,6 +25,7 @@ import { useView } from './use-view';
  * cause, each opening the day page of its first lesson; each tile hidden
  * when it has no row. Task 5.7a-2a: a person inactive, left or locked is a
  * cause of its own, and the exams that need an invigilator have a tile.
+ * Task 5.7a-2b: the lessons and the exams that need a room have a tile each.
  */
 export function AttentionTiles() {
   const { t } = useTranslation();
@@ -56,6 +63,8 @@ export function AttentionTiles() {
         groups={attention.data.unresolved}
       />
       <ExamsTile exams={attention.data.needsInvigilator} />
+      <RoomsTile rooms={attention.data.needsRoom} />
+      <ExamRoomsTile exams={attention.data.examsNeedRoom} />
     </>
   );
 }
@@ -153,6 +162,104 @@ function ExamsTile({ exams }: { exams: readonly AttentionExam[] }) {
                 {one.name === '' ? t('home.attention.invigilatorUnnamed') : one.name}
                 {' · '}
                 {t(`home.attention.cause_${one.cause}`)}
+              </span>
+            ))}
+            <Link
+              to="/timetable/exams"
+              search={{ date: exam.date }}
+              className="text-link justify-self-start text-sm"
+            >
+              {t('home.attention.openExams')}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/**
+ * The lessons that need a room (task 5.7a-2b, decisions 2 and 7): one row per
+ * closure, opening it, or per room by its status, opening the day page.
+ */
+function RoomsTile({ rooms }: { rooms: readonly AttentionRoom[] }) {
+  const { t, i18n } = useTranslation();
+  const number = useMemo(() => new Intl.NumberFormat(i18n.language), [i18n.language]);
+  if (rooms.length === 0) return null;
+  const title = t('home.needsRoom.title');
+  const date = (value: string) => schoolDateText(value, i18n.language, false);
+  return (
+    <section aria-label={title} className={cn(PANEL, 'grid max-w-2xl gap-3')} data-tile="needsRoom">
+      <h2 className={SECTION_TITLE}>{title}</h2>
+      <ul className="grid gap-3">
+        {rooms.map((row) => (
+          <li
+            key={row.closure?.id ?? `${row.cause}-${row.room.id}`}
+            className="grid gap-0.5"
+            data-room-row={row.cause}
+          >
+            <span className="font-semibold">
+              {t(`home.attention.room_${row.cause}`, { name: row.room.name })}
+            </span>
+            <span className="text-sm">
+              {t('home.attention.lessons', { count: row.lessons, n: number.format(row.lessons) })}
+              {' · '}
+              {row.firstDate === row.lastDate
+                ? date(row.firstDate)
+                : t('home.attention.range', { from: date(row.firstDate), to: date(row.lastDate) })}
+            </span>
+            {row.closure === null ? (
+              <Link
+                to="/timetable/day"
+                search={{ date: row.firstDate }}
+                className="text-link justify-self-start text-sm"
+              >
+                {t('home.attention.open')}
+              </Link>
+            ) : (
+              <Link
+                to="/timetable/room-closures"
+                search={{ open: row.closure.id }}
+                className="text-link justify-self-start text-sm"
+              >
+                {t('home.attention.openClosure')}
+              </Link>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** The exams that need a room (task 5.7a-2b, decision 10), each with its rooms out and why. */
+function ExamRoomsTile({ exams }: { exams: readonly AttentionExamRoom[] }) {
+  const { t, i18n } = useTranslation();
+  if (exams.length === 0) return null;
+  const title = t('home.examsNeedRoom.title');
+  return (
+    <section
+      aria-label={title}
+      className={cn(PANEL, 'grid max-w-2xl gap-3')}
+      data-tile="examsNeedRoom"
+    >
+      <h2 className={SECTION_TITLE}>{title}</h2>
+      <ul className="grid gap-3">
+        {exams.map((exam) => (
+          <li key={exam.examId} className="grid gap-0.5" data-exam={exam.examId}>
+            <span className="font-semibold">
+              {t('home.attention.exam', {
+                title: exam.title,
+                date: schoolDateText(exam.date, i18n.language, false),
+                from: timeText(exam.start),
+                to: timeText(exam.end),
+              })}
+            </span>
+            {exam.rooms.map((one) => (
+              <span key={one.id} className="text-sm">
+                {one.name}
+                {' · '}
+                {t(`home.attention.roomCause_${one.cause}`)}
               </span>
             ))}
             <Link

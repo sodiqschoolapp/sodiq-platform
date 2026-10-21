@@ -8,6 +8,7 @@ import {
 } from '@sodiq/timetable-rules';
 import type { Transaction } from '../../database/transactions.js';
 import { examPlacementOf, type StandingExam } from './calendar-exams.js';
+import { closedSpansOn } from './rooms-out-read.js';
 import { claimsElsewhere, teacherStatesOf } from './dated-check.js';
 import { dayStateOf, examsOn, storedLessonsOn, type Services } from './stored-day.js';
 
@@ -207,8 +208,20 @@ export async function examCheck(
     )
   ).filter((one) => one.id !== `exam:${exam.id}`);
   const { teachersOn } = await teacherStatesOf(transaction, data.teachers, branchId);
+  // Task 5.7a-2b (decision 5): an exam room closed at its time is refused.
+  const closed = await closedSpansOn(transaction, {
+    timeZone: branch.time_zone,
+    date,
+    rooms: [...model.facts.rooms.values()],
+  });
   const facts: Facts = {
     ...model.facts,
+    rooms: new Map(
+      [...model.facts.rooms].map(([id, room]) => [
+        id,
+        closed.has(id) ? { ...room, closed: closed.get(id) ?? [] } : room,
+      ]),
+    ),
     units: factUnits,
     mode: 'dated',
     teachers: teachersOn(date),

@@ -695,6 +695,7 @@ describe('the quarters preview', () => {
           bulk: [],
           exams: [],
           absences: [],
+          closures: [],
         },
         names,
       },

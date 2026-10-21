@@ -7,6 +7,8 @@ import {
   AWAY_CAUSES,
   awayCauseSchema,
   lessonStateOf,
+  needsRoomOf,
+  ROOM_OUT_CAUSES,
   LOAD_LESSONS_MAX,
   lessonRoomRecordSchema,
   placeRecordSchema,
@@ -364,5 +366,25 @@ describe('withdrawBodySchema', () => {
       withdrawBodySchema.safeParse({ dayDecisions: [twice, { ...twice, choice: 'cancel' }] })
         .success,
     ).toBe(false);
+  });
+});
+
+// Task 5.7a-2b, decision 2: "needs a room" is a flag beside the state, for a
+// lesson not started and not cancelled whose room is out at its start; a
+// started lesson in a closed room is history (edge/00-definitions, Held lesson).
+describe('a lesson that needs a room', () => {
+  const startsAt = new Date('2026-10-12T04:00:00Z');
+  const before = new Date(startsAt.getTime() - 1);
+
+  it('needs one before its start when its room is out, for each cause', () => {
+    for (const roomOut of ROOM_OUT_CAUSES) {
+      expect(needsRoomOf({ startsAt, cancelled: false, roomOut }, before)).toBe(true);
+    }
+  });
+
+  it('needs none once started, when cancelled, or when its room is not out', () => {
+    expect(needsRoomOf({ startsAt, cancelled: false, roomOut: 'closure' }, startsAt)).toBe(false);
+    expect(needsRoomOf({ startsAt, cancelled: true, roomOut: 'closure' }, before)).toBe(false);
+    expect(needsRoomOf({ startsAt, cancelled: false, roomOut: null }, before)).toBe(false);
   });
 });

@@ -105,6 +105,7 @@ const NO_LESSONS: CalendarPreview['lessons'] = {
     bulk: [],
     exams: [],
     absences: [],
+    closures: [],
   },
   shortenedDays: [],
   keepRefusals: [],
@@ -547,6 +548,7 @@ describe('the calendar page', () => {
           bulk: [],
           exams: [],
           absences: [],
+          closures: [],
         },
         names: {
           units: [{ id: OXFORD, kind: 'class', name: 'Oxford', grades: [7] }],

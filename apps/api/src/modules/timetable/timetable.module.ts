@@ -6,6 +6,8 @@ import { TimetableBulkCancels } from './bulk-cancels.service.js';
 import { DayChangesController } from './day-changes.controller.js';
 import { TimetableDayChanges } from './day-changes.service.js';
 import { AbsencesController } from './absences.controller.js';
+import { RoomClosuresController } from './room-closures.controller.js';
+import { TimetableRoomClosures } from './room-closures.service.js';
 import { TimetableAbsences } from './absences.service.js';
 import { ExamsController } from './exams.controller.js';
 import { TimetableExams } from './exams.service.js';
@@ -25,6 +27,7 @@ import { TimetableUpToDate } from './up-to-date.service.js';
     BulkCancelsController,
     ExamsController,
     AbsencesController,
+    RoomClosuresController,
   ],
   providers: [
     Timetable,
@@ -37,6 +40,7 @@ import { TimetableUpToDate } from './up-to-date.service.js';
     TimetableCalendarLessons,
     TimetableExams,
     TimetableAbsences,
+    TimetableRoomClosures,
   ],
   // Task 5.6b-1: a calendar save writes the lessons of the dates it changes.
   exports: [TimetableCalendarLessons],

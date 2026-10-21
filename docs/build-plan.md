@@ -850,7 +850,7 @@ How to read the task lines:
   - From 5.6c-1 (pull request #181, decision 18; the invigilator half): `edge/timetable`, Exams, "An exam room is closed, an invigilator falls ill, the date becomes a day off": "A room closure, an absence and a day off act on an exam as on a lesson: 'needs a room' and 'needs an invigilator' on the Academic Vice Principal's home page, settled from the Free now board with no journal involved."
   - From 5.7a-1 (pull request #185, decisions 3 and 7; the teacher half): an absence writes no lesson; the state of a lesson reads it through `absences_of_teachers` (0096, `absences-read.ts`), and the home page's lists are `GET /api/timetable/attention`: an inactive, left or locked teacher and an exam that needs an invigilator join those lists and `lessonStateOf` there. An absent invigilator is read the same way.
 
-- [ ] **5.7a-2b Teacher absence: room closure** (5.7a-2 split in two, pull request #186, decision 1)
+- [x] **5.7a-2b Teacher absence: room closure** (5.7a-2 split in two, pull request #186, decision 1)
   - Read: `06` (How surprises are prevented), `edge/timetable` (After publishing, Versions and drafts, Exams), `03` (the room row of the setup table), `09` (When something else changes).
   - Build: the room closure (start, end, reason); its lessons "needs a room" on the home page, in every branch that holds them; "move all to room R for the period"; the closure in the sorting of a publish and a withdraw; "needs a room" for exams; what a room's status `under_repair` or `closed` does to its lessons.
   - Done when: a closed room's lessons are "needs a room", and "move all" moves them for the period.
@@ -1149,6 +1149,7 @@ Decided by the owner on 20 October 2026: automatic generation (5.10 and 5.11) is
   - Build: the board by clock intervals with travel time; filters; acting from the board for the Academic Vice Principal; read-only view for Head Teachers and Senior Head Teachers.
   - Done when: a teacher with a lesson in another branch within the travel time is not shown as free.
   - From 5.7a-1 (pull request #185, review correction 4): `06`, Free now board, "Free teacher ... not marked absent": read through `absences_of_teachers` (0096) at the slot's moment.
+  - From 5.7a-2b (pull request #187, decisions 5, 7 and 10): `06`, Free now board, "Free room. In use status, with no lesson or exam in that slot": a room closed at the slot by a live closure (`room_closures`, 0098) is not free, read through `roomsOut` of `rooms-out-read.ts`; "Clicking a free room moves a lesson there for that day" settles a lesson or an exam that needs a room (`GET /api/timetable/attention`, `needsRoom` and `examsNeedRoom`), and its check passes `closures: true` to `storedDayCheck` so that `room_closed` refuses a closed room.
 
 - [ ] **8.3b Live updates**
   - Read: `edge/journal` (Saving and working together).

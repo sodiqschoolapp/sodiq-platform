@@ -18,6 +18,7 @@ import {
 } from '@sodiq/timetable-rules';
 import type { Transaction } from '../../database/transactions.js';
 import { runAbsences } from './absences-read.js';
+import { runClosures } from './rooms-out-read.js';
 import { datedLessonsOf, type DatedFindings } from './dated-check.js';
 import { needKeyOf, patternDateOf, vacanciesOf, writtenTeacherOf } from './dated-lessons.js';
 import type { SortedBulk } from './bulk-cancels-kept.js';
@@ -329,6 +330,8 @@ export async function impactOf(
         bulk: days.bulk.map((one) => one.answer),
         exams: days.exams.map((one) => one.answer),
         absences: await runAbsences(transaction, draft.version.branch_id, absenceLessons),
+        // Task 5.7a-2b (decision 9): the same lessons, put under "needs a room".
+        closures: await runClosures(transaction, draft.version.branch_id, absenceLessons),
       },
       names,
     },

@@ -658,8 +658,20 @@ function checkResources(placement: Placement, facts: Facts, results: Results): v
   }
   for (const roomId of roomsOf(placement)) {
     const room = need(facts.rooms, roomId, 'room');
+    // Task 5.7a-2b (decisions 5 and 7): a dated call that passes the room's
+    // closed spans refuses a placement meeting one; it says it alone, the
+    // warning of a room under repair left out.
+    const closed =
+      facts.mode === 'dated' &&
+      !placement.fixed &&
+      (room.closed ?? []).some(
+        (span) =>
+          span.day === placement.day && span.start < placement.end && placement.start < span.end,
+      );
     if (room.status === 'closed') {
       results.add('room_inactive', placement.day, [placement], { roomId });
+    } else if (closed) {
+      results.add('room_closed', placement.day, [placement], { roomId });
     } else if (room.status === 'under_repair') {
       // The load may name such a room (3.4a decision 13); the dated closure
       // with "needs a room" is its own task (review correction 4).

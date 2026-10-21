@@ -138,6 +138,36 @@ export function lessonStateOf(
   return started ? 'unresolved' : 'needs_teacher';
 }
 
+/**
+ * Why the room of a lesson or an exam cannot be used at its start (task
+ * 5.7a-2b, decisions 1 and 7), in the order of precedence when several hold:
+ * the room's status `closed`, its status `under_repair`, a room closure.
+ */
+export const ROOM_OUT_CAUSES = ['closed', 'under_repair', 'closure'] as const;
+
+export const roomOutCauseSchema = z.enum(ROOM_OUT_CAUSES);
+
+export type RoomOutCause = z.infer<typeof roomOutCauseSchema>;
+
+/**
+ * Whether a lesson "needs a room" at `now` (task 5.7a-2b, decision 2): not
+ * cancelled, not started, and its room out at its start. It is a flag beside
+ * `lessonStateOf`, never a state: a lesson in a closed room with a teacher
+ * recorded is still held once it starts (edge/00-definitions, Held lesson).
+ * Every reader of "needs a room" uses this one.
+ */
+export function needsRoomOf(
+  lesson: {
+    readonly startsAt: Date;
+    readonly cancelled: boolean;
+    /** The room recorded is out at the lesson's start; `null` when it is not, or there is none. */
+    readonly roomOut: RoomOutCause | null;
+  },
+  now: Date,
+): boolean {
+  return !lesson.cancelled && lesson.roomOut !== null && lesson.startsAt.getTime() > now.getTime();
+}
+
 /** A version as the list shows it. */
 export const timetableVersionSchema = z.object({
   id: z.uuid(),
@@ -1372,6 +1402,20 @@ export const dayChangesAnswerSchema = z.object({
       name: z.string(),
       startsOn: schoolDateSchema,
       endsOn: schoolDateSchema.nullable(),
+      lessons: z.int().min(0),
+    }),
+  ),
+  /**
+   * Task 5.7a-2b (decision 9): the live closures of the rooms of the run's
+   * new lessons that meet its dates, always kept, each with the number of
+   * those lessons it puts under "needs a room". Not part of `key`.
+   */
+  closures: z.array(
+    z.object({
+      id: z.uuid(),
+      room: z.string(),
+      startsOn: schoolDateSchema,
+      endsOn: schoolDateSchema,
       lessons: z.int().min(0),
     }),
   ),

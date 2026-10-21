@@ -74,7 +74,13 @@ describe('the menu and the home page of each role', () => {
       // page is then the empty page with the kind's own line (pull request
       // #80, correction 1).
       'GET /api/timetable/attention': () =>
-        json({ needsTeacher: [], unresolved: [], needsInvigilator: [] }),
+        json({
+          needsTeacher: [],
+          unresolved: [],
+          needsInvigilator: [],
+          needsRoom: [],
+          examsNeedRoom: [],
+        }),
       'GET /api/people/students/no-class': () => json({ count: 0 }),
       'GET /api/people/relatives/no-valid-phone': () => json({ count: 0 }),
     });

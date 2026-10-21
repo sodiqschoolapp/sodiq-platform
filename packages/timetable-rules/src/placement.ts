@@ -121,6 +121,17 @@ export interface EngineRoom {
   /** Lessons at the same time in a shared room. */
   readonly lessonsAtOnce: number;
   readonly capacity: number;
+  /**
+   * Task 5.7a-2b (decisions 5 and 7): the spans of a dated call in which the
+   * room cannot be used, in clock minutes of each school day, half-open: a
+   * room closure, and a whole day for a room under repair. Only the one-day
+   * changes and the exam save pass them; a pattern call never reads them.
+   */
+  readonly closed?: readonly {
+    readonly day: string;
+    readonly start: number;
+    readonly end: number;
+  }[];
 }
 
 /** A class or a group. */

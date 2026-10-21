@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { schoolDateSchema } from './academic-year.js';
+import { attentionExamRoomSchema, attentionRoomSchema } from './room-closures.js';
 import { awayCauseSchema, lessonStateSchema } from './timetable.js';
 
 /**
@@ -160,6 +161,10 @@ export const attentionSchema = z.object({
   needsTeacher: z.array(attentionGroupSchema),
   unresolved: z.array(attentionGroupSchema),
   needsInvigilator: z.array(attentionExamSchema),
+  /** Task 5.7a-2b (decisions 2 and 7): the lessons not started whose room is out. */
+  needsRoom: z.array(attentionRoomSchema),
+  /** Task 5.7a-2b (decision 10): the exams not started with a room out at their start. */
+  examsNeedRoom: z.array(attentionExamRoomSchema),
 });
 
 export type Attention = z.infer<typeof attentionSchema>;

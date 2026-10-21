@@ -234,6 +234,11 @@ export const AUDIT_ACTION_GROUPS = {
     'absence.create',
     'absence.edit',
     'absence.withdraw',
+    // Task 5.7a-2b: a room closure entered, changed or withdrawn, and "move all".
+    'room_closure.create',
+    'room_closure.edit',
+    'room_closure.withdraw',
+    'room_closure.move',
   ],
   exports: [
     'building.export',

@@ -678,6 +678,20 @@ export interface RequestKeys {
   scope: string;
 }
 
+export interface RoomClosures {
+  applies_from: Timestamp;
+  applies_until: Timestamp;
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  created_by: string;
+  ends_on: string;
+  id: Generated<string>;
+  reason: string;
+  room_id: string;
+  starts_on: string;
+  withdrawn_at: Timestamp | null;
+}
+
 export interface Rooms {
   branch_id: string;
   capacity: number;
@@ -1201,6 +1215,7 @@ export interface DB {
   relative_accounts: RelativeAccounts;
   relatives: Relatives;
   request_keys: RequestKeys;
+  room_closures: RoomClosures;
   rooms: Rooms;
   schema_migrations: SchemaMigrations;
   second_step_recovery_codes: SecondStepRecoveryCodes;

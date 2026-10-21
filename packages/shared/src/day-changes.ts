@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import { schoolDateSchema } from './academic-year.js';
-import { awayCauseSchema, lessonStateSchema, ruleResultSchema } from './timetable.js';
+import {
+  awayCauseSchema,
+  lessonStateSchema,
+  roomOutCauseSchema,
+  ruleResultSchema,
+} from './timetable.js';
 
 /**
  * One-day changes of a published timetable (task 5.6a-1, pull request #160;
@@ -118,6 +123,8 @@ export const dayLessonSchema = z.object({
    * "needs a teacher" or "unresolved"; `null` when the teacher can.
    */
   away: awayCauseSchema.nullable(),
+  /** Task 5.7a-2b (decision 2): why the room cannot be used at the start, while the lesson needs a room. */
+  roomOut: roomOutCauseSchema.nullable(),
   /**
    * Started, or the earlier half of its double started, in a year not closed:
    * the lesson is corrected, not changed for the day (task 5.6a-4, decision 5

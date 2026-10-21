@@ -63,6 +63,14 @@ export function TimetablePage() {
               {t('timetable.absencesLink')}
             </Link>
           </li>
+          <li className={PANEL}>
+            <Link
+              to="/timetable/room-closures"
+              className="font-semibold text-link underline-offset-4 hover:underline"
+            >
+              {t('timetable.roomClosuresLink')}
+            </Link>
+          </li>
         </ul>
       )}
     </>

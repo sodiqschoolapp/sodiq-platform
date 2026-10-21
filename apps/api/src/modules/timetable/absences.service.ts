@@ -30,6 +30,7 @@ import { notFound } from '../setup/setup-refusals.js';
 import { absenceSpans } from './absences-read.js';
 import { awayAt, awayLessons, awaySpans } from './away-read.js';
 import { dayBeginnings } from './dated-check.js';
+import { examsNeedingRoom, lessonsNeedingRoom } from './rooms-attention.js';
 
 /**
  * Teacher absences (task 5.7a-1, pull request #185). An absence is entered
@@ -485,7 +486,12 @@ export class TimetableAbsences {
         .orderBy('lessons.starts_at')
         .execute();
       const needsInvigilator = await this.examsAway(transaction, branchId, moment);
-      if (lessons.length === 0) return { needsTeacher: [], unresolved: [], needsInvigilator };
+      // Task 5.7a-2b (decisions 2, 7 and 10): the lessons and exams that need a room.
+      const needsRoom = await lessonsNeedingRoom(transaction, branchId, moment);
+      const examsNeedRoom = await examsNeedingRoom(transaction, branchId, moment);
+      if (lessons.length === 0) {
+        return { needsTeacher: [], unresolved: [], needsInvigilator, needsRoom, examsNeedRoom };
+      }
       const away = await awayLessons(
         transaction,
         lessons.map((one) => ({ id: one.id, teacherId: one.teacher_id, startsAt: one.starts_at })),
@@ -608,6 +614,8 @@ export class TimetableAbsences {
         needsTeacher: listOf(groups.needsTeacher),
         unresolved: listOf(groups.unresolved),
         needsInvigilator,
+        needsRoom,
+        examsNeedRoom,
       };
     });
   }

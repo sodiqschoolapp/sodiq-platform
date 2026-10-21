@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 21 October 2026: task 5.7a-2b Teacher absence: room closure
+
+- A room closure (0098 `room_closures`, branch-filtered; `/timetable/room-closures`) has a first and a last day and a reason; the lessons of the room that start inside it and have not started are "needs a room" (`needsRoomOf`, a flag beside `lessonStateOf`), read on every request with the room's status `under_repair` and `closed` (`rooms-out-read.ts`): no lesson is written, a shortened or withdrawn closure gives them back.
+- "Move all to room R for the period" (`POST /api/timetable/room-closures/:id/move`) moves every such lesson as a one-day room change, all or nothing (`room_move_blocked` lists the dates).
+- A new blocked rule `room_closed` in `packages/timetable-rules`: a dated call that carries the closed spans (`storedDayCheck` `closures: true` for the room change, move, restore and move all; the exam check) refuses a room closed then or under repair; a pattern call never reads them.
+- The home page lists "Lessons that need a room" and "Exams that need a room"; the publish preview and the withdraw check list the closures kept (`dayChanges.closures`). Handbook: `05-teaching-load-and-timetable.md`.
+- Left out: the Free now board and settling from it (5.7c, From line written); vacancy fill and acting teacher (5.7a-3); substitutes (5.7b).
+
+The next sessions must know:
+
+- Read "needs a room" only through `rooms-out-read.ts` (`roomsOutLessons`, `roomsOut`) and `needsRoomOf`.
+- The calendar save lists no closures in its `dayChanges` (`closures: []`).
+- The next task is 5.7a-3.
+
 ## 20 October 2026: task 5.7a-2a Teacher absence: status, lock and the invigilator
 
 - A lesson whose teacher is inactive or left on it, or whose account is locked at its start, keeps its teacher and is "needs a teacher", then "unresolved" (`lessonStateOf` `away`), read on every request through `teachers_away` (0097) with absences: no lesson is written, an unlock or a status taken back gives the lessons back.
