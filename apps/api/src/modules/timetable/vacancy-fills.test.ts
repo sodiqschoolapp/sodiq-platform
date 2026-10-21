@@ -150,10 +150,17 @@ describe('vacancy fill', () => {
    * break, lesson, break, lesson on every weekday from 08:00, the classes 7A
    * and 7B, a subject of grade 7, a vacancy for it, and a person hired who
    * teaches it; version A, published from Monday 12 October, holds the
-   * vacancy's row of 7A (Monday, slot 1) and, with \`second\`, of 7B (Tuesday,
+   * vacancy's row of 7A (Monday, slot 1) and, with `second`, of 7B (Tuesday,
    * slot 1).
    */
-  async function scene(input: { second?: boolean; personSubjects?: 'none' | 'grade8' } = {}) {
+  async function scene(
+    input: {
+      second?: boolean;
+      personSubjects?: 'none' | 'grade8';
+      /** A row of art taught by the person, placed in A at slot 1 of the weekday, for 7A or 7B. */
+      art?: { weekday: number; unit: 'A' | 'B' };
+    } = {},
+  ) {
     const branch = await t.newBranch();
     const year = await load.classes.year(branch);
     for (const [index, [start, end]] of QUARTERS.entries()) {
@@ -208,26 +215,77 @@ describe('vacancy fill', () => {
       await placeAt(branch, a, rowId, unit.rowSlot.weekday, unit.rowSlot.slotPosition);
       rows.push(rowId);
     }
+    const art = await load.classes.subject({ grades: [7], journalType: 'attendance_only' });
+    await load.profile(person, [{ subject: art, grades: [7] }]);
+    let artRow: string | null = null;
+    if (input.art !== undefined) {
+      artRow = await load.row({
+        branch_id: branch,
+        version_id: a,
+        class_id: input.art.unit === 'A' ? classA : classB,
+        subject_id: art,
+        teacher_id: person,
+        lessons_per_week: 1,
+      });
+      await placeAt(branch, a, artRow, input.art.weekday);
+    }
     await ready(branch, a);
     await published(branch, a, MONDAY);
-    return { branch, year, subject, room, roomB, classA, classB, vacancy, person, a, rows };
+    return {
+      branch,
+      year,
+      subject,
+      art,
+      room,
+      roomB,
+      classA,
+      classB,
+      vacancy,
+      person,
+      a,
+      rows,
+      artRow,
+    };
   }
 
   type Scene = Awaited<ReturnType<typeof scene>>;
 
-  /** A copy of version \`from\` placed as it was, published from \`startsOn\` with \`chain\`. */
-  async function laterCopy(s: Scene, from: string, startsOn: string) {
+  /**
+   * A copy of version `from`, its maths placed as in A (7A Monday, 7B
+   * Tuesday), its art on `artDay` (Wednesday by default), with `extraB` a
+   * row of maths for 7B under the vacancy on Tuesday, published from
+   * `startsOn` to run until the next version.
+   */
+  async function laterCopy(
+    s: Scene,
+    from: string,
+    startsOn: string,
+    options: { artDay?: number; extraB?: boolean } = {},
+  ) {
     const version = await draft(s.branch, s.year, from);
     const copied = await t.database.migrator
       .selectFrom('teaching_load_rows')
-      .select(['id', 'class_id'])
+      .select(['id', 'class_id', 'subject_id'])
       .where('version_id', '=', version)
       .execute();
     for (const row of copied) {
-      await placeAt(s.branch, version, row.id, row.class_id === s.classA ? 1 : 2);
+      const weekday =
+        row.subject_id === s.art ? (options.artDay ?? 3) : row.class_id === s.classA ? 1 : 2;
+      await placeAt(s.branch, version, row.id, weekday);
+    }
+    if (options.extraB === true) {
+      const rowId = await load.row({
+        branch_id: s.branch,
+        version_id: version,
+        class_id: s.classB,
+        subject_id: s.subject,
+        teacher_id: s.vacancy,
+        lessons_per_week: 1,
+      });
+      await placeAt(s.branch, version, rowId, 2);
     }
     await ready(s.branch, version);
-    await published(s.branch, version, startsOn, { chain: 'until' });
+    await published(s.branch, version, startsOn, { chain: 'run_until' });
     return version;
   }
 
@@ -404,6 +462,280 @@ describe('vacancy fill', () => {
       expect(published).toMatchObject({
         new_value: { vacancyFill: { vacancyId: s.vacancy, personId: s.person } },
       });
+    });
+  });
+  /** The causes of a draft's mark out of date. */
+  const causesOf = (id: string) =>
+    t.database.migrator
+      .selectFrom('timetable_version_out_of_date_causes')
+      .select(['action', 'record_id'])
+      .where('version_id', '=', id)
+      .orderBy('caused_at')
+      .orderBy('id')
+      .execute();
+
+  describe('the later versions', () => {
+    it('changes a later published version that names the vacancy from its own start, in the same step; an open draft is marked and holds the vacancy open', async () => {
+      const s = await scene();
+      const b = await laterCopy(s, s.a, NOVEMBER);
+      const open = await draft(s.branch, s.year, s.a);
+      await load.freeEditLock(open);
+      const check = await checked(s.branch, bodyOf(s, OCTOBER_19));
+      expect(check.inPlace).toBe(false);
+      expect(check.publish?.chain?.later.map((one) => one.id)).toEqual([b]);
+      expect(check.publish?.chain?.carried.map((one) => [one.versionId, one.left])).toEqual([
+        [b, false],
+      ]);
+      expect(check.closes).toBe(false);
+      expect(check.holders.map((one) => one.versionId)).toEqual([open]);
+      const fill = await filled(s, bodyOf(s, OCTOBER_19));
+      expect(fill.closed).toBe(false);
+      expect(await teachersOfRows(b)).toEqual([{ class_id: s.classA, teacher_id: s.person }]);
+      const lessons = await lessonsOf(s.branch);
+      const ofB = lessons.filter((one) => one.version_id === b);
+      expect(ofB.length).toBeGreaterThan(5);
+      expect(new Set(ofB.map((one) => one.teacher_id))).toEqual(new Set([s.person]));
+      expect(ofB.every((one) => one.date >= NOVEMBER)).toBe(true);
+      expect(await causesOf(open)).toEqual([
+        { action: 'timetable_version.publish', record_id: fill.versionId },
+      ]);
+      expect(await liveStatusesOf(s.vacancy)).toEqual([
+        { status: 'open', from: '2026-09-01', until: null },
+      ]);
+      const [carry] = await t.entries('timetable_version.carry', b);
+      expect(carry).toMatchObject({ new_value: { fromVersionId: fill.versionId } });
+    });
+
+    it('fills a row found only in a later version, there (spec review of the plan, must-fix 4)', async () => {
+      const s = await scene();
+      const b = await laterCopy(s, s.a, NOVEMBER, { extraB: true });
+      const fill = await filled(s, bodyOf(s, OCTOBER_19));
+      expect(fill.rows.map((one) => [one.classId, one.filled])).toEqual(
+        [
+          [s.classA, true],
+          [s.classB, true],
+        ].sort((x, y) => (`${x[0]}` < `${y[0]}` ? -1 : 1)),
+      );
+      expect(await teachersOfRows(b)).toEqual(
+        [
+          { class_id: s.classA, teacher_id: s.person },
+          { class_id: s.classB, teacher_id: s.person },
+        ].sort((x, y) => (x.class_id < y.class_id ? -1 : 1)),
+      );
+      expect(fill.closed).toBe(true);
+    });
+
+    it('carries the fill into the version that starts on its date in place: no version is made (decision 4)', async () => {
+      const s = await scene();
+      const b = await laterCopy(s, s.a, NOVEMBER);
+      const open = await draft(s.branch, s.year, s.a);
+      await load.freeEditLock(open);
+      const before = await versionsOf(s.branch);
+      const check = await checked(s.branch, bodyOf(s, NOVEMBER));
+      expect(check.inPlace).toBe(true);
+      const fill = await filled(s, bodyOf(s, NOVEMBER));
+      expect(fill.versionId).toBeNull();
+      expect(await versionsOf(s.branch)).toEqual(before);
+      expect(await teachersOfRows(b)).toEqual([{ class_id: s.classA, teacher_id: s.person }]);
+      expect(await teachersOfRows(s.a)).toEqual([{ class_id: s.classA, teacher_id: s.vacancy }]);
+      const lessons = await lessonsOf(s.branch);
+      expect(
+        new Set(lessons.filter((one) => one.date >= NOVEMBER).map((one) => one.teacher_id)),
+      ).toEqual(new Set([s.person]));
+      expect(
+        new Set(lessons.filter((one) => one.date < NOVEMBER).map((one) => one.teacher_id)),
+      ).toEqual(new Set([s.vacancy]));
+      // Decision 15: the open draft is marked with the fill's cause, named by B.
+      expect(await causesOf(open)).toEqual([{ action: 'vacancy.fill', record_id: b }]);
+      const [carry] = await t.entries('timetable_version.carry', b);
+      expect(carry).toMatchObject({
+        new_value: {
+          fromVersionId: null,
+          vacancyFill: { vacancyId: s.vacancy, personId: s.person },
+        },
+      });
+      const notices = await t.database.migrator
+        .selectFrom('notifications')
+        .select('kind')
+        .where('branch_id', '=', s.branch)
+        .where('kind', '=', 'timetable.vacancy_filled')
+        .execute();
+      expect(notices).toHaveLength(1);
+    });
+  });
+
+  describe('the rows', () => {
+    it('fills the rows chosen and leaves the others with the vacancy, which stays open', async () => {
+      const s = await scene({ second: true });
+      const fill = await filled(
+        s,
+        bodyOf(s, OCTOBER_19, { rows: [{ classId: s.classB, subjectId: s.subject }] }),
+      );
+      expect(fill.rows.map((one) => [one.classId, one.filled])).toEqual([[s.classB, true]]);
+      expect(await teachersOfRows(fill.versionId ?? '')).toEqual(
+        [
+          { class_id: s.classA, teacher_id: s.vacancy },
+          { class_id: s.classB, teacher_id: s.person },
+        ].sort((x, y) => (x.class_id < y.class_id ? -1 : 1)),
+      );
+      expect(fill.closed).toBe(false);
+      expect(fill.holders.map((one) => one.versionId)).toContain(fill.versionId);
+    });
+
+    it('leaves a row whose lessons meet a blocked rule with the person with the vacancy, listed, and fills the rest (decision 3)', async () => {
+      // The person teaches art to 7A on Tuesdays at slot 1, the time of 7B's row.
+      const s = await scene({ second: true, art: { weekday: 2, unit: 'A' } });
+      const check = await checked(s.branch, bodyOf(s, OCTOBER_19));
+      const byClass = new Map(check.rows.map((one) => [one.classId, one]));
+      expect(byClass.get(s.classA)).toMatchObject({ filled: true, reason: null });
+      expect(byClass.get(s.classB)).toMatchObject({ filled: false, reason: 'blocked' });
+      // Listed with its dates: every Tuesday of the run from the date.
+      expect(byClass.get(s.classB)?.dates.slice(0, 2)).toEqual(['2026-10-20', '2026-10-27']);
+      expect(check.closes).toBe(false);
+      const fill = await filled(s, bodyOf(s, OCTOBER_19));
+      expect(await teachersOfRows(fill.versionId ?? '')).toEqual(
+        expect.arrayContaining([
+          { class_id: s.classA, teacher_id: s.person },
+          { class_id: s.classB, teacher_id: s.vacancy },
+        ]),
+      );
+      const [entry] = await t.entries('vacancy.fill', s.vacancy);
+      expect(entry).toMatchObject({
+        new_value: {
+          rows: expect.arrayContaining([
+            expect.objectContaining({ classId: s.classB, reason: 'blocked' }),
+          ]) as unknown,
+        },
+      });
+    });
+
+    it('leaves a row the person is blocked on only in a later version with the vacancy in every version; no version is left', async () => {
+      const s = await scene({ second: true, art: { weekday: 3, unit: 'A' } });
+      // In B the person's art moves to Tuesday at slot 1, 7B's maths time.
+      const b = await laterCopy(s, s.a, NOVEMBER, { artDay: 2 });
+      const check = await checked(s.branch, bodyOf(s, OCTOBER_19));
+      expect(check.rows.find((one) => one.classId === s.classB)).toMatchObject({
+        filled: false,
+        reason: 'blocked',
+      });
+      expect(check.publish?.chain?.carried.map((one) => one.left)).toEqual([false]);
+      const fill = await filled(s, bodyOf(s, OCTOBER_19));
+      for (const version of [fill.versionId ?? '', b]) {
+        expect(await teachersOfRows(version)).toEqual(
+          expect.arrayContaining([
+            { class_id: s.classA, teacher_id: s.person },
+            { class_id: s.classB, teacher_id: s.vacancy },
+          ]),
+        );
+      }
+    });
+
+    it('answers fill_nothing when every row is blocked; the check shows no publish', async () => {
+      // The person teaches art to 7B on Mondays at slot 1, 7A's maths time.
+      const s = await scene({ art: { weekday: 1, unit: 'B' } });
+      const check = await checked(s.branch, bodyOf(s, OCTOBER_19));
+      expect(check.rows).toMatchObject([{ classId: s.classA, filled: false, reason: 'blocked' }]);
+      expect(check.publish).toBeNull();
+      expect(check.closes).toBe(false);
+      refusedWith(
+        await fillOf(s.branch, { ...bodyOf(s, OCTOBER_19), rowsKey: check.rowsKey }),
+        409,
+        'fill_nothing',
+      );
+    });
+
+    it("leaves a row whose subject or grades are not in the person's profile, reason profile (spec review of the plan, must-fix 1)", async () => {
+      const s = await scene({ second: true, personSubjects: 'grade8' });
+      const check = await checked(s.branch, bodyOf(s, OCTOBER_19));
+      expect(check.rows.map((one) => [one.filled, one.reason])).toEqual([
+        [false, 'profile'],
+        [false, 'profile'],
+      ]);
+      refusedWith(
+        await fillOf(s.branch, { ...bodyOf(s, OCTOBER_19), rowsKey: check.rowsKey }),
+        409,
+        'fill_nothing',
+      );
+      const one = await scene({ second: true });
+      await load.profile(one.person, []);
+      // 7B only fits a person whose profile has grade 7: drop the person's
+      // maths and the rows both stay.
+      await t.database.migrator
+        .deleteFrom('staff_subjects')
+        .where('staff_id', '=', one.person)
+        .where('subject_id', '=', one.subject)
+        .execute();
+      const none = await checked(one.branch, bodyOf(one, OCTOBER_19));
+      expect(none.rows.every((row) => row.reason === 'profile')).toBe(true);
+    });
+
+    it('refuses the fill when the rows differ from those the check showed (fill_rows_changed)', async () => {
+      const s = await scene({ second: true });
+      const check = await checked(s.branch, bodyOf(s, OCTOBER_19));
+      await t.database.migrator
+        .updateTable('staff_subjects')
+        .set({ grades: [8] })
+        .where('staff_id', '=', s.person)
+        .where('subject_id', '=', s.subject)
+        .execute();
+      const before = await lessonsOf(s.branch);
+      refusedWith(
+        await fillOf(s.branch, { ...bodyOf(s, OCTOBER_19), ...keysOf(check) }),
+        409,
+        'fill_rows_changed',
+      );
+      expect(await lessonsOf(s.branch)).toEqual(before);
+    });
+  });
+
+  describe('refusals', () => {
+    it("refuses a date today or earlier, a person who is not active on it or is a vacancy, a vacancy that is not open, and rows that are not the vacancy's", async () => {
+      const s = await scene({ second: true });
+      refusedWith(await checkFill(s.branch, bodyOf(s, '2026-10-10')), 409, 'fill_start');
+      const other = await load.vacancy(s.branch, {
+        subjects: [{ subject: s.subject, grades: [7] }],
+      });
+      refusedWith(
+        await checkFill(s.branch, { ...bodyOf(s, OCTOBER_19), personId: other }),
+        409,
+        'fill_person',
+      );
+      const leaving = (
+        await load.teacher(s.branch, { subjects: [{ subject: s.subject, grades: [7] }] })
+      ).staffId;
+      await load.status(leaving, 'inactive', '2026-10-15');
+      refusedWith(
+        await checkFill(s.branch, { ...bodyOf(s, OCTOBER_19), personId: leaving }),
+        409,
+        'fill_person',
+      );
+      // Active on the date: the person is filled from it.
+      expect(
+        (await checkFill(s.branch, { ...bodyOf(s, '2026-10-13'), personId: leaving })).status,
+      ).toBe(200);
+      await load.status(other, 'closed', '2026-10-05');
+      refusedWith(
+        await checkFill(s.branch, { ...bodyOf(s, OCTOBER_19), vacancyId: other }),
+        409,
+        'fill_vacancy',
+      );
+      const empty = await load.vacancy(s.branch, {
+        subjects: [{ subject: s.subject, grades: [7] }],
+      });
+      refusedWith(
+        await checkFill(s.branch, { ...bodyOf(s, OCTOBER_19), vacancyId: empty }),
+        409,
+        'fill_rows',
+      );
+      const one = await scene();
+      refusedWith(
+        await checkFill(
+          one.branch,
+          bodyOf(one, OCTOBER_19, { rows: [{ classId: one.classB, subjectId: one.subject }] }),
+        ),
+        409,
+        'fill_rows',
+      );
     });
   });
 });

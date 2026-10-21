@@ -12,7 +12,7 @@ import {
   type VacancyFillCheckBody,
   type VacancyFillRowAnswer,
 } from '@sodiq/shared';
-import { patternIdOf, type CarryChange } from '@sodiq/timetable-rules';
+import { addDays, patternIdOf, type CarryChange, type DatedLesson } from '@sodiq/timetable-rules';
 import { sql } from 'kysely';
 import { RequestKeys } from '../../database/request-keys.js';
 import { Transactions, type Transaction } from '../../database/transactions.js';
@@ -23,7 +23,9 @@ import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { notFound } from '../setup/setup-refusals.js';
 import type { StoredLoadRow } from './load-facts.js';
-import type { PatternState } from './pattern.service.js';
+import { carryResultOf, type CarryReader } from './chain.js';
+import { invigilatorsOf } from './exams-kept.js';
+import { TimetablePattern, type PatternState } from './pattern.service.js';
 import {
   PUBLISH_LOCK,
   PUBLISH_REFUSALS,
@@ -58,10 +60,10 @@ interface Left {
 
 /** The versions a fill changes: the one it publishes from or carries in place, and the later ones. */
 interface FillVersions {
-  /** The published version in force on the fill date (\`V\`), or the one that starts on it (decision 4). */
+  /** The published version in force on the fill date (`V`), or the one that starts on it (decision 4). */
   readonly first: VersionRow;
   readonly inPlace: boolean;
-  /** Every published version the fill reads rows from, \`first\` first. */
+  /** Every published version the fill reads rows from, `first` first. */
   readonly all: readonly VersionRow[];
 }
 
@@ -71,7 +73,7 @@ interface Prepared {
   readonly rowsKey: string;
   readonly filled: readonly RowKey[];
   readonly versions: FillVersions;
-  /** The version checked: the draft copied, or \`first\` in place; \`null\` when no row is filled. */
+  /** The version checked: the draft copied, or `first` in place; `null` when no row is filled. */
   readonly own: VersionRow | null;
   readonly check: PublishCheck | null;
   readonly changes: readonly CarryChange[];
@@ -80,7 +82,7 @@ interface Prepared {
   readonly allRows: boolean;
 }
 
-/** The refusals of a fill: the publish's, and a row of \`V\` that cannot be copied on the date. */
+/** The refusals of a fill: the publish's, and a row of `V` that cannot be copied on the date. */
 const FILL_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   ...PUBLISH_REFUSALS,
   load_teacher_status: 'fill_version_rows',
@@ -131,6 +133,7 @@ export class VacancyFills {
     private readonly audit: Audit,
     private readonly requestKeys: RequestKeys,
     private readonly timetable: Timetable,
+    private readonly pattern: TimetablePattern,
     private readonly publish: TimetablePublish,
   ) {}
 
@@ -331,7 +334,7 @@ export class VacancyFills {
   /**
    * Every id of the body is a record of the branch, before any lock (404):
    * the vacancy, the person, the classes, groups and subjects of the rows,
-   * and the keys of the decisions (\`refuseUnknownKeys\`).
+   * and the keys of the decisions (`refuseUnknownKeys`).
    */
   private async refuseUnknown(
     transaction: Transaction,
@@ -392,7 +395,7 @@ export class VacancyFills {
   }
 
   /**
-   * The fill up to its publish, under the savepoint \`vacancy_fill_try\` that
+   * The fill up to its publish, under the savepoint `vacancy_fill_try` that
    * holds the draft or the rows changed in place: the checks of the vacancy,
    * the person and the date, the rows, the rows the profile leaves (step 2a),
    * then the publish's check until no filled row meets a blocked rule.
@@ -443,34 +446,66 @@ export class VacancyFills {
     }
     chosen.sort((a, b) => (keyOf(a) < keyOf(b) ? -1 : keyOf(a) > keyOf(b) ? 1 : 0));
 
-    // Step 2a (spec review of the plan, must-fix 1): a row the person's
-    // profile does not fit stays with the vacancy before anything is written.
+    // Steps 2a and 4 (decision 3; spec review of the plan, must-fix 1): the
+    // change checked in memory in every version over its run from the date,
+    // as a carry checks a later version, before anything is written: a load
+    // problem the change brings (the profile: subject, grades, language) or a
+    // blocked result of a lesson of a filled row leaves that row with the
+    // vacancy in every version; again without it until nothing more is left.
     const left = new Map<string, Left>();
-    for (const version of versions.all) {
-      const rows = rowsOf.get(version.id) ?? [];
-      const changed = rows.map((row) =>
-        row.teacher_id === input.vacancyId && chosen.some((one) => keyOf(one) === keyOfRow(row))
-          ? { ...row, teacher_id: input.personId }
-          : row,
-      );
-      const before = await this.problemsOf(transaction, version, rows);
-      const after = await this.problemsOf(transaction, version, changed);
-      for (const row of changed) {
-        if (
-          row.teacher_id !== input.personId ||
-          rows.find((one) => one.id === row.id)?.teacher_id !== input.vacancyId
-        ) {
-          continue;
-        }
-        const was = new Set(before.get(row.id) ?? []);
-        if ((after.get(row.id) ?? []).some((problem) => !was.has(problem))) {
-          left.set(keyOfRow(row), { reason: 'profile', dates: new Set() });
+    const invigilators = await invigilatorsOf(
+      transaction,
+      branchId,
+      input.startsOn,
+      versions.first.end_date,
+    );
+    const reader: CarryReader = {
+      stateOf: (other, otherRows) =>
+        this.pattern.stateOf(transaction, other, access.accountId, otherRows, invigilators),
+      versionRow: (versionId) => this.timetable.versionRow(transaction, versionId),
+      loadProblems: async (other, otherRows) =>
+        (
+          await this.timetable.readinessOf(transaction, other.branch_id, other, otherRows)
+        ).load.problemRows.map((one) => ({ id: one.id, problems: one.problems })),
+    };
+    let candidate = [...chosen];
+    while (candidate.length > 0) {
+      const changes = teacherChanges(input, candidate);
+      const filledKeys = new Set(candidate.map(keyOf));
+      const found = new Map<string, Left>();
+      for (const [index, version] of versions.all.entries()) {
+        const next = versions.all[index + 1];
+        const result = await carryResultOf(
+          transaction,
+          reader,
+          {
+            id: version.id,
+            number: version.number,
+            starts_on: index === 0 ? input.startsOn : version.starts_on,
+          },
+          next === undefined ? version.end_date : addDays(next.starts_on, -1),
+          changes,
+        );
+        if (result.written !== null) {
+          mergeLeft(
+            found,
+            leftOf(
+              result.written.state,
+              result.written.findings.dated.lessons,
+              result.refusals,
+              filledKeys,
+              input.personId,
+            ),
+          );
         }
       }
+      if (found.size === 0) break;
+      mergeLeft(left, found);
+      candidate = candidate.filter((one) => !found.has(keyOf(one)));
     }
 
-    // Step 4 (decision 3): the publish's check, until stable.
-    let candidate = chosen.filter((one) => !left.has(keyOf(one)));
+    // The publish's own check of what is written; a row it still finds
+    // blocked (none, after the check above) is left the same way.
     let found: { own: VersionRow; check: PublishCheck; changes: CarryChange[] } | null = null;
     const chain = versions.all.length > 1 ? ('carry' as const) : undefined;
     while (candidate.length > 0) {
@@ -487,18 +522,14 @@ export class VacancyFills {
         chain,
         { carry: changes },
       );
-      const blocked = blockedKeysOf(findings, new Set(candidate.map(keyOf)), input.personId);
+      const blocked = blockedOf(findings, new Set(candidate.map(keyOf)), input.personId);
       if (blocked.size === 0) {
         found = { own, check, changes };
         break;
       }
       await sql`rollback to savepoint vacancy_fill_try`.execute(transaction);
       await sql`release savepoint vacancy_fill_try`.execute(transaction);
-      for (const [key, dates] of blocked) {
-        const was = left.get(key)?.dates ?? new Set<string>();
-        for (const date of dates) was.add(date);
-        left.set(key, { reason: 'blocked', dates: was });
-      }
+      mergeLeft(left, blocked);
       candidate = candidate.filter((one) => !blocked.has(keyOf(one)));
     }
 
@@ -510,7 +541,7 @@ export class VacancyFills {
         subjectId: one.subjectId,
         filled: why === undefined,
         reason: why?.reason ?? null,
-        dates: why === undefined ? [] : [...why.dates].sort(),
+        dates: why?.reason === 'blocked' ? [...why.dates].sort() : [],
       };
     });
     return {
@@ -539,7 +570,7 @@ export class VacancyFills {
    * The published versions of the year that holds the date: the one in force
    * on it (a tie on a start to the higher number), or the one that starts on
    * it (decision 4), and the later ones in start order. None in force is
-   * \`fill_rows\`: the vacancy has no row from the date.
+   * `fill_rows`: the vacancy has no row from the date.
    */
   private async versionsOf(
     transaction: Transaction,
@@ -581,8 +612,8 @@ export class VacancyFills {
   }
 
   /**
-   * The vacancy is open on the date and today, with no close planned (\`fill_vacancy\`);
-   * the person is active on the date (\`fill_person\`); read after the
+   * The vacancy is open on the date and today, with no close planned (`fill_vacancy`);
+   * the person is active on the date (`fill_person`); read after the
    * publish's locks, which hold both FOR KEY SHARE.
    */
   private async refuseStatuses(
@@ -622,21 +653,6 @@ export class VacancyFills {
     if (kind.kind !== 'person' || onDay(input.personId, input.startsOn) !== 'active') {
       throw new ApiException('fill_person', 409);
     }
-  }
-
-  /** The load problems of each row of a version's rows (the readiness's \`problemRows\`). */
-  private async problemsOf(
-    transaction: Transaction,
-    version: VersionRow,
-    rows: StoredLoadRow[],
-  ): Promise<Map<string, readonly string[]>> {
-    const readiness = await this.timetable.readinessOf(
-      transaction,
-      version.branch_id,
-      version,
-      rows,
-    );
-    return new Map(readiness.load.problemRows.map((one) => [one.id, one.problems]));
   }
 
   /** Decision 4: the rows of the version that starts on the date, given to the person in place. */
@@ -918,57 +934,124 @@ export class VacancyFills {
   }
 }
 
+/** The changes of a fill: each row, vacancy to person. */
+function teacherChanges(input: VacancyFillCheckBody, rows: readonly RowKey[]): CarryChange[] {
+  return rows.map((one) => ({
+    kind: 'teacher' as const,
+    classId: one.classId,
+    groupId: one.groupId,
+    subjectId: one.subjectId,
+    before: input.vacancyId,
+    after: input.personId,
+  }));
+}
+
 /**
- * The rows of a fill that a blocked result of the check names (decision 3):
- * a result of the own run or of a carried version whose lessons include a
- * lesson of a filled row, now the person's, with its date when it has one;
- * a load problem of a filled row too. By the key of the row.
+ * Adds rows left to a map of them. `profile` wins over `blocked`: a subject
+ * or grade the person lacks blocks its lessons too (`teacher_subject`,
+ * `teacher_grade`); the dates add up.
  */
-function blockedKeysOf(
+function mergeLeft(into: Map<string, Left>, from: ReadonlyMap<string, Left>): void {
+  for (const [key, one] of from) {
+    const was = into.get(key);
+    into.set(key, {
+      reason: was?.reason === 'profile' || one.reason === 'profile' ? 'profile' : 'blocked',
+      dates: new Set([...(was?.dates ?? []), ...one.dates]),
+    });
+  }
+}
+
+/** A refusal as `leftOf` reads it: its code, its load row, its lessons and date. */
+interface RowRefusal {
+  readonly code: string;
+  readonly loadRowId?: string | undefined;
+  readonly result?:
+    { readonly lessonIds: readonly string[]; readonly date?: string | undefined } | undefined;
+}
+
+/**
+ * The rows of a fill that the refusals of a version's check name (decision
+ * 3): a load problem of a filled row (`profile`), or a blocked result whose
+ * lessons include a lesson of a filled row, now the person's (`blocked`, with
+ * its date when it has one). By the key of the row.
+ */
+function leftOf(
+  state: PatternState,
+  dated: readonly DatedLesson[],
+  refusals: readonly RowRefusal[],
+  filled: ReadonlySet<string>,
+  personId: string,
+): Map<string, Left> {
+  const left = new Map<string, Left>();
+  const rowById = new Map(state.rows.map((row) => [row.id, row]));
+  const rowOfLesson = new Map(
+    state.blocks.flatMap((block) => block.lessons.map((one) => [one.id, one.loadRowId] as const)),
+  );
+  const keyOfPersonRow = (rowId: string | undefined): string | null => {
+    const row = rowId === undefined ? undefined : rowById.get(rowId);
+    if (row?.teacher_id !== personId) return null;
+    const key = keyOfRow(row);
+    return filled.has(key) ? key : null;
+  };
+  // A blocked result of the pattern names a weekday: its dates are every
+  // date of the run its lessons have.
+  const datesOf = new Map<string, string[]>();
+  for (const one of dated) {
+    datesOf.set(one.entryId, [...(datesOf.get(one.entryId) ?? []), one.date]);
+  }
+  const add = (key: string, reason: Left['reason'], dates: readonly string[]) => {
+    mergeLeft(left, new Map([[key, { reason, dates: new Set(dates) }]]));
+  };
+  for (const refusal of refusals) {
+    if (refusal.code === 'load_problem') {
+      const key = keyOfPersonRow(refusal.loadRowId);
+      if (key !== null) add(key, 'profile', []);
+      continue;
+    }
+    if (refusal.code !== 'pattern_blocked' && refusal.code !== 'date_blocked') continue;
+    for (const lessonId of refusal.result?.lessonIds ?? []) {
+      const entryId = patternIdOf(lessonId)?.id ?? lessonId;
+      const key = keyOfPersonRow(rowOfLesson.get(entryId));
+      if (key === null) continue;
+      const date = refusal.result?.date;
+      add(key, 'blocked', date === undefined ? (datesOf.get(entryId) ?? []) : [date]);
+    }
+  }
+  return left;
+}
+
+/** `leftOf` over the publish's check of the fill's run and of each carried version. */
+function blockedOf(
   findings: Findings,
   filled: ReadonlySet<string>,
   personId: string,
-): Map<string, Set<string>> {
-  const blocked = new Map<string, Set<string>>();
-  const add = (key: string, date: string | undefined) => {
-    const dates = blocked.get(key) ?? new Set<string>();
-    if (date !== undefined) dates.add(date);
-    blocked.set(key, dates);
-  };
-  const read = (
-    state: PatternState,
-    refusals: readonly {
-      code: string;
-      loadRowId?: string | undefined;
-      result?: { lessonIds: readonly string[]; date?: string | undefined } | undefined;
-    }[],
-  ) => {
-    const rowById = new Map(state.rows.map((row) => [row.id, row]));
-    const rowOfLesson = new Map(
-      state.blocks.flatMap((block) => block.lessons.map((one) => [one.id, one.loadRowId] as const)),
+): Map<string, Left> {
+  const left = new Map<string, Left>();
+  if (findings.written !== null) {
+    mergeLeft(
+      left,
+      leftOf(
+        findings.written.state,
+        findings.written.findings.dated.lessons,
+        findings.refusals,
+        filled,
+        personId,
+      ),
     );
-    const keyOfPersonRow = (rowId: string | undefined): string | null => {
-      const row = rowId === undefined ? undefined : rowById.get(rowId);
-      if (row === undefined || row.teacher_id !== personId) return null;
-      const key = keyOfRow(row);
-      return filled.has(key) ? key : null;
-    };
-    for (const refusal of refusals) {
-      if (refusal.code === 'load_problem') {
-        const key = keyOfPersonRow(refusal.loadRowId);
-        if (key !== null) add(key, undefined);
-        continue;
-      }
-      if (refusal.code !== 'pattern_blocked' && refusal.code !== 'date_blocked') continue;
-      for (const lessonId of refusal.result?.lessonIds ?? []) {
-        const key = keyOfPersonRow(rowOfLesson.get(patternIdOf(lessonId)?.id ?? lessonId));
-        if (key !== null) add(key, refusal.result?.date);
-      }
-    }
-  };
-  if (findings.written !== null) read(findings.written.state, findings.refusals);
-  for (const carried of findings.carried) {
-    if (carried.written !== null) read(carried.written.state, carried.refusals);
   }
-  return blocked;
+  for (const carried of findings.carried) {
+    if (carried.written !== null) {
+      mergeLeft(
+        left,
+        leftOf(
+          carried.written.state,
+          carried.written.findings.dated.lessons,
+          carried.refusals,
+          filled,
+          personId,
+        ),
+      );
+    }
+  }
+  return left;
 }
