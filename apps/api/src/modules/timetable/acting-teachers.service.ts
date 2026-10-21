@@ -120,17 +120,23 @@ export function actingAnswerOf(
   };
 }
 
-/** The names of people by id, read through `staff` (each is linked to a branch the transaction sees, or has no name here). */
+/**
+ * The names of people by id who are linked to the branch named, the row
+ * filter aside (permission review, should-fix 3); anyone else has no name here.
+ */
 async function namesOf(
   transaction: Transaction,
+  branchId: string,
   ids: readonly string[],
 ): Promise<Map<string, string>> {
   const wanted = [...new Set(ids)];
   if (wanted.length === 0) return new Map();
   const rows = await transaction
     .selectFrom('staff')
-    .select(['id', 'first_name', 'last_name'])
-    .where('id', 'in', wanted)
+    .innerJoin('staff_branches', 'staff_branches.staff_id', 'staff.id')
+    .select(['staff.id', 'staff.first_name', 'staff.last_name'])
+    .where('staff.id', 'in', wanted)
+    .where('staff_branches.branch_id', '=', branchId)
     .execute();
   return new Map(
     rows.map((row) => [
@@ -186,6 +192,7 @@ export async function vacancyJournalsOf(
     .execute();
   const names = await namesOf(
     transaction,
+    branchId,
     periods.map((one) => one.person_id),
   );
   return journals
@@ -248,7 +255,7 @@ export class ActingTeachers {
               key,
               scope: 'timetable.acting_teacher',
               accountId: access.accountId,
-              input: JSON.parse(JSON.stringify(input)) as JsonValue,
+              input: JSON.parse(JSON.stringify(body)) as JsonValue,
             },
             async () =>
               (await this.nameNow(
@@ -423,7 +430,7 @@ export class ActingTeachers {
   ): Promise<ActingTeacher> {
     const journals = await journalKeysOf(transaction, branchId, [row.journal_id]);
     const facts = await ownerFactsOf(transaction, branchId, journals);
-    const names = await namesOf(transaction, [row.person_id]);
+    const names = await namesOf(transaction, branchId, [row.person_id]);
     return actingAnswerOf(
       row,
       names.get(row.person_id) ?? '',

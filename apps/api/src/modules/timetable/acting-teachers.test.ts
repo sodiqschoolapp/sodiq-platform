@@ -189,17 +189,22 @@ describe('acting teachers', () => {
         .where('role', '=', 'principal')
         .executeTakeFirstOrThrow();
       await kit.load.classes.role(principal.account_id, s.branch, 'principal');
+      const audit = await t.auditCount();
       refusedWith(await name(s, {}, t.principal), 403, 'permission_denied');
       refusedWith(await check(s, {}, t.principal), 403, 'permission_denied');
       const other = await kit.scene(await t.newBranch());
       refusedWith(await name(other), 403, 'permission_denied');
       expect(await rowsOf(s.branch)).toEqual([]);
       expect(await rowsOf(other.branch)).toEqual([]);
+      expect(await t.auditCount()).toBe(audit);
     });
 
     it('answers 404 for another branch’s or an unknown journal, vacancy or person, writing nothing', async () => {
       const s = await scene();
       const theirs = await scene();
+      // A period in the other branch, so a write there would show.
+      await kit.period(theirs, LATER);
+      const before = await rowsOf(theirs.branch);
       const audit = await t.auditCount();
       for (const extra of [
         { journalId: theirs.journal },
@@ -213,7 +218,7 @@ describe('acting teachers', () => {
         refusedWith(await check(s, extra), 404, 'not_found');
       }
       expect(await rowsOf(s.branch)).toEqual([]);
-      expect(await rowsOf(theirs.branch)).toEqual([]);
+      expect(await rowsOf(theirs.branch)).toEqual(before);
       expect(await t.auditCount()).toBe(audit);
     });
 
@@ -324,11 +329,14 @@ describe('acting teachers', () => {
       for (const extra of [{ journalId: theirs.journal }, { personId: UNKNOWN }]) {
         refusedWith(await name(s, extra, t.vicePrincipal, key), 404, 'not_found');
       }
-      refusedWith(await name(s, {}, await teacherIn(s.branch), key), 403, 'permission_denied');
+      const teacher = await teacherIn(s.branch);
+      refusedWith(await name(s, {}, teacher, key), 403, 'permission_denied');
       const period = await named(s, { from: FILL });
       const endKey = randomUUID();
       expect((await end(s, period.id, FILL, endKey)).status).toBe(200);
       refusedWith(await end(theirs, period.id, FILL, endKey), 404, 'not_found');
+      refusedWith(await end(s, UNKNOWN, FILL, endKey), 404, 'not_found');
+      refusedWith(await end(s, period.id, FILL, endKey, teacher), 403, 'permission_denied');
       refusedWith(await end(s, period.id, FILL, endKey, t.admin), 409, 'request_key_reused');
     });
   });
@@ -396,11 +404,12 @@ describe('acting teachers', () => {
     it('refuses a role without timetable edit', async () => {
       const s = await scene();
       const period = await named(s);
-      refusedWith(
-        await end(s, period.id, LATER, randomUUID(), await teacherIn(s.branch)),
-        403,
-        'permission_denied',
-      );
+      const teacher = await teacherIn(s.branch);
+      const before = await rowsOf(s.branch);
+      const audit = await t.auditCount();
+      refusedWith(await end(s, period.id, LATER, randomUUID(), teacher), 403, 'permission_denied');
+      expect(await rowsOf(s.branch)).toEqual(before);
+      expect(await t.auditCount()).toBe(audit);
     });
   });
 
@@ -428,6 +437,33 @@ describe('acting teachers', () => {
         },
       ]);
       expect(detail.fillUnits.map((one) => one.id)).toContain(s.classId);
+      // The Principal reads the vacancy and so its periods, with the name (a reader of the new value).
+      const principal = await t.database.migrator
+        .selectFrom('assignments')
+        .select('account_id')
+        .where('role', '=', 'principal')
+        .where('branch_id', '=', t.north)
+        .executeTakeFirstOrThrow();
+      await kit.load.classes.role(principal.account_id, s.branch, 'principal');
+      const read = await t.get(`/api/people/vacancies/${s.vacancy}`, s.branch, t.principal);
+      expect(read.status, JSON.stringify(read.body)).toBe(200);
+      expect(vacancyDetailSchema.parse(read.body).journals[0]?.acting[0]?.person).toEqual(
+        period.person,
+      );
+    });
+
+    it('lists the naming and the end in the person’s personal data report', async () => {
+      const s = await scene();
+      const period = await named(s);
+      expect((await end(s, period.id, MONDAY)).status).toBe(200);
+      const report = await t.post(`/api/people/staff/${s.person}/report`, s.branch);
+      expect(report.status, JSON.stringify(report.body)).toBe(200);
+      const actions = (report.body as { entries: { action: string }[] }).entries.map(
+        (one) => one.action,
+      );
+      expect(actions).toEqual(
+        expect.arrayContaining(['vacancy.acting_name', 'vacancy.acting_end']),
+      );
     });
 
     it('answers 404 for another branch’s vacancy', async () => {

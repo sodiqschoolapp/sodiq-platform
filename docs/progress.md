@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 21 October 2026: task 5.7a-3c Teacher absence: the acting teacher
+
+- The Academic Vice Principal names an acting teacher for a journal of a vacancy for a period from the vacancy's record (`POST /api/timetable/acting-teachers`, its `/check`, `/:id/end`; area `timetable` `edit`), ends it or withdraws a planned one; stored in `journal_acting_teachers` (0100: one per journal on a day, from today, an end passed is final).
+- `journalOwnerOn` and `journalsWithoutTeacher` (`timetable/journal-owners.ts`) answer who owns a journal on a day: the row's teacher, the acting teacher (only on days the published row names the vacancy and the person is active in the branch), or nobody. The vacancy's record answers `journals` with their periods and `endsOn` (the fill date). Handbook: "The acting teacher of a vacancy's journal". Browser test: `timetable-acting-teacher.spec.ts`.
+- Left out: the acting teacher on the lessons (5.7b); what the owner does in plans and journals (7.1b, 7.2, 8.1, 8.2, 8.4, 8.7) and the checklist's "no teacher" (9.2a), each with a From line.
+
+The next sessions must know:
+
+- A period's `until` is the first day the person no longer owns the journal (half-open); a withdrawn period is an empty range, kept.
+- Read the owner of a journal only through `journalOwnerOn`; never from `journal_acting_teachers` alone: a fill ends a period with no write.
+- The full browser suite timed out in four unrelated tests with the default workers here; with two workers they passed.
+- The next task is 5.7b.
+
 ## 21 October 2026: task 5.7a-3b Teacher absence: vacancy fill, the screen
 
 - The vacancy's record has **Fill** (role with `timetable` `edit`, vacancy open with no planned close): a dialog with the person, the date (next Monday by default, quarter and later-version shortcuts, tomorrow at the earliest, from the server's today), all or chosen rows, then the check's rows filled and left, the publish's lists (`publish-check-parts.tsx`, shared with step 8), the later versions with "carry" fixed, the shortened days read only, the one-day changes and the impact preview, the close; Fill after the tick, the decisions and a confirmation; the result says how to take it back.
