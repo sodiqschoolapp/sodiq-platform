@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 21 October 2026: task 5.7a-3a Teacher absence: vacancy fill, the fill and the close
+
+- A vacancy is filled with a person from a date (`POST /api/timetable/vacancy-fills`, its check `/check`; area `timetable` `edit`): a draft copied from the version in force (rows, pins, pattern, weights, the person on the rows filled) is published from the date with the chain answer "carry" and the fill's changes, or, on a published version's start, the change is carried in place (`TimetablePublish.carryInPlace`, the publish's writes moved into `writeRuns`).
+- Rows are checked in memory in every version first (`carryResultOf`): a row the profile does not fit (`profile`) or whose lessons meet a blocked rule with the person (`blocked`, with the dates) stays with the vacancy in every version. The vacancy is closed from the fill date when nothing holds it (0099: `vacancy_close_holders` reads a later start against the close day; `lessons_vacancy_closed`); a withdraw reopens it, the close and reopen by hand handle a planned close. Fills are kept in `vacancy_fills` and `vacancy_fill_rows`, answered as `fills` on the vacancy's record.
+- Left out: the fill dialog, the history on the screen and the handbook (5.7a-3b); the acting teacher (5.7a-3c); substitutes (5.7b).
+
+The next sessions must know:
+
+- The fill's draft has a deterministic id (`draftIdOf`, 0099 grants `insert (id)` on `timetable_versions`), so the publish's keys match between the check and the fill.
+- A planned close is a `closed` status row from a day after today; read a vacancy's status by date, never "the last row".
+- The next task is 5.7a-3b.
+
 ## 21 October 2026: task 5.7a-2b Teacher absence: room closure
 
 - A room closure (0098 `room_closures`, branch-filtered; `/timetable/room-closures`) has a first and a last day and a reason; the lessons of the room that start inside it and have not started are "needs a room" (`needsRoomOf`, a flag beside `lessonStateOf`), read on every request with the room's status `under_repair` and `closed` (`rooms-out-read.ts`): no lesson is written, a shortened or withdrawn closure gives them back.

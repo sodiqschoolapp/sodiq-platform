@@ -1,3 +1,4 @@
+import { reopenWithdrawn } from './vacancy-closes.js';
 import { Injectable } from '@nestjs/common';
 import {
   dayDecisionKeyOf,
@@ -303,6 +304,22 @@ export class TimetableWithdraw {
 
     // Task 5.5c-3a: the lessons before the withdraw, read before its write.
     const week = await snapshotWeek(transaction, branchId, version.starts_on, runEnd);
+    // Task 5.7a-3a (decision 7): a vacancy the version that runs again names,
+    // closed from a day of its run by a fill, is reopened before its lessons
+    // are written.
+    const reopened =
+      earlier === null
+        ? []
+        : await reopenWithdrawn(transaction, this.audit, {
+            branchId,
+            teacherIds: found.state.rows.map((row) => row.teacher_id),
+            firstDate: version.starts_on,
+            lastDate: runEnd,
+            today: await this.timetable.todayIn(transaction, branchId),
+            actorId: access.accountId,
+            assignmentId: access.assignmentId,
+            requestId,
+          });
     await transaction
       .updateTable('timetable_versions')
       .set({ status: 'archived' })
@@ -403,6 +420,7 @@ export class TimetableWithdraw {
         journals: { ...journals },
         notices: { ...notices },
         markedOutOfDate: drafts.map((one) => one.id),
+        ...(reopened.length === 0 ? {} : { vacanciesReopened: reopened }),
       },
       requestId,
     });

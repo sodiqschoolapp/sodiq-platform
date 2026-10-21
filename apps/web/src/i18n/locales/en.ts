@@ -559,6 +559,19 @@ export const en = {
       'Another part of this split or of these parallel groups has that teacher, and the parts meet at the same time. Choose another teacher.',
     load_group_gaps:
       'Students of the classes are not placed in a group of this block. Place them on the group placement screen.',
+    fill_vacancy: 'This vacancy is not open, or its close is already planned. Reopen it first.',
+    fill_person:
+      'This person cannot take the vacancy from that date. Choose a staff member who is active on it.',
+    fill_start:
+      'A vacancy is filled from tomorrow at the earliest, on a date of a year that is not closed.',
+    fill_rows: 'This vacancy has no such row from that date. Check the rows and the date again.',
+    fill_nothing:
+      'Every row stays with the vacancy: the person is busy then, or the profile does not fit. Nothing was filled.',
+    fill_blocked:
+      'The fill would leave a later timetable version with the vacancy. Nothing was filled; check again.',
+    fill_rows_changed: 'The rows to fill changed since you checked them. Check again.',
+    fill_version_rows:
+      'A row of the timetable in force cannot be copied to that date (a teacher who is out, a class with no Tutor). Fix the timetable first, or choose another date.',
     vacancy_has_load:
       'A draft or published teaching load that can still run, or a future lesson, names this vacancy, so it cannot be closed yet. Give those rows another teacher, or close it once that load has ended.',
     vacancy_in_load:
@@ -2781,6 +2794,7 @@ export const en = {
         edit: 'Vacancy changed',
         close: 'Vacancy closed',
         reopen: 'Vacancy reopened',
+        fill: 'Vacancy filled',
         delete: 'Vacancy deleted',
         export: 'Vacancies exported',
       },
@@ -3272,6 +3286,8 @@ export const en = {
           'Timetable version {{number}} was published and your lessons changed. Your week before and after:',
         withdrawn:
           'Timetable version {{number}} was withdrawn and your lessons changed. Your week before and after:',
+        vacancy_filled:
+          'A vacancy was filled in timetable version {{number}} and your lessons changed. Your week before and after:',
         tutor_changed:
           "A change of a class's Tutor changed your Tutor lessons. Your week before and after:",
         day_changed:
@@ -4057,6 +4073,10 @@ export const en = {
           '{{row}}: {{numbers}}. Place them, or mark the row deliberately short with a reason.',
         load_mismatch_row:
           'A row of the load: {{numbers}}. Place them, or mark the row deliberately short with a reason.',
+        load_vacancy_closed:
+          '{{row}}: its vacancy is closed from a date of this version. Give the row another teacher, or reopen the vacancy.',
+        load_vacancy_closed_row:
+          'A row of the load names a vacancy closed from a date of this version. Give it another teacher, or reopen the vacancy.',
         date_blocked: '{{date}}: {{rule}}',
         pattern_blocked_any: 'A lesson breaks a rule of the timetable.',
         year_quarters: 'The academic year does not have four dated quarters.',
@@ -4076,6 +4096,8 @@ export const en = {
         'A publish marked this draft. For every difference, keep the draft or take the published version.',
       byWithdraw:
         'A withdrawn version marked this draft. For every difference, keep the draft or take the version in force.',
+      byFill:
+        'A vacancy fill changed a published version and marked this draft. For every difference, keep the draft or take the published version.',
       compared: 'Compared with version {{number}}, in force from {{date}}.',
       startedFrom: 'This draft started from version {{number}}.',
       noBase: 'This draft did not start from another version.',

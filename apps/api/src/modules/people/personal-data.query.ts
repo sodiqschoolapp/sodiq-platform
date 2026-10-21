@@ -102,6 +102,8 @@ export const ENTRY_ABOUT: Readonly<Record<PeopleAction, readonly About[]>> = {
   'vacancy.edit': ['none'],
   'vacancy.close': ['none'],
   'vacancy.reopen': ['none'],
+  // Task 5.7a-3a: the record is the vacancy; `person_id` names the person hired.
+  'vacancy.fill': ['person'],
   'vacancy.delete': ['none'],
   'vacancy.export': ['none'],
   'student.create': ['record'],

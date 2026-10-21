@@ -294,6 +294,8 @@ describe('the routes that work without sign-in', () => {
       'POST /api/timetable/room-closures',
       'POST /api/timetable/room-closures/:id/move',
       'POST /api/timetable/room-closures/:id/withdraw',
+      'POST /api/timetable/vacancy-fills',
+      'POST /api/timetable/vacancy-fills/check',
       'POST /api/timetable/versions',
       'POST /api/timetable/versions/:id/edit-lock',
       'POST /api/timetable/versions/:id/load',

@@ -182,6 +182,12 @@ export function PublishStep({
           ? t('timetable.publish.refusals.load_problem_row', { problem })
           : t('timetable.publish.refusals.load_problem', { row: name, problem });
       }
+      case 'load_vacancy_closed': {
+        const name = rowName(refusal.loadRowId);
+        return name === null
+          ? t('timetable.publish.refusals.load_vacancy_closed_row')
+          : t('timetable.publish.refusals.load_vacancy_closed', { row: name });
+      }
       case 'load_mismatch': {
         const name = rowName(refusal.loadRowId);
         const placed = refusal.result?.detail?.['placed'];

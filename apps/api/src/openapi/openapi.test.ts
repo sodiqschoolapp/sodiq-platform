@@ -254,6 +254,8 @@ describe('OpenAPI document', () => {
         '/api/timetable/room-closures/{id}/lessons',
         '/api/timetable/room-closures/{id}/move',
         '/api/timetable/room-closures/{id}/withdraw',
+        '/api/timetable/vacancy-fills',
+        '/api/timetable/vacancy-fills/check',
         '/api/timetable/versions',
         '/api/timetable/versions/{id}',
         '/api/timetable/versions/{id}/day-keeps',

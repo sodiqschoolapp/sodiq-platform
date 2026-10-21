@@ -1095,6 +1095,8 @@ export const PUBLISH_REFUSALS = [
   // Task 5.6a-5b-1 (decision 2): a choice of the other kind of item (`drop`
   // for a bulk cancel's block, `keep` for a one-day change).
   'day_choice_not_offered',
+  // Task 5.7a-3a (decision 8): a row names a vacancy closed on a date of the run.
+  'load_vacancy_closed',
 ] as const;
 
 export const publishRefusalCodeSchema = z.enum(PUBLISH_REFUSALS);
@@ -1753,6 +1755,8 @@ export const OUT_OF_DATE_ACTIONS = {
   'timetable_version.publish': 'publish',
   // Task 5.5c-2a (decision 6): a withdraw changes the live timetable too.
   'timetable_version.withdraw': 'withdraw',
+  // Task 5.7a-3a (decision 15): a fill carried into a version that starts on its date.
+  'vacancy.fill': 'fill',
   'calendar_entry.create': 'calendar',
   'calendar_entry.edit': 'calendar',
   'calendar_entry.archive': 'calendar',
@@ -1775,6 +1779,7 @@ export const outOfDateActionSchema = z.enum(
 export const OUT_OF_DATE_KINDS = [
   'publish',
   'withdraw',
+  'fill',
   'calendar',
   'templates',
   'availability',
