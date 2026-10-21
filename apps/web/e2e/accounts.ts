@@ -78,6 +78,7 @@ export type AccountKey =
   | 'dayChanges'
   | 'exams'
   | 'absences'
+  | 'roomClosures'
   | 'whoTeacher'
   | 'whoHeadTutor'
   | 'whoHeadTeacher';

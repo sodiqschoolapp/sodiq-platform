@@ -3913,6 +3913,20 @@ try {
   });
   seeded.absences = { login: absenceVice.login, password: absenceVice.firstPassword };
 
+  // Room closures (task 5.7a-2b): the publishable scene again, in a branch of
+  // its own, with two rooms; the browser test publishes, puts 7 Oxford's
+  // Monday lesson into Room 41 for the day, closes Room 41 that day, finds the
+  // lesson under "needs a room" on the home page and moves it to Room 42.
+  const closureVice = await gridScene({
+    branch: 'Room closures browser test branch',
+    vice: ['Nilufar', 'Saidova'],
+    staffId: 'S-269344',
+    phone: '+998935557344',
+    rooms: ['Room 41', 'Room 42'],
+    publishable: true,
+  });
+  seeded.roomClosures = { login: closureVice.login, password: closureVice.firstPassword };
+
   // The department move (task 3.4c): a branch of its own with a year around
   // today, 7 Oxford, the attendance-only subject Cosmology of STEAM and a
   // draft whose row of it names a STEAM teacher who no longer has it in the

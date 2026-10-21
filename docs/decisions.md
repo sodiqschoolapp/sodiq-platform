@@ -285,6 +285,27 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 21 October 2026: room closures (task 5.7a-2b)
+
+Plan approved on pull request #187 with corrections 1 to 3; decisions 1 to 15 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a reading of "No lesson without a teacher or room"). A closure writes no lesson: the lesson keeps its room and reads "needs a room" on each request | Decision 1; `edge/timetable`, "The pattern is unchanged and the lessons return afterwards" |
+| **Look first** (a reading of "Held lesson"). "Needs a room" is a flag beside `lessonStateOf` (`needsRoomOf`), only for lessons not started; a started lesson in a closed room is held | Decision 2 |
+| **Look first** (a new blocked rule). `room_closed`: the one-day room change, move, restore, "move all" and the exam save refuse a room closed at the time; a publish, a withdraw and a calendar or template save write the pattern's lessons, which then need a room; the correction of a past lesson and the calendar's move back keep it off | Decision 5 and correction 3 |
+| **Look first** (a reading of the room's status). `under_repair` and `closed` make the room's lessons not started "needs a room"; a pattern call keeps `room_inactive` and `room_under_repair`, a dated call that carries the closures blocks `under_repair` as `room_closed` | Decision 7 and correction 3 |
+| **Look first** (a reading of a From line). The closure in the sorting of a publish and a withdraw is always kept, with the number of the run's new lessons it puts under "needs a room", and is not in `dayChangesKeyOf` | Decision 9 |
+| A closure has both days; the days are typed and the moments compared, as the absence | Decisions 3 and 4 |
+| "Move all" is all or nothing, each lesson an ordinary one-day room change | Decision 6 |
+| A lesson with no room is not "needs a room" | Decision 8 |
+| An exam not started with a room out at its start "needs a room", settled by changing the exam until 5.7c | Decision 10 |
+| Area `timetable`: `view`, `create`, `edit`; no role widened; the branch filter is enough | Decision 11 |
+| No notice for a closure; "move all" notifies as a one-day room change | Decision 12 |
+| A closure marks no draft out of date; no plan item moves | Decisions 14 and 15 |
+| **Build decision.** A room whose status is `closed` is refused a closure (422 `room_closure_room`): its lessons need a room already. Rooms have no archive of their own | The plan's "archived room" read at the build |
+| **Build decision.** The day page keeps "needs a room" in place of the room name for a lesson with no room (5.6a-1), beside the new mark of a room out | Decision 8 left the text as it was |
+
 ## 20 October 2026: teacher status, lock and the invigilator (task 5.7a-2a)
 
 Plan approved on pull request #186 with corrections 1 to 4; decisions 1 to 10 confirmed there. Flagged on issue #42.

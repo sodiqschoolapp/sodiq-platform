@@ -68,6 +68,35 @@ Not written yet for most of the teaching load and the timetable: task 3.7 descri
 - *An inactive teacher or one who has left taught it.* That person cannot be recorded for that day; record who taught it, or cancel the lesson with a reason.
 - *The teacher works in two branches.* Each branch sees its own lessons on its own home page.
 
+## Room closures
+
+<!-- Sources: edge/timetable (After publishing, "A laboratory is under repair for three weeks"; Versions and drafts; Exams, "An exam room is closed"), spec 06 (How surprises are prevented, "No lesson without a teacher or room"), spec 03 (the room row); task 5.7a-2b, decisions 1 to 15 and plan review corrections 1 to 3 -->
+
+**What it is.** When a room cannot be used for some days, for example a laboratory under repair, the Academic Vice Principal closes it from a first day to a last day, with a reason. The room's lessons in those days stay in the timetable in that room, but before they start they are marked "needs a room" and listed on the home page under "Lessons that need a room". "Move all to another room" puts every one of them into another room for those days only. After the closure the lessons are in their own room again. A room whose status is "under repair" or "closed" has its lessons listed the same way, until it is back in use.
+
+**Who can do it.** The Super Admin and the Academic Vice Principal close a room, change the days, withdraw a closure and move its lessons. The Principal sees the closures and the lists.
+
+**How to do it.**
+
+1. Open Timetable, then "Room closures", and press "Close a room". Choose the room, the first and last day, and write the reason.
+2. The home page shows the room under "Lessons that need a room", with the number of lessons and their days. "Open the closure" opens it.
+3. In the closure, press "Move all to another room", choose a room in use and save. The reason is the closure's unless you change it. Each moved lesson is a one-day room change, and its teacher is told once.
+4. To end a closure early, change its last day. To take back a closure that has not started, withdraw it.
+
+**Rules.**
+
+- A closure starts on today or a later day. One that starts today starts at the moment it is saved: a lesson that already started is not touched.
+- Two closures of one room cannot overlap.
+- "Move all" moves every lesson or none: if one lesson cannot go to the chosen room, nothing moves and the dates of those lessons are shown. Move them one by one on the Day changes page, or choose another room.
+- A room closed at a time cannot take a lesson or an exam by a one-day change, a restore or an exam save at that time. A publish still writes the timetable's lessons into it, and they need a room again; the publish preview lists the closure among the kept changes.
+- A lesson that has started is history: it is no longer listed, and its correction is not refused because of the closure.
+- A closure moves no plan item: the lessons keep their date and slot.
+
+**What happens if…**
+
+- *An exam is in the closed room.* It is listed under "Exams that need a room". Change the exam's rooms to settle it.
+- *A lesson has no room at all.* It is not listed: nothing closed it.
+
 ## Exams after a publish or a withdraw
 
 <!-- Sources: spec 06 (Changes after publishing, Exam), edge/timetable (Exams: "An exam is stored on its own like a one-day change and kept after a later publish"; Versions and drafts: "The preview sorts them into kept, needs a decision and dropped. Publish waits until every 'needs a decision' item is settled"); task 5.6c-3a, decisions 2 to 9 and plan review correction 1 -->
