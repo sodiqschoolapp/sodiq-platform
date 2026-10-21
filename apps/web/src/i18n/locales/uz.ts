@@ -3541,7 +3541,7 @@ export const uz: Texts<'one' | 'other'> = {
       state_held: 'Oʻtilgan',
       state_upcoming: 'Kutilmoqda',
       state_cancelled: 'Bekor qilingan',
-      kept: 'Oʻrinbosarda qoldi, chunki oʻqituvchining bu vaqtda boshqa darsi bor:',
+      kept: 'Oʻrinbosarda qoldi, chunki qaytarish oʻqituvchining boshqa darslariga toʻgʻri keladi:',
       substitute: 'Oʻrinbosar',
       noSubstitute: 'Yoʻq',
       actions: 'Amallar',

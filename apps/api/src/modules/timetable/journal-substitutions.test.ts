@@ -7,6 +7,7 @@ import {
   attentionSchema,
   journalSubstituteAnswerSchema,
   journalSubstitutesAnswerSchema,
+  staffReportSchema,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
 import request, { type Response } from 'supertest';
@@ -235,6 +236,7 @@ describe('the substitution from an absence or a vacancy', () => {
       weekday?: number;
       vacancy?: boolean;
       subject?: string;
+      tutor?: boolean;
     } = {},
   ) {
     const branch = input.branch ?? (await t.newBranch());
@@ -301,6 +303,31 @@ describe('the substitution from an absence or a vacancy', () => {
       lessons_per_week: 1,
     });
     await placeAt(branch, version, otherRow, weekday);
+    // A Tutor row of the first class on Tuesday, its teacher the class's Tutor.
+    let tutorSubject: string | null = null;
+    let tutor: { staffId: string; accountId: string } | null = null;
+    if (input.tutor === true) {
+      tutorSubject = await load.tutorSubject({ grades: [7] });
+      await t.database.migrator
+        .updateTable('subjects')
+        .set({ journal_type: 'attendance_only' })
+        .where('id', '=', tutorSubject)
+        .execute();
+      tutor = await person(branch);
+      await load.tutorOf(branch, classId, tutor.accountId);
+      const row = await t.post(`/api/timetable/versions/${version}/load`, branch, {
+        classId,
+        groupId: null,
+        subjectId: tutorSubject,
+        teacherId: null,
+        lessonsPerWeek: 1,
+        roomId: null,
+        roomType: null,
+        doubleLessons: false,
+      });
+      expect(row.status, JSON.stringify(row.body)).toBe(201);
+      await placeAt(branch, version, (row.body as { id: string }).id, 2);
+    }
     const confirmed = await t.post(`/api/timetable/versions/${version}/templates/confirm`, branch);
     expect(confirmed.status, JSON.stringify(confirmed.body)).toBe(200);
     await load.freeEditLock(version);
@@ -328,6 +355,8 @@ describe('the substitution from an absence or a vacancy', () => {
       vacancy,
       journal: await journalOf(classId),
       otherJournal: await journalOf(otherClass),
+      tutorSubject,
+      tutor,
     };
   }
 
@@ -603,6 +632,29 @@ describe('the substitution from an absence or a vacancy', () => {
       );
       expect(changed.status, JSON.stringify(changed.body)).toBe(200);
       expect((await lessonOf(s, SECOND)).teacher_id).toBe(substitute.staffId);
+      // The 12th was saved with the rules kept: once the substitute's hours
+      // no longer cover it, its room change is refused, as the lesson's own
+      // value says, though the record holds a relaxed lesson.
+      await t.database.migrator
+        .updateTable('staff_availability')
+        .set({ valid_until: MONDAY })
+        .where('staff_id', '=', substitute.staffId)
+        .execute();
+      await t.database.migrator
+        .updateTable('staff_availability_ranges')
+        .set({ valid_until: MONDAY })
+        .where('staff_id', '=', substitute.staffId)
+        .execute();
+      const monday = await lessonOf(s, MONDAY);
+      const refused = await keyed(
+        `/api/timetable/lessons/${monday.id}/room`,
+        s.branch,
+        { roomId: room, reason: 'A leak' },
+        t.admin,
+        randomUUID(),
+      );
+      expect(refused.status, JSON.stringify(refused.body)).toBe(409);
+      expect(detailsOf(refused)).toContain(`teacher_unavailable@${MONDAY}`);
     });
 
     it('keeps the subject blocked on a date where a teacher of the subject is free, and saves the dates where none is', async () => {
@@ -766,6 +818,125 @@ describe('the substitution from an absence or a vacancy', () => {
       expect((await lessonOf(s, SECOND)).teacher_id).toBe(s.teacher.staffId);
     });
 
+    it('returns the lessons before a later first day of a planned absence (the start moved)', async () => {
+      const s = await scene();
+      const substitute = await person(s.branch, [{ subject: s.subject, grades: [7] }]);
+      const absenceId = await absent(s.branch, s.teacher.staffId, MONDAY, '2026-10-30');
+      savedOf(
+        await journalSubstitute(s.branch, absenceId, {
+          journalId: s.journal,
+          teacherId: substitute.staffId,
+        }),
+      );
+      const edited = await editAbsence(s.branch, absenceId, {
+        startsOn: '2026-10-17',
+        endsOn: '2026-10-30',
+      });
+      expect(edited.status, JSON.stringify(edited.body)).toBe(200);
+      const first = await lessonOf(s, MONDAY);
+      expect(absenceSchema.parse(edited.body).returns?.returned).toEqual([first.id]);
+      expect(first.teacher_id).toBe(s.teacher.staffId);
+      expect((await lessonOf(s, SECOND)).teacher_id).toBe(substitute.staffId);
+    });
+
+    it('shows the Principal the substitutes on the absence’s lessons', async () => {
+      const { s, substitute, absenceId } = await substituted();
+      const browser = await t.kit.completeSession('Malika', 'Yusupova');
+      await t.kit.giveRole(browser.account.id, { role: 'principal', branchId: s.branch });
+      const response = await t.get(
+        `/api/timetable/absences/${absenceId}/lessons`,
+        s.branch,
+        browser.cookie,
+      );
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      const lessons = absenceLessonsSchema.parse(response.body).lessons;
+      expect(lessons.map((one) => [one.substitute?.id, one.journalId])).toEqual(
+        [MONDAY, SECOND, THIRD].map(() => [substitute.staffId, s.journal]),
+      );
+    });
+
+    it("gives a Tutor lesson back to the class's Tutor in force (5.7b-1 decision 12)", async () => {
+      const s = await scene({ tutor: true });
+      const tutor = s.tutor ?? s.teacher;
+      const holder = await load.tutorSubjectHolder(s.branch, s.tutorSubject ?? '', [7]);
+      await hours(s.branch, holder.staffId);
+      const journal = (
+        await t.database.migrator
+          .selectFrom('journals')
+          .select('id')
+          .where('class_id', '=', s.classId)
+          .where('subject_id', '=', s.tutorSubject ?? '')
+          .executeTakeFirstOrThrow()
+      ).id;
+      const absenceId = await absent(s.branch, tutor.staffId, MONDAY, '2026-10-30');
+      const saved = savedOf(
+        await journalSubstitute(s.branch, absenceId, {
+          journalId: journal,
+          teacherId: holder.staffId,
+        }),
+      );
+      expect(saved.saved.map((one) => one.date)).toEqual([
+        '2026-10-13',
+        '2026-10-20',
+        '2026-10-27',
+      ]);
+      const edited = await editAbsence(s.branch, absenceId, {
+        startsOn: MONDAY,
+        endsOn: '2026-10-16',
+      });
+      expect(edited.status, JSON.stringify(edited.body)).toBe(200);
+      const tutorLesson = (date: string) =>
+        t.database.migrator
+          .selectFrom('lessons')
+          .select('teacher_id')
+          .where('class_id', '=', s.classId)
+          .where('subject_id', '=', s.tutorSubject ?? '')
+          .where('lesson_date', '=', date)
+          .executeTakeFirstOrThrow();
+      expect((await tutorLesson('2026-10-13')).teacher_id).toBe(holder.staffId);
+      expect((await tutorLesson('2026-10-20')).teacher_id).toBe(tutor.staffId);
+      expect((await tutorLesson('2026-10-27')).teacher_id).toBe(tutor.staffId);
+    });
+
+    it('leaves the new audit actions out of the personal-data reports of the people concerned (decision 10)', async () => {
+      const { s, substitute, absenceId } = await substituted();
+      expect(
+        (await editAbsence(s.branch, absenceId, { startsOn: MONDAY, endsOn: '2026-10-16' })).status,
+      ).toBe(200);
+      for (const staffId of [s.teacher.staffId, substitute.staffId]) {
+        const report = await t.post(`/api/people/staff/${staffId}/report`, s.branch, {});
+        expect(report.status, JSON.stringify(report.body)).toBe(200);
+        const actions = staffReportSchema.parse(report.body).entries.map((one) => one.action);
+        expect(actions).not.toContain('absence.journal_substitute');
+        expect(actions).not.toContain('absence.return');
+        expect(actions).not.toContain('vacancy.journal_substitute');
+      }
+    });
+
+    it('shows no substitute on a lesson the absent person holds as a substitute, and offers it to the action (review should-fix 3)', async () => {
+      const s = await scene();
+      // The person's own lesson of the 19th is cancelled, and the person
+      // substitutes the other class's lesson at that time; then is absent.
+      const own = await lessonOf(s, SECOND);
+      const cancelled = await keyed(
+        `/api/timetable/lessons/${own.id}/cancel`,
+        s.branch,
+        { reason: 'A trip' },
+        t.admin,
+        randomUUID(),
+      );
+      expect(cancelled.status, JSON.stringify(cancelled.body)).toBe(200);
+      const otherSecond = await lessonOf(s, SECOND, s.otherClass);
+      expect((await lessonSubstitute(s.branch, otherSecond.id, s.teacher.staffId)).status).toBe(
+        200,
+      );
+      const absenceId = await absent(s.branch, s.teacher.staffId, MONDAY, '2026-10-30');
+      const listed = await absenceLessons(s.branch, absenceId);
+      const held = listed.find((one) => one.id === otherSecond.id);
+      expect(held?.substitute).toBeNull();
+      expect(held?.state).toBe('needs_teacher');
+    });
+
     it('returns every substituted lesson of a withdrawn absence', async () => {
       const s = await scene();
       const substitute = await person(s.branch, [{ subject: s.subject, grades: [7] }]);
@@ -872,14 +1043,74 @@ describe('the substitution from an absence or a vacancy', () => {
           teacherId: substitute.staffId,
         }),
       );
+      // On the 28th the person now holds the other class's lesson at that time.
+      const otherLast = await lessonOf(other, '2026-10-28', other.otherClass);
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ teacher_id: shared.staffId })
+        .where('id', '=', otherLast.id)
+        .execute();
       const edited = await editAbsence(homeBranch, absenceId, {
         startsOn: MONDAY,
         endsOn: '2026-10-16',
       });
       expect(edited.status, JSON.stringify(edited.body)).toBe(200);
       expect((await lessonOf(other, '2026-10-21')).teacher_id).toBe(shared.staffId);
+      const kept = await lessonOf(other, '2026-10-28');
+      expect(kept.teacher_id).toBe(substitute.staffId);
+      const [entry] = await entriesOf(absenceId, 'absence.return');
+      expect(entry?.branch_id).toBe(otherBranch);
+      expect(entry?.new_value).toMatchObject({
+        kept: [{ lessonId: kept.id, date: '2026-10-28', rules: ['teacher_double'] }],
+      });
       expect((await lessonOf(other, WEDNESDAY)).teacher_id).toBe(substitute.staffId);
       expect(await noticesOf(substitute.accountId, 'timetable.day_changed')).toHaveLength(1);
+    });
+  });
+
+  describe('a withdraw by an Academic Vice Principal of one branch (decision 1)', () => {
+    it("returns the other branch's lessons, its entry naming the assignment of the request", async () => {
+      const homeBranch = await t.newBranch();
+      const otherBranch = await t.newBranch();
+      const subject = await load.classes.subject({ grades: [7], journalType: 'attendance_only' });
+      const shared = await load.teacher(homeBranch, {
+        subjects: [{ subject, grades: [7] }],
+        further: [otherBranch],
+      });
+      await hours(homeBranch, shared.staffId, { weekdays: [1] });
+      await hours(otherBranch, shared.staffId, { weekdays: [3] });
+      await scene({ branch: homeBranch, teacher: shared, subject });
+      const other = await scene({ branch: otherBranch, teacher: shared, weekday: 3, subject });
+      const substitute = await person(otherBranch, [{ subject, grades: [7] }]);
+      const absenceId = await absent(homeBranch, shared.staffId, SECOND, '2026-10-30');
+      savedOf(
+        await journalSubstitute(otherBranch, absenceId, {
+          journalId: other.journal,
+          teacherId: substitute.staffId,
+        }),
+      );
+      const browser = await t.kit.completeSession('Zuhra', 'Nazarova');
+      const assignment = await t.kit.giveRole(browser.account.id, {
+        role: 'academic_vice_principal',
+        branchId: homeBranch,
+      });
+      const withdrawn = await t.post(
+        `/api/timetable/absences/${absenceId}/withdraw`,
+        homeBranch,
+        {},
+        browser.cookie,
+      );
+      expect(withdrawn.status, JSON.stringify(withdrawn.body)).toBe(200);
+      for (const date of ['2026-10-21', '2026-10-28']) {
+        expect((await lessonOf(other, date)).teacher_id).toBe(shared.staffId);
+      }
+      const entries = await t.database.migrator
+        .selectFrom('audit_log')
+        .select(['branch_id', 'assignment_id'])
+        .where('record_id', '=', absenceId)
+        .where('action', '=', 'absence.return')
+        .execute();
+      expect(entries).toEqual([{ branch_id: otherBranch, assignment_id: assignment.id }]);
     });
   });
 
@@ -904,20 +1135,25 @@ describe('the substitution from an absence or a vacancy', () => {
       const answer = journalSubstitutesAnswerSchema.parse(listed.body);
       expect(answer.dates).toEqual([SECOND]);
       expect(answer.teachers[0]).toMatchObject({ id: acting.staffId, acting: true });
+      // The 26th already has a substitute: it is left as it is.
+      const otherThird = await lessonOf(s, THIRD, s.otherClass);
+      const chosen = await person(s.branch, [{ subject: s.subject, grades: [7] }]);
+      expect((await lessonSubstitute(s.branch, otherThird.id, chosen.staffId)).status).toBe(200);
       const waiting = await vacancyLessons(s.branch);
       const saved = savedOf(
         await vacancySubstitute(s.branch, vacancy, {
           journalId: s.otherJournal,
           teacherId: acting.staffId,
           from: SECOND,
-          until: THIRD,
+          until: '2026-10-27',
         }),
       );
       const second = await lessonOf(s, SECOND, s.otherClass);
       expect(saved.saved).toEqual([{ lessonId: second.id, date: SECOND, relaxed: false }]);
+      expect(saved.taken).toEqual([{ lessonId: otherThird.id, date: THIRD }]);
       expect(second.teacher_id).toBe(acting.staffId);
       expect((await lessonOf(s, MONDAY, s.otherClass)).teacher_id).toBe(vacancy);
-      expect((await lessonOf(s, THIRD, s.otherClass)).teacher_id).toBe(vacancy);
+      expect((await lessonOf(s, THIRD, s.otherClass)).teacher_id).toBe(chosen.staffId);
       expect(await rowsOf(second.id)).toMatchObject([
         { source: 'journal', journal_id: s.otherJournal, replaced_id: vacancy, absence_id: null },
       ]);
@@ -1200,6 +1436,15 @@ describe('the substitution from an absence or a vacancy', () => {
             404,
             'not_found',
           );
+          refusedWith(
+            await t.get(
+              `/api/timetable/vacancies/${s.vacancy ?? ''}/journals/${journalId}/substitutes?from=${SECOND}`,
+              s.branch,
+              cookie,
+            ),
+            404,
+            'not_found',
+          );
         }
         for (const teacherId of [elsewhere.otherTeacher.staffId, UNKNOWN]) {
           refusedWith(
@@ -1366,8 +1611,61 @@ describe('the substitution from an absence or a vacancy', () => {
         'not_found',
       );
       refusedWith(await journalSubstitute(s.branch, UNKNOWN, body, t.admin, key), 404, 'not_found');
+      for (const journalId of [elsewhere.journal, UNKNOWN]) {
+        refusedWith(
+          await journalSubstitute(s.branch, absenceId, { ...body, journalId }, t.admin, key),
+          404,
+          'not_found',
+        );
+      }
+      for (const teacherId of [elsewhere.otherTeacher.staffId, UNKNOWN]) {
+        refusedWith(
+          await journalSubstitute(s.branch, absenceId, { ...body, teacherId }, t.admin, key),
+          404,
+          'not_found',
+        );
+      }
       refusedWith(
         await journalSubstitute(s.branch, absenceId, body, browser.cookie, key),
+        403,
+        'permission_denied',
+      );
+      expect(await everything()).toEqual(before);
+    });
+
+    it("keeps a used key of a vacancy's save to its account, its branch and its role (request keys)", async () => {
+      const s = await scene({ vacancy: true });
+      const elsewhere = await scene({ vacancy: true });
+      const substitute = await person(s.branch, [{ subject: s.subject, grades: [7] }]);
+      const vacancy = s.vacancy ?? '';
+      const key = randomUUID();
+      const body = { journalId: s.otherJournal, teacherId: substitute.staffId, from: SECOND };
+      const first = savedOf(await vacancySubstitute(s.branch, vacancy, body, t.admin, key));
+      const vice = await viceOf(s.branch);
+      const browser = await t.kit.completeSession('Malika', 'Yusupova');
+      await t.kit.giveRole(browser.account.id, { role: 'principal', branchId: s.branch });
+      const before = await everything();
+      expect(savedOf(await vacancySubstitute(s.branch, vacancy, body, t.admin, key))).toEqual(
+        first,
+      );
+      expect(await everything()).toEqual(before);
+      refusedWith(
+        await vacancySubstitute(s.branch, vacancy, body, vice, key),
+        409,
+        'request_key_reused',
+      );
+      for (const id of [elsewhere.vacancy ?? '', UNKNOWN]) {
+        refusedWith(await vacancySubstitute(s.branch, id, body, t.admin, key), 404, 'not_found');
+      }
+      for (const journalId of [elsewhere.otherJournal, UNKNOWN]) {
+        refusedWith(
+          await vacancySubstitute(s.branch, vacancy, { ...body, journalId }, t.admin, key),
+          404,
+          'not_found',
+        );
+      }
+      refusedWith(
+        await vacancySubstitute(s.branch, vacancy, body, browser.cookie, key),
         403,
         'permission_denied',
       );

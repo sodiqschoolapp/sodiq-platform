@@ -3501,7 +3501,7 @@ export const en = {
       state_held: 'Held',
       state_upcoming: 'Upcoming',
       state_cancelled: 'Cancelled',
-      kept: 'Kept with their substitute, because the teacher has another lesson then:',
+      kept: 'Kept with their substitute, because giving them back clashes with the teacher’s other lessons:',
       substitute: 'Substitute',
       noSubstitute: 'None',
       actions: 'Actions',

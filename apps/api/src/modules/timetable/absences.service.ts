@@ -28,7 +28,7 @@ import { Notifications } from '../notifications/notifications.service.js';
 import { loadCalendarSettings } from '../setup/calendar-state.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { absenceSpans } from './absences-read.js';
-import { substitutionsInForce } from './substitutions-read.js';
+import { substitutionsInForce, type SubstitutionInForce } from './substitutions-read.js';
 import { TimetablePattern } from './pattern.service.js';
 import { PUBLISH_LOCK, lockPublishChain, refusingPublish } from './publish.service.js';
 import { returnLessons, type Returned } from './substitution-returns.js';
@@ -486,6 +486,11 @@ export class TimetableAbsences {
         transaction,
         rows.map((row) => ({ id: row.id, teacherId: row.teacher_id })),
       );
+      // Only a substitution that replaces the person shows a substitute; on a
+      // lesson the person holds as a substitute, the person is the one away.
+      for (const [lessonId, one] of inForce) {
+        if (one.substituteId === absence.staff_id) inForce.delete(lessonId);
+      }
       const substituteIds = [...new Set([...inForce.values()].map((one) => one.substituteId))];
       const substitutes = new Map(
         (substituteIds.length === 0
@@ -514,6 +519,10 @@ export class TimetableAbsences {
       );
       const minutes = (date: string, at: Date) =>
         Math.round((at.getTime() - begins(date).getTime()) / 60_000);
+      const substituteOf = (found: SubstitutionInForce | undefined) =>
+        found === undefined
+          ? null
+          : { id: found.substituteId, name: substitutes.get(found.substituteId) ?? '' };
       return {
         lessons: rows.map((row) => ({
           id: row.id,
@@ -535,12 +544,7 @@ export class TimetableAbsences {
             },
             moment,
           ),
-          substitute: ((found) =>
-            found === undefined
-              ? null
-              : { id: found.substituteId, name: substitutes.get(found.substituteId) ?? '' })(
-            inForce.get(row.id),
-          ),
+          substitute: substituteOf(inForce.get(row.id)),
           journalId: row.journal_id,
         })),
       };

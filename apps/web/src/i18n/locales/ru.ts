@@ -3678,7 +3678,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       state_held: 'Проведён',
       state_upcoming: 'Предстоит',
       state_cancelled: 'Отменён',
-      kept: 'Остались у заменяющего, потому что у учителя в это время другой урок:',
+      kept: 'Остались у заменяющего, потому что возврат пересекается с другими уроками учителя:',
       substitute: 'Заменяющий',
       noSubstitute: 'Нет',
       actions: 'Действия',

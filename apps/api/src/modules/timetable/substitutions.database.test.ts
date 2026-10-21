@@ -468,6 +468,33 @@ describe('the substitution record in the database', () => {
       // A branch the person is not linked to, and a branch outside the filter, get nothing.
       expect(await branchesOf(elsewhere.branch, elsewhere.branch)).toEqual([]);
       expect(await branchesOf(elsewhere.branch, place.branch)).toEqual([]);
+      // A lesson that has started is not counted.
+      const later = await new Transactions(
+        database.app,
+        new FixedClock('2026-10-27T10:00:00+05:00'),
+      ).run(
+        [place.branch],
+        async (transaction) =>
+          (
+            await sql<{ branch_id: string }>`
+              select * from absence_substitution_branches(${absence}::uuid, ${place.branch}::uuid)
+            `.execute(transaction)
+          ).rows,
+      );
+      expect(later).toEqual([]);
+      // A lesson whose teacher is no longer the substitute is not counted.
+      await database.migrator
+        .updateTable('lessons')
+        .set({ teacher_id: place.teacher.staffId })
+        .where('id', '=', lesson)
+        .execute();
+      expect(await branchesOf(place.branch, place.branch)).toEqual([]);
+      await database.migrator
+        .updateTable('lessons')
+        .set({ teacher_id: place.substitute.staffId })
+        .where('id', '=', lesson)
+        .execute();
+      expect(await branchesOf(place.branch, place.branch)).toEqual([{ branch_id: place.branch }]);
       // A row no longer in force is not counted.
       await app().run([place.branch], (transaction) =>
         transaction
