@@ -17,7 +17,11 @@ import {
   studentNoClassSchema,
   studentRelativesSchema,
   vacancyDetailSchema,
+  vacancyFillCheckSchema,
+  vacancyFillSchema,
   vacancyListSchema,
+  type VacancyFillBody,
+  type VacancyFillCheckBody,
   type PersonalDataKind,
   type PersonalDataReport,
   type RelativePhoneMatchResult,
@@ -151,6 +155,39 @@ export const vacancyDetailQuery = (branchId: string | null, id: string) =>
       ),
     enabled: branchId !== null,
   });
+
+/**
+ * What a fill of a vacancy would do (task 5.7a-3b; `POST
+ * /api/timetable/vacancy-fills/check`, nothing written), read as a query of
+ * its body; a refusal is shown, never retried.
+ */
+export const vacancyFillCheckQuery = (branchId: string | null, body: VacancyFillCheckBody | null) =>
+  queryOptions({
+    queryKey: [...vacanciesKey(branchId), 'fill-check', body],
+    queryFn: async () => {
+      // Never runs without a body: the query is off until there is one.
+      if (body === null) throw new Error('vacancy fill check without a body');
+      return vacancyFillCheckSchema.parse(
+        await answerOf(
+          api.POST('/api/timetable/vacancy-fills/check', {
+            params: { header: branchHeader() },
+            body,
+          }),
+        ),
+      );
+    },
+    enabled: branchId !== null && body !== null,
+    retry: false,
+  });
+
+/** The fill of a vacancy (task 5.7a-3b); `key` makes a repeat harmless. */
+export const fillVacancy = (body: VacancyFillBody, key: string) =>
+  answerOf(
+    api.POST('/api/timetable/vacancy-fills', {
+      params: { header: { ...branchHeader(), 'Idempotency-Key': key } },
+      body,
+    }),
+  ).then((answer) => vacancyFillSchema.parse(answer));
 
 /** After a change of a vacancy: the vacancy lists. */
 export const invalidateVacancies = (queryClient: QueryClient): Promise<unknown> =>

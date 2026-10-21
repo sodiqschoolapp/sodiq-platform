@@ -34,6 +34,7 @@ import {
   type ExportColumn,
   type SchoolNames,
 } from '../audit/export-list.js';
+import { unitNamesOf } from '../classes/unit-names.js';
 import { changesOf, notFound, refusingConstraints } from '../setup/setup-refusals.js';
 
 /** The refusals of the database for a vacancy (db/migrations/0024, 0025), by the name of the constraint. */
@@ -866,6 +867,15 @@ export class Vacancies {
         weeklyLessons: row.weekly_lessons,
         dailyLessons: row.daily_lessons,
         status: current?.status ?? 'open',
+        // Task 5.7a-3b: a close planned from a later day, read by date; an
+        // empty row (a planned close a reopen cancelled) is not live.
+        closesOn:
+          today === null
+            ? null
+            : (own.find(
+                (status) =>
+                  isLive(status) && status.status === 'closed' && status.validFrom > today,
+              )?.validFrom ?? null),
       };
     });
   }
@@ -883,7 +893,19 @@ export class Vacancies {
     const statuses: VacancyStatusRow[] = (await this.statusesOf(transaction, id, false)).map(
       (row) => ({ id: row.id, status: row.status, from: row.validFrom, until: row.validUntil }),
     );
-    return { ...item, statuses, fills: await this.fillsOf(transaction, id), today };
+    const fills = await this.fillsOf(transaction, id, branchId);
+    // Task 5.7a-3b (decision 6): the classes and groups of the fills, archived ones included.
+    const fillUnits = await unitNamesOf(
+      transaction,
+      branchId,
+      fills.flatMap((one) =>
+        one.rows.flatMap((row) => (row.classId === null ? [] : [row.classId])),
+      ),
+      fills.flatMap((one) =>
+        one.rows.flatMap((row) => (row.groupId === null ? [] : [row.groupId])),
+      ),
+    );
+    return { ...item, statuses, fills, fillUnits, today };
   }
 
   /**
@@ -894,7 +916,11 @@ export class Vacancies {
    * chain still names (a replace archives a version that never started too,
    * and is read the same way: the fill's version no longer runs).
    */
-  private async fillsOf(transaction: Transaction, id: string): Promise<VacancyFillHistory[]> {
+  private async fillsOf(
+    transaction: Transaction,
+    id: string,
+    branchId: string,
+  ): Promise<VacancyFillHistory[]> {
     const fills = await transaction
       .selectFrom('vacancy_fills')
       .innerJoin('staff', 'staff.id', 'vacancy_fills.person_id')
@@ -909,6 +935,8 @@ export class Vacancies {
         'timetable_versions.status',
       ])
       .where('vacancy_fills.vacancy_id', '=', id)
+      // Permission review of the code, should-fix 2: the branch named, the row filter aside.
+      .where('vacancy_fills.branch_id', '=', branchId)
       .orderBy('vacancy_fills.fills_from', 'desc')
       .orderBy('vacancy_fills.id', 'desc')
       .execute();
@@ -916,6 +944,7 @@ export class Vacancies {
     const rows = await transaction
       .selectFrom('vacancy_fill_rows')
       .select(['fill_id', 'class_id', 'group_id', 'subject_id'])
+      .where('branch_id', '=', branchId)
       .where(
         'fill_id',
         'in',

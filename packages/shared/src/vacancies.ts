@@ -3,7 +3,7 @@ import { schoolDateSchema } from './academic-year.js';
 import { instructionLanguageSchema } from './settings.js';
 import { DAILY_LESSONS_MAX, WEEKLY_LESSONS_MAX } from './staff.js';
 import { subjectGradesSchema } from './subjects.js';
-import { vacancyFillHistorySchema } from './vacancy-fills.js';
+import { vacancyFillHistorySchema, vacancyFillUnitSchema } from './vacancy-fills.js';
 
 /**
  * Vacancies (docs/spec/04-people.md, Vacancy; task 2.2b, pull request #57): a
@@ -77,6 +77,12 @@ export const vacancyListItemSchema = z.object({
   dailyLessons: z.int().nullable(),
   /** The status in force today in the branch's time zone. */
   status: vacancyStatusSchema,
+  /**
+   * Task 5.7a-3b: the first day of a close planned from a day after today (a
+   * live `closed` status row; the empty row of a cancelled plan is skipped),
+   * or `null`.
+   */
+  closesOn: schoolDateSchema.nullable(),
 });
 
 export type VacancyListItem = z.infer<typeof vacancyListItemSchema>;
@@ -94,6 +100,8 @@ export const vacancyDetailSchema = vacancyListItemSchema.extend({
   statuses: z.array(vacancyStatusRowSchema),
   /** Task 5.7a-3a: every fill, newest first. */
   fills: z.array(vacancyFillHistorySchema),
+  /** Task 5.7a-3b: the classes and groups the rows of `fills` name, archived ones included. */
+  fillUnits: z.array(vacancyFillUnitSchema),
   today: schoolDateSchema,
 });
 

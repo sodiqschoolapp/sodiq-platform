@@ -37,6 +37,7 @@ import {
 } from './publish.service.js';
 import { templateCellsOf, type StoredCells } from './template-cells.js';
 import { Timetable, type VersionRow } from './timetable.service.js';
+import { unitNamesOf } from '../classes/unit-names.js';
 import { closeFilled, closeHoldersOf, type CloseHolder } from './vacancy-closes.js';
 import { weightColumnsOf, weightsOf } from './version-weights.js';
 
@@ -150,6 +151,13 @@ export class VacancyFills {
             const prepared = await this.prepare(transaction, access, input, requestId);
             const holders =
               prepared.own === null ? [] : await this.holdersAfter(transaction, prepared, input);
+            // Task 5.7a-3b (decision 6): the classes and groups of the rows, named.
+            const units = await unitNamesOf(
+              transaction,
+              branchId,
+              prepared.rows.flatMap((one) => (one.classId === null ? [] : [one.classId])),
+              prepared.rows.flatMap((one) => (one.groupId === null ? [] : [one.groupId])),
+            );
             return {
               rows: prepared.rows,
               rowsKey: prepared.rowsKey,
@@ -161,6 +169,7 @@ export class VacancyFills {
                 prepared.rows.every((one) => one.filled) &&
                 holders.length === 0,
               holders: holders.map((one) => ({ ...one })),
+              units,
             };
           } finally {
             await sql`rollback to savepoint vacancy_fill_check`.execute(transaction);

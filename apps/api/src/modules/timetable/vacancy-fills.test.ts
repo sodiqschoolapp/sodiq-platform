@@ -7,6 +7,7 @@ import {
   vacancyDetailSchema,
   vacancyFillCheckSchema,
   vacancyFillSchema,
+  vacancyListSchema,
   type VacancyFill,
   type VacancyFillCheck,
 } from '@sodiq/shared';
@@ -20,6 +21,7 @@ import {
   type DayTemplatesKit,
 } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
+import { unitNamesOf } from '../classes/unit-names.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 
 const refusedWith = (response: Response, status: number, code: string) => {
@@ -1279,6 +1281,183 @@ describe('vacancy fill', () => {
       const s = await scene({ second: true });
       await filled(s, bodyOf(s, OCTOBER_19));
       refusedWith(await checkFill(s.branch, bodyOf(s, DECEMBER)), 409, 'fill_vacancy');
+    });
+  });
+  describe('the names and the planned close of the screen (task 5.7a-3b)', () => {
+    const unitsOf = async (classIds: readonly string[], groupIds: readonly string[] = []) => [
+      ...(classIds.length === 0
+        ? []
+        : await t.database.migrator
+            .selectFrom('classes')
+            .select(['id', 'name', 'grade'])
+            .where('id', 'in', classIds)
+            .execute()
+      ).map((one) => ({ id: one.id, kind: 'class', name: one.name, grades: [one.grade] })),
+      ...(groupIds.length === 0
+        ? []
+        : await t.database.migrator
+            .selectFrom('groups')
+            .select(['id', 'name'])
+            .where('id', 'in', groupIds)
+            .execute()
+      ).map((one) => ({ id: one.id, kind: 'group', name: one.name, grades: [7] })),
+    ];
+    const byId = <T extends { id: string }>(list: readonly T[]) =>
+      [...list].sort((a, b) => (a.id < b.id ? -1 : 1));
+
+    it('the check names the class of every row, filled or left (decision 6)', async () => {
+      // 7B's row is blocked on Tuesdays: one row filled, one left.
+      const s = await scene({ second: true, art: { weekday: 2, unit: 'A' } });
+      const check = await checked(s.branch, bodyOf(s, OCTOBER_19));
+      expect(check.rows.map((one) => one.filled).sort()).toEqual([false, true]);
+      expect(check.units).toEqual(byId(await unitsOf([s.classA, s.classB])));
+    });
+
+    it('the check names the rows when every row is left and nothing is published', async () => {
+      const s = await scene({ second: true, personSubjects: 'grade8' });
+      const check = await checked(s.branch, bodyOf(s, OCTOBER_19));
+      expect(check.publish).toBeNull();
+      expect(check.units).toEqual(byId(await unitsOf([s.classA, s.classB])));
+    });
+
+    it('the record names the classes and groups of its fills, archived ones included, a withdrawn fill too', async () => {
+      const s = await scene();
+      const fill = await filled(s, bodyOf(s, OCTOBER_19));
+      const group = await load.classes.group(s.branch, s.year, s.subject, [s.classA]);
+      // A row of a group in the fill's history, the group archived after it.
+      await t.database.migrator
+        .insertInto('vacancy_fill_rows')
+        .values({ fill_id: fill.id, branch_id: s.branch, group_id: group, subject_id: s.subject })
+        .execute();
+      await t.database.migrator
+        .updateTable('groups')
+        .set({ archived_at: new Date('2026-10-12T08:00:00Z') })
+        .where('id', '=', group)
+        .execute();
+      // A class archived after the fill too (spec review of the code, must-fix 4): a
+      // class with lessons cannot be archived, so a row of one without them.
+      const gone = await load.classes.schoolClass(s.branch, s.year, { grade: 7, room: s.room });
+      await t.database.migrator
+        .insertInto('vacancy_fill_rows')
+        .values({ fill_id: fill.id, branch_id: s.branch, class_id: gone, subject_id: s.subject })
+        .execute();
+      await t.database.migrator
+        .updateTable('classes')
+        .set({ archived_at: new Date('2026-10-12T08:00:00Z') })
+        .where('id', '=', gone)
+        .execute();
+      const withdrawn = await keyed(
+        `/api/timetable/versions/${fill.versionId ?? ''}/withdraw`,
+        s.branch,
+        {},
+      );
+      expect(withdrawn.status, JSON.stringify(withdrawn.body)).toBe(200);
+      const detail = vacancyDetailSchema.parse(
+        (await t.get(`/api/people/vacancies/${s.vacancy}`, s.branch)).body,
+      );
+      expect(detail.fills.map((one) => one.withdrawn)).toEqual([true]);
+      expect(detail.fillUnits).toEqual(byId(await unitsOf([s.classA, gone], [group])));
+    });
+
+    it("names a group as a group with its classes' grades, and nothing of another branch (spec review of the code, must-fix 3)", async () => {
+      const s = await scene({ second: true });
+      const theirs = await scene();
+      const group = await load.classes.group(s.branch, s.year, s.subject, [s.classA, s.classB], {
+        name: 'Maths A',
+      });
+      const theirGroup = await load.classes.group(theirs.branch, theirs.year, theirs.subject, [
+        theirs.classA,
+      ]);
+      // As the application reads it: with both branches in the filter, the branch named decides.
+      const named = await t.database.migrator
+        .transaction()
+        .execute((transaction) =>
+          unitNamesOf(transaction, s.branch, [s.classA, theirs.classA], [group, theirGroup]),
+        );
+      expect(named).toEqual(
+        byId([
+          ...(await unitsOf([s.classA])),
+          { id: group, kind: 'group', name: 'Maths A', grades: [7] },
+        ]),
+      );
+    });
+
+    it('the list and the record give the close a fill planned; a reopen that cancels it gives none', async () => {
+      const s = await scene();
+      const listed = async () =>
+        vacancyListSchema
+          .parse((await t.get('/api/people/vacancies', s.branch)).body)
+          .vacancies.find((one) => one.id === s.vacancy);
+      expect((await listed())?.closesOn).toBeNull();
+      await filled(s, bodyOf(s, OCTOBER_19));
+      expect(await listed()).toMatchObject({ status: 'open', closesOn: OCTOBER_19 });
+      const detail = vacancyDetailSchema.parse(
+        (await t.get(`/api/people/vacancies/${s.vacancy}`, s.branch)).body,
+      );
+      expect(detail.closesOn).toBe(OCTOBER_19);
+      const reopened = await post(`/api/people/vacancies/${s.vacancy}/reopen`, s.branch);
+      expect(reopened.status, JSON.stringify(reopened.body)).toBe(200);
+      // The cancelled plan is an empty closed row, still stored.
+      const stored = await t.database.migrator
+        .selectFrom('staff_statuses')
+        .select(['status', 'valid_from', 'valid_until'])
+        .where('staff_id', '=', s.vacancy)
+        .where('status', '=', 'closed')
+        .execute();
+      expect(stored).toHaveLength(1);
+      expect((await listed())?.closesOn).toBeNull();
+    });
+
+    it("the Principal reads the same names and planned close; another branch's vacancy is 404 with no names (permission review of the code, should-fix 3)", async () => {
+      const s = await scene();
+      const theirs = await scene();
+      await filled(s, bodyOf(s, OCTOBER_19));
+      await filled(theirs, bodyOf(theirs, OCTOBER_19));
+      const principal = await t.database.migrator
+        .selectFrom('assignments')
+        .select('account_id')
+        .where('role', '=', 'principal')
+        .where('branch_id', '=', t.north)
+        .executeTakeFirstOrThrow();
+      await load.classes.role(principal.account_id, s.branch, 'principal');
+      const asAdmin = vacancyDetailSchema.parse(
+        (await t.get(`/api/people/vacancies/${s.vacancy}`, s.branch)).body,
+      );
+      const read = await t.get(`/api/people/vacancies/${s.vacancy}`, s.branch, t.principal);
+      expect(read.status, JSON.stringify(read.body)).toBe(200);
+      const asPrincipal = vacancyDetailSchema.parse(read.body);
+      expect(asPrincipal.fillUnits).toEqual(asAdmin.fillUnits);
+      expect(asPrincipal.fillUnits.map((one) => one.id)).toEqual([s.classA]);
+      expect(asPrincipal.closesOn).toBe(OCTOBER_19);
+      const list = vacancyListSchema.parse(
+        (await t.get('/api/people/vacancies', s.branch, t.principal)).body,
+      );
+      expect(list.vacancies.find((one) => one.id === s.vacancy)?.closesOn).toBe(OCTOBER_19);
+      // Another branch's filled vacancy, read with the own branch, as the Super Admin.
+      const other = await t.get(`/api/people/vacancies/${theirs.vacancy}`, s.branch);
+      refusedWith(other, 404, 'not_found');
+      const theirName = (
+        await t.database.migrator
+          .selectFrom('classes')
+          .select('name')
+          .where('id', '=', theirs.classA)
+          .executeTakeFirstOrThrow()
+      ).name;
+      expect(JSON.stringify(other.body)).not.toContain(theirs.classA);
+      expect(JSON.stringify(other.body)).not.toContain(`"${theirName}"`);
+    });
+
+    it('a close by hand from today gives no planned close', async () => {
+      const s = await scene();
+      // In place from A's start: nothing holds the vacancy from today on.
+      const fill = await filled(s, bodyOf(s, MONDAY));
+      expect(fill.closed).toBe(true);
+      const closed = await post(`/api/people/vacancies/${s.vacancy}/close`, s.branch);
+      expect(closed.status, JSON.stringify(closed.body)).toBe(200);
+      const detail = vacancyDetailSchema.parse(
+        (await t.get(`/api/people/vacancies/${s.vacancy}`, s.branch)).body,
+      );
+      expect(detail).toMatchObject({ status: 'closed', closesOn: null });
     });
   });
 });

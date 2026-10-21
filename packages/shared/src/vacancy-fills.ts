@@ -80,6 +80,21 @@ export const vacancyFillRowAnswerSchema = z.object({
 
 export type VacancyFillRowAnswer = z.infer<typeof vacancyFillRowAnswerSchema>;
 
+/**
+ * A class or group a fill's rows name, as a person reads it (task 5.7a-3b,
+ * decision 6): a row of a later version or of an old fill can name a class
+ * or group the web's lists do not hold (archived, or of another year), so the
+ * server names it. A group's grades are those of its classes.
+ */
+export const vacancyFillUnitSchema = z.object({
+  id: z.uuid(),
+  kind: z.enum(['class', 'group']),
+  name: z.string(),
+  grades: z.array(z.int()),
+});
+
+export type VacancyFillUnit = z.infer<typeof vacancyFillUnitSchema>;
+
 /** What still holds the vacancy from the fill date after the fill (decision 5). */
 export const vacancyFillHolderSchema = z.object({
   versionId: z.uuid().nullable(),
@@ -101,6 +116,8 @@ export const vacancyFillCheckSchema = z.object({
   publish: publishCheckSchema.nullable(),
   closes: z.boolean(),
   holders: z.array(vacancyFillHolderSchema),
+  /** Task 5.7a-3b: the classes and groups `rows` name. */
+  units: z.array(vacancyFillUnitSchema),
 });
 
 export type VacancyFillCheck = z.infer<typeof vacancyFillCheckSchema>;

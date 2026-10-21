@@ -97,6 +97,49 @@ Not written yet for most of the teaching load and the timetable: task 3.7 descri
 - *An exam is in the closed room.* It is listed under "Exams that need a room". Change the exam's rooms to settle it.
 - *A lesson has no room at all.* It is not listed: nothing closed it.
 
+## Filling a vacancy
+
+<!-- Sources: spec 06 (Changes after publishing, "Filling a vacancy"; How surprises are prevented, Impact preview, Start date, Withdraw), spec 04 (Vacancy), edge/timetable (After publishing, the vacancy rows); tasks 5.7a-3a and 5.7a-3b, their decisions and plan review corrections -->
+
+**What it is.** When a teacher is hired for a vacancy, the Academic Vice Principal fills the vacancy with that person from a date. The person takes the vacancy's lessons from that date in the timetable in force and in every later published version. Lessons before the date stay as they were. A vacancy with no rows left is closed from the date.
+
+**Who can do it.** The Super Admin and the Academic Vice Principal fill a vacancy. The Principal sees the vacancy, its fills and its planned close, but has no **Fill** button.
+
+**How to do it.**
+
+1. Open People, then Vacancies, and open the vacancy. Press **Fill** (**Toʻldirish**).
+2. Choose the person. People with a subject of the vacancy come first. People admitted from a later day are listed too. People who left or are inactive are not.
+3. Choose the date. It starts on next Monday. The first day of each coming quarter and the start of each later published version are offered as buttons. Tomorrow is the earliest date.
+4. Keep "All rows", or untick it and tick the rows to fill.
+5. The dialog shows each row: "goes to the person", or why it stays with the vacancy and on which dates. It also shows everything a publish shows: what cannot be published, the warnings, the later versions the change is carried into, the one-day changes already made, and the impact preview with the transition week. Last, it says whether the vacancy will be closed from the date.
+6. Tick the transition week if it is shown, and decide each one-day change that needs a decision. Press **Fill** and confirm. The confirmation names the rows.
+7. The dialog shows what was done. The vacancy's record lists the fill under "Fills".
+
+**Rules.**
+
+- A row goes to the person only if the person teaches its subject, grades and language, and is free at every one of its lessons from the date, in every branch. Any other row stays with the vacancy and is listed with the reason. The rest of the fill goes ahead.
+- The vacancy is closed from the fill date when no row and no lesson is left under it from that date. Until the date it is still open, and its record and the list say "Open, closes on" the date.
+- A vacancy that is closed, or whose close is already planned, has no **Fill** button.
+- Lessons already held stay recorded under whoever taught them.
+- When a version starts on the fill date, that version is changed and no new version is made. Otherwise a new version is published from the date.
+- The fill is taken back by withdrawing the version it changed or published, before that version starts.
+
+**What happens if…**
+
+| Case | What happens |
+| --- | --- |
+| The person does not teach in the class's language | That row stays with the vacancy, marked "does not teach this subject, grade or language". |
+| The person already teaches at that time | That row stays with the vacancy, with the dates the person is busy. |
+| No row can go to the person | **Fill** stays off, with "No row can go to this person from this date." |
+| Someone changed the rows or the person after the check | The fill is refused: "The rows to fill changed since you checked them. Check again." The dialog checks again. |
+| Every row is unticked | The dialog asks "Choose at least one row." and checks nothing. |
+| A chosen row is not a row of the vacancy on the new date | It is dropped from the choice; when none of the chosen rows is left, "All rows" is back. |
+| The vacancy is reopened before its planned close | The planned close is cancelled. The vacancy stays open. |
+
+**What the person sees.** "The vacancy will be closed from 19 October 2026." "The vacancy stays open." "To take it back, withdraw the version before 19 October 2026." "This person cannot take the vacancy from that date. Choose a staff member who is active on it."
+
+Not built yet: the acting teacher of a vacancy's journal (task 5.7a-3c); substitutes for its lessons (task 5.7b).
+
 ## Exams after a publish or a withdraw
 
 <!-- Sources: spec 06 (Changes after publishing, Exam), edge/timetable (Exams: "An exam is stored on its own like a one-day change and kept after a later publish"; Versions and drafts: "The preview sorts them into kept, needs a decision and dropped. Publish waits until every 'needs a decision' item is settled"); task 5.6c-3a, decisions 2 to 9 and plan review correction 1 -->
