@@ -285,6 +285,31 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 21 October 2026: vacancy fill, the fill and the close (task 5.7a-3a)
+
+Plan approved on pull request #188 with corrections 1 to 3; decisions 1 to 16 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a task split). 5.7a-3 is split into 5.7a-3a the fill and the close, 5.7a-3b the fill screen, 5.7a-3c the acting teacher, each with Read, Build, Done-when and From lines | Decision 1; the fill alone is the size of the publish route |
+| **Look first** (a reading of "Filling a vacancy"). The fill is the publish: a draft copied from the version in force, the person on the rows, published from the date with the chain answer "carry" and the fill's changes (the rows of every version) | Decision 2; `06`, "prepares and publishes a version that differs from the live one only in the teacher of those rows, with the impact preview and every rule of publishing" |
+| **Look first** (a reading of "a row with a blocked date"). A row stays with the vacancy whole, in every version, when its lessons from the date meet a blocked rule with the person (`blocked`, with the dates) or the change brings a load problem (`profile`: subject, grades, language); checked in memory first, as a carry checks a later version; warnings do not block; a fill never leaves a carried version | Decision 3 with correction 2; spec review of the plan, must-fixes 1 and 2 |
+| **Look first** (when the vacancy is closed). The fill closes it from the fill date as a stored status row when nothing holds it then; otherwise it stays open and the close by hand from today is the later path | Decision 5; the From line of 5.5c-2b |
+| **Look first** (a SECURITY DEFINER function changed, a guard narrowed). `vacancy_close_holders` (0099): a published version no longer holds a close from a day on or after which a later version of its chain starts; from today it reads as 0083. It reverses review correction 3 of 5.5c-2b for a close from a later day | Decision 6 with correction 1 |
+| **Look first** (a reading of "Withdraw"). A withdraw whose version that runs again names a vacancy closed from a day inside the run it gets back reopens it from that day; a replace by a draft naming a closed vacancy is refused `load_vacancy_closed` | Decisions 7 and 8, correction 1 |
+| **Look first** (a pinned list widened). `OUT_OF_DATE_ACTIONS` and the check of the causes gain `vacancy.fill` (kind `fill`), the cause a fill carried in place gives every draft of the year; brought up to date as a publish's cause | Decision 15 |
+| A fill on a published version's start makes no version: the change is carried in place into it and the later ones (`carryInPlace`, the publish's writes in `writeRuns`) | Decision 4; spec review of the plan, must-fix 3 |
+| The routes are in area `timetable` `edit`; no role widened; the check is a POST | Decision 9 |
+| Rows by class or group and subject; a row only in a later version is filled there | Decision 10; must-fix 4 |
+| `vacancy_fills` and `vacancy_fill_rows` insert only, the rows filled only; a withdrawn fill read from its version's status | Decision 11; should-fix 3 |
+| The fill takes a request key and `rowsKey` (`fill_rows_changed`); the check takes none | Decision 13; should-fix 1 |
+| The close and reopen by hand handle a planned close: a reopen while open today cancels it, a close from today empties it | Must-fix 5 |
+| **Build decision.** The fill's draft has an id made from its branch, year and number (`draftIdOf`; 0099 grants `insert (id)` on `timetable_versions`), so the publish's keys (later versions, transition week, one-day changes), which name the draft, match between the check and the fill | The keys name the version; a fresh id per call would never match |
+| **Build decision.** The fill copies the pattern itself (a copy takes the load and the pins only, 5.4b-2a decision 3) and confirms the templates as they are on the date | A copied draft with no pattern cannot be published |
+| **Build decision.** A fill carried in place sends a notice of its own kind, `timetable.vacancy_filled`, with the version's number; a fill that publishes sends `timetable.published` | Decision 12 named no new kind; "version N was published" is untrue when nothing is published |
+| **Build decision.** A row of the version in force that cannot be copied on the date (a teacher out, a class with no Tutor) refuses the fill `fill_version_rows` | The load trigger refuses the copy; the fill changes nothing else |
+| **Build decision.** `vacancy.fill` names the person (`person_id`): the person's personal-data report lists it | `personal-data.query.ts`, every people action is classified |
+
 ## 21 October 2026: room closures (task 5.7a-2b)
 
 Plan approved on pull request #187 with corrections 1 to 3; decisions 1 to 15 confirmed there. Flagged on issue #42.

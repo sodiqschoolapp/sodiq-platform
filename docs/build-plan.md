@@ -859,12 +859,24 @@ How to read the task lines:
   - From 5.7a-1 (pull request #185, decisions 3 and 7; the room half): "the home page's lists are `GET /api/timetable/attention`: ... a closed room and an exam that needs a room ... join those lists and `lessonStateOf` there".
   - From 5.7a-2a (pull request #186): a person away is read through `teachers_away` (0097, `away-read.ts`); `GET /api/timetable/attention` answers `needsTeacher`, `unresolved` and `needsInvigilator`, and a "needs a room" list joins them there.
 
-- [ ] **5.7a-3 Teacher absence: vacancy fill and acting teacher** (5.7a split in three, pull request #185, decision 1)
-  - Read: `06` (Changes after publishing, Filling a vacancy), `edge/timetable` (After publishing, the vacancy rows), `07` (Who can do what), `09` (When something else changes).
-  - Build: filling a vacancy publishes a version that changes only the teacher of its rows; the vacancy close; an acting teacher named for a vacancy's journal for a period, stored, who owns the plan, adds works and enters the rating exam (read by 7.x and 8.x through From lines this task writes).
+- [x] **5.7a-3a Teacher absence: vacancy fill, the fill and the close** (5.7a-3 split in three, pull request #188, decision 1)
+  - Read: `06` (Changes after publishing, Filling a vacancy; What a change does to existing data; How surprises are prevented), `edge/timetable` (Versions and drafts; After publishing, the vacancy rows), `04` (Vacancy), `09` (When something else changes).
+  - Build: the fill on the server: `POST /api/timetable/vacancy-fills/check` and `POST /api/timetable/vacancy-fills`, a version that differs from the live one only in the teacher of the rows published from the date (or the change carried in place into a version that starts on it), every later published version naming the vacancy changed from its own start, the rows the person cannot take left with the vacancy and listed; the vacancy closed from the fill date when nothing holds it; the fills kept for the vacancy's history.
   - Done when: a filled vacancy's lessons from the fill date have the hired teacher, and a vacancy with no load left is closed.
   - From 5.5c-2b (pull request #157, review correction 3): `06`, Filling a vacancy: "A vacancy with no load left is closed." The close reads `vacancy_close_holders` (0083) and stays as narrow as it is: a later published version counts as started only from its start day, so a fill from tomorrow cannot close the vacancy in its own step (until the fill's version starts it can still be withdrawn and the earlier rows hold); this task decides when such a vacancy is closed. A write that puts a lesson under a staff record (`lessons.teacher_id`: the fill, an absence that gives lessons back) refuses a closed vacancy; nothing in `lessons_check` reads the teacher's status today, and only a publish writes the column now, through rows that `load_teacher_status` checks.
   - From 5.7a-1 (pull request #185, decision 7): the absence half of the From line of 5.5c-2b is void: an absence writes no `lessons.teacher_id` and gives back no lesson by a write.
+
+- [ ] **5.7a-3b Teacher absence: vacancy fill, the screen** (5.7a-3 split in three, pull request #188, decision 1)
+  - Read: `06` (Filling a vacancy; How surprises are prevented, Impact preview), `04` (Vacancy), `12`.
+  - Build: the fill dialog on the vacancy's record: the person, the date (tomorrow at the earliest, the starts of later versions offered), all rows or the chosen ones, the check's rows with the ones left and why, the publish's impact preview, chain and stored one-day changes with their decisions, then the fill; the vacancy's history of fills (date, person, rows, withdrawn); a close planned from a later day shown on the record and in the list; the handbook page.
+  - Done when: the Academic Vice Principal fills a vacancy from its record and sees the rows left and the close.
+  - From 5.7a-3a (pull request #188, decisions 3, 5 and 11): the check answers `rows` (each `filled`, `reason` `blocked` or `profile`, `dates`), `rowsKey`, `inPlace`, `publish` (the publish check of the fill's run, `null` with no row filled), `closes` and `holders`; the fill takes the check's body with `rowsKey` and the publish's keys and decisions; `GET /api/people/vacancies/:id` answers `fills`, and a planned close is a `closed` status row from a later day.
+
+- [ ] **5.7a-3c Teacher absence: the acting teacher** (5.7a-3 split in three, pull request #188, decision 1)
+  - Read: `edge/timetable` (After publishing, "A vacancy lasts a quarter: who writes the plan and grades?", "The plan, the journal and the reports of a vacancy's subject"), `07` (Who can do what), `09` (When something else changes).
+  - Build: an acting teacher named for a vacancy's journal for a period, stored, by the Academic Vice Principal; who owns the plan, adds works and enters the rating exam in that period (read by 7.x and 8.x through From lines this task writes); the closing checklist's "no teacher" without one; the period ends at the fill date.
+  - Done when: an acting teacher is named for a vacancy's journal for a period and the From lines to 7.x and 8.x say what they read.
+  - From 5.7a-3a (pull request #188, decision 16): when the vacancy is filled, the hired teacher becomes the owner from the fill date (`edge/timetable`: "When the vacancy is filled, the hired teacher becomes the owner from that date"), read from `vacancy_fills` and `vacancy_fill_rows`; an acting teacher's period ends there.
 
 - [ ] **5.7b Substitution**
   - Read: `06` (Changes after publishing), `edge/timetable` (After publishing).
@@ -937,6 +949,7 @@ How to read the task lines:
   - Read: `09` (When something else changes), `edge/lesson-plans` (How items stay attached).
   - Build: re-attachment of the queue when lessons are cancelled, added, moved or their number changes; the "not covered" list; prepared edit requests; the impact preview per plan.
   - Done when: every row of the "When something else changes" table has a test.
+  - From 5.7a-3a (pull request #188, decision 16): `09`, When something else changes, "The teacher of the class changes: The plan stays with the class and the new teacher becomes its owner. It stays locked; the system prepares an edit request so that the new teacher can adjust the future lessons." A vacancy fill is such a change, read from `vacancy_fills` and `vacancy_fill_rows` (the date, the person, the rows); `edge/timetable`: "the hired teacher becomes the plan's owner".
 
 - [ ] **7.1c Shared plans**
   - Read: `09` (What a plan contains), `05` (Language of instruction).
