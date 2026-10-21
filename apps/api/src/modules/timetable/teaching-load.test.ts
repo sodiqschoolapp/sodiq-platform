@@ -630,10 +630,39 @@ describe('draft versions and the teaching load', () => {
       });
       // Task 5.3b-2 (permission review, M1): pinned rows in both branches, so a wrong cascade would remove pins.
       await pinRow(t.north, version.id, row.id);
+      const attempts: (() => Promise<Response>)[] = [];
       await pinRow(t.south, southVersion, southRow);
+      // Task 5.8a (permission review, S1): a draft of the other branch with a
+      // block its copy left, so a dismissal across branches would empty it.
+      const southNumbers = await t.database.migrator
+        .selectFrom('timetable_versions')
+        .select((eb) => eb.fn.max('number').as('number'))
+        .where('academic_year_id', '=', southYear)
+        .executeTakeFirst();
+      const leftSouth = (
+        await t.database.migrator
+          .insertInto('timetable_versions')
+          .values({
+            branch_id: t.south,
+            academic_year_id: southYear,
+            number: (southNumbers?.number ?? 0) + 1,
+            starts_on: '2026-10-19',
+            left_blocks: JSON.stringify([
+              {
+                sourceBlockId: UNKNOWN,
+                weekday: 1,
+                slotPosition: 1,
+                reason: 'copy_clash',
+                lessons: [],
+              },
+            ]),
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow()
+      ).id;
+      attempts.push(() => patch(`/api/timetable/versions/${leftSouth}`, { dismissLeftRows: true }));
       const other = await fitting();
       const base = { classId: other.classId, teacherId: other.teacher };
-      const attempts: (() => Promise<Response>)[] = [];
       for (const id of [southVersion, UNKNOWN]) {
         attempts.push(
           () => get(`/api/timetable/versions/${id}/load`),

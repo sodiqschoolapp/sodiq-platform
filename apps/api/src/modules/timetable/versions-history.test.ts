@@ -264,6 +264,21 @@ describe('version history and comparison', () => {
       expect(await t.entries('timetable_version.compare')).toEqual([]);
     });
 
+    it('is read by the Principal, refused to a Teacher (permission review, S2)', async () => {
+      const year =
+        (
+          await t.database.migrator
+            .selectFrom('academic_years')
+            .select('id')
+            .where('branch_id', '=', t.north)
+            .executeTakeFirst()
+        )?.id ?? (await load.classes.year(t.north));
+      const a = await load.version(t.north, year, { startsOn: MONDAY });
+      const b = await load.version(t.north, year, { startsOn: '2026-11-09', from: a });
+      comparisonOf(await compare(t.north, a, b, t.principal));
+      refusedWith(await compare(t.north, a, b, t.teacher), 403, 'permission_denied');
+    });
+
     it('finds nothing between a version and itself', async () => {
       const s = await compareScene();
       expect(comparisonOf(await compare(s.branch, s.a, s.a)).differences).toEqual([]);
