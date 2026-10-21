@@ -93,7 +93,7 @@ export function OutOfDatePanel({
     if (record === null) {
       // A teacher's record is read through the branch's row filter: one whose
       // branch was removed is no longer seen here (review round 1, second opinion).
-      return cause.kind === 'publish'
+      return cause.kind === 'publish' || cause.kind === 'fill'
         ? t('timetable.outOfDate.earlierPublish')
         : cause.kind === 'availability'
           ? t('timetable.outOfDate.teacherGone')
@@ -164,6 +164,9 @@ export function OutOfDatePanel({
       )}
       {answer.causes.some((one) => one.kind === 'withdraw') && (
         <p className="text-sm">{t('timetable.outOfDate.byWithdraw')}</p>
+      )}
+      {answer.causes.some((one) => one.kind === 'fill') && (
+        <p className="text-sm">{t('timetable.outOfDate.byFill')}</p>
       )}
       {answer.other !== null && (
         <div className="grid gap-3" data-comparison="true">

@@ -573,6 +573,19 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu boʻlinish yoki parallel guruhlarning boshqa qismida shu oʻqituvchi bor, qismlar esa bir vaqtda oʻtadi. Boshqa oʻqituvchini tanlang.',
     load_group_gaps:
       'Sinflarning oʻquvchilari bu blokning guruhlariga joylashtirilmagan. Ularni guruhlarga joylashtirish ekranida joylashtiring.',
+    fill_vacancy:
+      'Bu vakansiya ochiq emas yoki uni yopish allaqachon rejalashtirilgan. Avval uni qayta oching.',
+    fill_person:
+      'Bu xodim shu sanadan vakansiyani egallay olmaydi. Shu sanada faol boʻlgan xodimni tanlang.',
+    fill_start:
+      'Vakansiya eng erta ertangi kundan, yopilmagan oʻquv yilining sanasidan toʻldiriladi.',
+    fill_rows: 'Bu vakansiyada shu sanadan bunday qator yoʻq. Qatorlar va sanani qayta tekshiring.',
+    fill_nothing:
+      'Barcha qatorlar vakansiyada qoladi: xodim bu vaqtda band yoki profili mos emas. Hech narsa toʻldirilmadi.',
+    fill_rows_changed:
+      'Toʻldiriladigan qatorlar siz tekshirganingizdan keyin oʻzgardi. Qayta tekshiring.',
+    fill_version_rows:
+      'Amaldagi jadvalning bir qatorini shu sanaga koʻchirib boʻlmaydi (oʻqituvchi ishlamaydi yoki sinfning tyutori yoʻq). Avval jadvalni tuzating yoki boshqa sanani tanlang.',
     vacancy_has_load:
       'Bu vakansiya qoralamada yoki hali amal qilishi mumkin boʻlgan eʼlon qilingan yuklamada koʻrsatilgan yoki unga kelgusi dars biriktirilgan, shuning uchun uni hozircha yopib boʻlmaydi. Shu qatorlarga boshqa oʻqituvchini tayinlang yoki yuklama tugagach, vakansiyani yoping.',
     vacancy_in_load:
@@ -2810,6 +2823,7 @@ export const uz: Texts<'one' | 'other'> = {
         edit: 'Boʻsh oʻrin oʻzgartirildi',
         close: 'Boʻsh oʻrin yopildi',
         reopen: 'Boʻsh oʻrin qayta ochildi',
+        fill: 'Vakansiya toʻldirildi',
         delete: 'Boʻsh oʻrin oʻchirildi',
         export: 'Boʻsh oʻrinlar eksport qilindi',
       },
@@ -3308,6 +3322,8 @@ export const uz: Texts<'one' | 'other'> = {
           'Dars jadvalining {{number}}-versiyasi eʻlon qilindi va darslaringiz oʻzgardi. Haftangiz oldin va keyin:',
         withdrawn:
           'Dars jadvalining {{number}}-versiyasi qaytarib olindi va darslaringiz oʻzgardi. Haftangiz oldin va keyin:',
+        vacancy_filled:
+          'Dars jadvalining {{number}}-versiyasida vakansiya toʻldirildi va darslaringiz oʻzgardi. Haftangiz oldin va keyin:',
         tutor_changed:
           'Sinf rahbari almashgani sababli sinf rahbari darslaringiz oʻzgardi. Haftangiz oldin va keyin:',
         day_changed:
@@ -4098,6 +4114,10 @@ export const uz: Texts<'one' | 'other'> = {
           '{{row}}: {{numbers}}. Ularni qoʻying yoki qatorni sababi bilan ataylab kam deb belgilang.',
         load_mismatch_row:
           'Yuklama qatori: {{numbers}}. Ularni qoʻying yoki qatorni sababi bilan ataylab kam deb belgilang.',
+        load_vacancy_closed:
+          '{{row}}: uning vakansiyasi shu versiyaning bir sanasidan yopilgan. Qatorga boshqa oʻqituvchini tayinlang yoki vakansiyani qayta oching.',
+        load_vacancy_closed_row:
+          'Yuklama qatorida shu versiyaning bir sanasidan yopilgan vakansiya koʻrsatilgan. Unga boshqa oʻqituvchini tayinlang yoki vakansiyani qayta oching.',
         date_blocked: '{{date}}: {{rule}}',
         pattern_blocked_any: 'Bir dars dars jadvali qoidasini buzadi.',
         year_quarters: 'Oʻquv yilida sanasi belgilangan toʻrtta chorak yoʻq.',
@@ -4115,6 +4135,8 @@ export const uz: Texts<'one' | 'other'> = {
         'Bu qoralamani eʼlon eskirgan deb belgiladi. Har bir farq uchun qoralamani qoldiring yoki eʼlon qilingan versiyani oling.',
       byWithdraw:
         'Bu qoralamani versiyaning qaytarib olinishi eskirgan deb belgiladi. Har bir farq uchun qoralamani qoldiring yoki amaldagi versiyani oling.',
+      byFill:
+        'Vakansiyaning toʻldirilishi eʼlon qilingan versiyani oʻzgartirdi va bu qoralamani eskirgan deb belgiladi. Har bir farq uchun qoralamani qoldiring yoki eʼlon qilingan versiyani oling.',
       compared: '{{date}} dan amalda boʻlgan {{number}}-versiya bilan solishtirildi.',
       startedFrom: 'Bu qoralama {{number}}-versiyadan boshlangan.',
       noBase: 'Bu qoralama boshqa versiyadan boshlanmagan.',

@@ -16,7 +16,6 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   dayTemplatesKit,
   MONDAY,
-  TOMORROW,
   UNKNOWN,
   type DayTemplatesKit,
 } from '../../testing/day-templates-kit.js';
@@ -440,11 +439,13 @@ describe('vacancy fill', () => {
       const parsed = vacancyDetailSchema.parse(detail.body);
       // Today the vacancy is still open: its lessons before the date run.
       expect(parsed.status).toBe('open');
+      const personName = parsed.fills[0]?.person.name ?? '';
+      expect(personName).not.toBe('');
       expect(parsed.fills).toEqual([
         {
           id: fill.id,
           startsOn: OCTOBER_19,
-          person: { id: s.person, name: expect.any(String) as unknown as string },
+          person: { id: s.person, name: personName },
           rows: [{ classId: s.classA, groupId: null, subjectId: s.subject }],
           versionNumber: 2,
           withdrawn: false,
