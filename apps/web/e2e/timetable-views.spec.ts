@@ -87,10 +87,13 @@ test('an Academic Vice Principal reads a cancelled lesson in the class’s week 
   await page.goto('/timetable');
   await page.getByRole('link', { name: en.timetable.viewsLink, exact: true }).click();
   await expect(heading(page, views.title)).toBeVisible();
-  await page.getByRole('radio', { name: views.kind_class }).check({ force: true });
-  await page.getByLabel(views.kind_class, { exact: true }).selectOption({ label: '7 Oxford' });
+  await page.getByRole('radio', { name: views.kind_class, exact: true }).check({ force: true });
+  // The choice of the view and the select of its class share the word "Class".
+  await page
+    .getByRole('combobox', { name: views.kind_class, exact: true })
+    .selectOption({ label: '7 Oxford' });
   await page.getByLabel(views.date, { exact: true }).fill(date);
-  await page.getByRole('radio', { name: views.span_week }).check({ force: true });
+  await page.getByRole('radio', { name: views.span_week, exact: true }).check({ force: true });
   await expect(page.locator('[data-axis="slots"]')).toBeVisible();
   await expect(page.locator('[data-version-line]')).toContainText('Version 1, valid from');
   const cell = page.locator('tbody tr').first().locator('td').nth(1);
@@ -98,8 +101,8 @@ test('an Academic Vice Principal reads a cancelled lesson in the class’s week 
   await expect(cell).toContainText(day.changed);
 
   // The school view of that day lists 7 Oxford with the same lesson.
-  await page.getByRole('radio', { name: views.kind_branch }).check({ force: true });
-  await page.getByRole('radio', { name: views.span_day }).check({ force: true });
+  await page.getByRole('radio', { name: views.kind_branch, exact: true }).check({ force: true });
+  await page.getByRole('radio', { name: views.span_day, exact: true }).check({ force: true });
   const oxford = page.locator('tbody tr').filter({ hasText: '7 Oxford' });
   await expect(oxford).toContainText('Cancelled: Excursion to the museum');
 });
