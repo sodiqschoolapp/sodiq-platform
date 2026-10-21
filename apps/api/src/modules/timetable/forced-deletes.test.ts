@@ -778,6 +778,78 @@ describe('the forced delete of a dated lesson and its restore', () => {
       expect(await rowOf(lesson.id)).toBeUndefined();
     });
 
+    /**
+     * A shared block kept for the other class while the class sits an exam
+     * over it: the class's lesson cancelled "exam" and the class kept out of
+     * the block (`lesson_block_class_outs`). The other class's lesson is then
+     * deleted for good, so the class's lesson is the block's last.
+     */
+    const classOutScene = async (s: Scene) => {
+      const { lesson, other } = await sharedBlock(s);
+      const exam = await standingExamOver(t.database.migrator, {
+        lessonId: lesson.id,
+        roomId: s.room,
+        staffId: s.teacher.staffId,
+      });
+      await t.database.migrator
+        .insertInto('lesson_block_class_outs')
+        .values({
+          branch_id: s.branch,
+          block_id: lesson.block_id,
+          class_id: s.classId,
+          exam_id: exam,
+        })
+        .execute();
+      storeOf(await forceDelete(s.branch, other.id));
+      return { lesson, exam };
+    };
+
+    const classOutsOf = (blockId: string) =>
+      t.database.migrator
+        .selectFrom('lesson_block_class_outs')
+        .select(['class_id', 'exam_id'])
+        .where('block_id', '=', blockId)
+        .execute();
+
+    it('takes the class outs with the block of its last lesson, keeps them in the store and puts them back', async () => {
+      const s = await scene();
+      const { lesson, exam } = await classOutScene(s);
+      const deleted = await forceDelete(s.branch, lesson.id);
+      const store = storeOf(deleted);
+      expect(await blockOf(lesson.block_id)).toBeUndefined();
+      expect(await classOutsOf(lesson.block_id)).toEqual([]);
+      const kept = await t.database.migrator
+        .selectFrom('forced_deletes')
+        .select('rows')
+        .where('id', '=', store)
+        .executeTakeFirstOrThrow();
+      expect((kept.rows as { classOuts: unknown }).classOuts).toEqual([
+        { classId: s.classId, examId: exam },
+      ]);
+      done(await restore(s.branch, store));
+      expect(await blockOf(lesson.block_id)).toBeDefined();
+      expect((await rowOf(lesson.id))?.cancel_cause).toBe('exam');
+      expect(await classOutsOf(lesson.block_id)).toEqual([{ class_id: s.classId, exam_id: exam }]);
+    });
+
+    it('is refused when the exam that kept the class out of the block was cancelled since', async () => {
+      const s = await scene();
+      const { lesson, exam } = await classOutScene(s);
+      const store = storeOf(await forceDelete(s.branch, lesson.id));
+      await t.database.migrator
+        .updateTable('exams')
+        .set({ cancel_cause: 'cancelled' })
+        .where('id', '=', exam)
+        .execute();
+      const refused = await restore(s.branch, store);
+      refusedWith(refused, 409, 'forced_delete_parent_changed');
+      expect(detailsOf(refused)).toEqual([
+        expect.objectContaining({ path: 'exams', code: 'exam_cancelled' }),
+      ]);
+      expect(await blockOf(lesson.block_id)).toBeUndefined();
+      expect(await classOutsOf(lesson.block_id)).toEqual([]);
+    });
+
     it('is refused after its 30 days', async () => {
       const s = await scene();
       const lesson = await lessonOf(s, '2027-01-25');
