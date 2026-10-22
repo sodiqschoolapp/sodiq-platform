@@ -2,6 +2,7 @@ import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
+import { CellsKit } from '../../testing/cells-kit.js';
 import { ClassesKit } from '../../testing/classes-kit.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
 import { MembersKit } from '../../testing/members-kit.js';
@@ -35,7 +36,11 @@ const CARRIED = [
   'student_statuses',
   'student_uids',
 ];
-const KEPT = ['class_memberships', 'group_memberships', 'student_moves'];
+/**
+ * Task 6.1a: a journal cell keeps the branch of its lesson, as a class row
+ * keeps the branch of its class.
+ */
+const KEPT = ['class_memberships', 'group_memberships', 'journal_cells', 'student_moves'];
 /**
  * The tables whose key names the student under another column follow the
  * record by that key: the merges kept on the record (`kept_id`, task 3.3d,
@@ -233,6 +238,30 @@ describe('branch moves in the database', () => {
       );
     });
 
+    it('keeps a journal cell in the branch of its lesson (task 6.1a)', async () => {
+      const cells = await CellsKit.create(database.migrator);
+      const facts = await pupil();
+      const lesson = await cells.lesson(north, northYear, facts.oxford, '2026-10-12');
+      await cells.cell(north, {
+        lessonId: lesson,
+        studentId: facts.student,
+        mark: 1,
+        by: await classes.account(),
+        at: NOW,
+      });
+      const move = await release(facts.student);
+      await inBranches([south, north], (transaction) =>
+        acceptWrites(transaction, { ...facts, move }),
+      );
+      expect(await branchOf('journal_cells', facts.student)).toEqual([north]);
+      const students = await database.migrator
+        .selectFrom('students')
+        .select('branch_id')
+        .where('id', '=', facts.student)
+        .executeTakeFirstOrThrow();
+      expect(students.branch_id).toBe(south);
+    });
+
     it('commits through every deferred check for the receiving branch joined to the sending one', async () => {
       const { student, row, groupRow, move } = await moved();
       for (const table of CARRIED) {
@@ -248,7 +277,11 @@ describe('branch moves in the database', () => {
         .where('id', '=', student)
         .executeTakeFirstOrThrow();
       expect(students.branch_id).toBe(south);
-      for (const table of KEPT.filter((one) => one !== 'student_moves')) {
+      // The kit writes no move and no cell (the cell has its own test above); the
+      // rows it writes are in both branches.
+      for (const table of KEPT.filter(
+        (one) => one !== 'student_moves' && one !== 'journal_cells',
+      )) {
         expect((await branchOf(table, student)).sort()).toEqual([north, south].sort());
       }
       expect(await members.rowOf(row)).toMatchObject({

@@ -259,6 +259,8 @@ export const AUDIT_ACTION_GROUPS = {
     'room_closure.withdraw',
     'room_closure.move',
   ],
+  // Task 6.1a: journal cells saved (one entry per save; the lines are in the cell history).
+  journal: ['journal.cells_save'],
   exports: [
     'building.export',
     'room.export',

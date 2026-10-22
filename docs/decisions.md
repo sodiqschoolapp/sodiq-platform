@@ -285,6 +285,24 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 22 October 2026: cells, versions and history (task 6.1a)
+
+Plan approved on pull request #205 with corrections 1 and 2; decisions 1 to 12 confirmed there, decision 4 marked Look first by the review; decision 13 taken in the build. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (task split). 6.1 split into 6.1a (cells, versions, history), 6.1b (lessons that hold data) and 6.1c (reports over the cells); 6.1b is merged before 6.3 | Decisions 1 and 12; one session cannot build and test the cell model and the six writers and two reports |
+| **Look first** (a reading of calculation rule 1 of `07`). Marks 4 and 5 are never stored: they are shown from the exemption in force (8.5) | Decision 4; a stored 4 would outlive a shortened exemption; exemption marks are not data (`edge/00-definitions`) |
+| No route in 6.1a; the writer `saveCells` is called by the routes of 6.3, 8.1 and 8.3a, which check who, the start and the edit period | Decision 2 |
+| One audit entry per save call; the lines are in the cell history, and `lesson_history_unaudited` (0105, widened) refuses before the commit a line with no entry of its transaction | Decision 3, correction 1 |
+| `changed_how` is the list of "My grade disappeared" and `undo`; 6.1a writes `entry` | Decision 5 |
+| The bound by the total is 8.1's; 6.1a keeps `score >= 0` and no update of works | Decision 6 |
+| `changed_by` is an account; the assignment is in the audit entry | Decision 7 |
+| A cancelled lesson takes no value and no clear; its cells stay | Decision 8; 0109 added the clear (spec review of the code) |
+| A merge of a record with a cell that has a value is refused (`student_merge_has_cells`) until 8.6 carries cells | Decision 9 |
+| Closed cells are checked when a cell gets a value, with the student's membership rows locked FOR SHARE | Decision 10 |
+| A student's empty cells go with the student on a delete or a merge (0109); a cell with a value refuses the delete (`student_has_data`), also one only another branch sees, by the key | Decision 13, taken in the build after the spec review of the code: an empty cell is no data (`edge/00-definitions`), and the delete is allowed when "there is no attendance, number, ..." |
+
 ## 22 October 2026: the publish at the real size (task 5.12d)
 
 Plan approved on pull request #204 with corrections 1 to 3; decisions 1 to 5 confirmed there, decision 2 changed in the build. Flagged on issue #42.

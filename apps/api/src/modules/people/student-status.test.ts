@@ -322,14 +322,16 @@ describe('planRestore (edge: "A student is graduated by mistake")', () => {
 
 describe('holdsData (edge: "A student is created twice by mistake"; decision 14)', () => {
   it('blocks a scholarship, a second contract, and a live status that is not active', () => {
-    expect(holdsData(started(), 'none', 1)).toBe(false);
-    expect(holdsData(started(), 'merit', 1)).toBe(true);
-    expect(holdsData(started(), 'none', 2)).toBe(true);
+    expect(holdsData(started(), 'none', 1, 0)).toBe(false);
+    expect(holdsData(started(), 'merit', 1, 0)).toBe(true);
+    expect(holdsData(started(), 'none', 2, 0)).toBe(true);
+    // Task 6.1a: a journal cell.
+    expect(holdsData(started(), 'none', 1, 1)).toBe(true);
     const scheduled = [
       row('a', 'active', '2026-09-02', '2026-10-11', 'start'),
       row('b', 'inactive', '2026-10-11', null, 'leaving'),
     ];
-    expect(holdsData(scheduled, 'none', 1)).toBe(true);
+    expect(holdsData(scheduled, 'none', 1, 0)).toBe(true);
   });
 
   it('lets a cancelled or undone leaving pass', () => {
@@ -338,7 +340,7 @@ describe('holdsData (edge: "A student is created twice by mistake"; decision 14)
       row('b', 'inactive', '2026-10-11', '2026-10-11', 'leaving'),
       row('c', 'active', '2026-10-11', null, 'cancel'),
     ];
-    expect(holdsData(cancelled, 'none', 1)).toBe(false);
+    expect(holdsData(cancelled, 'none', 1, 0)).toBe(false);
   });
 });
 

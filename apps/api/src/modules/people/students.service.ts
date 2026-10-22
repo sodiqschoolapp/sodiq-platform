@@ -31,6 +31,7 @@ import {
 import { sql, type RawBuilder } from 'kysely';
 import { transactionMoment, Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
+import { studentCellCount } from '../journal/cells.js';
 import {
   listsBranchStudents,
   NO_PLACES,
@@ -1200,7 +1201,14 @@ export class Students {
           access.branchId,
           PERMISSIONS,
         ) !== undefined,
-      deletable: canArchive && !holdsData(rows, row.scholarship_type, Number(contractCount.count)),
+      deletable:
+        canArchive &&
+        !holdsData(
+          rows,
+          row.scholarship_type,
+          Number(contractCount.count),
+          await studentCellCount(transaction, id),
+        ),
       ...(await this.movesOfDetail(transaction, access, id, today, scope, basicOnly)),
       ...(await this.branchMovesOfDetail(transaction, access, id, basicOnly)),
       ...(await this.classLeftOfDetail(transaction, canArchive, id, rows, today, branchId)),
