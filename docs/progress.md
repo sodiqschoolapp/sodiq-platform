@@ -11,6 +11,7 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 The next sessions must know:
 
 - `publishedScene` takes `startTime`; `teaching-home.test.ts` moves the clock to a Monday and refreshes the session moments (`created_at`, `last_used_at`) of the account it reads with.
+- Quiet text is `text-muted-foreground`; the views page of 5.9a drew it `text-muted` (a fill) and was fixed here.
 - `SHELL_ANSWERS` of `render-app.tsx` answers `GET /api/timetable/home` with an empty week, since the default session is a Teacher's.
 - The next task is 5.9c.
 

@@ -297,6 +297,7 @@ Plan approved on pull request #198 with corrections 1 and 2; decisions 1 to 7 co
 | The route is under `timetable_views`, own lessons only, with a strict empty query; the page shows it on the home kinds `teaching` and `tutor` | Decisions 4 and 6 |
 | Cancelled and replaced-away lessons are listed as on the views | Decision 5 |
 | The journal button and the rest of `08` come with 6.2 and 9.4b (From lines) | Decision 7 |
+| **Build decision.** Busy blocks are read from the first branch read in full that holds the person's staff record (`teacher_claims_elsewhere` refuses a branch the record is not linked to); when no branch read in full holds the record, the home is empty, busy blocks included | Permission review should-fix 3: a branch with no role is not opened to find the record |
 
 ## 21 October 2026: timetable views (task 5.9a)
 
