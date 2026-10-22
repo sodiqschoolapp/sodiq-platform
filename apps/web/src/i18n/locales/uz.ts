@@ -651,6 +651,10 @@ export const uz: Texts<'one' | 'other'> = {
       'Hozir server PDF tayyorlay olmaydi. Bir necha daqiqadan keyin qayta urinib koʻring yoki Excel faylini yuklab oling.',
     timetable_view_scope:
       'Bu sinf, oʻqituvchi yoki xona jadvali rolingizga ochiq emas. Roʻyxatdan tanlang.',
+    journal_scope:
+      'Bu jurnal rolingizga ochiq emas. Jurnallar sahifasidan birini oching.',
+    journal_no_quarter:
+      'Bu oʻquv yili choraklarining sanalari hali belgilanmagan, shuning uchun jurnalni koʻrsatib boʻlmaydi. Oʻquv ishlari boʻyicha direktor oʻrinbosari ularni Maktab sozlamalarida belgilaydi.',
     place_referenced:
       'Bu hali ishlatilmoqda (undagi xona, dars, jadval yozuvi, dars tarixi yoki soʻnggi 30 kunda butunlay oʻchirilgan qavati, xonasi yoki darsi), shuning uchun butunlay oʻchirib boʻlmaydi. Buning oʻrniga bino yoki qavatni arxivlang yoxud xonani yoping.',
     forced_delete_place_parent:

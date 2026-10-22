@@ -449,6 +449,8 @@ const MESSAGE: Record<ErrorCode, string> = {
   timetable_view_scope:
     'The timetable of this class, teacher or room is outside what the role may see.',
   pdf_unavailable: 'A PDF cannot be made on this server now.',
+  journal_scope: 'This journal is outside what the role may read.',
+  journal_no_quarter: 'The year has no quarter with dates.',
   forced_delete_place_parent:
     'The building or floor of the deleted place was archived or deleted since.',
   vacancy_has_load: 'A load row that can still run, or a future lesson, names the vacancy.',

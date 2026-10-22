@@ -636,6 +636,10 @@ export const en = {
       'A PDF cannot be made on the server right now. Try again in a few minutes, or download the Excel file.',
     timetable_view_scope:
       'The timetable of this class, teacher or room is not among those your role can see. Choose one from the list.',
+    journal_scope:
+      'This journal is not among those your role can read. Open one from the Journals page.',
+    journal_no_quarter:
+      'The quarters of this year have no dates yet, so the journal cannot be shown. The Academic Vice Principal sets them in School setup.',
     place_referenced:
       'This is still in use (a room on it, a lesson, a timetable entry, the history of a lesson, or a floor, room or lesson of it deleted for good in the last 30 days), so it cannot be deleted for good. Archive a building or floor, or close a room, instead.',
     forced_delete_place_parent:

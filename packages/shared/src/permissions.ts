@@ -497,6 +497,30 @@ export const PERMISSIONS = freezeTable({
     head_teacher: ['view', 'export'],
     teacher: ['view', 'export'],
   }),
+  /**
+   * The journals (task 6.2, pull request #210, decision 2, Look first): 07, Who
+   * can do what. View only until entry comes (6.3, 8.1 to 8.4). The route
+   * decides the scope of each role for every request (`journal-scope.ts`):
+   * every journal of the branch for the Super Admin, the Principal and the
+   * Academic Vice Principal; every journal of the branch, the attendance
+   * columns and average only, for the Vice Principal for Spiritual and Moral
+   * Education and the Head Tutor ("the last two see attendance"); own subjects
+   * for the Head Teachers; the journals of own classes and of the groups that
+   * draw from them, own rows only, for the Tutor; and for the Teacher the
+   * journals they own on a quarter's reference date, whole, and the lessons
+   * they owned or substituted elsewhere (decision 3 with review correction 1).
+   */
+  journal: rows({
+    super_admin: ['view'],
+    principal: ['view'],
+    academic_vice_principal: ['view'],
+    spiritual_vice_principal: ['view'],
+    head_tutor: ['view'],
+    tutor: ['view'],
+    senior_head_teacher: ['view'],
+    head_teacher: ['view'],
+    teacher: ['view'],
+  }),
   relatives: rows({
     super_admin: ['view', 'create', 'edit'],
     principal: ['view'],

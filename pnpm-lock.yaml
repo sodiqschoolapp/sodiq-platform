@@ -238,6 +238,9 @@ importers:
       '@sentry/node':
         specifier: 11.5.0
         version: 11.5.0(@babel/core@7.29.7(supports-color@7.2.0))
+      '@sodiq/calc':
+        specifier: workspace:*
+        version: link:../../packages/calc
       '@sodiq/shared':
         specifier: workspace:*
         version: link:../../packages/shared

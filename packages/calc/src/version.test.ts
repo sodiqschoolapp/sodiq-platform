@@ -16,6 +16,9 @@ const SOURCE_HASHES: readonly string[] = [
   'aef6025c99d7b06899808e7d4e56849bfe4ab99e1ceef710e07871ed503b3303',
   // 2: task 3.6c-1, the year result from the published quarters, no extra lessons.
   '2bc9a1015c1f1bd837e905a04029dc40a5ecd58eb7f5c68d35b3219ac7d9d83e',
+  // 3: task 6.2, the class or group average of the journal's bottom row (`groupAverage`); no
+  // existing formula changes.
+  'c68ce35f92e0abdfc99e441e58e971cc14c8b5607ac2ed513ac0f2d479f73160',
 ];
 
 const directory = new URL('./', import.meta.url);

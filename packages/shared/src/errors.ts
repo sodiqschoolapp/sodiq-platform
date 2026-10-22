@@ -836,6 +836,10 @@ export const ERROR_CODES = [
   'timetable_view_scope',
   /** A PDF cannot be made on this server now: no Chromium, or too many waiting (task 5.9c-1, decision 4). Excel still works. */
   'pdf_unavailable',
+  /** The journal is of the branch but outside what the role may read of it (07, Who can do what; task 6.2, decision 19). */
+  'journal_scope',
+  /** The journal's year has no quarter with dates yet, so no quarter can be shown (task 6.2). */
+  'journal_no_quarter',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

@@ -35,6 +35,9 @@ export const CLASS_SCOPED_AREAS: readonly string[] = [
   // Task 3.3a, decision 9 of pull request #95 (Look first): the History tab
   // of the students of own classes.
   'student_history',
+  // Task 6.2, decision 2 with review correction 4: the journals of own classes
+  // and of the groups that draw from them.
+  'journal',
 ];
 
 /**
