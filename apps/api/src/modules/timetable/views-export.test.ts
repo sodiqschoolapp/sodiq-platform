@@ -77,6 +77,8 @@ describe('the timetable files', () => {
   let s: PublishedScene;
   let south: PublishedScene;
   const cookies: Record<string, string> = {};
+  /** The staff records of the Tutor and the Head Tutor: their own teacher views. */
+  const ownStaff: Record<string, string> = {};
 
   const send = (body: Body, cookie = t.admin, branch = s.branch) =>
     request(t.kit.server)
@@ -168,9 +170,18 @@ describe('the timetable files', () => {
         .where('account_id', '=', tutor.accountId)
         .executeTakeFirstOrThrow()
     ).id;
-    await load.teacher(s.branch, { accountId: tutor.accountId });
+    ownStaff.tutor = (await load.teacher(s.branch, { accountId: tutor.accountId })).staffId;
     await load.classes.tutorRow(s.branch, s.classId, tutorAssignment);
     const headTutor = await person('Sardor', 'Yusupov', { role: 'head_tutor' });
+    ownStaff.headTutor = (await load.teacher(s.branch, { accountId: headTutor.accountId })).staffId;
+    const spiritual = await person('Nodira', 'Rahimova', { role: 'spiritual_vice_principal' });
+    // A Senior Head Teacher works in every branch: no branch on the assignment.
+    const senior = await person('Davron', 'Ergashev', {
+      role: 'senior_head_teacher',
+      subjectIds: [s.subject, south.subject],
+    });
+    // A Head Teacher of another subject (the kit makes one for the appointment).
+    const otherHead = await person('Rustam', 'Ismoilov', { role: 'head_teacher' });
     const head = await person('Shahlo', 'Qodirova', {
       role: 'head_teacher',
       subjectIds: [s.subject],
@@ -180,6 +191,9 @@ describe('the timetable files', () => {
       tutor: tutor.cookie,
       headTutor: headTutor.cookie,
       head: head.cookie,
+      spiritual: spiritual.cookie,
+      senior: senior.cookie,
+      otherHead: otherHead.cookie,
     });
     await speak('en');
   });
@@ -189,8 +203,8 @@ describe('the timetable files', () => {
   });
 
   describe('who may print what (06, Views and outputs; the 5.9a scope)', () => {
-    it('lets the Super Admin, the Principal and the Academic Vice Principal print every view of the branch', async () => {
-      for (const cookie of [t.admin, t.principal, t.vicePrincipal]) {
+    it('lets the Super Admin, the Principal and both Vice Principals print every view of the branch', async () => {
+      for (const cookie of [t.admin, t.principal, t.vicePrincipal, cookies.spiritual ?? '']) {
         for (const body of [
           { kind: 'branch' },
           { kind: 'class', classId: s.classId },
@@ -242,6 +256,41 @@ describe('the timetable files', () => {
         'timetable_view_scope',
       );
       refused(await send({ kind: 'room', roomId: s.room }, cookie), 403, 'timetable_view_scope');
+    });
+
+    it('lets the Tutor and the Head Tutor print their own teacher view', async () => {
+      for (const [who, cookie] of [
+        ['tutor', cookies.tutor],
+        ['headTutor', cookies.headTutor],
+      ] as const) {
+        ok(await send({ kind: 'teacher', staffId: ownStaff[who] ?? '' }, cookie));
+      }
+    });
+
+    it('refuses a Head Teacher of another subject the teachers of this one', async () => {
+      refused(
+        await send({ kind: 'teacher', staffId: s.teacher.staffId }, cookies.otherHead),
+        403,
+        'timetable_view_scope',
+      );
+    });
+
+    it('lets a Senior Head Teacher print a teacher of own subject in the branch, nothing else', async () => {
+      const cookie = cookies.senior ?? '';
+      const html = await printed(
+        { kind: 'teacher', staffId: s.teacher.staffId, span: 'week' },
+        cookie,
+      );
+      expect(html).toContain('Version 1, valid from 12.10.2026');
+      for (const body of [
+        { kind: 'branch' },
+        { kind: 'class', classId: s.classId },
+        { kind: 'room', roomId: s.room },
+      ]) {
+        refused(await send(body, cookie), 403, 'timetable_view_scope');
+      }
+      // The other branch's teacher of the subject too: the role is not bound to a branch.
+      ok(await send({ kind: 'teacher', staffId: south.teacher.staffId }, cookie, south.branch));
     });
 
     it('lets a teacher print their own timetable and nobody else’s', async () => {
@@ -653,6 +702,7 @@ describe('the timetable files', () => {
         403,
         'timetable_view_scope',
       );
+      refused(await send({ kind: 'branch' }, cookies.head), 403, 'timetable_view_scope');
       pdf.failing = true;
       try {
         refused(await send({ kind: 'class', classId: s.classId }), 503, 'pdf_unavailable');
