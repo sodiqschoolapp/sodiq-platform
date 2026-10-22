@@ -435,6 +435,19 @@ describe('a frozen permission table', () => {
     }
   });
 
+  it('gives the plans to their readers and their writing to the Teacher, the owner in the route (task 7.1a, decision 2)', () => {
+    const readers = ['principal', 'academic_vice_principal', 'senior_head_teacher', 'head_teacher'];
+    for (const role of ROLES) {
+      expect(PERMISSIONS.plans[role], role).toEqual(
+        role === 'teacher' || role === 'super_admin'
+          ? ['view', 'edit']
+          : readers.includes(role)
+            ? ['view']
+            : [],
+      );
+    }
+  });
+
   it('gives the personal data report to the Super Admin alone, as an export (task 2.6b)', () => {
     for (const role of ROLES) {
       expect(PERMISSIONS.personal_data_report[role], role).toEqual(
@@ -463,6 +476,7 @@ describe('a frozen permission table', () => {
       'head_teachers',
       'journal',
       'personal_data_report',
+      'plans',
       'quarters',
       'relatives',
       'rooms',

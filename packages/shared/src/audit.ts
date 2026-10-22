@@ -262,6 +262,16 @@ export const AUDIT_ACTION_GROUPS = {
   // Task 6.1a: journal cells saved (one entry per save; the lines are in the cell history).
   // Task 6.3: "all present" (one entry per action) and a reason of absence set or cleared.
   journal: ['journal.cells_save', 'journal.all_present', 'absence_reason.set'],
+  // Task 7.1a: a plan made on its first write, an item created, saved or cleared, a file added
+  // or removed. The entries are the plan's history (old and new values of what changed).
+  plans: [
+    'plan.create',
+    'plan.item_create',
+    'plan.item_edit',
+    'plan.item_clear',
+    'plan.file_add',
+    'plan.file_remove',
+  ],
   exports: [
     'building.export',
     'room.export',

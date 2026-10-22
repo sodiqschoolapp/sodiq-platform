@@ -154,6 +154,19 @@ const ABSENCE_READERS: readonly Role[] = [
 /** The writers of `absence_reasons` (task 6.3, decision 6). */
 const ABSENCE_WRITERS: readonly Role[] = ['super_admin', 'academic_vice_principal', 'tutor'];
 
+/** The readers of `plans` (task 7.1a, decision 2). */
+const PLAN_READERS: readonly Role[] = [
+  'super_admin',
+  'principal',
+  'academic_vice_principal',
+  'senior_head_teacher',
+  'head_teacher',
+  'teacher',
+];
+
+/** The writers of `plans` (task 7.1a, decision 2): the owner in the route; the Super Admin owns none. */
+const PLAN_WRITERS: readonly Role[] = ['super_admin', 'teacher'];
+
 const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'GET /api/health': 'public',
   'POST /api/auth/sign-in': 'public',
@@ -695,6 +708,15 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     branch: 'request',
     roles: ABSENCE_WRITERS,
   },
+  // Task 7.1a: the plans, scope in the route; only the owner writes (plans.test.ts).
+  'GET /api/plans': { branch: 'request', roles: PLAN_READERS },
+  'GET /api/plans/journals/:journalId': { branch: 'request', roles: PLAN_READERS },
+  'POST /api/plans/journals/:journalId/items': { branch: 'request', roles: PLAN_WRITERS },
+  'PUT /api/plans/items/:itemId': { branch: 'request', roles: PLAN_WRITERS },
+  'POST /api/plans/items/:itemId/clear': { branch: 'request', roles: PLAN_WRITERS },
+  'PUT /api/plans/items/:itemId/files': { branch: 'request', roles: PLAN_WRITERS },
+  'DELETE /api/plans/files/:fileId': { branch: 'request', roles: PLAN_WRITERS },
+  'GET /api/plans/files/:fileId': { branch: 'request', roles: PLAN_READERS },
   // Task 5.9b: the teaching home page, own lessons only (teaching-home.test.ts).
   'GET /api/timetable/home': { branch: 'request', roles: VIEW_READERS },
   // Task 5.7b-2: the substitution per journal from an absence or a vacancy, under timetable edit.
@@ -1117,7 +1139,7 @@ describe('the harness', () => {
       ...ROUTE_ACCESS,
       'GET /api/permission-faults/undeclared': 'any_signed_in',
       'GET /api/permission-faults/twice': 'public',
-      'GET /api/permission-faults/early': { branch: 'request', roles: ['teacher'] },
+      'GET /api/permission-faults/early': { branch: 'request', roles: PLAN_WRITERS },
       'GET /api/removed': 'public',
     };
 

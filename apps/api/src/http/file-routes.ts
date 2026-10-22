@@ -1,4 +1,10 @@
-import { PHOTO_MAX_BYTES, PHOTO_TYPES, type ErrorCode } from '@sodiq/shared';
+import {
+  PHOTO_MAX_BYTES,
+  PHOTO_TYPES,
+  PLAN_FILE_MAX_BYTES,
+  PLAN_FILE_TYPES,
+  type ErrorCode,
+} from '@sodiq/shared';
 import type { NextFunction, Request, Response } from 'express';
 import { ApiException } from './api-exception.js';
 import { sendError } from './error-response.js';
@@ -57,10 +63,24 @@ export const STUDENT_PHOTO_ROUTE: FileRoute = {
   tooLarge: 'photo_too_large',
 };
 
+/**
+ * A file of a plan item (task 7.1a, pull request #212, decision 1, Look
+ * first; edge/lesson-plans: "Limits: 20 MB per file, 10 files per item, a
+ * fixed list of file types"). The name travels in the query.
+ */
+export const PLAN_FILE_ROUTE: FileRoute = {
+  method: 'PUT',
+  path: '/api/plans/items/:itemId/files',
+  types: PLAN_FILE_TYPES,
+  maxBytes: PLAN_FILE_MAX_BYTES,
+  tooLarge: 'plan_file_too_large',
+};
+
 export const FILE_ROUTES: readonly FileRoute[] = [
   STAFF_PHOTO_ROUTE,
   OWN_PHOTO_ROUTE,
   STUDENT_PHOTO_ROUTE,
+  PLAN_FILE_ROUTE,
 ];
 
 /**

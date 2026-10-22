@@ -658,6 +658,56 @@ export interface LessonHistory {
   written_xact: Generated<string>;
 }
 
+export interface LessonPlanFiles {
+  branch_id: string;
+  bytes: number;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  item_id: string;
+  name: string;
+  removed_at: Timestamp | null;
+  type: string;
+}
+
+export interface LessonPlanItems {
+  branch_id: string;
+  cleared_at: Timestamp | null;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  links: Generated<string[]>;
+  objectives: Generated<string>;
+  plan_id: string;
+  position: number;
+  topic: string;
+}
+
+export interface LessonPlanJournals {
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  journal_id: string;
+  plan_id: string;
+  quarter_id: string;
+}
+
+export interface LessonPlans {
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  quarter_id: string;
+  subject_id: string;
+}
+
+export interface LessonPlanWorks {
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  description: Generated<string>;
+  id: Generated<string>;
+  item_id: string;
+  kind: string;
+  position: number;
+  title: string;
+}
+
 export interface Lessons {
   block_id: string;
   branch_id: string;
@@ -1379,6 +1429,11 @@ export interface DB {
   lesson_day_changes: LessonDayChanges;
   lesson_exam_cancels: LessonExamCancels;
   lesson_history: LessonHistory;
+  lesson_plan_files: LessonPlanFiles;
+  lesson_plan_items: LessonPlanItems;
+  lesson_plan_journals: LessonPlanJournals;
+  lesson_plan_works: LessonPlanWorks;
+  lesson_plans: LessonPlans;
   lessons: Lessons;
   notifications: Notifications;
   password_reset_links: PasswordResetLinks;
