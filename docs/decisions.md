@@ -285,6 +285,21 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 22 October 2026: the real-size run (task 5.12c)
+
+Plan approved on pull request #203 with corrections 1 to 3; decisions 1 to 8 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** No journal page is timed: the journal does not exist yet; 6.2 times it on this run's data (From line) | Decision 1; `12`, Open a journal for a quarter |
+| **Look first.** The run is one Vitest file, `real-size.database.test.ts`: small in CI, the school's size with `REAL_SIZE=full`, its report in the pull request; the full measure before each release and the 1,000 users are task 10.1's (From line) | Decisions 2 and 3; the owner's line of 15 October asks for one run |
+| The weekly pattern is placed by a seed placer (most constrained lesson first, the engine's `checkCandidates` on the grid's facts deciding each place, "Suggest a place" as fallback) and written with Kysely without audit entries; the publish and the move go through the routes | Decisions 4 and 5; the owner's line of 20 October |
+| The branches are built, placed and published one after another, so a later branch is placed and checked against the earlier ones' published lessons (busy elsewhere, travel time) | Correction 2; a draft of another branch is only `other_draft`, a warning |
+| A teacher of two branches works until 11:45 in the first and from 11:45 in the second: one person's hours never overlap (`staff_availability_ranges_no_overlap`), and the fifth lesson (11:50) right after the fourth (11:40) is kept apart by the travel time alone; a probe on the later draft proves the engine blocks it (`travel_time`) | Decision 6; `06`, Travel time |
+| The run's clock is 26 August 2026, 10:00 branch time; every draft starts and is published from Monday 7 September 2026 (`dayTemplatesKit({ start })`) | Decision 7, correction 2 |
+| The 0.2-second target is put on the board's check of a dragged lesson at every slot of the week (`useSlotStatuses`); a saved move through the route is reported apart against 1 second | Plan review finding 3; code review finding 4 |
+| The data has no double lessons: the owner's lines name groups, splits and shared teachers | Code review finding 6 |
+
 ## 22 October 2026: simultaneous actions and the browser walk (task 5.12b)
 
 Plan approved on pull request #202 with correction 1; decisions 1 and 3 to 6 confirmed there, 2 changed by correction 1. Flagged on issue #42.
