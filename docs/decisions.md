@@ -285,6 +285,19 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 22 October 2026: simultaneous actions and the browser walk (task 5.12b)
+
+Plan approved on pull request #202 with correction 1; decisions 1 and 3 to 6 confirmed there, 2 changed by correction 1. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| The writers that read a room without a lock and write its key (a room closure and its "move all", a load row's create and edit, a pattern place, room change and rearrangement) map a violation of the room's key to 404 `not_found` (`refusingGoneRoom`), not a new lock; the swap names no room and is not wrapped | Decisions 1 and 2, correction 1; the From line of 5.8c |
+| An exam reads its rooms again `for key share` behind the publish lock (save and check) and answers 404 for one gone; `exam_rooms_room_fkey` is not mapped | Decision 6; the engine needs every room before any write, as the one-day room change (5.8c) |
+| A class's home room keeps its `for share` read and is only tested | Plan, API |
+| 404 `not_found`, no new code | Decision 3 |
+| The browser walk is a spec of its own (`timetable-walk.spec.ts`) on a seed scene with no version, published from the draft's default start | Decision 4 |
+| The same-moment tests hold the room `for update` in a third transaction and send both real routes in a fixed order | Decision 5 |
+
 ## 22 October 2026: named cases and generated tests (task 5.12a)
 
 Plan approved on pull request #201 with corrections 1 to 5; decisions 1 to 7 confirmed there (5 with a bound, 7 with correction 2). Flagged on issue #42.
