@@ -42,8 +42,8 @@ describe('attendance entry', () => {
   type Held = Parameters<DayTemplatesKit['kit']['giveRole']>[1];
   type Browser = { cookie: string; account: { id: string } };
   interface Calls {
-    get(branch: string, path: string): Promise<Response>;
-    post(branch: string, path: string, body?: object): Promise<Response>;
+    get: (branch: string, path: string) => Promise<Response>;
+    post: (branch: string, path: string, body?: object) => Promise<Response>;
   }
 
   /** Runs `work` with the clock at `moment` and the roles given from 1 September. */
@@ -719,7 +719,9 @@ describe('attendance entry', () => {
       }
       release();
       const heldError = await held;
-      if (heldError !== undefined) throw heldError;
+      if (heldError !== undefined) {
+        throw heldError instanceof Error ? heldError : new Error('The hold failed.');
+      }
       return answer;
     }
 

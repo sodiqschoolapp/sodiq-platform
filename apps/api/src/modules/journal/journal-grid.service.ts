@@ -186,12 +186,7 @@ export class JournalGridReader {
   ): Promise<JournalShape | null> {
     const lesson = await transaction
       .selectFrom('lessons')
-      .select([
-        sql<string>`lesson_date::text`.as('date'),
-        'class_id',
-        'group_id',
-        'subject_id',
-      ])
+      .select([sql<string>`lesson_date::text`.as('date'), 'class_id', 'group_id', 'subject_id'])
       .where('id', '=', lessonId)
       .executeTakeFirstOrThrow();
     let journals = transaction

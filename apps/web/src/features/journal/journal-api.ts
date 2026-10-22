@@ -1,5 +1,15 @@
-import { journalGridSchema, journalListSchema } from '@sodiq/shared';
-import { queryOptions } from '@tanstack/react-query';
+import {
+  absenceReasonSchema,
+  allPresentSchema,
+  attendanceSavedSchema,
+  cellHistorySchema,
+  journalGridSchema,
+  journalListSchema,
+  studentAbsencesSchema,
+  type AbsenceReasonRecord,
+  type AttendanceSave,
+} from '@sodiq/shared';
+import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { api, branchHeader } from '@/api/client';
 import { answerOf } from '@/api/failure';
 
@@ -44,3 +54,66 @@ export const journalGridQuery = (
       ),
     enabled: branchId !== null,
   });
+
+/** Every query of the journals of every branch, after an entry (task 6.3). */
+export const invalidateJournal = (queryClient: QueryClient): Promise<unknown> =>
+  queryClient.invalidateQueries({ queryKey: journalKey() });
+
+/** Typed attendance marks of one lesson (task 6.3); `mark: null` clears a cell. */
+export const saveAttendance = (lessonId: string, body: AttendanceSave) =>
+  answerOf(
+    api.POST('/api/journal/lessons/{lessonId}/attendance', {
+      params: { header: branchHeader(), path: { lessonId } },
+      body,
+    }),
+  ).then((answer) => attendanceSavedSchema.parse(answer));
+
+/** "All present" for one lesson (task 6.3, decision 4). */
+export const markAllPresent = (lessonId: string) =>
+  answerOf(
+    api.POST('/api/journal/lessons/{lessonId}/all-present', {
+      params: { header: branchHeader(), path: { lessonId } },
+    }),
+  ).then((answer) => allPresentSchema.parse(answer));
+
+/** The history of a student's cells in a lesson (task 6.3, decision 16). */
+export const cellHistoryQuery = (branchId: string | null, lessonId: string, studentId: string) =>
+  queryOptions({
+    queryKey: [...journalKey(branchId), 'history', lessonId, studentId],
+    queryFn: async () =>
+      cellHistorySchema.parse(
+        await answerOf(
+          api.GET('/api/journal/lessons/{lessonId}/students/{studentId}/history', {
+            params: { header: branchHeader(), path: { lessonId, studentId } },
+          }),
+        ),
+      ),
+    enabled: branchId !== null,
+  });
+
+/** The Student absences page: one class over a range (task 6.3, decision 13). */
+export const studentAbsencesQuery = (
+  branchId: string | null,
+  query: { classId?: string; from?: string; to?: string },
+) =>
+  queryOptions({
+    queryKey: [...journalKey(branchId), 'student-absences', query],
+    queryFn: async () =>
+      studentAbsencesSchema.parse(
+        await answerOf(
+          api.GET('/api/journal/student-absences', {
+            params: { header: branchHeader(), query },
+          }),
+        ),
+      ),
+    enabled: branchId !== null,
+  });
+
+/** Sets or clears the reason of a student's absence on a date (task 6.3, decision 8). */
+export const setAbsenceReason = (studentId: string, date: string, body: AbsenceReasonRecord) =>
+  answerOf(
+    api.PUT('/api/journal/student-absences/{studentId}/{date}', {
+      params: { header: branchHeader(), path: { studentId, date } },
+      body,
+    }),
+  ).then((answer) => absenceReasonSchema.parse(answer));

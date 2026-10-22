@@ -79,6 +79,14 @@ export const TIMETABLE_PAGES: readonly IndexedPage[] = [
   { titleKey: 'timetable.roomClosures.title', to: '/timetable/room-closures' },
 ];
 
+/**
+ * The pages under "Journal" (task 6.3), indexed when the menu of the role has
+ * the item and the role may open the page.
+ */
+export const JOURNAL_PAGES: readonly (IndexedPage & { area: string })[] = [
+  { titleKey: 'journal.absences.title', to: '/journal/student-absences', area: 'absence_reasons' },
+];
+
 /** Everything the search of a role lists: its menu pages, the pages under them, the common ones. */
 export function indexedPages(
   menuPages: readonly IndexedPage[],
@@ -100,5 +108,8 @@ export function indexedPages(
     : [];
   // The menu shows "Timetable" only to the roles that view the area.
   const timetable = menuPages.some((page) => page.to === '/timetable') ? TIMETABLE_PAGES : [];
-  return [...menuPages, ...setup, ...people, ...classes, ...timetable, ...COMMON_PAGES];
+  const journal = menuPages.some((page) => page.to === '/journal')
+    ? JOURNAL_PAGES.filter((page) => views(page.area)).map(({ titleKey, to }) => ({ titleKey, to }))
+    : [];
+  return [...menuPages, ...setup, ...people, ...classes, ...timetable, ...journal, ...COMMON_PAGES];
 }

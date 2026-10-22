@@ -30,9 +30,9 @@ describe('the reasons of absence', () => {
   type Held = Parameters<DayTemplatesKit['kit']['giveRole']>[1];
   type Browser = { cookie: string; account: { id: string } };
   interface Calls {
-    get(path: string): Promise<Response>;
-    put(path: string, body: object): Promise<Response>;
-    post(path: string, body?: object): Promise<Response>;
+    get: (path: string) => Promise<Response>;
+    put: (path: string, body: object) => Promise<Response>;
+    post: (path: string, body?: object) => Promise<Response>;
   }
 
   async function as<T>(

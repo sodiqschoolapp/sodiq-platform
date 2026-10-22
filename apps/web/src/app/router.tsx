@@ -64,6 +64,10 @@ import { SignInPage } from '@/features/auth/sign-in-page';
 import { JournalPage } from '@/features/journal/journal-page';
 import { journalSearch, journalsSearch } from '@/features/journal/journal-search';
 import { JournalsPage } from '@/features/journal/journals-page';
+import {
+  StudentAbsencesPage,
+  studentAbsencesSearch,
+} from '@/features/journal/student-absences-page';
 import { ViewsPage } from '@/features/timetable/views-page';
 import { viewsSearch } from '@/features/timetable/views-search';
 import { AppLayout } from './app-layout';
@@ -360,6 +364,14 @@ const journalsRoute = createRoute({
   component: guarded('journal', JournalsPage),
 });
 
+/** Student absences and their reasons (task 6.3). */
+const studentAbsencesRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/journal/student-absences',
+  validateSearch: studentAbsencesSearch,
+  component: guarded('absence_reasons', StudentAbsencesPage),
+});
+
 /** A journal for one quarter (task 6.2): the grid, or lesson mode. */
 const journalRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -577,6 +589,7 @@ const routeTree = rootRoute.addChildren([
     versionsRoute,
     viewsRoute,
     journalsRoute,
+    studentAbsencesRoute,
     journalRoute,
     loadRoute,
     peopleRoute,

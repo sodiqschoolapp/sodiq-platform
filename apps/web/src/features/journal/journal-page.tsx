@@ -22,6 +22,9 @@ import { nameOf } from '@/features/setup/setup-api';
 import { SubjectChip } from '@/features/setup/subject-colour';
 import { monthsText, schoolDateText } from '@/lib/dates';
 import { SM, useMinWidth } from '@/lib/use-min-width';
+import { ATTENDANCE_MARKS } from '@sodiq/shared';
+import { Button } from '@/components/ui/button';
+import { useAttendanceEntry, type AttendanceEntry } from './attendance-entry';
 import { journalGridQuery } from './journal-api';
 import { GRADE_TINT, JournalGridView } from './journal-grid';
 import { JOURNAL_FILTERS, type JournalFilter, type JournalSearch } from './journal-search';
@@ -89,16 +92,12 @@ const found = (student: JournalStudent, words: readonly string[] | null) => {
  * legend under it. Read only until entry comes (6.3, 8.1 to 8.4).
  */
 export function JournalPage(): React.JSX.Element {
-  const { t, i18n } = useTranslation();
-  const language = i18n.language;
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { journalId } = useParams({ from: '/app/journal/$journalId' });
   const search: JournalSearch = useSearch({ from: '/app/journal/$journalId' });
   const { branchId } = useView();
   const grid = useQuery(journalGridQuery(branchId, journalId, search.quarter ?? null));
-  const [foldedOpen, setFoldedOpen] = useState(false);
-  // Lesson mode on a phone (`12`, Devices), or by the switch.
-  const narrow = !useMinWidth(SM);
 
   const go = (next: JournalSearch, how: 'push' | 'replace' = 'replace') => {
     void navigate({
@@ -129,7 +128,28 @@ export function JournalPage(): React.JSX.Element {
       </>
     );
   }
-  const data = grid.data;
+  return <JournalLoaded grid={grid.data} search={search} go={go} breadcrumbs={breadcrumbs} />;
+}
+
+/** The journal once read: the header, the selectors, the grid or lesson mode, and entry (task 6.3). */
+function JournalLoaded({
+  grid: data,
+  search,
+  go,
+  breadcrumbs,
+}: {
+  grid: JournalGrid;
+  search: JournalSearch;
+  go: (next: JournalSearch, how?: 'push' | 'replace') => void;
+  breadcrumbs: { label: string; to: '/' | '/journal' }[];
+}) {
+  const { t, i18n } = useTranslation();
+  const language = i18n.language;
+  const navigate = useNavigate();
+  const [foldedOpen, setFoldedOpen] = useState(false);
+  // Lesson mode on a phone (`12`, Devices), or by the switch.
+  const narrow = !useMinWidth(SM);
+  const { entry, notices } = useAttendanceEntry(data);
   const month =
     search.month !== undefined && data.months.includes(search.month) ? search.month : null;
   const subject = nameOf(data.journal.subject.names, language);
@@ -291,12 +311,18 @@ export function JournalPage(): React.JSX.Element {
             </Link>
           </div>
         </div>
+        {notices}
         {data.lessons.length === 0 ? (
           <div className={PANEL}>
             <EmptyState text={t('journal.page.noLessons')} />
           </div>
         ) : lessonMode ? (
-          <LessonMode grid={data} lesson={nearest} students={[...members, ...folded]} />
+          <LessonMode
+            grid={data}
+            lesson={nearest}
+            students={[...members, ...folded]}
+            entry={entry}
+          />
         ) : (
           <div className={PANEL}>
             <JournalGridView
@@ -310,6 +336,7 @@ export function JournalPage(): React.JSX.Element {
                 setFoldedOpen((open) => !open);
               }}
               scrollTo={nearest?.id ?? null}
+              entry={entry}
             />
           </div>
         )}
@@ -319,19 +346,25 @@ export function JournalPage(): React.JSX.Element {
   );
 }
 
+/** The words of each typed mark (`07`, Entering data). */
+const MARK_NAMES = { 0: 'absent', 1: 'present', 2: 'late', 3: 'skipped' } as const;
+
 /**
  * Lesson mode (`07`, Lesson mode: "On a phone, one lesson is shown at a time
  * as a list of students"; decision 12): the lesson of the date asked, or the
- * nearest to today, read only in 6.2; 6.3 and 8.1 make the marks buttons.
+ * nearest to today; task 6.3: the attendance marks as large buttons and
+ * "All present" for a lesson the reader enters; 8.1 adds the numbers.
  */
 function LessonMode({
   grid,
   lesson,
   students,
+  entry,
 }: {
   grid: JournalGrid;
   lesson: JournalLesson | null;
   students: readonly JournalStudent[];
+  entry: AttendanceEntry;
 }) {
   const { t, i18n } = useTranslation();
   if (lesson === null) {
@@ -357,6 +390,18 @@ function LessonMode({
           </span>
         )}
       </h2>
+      {lesson.canEnter && (
+        <div>
+          <Button
+            disabled={entry.busy}
+            onClick={() => {
+              entry.allPresent(lesson.id);
+            }}
+          >
+            {t('journal.entry.allPresent')}
+          </Button>
+        </div>
+      )}
       <ul className="grid gap-2">
         {students.map((student) => {
           const cell = student.cells[index];
@@ -370,13 +415,42 @@ function LessonMode({
                 {student.lastName} {student.firstName}
               </span>
               <span className="flex gap-3 text-lg">
-                <span aria-label={t('journal.grid.attendance')}>
-                  {cell === undefined || cell.closed ? (
-                    <span className="text-muted-foreground">{t('journal.grid.closed')}</span>
-                  ) : (
-                    (cell.mark ?? '—')
-                  )}
-                </span>
+                {lesson.canEnter && cell !== undefined && !cell.closed ? (
+                  // Large buttons (`07`, Lesson mode): attendance first.
+                  <span
+                    role="group"
+                    aria-label={t('journal.grid.attendance')}
+                    className="flex gap-1"
+                  >
+                    {ATTENDANCE_MARKS.map((mark) => (
+                      <Button
+                        key={mark}
+                        variant={cell.mark === mark ? 'default' : 'secondary'}
+                        className="min-w-11"
+                        aria-pressed={cell.mark === mark}
+                        aria-label={t('journal.entry.markButton', {
+                          mark,
+                          name: t(`journal.marks.${MARK_NAMES[mark]}`),
+                        })}
+                        title={t(`journal.marks.${MARK_NAMES[mark]}`)}
+                        disabled={entry.busy}
+                        onClick={() => {
+                          entry.mark(lesson.id, student, cell.mark === mark ? null : mark);
+                        }}
+                      >
+                        {mark}
+                      </Button>
+                    ))}
+                  </span>
+                ) : (
+                  <span aria-label={t('journal.grid.attendance')}>
+                    {cell === undefined || cell.closed ? (
+                      <span className="text-muted-foreground">{t('journal.grid.closed')}</span>
+                    ) : (
+                      (cell.mark ?? '—')
+                    )}
+                  </span>
+                )}
                 {lesson.works.map((work, workIndex) => (
                   <span
                     key={work.id}
