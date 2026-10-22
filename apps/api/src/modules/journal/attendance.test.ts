@@ -193,6 +193,19 @@ describe('attendance entry', () => {
         .execute(),
     ]);
 
+  /** A Tutor of the class: the role from 1 September, a staff record and a Tutor row. */
+  async function tutorOf(branch: string, classId: string): Promise<Browser> {
+    const browser = await account();
+    const assignment = await t.kit.giveRole(browser.account.id, {
+      role: 'tutor',
+      branchId: branch,
+      validFrom: new Date('2026-09-01T00:00:00+05:00'),
+    });
+    await load.classes.person(branch, ['uz'], { accountId: browser.account.id });
+    await load.classes.tutorRow(branch, classId, assignment.id);
+    return browser;
+  }
+
   beforeAll(async () => {
     t = await dayTemplatesKit({ jobs: true });
     load = new LoadKit(t.database.migrator);
@@ -379,6 +392,35 @@ describe('attendance entry', () => {
         { mark_before: null, mark_after: 2, changed_how: 'entry' },
         { mark_before: 2, mark_after: 0, changed_how: 'entry' },
       ]);
+    });
+
+    it('refuses a typed mark on a cancelled lesson and on a lesson with no teacher recorded (decision 15)', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ cancel_cause: 'reason', cancel_reason: 'School trip' })
+        .where('id', '=', s.third)
+        .execute();
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ teacher_id: null })
+        .where('id', '=', s.second)
+        .execute();
+      const before = await cellsOfBranch(s.branch);
+      await as(owner, [{ role: 'teacher', branchId: s.branch }], async ({ post }) => {
+        const cancelled = await post(s.branch, `/api/journal/lessons/${s.third}/attendance`, {
+          saves: [{ studentId: s.ahmedov, mark: 1, version: null }],
+        });
+        expect(cancelled.status).toBe(409);
+        expect(codeOf(cancelled)).toBe('lesson_cancelled_cell');
+        const unresolved = await post(s.branch, `/api/journal/lessons/${s.second}/attendance`, {
+          saves: [{ studentId: s.ahmedov, mark: 1, version: null }],
+        });
+        expect(unresolved.status).toBe(409);
+        expect(codeOf(unresolved)).toBe('lesson_not_held');
+      });
+      expect(await cellsOfBranch(s.branch)).toEqual(before);
     });
 
     it('refuses marks 4 and 5, a stale version, a student not expected and a student of another branch', async () => {
@@ -585,8 +627,13 @@ describe('attendance entry', () => {
       await acting.published(scene, '2026-09-07', earlier.staffId);
       await acting.published(scene, '2026-10-19', later.staffId);
       await acting.journal(branch, year, classId, cells.subject);
+      // The earlier owner's lesson was held by a substitute, so only "owner on the lesson's
+      // date" lets the earlier owner in (spec review of the code, must-fix 2).
+      const substitute = await load.teacher(branch, {
+        subjects: [{ subject: cells.subject, grades: [7] }],
+      });
       for (const [lesson, staff] of [
-        [owned, earlier.staffId],
+        [owned, substitute.staffId],
         [notOwned, later.staffId],
       ] as const) {
         await t.database.migrator
@@ -655,6 +702,86 @@ describe('attendance entry', () => {
       });
     });
 
+    it('lets a Tutor enter the Ma\u02BCnaviyat soati and Homework slot lessons they teach, and refuses a graded lesson of their class', async () => {
+      const s = await scene();
+      const tutor = await tutorOf(s.branch, s.classId);
+      const tutorStaff = await t.database.migrator
+        .selectFrom('staff')
+        .select('id')
+        .where('account_id', '=', tutor.account.id)
+        .executeTakeFirstOrThrow();
+      // A subject of the Tutors department, attendance only (the Homework slot row of 3.6c-2).
+      const cells = await CellsKit.create(t.database.migrator);
+      const tutorLesson = await cells.lesson(s.branch, s.year, s.classId, '2026-10-21');
+      const tutors = await t.database.migrator
+        .selectFrom('departments')
+        .select('id')
+        .where('name_en', '=', 'Tutors')
+        .executeTakeFirstOrThrow();
+      await t.database.migrator
+        .updateTable('subjects')
+        .set({ department_id: tutors.id, journal_type: 'attendance_only' })
+        .where('id', '=', cells.subject)
+        .execute();
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ teacher_id: tutorStaff.id })
+        .where('id', '=', tutorLesson)
+        .execute();
+      await as(tutor, [], async (calls) => {
+        expect((await typeOne(calls, s.branch, tutorLesson, s.ahmedov)).status).toBe(200);
+        const all = allPresentSchema.parse(
+          (await calls.post(s.branch, `/api/journal/lessons/${tutorLesson}/all-present`)).body,
+        );
+        expect(all.filled.map((one) => one.studentId)).toEqual([s.boboyev]);
+        const graded = await typeOne(calls, s.branch, s.first, s.ahmedov);
+        expect(graded.status).toBe(403);
+        expect(codeOf(graded)).toBe('journal_entry_scope');
+      });
+    });
+
+    it('lets the substitute enter a lesson of a journal with no owner (a vacancy with no acting teacher), and nobody else', async () => {
+      const cells = await CellsKit.create(t.database.migrator);
+      const acting = new ActingKit(t.database.migrator);
+      const branch = await t.newBranch();
+      const { year } = await cells.lessons.year(branch);
+      const classId = await load.classes.schoolClass(branch, year, { grade: 7 });
+      const vacancy = await load.vacancy(branch, {
+        languages: ['uz'],
+        subjects: [{ subject: cells.subject, grades: [7] }],
+      });
+      const subBrowser = await account();
+      const substitute = await load.teacher(branch, {
+        subjects: [{ subject: cells.subject, grades: [7] }],
+        accountId: subBrowser.account.id,
+      });
+      const otherBrowser = await account();
+      await load.teacher(branch, {
+        subjects: [{ subject: cells.subject, grades: [7] }],
+        accountId: otherBrowser.account.id,
+      });
+      const lesson = await cells.lesson(branch, year, classId, '2026-10-26');
+      await acting.published(
+        { branch, year, classId, subject: cells.subject },
+        '2026-10-19',
+        vacancy,
+      );
+      await acting.journal(branch, year, classId, cells.subject);
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ teacher_id: substitute.staffId })
+        .where('id', '=', lesson)
+        .execute();
+      const ahmedov = await student(branch, classId, 'Ahmedov');
+      await as(subBrowser, [{ role: 'teacher', branchId: branch }], async (calls) => {
+        const saved = await typeOne(calls, branch, lesson, ahmedov);
+        expect(saved.status, JSON.stringify(saved.body)).toBe(200);
+      });
+      await as(otherBrowser, [{ role: 'teacher', branchId: branch }], async (calls) => {
+        expect(codeOf(await typeOne(calls, branch, lesson, ahmedov))).toBe('journal_entry_scope');
+      });
+    });
+
     it('refuses the Principal, a Head Teacher and the Head Tutor by the table, and the Academic Vice Principal and the Super Admin with no lesson of theirs by the scope', async () => {
       const s = await scene();
       const auditBefore = await journalEntries();
@@ -664,7 +791,7 @@ describe('attendance entry', () => {
         await as(browser, [{ role, branchId: s.branch }], async (calls) => {
           const refused = await typeOne(calls, s.branch, s.first, s.ahmedov);
           expect(refused.status, role).toBe(403);
-          expect(codeOf(refused), role).not.toBe('journal_entry_scope');
+          expect(codeOf(refused), role).toBe('permission_denied');
         });
       }
       const head = await account();
@@ -674,7 +801,7 @@ describe('attendance entry', () => {
         async (calls) => {
           const refused = await typeOne(calls, s.branch, s.first, s.ahmedov);
           expect(refused.status).toBe(403);
-          expect(codeOf(refused)).not.toBe('journal_entry_scope');
+          expect(codeOf(refused)).toBe('permission_denied');
         },
       );
       const vice = await account();
@@ -732,30 +859,38 @@ describe('attendance entry', () => {
       const released = new Promise<void>((resolve) => {
         release = resolve;
       });
-      let ready: () => void = () => undefined;
-      const isReady = new Promise<void>((resolve) => {
+      let ready: (pid: number) => void = () => undefined;
+      const isReady = new Promise<number>((resolve) => {
         ready = resolve;
       });
       const held = t.app
         .get(Transactions)
         .run([branch], async (transaction) => {
           await hold(transaction);
-          ready();
+          const pid = await sql<{ pid: number }>`select pg_backend_pid() as pid`.execute(
+            transaction,
+          );
+          ready(pid.rows[0]?.pid ?? 0);
           await released;
         })
         .catch((error: unknown) => error);
-      await isReady;
-      const answer = run();
-      for (let tries = 0; tries < 800; tries += 1) {
+      const heldPid = await isReady;
+      // A supertest request is sent only once it is awaited: start it now.
+      const answer = new Promise<Response>((resolve, reject) => {
+        run().then(resolve, reject);
+      });
+      // The route must wait on the held transaction itself (spec review of the code, must-fix 4).
+      let waited = false;
+      for (let tries = 0; tries < 800 && !waited; tries += 1) {
         const found = await sql<{ n: number }>`
-          select count(distinct l.pid)::int as n
-          from pg_locks l join pg_stat_activity a on a.pid = l.pid
-          where a.datname = current_database() and not l.granted
+          select count(*)::int as n from pg_stat_activity a
+          where a.datname = current_database() and ${heldPid}::int = any (pg_blocking_pids(a.pid))
         `.execute(t.database.migrator);
-        if ((found.rows[0]?.n ?? 0) >= 1) break;
-        await new Promise((resolve) => setTimeout(resolve, 25));
+        waited = (found.rows[0]?.n ?? 0) >= 1;
+        if (!waited) await new Promise((resolve) => setTimeout(resolve, 25));
       }
       release();
+      expect(waited, 'the route waited on the held transaction').toBe(true);
       const heldError = await held;
       if (heldError !== undefined) {
         throw heldError instanceof Error ? heldError : new Error('The hold failed.');
@@ -783,6 +918,41 @@ describe('attendance entry', () => {
         expect(answer.skipped).toEqual([{ studentId: s.ahmedov, mark: 0 }]);
         expect(answer.filled.map((one) => one.studentId)).toEqual([s.boboyev, s.valiyev]);
         expect((await cellOf(s.first, s.ahmedov))?.mark).toBe(0);
+      });
+    });
+
+    it('makes "all present" wait for a cancel of the lesson and refuses it after (decision 4)', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      await as(owner, [{ role: 'teacher', branchId: s.branch }], async ({ post }) => {
+        t.clock.set(MOMENT);
+        const answer = await heldThen(
+          s.branch,
+          async (transaction) => {
+            // The cancel, held before its commit: it locks the lesson as a cancel does.
+            await transaction
+              .selectFrom('lessons')
+              .select('id')
+              .where('id', '=', s.first)
+              .forUpdate()
+              .execute();
+            await transaction
+              .updateTable('lessons')
+              .set({ cancel_cause: 'reason', cancel_reason: 'School trip' })
+              .where('id', '=', s.first)
+              .execute();
+            await t.app.get(Audit).record(transaction, {
+              branchId: s.branch,
+              actorId: owner.account.id,
+              action: 'lesson.correct',
+              record: { type: 'lesson', id: s.first },
+            });
+          },
+          () => post(s.branch, `/api/journal/lessons/${s.first}/all-present`),
+        );
+        expect(answer.status).toBe(409);
+        expect(codeOf(answer)).toBe('lesson_cancelled_cell');
+        expect(await cellOf(s.first, s.ahmedov)).toBeUndefined();
       });
     });
 
@@ -929,19 +1099,6 @@ describe('attendance entry', () => {
   });
 
   describe('the history of a cell, by role (permission review, must-fix 2)', () => {
-    /** A Tutor of the class: the role from 1 September, a staff record and a Tutor row. */
-    async function tutorOf(branch: string, classId: string): Promise<Browser> {
-      const browser = await account();
-      const assignment = await t.kit.giveRole(browser.account.id, {
-        role: 'tutor',
-        branchId: branch,
-        validFrom: new Date('2026-09-01T00:00:00+05:00'),
-      });
-      await load.classes.person(branch, ['uz'], { accountId: browser.account.id });
-      await load.classes.tutorRow(branch, classId, assignment.id);
-      return browser;
-    }
-
     it('answers every reader whose grid shows the cell, and refuses a Tutor of another class and a Head Teacher of another subject', async () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });
@@ -1010,6 +1167,99 @@ describe('attendance entry', () => {
     });
   });
 
+  describe('a group that draws from two classes (spec review of the code, must-fix 7)', () => {
+    it('gives a Tutor of one class the category and the history of own class only', async () => {
+      const cells = await CellsKit.create(t.database.migrator);
+      const branch = await t.newBranch();
+      const { year } = await cells.lessons.year(branch);
+      const oxford = await load.classes.schoolClass(branch, year, { grade: 7 });
+      const cambridge = await load.classes.schoolClass(branch, year, { grade: 7 });
+      const group = await load.classes.group(branch, year, cells.subject, [oxford, cambridge]);
+      const journal = (
+        await t.database.migrator
+          .insertInto('journals')
+          .values({
+            branch_id: branch,
+            academic_year_id: year,
+            class_id: null,
+            group_id: group,
+            subject_id: cells.subject,
+            runs: '{}',
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow()
+      ).id;
+      const members = new MembersKit(t.database.migrator, await load.classes.account());
+      const placed: Record<string, string> = {};
+      for (const [name, classId] of [
+        ['Nurova', oxford],
+        ['Qosimov', cambridge],
+      ] as const) {
+        const id = await members.student(branch, { startsOn: '2026-09-01', grade: 7 });
+        await t.database.migrator
+          .updateTable('students')
+          .set({ last_name: name })
+          .where('id', '=', id)
+          .execute();
+        await t.database.migrator.transaction().execute(async (transaction) => {
+          await members.member({ branch, classId, studentId: id, from: '2026-09-01' }, transaction);
+          await members.groupMember(
+            { branch, groupId: group, subjectId: cells.subject, studentId: id, from: '2026-09-01' },
+            transaction,
+          );
+        });
+        placed[name] = id;
+      }
+      const lesson = await cells.groupLesson(branch, year, group, '2026-10-12');
+      const writer = await load.classes.account();
+      for (const id of [placed.Nurova ?? '', placed.Qosimov ?? '']) {
+        await cells.cell(branch, {
+          lessonId: lesson,
+          studentId: id,
+          mark: 0,
+          by: writer,
+          at: MOMENT,
+        });
+        await atMoment((transaction) =>
+          transaction
+            .insertInto('student_absence_reasons')
+            .values({
+              branch_id: branch,
+              student_id: id,
+              absence_date: '2026-10-12',
+              category: 'illness',
+              note: '',
+              changed_by: writer,
+              changed_at: new Date(MOMENT),
+            })
+            .execute(),
+        );
+      }
+      const tutor = await tutorOf(branch, oxford);
+      await as(tutor, [], async ({ get }) => {
+        const response = await get(branch, `/api/journal/journals/${journal}`);
+        expect(response.status, JSON.stringify(response.body).slice(0, 300)).toBe(200);
+        const grid = journalGridSchema.parse(response.body);
+        expect(grid.students.map((one) => one.id)).toEqual([placed.Nurova]);
+        expect(grid.absences.map((one) => one.studentId)).toEqual([placed.Nurova]);
+        expect(
+          (
+            await get(
+              branch,
+              `/api/journal/lessons/${lesson}/students/${placed.Nurova ?? ''}/history`,
+            )
+          ).status,
+        ).toBe(200);
+        const other = await get(
+          branch,
+          `/api/journal/lessons/${lesson}/students/${placed.Qosimov ?? ''}/history`,
+        );
+        expect(other.status).toBe(403);
+        expect(codeOf(other)).toBe('journal_scope');
+      });
+    });
+  });
+
   describe('the grid', () => {
     const gridOf = (response: Response): JournalGrid => {
       expect(response.status, JSON.stringify(response.body)).toBe(200);
@@ -1037,6 +1287,8 @@ describe('attendance entry', () => {
         [s.boboyev, '2026-10-19'],
         // A day with no lesson of the journal: not answered (should-fix 4).
         [s.ahmedov, '2026-10-14'],
+        // Valiyev left on the 18th: not expected on the 19th, so no category (must-fix 7).
+        [s.valiyev, '2026-10-19'],
       ] as const) {
         await atMoment((transaction) =>
           transaction

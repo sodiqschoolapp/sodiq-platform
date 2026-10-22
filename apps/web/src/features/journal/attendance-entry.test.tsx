@@ -151,6 +151,33 @@ describe('attendance entry in the grid', () => {
     expect(hint?.textContent).toContain('Abdullayev Ali');
   });
 
+  it('moves down to the next student after a digit (edge/journal: "An attendance digit saves at once and moves down")', async () => {
+    open();
+    const target = await waitFor(() => {
+      const found = cellOf(uid(101), `${LESSON}:a`);
+      expect(found).not.toBeNull();
+      return found as HTMLElement;
+    });
+    fireEvent.click(target);
+    fireEvent.keyDown(target, { key: '1' });
+    await waitFor(() => {
+      expect(document.activeElement?.closest('[row-id]')?.getAttribute('row-id')).toBe(uid(102));
+    });
+    expect(document.activeElement?.closest('[col-id]')?.getAttribute('col-id')).toBe(`${LESSON}:a`);
+  });
+
+  it('names "all present" and the saved cell in Russian', async () => {
+    const calls = open(`/journal/${JOURNAL}`, 'ru');
+    fireEvent.click(await screen.findByRole('button', { name: ru.journal.entry.allPresent }));
+    const notice = await waitFor(() => {
+      const found = document.querySelector('[data-all-present]');
+      expect(found).not.toBeNull();
+      return found;
+    });
+    expect(notice?.textContent).toContain('Отмечен присутствующим 1 ученик.');
+    expect(posts(calls, `POST /api/journal/lessons/${LESSON}/all-present`)).toHaveLength(1);
+  });
+
   it('types nothing but 0 to 3, and nothing into a lesson the reader does not enter', async () => {
     const calls = open();
     const target = await waitFor(() => {

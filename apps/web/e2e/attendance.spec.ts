@@ -16,15 +16,20 @@ async function signedIn(page: Page, key: 'attendanceTeacher' | 'attendanceTutor'
 // student who is not yet marked ... the teacher then types the exceptions";
 // docs/spec/edge-cases/journal.md, "A Tutor records why a student was absent"
 // (task 6.3). The "Attendance browser test branch" holds a class of three
-// students with one maths lesson today at 00:05 and the class's Tutor. All
-// names are invented.
+// students with one lesson yesterday at 08:00 and the class's Tutor. All names
+// are invented.
 test('a teacher marks all present and an absence, and the Tutor records its reason', async ({
   page,
   browser,
 }) => {
   await signedIn(page, 'attendanceTeacher');
-  const today = page.locator('[data-home-today]');
-  await today.getByRole('button', { name: en.journal.open, exact: true }).click();
+  await page.goto('/journal');
+  await page
+    .locator('tbody tr')
+    .filter({ hasText: '7 Cambridge' })
+    .getByRole('button')
+    .first()
+    .click();
   await expect(heading(page, en.journal.sheet)).toBeVisible();
   await expect(
     page.locator('.ag-row').filter({ hasText: 'Ergasheva Kamola' }).first(),
@@ -51,7 +56,12 @@ test('a teacher marks all present and an absence, and the Tutor records its reas
   const context = await browser.newContext();
   const tutor = await context.newPage();
   await signedIn(tutor, 'attendanceTutor');
-  await tutor.goto('/journal/student-absences');
+  // Yesterday and today in branch time: the seeded lesson was yesterday.
+  const day = (offset: number) =>
+    new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tashkent' }).format(
+      Date.now() + offset * 86_400_000,
+    );
+  await tutor.goto(`/journal/student-absences?from=${day(-1)}&to=${day(0)}`);
   await expect(heading(tutor, en.journal.absences.title)).toBeVisible();
   const row = tutor.locator('tbody tr').filter({ hasText: 'Toshmatov' });
   await expect(row).toHaveCount(1);

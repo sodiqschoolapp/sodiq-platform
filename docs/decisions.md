@@ -313,7 +313,11 @@ Plan approved on pull request #211 with corrections 1 to 5; decisions 1 to 16 co
 | **Build decision.** A typed mark before the start answers the new code `entry_not_started`, not `lesson_not_started`, whose text is about a correction of a past lesson (5.6a-4) | `.claude/rules/web.md`: the text of a code is true on every path |
 | **Build decision.** The "all present" button over the A column is an icon with the words as its name; the grid takes 0 to 3, Delete and Backspace in an A cell, and H or a double click opens the history | `07`, Keyboard: "digits type; a key opens the comment" |
 | **Build decision.** Student absences lists a class from the address, or the reader's first; its link is on the Journals page and in Ctrl+K | No menu item of its own: the menu lists the modules |
-| **Build decision.** The browser test seeds a branch of its own with one lesson today at 00:05, so it is started whenever the test runs | The "Journal browser test branch" holds a lesson at 08:00 and its own test |
+| **Build decision.** The browser test seeds a branch of its own with one lesson yesterday at 08:00 and opens it from the Journals page, so it is started whatever the hour of the run | The "Journal browser test branch" holds a lesson today at 08:00 and its own test (spec review of the code, should-fix 7) |
+| **Build decision.** An entry's audit entry names the Teacher's assignment, then the Tutor's, else the first that permits the route (`entryAssignment`) | The person enters as the one who teaches (permission review of the code, should-fix 3) |
+| **Build decision.** The grid answers a category only on the dates of shown lessons the student is expected at; Student absences lists marks of held lessons only | Permission review should-fix 4; spec review should-fix 5; `edge/00-definitions`, Held lesson |
+| **Build decision.** Two first saves of one reason at one moment: the second reads the row the first wrote and changes it, its audit entry naming that value as the old one | `CLAUDE.md`, Every change is audited (spec review of the code, should-fix 1) |
+| **Build decision.** "At school earlier" is a notice above the grid naming the students, not a mark on the cell | `edge/journal` asks that "a hint is shown"; the notice names every student of the save at once (spec review of the code, should-fix 6, not followed) |
 
 ## 22 October 2026: the journal grid (task 6.2)
 

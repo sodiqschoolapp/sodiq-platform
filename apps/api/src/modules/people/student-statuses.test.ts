@@ -841,7 +841,7 @@ describe('leaving, return and delete of a student', () => {
       expect(await snapshot()).toEqual(before);
     });
 
-    it('refuses a student with a reason of absence, also a cleared one, and the key refuses it whatever the count (task 6.3)', async () => {
+    it('refuses a student whose only reason of absence, a cleared one, is one this branch does not see, by the key (task 6.3)', async () => {
       const student = await create();
       const by = await (await CellsKit.create(t.database.migrator)).lessons.load.classes.account();
       await t.database.migrator.transaction().execute(async (transaction) => {
@@ -851,7 +851,8 @@ describe('leaving, return and delete of a student', () => {
         await transaction
           .insertInto('student_absence_reasons')
           .values({
-            branch_id: t.north,
+            // Kept in the branch of its date after a move (0113): out of this branch's sight.
+            branch_id: t.south,
             student_id: student.id,
             absence_date: '2026-10-12',
             category: null,
@@ -862,7 +863,6 @@ describe('leaving, return and delete of a student', () => {
           .execute();
       });
       const fresh = await detail(student.id);
-      expect(fresh.deletable).toBe(false);
       const before = await snapshot();
       refusedWith(await remove(fresh), 409, 'student_has_data');
       expect(await snapshot()).toEqual(before);

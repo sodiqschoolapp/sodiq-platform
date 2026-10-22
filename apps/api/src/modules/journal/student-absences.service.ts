@@ -3,6 +3,7 @@ import {
   absenceCategorySchema,
   classDisplayName,
   compareStudentNames,
+  lessonStateOf,
   schoolDateOf,
   type AbsenceReason,
   type AbsenceReasonRecord,
@@ -18,6 +19,7 @@ import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { notFound } from '../setup/setup-refusals.js';
+import { awayLessons } from '../timetable/away-read.js';
 import { namedAccounts } from './cell-lines.query.js';
 
 /** The readers of every class of the branch (decision 6); the Tutor reads own classes only. */
@@ -189,7 +191,10 @@ export class StudentAbsences {
       .selectFrom('journal_cells')
       .innerJoin('lessons', 'lessons.id', 'journal_cells.lesson_id')
       .innerJoin('subjects', 'subjects.id', 'lessons.subject_id')
+      .leftJoin('staff', 'staff.id', 'lessons.teacher_id')
       .select([
+        'lessons.teacher_id',
+        'staff.kind as teacher_kind',
         'journal_cells.student_id',
         'journal_cells.mark',
         'lessons.id as lesson_id',
@@ -212,6 +217,37 @@ export class StudentAbsences {
       .orderBy('lessons.starts_at')
       .orderBy('lessons.id')
       .execute();
+    // Held lessons only (`edge/00-definitions`, Held lesson; spec review of the code, should-fix 5).
+    const lessonRows = [...new Map(marks.map((row) => [row.lesson_id, row])).values()];
+    const away = await awayLessons(
+      transaction,
+      lessonRows.map((row) => ({
+        id: row.lesson_id,
+        teacherId: row.teacher_id,
+        startsAt: new Date(row.starts_at),
+      })),
+    );
+    const held = new Set(
+      lessonRows
+        .filter(
+          (row) =>
+            lessonStateOf(
+              {
+                startsAt: new Date(row.starts_at),
+                cancelled: false,
+                teacher:
+                  row.teacher_kind === null
+                    ? null
+                    : row.teacher_kind === 'vacancy'
+                      ? 'vacancy'
+                      : 'person',
+                away: away.has(row.lesson_id),
+              },
+              now,
+            ) === 'held',
+        )
+        .map((row) => row.lesson_id),
+    );
     const reasons = await transaction
       .selectFrom('student_absence_reasons')
       .select([
@@ -261,7 +297,7 @@ export class StudentAbsences {
     };
     // In the order of the lessons' starts: a 0 after a 1, 2 or 3 is "at school earlier" (decision 9).
     for (const row of marks) {
-      if (!memberOn(row.student_id, row.date)) continue;
+      if (!held.has(row.lesson_id) || !memberOn(row.student_id, row.date)) continue;
       const day = dayOf(row.student_id, row.date);
       if (row.mark === 0 || row.mark === 3) {
         day.lessons.push({
@@ -373,16 +409,19 @@ export class StudentAbsences {
           ? access.permitting.find((one) => one.role === 'tutor')
           : undefined;
       if (writer === undefined) throw new ApiException('absence_scope', 403);
-      const stored = await transaction
-        .selectFrom('student_absence_reasons')
-        .select(['id', 'category', 'note'])
-        .where('branch_id', '=', branchId)
-        .where('student_id', '=', student.id)
-        .where('absence_date', '=', date)
-        .forUpdate()
-        .executeTakeFirst();
-      let id: string;
+      const readStored = () =>
+        transaction
+          .selectFrom('student_absence_reasons')
+          .select(['id', 'category', 'note'])
+          .where('branch_id', '=', branchId)
+          .where('student_id', '=', student.id)
+          .where('absence_date', '=', date)
+          .forUpdate()
+          .executeTakeFirst();
+      let stored = await readStored();
       if (stored === undefined) {
+        // A first save: a row another first save wrote meanwhile is read and changed instead,
+        // so the audit entry names its value as the old one (spec review of the code, should-fix 1).
         const inserted = await transaction
           .insertInto('student_absence_reasons')
           .values({
@@ -395,56 +434,90 @@ export class StudentAbsences {
             // Overwritten by student_absence_reasons_write.
             changed_at: new Date(0),
           })
-          // Two first saves at one moment: the second waits on the key and changes the row.
           .onConflict((conflict) =>
-            conflict.columns(['branch_id', 'student_id', 'absence_date']).doUpdateSet({
-              category: input.category,
-              note: input.note,
-              changed_by: access.accountId,
-            }),
+            conflict.columns(['branch_id', 'student_id', 'absence_date']).doNothing(),
           )
           .returning('id')
-          .executeTakeFirstOrThrow();
-        id = inserted.id;
-      } else {
-        await transaction
-          .updateTable('student_absence_reasons')
-          .set({ category: input.category, note: input.note, changed_by: access.accountId })
-          .where('id', '=', stored.id)
-          .execute();
-        id = stored.id;
+          .executeTakeFirst();
+        if (inserted !== undefined) {
+          await this.audited(transaction, access, writer.id, branchId, student.id, inserted.id, {
+            date,
+            old: null,
+            input,
+            requestId,
+          });
+          return this.answer(transaction, student.id, date, inserted.id);
+        }
+        stored = await readStored();
+        if (stored === undefined) throw new Error('A reason refused by its key is read back.');
       }
-      await this.audit.record(transaction, {
-        branchId,
-        actorId: access.accountId,
-        assignmentId: writer.id,
-        action: 'absence_reason.set',
-        record: { type: 'student', id: student.id },
-        oldValue:
-          stored === undefined ? null : { date, category: stored.category, note: stored.note },
-        newValue: { date, category: input.category, note: input.note },
-        details: { reasonId: id },
-        ...(requestId === undefined ? {} : { requestId }),
-      });
-      const row = await transaction
-        .selectFrom('student_absence_reasons')
-        .select(['category', 'note', 'changed_by', 'changed_at'])
-        .where('id', '=', id)
-        .executeTakeFirstOrThrow();
-      const names = await namedAccounts(transaction, [row.changed_by]);
-      return {
-        studentId: student.id,
+      await transaction
+        .updateTable('student_absence_reasons')
+        .set({ category: input.category, note: input.note, changed_by: access.accountId })
+        .where('id', '=', stored.id)
+        .execute();
+      await this.audited(transaction, access, writer.id, branchId, student.id, stored.id, {
         date,
-        category: row.category === null ? null : absenceCategorySchema.parse(row.category),
-        note: row.note,
-        changedBy: names.get(row.changed_by) ?? {
-          accountId: row.changed_by,
-          login: null,
-          name: null,
-        },
-        changedAt: new Date(row.changed_at).toISOString(),
-      };
+        old: { date, category: stored.category, note: stored.note },
+        input,
+        requestId,
+      });
+      return this.answer(transaction, student.id, date, stored.id);
     });
+  }
+
+  private async audited(
+    transaction: Transaction,
+    access: Access,
+    assignmentId: string,
+    branchId: string,
+    studentId: string,
+    reasonId: string,
+    change: {
+      date: string;
+      old: { date: string; category: string | null; note: string } | null;
+      input: AbsenceReasonRecord;
+      requestId: string | undefined;
+    },
+  ): Promise<void> {
+    await this.audit.record(transaction, {
+      branchId,
+      actorId: access.accountId,
+      assignmentId,
+      action: 'absence_reason.set',
+      record: { type: 'student', id: studentId },
+      oldValue: change.old,
+      newValue: { date: change.date, category: change.input.category, note: change.input.note },
+      details: { reasonId },
+      ...(change.requestId === undefined ? {} : { requestId: change.requestId }),
+    });
+  }
+
+  /** The reason as stored, with who set it. */
+  private async answer(
+    transaction: Transaction,
+    studentId: string,
+    date: string,
+    id: string,
+  ): Promise<AbsenceReason> {
+    const row = await transaction
+      .selectFrom('student_absence_reasons')
+      .select(['category', 'note', 'changed_by', 'changed_at'])
+      .where('id', '=', id)
+      .executeTakeFirstOrThrow();
+    const names = await namedAccounts(transaction, [row.changed_by]);
+    return {
+      studentId,
+      date,
+      category: row.category === null ? null : absenceCategorySchema.parse(row.category),
+      note: row.note,
+      changedBy: names.get(row.changed_by) ?? {
+        accountId: row.changed_by,
+        login: null,
+        name: null,
+      },
+      changedAt: new Date(row.changed_at).toISOString(),
+    };
   }
 }
 

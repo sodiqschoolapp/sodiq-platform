@@ -215,6 +215,32 @@ describe('reasons of absence in the database', () => {
       ),
     );
     expect(moved.constraint).toBe('student_absence_reasons_merge');
-    // The merge itself carries it: student-merges.test.ts.
+    // Inside a merge of the pair, the student may change, and nothing else with it
+    // (correction 2; spec review of the code, must-fix 5). The merge itself: student-merges.test.ts.
+    const merging = async (change: { note?: string }) =>
+      refusal(
+        transactions.run([north], async (transaction) => {
+          await sql`
+            insert into student_merges (
+              branch_id, kept_id, merged_id, merged_branch_id, kept_uid, merged_uid, merged_uids,
+              merged_record, left_rows, reason, merged_by, merged_at
+            )
+            select ${north}::uuid, k.id, m.id, ${north}::uuid, k.uid, m.uid, array[m.uid],
+              '{}'::jsonb, '{}'::jsonb, 'Created twice', ${account}::uuid, ${NOW}::timestamptz
+            from students k, students m where k.id = ${kept}::uuid and m.id = ${merged}::uuid
+          `.execute(transaction);
+          await transaction
+            .updateTable('student_absence_reasons')
+            .set({ student_id: kept, ...change })
+            .where('id', '=', row.id)
+            .execute();
+          // Rolled back: the merge row is not the subject.
+          throw new Error('rolled back');
+        }),
+      );
+    const alone = await merging({});
+    expect(alone.message).toBe('rolled back');
+    const more = await merging({ note: 'changed too' });
+    expect(more.constraint).toBe('student_absence_reasons_merge');
   });
 });

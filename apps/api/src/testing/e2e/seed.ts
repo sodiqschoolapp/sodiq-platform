@@ -5255,8 +5255,8 @@ try {
   seeded.journalTeacher = { login: journalTeacher.login, password: journalTeacher.firstPassword };
 
   // Task 6.3: a branch of its own for attendance entry: a class of three
-  // students, a teacher of its maths with one lesson today at 00:05 (started
-  // whenever the test runs), and the class's Tutor with a staff record. The
+  // students, a teacher of its statistics with one lesson yesterday at 08:00
+  // (started whatever the hour of the test; spec review of the code, should-fix 7), and the class's Tutor with a staff record. The
   // browser test marks "all present", types a 0, and the Tutor records the
   // reason. All names are invented.
   const attendanceBranch = await insertBranch(migrator, 'Attendance browser test branch');
@@ -5279,7 +5279,7 @@ try {
     }),
   );
   {
-    const todayDate = isoDate(tashkentToday);
+    const yesterday = isoDate(new Date(tashkentToday.getTime() - dayMs));
     const lessonsKit = await LessonsKit.create(migrator);
     const algebra = await lessonsKit.load.classes.subject({
       grades: [7],
@@ -5460,9 +5460,9 @@ try {
           branch_id: attendanceBranch,
           academic_year_id: yearId,
           quarter_id: quarterId,
-          lesson_date: todayDate,
-          starts_at: new Date(`${todayDate}T00:05:00+05:00`),
-          ends_at: new Date(`${todayDate}T00:50:00+05:00`),
+          lesson_date: yesterday,
+          starts_at: new Date(`${yesterday}T08:00:00+05:00`),
+          ends_at: new Date(`${yesterday}T08:45:00+05:00`),
           version_id: source.versionId,
           pattern_block_id: source.patternBlockId,
         })

@@ -292,6 +292,23 @@ describe('the reasons of absence', () => {
         [s.ahmedov, '2026-10-12', 1, null],
       ]);
       expect(list.days.every((day) => day.canEdit)).toBe(true);
+      // A cleared reason leaves the list (decision 8; spec review of the code, must-fix 7).
+      await put(`/api/journal/student-absences/${s.boboyev}/2026-10-21`, {
+        category: null,
+        note: '',
+      });
+      const cleared = studentAbsencesSchema.parse(
+        (
+          await get(
+            `/api/journal/student-absences?classId=${s.classId}&from=2026-10-01&to=2026-10-31`,
+          )
+        ).body,
+      );
+      expect(cleared.days.map((day) => day.student.id)).toEqual([s.ahmedov]);
+      await put(`/api/journal/student-absences/${s.boboyev}/2026-10-21`, {
+        category: 'family',
+        note: 'Wedding',
+      });
       const refused = await get(`/api/journal/student-absences?classId=${s.otherClass}`);
       expect(refused.status).toBe(403);
       expect(codeOf(refused)).toBe('absence_scope');
@@ -340,17 +357,19 @@ describe('the reasons of absence', () => {
         },
       );
     }
-    for (const role of ['teacher', 'head_teacher'] as const) {
+    for (const role of ['teacher', 'head_teacher', 'senior_head_teacher'] as const) {
       const browser = await account();
       await as(
         s.branch,
         browser,
         [
-          {
-            role,
-            branchId: s.branch,
-            ...(role === 'head_teacher' ? { subjectIds: [s.subject] } : {}),
-          },
+          role === 'senior_head_teacher'
+            ? { role, subjectIds: [s.subject] }
+            : {
+                role,
+                branchId: s.branch,
+                ...(role === 'head_teacher' ? { subjectIds: [s.subject] } : {}),
+              },
         ],
         async ({ get }) => {
           expect((await get('/api/journal/student-absences')).status, role).toBe(403);

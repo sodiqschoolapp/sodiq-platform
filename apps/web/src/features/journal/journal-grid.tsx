@@ -20,7 +20,8 @@ import { AgGridReact } from 'ag-grid-react';
 import { cn } from 'cn';
 import { useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CheckCircleIcon, CheckIcon } from '@/components/icons';
+import { CheckCircleIcon, CheckIcon, InfoIcon } from '@/components/icons';
+import { Button } from '@/components/ui/button';
 import { schoolDateText, weekdayName } from '@/lib/dates';
 import { cellKey, type AttendanceEntry } from './attendance-entry';
 
@@ -94,16 +95,16 @@ function TwoLineHeader(
         <span className="text-xs text-muted-foreground">{props.second}</span>
       )}
       {props.action !== undefined && (
-        <button
-          type="button"
-          className="inline-flex size-6 items-center justify-center rounded-sm text-link hover:bg-muted disabled:text-muted-foreground"
+        <Button
+          variant="ghost"
+          size="icon-sm"
           aria-label={props.action.label}
           title={props.action.label}
           disabled={props.action.disabled}
           onClick={props.action.run}
         >
           <CheckCircleIcon className="size-4" aria-hidden="true" />
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -427,11 +428,14 @@ export function JournalGridView({
                 </span>
                 {reasonText !== undefined && (
                   <span
-                    className="ml-0.5 inline-block size-1.5 rounded-full bg-info align-middle"
+                    className="ml-0.5 inline-flex align-middle text-info"
                     role="img"
                     aria-label={reasonText}
+                    title={reasonText}
                     data-reason={reason}
-                  />
+                  >
+                    <InfoIcon className="size-3.5" aria-hidden="true" />
+                  </span>
                 )}
                 {savedSign}
               </span>
@@ -582,6 +586,8 @@ export function JournalGridView({
   return (
     <div className="h-[70vh] min-h-96" data-journal-grid="true">
       <AgGridReact<GridRow>
+        // Room for the "all present" button under the A of a lesson the reader enters.
+        headerHeight={grid.lessons.some((lesson) => lesson.canEnter) && entering ? 64 : 40}
         modules={[AllCommunityModule]}
         theme={THEME}
         rowData={rows}
