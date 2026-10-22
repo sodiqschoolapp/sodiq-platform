@@ -31,12 +31,27 @@ import { yearText } from './journals-page';
 const monthName = (month: string, language: string): string =>
   monthsText(`${month}-01`, `${month}-01`, language);
 
-/** The lesson closest to a date: on it or the nearest after, else the last before (`07`, Opening a journal). */
+/**
+ * The lesson closest to a date by days (`07`, Opening a journal: "scrolls to the
+ * lesson closest to today"); on a tie the later one, the first lesson of the date.
+ */
 export function lessonNearest(
   lessons: readonly JournalLesson[],
   date: string,
 ): JournalLesson | null {
-  return lessons.find((one) => one.date >= date) ?? lessons.at(-1) ?? null;
+  const day = (text: string) => Date.parse(`${text}T00:00:00Z`);
+  let best: JournalLesson | null = null;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (const lesson of lessons) {
+    const distance = Math.abs(day(lesson.date) - day(date));
+    // The later lesson wins a tie; within one date the first lesson stays.
+    const later = best !== null && distance === bestDistance && lesson.date > best.date;
+    if (distance < bestDistance || later) {
+      best = lesson;
+      bestDistance = distance;
+    }
+  }
+  return best;
 }
 
 /** Whether a student has an empty cell to fill in the lessons shown (the Filter "with an empty cell"). */
@@ -162,7 +177,7 @@ export function JournalPage(): React.JSX.Element {
               )}
             </p>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <SelectField
               label={
                 data.journal.unit.kind === 'class'
@@ -195,6 +210,17 @@ export function JournalPage(): React.JSX.Element {
                   to: '/journal/$journalId',
                   params: { journalId: event.target.value },
                 });
+              }}
+            />
+            <SelectField
+              label={t('journal.page.year')}
+              value={data.journal.year.id}
+              options={data.years.map((year) => ({ value: year.id, label: yearText(year) }))}
+              onChange={(event) => {
+                // A journal belongs to one year: another year opens its Journals page.
+                if (event.target.value !== data.journal.year.id) {
+                  void navigate({ to: '/journal', search: { year: event.target.value } });
+                }
               }}
             />
             <SelectField

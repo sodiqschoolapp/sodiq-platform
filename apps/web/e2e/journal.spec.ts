@@ -31,7 +31,6 @@ test('a teacher opens the journal from today’s lesson on the home page and rea
   const opened = Date.now() - started;
   // Decision 18: the time is recorded for the report, not asserted (CI machines vary).
   testInfo.annotations.push({ type: 'journal-open-ms', description: String(opened) });
-  console.log(`journal opened in ${String(opened)} ms`);
 
   await expect(page.locator('[data-journal-header]')).toContainText('7 Oxford · Geography');
   await expect(page.locator('[data-journal-header]')).toContainText('Teacher: Qodirov Sanjar');

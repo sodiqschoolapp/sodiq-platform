@@ -322,7 +322,8 @@ export function JournalGridView({
           headerComponentParams: { label: t('journal.grid.attendance') },
           width: 52,
           cellClass: (params) =>
-            params.data?.kind === 'student' && params.data.student.cells[index]?.closed === true
+            cancelled ||
+            (params.data?.kind === 'student' && params.data.student.cells[index]?.closed === true)
               ? 'bg-muted'
               : undefined,
           cellRenderer: (params: ICellRendererParams<GridRow>) => {
@@ -359,7 +360,8 @@ export function JournalGridView({
           },
           width: 96,
           cellClass: (params) =>
-            params.data?.kind === 'student' && params.data.student.cells[index]?.closed === true
+            cancelled ||
+            (params.data?.kind === 'student' && params.data.student.cells[index]?.closed === true)
               ? 'bg-muted'
               : undefined,
           cellRenderer: (params: ICellRendererParams<GridRow>) => {
@@ -396,7 +398,7 @@ export function JournalGridView({
       }
       return {
         groupId: lesson.id,
-        headerName: `${date}${slot}`,
+        headerName: reason === null ? `${date}${slot}` : `${date}${slot} · ${reason}`,
         headerTooltip: reason ?? undefined,
         headerClass: cancelled ? 'bg-muted text-muted-foreground' : undefined,
         children: children.map((child) => ({

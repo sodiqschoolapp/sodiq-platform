@@ -383,9 +383,58 @@ describe('the journal grid', () => {
         expect(grid.referenceDate).toBe('2026-10-19');
         const zokirov = grid.students.find((one) => one.id === s.zokirov);
         expect(zokirov?.cells.map((cell) => cell.closed)).toEqual([false, true, true]);
+        // The lesson not yet started enters no figure: only the 12th counts.
+        expect(grid.lessons.map((one) => one.held)).toEqual([true, false, false]);
+        expect(zokirov?.quarter).toEqual({
+          attendance: 100,
+          classwork: 40,
+          homework: null,
+          ratingExam: null,
+          result: { kind: 'number', shown: 60, grade: 3, provisional: true, leftOut: ['homework'] },
+        });
       },
       '2026-10-19T07:00:00+05:00',
     );
+  });
+
+  it('lands a result exactly on 49.5 through the route and shows 50, grade 3 (edge/calculation)', async () => {
+    // "Weights 10 · 50 · 40, attendance 100, classworks 10, 10 and 25 out of 30, homework 29
+    // out of 80: the exact result is 49.5, grade 3."
+    const browser = await account();
+    const s = await gradedScene();
+    await t.database.migrator
+      .updateTable('subject_quarter_weights')
+      .set({ attendance: 10, classwork: 50, homework: 40, rating_exam: null })
+      .where('subject_id', '=', s.scene.subject)
+      .execute();
+    const id = await student(s.scene.branch, s.scene.classId, { first: 'Umid', last: 'Rahimov' });
+    const [first, second] = s.lessons;
+    const works = [
+      await work(s.scene.branch, first ?? '', 'classwork', 30),
+      await work(s.scene.branch, first ?? '', 'classwork', 30),
+      await work(s.scene.branch, first ?? '', 'classwork', 30),
+    ];
+    const homework = await work(s.scene.branch, second ?? '', 'homework', 80);
+    await save(s.scene.branch, [
+      { lessonId: first ?? '', studentId: id, value: 1 },
+      { lessonId: first ?? '', studentId: id, workId: works[0], value: 10 },
+      { lessonId: first ?? '', studentId: id, workId: works[1], value: 10 },
+      { lessonId: first ?? '', studentId: id, workId: works[2], value: 25 },
+      { lessonId: second ?? '', studentId: id, workId: homework, value: 29 },
+    ]);
+    await as(browser, [{ role: 'principal', branchId: s.scene.branch }], async (get) => {
+      const grid = gridOf(await get(s.scene.branch, `/api/journal/journals/${s.journal}`));
+      const rahimov = grid.students.find((one) => one.id === id);
+      // Attendance 100, classwork (33.3 + 33.3 + 83.3) ÷ 3 = 50, homework 36.25:
+      // 10 × 100 + 50 × 50 + 40 × 36.25 = 49.5 over 100.
+      expect(rahimov?.quarter).toEqual({
+        attendance: 100,
+        classwork: 50,
+        homework: 36,
+        ratingExam: null,
+        result: { kind: 'number', shown: 50, grade: 3, provisional: false, leftOut: [] },
+      });
+    });
   });
 
   it('shows the rating exam in a rating subject, the month without it and not provisional for it', async () => {

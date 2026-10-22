@@ -199,6 +199,8 @@ export const journalGridSchema = z.object({
     attendanceOnly: z.boolean(),
     ratingExam: z.boolean(),
   }),
+  /** The years of the branch, for the year selector (`07`, Opening a journal, Selectors). */
+  years: z.array(journalYearSchema),
   /** The other journals of the reader in the year, for the class or group and subject selectors. */
   others: z.array(
     z.object({ id: z.uuid(), unit: journalUnitSchema, subject: journalSubjectSchema }),

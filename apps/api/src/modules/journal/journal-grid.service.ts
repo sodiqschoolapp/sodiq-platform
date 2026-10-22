@@ -50,7 +50,6 @@ import {
   unitMemberships,
   weightsChangedAt,
   type GridLessonRow,
-  type GridWeights,
   type GridWorkRow,
   type JournalRow,
   type MembershipRow,
@@ -137,9 +136,6 @@ const NO_EXACT: Exact = {
   ratingExam: null,
   result: null,
 };
-
-const weightsTotal100 = (weights: NonNullable<GridWeights['quarterly']>): boolean =>
-  weights.attendance + weights.classwork + weights.homework + (weights.ratingExam ?? 0) === 100;
 
 @Injectable()
 export class JournalGridReader {
@@ -369,8 +365,8 @@ export class JournalGridReader {
     }
 
     const attendanceValues = { lateValue: weights.lateValue, skippedValue: weights.skippedValue };
-    const quarterly =
-      weights.quarterly !== null && weightsTotal100(weights.quarterly) ? weights.quarterly : null;
+    // The database keeps the quarterly weights at a total of 100 (0020).
+    const quarterly = weights.quarterly;
     const daily = weights.daily;
     const ratingShown =
       !journal.subject.attendanceOnly &&
@@ -582,6 +578,7 @@ export class JournalGridReader {
         ratingExam: ratingShown,
       },
       others,
+      years,
       quarters: quarters.map((one) => ({
         id: one.id,
         number: one.number,

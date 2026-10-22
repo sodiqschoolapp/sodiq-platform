@@ -435,6 +435,12 @@ async function fullQuarterJournal(
         .values({ branch_id: branch.id, lesson_id: lesson.id, kind: 'classwork', total: 30 })
         .returning('id')
         .executeTakeFirstOrThrow();
+      // The plan's two works per lesson: a homework checked at it too.
+      const homework = await transaction
+        .insertInto('journal_works')
+        .values({ branch_id: branch.id, lesson_id: lesson.id, kind: 'homework', total: 10 })
+        .returning('id')
+        .executeTakeFirstOrThrow();
       const written = await sql<{ n: number }>`
         with expected as (
           select s.student_id, row_number() over (order by s.student_id) as n
@@ -449,6 +455,10 @@ async function fullQuarterJournal(
           union all
           select ${branch.id}::uuid, ${lesson.id}::uuid, e.student_id, ${work.id}::uuid, null,
                  (e.n * 7 + ${index}) % 31, 1, ${writer.id}::uuid, 'entry', ${lesson.starts_at}::timestamptz
+          from expected e
+          union all
+          select ${branch.id}::uuid, ${lesson.id}::uuid, e.student_id, ${homework.id}::uuid, null,
+                 (e.n * 3 + ${index}) % 11, 1, ${writer.id}::uuid, 'entry', ${lesson.starts_at}::timestamptz
           from expected e
           returning 1
         )

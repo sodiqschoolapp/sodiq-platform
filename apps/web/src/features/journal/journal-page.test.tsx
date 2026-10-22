@@ -1,6 +1,7 @@
 import type { JournalGrid, JournalList, JournalStudent } from '@sodiq/shared';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import { lessonNearest } from './journal-page';
 import { en } from '@/i18n/locales/en';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
 
@@ -64,6 +65,10 @@ const GRID: JournalGrid = {
     attendanceOnly: false,
     ratingExam: false,
   },
+  years: [
+    { id: uid(40), startDate: '2026-09-01', endDate: '2027-05-31', closed: false },
+    { id: uid(41), startDate: '2025-09-01', endDate: '2026-05-31', closed: true },
+  ],
   others: [
     { id: JOURNAL, unit: UNIT, subject: SUBJECT },
     { id: OTHER, unit: { kind: 'class', id: uid(21), name: '7 Cambridge' }, subject: SUBJECT },
@@ -143,7 +148,10 @@ const GRID: JournalGrid = {
 };
 
 const LIST: JournalList = {
-  years: [{ id: uid(40), startDate: '2026-09-01', endDate: '2027-05-31', closed: false }],
+  years: [
+    { id: uid(40), startDate: '2026-09-01', endDate: '2027-05-31', closed: false },
+    { id: uid(41), startDate: '2025-09-01', endDate: '2026-05-31', closed: true },
+  ],
   yearId: uid(40),
   journals: [
     { id: JOURNAL, unit: UNIT, subject: SUBJECT },
@@ -153,11 +161,20 @@ const LIST: JournalList = {
 
 const GRID_ROUTE = `GET /api/journal/journals/${JOURNAL}`;
 
-function open(grid: JournalGrid | null, path = `/journal/${JOURNAL}`, role = 'principal' as const) {
+function open(
+  grid: JournalGrid | null | 'pending',
+  path = `/journal/${JOURNAL}`,
+  role = 'principal' as const,
+) {
   const calls = fakeApi({
     'GET /api/auth/session': () =>
       json(sessionOf({ language: 'en', assignments: [{ role, branchId: NORTH.id }] })),
-    [GRID_ROUTE]: () => (grid === null ? refusal('journal_scope', 403) : json(grid)),
+    [GRID_ROUTE]: () =>
+      grid === 'pending'
+        ? new Promise<Response>(() => undefined)
+        : grid === null
+          ? refusal('journal_scope', 403)
+          : json(grid),
     'GET /api/journal/journals': () => json(LIST),
   });
   renderApp(path, 'en');
@@ -322,6 +339,31 @@ describe('a journal', () => {
     await screen.findByText(en.journal.page.noLessons);
   });
 
+  it('shows the outline while the journal loads', async () => {
+    open('pending');
+    await screen.findByRole('heading', { name: en.journal.sheet });
+    expect(document.querySelector('[aria-busy="true"]')).not.toBeNull();
+    expect(document.querySelector('[data-journal-grid]')).toBeNull();
+  });
+
+  it('names a cancelled lesson\'s reason in its header (07, Layout: "grey with the reason")', async () => {
+    open(GRID);
+    await waitFor(() => {
+      const headers = [...document.querySelectorAll('.ag-header-group-cell')].map((one) =>
+        (one.textContent ?? '').trim(),
+      );
+      expect(headers.some((one) => one.endsWith('Cancelled: School trip'))).toBe(true);
+    });
+    expect(cellOf(uid(101), `${uid(62)}:a`)?.className).toContain('bg-muted');
+  });
+
+  it('offers the years and opens the Journals page of another one', async () => {
+    open(GRID);
+    const year = await screen.findByRole('combobox', { name: en.journal.page.year });
+    fireEvent.change(year, { target: { value: uid(41) } });
+    await screen.findByRole('heading', { name: en.journal.page.title });
+  });
+
   it('shows the refusal of a journal outside the role', async () => {
     open(null);
     await screen.findByText(en.errors.journal_scope);
@@ -364,6 +406,48 @@ describe('the Journals page', () => {
     fireEvent.click(screen.getByRole('radio', { name: en.journal.page.groups }));
     await waitFor(() => {
       expect(document.querySelector('tbody tr')?.textContent).toContain('7-E-1');
+    });
+  });
+});
+
+// 07, Opening a journal: "Opened any other way, it scrolls to the lesson closest to today".
+describe('the lesson closest to a date', () => {
+  const at = (date: string) =>
+    ({ ...GRID.lessons[0], id: date, date }) as JournalGrid['lessons'][number];
+  const lessons = [at('2026-10-12'), at('2026-10-19'), at('2026-10-26')];
+
+  it('takes the nearest by days, before or after', () => {
+    expect(lessonNearest(lessons, '2026-10-20')?.date).toBe('2026-10-19');
+    expect(lessonNearest(lessons, '2026-10-24')?.date).toBe('2026-10-26');
+    expect(lessonNearest(lessons, '2026-11-30')?.date).toBe('2026-10-26');
+    expect(lessonNearest(lessons, '2026-09-01')?.date).toBe('2026-10-12');
+  });
+
+  it('takes the later one on a tie, and the date itself when it has a lesson', () => {
+    expect(lessonNearest(lessons, '2026-10-19')?.date).toBe('2026-10-19');
+    expect(lessonNearest([at('2026-10-12'), at('2026-10-14')], '2026-10-13')?.date).toBe(
+      '2026-10-14',
+    );
+    expect(lessonNearest([], '2026-10-13')).toBeNull();
+  });
+});
+
+describe('the Journals page filters', () => {
+  it('lists the journals of another year', async () => {
+    const calls = open(GRID, '/journal');
+    await waitFor(() => {
+      expect(document.querySelectorAll('tbody tr')).toHaveLength(1);
+    });
+    fireEvent.change(screen.getByRole('combobox', { name: en.journal.page.year }), {
+      target: { value: uid(41) },
+    });
+    await waitFor(() => {
+      expect(
+        calls.some(
+          (call) =>
+            call.route === 'GET /api/journal/journals' && call.query === `?yearId=${uid(41)}`,
+        ),
+      ).toBe(true);
     });
   });
 });
