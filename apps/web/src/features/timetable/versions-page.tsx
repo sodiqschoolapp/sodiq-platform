@@ -45,7 +45,6 @@ export function VersionsPage() {
   const search = useSearch({ from: '/app/timetable/versions' });
   const { role, branchId } = useView();
   const canCreate = role !== null && permits(PERMISSIONS, role, 'timetable', 'create');
-  const canPrint = role !== null && permits(PERMISSIONS, role, 'timetable', 'export');
   const years = useQuery(yearsQuery(branchId));
   const offered = useMemo(() => years.data?.years ?? [], [years.data]);
   const [chosenYear, setChosenYear] = useState<string | null>(null);
@@ -161,7 +160,6 @@ export function VersionsPage() {
               history={history.data}
               years={offered}
               canCreate={canCreate}
-              canPrint={canPrint}
             />
           )
         }
@@ -176,13 +174,11 @@ function VersionPanel({
   history,
   years,
   canCreate,
-  canPrint,
 }: {
   version: TimetableVersion;
   history: TimetableHistory;
   years: readonly AcademicYear[];
   canCreate: boolean;
-  canPrint: boolean;
 }) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -280,7 +276,8 @@ function VersionPanel({
         )}
       </section>
 
-      {canPrint && <VersionFiles version={version} />}
+      {/* Every role that opens the page holds `timetable` `export` (permissions.test.ts keeps it with `view`). */}
+      <VersionFiles version={version} />
 
       {canCreate && year !== undefined && year.status !== 'closed' && (
         <section aria-labelledby={`restore-${version.id}`} className="grid gap-3">

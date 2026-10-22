@@ -55,8 +55,8 @@ function bodyOf(choice: Choice, format: ViewExportFormat) {
  * request #200; `06`, step 8 "Print and export"; `edge/timetable`, "The wall
  * timetable is out of date"): the whole school, a class, a teacher or a
  * room, chosen from what the version's board names. The server stamps the
- * file (a draft DRAFT) and logs it; the part is shown to the roles with
- * `timetable` `export`, and the server decides anyway.
+ * file (a draft DRAFT) and logs it, and decides who may print: every role
+ * that opens Version history holds `timetable` `export` (decision 1).
  */
 export function VersionFiles({ version }: { version: TimetableVersion }) {
   const { t } = useTranslation();

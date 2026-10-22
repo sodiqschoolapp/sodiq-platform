@@ -308,14 +308,18 @@ async function printOf(
       const grade = gradeOf.get(request.classId);
       return grade === undefined ? [] : [grade];
     }
-    if (request.kind === 'branch') return [...new Set(classes.map((one) => one.grade))];
+    // By grade, as 5.9a sorts them, so the grid's numbers are the lowest grade's
+    // as the Excel rows are (spec review of the code, should-fix 5).
+    if (request.kind === 'branch') {
+      return [...new Set(classes.map((one) => one.grade))].sort((a, b) => a - b);
+    }
     return [
       ...new Set(
         picked
           .filter((one) => one.lesson.weekday === weekday)
           .flatMap((one) => (one.grade === undefined ? [] : [one.grade])),
       ),
-    ];
+    ].sort((a, b) => a - b);
   };
   const lessonDay = (weekday: Weekday) =>
     request.kind === 'class' || request.kind === 'branch'

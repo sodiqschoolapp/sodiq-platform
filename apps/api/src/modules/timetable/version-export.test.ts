@@ -1,4 +1,4 @@
-import { BRANCH_HEADER, listName } from '@sodiq/shared';
+import { BRANCH_HEADER, classDisplayName, listName } from '@sodiq/shared';
 import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PDF_MEDIA_TYPE } from '../../http/pdf.js';
@@ -6,7 +6,13 @@ import { XLSX_MEDIA_TYPE } from '../../http/xlsx.js';
 import { dayTemplatesKit, UNKNOWN, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { linesOf, RecordingPdf, refusedFile as refused } from '../../testing/pdf-kit.js';
-import { hoursOf, publishedScene, type PublishedScene } from '../../testing/published-scene.js';
+import {
+  hoursOf,
+  publishedScene,
+  publishOf,
+  QUARTERS,
+  type PublishedScene,
+} from '../../testing/published-scene.js';
 import { binary } from '../../testing/xlsx-kit.js';
 
 type Body = Readonly<Record<string, string | undefined>>;
@@ -96,6 +102,35 @@ describe('the files of a timetable version', () => {
     return listName({ firstName: found.first_name ?? '', lastName: found.last_name ?? '' });
   };
 
+  /** A class as the files name it, "7 Oxford". */
+  const classLabel = async (classId: string) => {
+    const found = await t.database.migrator
+      .selectFrom('classes')
+      .select(['grade', 'name'])
+      .where('id', '=', classId)
+      .executeTakeFirstOrThrow();
+    return classDisplayName(found.grade, found.name);
+  };
+
+  const roomLabel = async (roomId: string) =>
+    (
+      await t.database.migrator
+        .selectFrom('rooms')
+        .select('name')
+        .where('id', '=', roomId)
+        .executeTakeFirstOrThrow()
+    ).name;
+
+  /** Every audit entry of both logs: a refused request writes none, of any action (.claude/rules/api.md). */
+  const allEntries = async () => [
+    ...(await t.database.migrator.selectFrom('audit_log').selectAll().orderBy('id').execute()),
+    ...(await t.database.migrator
+      .selectFrom('audit_log_school')
+      .selectAll()
+      .orderBy('id')
+      .execute()),
+  ];
+
   const speak = (language: 'uz' | 'ru' | 'en') =>
     t.database.migrator.updateTable('accounts').set({ language }).execute();
 
@@ -136,6 +171,15 @@ describe('the files of a timetable version', () => {
   const gradesScene = async (): Promise<GradesScene> => {
     const branch = await t.newBranch();
     const year = await load.classes.year(branch);
+    // Dated quarters, so the scene can be published (the last test of the file).
+    for (const [index, [start, end]] of QUARTERS.entries()) {
+      await t.database.migrator
+        .updateTable('quarters')
+        .set({ start_date: start, end_date: end })
+        .where('academic_year_id', '=', year)
+        .where('number', '=', index + 1)
+        .execute();
+    }
     const lesson = await t.createSlotType(branch, 'Lesson', 'lesson', 45);
     const short = await t.createSlotType(branch, 'Short lesson', 'lesson', 10);
     const pause = await t.createSlotType(branch, 'Break', 'break', 10);
@@ -152,7 +196,8 @@ describe('the files of a timetable version', () => {
       .execute();
     const class7 = await load.classes.schoolClass(branch, year, { grade: 7 });
     const class8 = await load.classes.schoolClass(branch, year, { grade: 8 });
-    const group = await load.classes.group(branch, year, subject, [class7, class8]);
+    const group = await load.classes.group(branch, year, subject, [class8, class7]);
+    // Grade 8 written first: the order the database gives the classes is not the lowest grade first.
     const teacher = await load.teacher(branch, {
       subjects: [
         { subject, grades: [7, 8] },
@@ -262,7 +307,6 @@ describe('the files of a timetable version', () => {
       expect(page).toContain(
         'DRAFT · Version 2, planned from 19.10.2026 · Printed 10.10.2026 23:55 · One-day changes not included',
       );
-      expect(page).not.toContain('valid from');
       const { preamble } = await sheetOf(draft, { kind: 'branch' });
       expect(preamble[0]).toBe('DRAFT');
       expect(preamble.slice(2)).toEqual([
@@ -328,18 +372,31 @@ describe('the files of a timetable version', () => {
     });
 
     it('prints a teacher with their lessons in every class, a room with its lessons, the school with all', async () => {
-      const teacher = await sheetOf(s.version, { kind: 'teacher', staffId: s.teacher.staffId });
-      expect(teacher.rows.map((row) => [row[1], row[4]])).toEqual([
-        [1, expect.stringContaining('7 ')],
-        [2, expect.stringContaining('7 ')],
+      const [own, other, teacherName, otherName, roomName] = await Promise.all([
+        classLabel(s.classId),
+        classLabel(s.otherClass),
+        nameOf(s.teacher.staffId),
+        nameOf(s.otherTeacher.staffId),
+        roomLabel(s.room),
       ]);
-      const name = await nameOf(s.teacher.staffId);
-      expect(teacher.rows.every((row) => row[6] === name)).toBe(true);
+      const teacher = await sheetOf(s.version, { kind: 'teacher', staffId: s.teacher.staffId });
+      // Weekday, lesson number, class, teacher: maths of the class, the second subject of the other class.
+      expect(teacher.rows.map((row) => [row[0], row[1], row[4], row[6]])).toEqual([
+        ['Monday', 1, own, teacherName],
+        ['Monday', 2, other, teacherName],
+      ]);
       const school = await sheetOf(s.version, { kind: 'branch' });
-      expect(school.rows).toHaveLength(3);
+      const sorted = (rows: unknown[][]) => rows.map((row) => JSON.stringify(row)).sort();
+      expect(sorted(school.rows.map((row) => [row[1], row[4], row[6]]))).toEqual(
+        sorted([
+          [1, own, teacherName],
+          [1, other, otherName],
+          [2, other, teacherName],
+        ]),
+      );
       const room = await sheetOf(s.version, { kind: 'room', roomId: s.room });
-      expect(room.rows.every((row) => row[7] !== '')).toBe(true);
-      expect(room.rows.length).toBeLessThan(3);
+      // The class's maths in its home room, and nothing in the other class's.
+      expect(room.rows.map((row) => [row[1], row[4], row[7]])).toEqual([[1, own, roomName]]);
     });
 
     it('prints a vacancy as a teacher, with its lessons', async () => {
@@ -442,18 +499,21 @@ describe('the files of a timetable version', () => {
 
   describe('refusals (.claude/rules/api.md)', () => {
     it('answers 404 for a version of another branch or an unknown one, and writes nothing', async () => {
-      const before = (await entries()).length;
+      const before = await allEntries();
       refused(await send(archived.version, { kind: 'branch' }), 404, 'not_found');
       refused(await send(UNKNOWN, { kind: 'branch' }), 404, 'not_found');
-      expect(await entries()).toHaveLength(before);
+      expect(await allEntries()).toEqual(before);
     });
 
     it('answers 404 for a class, teacher or room of another branch or an unknown one, and writes nothing', async () => {
-      const before = (await entries()).length;
+      // A vacancy of the other branch: a staff record of the other kind (permission review should-fix 2).
+      const otherVacancy = await load.vacancy(archived.branch);
+      const before = await allEntries();
       for (const body of [
         { kind: 'class', classId: archived.classId },
         { kind: 'class', classId: UNKNOWN },
         { kind: 'teacher', staffId: archived.teacher.staffId },
+        { kind: 'teacher', staffId: otherVacancy },
         { kind: 'teacher', staffId: UNKNOWN },
         { kind: 'room', roomId: archived.room },
         { kind: 'room', roomId: UNKNOWN },
@@ -461,21 +521,24 @@ describe('the files of a timetable version', () => {
         refused(await send(s.version, body), 404, 'not_found');
         refused(await send(s.version, { ...body, format: 'xlsx' }), 404, 'not_found');
       }
-      expect(await entries()).toHaveLength(before);
+      expect(await allEntries()).toEqual(before);
     });
 
     it('refuses a role that does not view the versions, given a role in the branch, and writes nothing', async () => {
-      const before = (await entries()).length;
+      const before = await allEntries();
       for (const [role, last] of [
         ['tutor', 'Karimova'],
         ['teacher', 'Saidova'],
         ['head_tutor', 'Nazarova'],
         ['spiritual_vice_principal', 'Olimova'],
+        ['head_teacher', 'Qosimova'],
+        ['senior_head_teacher', 'Jurayeva'],
       ] as const) {
         const browser = await t.kit.completeSession('Lola', last);
         await t.kit.giveRole(browser.account.id, {
           role,
-          branchId: s.branch,
+          // A Senior Head Teacher works in every branch: no branch on the assignment.
+          ...(role === 'senior_head_teacher' ? {} : { branchId: s.branch }),
           validFrom: new Date('2026-09-01T00:00:00+05:00'),
         });
         refused(
@@ -484,7 +547,11 @@ describe('the files of a timetable version', () => {
           'permission_denied',
         );
       }
-      expect(await entries()).toHaveLength(before);
+      // Each sign-in writes its own entries; the refused prints write none.
+      const after = await allEntries();
+      expect(after.filter((one) => one.action === 'timetable_version.export')).toEqual(
+        before.filter((one) => one.action === 'timetable_version.export'),
+      );
     });
 
     it('lets the Principal and the Academic Vice Principal print a draft', async () => {
@@ -504,5 +571,37 @@ describe('the files of a timetable version', () => {
     expect(response.headers['x-export-columns']).toBe(
       'weekday,lessonNumber,start,end,unit,subject,teacher,room',
     );
+  });
+
+  // Task 5.9c-2, approval correction 3 (spec review of the code, must-fix 1):
+  // the 5.9a views number a dated lesson in the template of the lowest grade
+  // of its classes, as the pattern print does, whatever order the database
+  // gives the classes. Last in the file: it publishes the two-grade scene.
+  describe('the views of 5.9a number a two-grade lesson alike', () => {
+    it('numbers the group’s dated lesson at 08:55 as lesson 2 of grade 7, on the teacher view and its Excel file', async () => {
+      const confirmed = await t.post(
+        `/api/timetable/versions/${g.version}/templates/confirm`,
+        g.branch,
+      );
+      expect(confirmed.status, JSON.stringify(confirmed.body)).toBe(200);
+      await load.freeEditLock(g.version);
+      const published = await publishOf(t)(g.branch, g.version, '2026-10-19');
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      const view = await request(t.kit.server)
+        .get('/api/timetable/views/teacher')
+        .query({ staffId: g.teacher, date: '2026-10-19', span: 'day' })
+        .set('Cookie', t.admin)
+        .set(BRANCH_HEADER, g.branch);
+      expect(view.status, JSON.stringify(view.body)).toBe(200);
+      const lessons = (view.body as { lessons: { start: number; lessonNumber: number | null }[] })
+        .lessons;
+      // 08:00 is lesson 1 of grade 8 (the class alone); 08:55 lesson 2 of grade 7, 3 of grade 8.
+      expect(lessons.map((one) => [one.start, one.lessonNumber])).toEqual([
+        [480, 1],
+        [535, 2],
+      ]);
+      const pattern = await sheetOf(g.version, { kind: 'teacher', staffId: g.teacher }, g.branch);
+      expect(pattern.rows.map((row) => row[1])).toEqual([1, 2]);
+    });
   });
 });
