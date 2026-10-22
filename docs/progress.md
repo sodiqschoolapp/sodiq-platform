@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 22 October 2026: task 6.1c Reports over the cells
+
+- 0112: `password_resets_of_branch` (SECURITY DEFINER, Look first) answers the resets (administrator's, also the second-step reset; by email; the re-hire password) of the accounts of the branch's staff and of any account that wrote a cell line of the branch within 48 hours, from both logs, ids, kinds and moments only, with the email change the email reset's entry names and the action that wrote that email.
+- `GET /api/people/accounts/reset-entries` (`account_access` view: Super Admin, Academic Vice Principal, Principal) and People → "Entries after a reset" (`/people/reset-entries`): each reset in the dates chosen, by whom, the mark "the email was changed by …" on an email reset after an edit of the email by somebody else, and the account's cell lines of the branch within 48 hours.
+- The student's personal data report gains `journal`: every cell with a value in every branch and the history lines of the student's cells (at most 2,000, with the count of the rest), and the sections "Marks and attendance" and "Journal history" on the page; its export entry counts them.
+- Left out: totals, "not held" and comments (From lines on 8.1 and 8.2); the handbook (paused until the release, decisions of 16 October 2026).
+
+The next sessions must know:
+
+- The words of a cell or line on a page are in `apps/web/src/features/people/cell-lines.ts` and the texts under `journal` of the locale files; the reads of lessons, works and writers of cells in `apps/api/src/modules/journal/cell-lines.query.ts`.
+- Adding a route to `router.tsx` made `useSearch` of the students page lose its type; the page now types its `search` as `ListSearch`, as the new page types its own.
+
 ## 22 October 2026: task 6.1b-2 Cancels and the forced delete over lessons with data
 
 - 0111: the forced delete keeps a lesson's cells and works in its store row and deletes them; the restore puts back exactly those rows (version plus the lines written, `restored`, the restorer), each held by the database to the store row; a cell history line for each; a student whose kept mark can still be restored is not deleted or merged away.

@@ -125,7 +125,7 @@ describe('the entries after a reset', () => {
   it('says in one line that no password was reset', async () => {
     open('super_admin', answer([]));
     expect(await screen.findByText(en.people.resetEntries.empty)).toBeDefined();
-    expect((screen.getByLabelText(en.people.resetEntries.from) as HTMLInputElement).value).toBe(
+    expect(screen.getByLabelText<HTMLInputElement>(en.people.resetEntries.from).value).toBe(
       '2026-09-13',
     );
   });
