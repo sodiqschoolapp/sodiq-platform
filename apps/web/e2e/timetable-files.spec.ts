@@ -6,6 +6,7 @@ import { ru } from '../src/i18n/locales/ru';
 import { uz } from '../src/i18n/locales/uz';
 import { accountOf } from './accounts';
 import { pdfText, readPdf } from './pdf-text';
+import { xlsxTexts } from './xlsx-text';
 import { changeFirstPassword, heading, languageChooser, openPersonMenu, signIn } from './steps';
 import { codeNow } from './totp';
 
@@ -115,12 +116,18 @@ test('an Academic Vice Principal downloads the timetable as PDF and Excel in Rus
   const all = russian.pages.join('');
   expect(all).toContain(pdfText('Расписание школы'));
   expect(all).toContain(pdfText('7 Oxford'));
+  // Uzbek Cyrillic letters, which only the cyrillic-ext file of Golos Text draws.
+  expect(all).toContain(pdfText('7 Ғўзақаҳ'));
   expect(all).toContain(pdfText('Версия 1, действует с'));
 
   // Excel of the same view.
   const sheet = await download(page, ru.timetable.views.excel);
   expect(sheet.name).toMatch(/^школа-\d{4}-\d{2}-\d{2}\.xlsx$/);
-  expect(sheet.bytes.subarray(0, 2).toString('latin1')).toBe('PK');
+  const cells = xlsxTexts(sheet.bytes);
+  // The preamble: the title, then "as of" (correction of the plan: the file opens with them).
+  expect(cells[0]).toMatch(/^Расписание школы · Неделя /);
+  expect(cells[1]).toMatch(/^По состоянию на \d{2}\.\d{2}\.\d{4} \d{2}:\d{2}$/);
+  expect(cells).toContain('7 Ғўзақаҳ');
 
   // A teacher's week in Uzbek: "Oʻqituvchi" with U+02BB, drawn from the embedded fonts.
   await speak(page, ru, 'uz', uz);

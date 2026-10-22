@@ -95,6 +95,8 @@ export class ChromiumPdfRenderer implements PdfRenderer, OnModuleDestroy {
   constructor(
     private readonly config: Pick<AppConfig, 'chromiumPath'>,
     private readonly launch: LaunchBrowser = launchChromium,
+    /** The whole render, start of the page to the last byte (decision 6); a test gives a shorter one. */
+    private readonly limitMs: number = PDF_RENDER_TIMEOUT_MS,
   ) {}
 
   render(html: string): Promise<Buffer> {
@@ -117,7 +119,28 @@ export class ChromiumPdfRenderer implements PdfRenderer, OnModuleDestroy {
     }
   }
 
+  /**
+   * One render within `limitMs` in all (spec review should-fix 2): past it
+   * the Chromium is closed, which ends the render, and the answer is 503.
+   */
   private async renderNow(html: string): Promise<Buffer> {
+    let timer: NodeJS.Timeout | undefined;
+    const limit = new Promise<never>((_resolve, reject) => {
+      timer = setTimeout(() => {
+        reject(unavailable());
+      }, this.limitMs);
+    });
+    try {
+      return await Promise.race([this.renderInChromium(html), limit]);
+    } catch (error) {
+      await this.onModuleDestroy();
+      throw error instanceof ApiException ? error : unavailable();
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  private async renderInChromium(html: string): Promise<Buffer> {
     let browser: RenderBrowser;
     try {
       browser = await this.browserOf();
@@ -129,18 +152,17 @@ export class ChromiumPdfRenderer implements PdfRenderer, OnModuleDestroy {
       try {
         await context.route('**/*', (route) => route.abort());
         const page = await context.newPage();
-        await page.setContent(html, { waitUntil: 'load', timeout: PDF_RENDER_TIMEOUT_MS });
+        await page.setContent(html, { waitUntil: 'load', timeout: this.limitMs });
         return await page.pdf({
           preferCSSPageSize: true,
           printBackground: true,
-          timeout: PDF_RENDER_TIMEOUT_MS,
+          timeout: this.limitMs,
         });
       } finally {
         await context.close().catch(() => undefined);
       }
     } catch {
-      // A Chromium that died is started again at the next render.
-      await this.onModuleDestroy();
+      // A Chromium that died is closed by `renderNow` and started again at the next render.
       throw unavailable();
     }
   }

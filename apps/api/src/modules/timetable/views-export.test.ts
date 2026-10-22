@@ -12,7 +12,7 @@ import { dayTemplatesKit, UNKNOWN, type DayTemplatesKit } from '../../testing/da
 import { standingExamOver } from '../../testing/exams-kit.js';
 import { heldEntry } from '../../testing/held-entry.js';
 import { LoadKit } from '../../testing/load-kit.js';
-import { publishedScene, type PublishedScene } from '../../testing/published-scene.js';
+import { publishedScene, publishOf, type PublishedScene } from '../../testing/published-scene.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 import { binary } from '../../testing/xlsx-kit.js';
 
@@ -350,7 +350,7 @@ describe('the timetable files', () => {
       expect(school.match(/<div class="next-day"><\/div>/g)).toHaveLength(4);
     });
 
-    it('marks a changed, a cancelled and a replaced lesson as the views do', async () => {
+    it('marks a changed and a cancelled lesson as the views do', async () => {
       const date = '2026-11-09';
       const lesson = await lessonOf(s, date);
       const cancelled = await keyed(`/api/timetable/lessons/${lesson.id}/cancel`, s.branch, {
@@ -712,6 +712,130 @@ describe('the timetable files', () => {
       expect(await t.auditCount()).toBe(before);
       // Excel does not need Chromium (edge/system-behaviour: "Only that function fails").
       ok(await send({ kind: 'class', classId: s.classId, format: 'xlsx' }), XLSX_MEDIA_TYPE);
+    });
+  });
+
+  // Spec review of the code, must-fixes 1: the cases the plan named under
+  // "the file holds what the view answers".
+  describe('the cases the review named', () => {
+    const staffName = async (staffId: string) => {
+      const found = await t.database.migrator
+        .selectFrom('staff')
+        .select(['first_name', 'last_name'])
+        .where('id', '=', staffId)
+        .executeTakeFirstOrThrow();
+      return `${found.last_name ?? ''} ${found.first_name ?? ''}`;
+    };
+
+    it('prints a substituted lesson "Replaced by" on the replaced teacher’s file and "substitute for" on the substitute’s', async () => {
+      const date = '2026-11-16';
+      const lesson = await lessonOf(s, date);
+      const substituted = await keyed(`/api/timetable/lessons/${lesson.id}/substitute`, s.branch, {
+        teacherId: s.spareTeacher.staffId,
+        reason: 'Training day',
+      });
+      expect(substituted.status, JSON.stringify(substituted.body)).toBe(200);
+      const spare = await staffName(s.spareTeacher.staffId);
+      const teacher = await staffName(s.teacher.staffId);
+      const replaced = await printed({ kind: 'teacher', staffId: s.teacher.staffId, date });
+      expect(replaced).toContain(`Replaced by ${spare}`);
+      const theirs = await printed({ kind: 'teacher', staffId: s.spareTeacher.staffId, date });
+      expect(theirs).toContain(`substitute for ${teacher}`);
+      const { lines } = await linesOf(
+        ok(
+          await send({ kind: 'teacher', staffId: s.teacher.staffId, date, format: 'xlsx' }),
+          XLSX_MEDIA_TYPE,
+        ),
+      );
+      const row = lines.find((one) => one.values[9] === 'Lesson');
+      // The replaced teacher's row names them as the teacher, and who took the lesson.
+      expect(row?.values[7]).toBe(teacher);
+      // A substitution is a one-day change: it carries the changed mark too.
+      expect(row?.values[10]).toBe(`Replaced by ${spare}; changed`);
+    });
+
+    it('prints a lesson in another branch as "Busy in <branch>" with nothing else of it, in the PDF and in Excel', async () => {
+      const here = await publishedScene(t, load);
+      const away = await publishedScene(t, load);
+      await t.database.migrator
+        .insertInto('staff_branches')
+        .values({ staff_id: here.spareTeacher.staffId, branch_id: away.branch, is_main: false })
+        .execute();
+      const awayLesson = await lessonOf(away, NEXT_MONDAY);
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ teacher_id: here.spareTeacher.staffId })
+        .where('id', '=', awayLesson.id)
+        .execute();
+      const awayName = await branchName(away.branch);
+      const awayClass = await t.database.migrator
+        .selectFrom('classes')
+        .select(['grade', 'name'])
+        .where('id', '=', away.classId)
+        .executeTakeFirstOrThrow();
+      const awayRoom = await t.database.migrator
+        .selectFrom('rooms')
+        .select('name')
+        .where('id', '=', away.room)
+        .executeTakeFirstOrThrow();
+      const subject = await t.database.migrator
+        .selectFrom('subjects')
+        .select('name_en')
+        .where('id', '=', away.subject)
+        .executeTakeFirstOrThrow();
+      const body = { kind: 'teacher', staffId: here.spareTeacher.staffId };
+      const html = await printed(body, t.admin, here.branch);
+      expect(html).toContain(`Busy in ${awayName}`);
+      expect(html).toContain('08:00–08:45');
+      for (const hidden of [awayClass.name, awayRoom.name, subject.name_en]) {
+        expect(html).not.toContain(hidden);
+      }
+      const { lines } = await linesOf(
+        ok(await send({ ...body, format: 'xlsx' }, t.admin, here.branch), XLSX_MEDIA_TYPE),
+      );
+      const busy = lines.find((one) => one.values[9] === 'Other branch');
+      expect(busy?.values[10]).toBe(`Busy in ${awayName}`);
+      expect((busy?.values[3] as Date).toISOString()).toBe('1899-12-30T08:00:00.000Z');
+      // Class, subject, teacher and room stay empty.
+      expect(busy?.values.slice(5, 9).every((one) => one === null || one === '')).toBe(true);
+      const all = JSON.stringify(lines.map((one) => one.values));
+      for (const hidden of [awayClass.name, awayRoom.name, subject.name_en]) {
+        expect(all).not.toContain(hidden);
+      }
+    });
+
+    it('names both versions of a week that crosses a version start, each on its days (06, One source)', async () => {
+      const scene = await publishedScene(t, load);
+      const created = await t.post('/api/timetable/versions', scene.branch, {
+        academicYearId: scene.year,
+        startsOn: '2026-10-14',
+        copyFrom: scene.version,
+      });
+      expect(created.status, JSON.stringify(created.body)).toBe(201);
+      const second = (created.body as { id: string }).id;
+      const confirmed = await t.post(
+        `/api/timetable/versions/${second}/templates/confirm`,
+        scene.branch,
+      );
+      expect(confirmed.status, JSON.stringify(confirmed.body)).toBe(200);
+      await load.freeEditLock(second);
+      const published = await publishOf(t)(scene.branch, second, '2026-10-14');
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+
+      const body = { kind: 'class', classId: scene.classId, date: '2026-10-12', span: 'week' };
+      const html = await printed(body, t.admin, scene.branch);
+      const first = 'Version 1, valid from 12.10.2026';
+      const next = 'Version 2, valid from 14.10.2026';
+      // Monday and Tuesday under the first, Wednesday to Friday under the second.
+      expect(html.split(first)).toHaveLength(3);
+      expect(html.split(next)).toHaveLength(4);
+      const { lines } = await linesOf(
+        ok(await send({ ...body, format: 'xlsx' }, t.admin, scene.branch), XLSX_MEDIA_TYPE),
+      );
+      expect(lines[2]?.values[0]).toBe(first);
+      expect(lines[3]?.values[0]).toBe(next);
+      const lesson = lines.find((one) => one.values[9] === 'Lesson');
+      expect(lesson?.values[11]).toBe(1);
     });
   });
 });

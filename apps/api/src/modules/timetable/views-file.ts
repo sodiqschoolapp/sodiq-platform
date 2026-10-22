@@ -523,11 +523,11 @@ section { break-inside: avoid-page; margin-bottom: 4mm; }
 table { border-collapse: collapse; width: 100%; }
 thead { display: table-header-group; }
 tr { break-inside: avoid; }
-th, td { border: 0.3mm solid #CDD1DD; padding: 1.2mm; vertical-align: top; text-align: left; }
+th, td { border: 0.3mm solid #DBDBDB; padding: 1.2mm; vertical-align: top; text-align: left; }
 th { font-weight: 600; }
 .num { width: 8mm; text-align: center; }
 .time, .slot { white-space: nowrap; color: #4A5270; }
-.item + .item { margin-top: 1mm; padding-top: 1mm; border-top: 0.2mm dashed #CDD1DD; }
+.item + .item { margin-top: 1mm; padding-top: 1mm; border-top: 0.2mm dashed #DBDBDB; }
 .cancelled b { text-decoration: line-through; }
 .busy, tr.busy td { background: #F6F6F6; color: #4A5270; }
 .quiet { color: #4A5270; }

@@ -152,6 +152,16 @@ describe('the PDF renderer', () => {
     await second;
     expect(chromium.asked.launches).toBe(2);
   });
+
+  it('gives up a render past its one limit for the whole of it, and closes that Chromium (decision 6)', async () => {
+    const chromium = fakeChromium();
+    // A render that never ends: the fake holds pdf() until released.
+    const renderer = new ChromiumPdfRenderer({ chromiumPath: undefined }, chromium.launch, 50);
+    const error: unknown = await renderer.render('a').catch((caught: unknown) => caught);
+    expect(code(error)).toBe('pdf_unavailable');
+    expect(chromium.asked.closedBrowsers).toBe(1);
+    await chromium.release();
+  });
 });
 
 describe('the fonts of the PDFs', () => {

@@ -4223,6 +4223,19 @@ try {
     rooms: [],
     publishable: true,
   });
+  // The scene's second class with a name in Uzbek Cyrillic (ў, ғ, қ, ҳ), letters only
+  // the cyrillic-ext file of Golos Text holds; names are printed as entered.
+  const filesBranch = await migrator
+    .selectFrom('branches')
+    .select('id')
+    .where('name', '=', 'Timetable files browser test branch')
+    .executeTakeFirstOrThrow();
+  await migrator
+    .updateTable('classes')
+    .set({ name: 'Ғўзақаҳ' })
+    .where('branch_id', '=', filesBranch.id)
+    .where('name', '=', 'Princeton')
+    .execute();
   seeded.timetableFiles = { login: filesVice.login, password: filesVice.firstPassword };
 
   // The forced delete of a lesson (task 5.8b): the publishable scene in a

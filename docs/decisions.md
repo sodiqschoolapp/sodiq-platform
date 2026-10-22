@@ -302,6 +302,10 @@ Plan approved on pull request #199 with corrections 1 to 8; decisions 1 to 15 co
 | Texts in the account's language from `VIEW_EXPORT_TEXTS` of `packages/shared` (correction 1); names as entered, HTML-escaped; dates `DD.MM.YYYY` in the three languages | Decision 10; build decision for the date form |
 | Excel: one row per lesson, exam or busy block with date and time cells, a preamble, the frozen and bold row moved to the heading; each row also carries its day's notes (day off, no version, outside the year, read from its pattern) | Decision 11; build decision: a day off entered past the calendar routes keeps its lessons |
 | A refusal of the PDF shows under the buttons (`FailureAlert`), where the plan named a toast | Build decision: `.claude/rules/web.md`, a failed call beside its controls |
+| **Build decision.** A setting `CHROMIUM_PATH` names the Chromium of the PDFs; unset, the one `playwright-core` installs | Decision 4: lets a server, or a machine whose Chromium is not the one `playwright-core` expects, point at its own |
+| **Build decision.** The PDF of the school's week starts each day on a page of its own | One wall sheet a day for a school of many classes, and the browser test reads "as of" on a page 2 it can count on (correction 3) |
+| **Build decision.** "As of" is the moment taken before the view is read | Spec review of the code, should-fix 1: the file never shows data newer than its stamp |
+| **Build decision.** One 30-second limit for the whole render, past it the Chromium is closed | Spec review of the code, should-fix 2 |
 
 ## 21 October 2026: the teacher home page (task 5.9b)
 

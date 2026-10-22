@@ -66,7 +66,12 @@ export function ViewFiles({ view }: { view: ShownView }) {
           `timetable.${format}`,
         );
         if (action === 'print' && tab !== null) {
-          tab.location.href = URL.createObjectURL(file);
+          const address = URL.createObjectURL(file);
+          tab.location.href = address;
+          // The tab has read the file by then; the address is let go (spec review nit 2).
+          window.setTimeout(() => {
+            URL.revokeObjectURL(address);
+          }, 60_000);
         } else {
           save(file, name);
         }

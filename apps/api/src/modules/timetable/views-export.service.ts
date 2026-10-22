@@ -82,6 +82,8 @@ export class TimetableViewExports {
     requestId: string,
   ): Promise<XlsxFile | PdfFile> {
     const branchId = branchOf(access);
+    // Taken before the read, so the file never shows data newer than its "as of" (spec review should-fix 1).
+    const moment = this.clock.now();
     const read = await this.transactions.run(access.branchIds, async (transaction) => {
       const view = await this.viewOf(transaction, access, request);
       const account = await transaction
@@ -98,7 +100,6 @@ export class TimetableViewExports {
       return { view, language, timeZone: branch.time_zone };
     });
     const { view, language } = read;
-    const moment = this.clock.now();
     const stamp = { asOf: momentText(moment, read.timeZone) };
     const texts = VIEW_EXPORT_TEXTS[language];
     const ascii = VIEW_EXPORT_ASCII_NAMES[view.kind];
