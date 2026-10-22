@@ -479,18 +479,20 @@ export const PERMISSIONS = freezeTable({
    * branch for the Super Admin, the Principal and both Vice Principals; the
    * school and every class for the Head Tutor; the school and own classes for
    * the Tutor; the teachers of their subjects, in those subjects, for the Head
-   * Teachers; and everyone's own teacher view.
+   * Teachers; and everyone's own teacher view. `export` (task 5.9c-1, pull
+   * request #199, decision 2): Print, PDF and Excel of the same views, in the
+   * same scope; `permissions.test.ts` keeps the two rows equal.
    */
   timetable_views: rows({
-    super_admin: ['view'],
-    principal: ['view'],
-    academic_vice_principal: ['view'],
-    spiritual_vice_principal: ['view'],
-    head_tutor: ['view'],
-    tutor: ['view'],
-    senior_head_teacher: ['view'],
-    head_teacher: ['view'],
-    teacher: ['view'],
+    super_admin: ['view', 'export'],
+    principal: ['view', 'export'],
+    academic_vice_principal: ['view', 'export'],
+    spiritual_vice_principal: ['view', 'export'],
+    head_tutor: ['view', 'export'],
+    tutor: ['view', 'export'],
+    senior_head_teacher: ['view', 'export'],
+    head_teacher: ['view', 'export'],
+    teacher: ['view', 'export'],
   }),
   relatives: rows({
     super_admin: ['view', 'create', 'edit'],
