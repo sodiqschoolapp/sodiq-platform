@@ -6,7 +6,7 @@ import type {
   TimetableVersion,
 } from '@sodiq/shared';
 import { FIXED_RULES } from '@sodiq/timetable-rules';
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { fakeApi, json, NORTH, renderApp, sessionOf } from '@/testing/render-app';
@@ -1017,6 +1017,86 @@ describe('pinSlots', () => {
       });
     });
 
+    // Task 6.1b-1 (decisions 2, 3 and 5): the lessons with data a publish keeps, or that refuse it.
+    it('lists the lessons with data the publish keeps cancelled and those that refuse it, each only when there is one', async () => {
+      const lesson = (n: number) => ({
+        lessonId: uid(n),
+        date: '2026-11-16',
+        start: 530,
+        end: 575,
+        unitId: ROW.unit.id,
+        subjectId: ROW.subject.id,
+        teacherIds: [],
+        roomId: null,
+        cancelCause: null,
+      });
+      const impactWith = (keptWithData: unknown[], heldData: unknown[]) => ({
+        beforeVersion: { id: uid(950), number: 1 },
+        carried: [],
+        keptWithData,
+        heldData,
+        dayChanges: {
+          key: 'd'.repeat(64),
+          kept: [],
+          decide: [],
+          dropped: [],
+          absences: [],
+          closures: [],
+          substitutions: [],
+          bulk: [],
+          exams: [],
+        },
+        counts: { created: 0, moved: 0, removed: 1, changed: 0, unchanged: 40 },
+        changes: [],
+        teachers: [],
+        classIds: [],
+        roomIds: [],
+        vacancies: [],
+        transition: null,
+        names: {
+          units: [{ id: ROW.unit.id, kind: 'class', name: 'Oxford', grades: [7] }],
+          subjects: [{ id: ROW.subject.id, names: ROW.subject.names }],
+          teachers: [],
+          rooms: [],
+        },
+      });
+      const line = '16 November 2026 · 08:50–09:35 · 7 Oxford · Mathematics';
+      for (const [kept, held] of [
+        [[lesson(701)], []],
+        [[], [lesson(702)]],
+      ] as const) {
+        await openPage({
+          path: `/timetable/builder?version=${VERSION.id}&step=publish`,
+          extra: {
+            [checkRoute]: () => json({ ...CHECK, impact: impactWith([...kept], [...held]) }),
+          },
+        });
+        await waitFor(() => {
+          if (document.querySelector('[data-impact]') === null) throw new Error('No preview yet.');
+        });
+        const keptPart = document.querySelector('[data-kept-data]');
+        const heldPart = document.querySelector('[data-held-data]');
+        if (kept.length > 0) {
+          expect(keptPart?.querySelector('h4')?.textContent).toBe(
+            en.timetable.publish.impact.keptWithDataTitle_one.replace('{{count}}', '1'),
+          );
+          expect(
+            [...(keptPart?.querySelectorAll('li') ?? [])].map((one) => one.textContent),
+          ).toEqual([line]);
+          expect(heldPart).toBeNull();
+        } else {
+          expect(keptPart).toBeNull();
+          expect(
+            [...(heldPart?.querySelectorAll('li') ?? [])].map((one) => one.textContent),
+          ).toEqual([line]);
+          expect(heldPart?.querySelector('[role="alert"]')?.textContent).toBe(
+            en.timetable.publish.impact.heldDataRefused,
+          );
+        }
+        cleanup();
+      }
+    });
+
     // Task 5.5a-2b-1, pull request #142: the impact preview and the transition week.
     it('shows the impact preview and keeps Publish off until the transition week is ticked, then sends its key', async () => {
       const second = uid(601);
@@ -1038,6 +1118,8 @@ describe('pinSlots', () => {
               impact: {
                 beforeVersion: { id: uid(950), number: 1 },
                 carried: [],
+                keptWithData: [],
+                heldData: [],
                 dayChanges: {
                   key: 'd'.repeat(64),
                   kept: [],
@@ -1177,6 +1259,8 @@ describe('pinSlots', () => {
               impact: {
                 beforeVersion: { id: uid(950), number: 1 },
                 carried: [],
+                keptWithData: [],
+                heldData: [],
                 dayChanges: {
                   key: daysKey,
                   kept: [item(uid(621), 'room')],
@@ -1271,6 +1355,8 @@ describe('pinSlots', () => {
               impact: {
                 beforeVersion: { id: uid(950), number: 1 },
                 carried: [],
+                keptWithData: [],
+                heldData: [],
                 dayChanges: {
                   key: daysKey,
                   kept: [],
@@ -1412,6 +1498,8 @@ describe('pinSlots', () => {
               impact: {
                 beforeVersion: { id: uid(950), number: 1 },
                 carried: [],
+                keptWithData: [],
+                heldData: [],
                 dayChanges: {
                   key: daysKey,
                   kept: [],
@@ -1523,6 +1611,8 @@ describe('pinSlots', () => {
               impact: {
                 beforeVersion: { id: uid(950), number: 1 },
                 carried: [],
+                keptWithData: [],
+                heldData: [],
                 dayChanges: {
                   key: 'd'.repeat(64),
                   kept: [],

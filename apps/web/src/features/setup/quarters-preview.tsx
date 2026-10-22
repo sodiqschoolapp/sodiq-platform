@@ -55,6 +55,8 @@ const ITEM_CODES = [
   'quarter_splits_move',
   'quarter_rating_exams',
   'year_leaves_exam',
+  // Task 6.1b-1 (decision 7): the lessons with data on days cut off.
+  'lessons_hold_data',
 ] as const;
 
 /** The code and the items a refused save names in its details, or `null` for another failure. */
@@ -93,6 +95,7 @@ export function QuarterItemsList({
   const lineOf = (item: QuarterItem): string => {
     switch (item.kind) {
       case 'past_lesson':
+      case 'data_lesson':
         return t('setup.years.preview.lessonLine', {
           date: schoolDateText(item.date, language),
           unit: unitText(item.unit),
@@ -144,6 +147,7 @@ const LIST_TITLES = {
   quarter_splits_move: 'setup.years.preview.splitMoves',
   quarter_rating_exams: 'setup.years.preview.ratingExams',
   year_leaves_exam: 'setup.years.preview.yearExams',
+  lessons_hold_data: 'setup.years.preview.dataLessons',
 } as const;
 
 /** The lines of a refused save of the quarters or of the year's dates, under its form. */
@@ -156,9 +160,13 @@ export function QuarterRefusalLines({ failure }: { failure: unknown }): React.JS
 
 /** Whether the preview refuses the save with a list (`pastLessons`, `exams`, `splitMoves`, `ratingExams`). */
 const listsRefuse = (preview: QuartersPreview): boolean =>
-  [preview.pastLessons, preview.exams, preview.splitMoves, preview.ratingExams].some(
-    (list) => list.items.length > 0 || list.more > 0,
-  );
+  [
+    preview.pastLessons,
+    preview.exams,
+    preview.splitMoves,
+    preview.ratingExams,
+    preview.dataLessons,
+  ].some((list) => list.items.length > 0 || list.more > 0);
 
 /**
  * Whether the preview has anything to show or to decide (decision 3): with
@@ -337,6 +345,10 @@ export function useQuartersPreview(): {
               <QuarterItemsList
                 title={t('setup.years.preview.ratingExams')}
                 list={question.preview.ratingExams}
+              />
+              <QuarterItemsList
+                title={t('setup.years.preview.dataLessons')}
+                list={question.preview.dataLessons}
               />
               <p className="text-sm font-medium text-destructive" role="alert">
                 {t('setup.years.preview.refused')}

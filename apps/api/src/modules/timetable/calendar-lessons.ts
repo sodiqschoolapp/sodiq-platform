@@ -1267,7 +1267,11 @@ export class TimetableCalendarLessons {
     };
     const keptLines = wrote
       ? keptWritten.flatMap((one) =>
-          placed(one.id).map((place) => ({ ...place, cancelCause: one.cancelCause, cause: one.cause })),
+          placed(one.id).map((place) => ({
+            ...place,
+            cancelCause: one.cancelCause,
+            cause: one.cause,
+          })),
         )
       : [];
     const backLines = wrote

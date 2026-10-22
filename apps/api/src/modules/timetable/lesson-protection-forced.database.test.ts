@@ -151,37 +151,36 @@ describe('the forced delete of a lesson that holds data in the database (stand-i
     await database.destroy();
   });
 
-    it('lets a forced delete of the same transaction remove it, and nothing else', async () => {
-      const held = await lesson(north);
-      const other = await lesson(north);
-      await database.migrator
-        .insertInto('test_lessons_with_data' as never)
-        .values([{ lesson_id: held.lesson }, { lesson_id: other.lesson }] as never)
-        .execute();
-      // A store row of another transaction opens nothing.
-      await inBranch(north, (transaction) => storeRow(transaction, north, other.lesson));
-      const earlier = await refusal(
-        inBranch(north, async (transaction) => {
-          await audited(transaction, north);
-          await transaction.deleteFrom('lessons').where('id', '=', other.lesson).execute();
-        }),
-      );
-      expect(earlier.constraint).toBe('lesson_holds_data');
-      // One of this transaction naming another lesson opens nothing either.
-      const elsewhere = await refusal(
-        inBranch(north, async (transaction) => {
-          await storeRow(transaction, north, other.lesson);
-          await audited(transaction, north);
-          await transaction.deleteFrom('lessons').where('id', '=', held.lesson).execute();
-        }),
-      );
-      expect(elsewhere.constraint).toBe('lesson_holds_data');
-      await inBranch(north, async (transaction) => {
-        await storeRow(transaction, north, held.lesson);
+  it('lets a forced delete of the same transaction remove it, and nothing else', async () => {
+    const held = await lesson(north);
+    const other = await lesson(north);
+    await database.migrator
+      .insertInto('test_lessons_with_data' as never)
+      .values([{ lesson_id: held.lesson }, { lesson_id: other.lesson }] as never)
+      .execute();
+    // A store row of another transaction opens nothing.
+    await inBranch(north, (transaction) => storeRow(transaction, north, other.lesson));
+    const earlier = await refusal(
+      inBranch(north, async (transaction) => {
+        await audited(transaction, north);
+        await transaction.deleteFrom('lessons').where('id', '=', other.lesson).execute();
+      }),
+    );
+    expect(earlier.constraint).toBe('lesson_holds_data');
+    // One of this transaction naming another lesson opens nothing either.
+    const elsewhere = await refusal(
+      inBranch(north, async (transaction) => {
+        await storeRow(transaction, north, other.lesson);
         await audited(transaction, north);
         await transaction.deleteFrom('lessons').where('id', '=', held.lesson).execute();
-      });
-      expect(await historyOf(held.lesson)).toMatchObject([{ kind: 'forced_delete' }]);
+      }),
+    );
+    expect(elsewhere.constraint).toBe('lesson_holds_data');
+    await inBranch(north, async (transaction) => {
+      await storeRow(transaction, north, held.lesson);
+      await audited(transaction, north);
+      await transaction.deleteFrom('lessons').where('id', '=', held.lesson).execute();
     });
-
+    expect(await historyOf(held.lesson)).toMatchObject([{ kind: 'forced_delete' }]);
+  });
 });

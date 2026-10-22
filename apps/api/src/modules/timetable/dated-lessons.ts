@@ -367,18 +367,16 @@ export function pairDated<W extends PairWanted>(
   const storedAt = new Map<string, PairStored[]>();
   for (const row of byId) {
     if (paired.has(row.id) || row.entryId === undefined || row.patternDate === undefined) continue;
-    push(
-      storedAt,
-      placeOf(row.entryId, row.patternDate, row.date, row.unitId, row.subjectId),
-      row,
-    );
+    push(storedAt, placeOf(row.entryId, row.patternDate, row.date, row.unitId, row.subjectId), row);
   }
   const second = new Set<W>();
   for (const block of blocks) {
     for (const lesson of [...block.lessons].sort((a, b) => compare(a.entryId, b.entryId))) {
       if (pairs.has(lesson) || lesson.patternDate === undefined) continue;
       const found = storedAt
-        .get(placeOf(lesson.entryId, lesson.patternDate, lesson.date, lesson.unitId, lesson.subjectId))
+        .get(
+          placeOf(lesson.entryId, lesson.patternDate, lesson.date, lesson.unitId, lesson.subjectId),
+        )
         ?.find((one) => !paired.has(one.id));
       if (found === undefined) continue;
       pairs.set(lesson, found);
@@ -444,7 +442,9 @@ export function storedPairOf(
 }
 
 /** A stored lesson as an audit entry keeps it (`RemovedLesson`). */
-function removedOf(row: Omit<StoredRow, 'load_row_id' | 'pattern_entry_id' | 'cancel_reason'>): RemovedLesson {
+function removedOf(
+  row: Omit<StoredRow, 'load_row_id' | 'pattern_entry_id' | 'cancel_reason'>,
+): RemovedLesson {
   return {
     id: row.id,
     date: row.lesson_date,
@@ -614,7 +614,6 @@ async function keepWithData(
   return fresh.map((row) => ({ ...removedOf(row), reason: row.cancel_reason, cause: KEPT_DATA }));
 }
 
-
 /**
  * The stored blocks and lessons of a branch from `firstDate` to `lastDate`,
  * in the order of their id; with `lock`, `for update`, as the writer takes
@@ -731,7 +730,6 @@ export async function keepsOfRun(
   };
 }
 
-
 /** Whether a stored cancel is one the expansion writes, not a one-day change. */
 export const isGeneratedCause = (cause: string | null): boolean =>
   cause !== null && GENERATED_CAUSES.has(cause);
@@ -815,7 +813,13 @@ export async function writeDatedLessons(
   await exams?.start(transaction);
 
   // The stored blocks and lessons of the run, locked in the order of their id.
-  const { allBlocks, allStored } = await storedRunOf(transaction, branchId, firstDate, lastDate, true);
+  const { allBlocks, allStored } = await storedRunOf(
+    transaction,
+    branchId,
+    firstDate,
+    lastDate,
+    true,
+  );
   // Task 5.6a-5a (decision 7): a kept move from a date before the run stays
   // where it is, under its version; the write neither pairs nor removes it.
   const keepStored = plan?.keepStored ?? new Set<string>();
@@ -973,7 +977,10 @@ export async function writeDatedLessons(
       (before.starts_at.getTime() !== startsAt.getTime() ||
         before.ends_at.getTime() !== endsAt.getTime())
         ? {
-            from: { startsAt: before.starts_at.toISOString(), endsAt: before.ends_at.toISOString() },
+            from: {
+              startsAt: before.starts_at.toISOString(),
+              endsAt: before.ends_at.toISOString(),
+            },
             to: { startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString() },
           }
         : undefined;
@@ -1059,7 +1066,11 @@ export async function writeDatedLessons(
         recancelled &&
         keeps.holding.has(found.id)
       ) {
-        keptWithData.push({ ...removedOf(found), reason: found.cancel_reason, cause: cancel.cause });
+        keptWithData.push({
+          ...removedOf(found),
+          reason: found.cancel_reason,
+          cause: cancel.cause,
+        });
       }
     }
   }

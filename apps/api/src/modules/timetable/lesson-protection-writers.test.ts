@@ -513,16 +513,14 @@ describe('the protection of dated lessons through the other writers', () => {
       // One lesson slot from 08:30: the first lesson moves, the second has no slot.
       const late = await t.createTemplate(s.branch, 'Late', [lesson], '08:30');
       const moved = await lessonOf(s, '2026-10-19');
-      const dropped = (
-        await t.database.migrator
-          .selectFrom('lessons')
-          .selectAll()
-          .where('branch_id', '=', s.branch)
-          .where('class_id', '=', s.otherClass)
-          .where('lesson_date', '=', '2026-10-19')
-          .orderBy('starts_at', 'desc')
-          .executeTakeFirstOrThrow()
-      );
+      const dropped = await t.database.migrator
+        .selectFrom('lessons')
+        .selectAll()
+        .where('branch_id', '=', s.branch)
+        .where('class_id', '=', s.otherClass)
+        .where('lesson_date', '=', '2026-10-19')
+        .orderBy('starts_at', 'desc')
+        .executeTakeFirstOrThrow();
       expect(dropped.subject_id).not.toBe(s.subject);
       await mark(s, moved.id);
       const { studentId } = await mark(s, dropped.id, s.otherClass);
@@ -556,9 +554,9 @@ describe('the protection of dated lessons through the other writers', () => {
           .execute(),
       ).toEqual([{ id: dropped.id }]);
       const writes = await writesOf(s.branch, 'calendar_entry.create');
-      expect(writes.flatMap((one) => one.keptWithData ?? []).map((one) => [one.id, one.cause])).toEqual(
-        [[dropped.id, 'not_in_template']],
-      );
+      expect(
+        writes.flatMap((one) => one.keptWithData ?? []).map((one) => [one.id, one.cause]),
+      ).toEqual([[dropped.id, 'not_in_template']]);
     });
 
     it('a day off over a lesson with a work total keeps it, listed in the preview and the entry; the day off taken back gives it back', async () => {
@@ -567,7 +565,10 @@ describe('the protection of dated lessons through the other writers', () => {
       const other = await lessonOf(s, '2026-10-26', s.otherClass);
       await workWithTotal(t.database.migrator, { branchId: s.branch, lessonId: held.id });
 
-      const shown = await calendarPreview(s.branch, { action: 'create', record: dayOff('2026-10-26') });
+      const shown = await calendarPreview(s.branch, {
+        action: 'create',
+        record: dayOff('2026-10-26'),
+      });
       expect(shown.keptWithData.map((one) => [one.lessonId, one.cause])).toEqual([
         [held.id, 'kept_data'],
       ]);

@@ -1,4 +1,9 @@
-import { classDisplayName, type ImpactChangeAnswer, type PublishImpactAnswer } from '@sodiq/shared';
+import {
+  classDisplayName,
+  type HeldDataLesson,
+  type ImpactChangeAnswer,
+  type PublishImpactAnswer,
+} from '@sodiq/shared';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { WarningIcon } from '@/components/icons';
@@ -21,8 +26,10 @@ const FIRST_LINES = 20;
  * surprises are prevented, Impact preview): the lessons created, moved,
  * removed and changed, the teachers, classes and rooms affected, who will be
  * notified, the lessons per week under each vacancy, and the transition week
- * with its tick (`edge/timetable`, "A version starts on a Wednesday"). The
- * server's answer names everything it shows.
+ * with its tick (`edge/timetable`, "A version starts on a Wednesday"); task
+ * 6.1b-1: the lessons with data it keeps, cancelled, and those that refuse it
+ * ("any lesson holding data that blocks a removal"). The server's answer
+ * names everything it shows.
  */
 export function PublishImpact({
   impact,
@@ -92,6 +99,15 @@ export function PublishImpact({
       dates,
     ].join('. ');
   };
+
+  // Task 6.1b-1: a lesson with data the publish keeps, or that refuses it.
+  const heldText = (one: HeldDataLesson): string =>
+    [
+      schoolDateText(one.date, language),
+      rangeText(t, one.start, one.end),
+      unitName(one.unitId),
+      subjectName(one.subjectId),
+    ].join(' · ');
 
   const shown = all ? impact.changes : impact.changes.slice(0, FIRST_LINES);
   const transition = impact.transition;
@@ -183,6 +199,33 @@ export function PublishImpact({
                   count: one.lessonsPerWeek,
                 })}
               </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {impact.heldData.length > 0 && (
+        <div className="grid gap-1" data-held-data="true">
+          <h4 className={SUBSECTION_TITLE}>
+            {t('timetable.publish.impact.heldDataTitle', { count: impact.heldData.length })}
+          </h4>
+          <ul className="grid gap-1 text-sm">
+            {impact.heldData.map((one) => (
+              <li key={one.lessonId}>{heldText(one)}</li>
+            ))}
+          </ul>
+          <p className="text-sm font-medium text-destructive" role="alert">
+            {t('timetable.publish.impact.heldDataRefused')}
+          </p>
+        </div>
+      )}
+      {impact.keptWithData.length > 0 && (
+        <div className="grid gap-1" data-kept-data="true">
+          <h4 className={SUBSECTION_TITLE}>
+            {t('timetable.publish.impact.keptWithDataTitle', { count: impact.keptWithData.length })}
+          </h4>
+          <ul className="grid gap-1 text-sm">
+            {impact.keptWithData.map((one) => (
+              <li key={one.lessonId}>{heldText(one)}</li>
             ))}
           </ul>
         </div>

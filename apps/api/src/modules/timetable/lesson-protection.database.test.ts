@@ -199,9 +199,15 @@ describe('the protection of dated lessons in the database', () => {
     }
 
     const save = (branch: string, saves: readonly CellSave[]) =>
-      inBranch(branch, (transaction) => saveCells(transaction, audit, { accountId: account }, saves));
+      inBranch(branch, (transaction) =>
+        saveCells(transaction, audit, { accountId: account }, saves),
+      );
 
-    const work = (branch: string, lessonId: string, values: { total?: number; notHeld?: boolean }) =>
+    const work = (
+      branch: string,
+      lessonId: string,
+      values: { total?: number; notHeld?: boolean },
+    ) =>
       database.migrator
         .insertInto('journal_works')
         .values({
@@ -217,7 +223,13 @@ describe('the protection of dated lessons in the database', () => {
     it('reads which lessons hold data from the one function (lessonsHoldingData): a mark, a number, a total, "not held"; never an empty cell or an empty work', async () => {
       const marked = await classLesson();
       await save(north, [
-        { lessonId: marked.lesson, studentId: marked.student, workId: null, value: 1, version: null },
+        {
+          lessonId: marked.lesson,
+          studentId: marked.student,
+          workId: null,
+          value: 1,
+          version: null,
+        },
       ]);
       const scored = await classLesson();
       const scoredWork = await work(north, scored.lesson, { total: 30 });
@@ -237,10 +249,22 @@ describe('the protection of dated lessons in the database', () => {
       // A cell saved and then cleared, and a work with neither total nor "not held".
       const cleared = await classLesson();
       await save(north, [
-        { lessonId: cleared.lesson, studentId: cleared.student, workId: null, value: 2, version: null },
+        {
+          lessonId: cleared.lesson,
+          studentId: cleared.student,
+          workId: null,
+          value: 2,
+          version: null,
+        },
       ]);
       await save(north, [
-        { lessonId: cleared.lesson, studentId: cleared.student, workId: null, value: null, version: 1 },
+        {
+          lessonId: cleared.lesson,
+          studentId: cleared.student,
+          workId: null,
+          value: null,
+          version: 1,
+        },
       ]);
       await work(north, cleared.lesson, {});
       const empty = await classLesson();

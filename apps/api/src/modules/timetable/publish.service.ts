@@ -2092,7 +2092,9 @@ export function datedAuditOf(write: DatedWrite) {
     ...(write.keptWithData.length === 0
       ? {}
       : { keptWithData: write.keptWithData.map((one) => ({ ...one })) }),
-    ...(write.givenBack.length === 0 ? {} : { givenBack: write.givenBack.map((one) => ({ ...one })) }),
+    ...(write.givenBack.length === 0
+      ? {}
+      : { givenBack: write.givenBack.map((one) => ({ ...one })) }),
     // Task 5.7b-1 (decision 6): the substitutions the write dropped.
     ...(write.substitutionsDropped.length === 0
       ? {}

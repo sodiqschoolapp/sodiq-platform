@@ -1443,6 +1443,14 @@ export const en = {
         keepRemoved: 'The choice is removed; lessons are kept by their order in the day: {{day}}',
         blocked_one: '{{count}} blocked conflict stops this save',
         blocked_other: '{{count}} blocked conflicts stop this save',
+        heldData_one:
+          '{{count}} lesson holds attendance or marks and would have to move to another place, so this save is refused',
+        heldData_other:
+          '{{count}} lessons hold attendance or marks and would have to move to another place, so this save is refused',
+        keptWithData_one: '{{count}} lesson holds attendance or marks: it is kept, cancelled',
+        keptWithData_other: '{{count}} lessons hold attendance or marks: they are kept, cancelled',
+        givenBack_one: '{{count}} lesson kept for its data is back in the timetable',
+        givenBack_other: '{{count}} lessons kept for their data are back in the timetable',
         removed_one: '{{count}} lesson is removed',
         removed_other: '{{count}} lessons are removed',
         created_one: '{{count}} lesson is created',
@@ -1560,6 +1568,7 @@ export const en = {
         title: 'What the new quarter dates change',
         description: 'The published timetable with the new dates, before they are saved.',
         pastLessons: 'Lessons held on dates that would change quarter',
+        dataLessons: 'Lessons with attendance or marks on days that would leave every quarter',
         exams: 'Exams on dates that would leave every quarter',
         splitMoves: 'One-day moves whose two dates would lie in two quarters',
         yearExams: 'Exams outside the new dates of the year',
@@ -4328,6 +4337,15 @@ export const en = {
         classesTitle: 'Classes affected',
         roomsTitle: 'Rooms affected',
         vacanciesTitle: 'Lessons per week under each vacancy',
+        keptWithDataTitle_one: '{{count}} lesson holds attendance or marks: it is kept, cancelled',
+        keptWithDataTitle_other:
+          '{{count}} lessons hold attendance or marks: they are kept, cancelled',
+        heldDataTitle_one:
+          '{{count}} lesson holds attendance or marks and would have to move to another place',
+        heldDataTitle_other:
+          '{{count}} lessons hold attendance or marks and would have to move to another place',
+        heldDataRefused:
+          'The publish is refused. Change the draft so that these lessons stay where they are.',
         vacancyLessons_one: '{{name}}: {{count}} lesson a week',
         vacancyLessons_other: '{{name}}: {{count}} lessons a week',
         noTeacher: 'no teacher',

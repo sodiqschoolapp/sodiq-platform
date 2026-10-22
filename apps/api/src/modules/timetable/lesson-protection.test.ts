@@ -158,7 +158,12 @@ describe('the protection of dated lessons through their writers', () => {
   };
 
   /** A publish with the key of the stored one-day changes its preview gave. */
-  const publishKeyed = (s: PublishedScene, draft: string, startsOn: string, dayChangesKey: string) =>
+  const publishKeyed = (
+    s: PublishedScene,
+    draft: string,
+    startsOn: string,
+    dayChangesKey: string,
+  ) =>
     request(t.kit.server)
       .post(`/api/timetable/versions/${draft}/publish`)
       .set('Cookie', t.admin)
@@ -399,16 +404,16 @@ describe('the protection of dated lessons through their writers', () => {
       cancel_cause: 'kept_data',
       cancel_reason: null,
     });
-    expect((await entryOf(s.branch, 'timetable_version.publish')).datedLessons?.keptWithData).toEqual(
-      [
-        expect.objectContaining({
-          id: held.id,
-          cancelCause: 'reason',
-          reason: 'Excursion to the museum',
-          cause: 'kept_data',
-        }),
-      ],
-    );
+    expect(
+      (await entryOf(s.branch, 'timetable_version.publish')).datedLessons?.keptWithData,
+    ).toEqual([
+      expect.objectContaining({
+        id: held.id,
+        cancelCause: 'reason',
+        reason: 'Excursion to the museum',
+        cause: 'kept_data',
+      }),
+    ]);
   });
 
   it('a kept lesson stays kept, not listed again, on later writes, and comes back held with its id and cells when its own version runs again', async () => {
