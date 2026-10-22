@@ -7,7 +7,7 @@ import { ListPage } from '@/components/list/list-page';
 import type { Column, ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { ErrorState, LoadingOutline } from '@/components/states';
-import { PANEL } from '@/components/ui/control';
+import { PANEL, SECTION_TITLE } from '@/components/ui/control';
 import { Segmented } from '@/components/ui/segmented';
 import { useView } from '@/features/access/use-view';
 import { nameOf } from '@/features/setup/setup-api';
@@ -182,7 +182,7 @@ function Unattached({ plan }: { plan: Plan }) {
   const { t } = useTranslation();
   return (
     <section className={`${PANEL} grid gap-2 p-4`} aria-labelledby="plan-unattached">
-      <h2 id="plan-unattached" className="text-base font-semibold">
+      <h2 id="plan-unattached" className={SECTION_TITLE}>
         {t('plans.plan.unattached')}
       </h2>
       <ul className="grid gap-1">
