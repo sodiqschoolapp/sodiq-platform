@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 22 October 2026: task 6.1b-1 The writers of dated lessons keep lessons with data
+
+- 0110: cause `kept_data`. `writeDatedLessons` and `removeDatedLessons` keep a lesson with data that no wanted lesson pairs, in its block (pinned, under its own version), cancelled `kept_data`; a lesson with data that would have to change block refuses the write, `lessons_hold_data` (`datedKeeps`, `pinnedPairing`).
+- `pairDated` pass 2: a rewrite of the same version pairs by pattern entry, pattern date and date across times and cancels, so a lesson moved in time, cancelled for its template or a day off, or given back keeps its id; its block moves in place and its substitution row is recorded again at the new times.
+- The publish preview (`keptWithData`, `heldData`), the calendar, template and slot length previews (also `givenBack`) and every audit entry list them; a quarter change cutting off a lesson with data is refused (`dataLessons`). The generated test saves marks and deletes blocks.
+- Left out: one-day cancel, bulk cancel and the forced delete over lessons with data (6.1b-2); comments as data (8.2).
+
+The next sessions must know:
+
+- A test writes marks with `markedLesson` and work totals with `workWithTotal` (`apps/api/src/testing/cells-kit.ts`); a group lesson whose students would lose their group needs a work total, not a mark (`split_apart`).
+- `lesson-protection-forced.database.test.ts` keeps the stand-in `lesson_holds_data` until 6.1b-2 moves it to real cells.
+- A rewrite of the same version keeps lesson and block ids (pass 2): a test that expected a new id after a template or calendar change now expects the same one.
+
 ## 22 October 2026: task 6.1a Cells, versions and history
 
 - 0108 and 0109: `journal_works` (the minimum a cell's key needs), `journal_cells` unique on (lesson, student, work) with nulls not distinct, a version the database raises on every change, and an append-only `journal_cell_history` partitioned by month, written by a trigger and tied to an audit entry of its transaction (`lesson_history_unaudited` reads both histories).

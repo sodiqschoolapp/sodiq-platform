@@ -1342,6 +1342,8 @@ export {
   impactChangeSchema,
   impactSlotSchema,
   publishImpactSchema,
+  heldDataLessonSchema,
+  type HeldDataLesson,
   transitionKeySchema,
   transitionRowSchema,
   type ImpactChangeAnswer,

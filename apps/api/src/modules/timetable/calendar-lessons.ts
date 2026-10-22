@@ -78,7 +78,7 @@ import {
   type DayAudit,
 } from './publish.service.js';
 import { storedDayCheck, storedLessonsOn, type StoredDayLesson } from './stored-day.js';
-import { storedLessonRows, type StoredLesson } from './stored-lessons.js';
+import { heldDataLinesOf, storedLessonRows, type StoredLesson } from './stored-lessons.js';
 import { Timetable } from './timetable.service.js';
 import {
   readDates,
@@ -284,6 +284,9 @@ export const NO_LESSONS: CalendarLessons = {
   removed: [],
   created: [],
   cancelled: [],
+  keptWithData: [],
+  givenBack: [],
+  heldData: [],
   needsTeacher: [],
   notified: [],
   blocked: [],
@@ -1129,6 +1132,9 @@ export class TimetableCalendarLessons {
       }
     };
     let wrote = true;
+    // Task 6.1b-1 (decision 3, review correction 2): the lessons with data a
+    // write would have to move, which the preview answers as lines.
+    let heldIds: string[] = [];
     if (!input.preview) {
       await doWrite();
     } else if (refusedExams.length > 0) {
@@ -1142,9 +1148,16 @@ export class TimetableCalendarLessons {
         await sql`set constraints all immediate`.execute(transaction);
         await sql`release savepoint calendar_rewrite`.execute(transaction);
       } catch (error) {
-        if (blocked.length === 0) throw error;
+        const held =
+          error instanceof ApiException && error.code === 'lessons_hold_data'
+            ? (error.details ?? []).flatMap((one) =>
+                one.recordId === undefined ? [] : [one.recordId],
+              )
+            : null;
+        if (blocked.length === 0 && held === null) throw error;
         await sql`rollback to savepoint calendar_rewrite`.execute(transaction);
         wrote = false;
+        heldIds = held ?? [];
       }
     }
 
@@ -1241,6 +1254,32 @@ export class TimetableCalendarLessons {
     let created: StoredLesson[] = [];
     let cancelled: StoredLesson[] = [];
     let teacherIds: string[] = [];
+    // Task 6.1b-1 (decisions 2, 5 and 6): what the write kept with data or gave back.
+    const keptWritten = writes.flatMap((one) => one.keptWithData);
+    const backWritten = writes.flatMap((one) => one.givenBack);
+    const places = await heldDataLinesOf(transaction, branchId, [
+      ...(wrote ? [...keptWritten, ...backWritten].map((one) => one.id) : []),
+      ...heldIds,
+    ]);
+    const placed = (id: string) => {
+      const found = places.get(id);
+      return found === undefined ? [] : [found];
+    };
+    const keptLines = wrote
+      ? keptWritten.flatMap((one) =>
+          placed(one.id).map((place) => ({
+            ...place,
+            cancelCause: one.cancelCause,
+            cause: one.cause,
+          })),
+        )
+      : [];
+    const backLines = wrote
+      ? backWritten.flatMap((one) =>
+          placed(one.id).map((place) => ({ ...place, cancelCause: one.cancelCause })),
+        )
+      : [];
+    const heldLines = heldIds.flatMap(placed);
     if (wrote) {
       const after = await readDates(transaction, branchId, touched);
       const changes = weekChanges(snapshot.before, after, snapshot.unwritten);
@@ -1258,6 +1297,7 @@ export class TimetableCalendarLessons {
       {
         unitIds: [
           ...shown.map((one) => one.lesson.unitId),
+          ...[...keptLines, ...backLines, ...heldLines].map((one) => one.unitId),
           ...needsTeacher.map((one) => one.unitId),
           ...blockedLines.flatMap((one) => one.lessons.map((lesson) => lesson.unitId)),
           ...shortenedDays.flatMap((one) =>
@@ -1271,6 +1311,7 @@ export class TimetableCalendarLessons {
         ],
         subjectIds: [
           ...shown.map((one) => one.lesson.subjectId),
+          ...[...keptLines, ...backLines, ...heldLines].map((one) => one.subjectId),
           ...needsTeacher.map((one) => one.subjectId),
           ...blockedLines.flatMap((one) => one.lessons.map((lesson) => lesson.subjectId)),
           ...shortenedDays.flatMap((one) =>
@@ -1293,7 +1334,13 @@ export class TimetableCalendarLessons {
       },
       new Map(),
     );
-    lessons = { ...lessons, names };
+    lessons = {
+      ...lessons,
+      names,
+      keptWithData: keptLines.sort(byPlace),
+      givenBack: backLines.sort(byPlace),
+      heldData: heldLines.sort(byPlace),
+    };
     if (wrote) {
       const withAccount = new Set(
         staff

@@ -1,13 +1,16 @@
 import { randomUUID } from 'node:crypto';
 import { patternIdOf } from '@sodiq/timetable-rules';
+import type { ErrorDetail } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { transactionMoment, type Transaction } from '../../database/transactions.js';
+import { ApiException } from '../../http/api-exception.js';
 import type { BulkHold } from './bulk-cancels-kept.js';
 import type { ExamWrite } from './calendar-exams.js';
 import type { DatedFindings } from './dated-check.js';
 import type { DayWritePlan } from './day-changes-kept.js';
+import { lessonsHoldingData } from './lesson-data.js';
 import type { PatternState } from './pattern.service.js';
-import { endSubstitutionRows } from './substitutions-read.js';
+import { endSubstitutionRows, lessonPlacesOf } from './substitutions-read.js';
 
 /**
  * The dated lessons of a version written at publish (task 5.5b-1, pull
@@ -53,6 +56,14 @@ export interface DatedWrite {
   readonly removed: readonly RemovedLesson[];
   readonly changed: readonly ChangedLesson[];
   /**
+   * Task 6.1b-1 (decisions 2 and 5): each lesson holding data that the write
+   * keeps cancelled, `kept_data` with no lesson of the version to pair or the
+   * version's own cancel in place, listed by the write that cancels it.
+   */
+  readonly keptWithData: readonly KeptLesson[];
+  /** Task 6.1b-1: each `kept_data` lesson that a write of its own version wants again. */
+  readonly givenBack: readonly RemovedLesson[];
+  /**
    * Task 5.7b-1 (decision 6, review correction 1): the substitutions in force
    * the write took off a lesson or removed with it, ended `dropped` (5.7b-3
    * sorts them instead).
@@ -81,6 +92,16 @@ export interface RemovedLesson {
 }
 
 /**
+ * A lesson holding data kept by a write (task 6.1b-1): `cancelCause` and
+ * `reason` are its cancel before the write (review correction 1), `cause`
+ * the one it has after.
+ */
+export interface KeptLesson extends RemovedLesson {
+  readonly reason: string | null;
+  readonly cause: string;
+}
+
+/**
  * A kept lesson whose teacher, room or cancel changed, before and after. A
  * pair has the same generated cause or none, and a one-day cancel stays
  * (decision 8); a cancel is written only by a one-day change applied again
@@ -92,10 +113,23 @@ export interface ChangedLesson {
   readonly teacherId: { readonly from: string | null; readonly to: string | null };
   readonly roomId: { readonly from: string | null; readonly to: string | null };
   readonly cancel?: { readonly from: string | null; readonly to: string | null };
+  /** Task 6.1b-1 (decision 6): a lesson moved in time in place by a rewrite of its own version. */
+  readonly times?: {
+    readonly from: { readonly startsAt: string; readonly endsAt: string };
+    readonly to: { readonly startsAt: string; readonly endsAt: string };
+  };
 }
 
 /** The causes the expansion writes; a stored lesson with one of them was cancelled by it. */
 const GENERATED_CAUSES = new Set(['not_in_template', 'day_off', 'exam_week']);
+
+/**
+ * Task 6.1b-1 (decision 2): the cause of a lesson holding data that a write
+ * keeps with no lesson of a version to pair (0110). Not a generated cause: it
+ * is shown on every view as a cancelled lesson, left out of the impact, and
+ * paired only by entry and pattern date (pass 2 of `pairDated`).
+ */
+export const KEPT_DATA = 'kept_data';
 
 /** Rows per insert statement. */
 const BATCH = 500;
@@ -106,6 +140,8 @@ const MINUTE = 60_000;
 interface Wanted {
   readonly patternBlockId: string;
   readonly entryId: string;
+  /** The date of its pattern block (`patternDateOf`), which pass 2 of `pairDated` reads. */
+  readonly patternDate: string;
   readonly loadRowId: string;
   readonly date: string;
   readonly start: number;
@@ -152,6 +188,8 @@ interface StoredBlock {
   readonly version_id: string;
   readonly pattern_block_id: string;
   readonly double_pair_id: string | null;
+  readonly starts_at: Date;
+  readonly ends_at: Date;
 }
 
 /** A dated block the version wants: one pattern block on one date, or moved there (task 5.6a-5a). */
@@ -188,6 +226,13 @@ export interface PairStored {
   readonly teacherId: string | null;
   readonly roomId: string | null;
   readonly cancelCause: string | null;
+  /**
+   * Task 6.1b-1 (decision 6): its pattern entry and the date of its pattern
+   * block (the date its oldest one-day move in force moved it from, else its
+   * own), which pass 2 pairs by; left out, the lesson is paired by pass 1 only.
+   */
+  readonly entryId?: string;
+  readonly patternDate?: string;
 }
 
 /** A lesson the version wants as `pairDated` reads it. */
@@ -202,6 +247,8 @@ export interface PairWanted {
   readonly roomId: string | null;
   /** The expansion's cancel, `null` for a lesson held. */
   readonly cause: string | null;
+  /** Task 6.1b-1: the date of its pattern block; left out, no pass 2. */
+  readonly patternDate?: string;
 }
 
 /**
@@ -210,10 +257,23 @@ export interface PairWanted {
  * file's comment. `blocks` come in the order they choose: date, start,
  * pattern block. A pair whose stored lesson is in another block than the one
  * its block reuses is no pair: that lesson is removed and created again.
+ *
+ * Task 6.1b-1 (decision 6): a wanted lesson that pass 1 leaves alone pairs in
+ * pass 2 with a stored lesson of the same pattern entry, pattern date, date,
+ * class or group and subject, whatever its times and cancel: a pattern entry
+ * belongs to one version, so only a rewrite of the same version pairs there,
+ * and the lesson keeps its id at its new times or cancel. A block of
+ * `pinned` (it holds a lesson with data that no wanted lesson pairs) is never
+ * reused; a block holding more paired lessons of `holding` (lessons with
+ * data) is reused first, so a lesson with data keeps its block where it can.
  */
 export function pairDated<W extends PairWanted>(
   stored: readonly PairStored[],
   blocks: readonly { readonly lessons: readonly W[] }[],
+  options: {
+    readonly pinned?: ReadonlySet<string>;
+    readonly holding?: ReadonlySet<string>;
+  } = {},
 ): {
   pairs: Map<W, PairStored>;
   reused: (string | null)[];
@@ -223,7 +283,11 @@ export function pairDated<W extends PairWanted>(
    * its one-day cancel (task 5.6a-1, build decision).
    */
   recreated: Map<W, PairStored>;
+  /** Task 6.1b-1: the wanted lessons paired by pass 2. */
+  second: Set<W>;
 } {
+  const pinned = options.pinned ?? new Set<string>();
+  const holding = options.holding ?? new Set<string>();
   const keyOf = (
     held: string,
     unit: string,
@@ -232,13 +296,16 @@ export function pairDated<W extends PairWanted>(
     start: number,
     end: number,
   ) => `${held}|${unit}|${subject}|${date}|${String(start)}|${String(end)}`;
+  const byId = [...stored].sort((a, b) => compare(a.id, b.id));
   const storedByKey = new Map<string, PairStored[]>();
-  for (const row of [...stored].sort((a, b) => compare(a.id, b.id))) {
-    const generated = isGeneratedCause(row.cancelCause);
+  for (const row of byId) {
+    // A cancel of the expansion and a lesson kept with data pair by their
+    // cause; a lesson held, or cancelled by a one-day change, as held.
+    const own = isGeneratedCause(row.cancelCause) || row.cancelCause === KEPT_DATA;
     push(
       storedByKey,
       keyOf(
-        generated ? (row.cancelCause ?? '') : 'held',
+        own ? (row.cancelCause ?? '') : 'held',
         row.unitId,
         row.subjectId,
         row.date,
@@ -266,11 +333,13 @@ export function pairDated<W extends PairWanted>(
     }
   }
   const pairs = new Map<W, PairStored>();
+  const paired = new Set<string>();
   for (const [key, wanted] of wantedByKey) {
     const candidates = [...(storedByKey.get(key) ?? [])];
     const ordered = [...wanted].sort((a, b) => compare(a.entryId, b.entryId));
     const take = (lesson: W, found: PairStored) => {
       pairs.set(lesson, found);
+      paired.add(found.id);
       candidates.splice(candidates.indexOf(found), 1);
     };
     // Equal teacher and room first, then by id (`publishImpact`).
@@ -287,17 +356,53 @@ export function pairDated<W extends PairWanted>(
     }
   }
 
-  // Each stored block goes to one wanted block at most (must-fix 2).
+  // Pass 2 (task 6.1b-1, decision 6): by pattern entry, pattern date and date.
+  const placeOf = (
+    entry: string,
+    patternDate: string,
+    date: string,
+    unit: string,
+    subject: string,
+  ) => `${entry}|${patternDate}|${date}|${unit}|${subject}`;
+  const storedAt = new Map<string, PairStored[]>();
+  for (const row of byId) {
+    if (paired.has(row.id) || row.entryId === undefined || row.patternDate === undefined) continue;
+    push(storedAt, placeOf(row.entryId, row.patternDate, row.date, row.unitId, row.subjectId), row);
+  }
+  const second = new Set<W>();
+  for (const block of blocks) {
+    for (const lesson of [...block.lessons].sort((a, b) => compare(a.entryId, b.entryId))) {
+      if (pairs.has(lesson) || lesson.patternDate === undefined) continue;
+      const found = storedAt
+        .get(
+          placeOf(lesson.entryId, lesson.patternDate, lesson.date, lesson.unitId, lesson.subjectId),
+        )
+        ?.find((one) => !paired.has(one.id));
+      if (found === undefined) continue;
+      pairs.set(lesson, found);
+      paired.add(found.id);
+      second.add(lesson);
+    }
+  }
+
+  // Each stored block goes to one wanted block at most (must-fix 2), never a
+  // pinned one; the block of the most paired lessons with data first.
   const taken = new Set<string>();
   const recreated = new Map<W, PairStored>();
   const reused = blocks.map((block) => {
-    const counts = new Map<string, number>();
+    const counts = new Map<string, { data: number; all: number }>();
     for (const lesson of block.lessons) {
       const found = pairs.get(lesson);
-      if (found === undefined || taken.has(found.blockId)) continue;
-      counts.set(found.blockId, (counts.get(found.blockId) ?? 0) + 1);
+      if (found === undefined || taken.has(found.blockId) || pinned.has(found.blockId)) continue;
+      const count = counts.get(found.blockId) ?? { data: 0, all: 0 };
+      counts.set(found.blockId, {
+        data: count.data + (holding.has(found.id) ? 1 : 0),
+        all: count.all + 1,
+      });
     }
-    const [best] = [...counts.entries()].sort((a, b) => b[1] - a[1] || compare(a[0], b[0]));
+    const [best] = [...counts.entries()].sort(
+      (a, b) => b[1].data - a[1].data || b[1].all - a[1].all || compare(a[0], b[0]),
+    );
     const chosen = best?.[0] ?? null;
     if (chosen !== null) taken.add(chosen);
     for (const lesson of block.lessons) {
@@ -309,7 +414,7 @@ export function pairDated<W extends PairWanted>(
     }
     return chosen;
   });
-  return { pairs, reused, recreated };
+  return { pairs, reused, recreated, second };
 }
 
 /**
@@ -333,6 +438,288 @@ export function storedPairOf(
     teacherId: row.teacher_id,
     roomId: row.room_id,
     cancelCause: row.cancel_cause,
+  };
+}
+
+/** A stored lesson as an audit entry keeps it (`RemovedLesson`). */
+function removedOf(
+  row: Omit<StoredRow, 'load_row_id' | 'pattern_entry_id' | 'cancel_reason'>,
+): RemovedLesson {
+  return {
+    id: row.id,
+    date: row.lesson_date,
+    startsAt: row.starts_at.toISOString(),
+    endsAt: row.ends_at.toISOString(),
+    classId: row.class_id,
+    groupId: row.group_id,
+    subjectId: row.subject_id,
+    teacherId: row.teacher_id,
+    roomId: row.room_id,
+    cancelCause: row.cancel_cause,
+  };
+}
+
+/**
+ * The pattern date of each stored lesson named (task 6.1b-1, decision 6): the
+ * date its oldest one-day move in force moved it from, as `lessonPlacesOf`
+ * (`substitutions-read.ts`) reads it; else its own date. It matches `patternDateOf` of the lesson a version wants there, so a
+ * lesson moved onto the same weekday a week later never pairs with the
+ * entry's own lesson of that date (`.claude/rules/timetable.md`).
+ */
+async function storedPatternDates(
+  transaction: Transaction,
+  rows: readonly StoredRow[],
+): Promise<Map<string, string>> {
+  const places = await lessonPlacesOf(
+    transaction,
+    rows.map((row) => row.id),
+  );
+  return new Map(rows.map((row) => [row.id, places.get(row.id)?.pattern_date ?? row.lesson_date]));
+}
+
+/** What a write of dated lessons keeps, by `datedKeeps`. */
+export interface DatedKeeps {
+  readonly paired: ReturnType<typeof pairDated<Wanted>>;
+  /** The stored blocks that stay under their version: each holds a lesson kept with data. */
+  readonly pinned: ReadonlySet<string>;
+  /** The stored lessons of the run that hold data (`lessonsHoldingData`). */
+  readonly holding: ReadonlySet<string>;
+  /** The stored lessons with data that no wanted lesson pairs: kept, cancelled `kept_data`. */
+  readonly kept: readonly StoredRow[];
+  /** The stored lessons with data that pair but would change block: the write is refused. */
+  readonly refused: readonly StoredRow[];
+}
+
+/**
+ * What a write of dated lessons does with the stored lessons that hold data
+ * (task 6.1b-1, decisions 2 and 3; `06`, What a change does to existing data:
+ * "Removed, if they hold no data", "Lessons that already hold data are kept
+ * and listed"; Protection: "A dated lesson that already has attendance or
+ * marks cannot be deleted"). The writer writes from it and the publish
+ * preview reads it, so both are one computation.
+ *
+ * A stored lesson with data that no wanted lesson pairs stays in its block,
+ * and its block is pinned: it stays under its own version and pattern block,
+ * never reused or re-pointed (`lesson_repoint_check`, 0079). The pairing runs
+ * again without the pinned blocks until none is added; the set only grows. A
+ * stored lesson with data that pairs but would be created again in another
+ * block, its block pinned or reused by another wanted block, can neither stay
+ * nor move (a lesson never changes block, 0058): it refuses the write.
+ */
+export async function datedKeeps(
+  transaction: Transaction,
+  stored: readonly StoredRow[],
+  blocks: readonly WantedBlock[],
+  begins: (date: string) => Date,
+): Promise<DatedKeeps> {
+  const holding = await lessonsHoldingData(
+    transaction,
+    stored.map((row) => row.id),
+  );
+  const patternDates = await storedPatternDates(transaction, stored);
+  const pairStored = stored.map((row) => ({
+    ...storedPairOf(row, begins),
+    entryId: row.pattern_entry_id,
+    patternDate: patternDates.get(row.id) ?? row.lesson_date,
+  }));
+  const { paired, pinned } = pinnedPairing(pairStored, blocks, holding);
+  const pairedIds = new Set(
+    [...paired.pairs.values(), ...paired.recreated.values()].map((one) => one.id),
+  );
+  const recreated = new Set([...paired.recreated.values()].map((one) => one.id));
+  return {
+    paired,
+    pinned,
+    holding,
+    kept: stored.filter((row) => holding.has(row.id) && !pairedIds.has(row.id)),
+    refused: stored.filter((row) => holding.has(row.id) && recreated.has(row.id)),
+  };
+}
+
+/**
+ * The pairing of `datedKeeps` (task 6.1b-1, decision 2): `pairDated` run
+ * again with the block of each stored lesson of `holding` that no wanted
+ * lesson pairs pinned, until no block is added; the set only grows, so it
+ * ends.
+ */
+export function pinnedPairing<W extends PairWanted>(
+  stored: readonly PairStored[],
+  blocks: readonly { readonly lessons: readonly W[] }[],
+  holding: ReadonlySet<string>,
+): { paired: ReturnType<typeof pairDated<W>>; pinned: Set<string> } {
+  const pinned = new Set<string>();
+  for (;;) {
+    const paired = pairDated(stored, blocks, { pinned, holding });
+    const pairedIds = new Set(
+      [...paired.pairs.values(), ...paired.recreated.values()].map((one) => one.id),
+    );
+    const lost = stored.filter(
+      (one) => holding.has(one.id) && !pairedIds.has(one.id) && !pinned.has(one.blockId),
+    );
+    if (lost.length === 0) return { paired, pinned };
+    for (const one of lost) pinned.add(one.blockId);
+  }
+}
+
+/**
+ * Task 6.1b-1 (decision 3): a write that would move a lesson with data to
+ * another block is refused, `lessons_hold_data`, one detail per lesson.
+ */
+function refuseHeldData(keeps: DatedKeeps): void {
+  if (keeps.refused.length === 0) return;
+  const details: ErrorDetail[] = keeps.refused.map((row) => ({
+    path: `lessons.${row.id}`,
+    code: 'lessons_hold_data',
+    message: 'The lesson holds data and would have to move to another block.',
+    recordId: row.id,
+    day: row.lesson_date,
+  }));
+  throw new ApiException('lessons_hold_data', 409, undefined, details);
+}
+
+/**
+ * Cancels each lesson kept with data `kept_data` (task 6.1b-1, review
+ * correction 1: whatever its earlier cancel; an exam's link goes with an
+ * exam's cancel, 0094), and gives the ones it cancels. One already kept is
+ * left alone and not listed again (decision 4).
+ */
+async function keepWithData(
+  transaction: Transaction,
+  rows: readonly StoredRow[],
+): Promise<KeptLesson[]> {
+  const fresh = rows.filter((row) => row.cancel_cause !== KEPT_DATA);
+  if (fresh.length === 0) return [];
+  const exams = fresh.filter((row) => row.cancel_cause === 'exam').map((row) => row.id);
+  if (exams.length > 0) {
+    await transaction.deleteFrom('lesson_exam_cancels').where('lesson_id', 'in', exams).execute();
+  }
+  for (let index = 0; index < fresh.length; index += BATCH) {
+    await transaction
+      .updateTable('lessons')
+      .set({ cancel_cause: KEPT_DATA, cancel_reason: null })
+      .where(
+        'id',
+        'in',
+        fresh.slice(index, index + BATCH).map((row) => row.id),
+      )
+      .execute();
+  }
+  return fresh.map((row) => ({ ...removedOf(row), reason: row.cancel_reason, cause: KEPT_DATA }));
+}
+
+/**
+ * The stored blocks and lessons of a branch from `firstDate` to `lastDate`,
+ * in the order of their id; with `lock`, `for update`, as the writer takes
+ * them.
+ */
+async function storedRunOf(
+  transaction: Transaction,
+  branchId: string,
+  firstDate: string,
+  lastDate: string,
+  lock: boolean,
+): Promise<{ allBlocks: StoredBlock[]; allStored: StoredRow[] }> {
+  const blocks = transaction
+    .selectFrom('lesson_blocks')
+    .select(['id', 'version_id', 'pattern_block_id', 'double_pair_id', 'starts_at', 'ends_at'])
+    .where('branch_id', '=', branchId)
+    .where('lesson_date', '>=', firstDate)
+    .where('lesson_date', '<=', lastDate)
+    .orderBy('id');
+  const allBlocks = await (lock ? blocks.forUpdate() : blocks).execute();
+  if (allBlocks.length === 0) return { allBlocks, allStored: [] };
+  const lessons = transaction
+    .selectFrom('lessons')
+    .select([
+      'id',
+      'block_id',
+      sql<string>`lesson_date::text`.as('lesson_date'),
+      'starts_at',
+      'ends_at',
+      'class_id',
+      'group_id',
+      'subject_id',
+      'load_row_id',
+      'pattern_entry_id',
+      'teacher_id',
+      'room_id',
+      'cancel_cause',
+      'cancel_reason',
+    ])
+    .where('branch_id', '=', branchId)
+    .where('lesson_date', '>=', firstDate)
+    .where('lesson_date', '<=', lastDate)
+    .orderBy('id');
+  const allStored = await (lock ? lessons.forUpdate() : lessons).execute();
+  return { allBlocks, allStored };
+}
+
+/** A lesson of a preview's list of lessons with data (task 6.1b-1): its place in minutes of its day. */
+export interface KeepLine {
+  readonly id: string;
+  readonly date: string;
+  readonly start: number;
+  readonly end: number;
+  readonly unitId: string;
+  readonly subjectId: string;
+  readonly teacherId: string | null;
+  readonly roomId: string | null;
+  /** Its cancel before the write (review correction 1). */
+  readonly cancelCause: string | null;
+}
+
+/**
+ * The lessons with data that a write of the run would keep cancelled
+ * `kept_data`, and those that would refuse it (task 6.1b-1, decision 5,
+ * review correction 2; `06`, Impact preview: "any lesson holding data that
+ * blocks a removal"): `datedKeeps` over the stored lessons and the lessons
+ * the version wants, as `writeDatedLessons` reads them, without a lock. The
+ * publish preview reads it; a preview that runs the write reads the write.
+ */
+export async function keepsOfRun(
+  transaction: Transaction,
+  input: {
+    readonly state: PatternState;
+    readonly findings: DatedFindings;
+    readonly firstDate: string;
+    readonly lastDate: string;
+    readonly plan: DayWritePlan | null;
+    /** The stored lessons a kept move from outside the run keeps (`DayWritePlan.keepStored`). */
+    readonly keepStored: ReadonlySet<string>;
+  },
+): Promise<{ kept: KeepLine[]; refused: KeepLine[] }> {
+  const { allStored } = await storedRunOf(
+    transaction,
+    input.state.pattern.model.data.branchId,
+    input.firstDate,
+    input.lastDate,
+    false,
+  );
+  const keptBlocks = new Set(
+    allStored.filter((one) => input.keepStored.has(one.id)).map((one) => one.block_id),
+  );
+  const stored = allStored.filter(
+    (one) => !input.keepStored.has(one.id) && !keptBlocks.has(one.block_id),
+  );
+  const wanted = await wantedOf(transaction, input.state, input.findings, input.plan);
+  const keeps = await datedKeeps(transaction, stored, wanted, input.findings.begins);
+  const lineOf = (row: StoredRow): KeepLine => {
+    const pair = storedPairOf(row, input.findings.begins);
+    return {
+      id: row.id,
+      date: pair.date,
+      start: pair.start,
+      end: pair.end,
+      unitId: pair.unitId,
+      subjectId: pair.subjectId,
+      teacherId: row.teacher_id,
+      roomId: row.room_id,
+      cancelCause: row.cancel_cause,
+    };
+  };
+  return {
+    kept: keeps.kept.filter((row) => row.cancel_cause !== KEPT_DATA).map(lineOf),
+    refused: keeps.refused.map(lineOf),
   };
 }
 
@@ -419,42 +806,13 @@ export async function writeDatedLessons(
   await exams?.start(transaction);
 
   // The stored blocks and lessons of the run, locked in the order of their id.
-  const allBlocks = await transaction
-    .selectFrom('lesson_blocks')
-    .select(['id', 'version_id', 'pattern_block_id', 'double_pair_id'])
-    .where('branch_id', '=', branchId)
-    .where('lesson_date', '>=', firstDate)
-    .where('lesson_date', '<=', lastDate)
-    .orderBy('id')
-    .forUpdate()
-    .execute();
-  const allStored: StoredRow[] =
-    allBlocks.length === 0
-      ? []
-      : await transaction
-          .selectFrom('lessons')
-          .select([
-            'id',
-            'block_id',
-            sql<string>`lesson_date::text`.as('lesson_date'),
-            'starts_at',
-            'ends_at',
-            'class_id',
-            'group_id',
-            'subject_id',
-            'load_row_id',
-            'pattern_entry_id',
-            'teacher_id',
-            'room_id',
-            'cancel_cause',
-            'cancel_reason',
-          ])
-          .where('branch_id', '=', branchId)
-          .where('lesson_date', '>=', firstDate)
-          .where('lesson_date', '<=', lastDate)
-          .orderBy('id')
-          .forUpdate()
-          .execute();
+  const { allBlocks, allStored } = await storedRunOf(
+    transaction,
+    branchId,
+    firstDate,
+    lastDate,
+    true,
+  );
   // Task 5.6a-5a (decision 7): a kept move from a date before the run stays
   // where it is, under its version; the write neither pairs nor removes it.
   const keepStored = plan?.keepStored ?? new Set<string>();
@@ -486,12 +844,12 @@ export async function writeDatedLessons(
 
   const wantedBlocks = await wantedOf(transaction, state, findings, plan);
 
-  // The pairs and the blocks reused (must-fix 1 and 2).
+  // The pairs and the blocks reused (must-fix 1 and 2); task 6.1b-1: the
+  // lessons with data kept, or the write refused (decisions 2 and 3).
   const rowOf = new Map(stored.map((row) => [row.id, row]));
-  const paired = pairDated(
-    stored.map((row) => storedPairOf(row, begins)),
-    wantedBlocks,
-  );
+  const keeps = await datedKeeps(transaction, stored, wantedBlocks, begins);
+  refuseHeldData(keeps);
+  const { paired } = keeps;
   const pairOf = new Map<Wanted, StoredRow>();
   for (const [lesson, found] of paired.pairs) {
     const row = rowOf.get(found.id);
@@ -520,16 +878,18 @@ export async function writeDatedLessons(
   // lesson at a time, which pairs; the order keeps the write safe whatever
   // pairs.
   const kept = new Set([...pairOf.values()].map((one) => one.id));
-  const removedRows = stored.filter((one) => !kept.has(one.id));
+  const keptData = new Set(keeps.kept.map((one) => one.id));
+  const removedRows = stored.filter((one) => !kept.has(one.id) && !keptData.has(one.id));
   const endedAt = await transactionMoment(transaction);
   // Task 5.7b-3: the rows of the kept substitutions are settled after the
   // write (spec review of the plan, must-fix 1).
   const exceptRowIds = new Set(
     [...(plan?.substitutes.values() ?? [])].filter((one) => one.apply).map((one) => one.rowId),
   );
-  // Task 5.7b-1: a substitution of a removed lesson ends before the lesson goes.
+  // Task 5.7b-1: a substitution of a removed lesson ends before the lesson
+  // goes; task 6.1b-1 (review correction 3): of a lesson kept with data too.
   const substitutionsDropped = await endSubstitutionRows(transaction, {
-    lessonIds: removedRows.map((one) => one.id),
+    lessonIds: [...removedRows, ...keeps.kept].map((one) => one.id),
     cause: 'dropped',
     accountId: state.accountId,
     moment: endedAt,
@@ -545,6 +905,7 @@ export async function writeDatedLessons(
       )
       .execute();
   }
+  const keptWithData = await keepWithData(transaction, keeps.kept);
 
   // The double pairs per date: a pattern pair keeps the stored pair of its
   // two reused blocks when they share one, else gets a new one (5.4c-3a
@@ -574,8 +935,11 @@ export async function writeDatedLessons(
 
   // The reused blocks re-pointed, then their kept lessons.
   const changed: ChangedLesson[] = [...storedCancels];
+  const givenBack: RemovedLesson[] = [];
   const restaffed: string[] = [];
   let keptCount = 0;
+  const minuteOf = (date: string, minutes: number) =>
+    new Date(begins(date).getTime() + minutes * MINUTE);
   for (const block of wantedBlocks) {
     if (block.reused === null) continue;
     const before = blockById.get(block.reused);
@@ -596,6 +960,30 @@ export async function writeDatedLessons(
         .where('id', '=', block.reused)
         .execute();
     }
+    // Task 6.1b-1 (decision 6): a block paired by pass 2 at other times moves
+    // in place; its lessons follow by the key of 0058, and the history writes
+    // a line per lesson (0105).
+    const startsAt = minuteOf(block.date, block.start);
+    const endsAt = minuteOf(block.date, block.end);
+    const times =
+      before !== undefined &&
+      (before.starts_at.getTime() !== startsAt.getTime() ||
+        before.ends_at.getTime() !== endsAt.getTime())
+        ? {
+            from: {
+              startsAt: before.starts_at.toISOString(),
+              endsAt: before.ends_at.toISOString(),
+            },
+            to: { startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString() },
+          }
+        : undefined;
+    if (times !== undefined) {
+      await transaction
+        .updateTable('lesson_blocks')
+        .set({ starts_at: startsAt, ends_at: endsAt })
+        .where('id', '=', block.reused)
+        .execute();
+    }
     for (const lesson of block.lessons) {
       const found = pairOf.get(lesson);
       if (found === undefined) continue;
@@ -603,31 +991,80 @@ export async function writeDatedLessons(
       const moved =
         found.load_row_id !== lesson.loadRowId || found.pattern_entry_id !== lesson.entryId;
       const staffed = found.teacher_id !== lesson.teacherId || found.room_id !== lesson.roomId;
+      // The cancel the lesson keeps: a one-day cancel stays on it (decision 8
+      // of 5.5b-1). Task 6.1b-1 (decision 6): a pair of pass 2 takes the
+      // cancel a lesson created there would take (the expansion's, a one-day
+      // change or a bulk cancel applied again, or none), as the lesson was
+      // removed and created again before.
+      const second = paired.second.has(lesson);
+      const kind =
+        lesson.cause !== null
+          ? { cause: lesson.cause, reason: null }
+          : !second && (found.cancel_cause === 'reason' || found.cancel_cause === 'exam')
+            ? { cause: found.cancel_cause, reason: found.cancel_reason }
+            : { cause: null, reason: null };
       // Task 5.6a-5a: a one-day cancel applied again on a lesson held.
-      const oneDay = found.cancel_cause === null ? lesson.oneDayCancel : null;
+      const oneDay =
+        kind.cause !== null
+          ? null
+          : second
+            ? (lesson.oneDayCancel ?? lesson.bulkCancel)
+            : lesson.oneDayCancel;
       // Task 5.6a-5b-1: a part of a block decided `keep` is held.
-      const hold = held.has(found.id);
-      if (!moved && !staffed && oneDay === null && !hold) continue;
+      const hold = !second && held.has(found.id);
+      const cancel = hold
+        ? { cause: null, reason: null }
+        : oneDay !== null
+          ? { cause: 'reason', reason: oneDay }
+          : kind;
+      const recancelled =
+        cancel.cause !== found.cancel_cause || cancel.reason !== found.cancel_reason;
+      if (!moved && !staffed && !recancelled && times === undefined) continue;
       if (found.teacher_id !== lesson.teacherId) restaffed.push(found.id);
-      await transaction
-        .updateTable('lessons')
-        .set({
-          load_row_id: lesson.loadRowId,
-          pattern_entry_id: lesson.entryId,
-          teacher_id: lesson.teacherId,
-          room_id: lesson.roomId,
-          ...(oneDay === null ? {} : { cancel_cause: 'reason', cancel_reason: oneDay }),
-          ...(hold ? { cancel_cause: null, cancel_reason: null } : {}),
-        })
-        .where('id', '=', found.id)
-        .execute();
-      if (staffed || oneDay !== null || hold) {
+      if (found.cancel_cause === 'exam' && cancel.cause !== 'exam') {
+        // 0094: a lesson is cancelled `exam` exactly when it has a link.
+        await transaction
+          .deleteFrom('lesson_exam_cancels')
+          .where('lesson_id', '=', found.id)
+          .execute();
+      }
+      if (moved || staffed || recancelled) {
+        await transaction
+          .updateTable('lessons')
+          .set({
+            load_row_id: lesson.loadRowId,
+            pattern_entry_id: lesson.entryId,
+            teacher_id: lesson.teacherId,
+            room_id: lesson.roomId,
+            cancel_cause: cancel.cause,
+            cancel_reason: cancel.reason,
+          })
+          .where('id', '=', found.id)
+          .execute();
+      }
+      if (staffed || recancelled || times !== undefined) {
         changed.push({
           id: found.id,
           teacherId: { from: found.teacher_id, to: lesson.teacherId },
           roomId: { from: found.room_id, to: lesson.roomId },
-          ...(oneDay === null ? {} : { cancel: { from: null, to: 'reason' } }),
-          ...(hold ? { cancel: { from: 'reason', to: null } } : {}),
+          ...(recancelled ? { cancel: { from: found.cancel_cause, to: cancel.cause } } : {}),
+          ...(times === undefined ? {} : { times }),
+        });
+      }
+      // A `kept_data` lesson its version wants again is given back when it is
+      // held; one the version cancels in place is listed with that cancel.
+      if (found.cancel_cause === KEPT_DATA && cancel.cause === null) {
+        givenBack.push(removedOf(found));
+      } else if (
+        cancel.cause !== null &&
+        isGeneratedCause(cancel.cause) &&
+        recancelled &&
+        keeps.holding.has(found.id)
+      ) {
+        keptWithData.push({
+          ...removedOf(found),
+          reason: found.cancel_reason,
+          cause: cancel.cause,
         });
       }
     }
@@ -778,8 +1215,11 @@ export async function writeDatedLessons(
     }
   }
 
-  // The stored blocks no new block reuses, empty now.
-  const emptied = storedBlocks.filter((one) => !taken.has(one.id)).map((one) => one.id);
+  // The stored blocks no new block reuses, empty now; task 6.1b-1: a pinned
+  // block stays with its lessons kept with data.
+  const emptied = storedBlocks
+    .filter((one) => !taken.has(one.id) && !keeps.pinned.has(one.id))
+    .map((one) => one.id);
   // Task 5.6b-2c-1: a class kept out of a block for an exam goes first
   // (`lesson_block_class_outs_block_fkey` is not deferrable).
   await exams?.beforeBlocksDeleted(transaction, emptied);
@@ -805,19 +1245,10 @@ export async function writeDatedLessons(
       (sum, block) => sum + block.lessons.filter((one) => one.cause !== null).length,
       0,
     ),
-    removed: removedRows.map((row) => ({
-      id: row.id,
-      date: row.lesson_date,
-      startsAt: row.starts_at.toISOString(),
-      endsAt: row.ends_at.toISOString(),
-      classId: row.class_id,
-      groupId: row.group_id,
-      subjectId: row.subject_id,
-      teacherId: row.teacher_id,
-      roomId: row.room_id,
-      cancelCause: row.cancel_cause,
-    })),
+    removed: removedRows.map(removedOf),
     changed,
+    keptWithData,
+    givenBack,
   };
 }
 
@@ -930,6 +1361,7 @@ async function wantedOf(
     ).lessons.push({
       patternBlockId,
       entryId: lesson.entryId,
+      patternDate: dated?.date ?? lesson.date,
       loadRowId,
       date: lesson.date,
       start: placement.start,
@@ -976,6 +1408,7 @@ async function wantedOf(
       block.lessons.push({
         patternBlockId: pattern.id,
         entryId: entry.id,
+        patternDate: cancelled.date,
         loadRowId: row.id,
         date: cancelled.date,
         start: block.start,
@@ -1005,7 +1438,8 @@ async function wantedOf(
  * Deletes every stored lesson and block of the branch from `firstDate` to
  * `lastDate` (task 5.5c-2a, decision 11): a withdraw of the first version of
  * the chain leaves its dates with no version. The database refuses a delete
- * dated today or earlier (0079); before 6.1 no lesson holds data.
+ * dated today or earlier (0079). Task 6.1b-1 (decision 2): a lesson that holds
+ * data stays in its block, which stays, cancelled `kept_data`.
  *
  * Task 5.6a-5b-2 (spec review of the plan, must-fix 1): a lesson of
  * `plan.keepStored` (a kept move onto a withdrawn date from a date outside
@@ -1047,9 +1481,12 @@ export async function removeDatedLessons(
       'class_id',
       'group_id',
       'subject_id',
+      'load_row_id',
+      'pattern_entry_id',
       'teacher_id',
       'room_id',
       'cancel_cause',
+      'cancel_reason',
       'block_id',
     ])
     .where('branch_id', '=', branchId)
@@ -1062,8 +1499,17 @@ export async function removeDatedLessons(
   const keptBlocks = new Set(
     allRows.filter((one) => keepStored.has(one.id)).map((one) => one.block_id),
   );
-  const rows = allRows.filter((one) => !keptBlocks.has(one.block_id));
-  const blocks = allBlocks.filter((one) => !keptBlocks.has(one.id));
+  const inRun = allRows.filter((one) => !keptBlocks.has(one.block_id));
+  // Task 6.1b-1 (decision 2): a lesson with data stays in its block, which
+  // stays under its version, cancelled `kept_data`.
+  const holding = await lessonsHoldingData(
+    transaction,
+    inRun.map((one) => one.id),
+  );
+  const keptRows = inRun.filter((one) => holding.has(one.id));
+  const pinned = new Set(keptRows.map((one) => one.block_id));
+  const rows = inRun.filter((one) => !holding.has(one.id));
+  const blocks = allBlocks.filter((one) => !keptBlocks.has(one.id) && !pinned.has(one.id));
   const changed: ChangedLesson[] = [];
   for (const [id, reason] of plan?.cancelStored ?? []) {
     const row = allRows.find((one) => one.id === id);
@@ -1086,13 +1532,15 @@ export async function removeDatedLessons(
     transaction,
     blocks.map((one) => one.id),
   );
-  // Task 5.7b-1: a substitution of a removed lesson ends before the lesson goes.
+  // Task 5.7b-1: a substitution of a removed lesson ends before the lesson
+  // goes; task 6.1b-1 (review correction 3): of a lesson kept with data too.
   const substitutionsDropped = await endSubstitutionRows(transaction, {
-    lessonIds: rows.map((one) => one.id),
+    lessonIds: [...rows, ...keptRows].map((one) => one.id),
     cause: 'dropped',
     accountId,
     moment: await transactionMoment(transaction),
   });
+  const keptWithData = await keepWithData(transaction, keptRows);
   for (let index = 0; index < rows.length; index += BATCH) {
     await transaction
       .deleteFrom('lessons')
@@ -1123,18 +1571,9 @@ export async function removeDatedLessons(
     created: 0,
     kept: 0,
     cancelled: 0,
-    removed: rows.map((row) => ({
-      id: row.id,
-      date: row.lesson_date,
-      startsAt: row.starts_at.toISOString(),
-      endsAt: row.ends_at.toISOString(),
-      classId: row.class_id,
-      groupId: row.group_id,
-      subjectId: row.subject_id,
-      teacherId: row.teacher_id,
-      roomId: row.room_id,
-      cancelCause: row.cancel_cause,
-    })),
+    removed: rows.map(removedOf),
     changed,
+    keptWithData,
+    givenBack: [],
   };
 }

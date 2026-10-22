@@ -28,5 +28,8 @@ export const NO_LESSONS: CalendarLessons = {
   exams: [],
   groupBlocks: [],
   groupBlocksUnused: [],
+  keptWithData: [],
+  givenBack: [],
+  heldData: [],
   names: { units: [], subjects: [], teachers: [], rooms: [] },
 };

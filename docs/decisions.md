@@ -285,6 +285,28 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 22 October 2026: the writers of dated lessons keep lessons with data (task 6.1b-1)
+
+Plan approved on pull request #206 with corrections 1 to 4; decisions 1 to 9 confirmed there (decision 2 changed by correction 1). Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (task split). 6.1b split into 6.1b-1 (the writers of dated lessons) and 6.1b-2 (one-day cancel, bulk cancel and the forced delete over lessons with data); both before 6.3 | Decision 1 |
+| **Look first** (constraint widened). `lessons_cancel_cause_check` gains `kept_data` (0110): a lesson with data that no lesson of the version pairs stays in its block, under its version, cancelled `kept_data` whatever its earlier cancel (its earlier cause and reason in the entry), its substitution ended `dropped` | Decision 2, corrections 1 and 3; kept held it would claim its class, teacher and room |
+| **Look first** (a refusal the spec does not name). A lesson with data that the version still teaches but that would change block refuses the write, `lessons_hold_data`, listed in the preview first | Decision 3, correction 2; a lesson never changes block (0058) |
+| **Look first** (a writer changed, every lesson). In a rewrite of the same version `pairDated` pairs by pattern entry, pattern date and date across times and cancels; the lesson keeps its id, its block moves in place, a `kept_data` lesson comes back | Decision 6, correction 4 |
+| **Look first** (merged tests changed by a requirement). `lesson-protection.test.ts` (publish and withdraw now keep and list), `lesson-protection-writers.test.ts` (template change keeps the id), the database tests read real cells; the forced-delete database tests keep the stand-in in a file of their own until 6.1b-2; `template-lessons.test.ts` (a substitution and a bulk cancel choice stay on the lesson and block moved in place) and `calendar-exams.test.ts` (the out row stays on the block moved in place) now expect the ids kept | Decision 8; the From lines of 5.5b-1 and 5.8b |
+| A kept lesson is listed by the write that keeps it; it stays until its own version wants it again or a forced delete | Decision 4 |
+| The lists go into every audit entry and into the publish, calendar, template and slot length previews | Decision 5 |
+| A quarter change whose days cut off a lesson with data is refused with the list (`dataLessons`, `lessons_hold_data`) | Decision 7; `edge/time-dates-calendar` |
+| No new notice | Decision 9 |
+| **Build decision.** A block of the most paired lessons with data is reused first (`pairDated`, `holding`) | Fewer refusals of decision 3: a lesson with data keeps its block where it can |
+| **Build decision.** A pair of pass 2 takes the cancel a lesson created there would take (the expansion's, a one-day change or a bulk cancel applied again, or none), not the stored one-day cancel | The sorting of the stored changes decides at the new times, as when the lesson was created again |
+| **Build decision.** A substitution row of a lesson moved in place is recorded again at the lesson's new times (`settleSubstitutions`) | The row's times must match its lesson |
+| **Build decision.** The year's own dates cannot cut off a lesson: quarters stay inside the year (`outside_year`), so only the quarters' save has the refusal | `academic-years.service.ts` |
+| **Build decision.** The publish check answers `canPublish` false while `heldData` is not empty | The Publish button follows the server's refusal (spec review of the code, should-fix 1) |
+| **Build decision.** A `kept_data` lesson its version wants again is listed as given back only when it is held after the write; cancelled in place, it is listed with that cancel | The list says what the lesson is after the write (spec review of the code, should-fix 5) |
+
 ## 22 October 2026: cells, versions and history (task 6.1a)
 
 Plan approved on pull request #205 with corrections 1 and 2; decisions 1 to 12 confirmed there, decision 4 marked Look first by the review; decision 13 taken in the build. Flagged on issue #42.

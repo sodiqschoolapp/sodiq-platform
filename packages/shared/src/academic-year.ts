@@ -206,6 +206,16 @@ export const quarterItemSchema = z.discriminatedUnion('kind', [
     unit: lineUnitSchema,
     subject: lineSubjectSchema,
   }),
+  /**
+   * Task 6.1b-1 (decision 7): a lesson holding data on a date the save takes
+   * out of every quarter (`lessons_hold_data`).
+   */
+  z.object({
+    kind: z.literal('data_lesson'),
+    date: schoolDateSchema,
+    unit: lineUnitSchema,
+    subject: lineSubjectSchema,
+  }),
   z.object({
     kind: z.literal('exam'),
     date: schoolDateSchema,

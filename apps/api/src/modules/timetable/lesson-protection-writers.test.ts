@@ -17,6 +17,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Database } from '../../database/database.js';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
+import { markedLesson, workWithTotal } from '../../testing/cells-kit.js';
 import { createTestApp } from '../../testing/create-test-app.js';
 import { dayTemplatesKit, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
@@ -329,7 +330,7 @@ describe('the protection of dated lessons through the other writers', () => {
     expect(await lines([(await lessonOf(s, '2026-10-26')).id])).toEqual([]);
   });
 
-  it('a day template change from a date writes a removed line per lesson it moves in time and creates it again at the new time, by the Super Admin', async () => {
+  it('a day template change from a date moves each lesson in time in place: its id, its cells and a line of its times, by the Super Admin', async () => {
     const s = await publishedScene(t, load);
     const template = await t.database.migrator
       .selectFrom('day_templates')
@@ -349,7 +350,15 @@ describe('the protection of dated lessons through the other writers', () => {
     const lesson = await typeOf('Lesson');
     const pause = await typeOf('Break');
     const moved = await lessonOf(s, '2026-10-19');
+    const later = await lessonOf(s, '2026-10-26');
     const kept = await lessonOf(s, '2026-10-12');
+    // Task 6.1b-1 (decision 6, the From line of 5.8b): a lesson with a mark.
+    const { studentId } = await markedLesson(t.app, t.database.migrator, {
+      branchId: s.branch,
+      classId: s.classId,
+      lessonId: moved.id,
+      accountId: adminAccount,
+    });
     const before = await units(s.branch);
     ok(
       await t.post(`/api/setup/day-templates/${template.id}/versions`, s.branch, {
@@ -358,33 +367,288 @@ describe('the protection of dated lessons through the other writers', () => {
         slotTypeIds: [lesson, pause, lesson, pause, lesson],
       }),
     );
-    // A lesson pairs only with a stored one of the same start and end
-    // (`pairDated`, decision 4 of task 5.5b-1): a retimed lesson is removed
-    // and created again, never changed in place. The lessons before the date stay.
+    // A rewrite of the version pairs a lesson by its pattern entry and
+    // pattern date (`pairDated`, pass 2): every lesson stays with its id,
+    // its class, group and subject, at the new time.
     const after = await units(s.branch);
-    expect(keptUnits(before, after)).toBe(2);
-    expect(after.has(moved.id)).toBe(false);
+    expect(keptUnits(before, after)).toBe(before.size);
+    const now = await lessonOf(s, '2026-10-19');
+    expect(now.id).toBe(moved.id);
+    expect(now.starts_at.toISOString()).toBe(at('2026-10-19', '08:30').toISOString());
+    expect((await lessonOf(s, '2026-10-26')).id).toBe(later.id);
+    const cells = await t.database.migrator
+      .selectFrom('journal_cells')
+      .select(['student_id', 'mark'])
+      .where('lesson_id', '=', moved.id)
+      .execute();
+    expect(cells).toEqual([{ student_id: studentId, mark: 1 }]);
     const found = await lines([moved.id]);
     expect(found).toHaveLength(1);
     expect(found[0]).toMatchObject({
-      kind: 'removed',
+      kind: 'changed',
       teacher_before: moved.teacher_id,
-      room_before: moved.room_id,
+      teacher_after: moved.teacher_id,
       actions: ['day_template.version_create'],
     });
     expect(found[0]?.starts_before?.toISOString()).toBe(moved.starts_at.toISOString());
+    expect(found[0]?.starts_after?.toISOString()).toBe(at('2026-10-19', '08:30').toISOString());
     allBy(found, adminAccount);
-    // Its successor: the same class, group and subject, at the new time, with no line.
-    const again = await lessonOf(s, '2026-10-19');
-    expect(again).toMatchObject({
-      class_id: moved.class_id,
-      group_id: moved.group_id,
-      subject_id: moved.subject_id,
-      teacher_id: moved.teacher_id,
-    });
-    expect(again.starts_at.toISOString()).toBe(at('2026-10-19', '08:30').toISOString());
-    expect(await lines([again.id])).toEqual([]);
     expect(await lines([kept.id])).toEqual([]);
+  });
+
+  // Task 6.1b-1 (decisions 2, 5, 6 and 7): the setup writers over lessons that
+  // hold data, each through its real route, its preview against its save.
+  describe('lessons that hold data (6.1b-1)', () => {
+    const slotTypeOf = async (branch: string, name: string) =>
+      (
+        await t.database.migrator
+          .selectFrom('slot_types')
+          .select('id')
+          .where('branch_id', '=', branch)
+          .where('name', '=', name)
+          .executeTakeFirstOrThrow()
+      ).id;
+
+    const cellsOf = (lessonId: string) =>
+      t.database.migrator
+        .selectFrom('journal_cells')
+        .select(['student_id', 'mark'])
+        .where('lesson_id', '=', lessonId)
+        .execute();
+
+    const lessonById = (id: string) =>
+      t.database.migrator
+        .selectFrom('lessons')
+        .select(['id', 'block_id', 'starts_at', 'ends_at', 'cancel_cause'])
+        .where('id', '=', id)
+        .executeTakeFirst();
+
+    /** The newest audit entry of the action in the branch: its writes of dated lessons. */
+    const writesOf = async (branch: string, action: string) => {
+      const entry = await t.database.migrator
+        .selectFrom('audit_log')
+        .select('new_value')
+        .where('branch_id', '=', branch)
+        .where('action', '=', action)
+        .orderBy('occurred_at', 'desc')
+        .orderBy('id', 'desc')
+        .executeTakeFirstOrThrow();
+      const value = entry.new_value as {
+        datedLessons?: {
+          keptWithData?: { id: string; cause: string }[];
+          givenBack?: { id: string }[];
+        }[];
+      };
+      return value.datedLessons ?? [];
+    };
+
+    /** The lessons lists of a calendar preview. */
+    const calendarPreview = async (branch: string, change: object) => {
+      const response = ok(await t.post('/api/setup/calendar-entries/preview', branch, change));
+      return (
+        response.body as {
+          lessons: {
+            keptWithData: { lessonId: string; cause: string; cancelCause: string | null }[];
+            givenBack: { lessonId: string }[];
+            heldData: { lessonId: string }[];
+          };
+        }
+      ).lessons;
+    };
+
+    const dayOff = (date: string) => ({
+      kind: 'day_off',
+      name: 'Founders day',
+      firstDate: date,
+      lastDate: date,
+      gradeFrom: null,
+      gradeTo: null,
+      dayTemplateId: null,
+      followsWeekday: null,
+      examWeek: null,
+    });
+
+    const special = (date: string, dayTemplateId: string) => ({
+      kind: 'special_day',
+      name: 'Open day',
+      firstDate: date,
+      lastDate: date,
+      gradeFrom: null,
+      gradeTo: null,
+      dayTemplateId,
+      followsWeekday: null,
+      examWeek: null,
+    });
+
+    const mark = (s: PublishedScene, lessonId: string, classId = s.classId) =>
+      markedLesson(t.app, t.database.migrator, {
+        branchId: s.branch,
+        classId,
+        lessonId,
+        accountId: adminAccount,
+      });
+
+    it('a slot length change moves a lesson with data in place: its id, its cells, its new end', async () => {
+      const s = await publishedScene(t, load);
+      const moved = await lessonOf(s, '2026-10-19');
+      const { studentId } = await mark(s, moved.id);
+      ok(
+        await t.post(
+          `/api/setup/slot-types/${await slotTypeOf(s.branch, 'Lesson')}/lengths`,
+          s.branch,
+          { lengthMinutes: 40, from: '2026-10-19' },
+        ),
+      );
+      const now = await lessonById(moved.id);
+      expect(now?.starts_at.toISOString()).toBe(moved.starts_at.toISOString());
+      expect(now?.ends_at.toISOString()).toBe(
+        new Date(moved.starts_at.getTime() + 40 * 60_000).toISOString(),
+      );
+      expect(await cellsOf(moved.id)).toEqual([{ student_id: studentId, mark: 1 }]);
+    });
+
+    it('a special template on a date moves a lesson with data in place and cancels one it has no slot for "not in the day\'s template" in place, listed in the preview and the entry', async () => {
+      const s = await publishedScene(t, load, { secondSubject: true });
+      const lesson = await slotTypeOf(s.branch, 'Lesson');
+      // One lesson slot from 08:30: the first lesson moves, the second has no slot.
+      const late = await t.createTemplate(s.branch, 'Late', [lesson], '08:30');
+      const moved = await lessonOf(s, '2026-10-19');
+      const dropped = await t.database.migrator
+        .selectFrom('lessons')
+        .selectAll()
+        .where('branch_id', '=', s.branch)
+        .where('class_id', '=', s.otherClass)
+        .where('lesson_date', '=', '2026-10-19')
+        .orderBy('starts_at', 'desc')
+        .executeTakeFirstOrThrow();
+      expect(dropped.subject_id).not.toBe(s.subject);
+      await mark(s, moved.id);
+      const { studentId } = await mark(s, dropped.id, s.otherClass);
+
+      const shown = await calendarPreview(s.branch, {
+        action: 'create',
+        record: special('2026-10-19', late),
+      });
+      expect(shown.keptWithData.map((one) => [one.lessonId, one.cancelCause, one.cause])).toEqual([
+        [dropped.id, null, 'not_in_template'],
+      ]);
+      expect(shown.heldData).toEqual([]);
+      ok(await t.post('/api/setup/calendar-entries', s.branch, special('2026-10-19', late)), 201);
+
+      const now = await lessonById(moved.id);
+      expect(now?.starts_at.toISOString()).toBe(at('2026-10-19', '08:30').toISOString());
+      expect(now?.cancel_cause).toBeNull();
+      expect(await lessonById(dropped.id)).toMatchObject({
+        block_id: dropped.block_id,
+        cancel_cause: 'not_in_template',
+      });
+      expect(await cellsOf(dropped.id)).toEqual([{ student_id: studentId, mark: 1 }]);
+      // One lesson at each place of the date.
+      expect(
+        await t.database.migrator
+          .selectFrom('lessons')
+          .select('id')
+          .where('branch_id', '=', s.branch)
+          .where('lesson_date', '=', '2026-10-19')
+          .where('subject_id', '=', dropped.subject_id)
+          .execute(),
+      ).toEqual([{ id: dropped.id }]);
+      const writes = await writesOf(s.branch, 'calendar_entry.create');
+      expect(
+        writes.flatMap((one) => one.keptWithData ?? []).map((one) => [one.id, one.cause]),
+      ).toEqual([[dropped.id, 'not_in_template']]);
+    });
+
+    it('a day off over a lesson with a work total keeps it, listed in the preview and the entry; the day off taken back gives it back', async () => {
+      const s = await publishedScene(t, load);
+      const held = await lessonOf(s, '2026-10-26');
+      const other = await lessonOf(s, '2026-10-26', s.otherClass);
+      await workWithTotal(t.database.migrator, { branchId: s.branch, lessonId: held.id });
+
+      const shown = await calendarPreview(s.branch, {
+        action: 'create',
+        record: dayOff('2026-10-26'),
+      });
+      expect(shown.keptWithData.map((one) => [one.lessonId, one.cause])).toEqual([
+        [held.id, 'kept_data'],
+      ]);
+      const created = ok(
+        await t.post('/api/setup/calendar-entries', s.branch, dayOff('2026-10-26')),
+        201,
+      );
+      expect(await lessonById(held.id)).toMatchObject({
+        block_id: held.block_id,
+        cancel_cause: 'kept_data',
+      });
+      expect(await lessonById(other.id)).toBeUndefined();
+      expect(
+        (await writesOf(s.branch, 'calendar_entry.create'))
+          .flatMap((one) => one.keptWithData ?? [])
+          .map((one) => one.id),
+      ).toEqual([held.id]);
+
+      const id = (created.body as { id: string }).id;
+      const back = await calendarPreview(s.branch, { action: 'archive', id });
+      expect(back.givenBack.map((one) => one.lessonId)).toEqual([held.id]);
+      ok(await t.post(`/api/setup/calendar-entries/${id}/archive`, s.branch));
+      expect(await lessonById(held.id)).toMatchObject({
+        block_id: held.block_id,
+        cancel_cause: null,
+      });
+      expect(
+        (await writesOf(s.branch, 'calendar_entry.archive'))
+          .flatMap((one) => one.givenBack ?? [])
+          .map((one) => one.id),
+      ).toEqual([held.id]);
+    });
+
+    it('a shorter last quarter over a lesson holding data is refused with the lesson listed, in the preview and on the save, and changes nothing', async () => {
+      const s = await publishedScene(t, load);
+      const held = await lessonOf(s, '2027-05-31');
+      await mark(s, held.id);
+      const dates = QUARTERS.map(([start, end], index) =>
+        index === 3
+          ? { startDate: start, endDate: '2027-05-24' }
+          : { startDate: start, endDate: end },
+      );
+      const shown = ok(
+        await t.post(`/api/setup/academic-years/${s.year}/quarters/preview`, s.branch, {
+          quarters: dates,
+        }),
+      ).body as { dataLessons: { items: { kind: string; date: string }[]; more: number } };
+      expect(shown.dataLessons).toEqual({
+        items: [expect.objectContaining({ kind: 'data_lesson', date: '2027-05-31' })],
+        more: 0,
+      });
+      // Another branch with lessons of its own, and the audit log of both.
+      const other = await publishedScene(t, load);
+      const entries = () =>
+        t.database.migrator
+          .selectFrom('audit_log')
+          .select('id')
+          .where('branch_id', 'in', [s.branch, other.branch])
+          .orderBy('id')
+          .execute();
+      const before = await units(s.branch);
+      const otherBefore = await units(other.branch);
+      const logged = await entries();
+      const refused = await t.put(`/api/setup/academic-years/${s.year}/quarters`, s.branch, {
+        quarters: dates,
+      });
+      expect(refused.status, JSON.stringify(refused.body)).toBe(409);
+      expect((refused.body as { error: { code: string } }).error.code).toBe('lessons_hold_data');
+      expect(await units(s.branch)).toEqual(before);
+      expect(await units(other.branch)).toEqual(otherBefore);
+      expect(await entries()).toEqual(logged);
+      expect(await lessonById(held.id)).toMatchObject({ cancel_cause: null });
+      const quarter = await t.database.migrator
+        .selectFrom('quarters')
+        .select(sql<string>`end_date::text`.as('end_date'))
+        .where('academic_year_id', '=', s.year)
+        .where('number', '=', 4)
+        .executeTakeFirstOrThrow();
+      expect(quarter.end_date).toBe(QUARTERS[3]?.[1]);
+    });
   });
 
   it('a shorter last quarter writes a removed line per lesson it cuts off, by the Super Admin', async () => {

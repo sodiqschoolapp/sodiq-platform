@@ -1,8 +1,9 @@
+import type { HeldDataLesson } from '@sodiq/shared';
 import type { ImpactLesson } from '@sodiq/timetable-rules';
 import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
 import { dayBeginnings } from './dated-check.js';
-import { isGeneratedCause, storedPairOf } from './dated-lessons.js';
+import { isGeneratedCause, KEPT_DATA, storedPairOf } from './dated-lessons.js';
 
 /**
  * The dated lessons stored in a branch from `firstDate` to `lastDate`, as the
@@ -19,8 +20,10 @@ import { isGeneratedCause, storedPairOf } from './dated-lessons.js';
  * it out of both sides (5.5a-2b-1, decision 4); one with a one-day cancel is
  * kept as a lesson held, as the writer keeps it (5.5b-1, decision 8), unless
  * `cancelled` is `'none'`: the transition week counts no cancelled lesson
- * (5.5a-2b-1, decision 10; decision 4). `'generated'` gives only the lessons
- * the expansion created cancelled (the preview of a calendar save, task 5.6b-1).
+ * (5.5a-2b-1, decision 10; decision 4). A lesson kept with data (`kept_data`,
+ * task 6.1b-1) is left out as one the expansion created cancelled.
+ * `'generated'` gives only the lessons the expansion created cancelled (the
+ * preview of a calendar save, task 5.6b-1).
  */
 export async function storedImpactLessons(
   transaction: Transaction,
@@ -104,7 +107,8 @@ export async function storedLessonRows(
         ? row.cancel_cause !== null
         : input.cancelled === 'generated'
           ? !isGeneratedCause(row.cancel_cause)
-          : isGeneratedCause(row.cancel_cause)
+          : // Task 6.1b-1: a lesson kept with data is no lesson of a version.
+            isGeneratedCause(row.cancel_cause) || row.cancel_cause === KEPT_DATA
     ) {
       return [];
     }
@@ -142,4 +146,69 @@ export async function hasStoredLessons(
     .limit(1)
     .executeTakeFirst();
   return found !== undefined;
+}
+
+/**
+ * The stored lessons named, as a preview lists a lesson with data (task
+ * 6.1b-1, `heldDataLessonSchema`): their place in minutes of their day and
+ * their cancel now, by id. A lesson not found is left out.
+ */
+export async function heldDataLinesOf(
+  transaction: Transaction,
+  branchId: string,
+  lessonIds: readonly string[],
+): Promise<Map<string, HeldDataLesson>> {
+  if (lessonIds.length === 0) return new Map();
+  const [branch, rows] = await Promise.all([
+    transaction
+      .selectFrom('branches')
+      .select('time_zone')
+      .where('id', '=', branchId)
+      .executeTakeFirstOrThrow(),
+    transaction
+      .selectFrom('lessons')
+      .select([
+        'id',
+        'block_id',
+        sql<string>`lesson_date::text`.as('lesson_date'),
+        'starts_at',
+        'ends_at',
+        'class_id',
+        'group_id',
+        'subject_id',
+        'teacher_id',
+        'room_id',
+        'cancel_cause',
+      ])
+      .where('branch_id', '=', branchId)
+      .where('id', 'in', [...lessonIds])
+      .execute(),
+  ]);
+  if (rows.length === 0) return new Map();
+  const dates = rows.map((row) => row.lesson_date).sort();
+  const begins = await dayBeginnings(
+    transaction,
+    branch.time_zone,
+    dates[0] ?? '',
+    dates[dates.length - 1] ?? '',
+  );
+  return new Map(
+    rows.map((row) => {
+      const pair = storedPairOf(row, begins);
+      return [
+        row.id,
+        {
+          lessonId: row.id,
+          date: pair.date,
+          start: pair.start,
+          end: pair.end,
+          unitId: pair.unitId,
+          subjectId: pair.subjectId,
+          teacherIds: row.teacher_id === null ? [] : [row.teacher_id],
+          roomId: row.room_id,
+          cancelCause: row.cancel_cause,
+        },
+      ];
+    }),
+  );
 }

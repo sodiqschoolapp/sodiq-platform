@@ -23,6 +23,7 @@ import {
   UNKNOWN,
   type DayTemplatesKit,
 } from '../../testing/day-templates-kit.js';
+import { workWithTotal } from '../../testing/cells-kit.js';
 import { LessonsKit, at } from '../../testing/lessons-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { standingExamOver } from '../../testing/exams-kit.js';
@@ -5157,6 +5158,191 @@ describe('publish', () => {
     // each split into two mixed halves (5.4c-3b). A pairing is one block of
     // two lessons; the splits again put a new lesson into a kept block and
     // take a stored one out of it.
+    // Task 6.1b-1 (decisions 2 and 3, review correction 2): a block of several
+    // lessons whose version drops a lesson with data. A lesson never changes
+    // block (0058), so the block stays with that lesson, cancelled
+    // `kept_data`; a lesson with data the version still teaches in it cannot
+    // stay or move, and refuses the publish.
+    describe('a block with a lesson that holds data (6.1b-1)', () => {
+      /** The three groups' block of each Wednesday, published from MONDAY; the draft of a copy without G3. */
+      async function groupsScene() {
+        const s = await scene();
+        const classB = await load.classes.schoolClass(s.branch, s.year, { grade: 7 });
+        const english = await load.classes.subject({ grades: [7], journalType: 'attendance_only' });
+        const groups = [
+          await load.classes.group(s.branch, s.year, english, [s.classId]),
+          await load.classes.group(s.branch, s.year, english, [classB]),
+          await load.classes.group(s.branch, s.year, english, [s.classId, classB]),
+        ];
+        for (const group of groups) {
+          const person = (
+            await load.teacher(s.branch, { subjects: [{ subject: english, grades: [7] }] })
+          ).staffId;
+          await hours(s.branch, person);
+          await load.row({
+            branch_id: s.branch,
+            version_id: s.version,
+            group_id: group,
+            subject_id: english,
+            teacher_id: person,
+            lessons_per_week: 1,
+          });
+        }
+        const rowsOf = (version: string) =>
+          t.database.migrator
+            .selectFrom('teaching_load_rows')
+            .select(['id', 'group_id'])
+            .where('version_id', '=', version)
+            .where('subject_id', '=', english)
+            .execute();
+        const [first] = await rowsOf(s.version);
+        await placeSlot(s.branch, s.version, first?.id ?? '', 3, 1);
+        await confirmTemplates(s.branch, s.version);
+        await load.freeEditLock(s.version);
+        versionOf(await publish(s.branch, s.version, MONDAY));
+        // The copy without G3.
+        const without = await draft(s.branch, s.year, s.version);
+        for (const row of await t.database.migrator
+          .selectFrom('teaching_load_rows')
+          .select('id')
+          .where('version_id', '=', without)
+          .where('subject_id', '=', s.subject)
+          .execute()) {
+          await placeAt(s.branch, without, row.id, 1);
+        }
+        const g3Row = (await rowsOf(without)).find((row) => row.group_id === groups[2]);
+        await deleteRow(s.branch, without, g3Row?.id ?? '');
+        // G1 and G2 each a block of its own at the same time, as above.
+        for (const group of [groups[0], groups[1]]) {
+          const row = (await rowsOf(without)).find((one) => one.group_id === group);
+          await placeSlot(s.branch, without, row?.id ?? '', 3, 1);
+        }
+        await confirmTemplates(s.branch, without);
+        await load.freeEditLock(without);
+        const wednesday = schoolDates(3, MONDAY).find((day) => day >= '2026-10-26') ?? '';
+        const day = (await lessonsOf(s.branch)).filter(
+          (one) => one.subject_id === english && one.date === wednesday,
+        );
+        const of = (group: string | undefined) => {
+          const found = day.find((one) => one.group_id === group);
+          if (found === undefined) throw new Error('No lesson of the group.');
+          return found;
+        };
+        // A work's total is the data: a group with students the version drops
+        // would leave them with no lesson (`split_apart`).
+        const mark = (lessonId: string) =>
+          workWithTotal(t.database.migrator, { branchId: s.branch, lessonId });
+        return { s, english, groups, without, wednesday, of, mark };
+      }
+
+      it('keeps the dropped lesson with data in its block, kept_data, and writes the other groups in blocks of the version; the database rules pass', async () => {
+        const { s, english, groups, without, wednesday, of, mark } = await groupsScene();
+        const g3 = of(groups[2]);
+        await mark(g3.id);
+        const impact = checkOf(await check(s.branch, without, '2026-10-26')).impact;
+        expect(impact?.keptWithData.map((one) => one.lessonId)).toEqual([g3.id]);
+        expect(impact?.heldData).toEqual([]);
+        versionOf(await publish(s.branch, without, '2026-10-26'));
+
+        const day = (await lessonsOf(s.branch)).filter(
+          (one) => one.subject_id === english && one.date === wednesday,
+        );
+        const kept = day.find((one) => one.id === g3.id);
+        expect(kept).toMatchObject({ block_id: g3.block_id, cancel_cause: 'kept_data' });
+        const others = day.filter((one) => one.id !== g3.id);
+        expect(others.map((one) => one.group_id).sort()).toEqual([groups[0], groups[1]].sort());
+        expect(new Set(others.map((one) => one.block_id)).size).toBe(2);
+        expect(others.some((one) => one.block_id === g3.block_id)).toBe(false);
+        expect(others.every((one) => one.cancel_cause === null)).toBe(true);
+      });
+
+      it('refuses a withdraw that would move a lesson with data to another block, and changes nothing', async () => {
+        const { s, english, groups, without, wednesday, mark } = await groupsScene();
+        versionOf(await publish(s.branch, without, '2026-10-26'));
+        // G1 and G2 now each a block of the later version, both with data:
+        // the earlier version's one block of the three can keep only one.
+        const day = (await lessonsOf(s.branch)).filter(
+          (one) => one.subject_id === english && one.date === wednesday,
+        );
+        const g1 = day.find((one) => one.group_id === groups[0]);
+        const g2 = day.find((one) => one.group_id === groups[1]);
+        expect(g1?.block_id).not.toBe(g2?.block_id);
+        await mark(g1?.id ?? '');
+        await mark(g2?.id ?? '');
+        const before = await lessonsOf(s.branch);
+        const refused = await request(t.kit.server)
+          .post(`/api/timetable/versions/${without}/withdraw`)
+          .set('Cookie', t.admin)
+          .set(BRANCH_HEADER, s.branch)
+          .set(REQUEST_KEY_HEADER, randomUUID())
+          .send({});
+        expect(refused.status, JSON.stringify(refused.body)).toBe(409);
+        expect(errorCode(refused)).toBe('lessons_hold_data');
+        expect(
+          (refused.body as { error: { details: { recordId: string }[] } }).error.details,
+        ).toHaveLength(1);
+        expect(await lessonsOf(s.branch)).toEqual(before);
+      });
+
+      it('keeps one half of a double holding data, dropped by the version, with its pair id; the other half goes', async () => {
+        const s = await scene({ lessons: 2, placed: 0 });
+        await t.database.migrator
+          .updateTable('teaching_load_rows')
+          .set({ double_lessons: true })
+          .where('id', '=', s.rowId)
+          .execute();
+        await placeSlot(s.branch, s.version, s.rowId, 1, 1, { double: true });
+        await confirmTemplates(s.branch, s.version);
+        await load.freeEditLock(s.version);
+        versionOf(await publish(s.branch, s.version, MONDAY));
+        const day = (await lessonsOf(s.branch)).filter((one) => one.date === '2026-11-16');
+        expect(day).toHaveLength(2);
+        const [held, other] = day;
+        expect(held?.double_pair_id).not.toBeNull();
+        await workWithTotal(t.database.migrator, { branchId: s.branch, lessonId: held?.id ?? '' });
+        const without = await draft(s.branch, s.year, s.version);
+        const [row] = await t.database.migrator
+          .selectFrom('teaching_load_rows')
+          .select('id')
+          .where('version_id', '=', without)
+          .execute();
+        await deleteRow(s.branch, without, row?.id ?? '');
+        await confirmTemplates(s.branch, without);
+        await load.freeEditLock(without);
+        versionOf(await publish(s.branch, without, '2026-10-26'));
+        const after = (await lessonsOf(s.branch)).filter((one) => one.date === '2026-11-16');
+        expect(after).toEqual([
+          expect.objectContaining({
+            id: held?.id,
+            block_id: held?.block_id,
+            double_pair_id: held?.double_pair_id,
+            cancel_cause: 'kept_data',
+          }),
+        ]);
+        expect(after.some((one) => one.id === other?.id)).toBe(false);
+      });
+
+      it('refuses a publish that would move a lesson with data to another block, listed in the preview first, and changes nothing', async () => {
+        const { s, groups, without, of, mark } = await groupsScene();
+        const g1 = of(groups[0]);
+        const g3 = of(groups[2]);
+        await mark(g3.id);
+        await mark(g1.id);
+        const impact = checkOf(await check(s.branch, without, '2026-10-26')).impact;
+        expect(impact?.heldData.map((one) => one.lessonId)).toEqual([g1.id]);
+        const before = await lessonsOf(s.branch);
+        const refused = await publish(s.branch, without, '2026-10-26');
+        expect(refused.status, JSON.stringify(refused.body)).toBe(409);
+        expect(errorCode(refused)).toBe('lessons_hold_data');
+        expect(
+          (refused.body as { error: { details: { recordId: string }[] } }).error.details.map(
+            (one) => one.recordId,
+          ),
+        ).toEqual([g1.id]);
+        expect(await lessonsOf(s.branch)).toEqual(before);
+      });
+    });
+
     it('writes a pairing as one block of two lessons, keeps it on a republish, and moves one half of each block when the splits come back', async () => {
       const s = await scene();
       const pe = await load.classes.subject({ grades: [7], journalType: 'attendance_only' });

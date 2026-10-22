@@ -803,6 +803,8 @@ export const ERROR_CODES = [
   'journal_substitute_none',
   /** A lesson holds data (attendance, marks, a comment) and is never deleted; only the Super Admin's forced delete removes it (06, Protection; task 5.8b). */
   'lesson_holds_data',
+  /** Task 6.1b-1 (decision 3): the change would move a lesson that holds data to another block, or cut off the days of one (decision 7); `details` lists each. */
+  'lessons_hold_data',
   /** The forced delete can no longer be restored: its 30 days have passed (06, Protection; task 5.8b). */
   'forced_delete_expired',
   /** The forced delete was restored already (task 5.8b). */
@@ -944,7 +946,7 @@ export const errorDetailSchema = z.object({
     .optional(),
   /** A room free at the time of a refused restore, room change or move, on a `restore_blocked` or `day_change_blocked` (tasks 5.6a-1 and 5.6a-2). */
   room: z.object({ id: z.uuid(), name: z.string() }).optional(),
-  /** What stands in the way of a save of the quarters, on a `quarter_past_lessons`, `quarter_leaves_exam` or `quarter_splits_move` (task 5.6b-5a) or a `quarter_rating_exams` (task 5.6c-3b), or an exam left out by new year dates, on a `year_leaves_exam` (task 5.6b-5b). */
+  /** What stands in the way of a save of the quarters, on a `quarter_past_lessons`, `quarter_leaves_exam` or `quarter_splits_move` (task 5.6b-5a) or a `quarter_rating_exams` (task 5.6c-3b), or a lesson with data on a `lessons_hold_data` of the quarters (task 6.1b-1), or an exam left out by new year dates, on a `year_leaves_exam` (task 5.6b-5b). */
   quarterItem: quarterItemSchema.optional(),
   /**
    * The stored journal cell a save was refused against, on a `cell_stale`

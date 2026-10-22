@@ -7,8 +7,8 @@ import type { Transaction } from '../../database/transactions.js';
  * total, a 'not held' mark or a comment entered by a person. Exemption marks,
  * plan items and one-day changes are not data."): the one place that answers
  * it in code, read from `lesson_holds_data` (0105), which the database's
- * delete guard reads too. No lesson holds data until task 6.1 fills the
- * function from the cells.
+ * delete guard reads too; it reads the cells and works since 0108 (task
+ * 6.1a), and the writers of dated lessons keep what it names (task 6.1b-1).
  */
 export async function lessonsHoldingData(
   transaction: Transaction,

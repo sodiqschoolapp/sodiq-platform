@@ -6,6 +6,12 @@ import { schoolDateText } from '@/lib/dates';
 import { nameOf } from './setup-api';
 import { rangeText } from './templates-api';
 
+/** The causes a lesson kept with data has after a save (task 6.1b-1): `kept_data` or the day's own. */
+const KEPT_CAUSES = ['kept_data', 'not_in_template', 'day_off', 'exam_week'] as const;
+
+const keptCauseOf = (cause: string): (typeof KEPT_CAUSES)[number] =>
+  KEPT_CAUSES.find((one) => one === cause) ?? 'kept_data';
+
 /** Whether a calendar save's lessons hold anything to show. */
 export function hasLessons(lessons: CalendarLessons): boolean {
   return (
@@ -14,7 +20,10 @@ export function hasLessons(lessons: CalendarLessons): boolean {
     lessons.cancelled.length > 0 ||
     lessons.needsTeacher.length > 0 ||
     lessons.blocked.length > 0 ||
-    lessons.exams.length > 0
+    lessons.exams.length > 0 ||
+    lessons.keptWithData.length > 0 ||
+    lessons.givenBack.length > 0 ||
+    lessons.heldData.length > 0
   );
 }
 
@@ -23,7 +32,12 @@ export function hasLessons(lessons: CalendarLessons): boolean {
  * or an exam refused (task 5.6b-2c-1).
  */
 export function refusesSave(lessons: CalendarLessons): boolean {
-  return lessons.blocked.length > 0 || lessons.exams.some((one) => one.outcome === 'refused');
+  return (
+    lessons.blocked.length > 0 ||
+    lessons.exams.some((one) => one.outcome === 'refused') ||
+    // Task 6.1b-1 (decision 3): a lesson with data that would move to another block.
+    lessons.heldData.length > 0
+  );
 }
 
 /**
@@ -31,7 +45,8 @@ export function refusesSave(lessons: CalendarLessons): boolean {
  * `edge/time-dates-calendar`: "the impact preview is shown first"): the
  * lessons removed, created and created cancelled with the reason, those that
  * will need a teacher, how many teachers are told, and what refuses the
- * save: the blocked conflicts by date.
+ * save: the blocked conflicts by date. Task 6.1b-1: the lessons with data the
+ * save keeps cancelled or gives back, and those in its way.
  * The server decides; this shows its answer.
  */
 export function CalendarLessonsPreview({
@@ -55,7 +70,7 @@ export function CalendarLessonsPreview({
       ? t('timetable.publish.impact.unknownSubject')
       : nameOf(subject.names, language);
   };
-  const lessonText = (one: CalendarLesson): string =>
+  const lessonText = (one: Omit<CalendarLesson, 'teacherIds'>): string =>
     [
       schoolDateText(one.date, language),
       rangeText(t, one.start, one.end),
@@ -90,6 +105,21 @@ export function CalendarLessonsPreview({
             ),
           ].join(' · '),
         })),
+      )}
+      {list(
+        t('setup.calendar.lessons.heldData', { count: lessons.heldData.length }),
+        lessons.heldData.map((one) => ({ key: `held-${one.lessonId}`, text: lessonText(one) })),
+      )}
+      {list(
+        t('setup.calendar.lessons.keptWithData', { count: lessons.keptWithData.length }),
+        lessons.keptWithData.map((one) => ({
+          key: `kept-${one.lessonId}`,
+          text: `${lessonText(one)} · ${t(`timetable.day.cause_${keptCauseOf(one.cause)}`)}`,
+        })),
+      )}
+      {list(
+        t('setup.calendar.lessons.givenBack', { count: lessons.givenBack.length }),
+        lessons.givenBack.map((one) => ({ key: `back-${one.lessonId}`, text: lessonText(one) })),
       )}
       {list(
         t('setup.calendar.lessons.removed', { count: lessons.removed.length }),

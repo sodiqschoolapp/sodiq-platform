@@ -1,6 +1,11 @@
+import type { INestApplication } from '@nestjs/common';
 import { sql } from 'kysely';
 import type { Database } from '../database/database.js';
+import { Transactions } from '../database/transactions.js';
+import { Audit } from '../modules/audit/audit.service.js';
+import { saveCells } from '../modules/journal/cells.js';
 import { at, LessonsKit, QUARTER_DATES } from './lessons-kit.js';
+import { MembersKit } from './members-kit.js';
 
 /**
  * Dated lessons and journal cells for tests outside the timetable (task 6.1a),
@@ -134,4 +139,65 @@ export class CellsKit {
         .execute();
     });
   }
+}
+
+/**
+ * Task 6.1b-1: a student of the class from 1 September with a mark on the
+ * lesson, saved through `saveCells` as the routes of 6.3 will save it (the
+ * Done-when of 6.1b-1: "cells written by `saveCells`"), in a transaction of
+ * the application for the lesson's branch. Names are invented.
+ */
+export async function markedLesson(
+  app: INestApplication,
+  migrator: Database,
+  input: {
+    readonly branchId: string;
+    readonly classId: string;
+    readonly lessonId: string;
+    /** The account the cell names as its writer. */
+    readonly accountId: string;
+    readonly mark?: number;
+  },
+): Promise<{ studentId: string }> {
+  const members = new MembersKit(migrator, input.accountId);
+  const studentId = await members.student(input.branchId, { startsOn: '2026-09-01' });
+  await members.member({
+    branch: input.branchId,
+    classId: input.classId,
+    studentId,
+    from: '2026-09-01',
+  });
+  await app.get(Transactions).run([input.branchId], (transaction) =>
+    saveCells(transaction, app.get(Audit), { accountId: input.accountId }, [
+      {
+        lessonId: input.lessonId,
+        studentId,
+        workId: null,
+        value: input.mark ?? 1,
+        version: null,
+      },
+    ]),
+  );
+  return { studentId };
+}
+
+/**
+ * Task 6.1b-1: a classwork with a total on the lesson, written as the
+ * migrator: no writer of a total exists before 8.1 (0108 grants none).
+ */
+export async function workWithTotal(
+  migrator: Database,
+  input: { readonly branchId: string; readonly lessonId: string; readonly total?: number },
+): Promise<string> {
+  const row = await migrator
+    .insertInto('journal_works')
+    .values({
+      branch_id: input.branchId,
+      lesson_id: input.lessonId,
+      kind: 'classwork',
+      total: input.total ?? 30,
+    })
+    .returning('id')
+    .executeTakeFirstOrThrow();
+  return row.id;
 }

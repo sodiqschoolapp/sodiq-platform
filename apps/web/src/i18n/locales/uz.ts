@@ -626,6 +626,8 @@ export const uz: Texts<'one' | 'other'> = {
       'Dars qaytariladigan oʻqituvchining shu vaqtda boshqa darsi yoki imtihoni bor yoki yoʻlga vaqti yetmaydi. Avval oʻsha darsni oʻzgartiring.',
     lesson_holds_data:
       'Darsda davomat yoki baholar bor, shuning uchun uni oʻchirib boʻlmaydi. Uni faqat Super Admin sabab koʻrsatib butunlay oʻchira oladi.',
+    lessons_hold_data:
+      'Baʼzi darslarda allaqachon davomat yoki baholar bor, bu oʻzgarish esa ularni jadvalning boshqa joyiga koʻchirgan yoki kunlarini kesib tashlagan boʻlardi. Darslar roʻyxatda. Rejani shunday oʻzgartiringki, bu darslar oʻz joyida qolsin.',
     forced_delete_expired: 'Bu darsni tiklash uchun 30 kun oʻtib ketdi, uni endi tiklab boʻlmaydi.',
     forced_delete_restored: 'Bu dars allaqachon tiklangan. Roʻyxatni yangilang.',
     forced_delete_version:
@@ -1462,6 +1464,16 @@ export const uz: Texts<'one' | 'other'> = {
           'Tanlov olib tashlanadi; darslar kundagi tartibi boʻyicha qoldiriladi: {{day}}',
         blocked_one: '{{count}} ta taqiqlangan toʻqnashuv bu saqlashni toʻxtatadi',
         blocked_other: '{{count}} ta taqiqlangan toʻqnashuv bu saqlashni toʻxtatadi',
+        heldData_one:
+          'Davomat yoki baholari bor {{count}} ta darsni boshqa joyga koʻchirishga toʻgʻri kelardi, shuning uchun saqlash rad etildi',
+        heldData_other:
+          'Davomat yoki baholari bor {{count}} ta darsni boshqa joyga koʻchirishga toʻgʻri kelardi, shuning uchun saqlash rad etildi',
+        keptWithData_one:
+          'Davomat yoki baholari bor {{count}} ta dars bekor qilingan holda saqlanadi',
+        keptWithData_other:
+          'Davomat yoki baholari bor {{count}} ta dars bekor qilingan holda saqlanadi',
+        givenBack_one: 'Maʼlumotlari uchun saqlangan {{count}} ta dars jadvalga qaytadi',
+        givenBack_other: 'Maʼlumotlari uchun saqlangan {{count}} ta dars jadvalga qaytadi',
         removed_one: '{{count}} ta dars olib tashlanadi',
         removed_other: '{{count}} ta dars olib tashlanadi',
         created_one: '{{count}} ta dars yaratiladi',
@@ -1580,6 +1592,8 @@ export const uz: Texts<'one' | 'other'> = {
         title: 'Chorak sanalari nimani oʻzgartiradi',
         description: 'Eʼlon qilingan dars jadvali yangi sanalar bilan, saqlashdan oldin.',
         pastLessons: 'Choragi oʻzgaradigan sanalarda oʻtgan darslar',
+        dataLessons:
+          'Hech qaysi chorakka kirmay qoladigan kunlardagi davomat yoki baholari bor darslar',
         exams: 'Hech bir chorakka kirmay qoladigan sanalardagi imtihonlar',
         splitMoves: 'Ikki sanasi ikki xil chorakka tushadigan bir kunlik koʻchirishlar',
         yearExams: 'Yilning yangi sanalaridan tashqaridagi imtihonlar',
@@ -3922,6 +3936,7 @@ export const uz: Texts<'one' | 'other'> = {
       cause_exam: 'Imtihon tufayli bekor qilingan',
       cause_exam_week: 'Bekor qilingan: imtihonlar haftasi',
       cause_day_off: 'Bekor qilingan: dam olish kuni',
+      cause_kept_data: 'Endi jadvalda yoʻq: maʼlumotlari uchun saqlangan',
       cancel: 'Darsni bekor qilish',
       restore: 'Tiklash',
       cancelTitle: '{{time}} dagi {{subject}} darsini bekor qilish',
@@ -4366,6 +4381,16 @@ export const uz: Texts<'one' | 'other'> = {
         classesTitle: 'Taʼsir qilingan sinflar',
         roomsTitle: 'Taʼsir qilingan xonalar',
         vacanciesTitle: 'Har bir boʻsh oʻrindagi haftalik darslar',
+        keptWithDataTitle_one:
+          'Davomat yoki baholari bor {{count}} ta dars bekor qilingan holda saqlanadi',
+        keptWithDataTitle_other:
+          'Davomat yoki baholari bor {{count}} ta dars bekor qilingan holda saqlanadi',
+        heldDataTitle_one:
+          'Davomat yoki baholari bor {{count}} ta darsni boshqa joyga koʻchirishga toʻgʻri kelardi',
+        heldDataTitle_other:
+          'Davomat yoki baholari bor {{count}} ta darsni boshqa joyga koʻchirishga toʻgʻri kelardi',
+        heldDataRefused:
+          'Eʼlon qilish rad etildi. Qoralamani shunday oʻzgartiringki, bu darslar oʻz joyida qolsin.',
         vacancyLessons_one: '{{name}}: haftasiga {{count}} dars',
         vacancyLessons_other: '{{name}}: haftasiga {{count}} dars',
         noTeacher: 'oʻqituvchisiz',

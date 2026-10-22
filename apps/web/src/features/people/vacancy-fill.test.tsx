@@ -151,6 +151,8 @@ const detailOf = (row: VacancyListItem, extra: Partial<VacancyDetail> = {}): Vac
 
 const IMPACT = {
   beforeVersion: { id: uid(500), number: 1 },
+  keptWithData: [],
+  heldData: [],
   dayChanges: {
     key: 'd'.repeat(64),
     kept: [],

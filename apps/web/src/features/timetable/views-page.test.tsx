@@ -153,6 +153,17 @@ describe('the timetable views', () => {
     expect(rows[3]?.[1]).toBe('Busy in South');
   });
 
+  // Task 6.1b-1 (decision 2): a lesson kept for its data that a version no longer has.
+  it('marks a lesson kept for its data with its cause in words', async () => {
+    await openPage(
+      viewOf({ lessons: [lesson(1, { cancelCause: 'kept_data', state: 'cancelled' })] }),
+    );
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(1);
+    });
+    expect(rowsDrawn()[0]?.[5]).toBe(en.timetable.day.cause_kept_data);
+  });
+
   it('marks a lesson a substitute took on the replaced teacher’s view', async () => {
     await openPage(
       viewOf({

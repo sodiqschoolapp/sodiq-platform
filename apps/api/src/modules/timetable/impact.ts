@@ -20,9 +20,16 @@ import type { Transaction } from '../../database/transactions.js';
 import { runAbsences } from './absences-read.js';
 import { runClosures } from './rooms-out-read.js';
 import { datedLessonsOf, type DatedFindings } from './dated-check.js';
-import { needKeyOf, patternDateOf, vacanciesOf, writtenTeacherOf } from './dated-lessons.js';
+import {
+  keepsOfRun,
+  needKeyOf,
+  patternDateOf,
+  vacanciesOf,
+  writtenTeacherOf,
+  type KeepLine,
+} from './dated-lessons.js';
 import type { SortedBulk } from './bulk-cancels-kept.js';
-import type { SortedDayChange } from './day-changes-kept.js';
+import type { DayWritePlan, SortedDayChange } from './day-changes-kept.js';
 import type { KeptExam } from './exams-kept.js';
 import type { SortedSubstitution } from './substitutions-kept.js';
 import type { PatternState } from './pattern.service.js';
@@ -51,6 +58,12 @@ export interface ImpactDays {
   readonly exams: readonly KeptExam[];
   /** Task 5.7b-3: the stored substitutions of the runs, sorted. */
   readonly substitutions: readonly SortedSubstitution[];
+  /**
+   * Task 6.1b-1: the write plan of the published version's run with no
+   * decision taken, which the lessons with data are read with
+   * (`keepsOfRun`); `null` for a run with nothing sorted.
+   */
+  readonly plan: DayWritePlan | null;
 }
 
 /** The impact preview and the key of its transition week, as the publish compares it. */
@@ -258,6 +271,45 @@ export async function impactOf(
     }
   }
 
+  // Task 6.1b-1 (decisions 3 and 5): the lessons with data the publish keeps
+  // or that refuse it, over its run and each carried run, as the writer
+  // decides them.
+  const keepRuns = [
+    await keepsOfRun(transaction, {
+      state: draft,
+      findings: draftFindings,
+      firstDate: startsOn,
+      lastDate,
+      plan: days.plan,
+      keepStored: days.keptStored.get(null) ?? new Set(),
+    }),
+  ];
+  for (const one of carried) {
+    keepRuns.push(
+      await keepsOfRun(transaction, {
+        state: one.state,
+        findings: one.after,
+        firstDate: one.firstDate,
+        lastDate: one.lastDate,
+        plan: null,
+        keepStored: days.keptStored.get(one.versionId) ?? new Set(),
+      }),
+    );
+  }
+  const keptLines = keepRuns.flatMap((one) => one.kept);
+  const heldLines = keepRuns.flatMap((one) => one.refused);
+  const heldDataOf = (line: KeepLine) => ({
+    lessonId: line.id,
+    date: line.date,
+    start: line.start,
+    end: line.end,
+    unitId: line.unitId,
+    subjectId: line.subjectId,
+    teacherIds: line.teacherId === null ? [] : [line.teacherId],
+    roomId: line.roomId,
+    cancelCause: line.cancelCause,
+  });
+
   // The names of what the preview names (decision 12): records of the branch only.
   // A class reached only through a group lesson is in `classIds` alone (review of #142).
   const named = dayChangeIdsOf(days.items, days.bulk, days.exams, days.substitutions);
@@ -266,18 +318,27 @@ export async function impactOf(
     ...impact.classIds,
     ...allChanges.flatMap((one) => [one.unitId, ...one.classIds]),
     ...(week?.rows ?? []).map((one) => one.unitId),
+    ...[...keptLines, ...heldLines].map((one) => one.unitId),
   ]);
   const subjectIds = new Set<string>([
     ...named.subjectIds,
     ...allChanges.map((one) => one.subjectId),
     ...(week?.rows ?? []).map((one) => one.subjectId),
+    ...[...keptLines, ...heldLines].map((one) => one.subjectId),
   ]);
   const teacherIds = new Set<string>([
     ...impact.teacherIds,
     ...vacancies.keys(),
     ...named.teacherIds,
+    ...[...keptLines, ...heldLines].flatMap((one) =>
+      one.teacherId === null ? [] : [one.teacherId],
+    ),
   ]);
-  const roomIds = new Set<string>([...impact.roomIds, ...named.roomIds]);
+  const roomIds = new Set<string>([
+    ...impact.roomIds,
+    ...named.roomIds,
+    ...[...keptLines, ...heldLines].flatMap((one) => (one.roomId === null ? [] : [one.roomId])),
+  ]);
   const units = new Map(
     [...states.values(), draft].flatMap((state) =>
       state.pattern.model.data.units.map((unit) => [unit.id, unit] as const),
@@ -341,6 +402,8 @@ export async function impactOf(
         // Task 5.7a-2b (decision 9): the same lessons, put under "needs a room".
         closures: await runClosures(transaction, draft.version.branch_id, absenceLessons),
       },
+      keptWithData: keptLines.map(heldDataOf),
+      heldData: heldLines.map(heldDataOf),
       names,
     },
     acknowledged: differing.map((row) => ({ ...row })),

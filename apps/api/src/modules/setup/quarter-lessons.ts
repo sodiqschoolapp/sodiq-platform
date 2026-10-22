@@ -12,6 +12,7 @@ import { addDays } from '@sodiq/timetable-rules';
 import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
+import { lessonsHoldingData } from '../timetable/lesson-data.js';
 import {
   NO_LESSONS,
   TimetableCalendarLessons,
@@ -176,8 +177,17 @@ export class QuarterLessons {
       await this.splitMoves(transaction, branchId, yearId, input.before, after),
     );
     const ratingExams = itemsOf(await this.ratingExamsTwice(transaction, yearId, after));
+    const dataLessons = itemsOf(
+      await this.pastLessons(
+        transaction,
+        yearId,
+        rewritten.filter((date) => quarterAfter.get(date) === null),
+        'data_lesson',
+      ),
+    );
     for (const [code, list] of [
       ['quarter_past_lessons', pastLessons],
+      ['lessons_hold_data', dataLessons],
       ['quarter_leaves_exam', exams],
       ['quarter_splits_move', splitMoves],
       ['quarter_rating_exams', ratingExams],
@@ -186,8 +196,10 @@ export class QuarterLessons {
     }
 
     const moved = await this.moveBlocks(transaction, yearId, moving);
+    // Task 6.1b-1: a preview refused for lessons with data on the dates cut
+    // off writes nothing there; a kept lesson would leave its quarter.
     const rewrite: CalendarRewrite =
-      rewritten.length === 0
+      rewritten.length === 0 || dataLessons.items.length > 0
         ? { lessons: NO_LESSONS, audit: null }
         : await this.lessons.rewrite(transaction, {
             branchId,
@@ -215,25 +227,37 @@ export class QuarterLessons {
         exams,
         splitMoves,
         ratingExams,
+        dataLessons,
       },
-      refused: [pastLessons, exams, splitMoves, ratingExams].some((list) => list.items.length > 0),
+      refused: [pastLessons, exams, splitMoves, ratingExams, dataLessons].some(
+        (list) => list.items.length > 0,
+      ),
     };
   }
 
-  /** The lessons of the year on the given dates of today or earlier, by date, start and unit. */
+  /**
+   * The lessons of the year on the given dates, by date, start and unit: of
+   * today or earlier (`past_lesson`), or, task 6.1b-1 (decision 7), those
+   * holding data on dates the save takes out of every quarter (`data_lesson`;
+   * `edge/time-dates-calendar`, "The academic year is extended or shortened":
+   * "refused, with the list of what is in the way, if the days cut off hold a
+   * lesson with data").
+   */
   private async pastLessons(
     transaction: Transaction,
     yearId: string,
     dates: readonly string[],
+    kind: 'past_lesson' | 'data_lesson' = 'past_lesson',
   ): Promise<QuarterItem[]> {
     if (dates.length === 0) return [];
-    const rows = await transaction
+    const found = await transaction
       .selectFrom('lessons')
       .innerJoin('lesson_blocks', 'lesson_blocks.id', 'lessons.block_id')
       .leftJoin('classes', 'classes.id', 'lessons.class_id')
       .leftJoin('groups', 'groups.id', 'lessons.group_id')
       .innerJoin('subjects', 'subjects.id', 'lessons.subject_id')
       .select([
+        'lessons.id',
         sql<string>`lessons.lesson_date::text`.as('date'),
         'lessons.class_id',
         'classes.name as class_name',
@@ -250,8 +274,16 @@ export class QuarterLessons {
       .orderBy('lessons.starts_at')
       .orderBy('lessons.id')
       .execute();
+    const holding =
+      kind === 'data_lesson'
+        ? await lessonsHoldingData(
+            transaction,
+            found.map((row) => row.id),
+          )
+        : null;
+    const rows = holding === null ? found : found.filter((row) => holding.has(row.id));
     return rows.map((row) => ({
-      kind: 'past_lesson',
+      kind,
       date: row.date,
       unit:
         row.class_id === null

@@ -1674,6 +1674,30 @@ export const previewNamesSchema = z.object({
 export type PreviewNamesAnswer = z.infer<typeof previewNamesSchema>;
 
 /**
+ * A stored lesson with data on a preview (task 6.1b-1, decisions 3 and 5):
+ * kept by the change, cancelled `kept_data`, or in the way of it. Its place
+ * in minutes of its day; `cancelCause` is its cancel before the change.
+ */
+export const heldDataLessonSchema = z.object({
+  lessonId: z.uuid(),
+  date: schoolDateSchema,
+  start: z.int().min(0).max(1440),
+  end: z.int().min(0).max(1440),
+  unitId: z.uuid(),
+  subjectId: z.uuid(),
+  /** Empty for a lesson with no teacher. */
+  teacherIds: z.array(z.uuid()),
+  roomId: z.uuid().nullable(),
+  /** A cause of `LESSON_CANCEL_CAUSES` (`day-changes.ts`), `null` for a lesson held. */
+  cancelCause: z
+    .string()
+    .regex(/^[a-z_]+$/)
+    .nullable(),
+});
+
+export type HeldDataLesson = z.infer<typeof heldDataLessonSchema>;
+
+/**
  * The impact preview of a publish (task 5.5a-2b-1; `06`, How surprises are
  * prevented, Impact preview): the lessons created, moved, removed and changed
  * against the version in force before the start, the teachers, classes and
@@ -1733,6 +1757,19 @@ export const publishImpactSchema = z.object({
    * date after the new version starts"); `key` goes back with the publish.
    */
   dayChanges: dayChangesAnswerSchema,
+  /**
+   * Task 6.1b-1 (decisions 2 and 5; `06`, What a change does to existing
+   * data: "Lessons that already hold data are kept and listed"): the stored
+   * lessons with data the publish keeps, cancelled `kept_data`, its carried
+   * versions' too.
+   */
+  keptWithData: z.array(heldDataLessonSchema),
+  /**
+   * Task 6.1b-1 (decision 3, review correction 2; Impact preview: "any lesson
+   * holding data that blocks a removal"): the lessons with data that would have
+   * to move to another block; the publish refuses them, `lessons_hold_data`.
+   */
+  heldData: z.array(heldDataLessonSchema),
   /** The names of what the preview names (decision 12). */
   names: previewNamesSchema,
 });

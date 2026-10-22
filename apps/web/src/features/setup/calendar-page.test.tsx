@@ -113,6 +113,9 @@ const NO_LESSONS: CalendarPreview['lessons'] = {
   exams: [],
   groupBlocks: [],
   groupBlocksUnused: [],
+  keptWithData: [],
+  givenBack: [],
+  heldData: [],
   names: { units: [], subjects: [], teachers: [], rooms: [] },
 };
 
@@ -383,6 +386,93 @@ describe('the calendar page', () => {
             `19 October 2026 · 08:00–08:45 · 7 Oxford · Mathematics · ${en.setup.calendar.lessons.causes.not_in_template}`,
           ),
         ).not.toBeNull();
+        expect(within(section).getByRole('alert').textContent).toBe(
+          en.setup.calendar.lessons.refused,
+        );
+        expect(save).toHaveProperty('disabled', true);
+      }
+      fireEvent.click(within(dialog).getByRole('button', { name: en.setup.calendar.cancel }));
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog', { name: en.setup.calendar.previewTitle })).toBeNull();
+      });
+    }
+  });
+
+  // Task 6.1b-1 (decisions 2, 3 and 5): the lessons with data a save keeps,
+  // gives back, or that stop it.
+  it('lists the lessons with data the save keeps cancelled, gives back and would move, and keeps Save off for the last', async () => {
+    const OXFORD = uid(20);
+    const MATHS = uid(21);
+    const names = {
+      units: [{ id: OXFORD, kind: 'class' as const, name: 'Oxford', grades: [7] }],
+      subjects: [{ id: MATHS, names: { uz: 'Matematika', ru: 'Математика', en: 'Mathematics' } }],
+      teachers: [],
+      rooms: [],
+    };
+    const held = {
+      lessonId: uid(23),
+      date: '2026-10-19',
+      start: 480,
+      end: 525,
+      unitId: OXFORD,
+      subjectId: MATHS,
+      teacherIds: [],
+      roomId: null,
+      cancelCause: null,
+    };
+    const answers = [
+      {
+        ...NO_LESSONS,
+        keptWithData: [{ ...held, cause: 'kept_data' }],
+        givenBack: [{ ...held, lessonId: uid(24), cancelCause: 'kept_data' }],
+        names,
+      },
+      { ...NO_LESSONS, heldData: [held], names },
+    ];
+    let answer = 0;
+    await openList('academic_vice_principal', {
+      'POST /api/setup/calendar-entries/preview': () =>
+        json({ ...PREVIEW, lessons: answers[answer] }),
+    });
+    fireEvent.click(screen.getByRole('button', { name: en.setup.calendar.add }));
+    const form = within(
+      await screen.findByRole('complementary', { name: en.setup.calendar.newTitle }),
+    ).getByRole('form', { name: en.setup.calendar.newTitle });
+    type(within(form).getByLabelText(en.setup.calendar.name), 'Day off');
+    type(within(form).getByLabelText(en.setup.calendar.firstDate), '2026-10-19');
+    type(within(form).getByLabelText(en.setup.calendar.lastDate), '2026-10-19');
+    const line = '19 October 2026 · 08:00–08:45 · 7 Oxford · Mathematics';
+
+    for (const index of [0, 1]) {
+      answer = index;
+      fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+      const dialog = await screen.findByRole('dialog', { name: en.setup.calendar.previewTitle });
+      const section = within(dialog).getByTestId('calendar-lessons');
+      const save = within(dialog).getByRole('button', { name: en.setup.calendar.save });
+      const listOf = (title: string) => {
+        const heading = within(section).getByText(title.replace('{{count}}', '1'));
+        const list = heading.parentElement?.querySelector('ul');
+        if (list === null || list === undefined) throw new Error('No list under the title.');
+        return [...list.querySelectorAll('li')].map((one) => one.textContent);
+      };
+      if (index === 0) {
+        expect(listOf(en.setup.calendar.lessons.keptWithData_one)).toEqual([
+          `${line} · ${en.timetable.day.cause_kept_data}`,
+        ]);
+        expect(listOf(en.setup.calendar.lessons.givenBack_one)).toEqual([line]);
+        expect(
+          within(section).queryByText(
+            en.setup.calendar.lessons.heldData_one.replace('{{count}}', '1'),
+          ),
+        ).toBeNull();
+        expect(save).not.toHaveProperty('disabled', true);
+      } else {
+        expect(listOf(en.setup.calendar.lessons.heldData_one)).toEqual([line]);
+        expect(
+          within(section).queryByText(
+            en.setup.calendar.lessons.keptWithData_one.replace('{{count}}', '1'),
+          ),
+        ).toBeNull();
         expect(within(section).getByRole('alert').textContent).toBe(
           en.setup.calendar.lessons.refused,
         );

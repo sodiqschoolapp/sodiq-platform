@@ -599,6 +599,7 @@ export async function settleSubstitutions(
   if (input.items.length === 0) return { recordedAgain: [], ended: [] };
   const plan = substitutionWritePlanOf(input.items, input.sent);
   const again: { stored: StoredSubstitution; lessonId: string }[] = [];
+  const same: StoredSubstitution[] = [];
   const toEnd: string[] = [];
   for (const item of input.items) {
     for (const lesson of item.lessons) {
@@ -610,8 +611,27 @@ export async function settleSubstitutions(
         const now = input.placed.get(place);
         if (now === undefined) throw new Error(`No lesson was written at ${place}.`);
         if (now !== lesson.stored.lessonId) again.push({ stored: lesson.stored, lessonId: now });
+        else same.push(lesson.stored);
       } else {
         toEnd.push(lesson.stored.rowId);
+      }
+    }
+  }
+  // Task 6.1b-1 (decision 6): a lesson moved in time in place keeps its id;
+  // its row is recorded again at the lesson's new times, as for a lesson
+  // created again.
+  if (same.length > 0) {
+    const now = await lessonPlacesOf(
+      transaction,
+      same.map((one) => one.lessonId),
+    );
+    for (const stored of same) {
+      const place = placeOf(now, stored.lessonId);
+      if (
+        place.starts_at.getTime() !== stored.starts_at.getTime() ||
+        place.ends_at.getTime() !== stored.ends_at.getTime()
+      ) {
+        again.push({ stored, lessonId: stored.lessonId });
       }
     }
   }

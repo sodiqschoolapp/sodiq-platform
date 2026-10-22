@@ -3,9 +3,12 @@ import fc from 'fast-check';
 import { sql } from 'kysely';
 import { describe, expect, it } from 'vitest';
 import type { Transaction } from '../../database/transactions.js';
-import { claimsHarness } from '../../testing/claims-harness.js';
+import { claimsHarness, NOW } from '../../testing/claims-harness.js';
+import { FixedClock } from '../../testing/fixed-clock.js';
 import { heldEntry } from '../../testing/held-entry.js';
 import { at, type LessonSource, type LessonUnit } from '../../testing/lessons-kit.js';
+import { Audit } from '../audit/audit.service.js';
+import { saveCells } from '../journal/cells.js';
 
 // The quality plan's timetable layers (docs/spec/14-quality-plan.md,
 // Timetable; task 5.12a, pull request #201, plan D) and the tests that prove
@@ -20,8 +23,9 @@ import { at, type LessonSource, type LessonUnit } from '../../testing/lessons-ki
 //   edits, against the database) and the engine's: `check.test.ts` ("finds
 //   exactly the overlapping pairs of each resource"), `pattern-place.test.ts`
 //   ("random edits of a pattern": "never leave a teacher, room, class or
-//   student in two places"). "Lessons with data were not lost" waits for
-//   cells: the From line of 5.12a on task 6.1 (decision 4).
+//   student in two places"). "Lessons with data were not lost": this file,
+//   since task 6.1b-1 (the From line of 5.12a): marks saved through
+//   `saveCells` and blocks deleted among the edits.
 // - Scenario tests, the named cases:
 //   - parallel groups: `lessons.database.test.ts` ("passes the two halves of
 //     a split in one block", "refuses two groups that share a class in two
@@ -59,6 +63,7 @@ import { at, type LessonSource, type LessonUnit } from '../../testing/lessons-ki
 //
 // The generated test of the dated lessons: random sequences of blocks added,
 // moved, a lesson's teacher or room changed, a lesson cancelled or restored,
+// a mark saved or a block deleted (task 6.1b-1),
 // written as `sodiq_app` through the branch filter of both branches. After
 // each operation the database's answer equals a model's (docs/spec/edge-cases/
 // developer-rules.md: Teacher in one place, Room in one use, Class in one
@@ -168,6 +173,11 @@ interface ModelLesson {
   teacherId: string | null;
   roomId: string | null;
   cancelled: boolean;
+  /**
+   * Task 6.1b-1: the marks saved on it through `saveCells`, by student, with
+   * the version of each cell; a lesson with one holds data.
+   */
+  cells: Map<string, { mark: number; version: number }>;
 }
 
 interface ModelBlock {
@@ -185,7 +195,18 @@ type Operation =
   | { op: 'teacher'; block: number; lesson: number; teacher: number }
   | { op: 'room'; block: number; lesson: number; room: number }
   | { op: 'cancel'; block: number; lesson: number }
-  | { op: 'restore'; block: number; lesson: number };
+  | { op: 'restore'; block: number; lesson: number }
+  // Task 6.1b-1 (the From line of 5.12a): a mark saved, a block deleted.
+  | {
+      op: 'cell';
+      block: number;
+      lesson: number;
+      student: number;
+      mark: number;
+      /** A student of the fixture who is not expected in the lesson. */
+      outsider: boolean;
+    }
+  | { op: 'delete'; block: number };
 
 const operation: fc.Arbitrary<Operation> = fc.oneof(
   {
@@ -222,6 +243,18 @@ const operation: fc.Arbitrary<Operation> = fc.oneof(
   }),
   fc.record({ op: fc.constant('cancel' as const), block: fc.nat(), lesson: fc.nat() }),
   fc.record({ op: fc.constant('restore' as const), block: fc.nat(), lesson: fc.nat() }),
+  {
+    weight: 3,
+    arbitrary: fc.record({
+      op: fc.constant('cell' as const),
+      block: fc.nat(),
+      lesson: fc.nat(),
+      student: fc.nat(),
+      mark: fc.integer({ min: 0, max: 3 }),
+      outsider: fc.boolean(),
+    }),
+  },
+  fc.record({ op: fc.constant('delete' as const), block: fc.nat() }),
 );
 
 const pick = <T>(list: readonly T[], index: number): T => {
@@ -236,11 +269,23 @@ interface Refused {
   constraint?: string;
 }
 
+/**
+ * Task 6.1b-1: the answer the model expects of a cell or a delete, apart
+ * from the time claims: accepted, or refused by the database's constraint or
+ * the writer's code.
+ */
+type DataAnswer =
+  | { kind: 'accepted' }
+  | { kind: 'constraint'; name: 'lesson_holds_data' }
+  | { kind: 'code'; name: 'lesson_cancelled_cell' | 'cell_closed' };
+
 /** Rolls the run back at its end, so no run sees another's rows. */
 class RunOver extends Error {}
 
 describe('the time claims against a model, on random lessons and edits (14, Generated tests)', () => {
   const h = claimsHarness();
+  /** Task 6.1b-1: the audit of the cells, at the harness's moment. */
+  const audit = new Audit(new FixedClock(NOW));
 
   const fixture = {
     kinds: [] as Kind[],
@@ -252,6 +297,8 @@ describe('the time claims against a model, on random lessons and edits (14, Gene
     members: new Map<string, { student: string; from: string }[]>(),
     /** The classes of each group. */
     groupClasses: new Map<string, string[]>(),
+    /** Task 6.1b-1: the account the cells name. */
+    account: '',
   };
 
   async function prepare(): Promise<void> {
@@ -259,6 +306,7 @@ describe('the time claims against a model, on random lessons and edits (14, Gene
     const north = h.state.north;
     const south = h.state.south;
     const kit = h.state.kit;
+    fixture.account = await kit.load.classes.account();
     const seventhA = await h.schoolClass(north);
     const seventhB = await h.schoolClass(north);
     const seventhC = await h.schoolClass(north);
@@ -548,6 +596,31 @@ describe('the time claims against a model, on random lessons and edits (14, Gene
     }));
   }
 
+  /** Task 6.1b-1: the stored cells with a mark, by lesson and student. */
+  async function cellsStored(transaction: Transaction) {
+    const rows = await transaction
+      .selectFrom('journal_cells')
+      .select(['lesson_id', 'student_id', 'mark', 'version'])
+      .where('mark', 'is not', null)
+      .execute();
+    return rows
+      .map((row) => `${row.lesson_id}|${row.student_id}|${String(row.mark)}|${String(row.version)}`)
+      .sort();
+  }
+
+  function cellsExpected(blocks: readonly ModelBlock[]) {
+    return blocks
+      .flatMap((block) =>
+        block.lessons.flatMap((lesson) =>
+          [...lesson.cells].map(
+            ([student, cell]) =>
+              `${lesson.id}|${student}|${String(cell.mark)}|${String(cell.version)}`,
+          ),
+        ),
+      )
+      .sort();
+  }
+
   function expected(blocks: readonly ModelBlock[]) {
     return blocks
       .flatMap((block) =>
@@ -569,10 +642,17 @@ describe('the time claims against a model, on random lessons and edits (14, Gene
   function plan(
     blocks: readonly ModelBlock[],
     one: Operation,
-  ): { next: ModelBlock[]; write: (transaction: Transaction) => Promise<void> } | undefined {
+  ):
+    | {
+        next: ModelBlock[];
+        write: (transaction: Transaction) => Promise<void>;
+        /** Task 6.1b-1: the answer of a cell or a delete, which the time claims do not decide. */
+        data?: DataAnswer;
+      }
+    | undefined {
     const copy = blocks.map((block) => ({
       ...block,
-      lessons: block.lessons.map((lesson) => ({ ...lesson })),
+      lessons: block.lessons.map((lesson) => ({ ...lesson, cells: new Map(lesson.cells) })),
     }));
     if (one.op === 'add') {
       const kindIndex = one.kind % fixture.kinds.length;
@@ -589,6 +669,7 @@ describe('the time claims against a model, on random lessons and edits (14, Gene
           teacherId: pick(fixture.teachers.get(kind.branch) ?? [], one.teachers[index] ?? 0),
           roomId: pick(fixture.rooms.get(kind.branch) ?? [], one.rooms[index] ?? 0),
           cancelled: false,
+          cells: new Map(),
         })),
       };
       copy.push(block);
@@ -597,6 +678,25 @@ describe('the time claims against a model, on random lessons and edits (14, Gene
     if (copy.length === 0) return undefined;
     const block = pick(copy, one.block);
     const kind = kindOf(block);
+    if (one.op === 'delete') {
+      // Task 6.1b-1 (06, Protection): a lesson that holds data is never deleted.
+      const holds = block.lessons.some((lesson) => lesson.cells.size > 0);
+      return {
+        next: copy.filter((other) => other !== block),
+        data: holds ? { kind: 'constraint', name: 'lesson_holds_data' } : { kind: 'accepted' },
+        write: async (transaction) => {
+          await transaction
+            .deleteFrom('lessons')
+            .where(
+              'id',
+              'in',
+              block.lessons.map((lesson) => lesson.id),
+            )
+            .execute();
+          await transaction.deleteFrom('lesson_blocks').where('id', '=', block.id).execute();
+        },
+      };
+    }
     if (one.op === 'move') {
       const [start, end] = pick(TIMES, one.time);
       block.date = pick(DATES, one.date);
@@ -618,6 +718,44 @@ describe('the time claims against a model, on random lessons and edits (14, Gene
       };
     }
     const lesson = pick(block.lessons, one.lesson);
+    if (one.op === 'cell') {
+      // Task 6.1b-1: a mark of an expected student, saved as the writer saves it.
+      const unit = pick(kind.units, block.lessons.indexOf(lesson));
+      const expectedHere = studentsOf(unit, block.date);
+      const everyone = [
+        ...new Set([...fixture.members.values()].flat().map((member) => member.student)),
+      ];
+      const students = one.outsider
+        ? everyone.filter((student) => !expectedHere.includes(student))
+        : expectedHere;
+      // An outsider on a cancelled lesson meets two refusals; the model keeps to one.
+      if (students.length === 0 || (one.outsider && lesson.cancelled)) return undefined;
+      const student = pick(students, one.student);
+      const before = lesson.cells.get(student);
+      return {
+        next: copy,
+        data: one.outsider
+          ? { kind: 'code', name: 'cell_closed' }
+          : lesson.cancelled
+            ? { kind: 'code', name: 'lesson_cancelled_cell' }
+            : { kind: 'accepted' },
+        write: async (transaction) => {
+          const [saved] = await saveCells(transaction, audit, { accountId: fixture.account }, [
+            {
+              lessonId: lesson.id,
+              studentId: student,
+              workId: null,
+              value: one.mark,
+              version: before?.version ?? null,
+            },
+          ]);
+          // The model takes the version the database gave.
+          if (saved !== undefined) {
+            lesson.cells.set(student, { mark: one.mark, version: saved.version });
+          }
+        },
+      };
+    }
     const update = (values: {
       teacher_id?: string | null;
       room_id?: string | null;
@@ -654,6 +792,7 @@ describe('the time claims against a model, on random lessons and edits (14, Gene
     let accepted = 0;
     let refused = 0;
     const reached = new Set<string>();
+    const dataAnswers = new Set<string>();
     await fc.assert(
       fc.asyncProperty(
         fc.array(operation, { minLength: 15, maxLength: OPERATIONS }),
@@ -668,8 +807,27 @@ describe('the time claims against a model, on random lessons and edits (14, Gene
               for (const one of operations) {
                 const planned = plan(blocks, one);
                 if (planned === undefined) continue;
-                const rules = broken(planned.next);
                 const failure = await step(transaction, () => planned.write(transaction));
+                const { data } = planned;
+                if (data !== undefined) {
+                  // Task 6.1b-1: a cell or a delete, against the model's answer.
+                  if (data.kind === 'accepted') {
+                    expect(failure, `refused ${JSON.stringify(one)}`).toBeUndefined();
+                    blocks = planned.next;
+                    dataAnswers.add(`${one.op}:accepted`);
+                  } else {
+                    expect(
+                      data.kind === 'constraint' ? failure?.constraint : failure?.code,
+                      `accepted ${JSON.stringify(one)}`,
+                    ).toBe(data.name);
+                    dataAnswers.add(`${one.op}:${data.name}`);
+                  }
+                  expect(await stored(transaction)).toEqual(expected(blocks));
+                  // Every lesson the model says holds data is stored with its cells.
+                  expect(await cellsStored(transaction)).toEqual(cellsExpected(blocks));
+                  continue;
+                }
+                const rules = broken(planned.next);
                 if (failure === undefined) {
                   expect(rules, `accepted ${JSON.stringify(one)}`).toEqual(new Set());
                   blocks = planned.next;
@@ -691,6 +849,9 @@ describe('the time claims against a model, on random lessons and edits (14, Gene
                   reached.add(failure.constraint ?? '');
                 }
                 expect(await stored(transaction)).toEqual(expected(blocks));
+                // Task 6.1b-1: a move, a cancel, a restore, a teacher or room
+                // change keeps every lesson's cells.
+                expect(await cellsStored(transaction)).toEqual(cellsExpected(blocks));
               }
               throw new RunOver();
             });
@@ -707,6 +868,14 @@ describe('the time claims against a model, on random lessons and edits (14, Gene
     expect(refused).toBeGreaterThan(RUNS);
     expect(accepted + refused).toBeGreaterThan(2000);
     expect([...reached].sort()).toEqual(Object.keys(MODELLED).sort());
+    // Task 6.1b-1: every answer of a cell and a delete was reached.
+    expect([...dataAnswers].sort()).toEqual([
+      'cell:accepted',
+      'cell:cell_closed',
+      'cell:lesson_cancelled_cell',
+      'delete:accepted',
+      'delete:lesson_holds_data',
+    ]);
   });
 
   /** A draft of the north with one load row per unit, the units' teachers shared so that rows clash. */
@@ -790,6 +959,7 @@ describe('the time claims against a model, on random lessons and edits (14, Gene
                       teacherId: rowOf(unit).teacher,
                       roomId: pick(fixture.rooms.get(north) ?? [], one.rooms[index] ?? 0),
                       cancelled: false,
+                      cells: new Map(),
                     })),
                   };
                   copy.push(block);

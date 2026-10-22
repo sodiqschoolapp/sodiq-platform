@@ -602,6 +602,56 @@ describe('template changes after publishing', () => {
   }
 
   describe('a slot length change', () => {
+    // Task 6.1b-1 (decision 6, review correction 4; 06, Protection: "Its
+    // teacher, room and time can change, with a log entry"; How surprises are
+    // prevented, "Everyone is told").
+    it('moves each lesson in place with its id: the preview shows it at its old and new times, it carries the "changed" mark and a history line, and its one-day cancel stays on it', async () => {
+      const s = await scene();
+      const moved = await lessonOf(s, OCT26, s.classId);
+      const cancelled = await lessonOf(s, OCT26, s.seniorId);
+      okay(
+        await keyed(`/api/timetable/lessons/${cancelled.id}/cancel`, s.branch, {
+          reason: 'Excursion to the museum',
+        }),
+      );
+      const shown = await preview(s.branch, {
+        kind: 'slot_length',
+        slotTypeId: s.lessonType,
+        change: { lengthMinutes: 40, from: OCT19 },
+      });
+      const place = (one: { date: string; unitId: string; start: number; end: number }) =>
+        [one.date, one.unitId, one.start, one.end].join('|');
+      expect(shown.lessons.removed.map(place)).toContain([OCT26, s.classId, 480, 525].join('|'));
+      expect(shown.lessons.created.map(place)).toContain([OCT26, s.classId, 480, 520].join('|'));
+      okay(await changeLength(s, 40, OCT19, { dayChangesKey: shown.lessons.dayChanges.key }));
+
+      const now = await lessonOf(s, OCT26, s.classId);
+      expect(now.id).toBe(moved.id);
+      // The one-day cancel stays on the lesson, which keeps its id.
+      expect(await lessonOf(s, OCT26, s.seniorId)).toMatchObject({
+        id: cancelled.id,
+        cancel_cause: 'reason',
+      });
+      const marks = await t.database.migrator
+        .selectFrom('lesson_changes')
+        .select('lesson_id')
+        .where('branch_id', '=', s.branch)
+        .execute();
+      expect(marks.map((one) => one.lesson_id)).toContain(moved.id);
+      const lines = await t.database.migrator
+        .selectFrom('lesson_history')
+        .select(['kind', 'ends_before', 'ends_after'])
+        .where('lesson_id', '=', moved.id)
+        .execute();
+      expect(lines).toEqual([
+        {
+          kind: 'changed',
+          ends_before: moved.ends_at,
+          ends_after: new Date(moved.starts_at.getTime() + 40 * 60_000),
+        },
+      ]);
+    });
+
     it('gives the lessons from its date the new times; the lessons before it keep theirs; the teachers are told', async () => {
       const s = await scene();
       expect(await timesOf(s, OCT19, s.seniorId)).toEqual([['08:55', '09:40', null]]);
@@ -1340,7 +1390,8 @@ describe('template changes after publishing', () => {
       ]);
       okay(saved);
       const moved = await lessonOf(s, OCT26, s.seniorId);
-      expect(moved.id).not.toBe(lesson.id);
+      // Task 6.1b-1 (decision 6): the lesson keeps its id at its new times.
+      expect(moved.id).toBe(lesson.id);
       const rows = await t.database.migrator
         .selectFrom('substitution_lessons')
         .select(['id', 'substitution_id', 'lesson_id', 'end_cause', 'relaxed', 'starts_at'])
@@ -1348,7 +1399,8 @@ describe('template changes after publishing', () => {
         .orderBy('id')
         .execute();
       expect(rows).toEqual([
-        expect.objectContaining({ id: row.id, lesson_id: null, end_cause: 'recorded_again' }),
+        // The row of the old times stays on the lesson, ended; the new one at the new times.
+        expect.objectContaining({ id: row.id, lesson_id: lesson.id, end_cause: 'recorded_again' }),
         expect.objectContaining({
           substitution_id: record.id,
           lesson_id: moved.id,
@@ -1526,11 +1578,9 @@ describe('template changes after publishing', () => {
         .select(['block_id', 'choice', 'starts_at'])
         .where('branch_id', '=', s.branch)
         .execute();
-      // The row of the block the write replaced keeps no block; the one recorded again names the new block.
-      expect(choices.map((one) => [one.choice, clock(one.starts_at)])).toEqual([
-        ['keep', '09:40'],
-        ['keep', '09:40'],
-      ]);
+      // Task 6.1b-1 (decision 6): the block moves in place with its id, so its
+      // one row stays on it at the new times.
+      expect(choices.map((one) => [one.choice, clock(one.starts_at)])).toEqual([['keep', '09:40']]);
       expect(choices.flatMap((one) => (one.block_id === null ? [] : [one.block_id]))).toEqual([
         group[0]?.block_id,
       ]);

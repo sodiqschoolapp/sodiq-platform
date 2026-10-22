@@ -566,7 +566,11 @@ export class TimetablePublish {
         shortenedDays: findings.shortenedDays,
         unusedKeeps: findings.unusedKeeps,
         chain: findings.chain,
-        canPublish: version.status === 'draft' && findings.refusals.length === 0,
+        // Task 6.1b-1 (decision 3): a lesson with data in the way refuses the publish too.
+        canPublish:
+          version.status === 'draft' &&
+          findings.refusals.length === 0 &&
+          (findings.impact?.answer.heldData.length ?? 0) === 0,
       };
     });
   }
@@ -836,7 +840,8 @@ export class TimetablePublish {
         shortenedDays: findings.shortenedDays,
         unusedKeeps: findings.unusedKeeps,
         chain: findings.chain,
-        canPublish: findings.refusals.length === 0,
+        canPublish:
+          findings.refusals.length === 0 && (findings.impact?.answer.heldData.length ?? 0) === 0,
       },
     };
   }
@@ -1727,6 +1732,8 @@ export class TimetablePublish {
         exams: examItems,
         substitutions: [...sortings.values()].flatMap((one) => one.substitutions),
         keptStored: new Map([...sortings].map(([id, one]) => [id, one.keptStoredIds])),
+        // Task 6.1b-1: the run's write plan before any decision.
+        plan: planOfRun(ownSorting, bulk.get(null) ?? [], new Map(), new Map()),
       },
       carriedSorted.flatMap((one) =>
         one.left || one.before === null || one.written === null
@@ -2043,7 +2050,8 @@ export const PUBLISH_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   exam_incomplete: 'timetable_busy',
   lesson_block_class_out_exam: 'timetable_busy',
   // Task 5.8b (decision 2): a write that would remove a lesson holding data
-  // (0105, `lessons_delete_data`); from 6.1 the writers keep and list it.
+  // (0105, `lessons_delete_data`); since 6.1b-1 the writers keep and list
+  // it, so only a fault of the code reaches it.
   lesson_holds_data: 'lesson_holds_data',
 };
 
@@ -2081,7 +2089,17 @@ export function datedAuditOf(write: DatedWrite) {
       teacherId: { ...one.teacherId },
       roomId: { ...one.roomId },
       ...(one.cancel === undefined ? {} : { cancel: { ...one.cancel } }),
+      ...(one.times === undefined
+        ? {}
+        : { times: { from: { ...one.times.from }, to: { ...one.times.to } } }),
     })),
+    // Task 6.1b-1 (decisions 2 and 5): the lessons kept with data, and given back.
+    ...(write.keptWithData.length === 0
+      ? {}
+      : { keptWithData: write.keptWithData.map((one) => ({ ...one })) }),
+    ...(write.givenBack.length === 0
+      ? {}
+      : { givenBack: write.givenBack.map((one) => ({ ...one })) }),
     // Task 5.7b-1 (decision 6): the substitutions the write dropped.
     ...(write.substitutionsDropped.length === 0
       ? {}

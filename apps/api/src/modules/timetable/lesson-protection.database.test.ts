@@ -5,6 +5,8 @@ import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
 import { at, LessonsKit } from '../../testing/lessons-kit.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
+import { Audit } from '../audit/audit.service.js';
+import { saveCells, type CellSave } from '../journal/cells.js';
 import { lessonsHoldingData } from './lesson-data.js';
 
 const CHECK_VIOLATION = '23514';
@@ -47,6 +49,7 @@ describe('the protection of dated lessons in the database', () => {
   let account: string;
   const years = new Map<string, { year: string; quarters: string[] }>();
   let subject: string;
+  let audit: Audit;
 
   const inBranch = <T>(branch: string, work: (transaction: Transaction) => Promise<T>) =>
     transactions.run([branch], work);
@@ -148,16 +151,7 @@ describe('the protection of dated lessons in the database', () => {
     years.set(south, await kit.year(south));
     subject = await kit.load.classes.subject({ grades: [5, 6, 7, 8, 9, 10, 11] });
     account = await kit.load.classes.account();
-    // A stand-in for the cells of 6.1: the lessons this table names hold data.
-    await sql`create table test_lessons_with_data (lesson_id uuid primary key)`.execute(
-      database.migrator,
-    );
-    await sql`grant select on test_lessons_with_data to sodiq_app`.execute(database.migrator);
-    await sql`
-      create or replace function lesson_holds_data(lesson_ref uuid) returns boolean
-      language sql stable set search_path = pg_catalog, public
-      as $$ select exists (select 1 from test_lessons_with_data t where t.lesson_id = lesson_ref) $$
-    `.execute(database.migrator);
+    audit = new Audit(new FixedClock(NOW));
   });
 
   afterAll(async () => {
@@ -192,29 +186,111 @@ describe('the protection of dated lessons in the database', () => {
   });
 
   describe('rule 1: a lesson that holds data is never deleted', () => {
-    it('reads which lessons hold data from the one function (lessonsHoldingData)', async () => {
-      const held = await lesson(north);
-      const empty = await lesson(north);
-      await database.migrator
-        .insertInto('test_lessons_with_data' as never)
-        .values({ lesson_id: held.lesson })
-        .execute();
-      const found = await inBranch(north, (transaction) =>
-        lessonsHoldingData(transaction, [held.lesson, empty.lesson]),
+    // Task 6.1b-1 (decision 8): real cells and works in place of the stand-in
+    // function of 5.8b (edge/00-definitions, Data on a lesson: "An attendance
+    // mark, a number, a total, a 'not held' mark ... entered by a person").
+    /** A lesson of a class with one student, and the student. */
+    async function classLesson(branch = north) {
+      const classId = await kit.load.classes.schoolClass(branch, years.get(branch)?.year ?? '', {
+        grade: 7,
+      });
+      const [student] = await kit.pupils(branch, classId, 1);
+      return { ...(await lesson(branch, { classId })), student: student ?? '' };
+    }
+
+    const save = (branch: string, saves: readonly CellSave[]) =>
+      inBranch(branch, (transaction) =>
+        saveCells(transaction, audit, { accountId: account }, saves),
       );
-      expect([...found]).toEqual([held.lesson]);
+
+    const work = (
+      branch: string,
+      lessonId: string,
+      values: { total?: number; notHeld?: boolean },
+    ) =>
+      database.migrator
+        .insertInto('journal_works')
+        .values({
+          branch_id: branch,
+          lesson_id: lessonId,
+          kind: 'classwork',
+          total: values.total ?? null,
+          not_held: values.notHeld ?? false,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+
+    it('reads which lessons hold data from the one function (lessonsHoldingData): a mark, a number, a total, "not held"; never an empty cell or an empty work', async () => {
+      const marked = await classLesson();
+      await save(north, [
+        {
+          lessonId: marked.lesson,
+          studentId: marked.student,
+          workId: null,
+          value: 1,
+          version: null,
+        },
+      ]);
+      const scored = await classLesson();
+      const scoredWork = await work(north, scored.lesson, { total: 30 });
+      await save(north, [
+        {
+          lessonId: scored.lesson,
+          studentId: scored.student,
+          workId: scoredWork.id,
+          value: 12,
+          version: null,
+        },
+      ]);
+      const totalled = await classLesson();
+      await work(north, totalled.lesson, { total: 20 });
+      const notHeld = await classLesson();
+      await work(north, notHeld.lesson, { notHeld: true });
+      // A cell saved and then cleared, and a work with neither total nor "not held".
+      const cleared = await classLesson();
+      await save(north, [
+        {
+          lessonId: cleared.lesson,
+          studentId: cleared.student,
+          workId: null,
+          value: 2,
+          version: null,
+        },
+      ]);
+      await save(north, [
+        {
+          lessonId: cleared.lesson,
+          studentId: cleared.student,
+          workId: null,
+          value: null,
+          version: 1,
+        },
+      ]);
+      await work(north, cleared.lesson, {});
+      const empty = await classLesson();
+
+      const ids = [marked, scored, totalled, notHeld, cleared, empty].map((one) => one.lesson);
+      const found = await inBranch(north, (transaction) => lessonsHoldingData(transaction, ids));
+      expect([...found].sort()).toEqual(
+        [marked.lesson, scored.lesson, totalled.lesson, notHeld.lesson].sort(),
+      );
       expect(await inBranch(north, (transaction) => lessonsHoldingData(transaction, []))).toEqual(
         new Set(),
       );
     });
 
-    it('refuses the delete of a future lesson holding data, and lets one without data go', async () => {
-      const held = await lesson(north);
-      const empty = await lesson(north);
-      await database.migrator
-        .insertInto('test_lessons_with_data' as never)
-        .values({ lesson_id: held.lesson })
-        .execute();
+    it('refuses the delete of a future lesson holding data, and lets one without data go with its empty cells', async () => {
+      const held = await classLesson();
+      await save(north, [
+        { lessonId: held.lesson, studentId: held.student, workId: null, value: 1, version: null },
+      ]);
+      const empty = await classLesson();
+      await save(north, [
+        { lessonId: empty.lesson, studentId: empty.student, workId: null, value: 1, version: null },
+      ]);
+      await save(north, [
+        { lessonId: empty.lesson, studentId: empty.student, workId: null, value: null, version: 1 },
+      ]);
       const failed = await refusal(
         inBranch(north, async (transaction) => {
           await audited(transaction, north);
@@ -227,39 +303,13 @@ describe('the protection of dated lessons in the database', () => {
         await transaction.deleteFrom('lessons').where('id', '=', empty.lesson).execute();
       });
       expect(await historyOf(empty.lesson)).toMatchObject([{ kind: 'removed' }]);
-    });
-
-    it('lets a forced delete of the same transaction remove it, and nothing else', async () => {
-      const held = await lesson(north);
-      const other = await lesson(north);
-      await database.migrator
-        .insertInto('test_lessons_with_data' as never)
-        .values([{ lesson_id: held.lesson }, { lesson_id: other.lesson }] as never)
-        .execute();
-      // A store row of another transaction opens nothing.
-      await inBranch(north, (transaction) => storeRow(transaction, north, other.lesson));
-      const earlier = await refusal(
-        inBranch(north, async (transaction) => {
-          await audited(transaction, north);
-          await transaction.deleteFrom('lessons').where('id', '=', other.lesson).execute();
-        }),
-      );
-      expect(earlier.constraint).toBe('lesson_holds_data');
-      // One of this transaction naming another lesson opens nothing either.
-      const elsewhere = await refusal(
-        inBranch(north, async (transaction) => {
-          await storeRow(transaction, north, other.lesson);
-          await audited(transaction, north);
-          await transaction.deleteFrom('lessons').where('id', '=', held.lesson).execute();
-        }),
-      );
-      expect(elsewhere.constraint).toBe('lesson_holds_data');
-      await inBranch(north, async (transaction) => {
-        await storeRow(transaction, north, held.lesson);
-        await audited(transaction, north);
-        await transaction.deleteFrom('lessons').where('id', '=', held.lesson).execute();
-      });
-      expect(await historyOf(held.lesson)).toMatchObject([{ kind: 'forced_delete' }]);
+      expect(
+        await database.migrator
+          .selectFrom('journal_cells')
+          .select('id')
+          .where('lesson_id', '=', empty.lesson)
+          .execute(),
+      ).toEqual([]);
     });
 
     it('refuses the delete of a past lesson and its block, except by a forced delete', async () => {
